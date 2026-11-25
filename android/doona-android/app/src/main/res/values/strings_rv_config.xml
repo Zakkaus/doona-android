@@ -85,4 +85,13 @@
     <string name="rv_config_export_title">Export configuration?</string>
     <string name="rv_config_export_body">The files can hold passwords and keys.</string>
     <string name="rv_config_export_confirm">Export</string>
+    <string name="rv_config_export_archive">Full archive</string>
+    <string name="rv_config_export_archive_line">Every file as applied.</string>
+    <string name="rv_config_export_portable">Portable copy</string>
+    <string name="rv_config_export_portable_line">Loads as is on another device.</string>
+    <string name="rv_config_export_refused_title">Can’t export a portable copy</string>
+    <string name="rv_config_export_refused_reason">The configuration uses files outside it: %1$s.</string>
+    <string name="rv_config_export_archive_action">Export the full archive</string>
+    <string name="rv_config_export_partial_title">Some files aren’t in the archive</string>
+    <string name="rv_config_export_partial_reason">The configuration still points to %1$s. Copy those files yourself.</string>
 </resources>

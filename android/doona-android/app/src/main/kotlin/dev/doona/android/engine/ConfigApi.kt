@@ -82,8 +82,14 @@ data class ConfigRevision(val rev: Int, val appliedAtEpochMs: Long, val origin: 
 /** What an export holds: every byte as applied, or a tree that loads elsewhere. */
 enum class ExportKind { Archive, Portable }
 
-/** A staged export: the private [token] Kotlin streams to the chosen destination, its file count and whether it is portable. */
-data class ConfigExport(val token: String, val files: Int, val portable: Boolean)
+/**
+ * A staged export: the private [token] Kotlin streams to the chosen destination, the [files] it holds, whether the tree
+ * is [portable] (closed: it expands the same at a new root) and the [external] paths it names outside its root and
+ * leaves out (an escaping `use_host`), as written. An archive always stages, keeps those declarations as written and
+ * discloses [external]; a portable request on a tree that is not closed stages nothing ([token] null), so no export
+ * can claim to load elsewhere when it does not (config-plan.md, export; row 16).
+ */
+data class ConfigExport(val token: String?, val files: Int, val portable: Boolean, val external: List<String>)
 
 /**
  * The configuration commands of the core (config-plan.md "JNI contract", schema 4): the honk source tree, drafts bound to

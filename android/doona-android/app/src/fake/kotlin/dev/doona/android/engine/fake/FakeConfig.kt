@@ -115,7 +115,10 @@ internal class FakeConfig(
 
     override suspend fun configExport(rev: Int, kind: ExportKind): Result<ConfigExport> = lock.withLock {
         val texts = revisions[rev] ?: return@withLock failure(ErrorCode.NotFound)
-        Result.success(ConfigExport("export-$rev-${kind.name.lowercase()}", texts.size, portable = true))
+        val external = texts.values.flatMap { text -> HOSTS.findAll(text).map { it.groupValues[1] } }.filter { it.startsWith("/") || it.startsWith("../") }.distinct()
+        val closed = external.isEmpty()
+        val token = "export-$rev-${kind.name.lowercase()}".takeIf { kind == ExportKind.Archive || closed }
+        Result.success(ConfigExport(token, texts.size, portable = closed, external = external))
     }
 
     /** Where [text] stands in file [fileId] of [texts]: its line and byte span; the sample's records each occur once. */
@@ -145,6 +148,9 @@ internal class FakeConfig(
 
     private companion object {
         val TARGET = Regex("->\\s*([A-Za-z_][\\w-]*)")
+
+        /** A hosts source: `use_host: '<path>'`; one absolute or climbing out of the root is outside the tree. */
+        val HOSTS = Regex("use_host:\\s*'([^']+)'")
         const val GENERATION_OFFSET = 6
 
         const val ROUTER = "i1"

@@ -16,13 +16,13 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvBannerSlot
-import dev.doona.android.designsystem.rv.RvConfirmSheet
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.ExportKind
 import dev.doona.android.feature.messageRes
 
 /** Where the configuration pages lead; each is a push of the app's back stack. */
@@ -104,13 +104,18 @@ internal fun ConfigSourceRoute(viewModel: ConfigSourceViewModel, onBack: () -> U
 internal fun ConfigHistoryRoute(engine: Engine, onBack: () -> Unit, routes: ConfigRoutes) =
     ConfigHistoryRoute(viewModel<ConfigHistoryViewModel>(factory = viewModelFactory { initializer { ConfigHistoryViewModel(engine) } }), onBack, routes)
 
-/** 版本紀錄; 匯出設定檔 asks first, since the files can carry credentials, then stages the head. */
+/**
+ * 版本紀錄; 匯出設定檔 asks first, since the files can carry credentials, and which kind, then stages the head; a refused
+ * portable copy's banner reopens the sheet on the archive.
+ */
 @Composable
 internal fun ConfigHistoryRoute(viewModel: ConfigHistoryViewModel, onBack: () -> Unit, routes: ConfigRoutes, confirmExport: Boolean = false) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     val rename by viewModel.rename.collectAsStateWithLifecycle()
     val exported by viewModel.exported.collectAsStateWithLifecycle()
+    val notice by viewModel.exportNotice.collectAsStateWithLifecycle()
     var asking by rememberSaveable { mutableStateOf(confirmExport) }
+    var kind by rememberSaveable { mutableStateOf(ExportKind.Archive) }
     LaunchedEffect(exported) {
         exported?.let {
             routes.export(it)
@@ -118,16 +123,23 @@ internal fun ConfigHistoryRoute(viewModel: ConfigHistoryViewModel, onBack: () ->
         }
     }
     val history = ui.value ?: return ConfigWaitPage(R.string.rv_config_history, onBack, readFailed(ui.failure, viewModel::retry))
-    RvConfigHistoryPage(history.revisions, history.headRev, history.nowEpochMs, onBack, routes.revision, { asking = true }, rename, viewModel::onRename, viewModel::saveName)
-    RvConfirmSheet(
+    val banner = rvExportBanner(
+        notice,
+        onArchive = {
+            viewModel.exportNoticeSeen()
+            kind = ExportKind.Archive
+            asking = true
+        },
+        onSeen = viewModel::exportNoticeSeen,
+    )
+    RvConfigHistoryPage(history.revisions, history.headRev, history.nowEpochMs, onBack, routes.revision, { asking = true }, rename, viewModel::onRename, viewModel::saveName, banner)
+    RvConfigExportSheet(
         visible = asking,
-        title = stringResource(R.string.rv_config_export_title),
-        body = stringResource(R.string.rv_config_export_body),
-        confirm = stringResource(R.string.rv_config_export_confirm),
-        dismiss = stringResource(R.string.rv_cancel),
-        onConfirm = {
+        kind = kind,
+        onKind = { kind = it },
+        onExport = {
             asking = false
-            viewModel.export()
+            viewModel.export(it)
         },
         onDismiss = { asking = false },
     )

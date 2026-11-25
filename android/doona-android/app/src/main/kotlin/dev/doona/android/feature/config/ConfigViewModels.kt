@@ -62,8 +62,9 @@ internal class ConfigOverviewViewModel(
 internal data class RvHistory(val revisions: List<RvRevision>, val headRev: Int, val nowEpochMs: Long)
 
 /**
- * 版本紀錄: `configHistory`; a rename is `configName`, then a read; 匯出設定檔 stages the head with `configExport` and
- * hands its token on ([exported]) for the picker to stream (slice 13).
+ * 版本紀錄: `configHistory`; a rename is `configName`, then a read; 匯出設定檔 stages the head with `configExport` as the
+ * kind the sheet chose and hands its token on ([exported]) for the picker to stream (slice 13). A tree naming files
+ * outside its root leaves an [exportNotice]: a portable copy is refused (no token), an archive leaves those files out.
  */
 internal class ConfigHistoryViewModel(
     private val engine: ConfigEngine,
@@ -74,6 +75,8 @@ internal class ConfigHistoryViewModel(
     val rename: StateFlow<RvRevisionRename?> = _rename.asStateFlow()
     private val _exported = MutableStateFlow<String?>(null)
     val exported: StateFlow<String?> = _exported.asStateFlow()
+    private val _exportNotice = MutableStateFlow<RvExportNotice?>(null)
+    val exportNotice: StateFlow<RvExportNotice?> = _exportNotice.asStateFlow()
 
     init {
         retry()
@@ -91,11 +94,20 @@ internal class ConfigHistoryViewModel(
         }
     }
 
-    fun export() {
+    fun export(kind: ExportKind) {
         val head = state.value.value?.headRev ?: return
+        _exportNotice.value = null
         viewModelScope.launch(reads) {
-            engine.configExport(head, ExportKind.Archive).onSuccess { _exported.value = it.token }.onFailure { error -> state.update { it.copy(failure = error.errorCode()) } }
+            engine.configExport(head, kind).onSuccess { staged ->
+                _exportNotice.value = staged.external.takeIf { it.isNotEmpty() }?.let { RvExportNotice(refused = staged.token == null, paths = it) }
+                staged.token?.let { _exported.value = it }
+            }.onFailure { error -> state.update { it.copy(failure = error.errorCode()) } }
         }
+    }
+
+    /** The export's banner was read. */
+    fun exportNoticeSeen() {
+        _exportNotice.value = null
     }
 
     /** The picker took the token. */

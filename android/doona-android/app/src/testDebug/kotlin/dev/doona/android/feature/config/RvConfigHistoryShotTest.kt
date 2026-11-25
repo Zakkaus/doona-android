@@ -1,6 +1,7 @@
 package dev.doona.android.feature.config
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.Composable
@@ -25,8 +26,11 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvConfirmContent
 import dev.doona.android.designsystem.rv.RvMenuPanel
 import dev.doona.android.designsystem.rv.RvMenuSize
+import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvSheetLayout
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.engine.ExportKind
+import dev.doona.android.engine.fake.RvSampleConfig
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed
@@ -303,11 +307,91 @@ class RvConfigHistoryShotTest {
         compose.onNodeWithText("檢視變更").assertIsNotEnabled()
     }
 
+    /** 匯出設定檔's sheet over the list (row 16): the warning, then 完整封存 (chosen) and 可攜版本. */
+    @Test
+    fun exportLight() = compose.rvShot("config-export", dark = false) { Export() }
+
+    @Test
+    fun exportDark() = compose.rvShot("config-export", dark = true) { Export() }
+
+    @Test
+    fun exportFs200() = compose.rvShot("config-export", dark = false, fontScale = RV_FS200) { Export() }
+
+    @Test
+    @Config(qualifiers = EN)
+    fun exportEn() = compose.rvShot("config-export-en", dark = false) { Export() }
+
+    /** A portable copy refused: the head's DNS names `/etc/hosts`, outside the tree; the banner offers the archive. */
+    @Test
+    @Config(qualifiers = WHOLE_BANNER)
+    fun refusedLight() = compose.rvShot("config-export-refused", dark = false, before = { assertWhole() }) { Banner(refused = true) }
+
+    @Test
+    @Config(qualifiers = WHOLE_BANNER)
+    fun refusedDark() = compose.rvShot("config-export-refused", dark = true, before = { assertWhole() }) { Banner(refused = true) }
+
+    @Test
+    fun refusedFs200() = compose.rvShot("config-export-refused", dark = false, fontScale = RV_FS200) { Banner(refused = true) }
+
+    @Test
+    @Config(qualifiers = EN)
+    fun refusedEn() = compose.rvShot("config-export-refused-en", dark = false) { Banner(refused = true) }
+
+    /** The archive of that head: streamed, and the banner names the file it left out. */
+    @Test
+    @Config(qualifiers = WHOLE_BANNER)
+    fun partialLight() = compose.rvShot("config-export-partial", dark = false, before = { assertWhole() }) { Banner(refused = false) }
+
+    @Test
+    @Config(qualifiers = WHOLE_BANNER)
+    fun partialDark() = compose.rvShot("config-export-partial", dark = true, before = { assertWhole() }) { Banner(refused = false) }
+
+    @Test
+    fun partialFs200() = compose.rvShot("config-export-partial", dark = false, fontScale = RV_FS200) { Banner(refused = false) }
+
+    @Test
+    @Config(qualifiers = EN)
+    fun partialEn() = compose.rvShot("config-export-partial-en", dark = false) { Banner(refused = false) }
+
+    @Test
+    fun theSheetExportsTheKindPicked() {
+        var kind by mutableStateOf(ExportKind.Archive)
+        var exported: ExportKind? = null
+        compose.setContent {
+            Themed { Column { RvConfigExportContent(kind, { kind = it }, { exported = kind }, {}) } }
+        }
+        compose.onNodeWithText("可攜版本").performClick()
+        compose.onNodeWithText("匯出").performClick()
+        assertEquals(ExportKind.Portable, exported)
+    }
+
+    @Test
+    fun aRefusedPortableCopyOffersTheArchive() {
+        var archive = false
+        compose.setContent { Themed { History(rvExportBanner(RvExportNotice(true, listOf(RvSampleConfig.HOSTS_PATH)), { archive = true }, {})) } }
+        compose.onNodeWithText("設定檔用到範圍外的檔案：/etc/hosts。").assertExists()
+        compose.onNodeWithText("改為匯出完整封存").performClick()
+        assertEquals(true, archive)
+    }
+
     @Composable
     private fun Themed(content: @Composable () -> Unit) = RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content)
 
     @Composable
-    private fun History() = RvConfigHistoryPage(RvConfigHistoryData.revisions, RvConfigData.REV, RV_NOW, onBack = {})
+    private fun History(banner: RvNotice? = null) = RvConfigHistoryPage(RvConfigHistoryData.revisions, RvConfigData.REV, RV_NOW, onBack = {}, banner = banner)
+
+    /** The list under 匯出設定檔's sheet, as the sheet's window draws it. */
+    @Composable
+    private fun Export() {
+        Box(Modifier.fillMaxSize()) {
+            History()
+            RvSheetLayout({ 1f }, {}, stringResource(R.string.rv_config_export_title)) { RvConfigExportContent(ExportKind.Archive, {}, {}, {}) }
+        }
+    }
+
+    /** The list with the export's banner about [RvSampleConfig.HOSTS_PATH]. */
+    @Composable
+    private fun Banner(refused: Boolean) = History(rvExportBanner(RvExportNotice(refused, listOf(RvSampleConfig.HOSTS_PATH)), {}, {}))
 
     @Composable
     private fun Import(state: RvImportState) = RvConfigImportPage(state, onBack = {})
@@ -371,6 +455,8 @@ class RvConfigHistoryShotTest {
     }
 
     private companion object {
+        const val EN = "en-w412dp-h915dp-notnight-xhdpi"
+        const val WHOLE_BANNER = "+h1240dp"
         const val WHOLE_HISTORY = "+h1019dp"
         const val WHOLE_NAMED = "+h1045dp"
         const val WHOLE_REVISION_FS200 = "+h992dp"

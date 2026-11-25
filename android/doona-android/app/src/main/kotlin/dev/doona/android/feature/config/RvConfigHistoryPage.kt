@@ -41,7 +41,8 @@ import dev.doona.android.designsystem.rv.rvKeepTail
  * revision's page ([RvConfigRevisionPage], where its 名稱 row renames it); a long press offers 重新命名 at the finger as
  * a shortcut, which opens [RvRevisionRenameSheet] on [rename] ([onRename] opens, types into and closes it; [onSaveName]
  * gets the name trimmed, or null to take it away). 匯出設定檔 follows in its own card
- * (`configExport`, behind the picker and a confirmation, since the files can carry credentials).
+ * (`configExport`, behind the picker and a confirmation, since the files can carry credentials); [banner] says what the
+ * last export left out or refused ([rvExportBanner]).
  */
 @Composable
 internal fun RvConfigHistoryPage(
@@ -54,12 +55,13 @@ internal fun RvConfigHistoryPage(
     rename: RvRevisionRename? = null,
     onRename: (RvRevisionRename?) -> Unit = {},
     onSaveName: (Int, String?) -> Unit = { _, _ -> },
+    banner: RvNotice? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_config_history)
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
-        RvGutter {
+        RvGutter(banner = banner) {
             RvCard { revisions.forEach { RevisionRow(it, it.rev == headRev, nowEpochMs, onRevision) { onRename(RvRevisionRename(it.rev, it.name.orEmpty())) } } }
             RvCard { RvSettingsNavRow(stringResource(R.string.rv_config_export), R.drawable.rv_sym_ios_share, onExport) }
         }

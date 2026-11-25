@@ -163,14 +163,17 @@ internal object RvSampleConfig {
         DNS to ("dns.dae" to ENTRY),
     )
 
-    /** The texts of a revision of the tree: [aiKeyword] the `ai` group's, [cnTarget] where 影音 goes. */
-    fun texts(aiKeyword: String = "JP", cnTarget: String = "proxy", wiki: Boolean = false): Map<String, String> = mapOf(
+    /**
+     * The texts of a revision of the tree: [aiKeyword] the `ai` group's, [cnTarget] where 影音 goes; [hosts] adds DNS
+     * a hosts source outside the tree ([HOSTS_PATH]), which an archive keeps and a portable export refuses.
+     */
+    fun texts(aiKeyword: String = "JP", cnTarget: String = "proxy", wiki: Boolean = false, hosts: Boolean = false): Map<String, String> = mapOf(
         ENTRY to entry(aiKeyword),
         NODES to nodes,
         OFFICE to office,
         CN to cn(cnTarget, wiki),
         LAN to lan,
-        DNS to dns,
+        DNS to if (hosts) dns.replaceFirst("dns {\n", "dns {\n  use_host: '$HOSTS_PATH'\n") else dns,
     )
 
     fun files(texts: Map<String, String>): List<ConfigFile> =
@@ -209,4 +212,7 @@ internal object RvSampleConfig {
     const val IMPORT_LIMIT = "import-limit"
     const val IMPORT_ESCAPE = "import-escape"
     const val ESCAPE_PATH = "/etc/honk/rules.d/*.dae"
+
+    /** The hosts file of [texts]' `hosts` tree: outside the tree, so the tree is not portable. */
+    const val HOSTS_PATH = "/etc/hosts"
 }
