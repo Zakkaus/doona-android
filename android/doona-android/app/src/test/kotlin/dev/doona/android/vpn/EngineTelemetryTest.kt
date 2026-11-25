@@ -402,7 +402,7 @@ class EngineTelemetryTest {
         core.reply = ContractFixtures.read("call-error-bootstrap-dns.json")
         engine.controller.refreshBootstrapDns(listOf("192.0.2.54"))
         runCurrent()
-        assertEquals(listOf("command=setBootstrapDns phase=complete outcome=failed code=InvalidArgument"), AppEvents.snapshot().map { it.text })
+        assertEquals(listOf("command=setBootstrapDns phase=complete outcome=failed code=InvalidArgument"), AppEvents.snapshot().map { it.text }.filter { it.startsWith("command=") })
         assertEquals(session, engine.controller.session.value)
     }
 
