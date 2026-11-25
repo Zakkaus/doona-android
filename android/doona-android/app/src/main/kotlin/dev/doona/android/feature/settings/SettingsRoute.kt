@@ -74,12 +74,12 @@ internal fun IntervalRoute(store: SettingsStore, onCustom: () -> Unit, onBack: (
 
 /**
  * 語言: the app's per-app locale, which Android keeps; a choice goes to Android, which shows the app again in that
- * language.
+ * language. [system] is the language the phone's setting gives, which 跟隨系統 names.
  */
 @Composable
-internal fun LanguageRoute(store: SettingsStore, onBack: () -> Unit) {
+internal fun LanguageRoute(store: SettingsStore, onBack: () -> Unit, system: RvLanguage = rvSystemLanguage()) {
     var selected by remember(store) { mutableStateOf(RvLanguage.of(store.languageTags())) }
-    RvLanguageScreen(selected, rvSystemLanguage(), { language ->
+    RvLanguageScreen(selected, system, { language ->
         selected = language
         store.setLanguageTags(language.tag)
     }, onBack)

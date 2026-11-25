@@ -10,9 +10,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import com.github.takahirom.roborazzi.captureRoboImage
-import dev.doona.android.app.AppSettingsStore
 import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.engine.AppPolicy
+import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.CrashFile
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
@@ -21,6 +21,7 @@ import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.feature.model.RvAppPolicy
+import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.report.ReportFacts
 import dev.doona.android.feature.report.ReportPage
 import dev.doona.android.feature.report.ReportViewModel
@@ -35,6 +36,7 @@ import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.rvAnimatorScale
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvRowRules
+import dev.doona.android.prototype.rv.settings.RV_SAMPLE_GEO_SHIPPED_MS
 import dev.doona.android.prototype.rv.settings.RvPerAppData
 import dev.doona.android.prototype.rv.settings.rvReportActions
 import dev.doona.android.prototype.rv.settings.rvSampleReport
@@ -49,12 +51,14 @@ import dev.doona.android.report.ReportExporter
 import dev.doona.android.report.ReportFailure
 import dev.doona.android.report.ReportShare
 import dev.doona.android.report.ReportZip
+import dev.doona.android.report.nodeMembers
 import dev.doona.android.report.testFlowEvents
 import dev.doona.android.testing.drawFully
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Rule
@@ -64,6 +68,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.time.Instant
+import java.time.ZoneOffset
 
 private val SHOTS = System.getProperty("doona.shots") ?: "src/test/screenshots"
 
@@ -240,7 +246,8 @@ class SettingsAppEnShotTest {
 
     @Test fun logLevelSample() = compose.sample("settings-log-level-en") { RvLogLevelScreen(RvLogLevel.Info, onSelect = {}, onBack = {}) }
 
-    @Test fun language() = compose.app("settings-language-en", dark = false) { LanguageRoute(sampleStore(), onBack = {}) }
+    /** The phone's language as the sample fixes it, 繁體中文, so the page is the sample's. */
+    @Test fun language() = compose.app("settings-language-en", dark = false) { LanguageRoute(sampleStore(), onBack = {}, system = RvLanguage.TraditionalChinese) }
 
     @Test
     fun languageSample() = compose.sample("settings-language-en") {
@@ -298,8 +305,15 @@ private fun reportPage(built: Built, tmp: TemporaryFolder): @Composable () -> Un
     return { ReportPage(vm, onBack = {}) }
 }
 
-/** The sample's settings: 繁體中文, the sample's interval, and the GeoIP/GeoSite copy the app ships. */
-private fun sampleStore() = FakeSettingsStore(updateHours = RvData.UPDATE_HOURS, shippedGeoDate = AppSettingsStore.SHIPPED_GEO_DATE, languages = "zh-TW")
+/**
+ * The sample's settings: 繁體中文, the sample's interval, and the GeoIP/GeoSite copy the sample ships, so the page is
+ * the approved one (owner, 2026-11-26: approved screens are frozen; the app's own date is q-p6a-geodate).
+ */
+private fun sampleStore() = FakeSettingsStore(
+    updateHours = RvData.UPDATE_HOURS,
+    shippedGeoDate = Instant.ofEpochMilli(RV_SAMPLE_GEO_SHIPPED_MS).atOffset(ZoneOffset.UTC).toLocalDate().toString(),
+    languages = "zh-TW",
+)
 
 /** The RV sample engine, connected, with the sample's saved per-app policy. */
 private fun settingsEngine(): Engine {
@@ -310,9 +324,18 @@ private fun settingsEngine(): Engine {
     return engine
 }
 
-/** The RV sample engine with the sample report's two crash files. */
-private fun reportEngine(): Engine = rvSampleEngine().apply {
-    crashes = listOf(CrashFile("1795300000000.txt", 2_048), CrashFile("1795300100000.txt", 1_024))
+/** The RV sample engine with the sample report's two crash files and, in its catalog, the sample report's node count. */
+private fun reportEngine(): Engine {
+    val engine = rvSampleEngine().apply {
+        crashes = listOf(CrashFile("1795300000000.txt", 2_048), CrashFile("1795300100000.txt", 1_024))
+    }
+    val catalog = checkNotNull(engine.catalog.value)
+    val nodes = catalog.nodeMembers().take(rvSampleReport.nodes)
+    check(nodes.size == rvSampleReport.nodes)
+    val sampled = catalog.copy(groups = listOf(catalog.groups.first().copy(members = nodes)))
+    return object : Engine by engine {
+        override val catalog: StateFlow<Catalog?> = MutableStateFlow(sampled)
+    }
 }
 
 /** The sample report's app, phone and event count ([rvSampleReport]). */
