@@ -120,7 +120,7 @@ class RvFocusTest {
                 Box(Modifier.size(120.dp, 56.dp).testTag("a").rvPress(RoundedCornerShape(12.dp), Role.Button, onClick = {}))
             }
         }
-        val scrim = compose.onNode(SemanticsMatcher("the scrim") { it.config.getOrElseNullable(SemanticsActions.OnClick) { null }?.label == SHEET })
+        val scrim = compose.onNode(SemanticsMatcher("the scrim") { it.config.getOrElseNullable(SemanticsActions.OnClick) { null }?.label == DISMISS })
         // Tab's first stop is the sheet's own control, not the scrim behind it, and the scrim refuses focus outright.
         compose.runOnIdle {
             input.requestInputMode(InputMode.Keyboard)
@@ -140,7 +140,10 @@ class RvFocusTest {
         /** A point on the 2 dp outline, 1 dp inside the top edge. */
         const val RING_PROBE_DP = 1f
 
-        /** The sheet's pane title, the scrim's click label. */
+        /** The sheet's pane title. */
         const val SHEET = "Sheet"
+
+        /** The scrim's click label: ui_dismiss in en. */
+        const val DISMISS = "Dismiss"
     }
 }
