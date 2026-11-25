@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.nodes
+package dev.doona.android.feature.nodes
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -26,16 +26,17 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvChartSize
+import dev.doona.android.designsystem.rv.RvLatencyDotsSize
+import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvPillInk
 import dev.doona.android.designsystem.rv.RvText
-import dev.doona.android.designsystem.rv.latencyTone
+import dev.doona.android.designsystem.rv.latencyColor
 import dev.doona.android.designsystem.rv.rvChartMarker
 import dev.doona.android.designsystem.rv.rvLatencyAxisMiddle
 import dev.doona.android.designsystem.rv.rvLatencyAxisTop
@@ -45,6 +46,13 @@ import dev.doona.android.designsystem.rv.rvValuePill
 import dev.doona.android.designsystem.rv.scripted
 import kotlin.math.abs
 import kotlin.math.roundToInt
+
+/** [RvLatencyDots]' height with [time] (a test's time as the page writes it) in its marker's chip: its skeleton's block. */
+@Composable
+internal fun rvLatencyDotsHeight(time: String): Dp {
+    val text = rememberTextMeasurer().measure(time, Rv.type.pill).size.height.toFloat()
+    return RvLatencyDotsSize.head + RvLatencyDotsSize.plot + RvChartSize.markerGap + with(LocalDensity.current) { rvMarkerChip(text).toDp() }
+}
 
 /**
  * Revolut's EPS dot chart for a node's last tests: one dot per test in its quality's hue, an empty ring for one that
@@ -78,13 +86,13 @@ internal fun RvLatencyDots(
     val pillText = pillMs?.let { stringResource(R.string.latency_ms, it) }
     val look = DotsLook(
         label = Rv.type.pill.copy(color = colors.textSecondary),
-        picked = Rv.type.pill.copy(color = colors.positive, fontWeight = FontWeight.SemiBold),
+        picked = Rv.type.pill.copy(color = colors.positive),
         grid = colors.grid,
         reference = colors.reference,
         chip = colors.down.area,
         pill = RvPillInk(colors.pill, colors.raisedShadow),
         missed = colors.textSecondary,
-        dots = history.map { colors.quality(latencyTone(it)) },
+        dots = history.map { latencyColor(it) },
     )
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
@@ -97,7 +105,7 @@ internal fun RvLatencyDots(
     val empty = if (history.isEmpty()) stringResource(R.string.rv_stats_no_data) else null
     val emptySize = empty?.let { measurer.measure(scripted(it), Rv.type.rowSub).size }
     val pick by rememberUpdatedState(onSelect)
-    Box(modifier.fillMaxWidth()) {
+    Box(modifier.fillMaxWidth().testTag(RvPart.FRAME)) {
         Canvas(
             Modifier.testTag(RV_LATENCY_DOTS).fillMaxWidth().height(RvLatencyDotsSize.head + RvLatencyDotsSize.plot + RvChartSize.markerGap + with(density) { chipHeight.toDp() }).pointerInput(history.size, widest, strip) {
                 detectTapGestures { tap -> if (history.isNotEmpty()) pick(Columns(size.width - strip, history.size, widest + 2 * pad).at(tap.x)) }
@@ -234,14 +242,3 @@ internal const val RV_LATENCY_DOTS = "rv-latency-dots"
 
 /** A dash this short with round caps draws as a dot. */
 private const val DOT_LENGTH = 0.01f
-
-internal object RvLatencyDotsSize {
-    /** The plot, room above for the top label, and the gap from the plot to the label strip. */
-    val plot = 140.dp
-    val head = 10.dp
-    val plotGap = 8.dp
-
-    /** The dots (§10.2: Revolut's EPS dots are 8 dp, N04) and a timed-out test's ring. */
-    val dot = 8.dp
-    val ring = 1.5.dp
-}

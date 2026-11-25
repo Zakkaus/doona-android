@@ -184,10 +184,6 @@
     <string name="rv_policy_failed_quic">Could not change Block QUIC</string>
     <string name="rv_policy_failed_update">Could not update the subscriptions</string>
     <string name="rv_policy_failed_ads">Could not change Block ads</string>
-    <string name="rv_network_apply_to">Apply to</string>
-    <string name="rv_group_by_stability">By stability</string>
-    <string name="rv_group_by_name">By name</string>
-    <string name="rv_group_by_region">By region</string>
     <string name="rv_group_no_match">No matching nodes</string>
     <string name="rv_group_empty">This group has no nodes</string>
     <string name="rv_group_empty_line">Add nodes to this group in the configuration.</string>

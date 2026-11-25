@@ -2,8 +2,8 @@ package dev.doona.android.prototype.rv.samples
 
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.feature.nodes.ui.RvApplyTo
 import dev.doona.android.feature.policies.RvApplyChoice
-import dev.doona.android.feature.policies.RvApplyTo
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole

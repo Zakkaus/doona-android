@@ -10,6 +10,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kotlin.math.PI
 import kotlin.math.ln
@@ -32,7 +33,7 @@ internal fun RvWorldMap(places: Set<RvPlace>, modifier: Modifier = Modifier) {
     val mark = colors.positive
     val ring = colors.card
     Spacer(
-        modifier.fillMaxWidth().aspectRatio(RvWorld.WIDTH / RvWorld.HEIGHT).drawWithCache {
+        modifier.fillMaxWidth().aspectRatio(RvWorld.WIDTH / RvWorld.HEIGHT).testTag(RvPart.FRAME).drawWithCache {
             val codes = places.mapTo(mutableSetOf()) { it.name }
             val k = size.width / RvWorld.WIDTH
             val least = RvWorldMapSize.minRing.toPx() / k

@@ -121,6 +121,12 @@ internal object RvSkeletonSize {
     const val TILE_FIGURE = 0.62f
     const val TILE_NOTE = 0.42f
 
+    /** A large title's bar, as a share of the line (a node's name). */
+    const val TITLE = 0.5f
+
+    /** A flag tile's short name (`hk-01`), as a share of the tile (節點's 最快節點). */
+    const val FLAG_NAME = 0.56f
+
     /** The hero's state, its figure and the line under it, centred, as shares of the page's width. */
     const val HERO_CAPTION = 0.36f
     const val HERO_FIGURE = 0.44f
@@ -285,6 +291,34 @@ internal fun RvSkeletonChips(labels: List<String>, selected: Int, modifier: Modi
 }
 
 /**
+ * [RvStatRow]'s skeleton, row [index] of its card: its [label] (the page knows it) as bars at the start and the value's
+ * bar at the end, on the row's one line and in its height.
+ */
+@Composable
+internal fun RvSkeletonStatRow(label: String, index: Int) {
+    Row(Modifier.fillMaxWidth().heightIn(min = RvSize.rowOneLine).padding(horizontal = RvSpace.rowPadding), verticalAlignment = Alignment.CenterVertically) {
+        RvSkeletonLabel(label, Rv.type.statLabel, maxLines = RV_ROW_TITLE_LINES)
+        Spacer(Modifier.weight(1f))
+        Box(Modifier.fillMaxWidth(RvSkeletonSize.subtitles[index % RvSkeletonSize.subtitles.size]), contentAlignment = Alignment.CenterEnd) {
+            RvSkeletonLine(Rv.type.stat, 1f, kind = RvSkeletonText.Figures)
+        }
+    }
+}
+
+/** [RvWorldMap]'s skeleton: a block of the map's width in the map's proportion. */
+@Composable
+internal fun RvSkeletonWorldMap(modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .fillMaxWidth()
+            .aspectRatio(RvWorld.WIDTH / RvWorld.HEIGHT)
+            .testTag(RvPart.SKELETON_BLOCK)
+            .clip(RoundedCornerShape(Rv.highlightRadius))
+            .background(Rv.colors.track),
+    )
+}
+
+/**
  * A goal's skeleton, under its card's row (Revolut's goal card, #13, as 訂閱 shows a quota): the used amount's and the
  * end date's bars on one line, then the progress bar's track.
  */
@@ -395,7 +429,7 @@ private class LabelLayout(
     private val box: RvLineBox?,
 ) : MeasurePolicy {
     override fun MeasureScope.measure(measurables: List<Measurable>, constraints: Constraints): MeasureResult {
-        val layout = measurer.rvLayout(text, style, maxLines, constraints.maxWidth)
+        val layout = lay(constraints.maxWidth)
         laid.value = layout
         return layout(constraints.constrainWidth(layout.size.width), constraints.constrainHeight(boxed(layout))) {}
     }
@@ -404,9 +438,12 @@ private class LabelLayout(
 
     override fun IntrinsicMeasureScope.minIntrinsicWidth(measurables: List<IntrinsicMeasurable>, height: Int) = oneLine()
 
-    override fun IntrinsicMeasureScope.maxIntrinsicHeight(measurables: List<IntrinsicMeasurable>, width: Int) = boxed(measurer.rvLayout(text, style, maxLines, width))
+    override fun IntrinsicMeasureScope.maxIntrinsicHeight(measurables: List<IntrinsicMeasurable>, width: Int) = boxed(lay(width))
 
-    override fun IntrinsicMeasureScope.minIntrinsicHeight(measurables: List<IntrinsicMeasurable>, width: Int) = boxed(measurer.rvLayout(text, style, maxLines, width))
+    override fun IntrinsicMeasureScope.minIntrinsicHeight(measurables: List<IntrinsicMeasurable>, width: Int) = boxed(lay(width))
+
+    /** The text in [width] as [RvText] sets it: one line cut after a word where it does not fit ([rvLayoutCut]). */
+    private fun lay(width: Int) = if (maxLines == 1) measurer.rvLayoutCut(text, style, width) else measurer.rvLayout(text, style, maxLines, width)
 
     /** The height of [layout], or of its lines' boxes where the label stands for a row's text. */
     private fun boxed(layout: TextLayoutResult) = box?.of(layout.lineCount) ?: layout.size.height

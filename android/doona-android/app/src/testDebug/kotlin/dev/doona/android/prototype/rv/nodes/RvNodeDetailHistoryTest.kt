@@ -6,6 +6,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import dev.doona.android.feature.nodes.RV_LATENCY_DOTS
+import dev.doona.android.feature.nodes.RvNodeDetail
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertCountIs
 import dev.doona.android.prototype.rv.data.RvData

@@ -4,7 +4,6 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvPlace
-import dev.doona.android.designsystem.rv.rvShownName
 
 /**
  * How a node list orders its rows (the picker under 全域, the main node's picker). 延遲, 穩定 and 名稱 order the nodes inside
@@ -23,7 +22,7 @@ internal enum class RvNodeSort(@StringRes val label: Int) {
     /** How many of the kept tests answered, more first, then how little the answered ones spread ([rvSteadiness]). */
     Stability(R.string.rv_nodes_sort_stability),
 
-    /** The node's name, as the subscription gives it. */
+    /** The node's name as the row draws it: a name's emoji is left out (s1125d), so 🇭🇰 HK 01 sorts as HK 01. */
     Name(R.string.rv_nodes_sort_name),
 
     /** One card per country, the country with the fastest node first, its nodes fastest first. */
@@ -49,42 +48,63 @@ internal val rvSteadiness: Comparator<RvNode> = lastAnswered
     .thenBy { it.latencyMs ?: Int.MAX_VALUE }
 
 /**
- * By the name as the row draws it, ignoring case: a name's emoji is left out, so 🇭🇰 Hong Kong sorts under H (decision
- * 2026-11-25 19:25). The numbers in the names are zero-padded, so they order as numbers.
+ * By the name the row draws ([title], decision 2026-11-25 19:25), ignoring case: its emoji left out, and a name of a
+ * recognised emoji alone read as the row reads it (🍎 as Apple). The numbers in the names are zero-padded, so they order
+ * as numbers.
  */
-internal val rvByName: Comparator<RvNode> = lastAnswered.thenBy(String.CASE_INSENSITIVE_ORDER) { rvShownName(it.name).text.ifEmpty { it.name } }
+internal fun rvByName(title: (RvNode) -> String): Comparator<RvNode> = lastAnswered.thenBy(String.CASE_INSENSITIVE_ORDER, title)
 
-/** One card of a node list: a subscription's nodes, the nodes added by hand (組態內), or a country's, in the list's order. */
+/**
+ * A section's rows in [order], for a list whose sections are subscriptions (a group's page, the pull-down picker): fastest
+ * by the last test, steadiest, by the shown name, or by place (the country with the fastest node first, 其他 last, as the
+ * 節點 page's cards are). Nodes that never answered come after the ones that did.
+ */
+internal fun rvSectionOrder(nodes: List<RvNode>, order: RvNodeSort, title: (RvNode) -> String): List<RvNode> = when (order) {
+    RvNodeSort.Latency -> nodes.sortedWith(rvByLatency)
+    RvNodeSort.Stability -> nodes.sortedWith(rvSteadiness)
+    RvNodeSort.Name -> nodes.sortedWith(rvByName(title))
+    RvNodeSort.Region -> byPlace(nodes).flatMap { it.second }
+}
+
+/**
+ * [nodes] by country, the country with the fastest node first and its nodes fastest first; 其他 closes the list, whatever
+ * its nodes' latency. groupBy keeps the order in which each country first appears, and the sort keeps every other country
+ * where it was.
+ */
+private fun byPlace(nodes: List<RvNode>): List<Pair<RvPlace, List<RvNode>>> =
+    nodes.sortedWith(rvByLatency).groupBy { it.place }.toList().sortedBy { it.first == RvPlace.Other }
+
+/**
+ * One card of a node list: a subscription's nodes, a country's, or the nodes the profile lists itself ([Inline], 組態內,
+ * decision 2026-11-25 23:52), in the list's order.
+ */
 @Immutable
 internal sealed class RvNodeGroup(val key: String, val nodes: List<RvNode>) {
     class Subscription(val subscription: RvSubscription, nodes: List<RvNode>) : RvNodeGroup(subscription.id, nodes)
 
-    class Inline(nodes: List<RvNode>) : RvNodeGroup(RV_INLINE_KEY, nodes)
+    class Inline(nodes: List<RvNode>) : RvNodeGroup(RV_INLINE, nodes)
 
     class Place(val place: RvPlace, nodes: List<RvNode>) : RvNodeGroup(place.name, nodes)
 }
 
-/** The key of the 組態內 card and section; no subscription id takes this form. */
-internal const val RV_INLINE_KEY = "#inline"
-
 /**
- * [nodes] as a list shows them under [sort]: by subscription in [subscriptions]' order, then the nodes added by hand under
- * 組態內 when there are any, or by country for 地區.
+ * [nodes] as a list shows them under [sort]: by subscription in [subscriptions]' order (by [RvNode.subscriptionId], so two
+ * subscriptions of one name stay apart; a subscription with no node has no card), then the nodes of no subscription
+ * ([RvNode.inline]) in one 組態內 card, or by country for 地區. Every order shows every node.
  */
-internal fun rvNodeGroups(nodes: List<RvNode>, subscriptions: List<RvSubscription>, sort: RvNodeSort): List<RvNodeGroup> = when (sort) {
-    // groupBy keeps the order in which each country first appears, so the country with the fastest node leads.
-    // 其他 closes the list, whatever its nodes' latency; the sort keeps every other card where it was.
-    RvNodeSort.Region -> nodes.sortedWith(rvByLatency).groupBy { it.place }.map { (place, members) -> RvNodeGroup.Place(place, members) }
-        .sortedBy { it.place == RvPlace.Other }
+internal fun rvNodeGroups(nodes: List<RvNode>, subscriptions: List<RvSubscription>, sort: RvNodeSort, title: (RvNode) -> String): List<RvNodeGroup> = when (sort) {
+    RvNodeSort.Region -> byPlace(nodes).map { (place, members) -> RvNodeGroup.Place(place, members) }
 
     else -> {
         val order = when (sort) {
             RvNodeSort.Stability -> rvSteadiness
-            RvNodeSort.Name -> rvByName
+            RvNodeSort.Name -> rvByName(title)
             else -> rvByLatency
         }
         val inline = nodes.filter { it.inline }.sortedWith(order)
-        subscriptions.map { sub -> RvNodeGroup.Subscription(sub, nodes.filter { it.subscriptionId == sub.id }.sortedWith(order)) } +
-            listOfNotNull(RvNodeGroup.Inline(inline).takeIf { inline.isNotEmpty() })
+        val bySub = nodes.groupBy { it.subscriptionId }
+        // A subscription whose fetch gave no node gets no card, as the 訂閱 chip's menu leaves it out.
+        subscriptions.mapNotNull { sub -> bySub[sub.id]?.let { RvNodeGroup.Subscription(sub, it.sortedWith(order)) } } +
+            listOfNotNull(inline.takeIf { it.isNotEmpty() }?.let { RvNodeGroup.Inline(it) })
     }
 }

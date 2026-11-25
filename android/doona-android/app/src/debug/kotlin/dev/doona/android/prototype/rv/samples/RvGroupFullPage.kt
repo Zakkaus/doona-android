@@ -7,8 +7,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.nodes.ui.RvApplyTo
 import dev.doona.android.feature.policies.RvApplyChoice
-import dev.doona.android.feature.policies.RvApplyTo
 import dev.doona.android.feature.policies.RvGroupActions
 import dev.doona.android.feature.policies.RvGroupContent
 import dev.doona.android.feature.policies.RvGroupFilter

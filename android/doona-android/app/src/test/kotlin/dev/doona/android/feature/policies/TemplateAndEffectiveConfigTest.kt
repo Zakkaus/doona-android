@@ -1,6 +1,7 @@
 package dev.doona.android.feature.policies
 
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.engine.EffectiveConfig
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
@@ -14,6 +15,8 @@ import dev.doona.android.engine.RuleTarget
 import dev.doona.android.engine.RuleTemplate
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.rvSampleEngine
+import dev.doona.android.feature.model.NodePlace
+import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvRuleEnd
 import dev.doona.android.feature.model.RvRuleSource
@@ -123,7 +126,7 @@ class TemplateAndEffectiveConfigTest {
             RuleRow("a", 0, RuleKind.DomainSuffix, "DomainSuffix", "a.example", 1, RuleTarget.Direct),
             RuleRow("b", 1, RuleKind.DomainSuffix, "DomainSuffix", "b.example", 1, RuleTarget.Reject),
         )
-        val config = rvEffectiveConfig(effective(RuleTarget.Group(MAIN)), catalog, rows, 3, RV_UNKNOWN_PLACES)
+        val config = rvEffectiveConfig(effective(RuleTarget.Group(MAIN)), catalog, rows, 3, NOWHERE)
         assertEquals(MAIN, config.main?.id)
         assertEquals(catalog.groups.size - 1, config.groups.size)
         assertEquals(RvLabel.Res(R.string.rv_main_node), config.dnsVia)
@@ -131,8 +134,8 @@ class TemplateAndEffectiveConfigTest {
         assertEquals(listOf("1.1.1.1", "9.9.9.10"), config.dns)
         assertEquals(3, config.proxiedApps)
         assertEquals(RvRuleSource.Template(rvTemplate("cn-direct")), config.source)
-        assertEquals(RvLabel.Res(R.string.mode_direct), rvEffectiveConfig(effective(RuleTarget.Direct), catalog, rows, 0, RV_UNKNOWN_PLACES).dnsVia)
-        assertNull(rvEffectiveConfig(effective(RuleTarget.Direct, main = "absent"), catalog, rows, 0, RV_UNKNOWN_PLACES).main)
+        assertEquals(RvLabel.Res(R.string.mode_direct), rvEffectiveConfig(effective(RuleTarget.Direct), catalog, rows, 0, NOWHERE).dnsVia)
+        assertNull(rvEffectiveConfig(effective(RuleTarget.Direct, main = "absent"), catalog, rows, 0, NOWHERE).main)
     }
 
     /** The sample engine whose effectiveConfig fails [failing] times first. */
@@ -191,3 +194,6 @@ class TemplateAndEffectiveConfigTest {
         val MAIN = rvSampleEngine().catalog.value!!.mainGroupId
     }
 }
+
+/** Every node under 其他, its full name standing for the short one. */
+private val NOWHERE = NodePlaces { NodePlace(RvPlace.Other, null, it) }

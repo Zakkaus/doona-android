@@ -5,8 +5,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import dev.doona.android.designsystem.rv.LocalRvTesting
 import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.nodes.RvNodePickerPage
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
 import dev.doona.android.prototype.rv.nodes.RvNodePickerPageSample
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyGroupPage

@@ -12,8 +12,13 @@ import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.Network
 import dev.doona.android.engine.ScoreGroup
 import dev.doona.android.feature.errorCode
+import dev.doona.android.feature.model.CoreNodePlaces
+import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.nodes.rvNode
+import dev.doona.android.feature.nodes.rvSource
+import dev.doona.android.feature.nodes.ui.RvApplyTo
 import dev.doona.android.feature.subscriptions.rvSubscription
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +38,7 @@ import kotlinx.coroutines.launch
 /**
  * A group's page: the group [groupId] with its nodes, the node each network uses, and the taps that choose them, as the
  * approved 套用到 sample has them ([RvApplyChoice]). Each new catalog is read on [reads] with the members' details; a
- * read that fails keeps what is shown and says so with 重試. [clock] is now, for the subscriptions' end dates; [places] places the nodes by name until 節點's mapper is wired. The 分開選擇 switch and 套用到 live here:
+ * read that fails keeps what is shown and says so with 重試. [clock] is now, for the subscriptions' end dates; [places] places the nodes by name. The 分開選擇 switch and 套用到 live here:
  * the engine only knows each network's node. A Score group's evidence (`scoreState`) is read with each catalog and again
  * every [scoreEveryMs], since it changes as Score compares without a new catalog.
  */
@@ -41,7 +46,7 @@ internal class GroupViewModel(
     private val engine: Engine,
     private val groupId: String,
     private val clock: () -> Long = System::currentTimeMillis,
-    private val places: RvNodePlaces = RV_UNKNOWN_PLACES,
+    private val places: NodePlaces = CoreNodePlaces,
     private val reads: CoroutineDispatcher = Dispatchers.Default,
     private val scoreEveryMs: Long = SCORE_EVERY_MS,
 ) : ViewModel() {
@@ -164,8 +169,8 @@ internal class GroupViewModel(
         val own = group.members.filterNot { it.isGroup }
         val shown = (own + leafNodes(group, groups)).distinctBy { it.id }
         val infos = engine.nodes(shown.map { it.id }).getOrElse { return Result.failure(it) }.associateBy { it.id }
-        val names = catalog.subscriptions.associate { it.id to it.name }
-        val nodes = shown.associate { it.id to rvNode(it, infos[it.id], it.subscriptionId?.let(names::get).orEmpty(), places) }
+        val subscriptions = catalog.subscriptions.associateBy { it.id }
+        val nodes = shown.associate { it.id to rvNode(it, infos[it.id], rvSource(it, subscriptions), places) }
         val mapped = rvPolicyGroup(group, groups, nodes)
         val members = mapped.members.map { it.id } + mapped.groups.map { it.id }
         val held = own.mapNotNullTo(mutableSetOf()) { it.subscriptionId }

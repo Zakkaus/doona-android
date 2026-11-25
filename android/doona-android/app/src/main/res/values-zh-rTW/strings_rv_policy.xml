@@ -164,10 +164,6 @@
     <string name="rv_policy_failed_quic">無法變更「封鎖 QUIC」</string>
     <string name="rv_policy_failed_update">無法更新訂閱</string>
     <string name="rv_policy_failed_ads">無法變更「封鎖廣告」</string>
-    <string name="rv_network_apply_to">套用到</string>
-    <string name="rv_group_by_stability">依穩定</string>
-    <string name="rv_group_by_name">依名稱</string>
-    <string name="rv_group_by_region">依地區</string>
     <string name="rv_group_no_match">找不到符合的節點</string>
     <string name="rv_group_empty">這個群組沒有節點</string>
     <string name="rv_group_empty_line">請在設定檔中為這個群組新增節點。</string>

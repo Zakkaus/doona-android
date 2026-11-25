@@ -5,12 +5,13 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.performClick
 import dev.doona.android.designsystem.rv.rvShownName
-import dev.doona.android.feature.model.RV_INLINE_KEY
+import dev.doona.android.feature.model.RV_INLINE
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvMemberGroup
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvPolicyGroup
+import dev.doona.android.feature.nodes.ui.RvApplyTo
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.rvContent
@@ -151,20 +152,11 @@ class RvGroupPageTest {
     }
 
     @Test
-    fun `依名稱 reads the name as it is drawn, emoji left out, and puts untested nodes last`() {
-        val base = RvData.nodes
-        val untested = base[0].copy(id = "a", name = "Alpha", history = emptyList())
-        val hongKong = base[1].copy(id = "h", name = "🇭🇰 Hong Kong", history = listOf(50))
-        val beta = base[2].copy(id = "b", name = "beta", history = listOf(30))
-        assertEquals(listOf("b", "h", "a"), rvSectionOrder(listOf(untested, hongKong, beta), RvNodeSort.Name).map { it.id })
-    }
-
-    @Test
     fun `nodes added by hand list under 組態內`() {
         val base = RvGroupFullSample.two
-        val byHand = base.group.members.last().copy(id = "static-1", name = "Home Relay", subscription = "", subscriptionId = null)
+        val byHand = base.group.members.last().copy(id = "static-1", name = "Home Relay", subscription = "", subscriptionId = RV_INLINE)
         val group = RvPolicyGroup(base.group.id, base.group.name, base.group.kind, base.group.members + byHand, base.group.selectedId)
-        page(RvGroupFullSample.Sample(group, base.subscriptions, base.tcpId, base.udpId), apart = false, filter = RvGroupFilter(source = RV_INLINE_KEY))
+        page(RvGroupFullSample.Sample(group, base.subscriptions, base.tcpId, base.udpId), apart = false, filter = RvGroupFilter(source = RV_INLINE))
         assertEquals("its section's row and the chip", 2, shown("組態內"))
         assertEquals(1, shown("Home Relay"))
         assertEquals(0, shown(node(base, PLAIN_TWO)))

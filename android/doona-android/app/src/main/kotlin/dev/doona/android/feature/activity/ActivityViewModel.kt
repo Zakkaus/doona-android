@@ -11,6 +11,7 @@ import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.Settings
 import dev.doona.android.engine.Usage
 import dev.doona.android.feature.errorCode
+import dev.doona.android.feature.model.rvLeafMembers
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -73,7 +74,7 @@ class ActivityViewModel internal constructor(
         var info = emptyMap<String, NodeInfo>()
         emitAll(
             engine.catalog.mapLatest { catalog ->
-                val ids = catalog?.let(::leafIds).orEmpty()
+                val ids = catalog?.let(::rvLeafMembers).orEmpty().map { it.id }
                 if (ids.isNotEmpty()) engine.nodes(ids).getOrNull()?.let { read -> info = read.associateBy { it.id } }
                 CatalogNodes(catalog, activityNodes(catalog, info))
             },

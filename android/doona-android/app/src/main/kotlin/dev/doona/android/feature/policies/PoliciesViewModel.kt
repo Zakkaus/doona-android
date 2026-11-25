@@ -11,6 +11,8 @@ import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.RulePage
 import dev.doona.android.feature.errorCode
+import dev.doona.android.feature.model.CoreNodePlaces
+import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RvPolicyState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -30,13 +32,13 @@ import kotlinx.coroutines.launch
 /**
  * 策略: the engine's catalog as the page's profile, and the page's changes as engine calls. Each new catalog is read into
  * a profile on [reads], off the main thread, with the nodes' details, the card's rules, today's bytes per rule and
- * 封鎖廣告. A read that fails keeps the profile shown and shows its failure with 重試, which reads again. [places] places the nodes by name until 節點's mapper is wired; [clock] is now, for the subscriptions' end
+ * 封鎖廣告. A read that fails keeps the profile shown and shows its failure with 重試, which reads again. [places] places the nodes by name; [clock] is now, for the subscriptions' end
  * dates.
  */
 internal class PoliciesViewModel(
     private val engine: Engine,
     private val clock: () -> Long = System::currentTimeMillis,
-    private val places: RvNodePlaces = RV_UNKNOWN_PLACES,
+    private val places: NodePlaces = CoreNodePlaces,
     private val reads: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     /** The node order, which the engine does not have, and 封鎖廣告 as last read or set. */

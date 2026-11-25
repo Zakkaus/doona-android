@@ -49,10 +49,10 @@ import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.text
-import dev.doona.android.feature.policies.ApplyCard
+import dev.doona.android.feature.nodes.ui.RvApplyCard
+import dev.doona.android.feature.nodes.ui.RvApplyTo
 import dev.doona.android.feature.policies.NetworkCard
 import dev.doona.android.feature.policies.RvApplyChoice
-import dev.doona.android.feature.policies.RvApplyTo
 
 /**
  * A selector group's page for the samples of nbtap and nbmany, built only from the library's parts and the policy page's
@@ -88,7 +88,7 @@ internal fun RvGroupSamplePage(
         RvGutter {
             if (current != null) {
                 NetworkCard(group, current, {}) { state = it.apart(!it.apart) }
-                if (current.apart) apply?.let { selected -> ApplyCard(selected) { apply = it } }
+                if (current.apart) apply?.let { selected -> RvApplyCard(selected) { apply = it } }
             }
             NodesCard(group, current, apply ?: RvApplyTo.Both, rows) { id, to -> state = state?.tapped(id, to) }
         }

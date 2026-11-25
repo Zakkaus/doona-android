@@ -75,6 +75,8 @@ internal object RvData {
 
 internal const val RV_HARBOR = "Harbor Cloud"
 internal const val RV_LANTERN = "Lantern Net"
+
+/** The sample subscriptions' ids, which the nodes name their subscription by. */
 internal const val RV_HARBOR_ID = "s1"
 internal const val RV_LANTERN_ID = "s2"
 

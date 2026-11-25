@@ -1,16 +1,7 @@
-package dev.doona.android.prototype.rv.nodes
+package dev.doona.android.feature.nodes
 
-import android.content.res.Configuration
 import android.os.Trace
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -42,66 +33,50 @@ import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.collapse
-import androidx.compose.ui.semantics.expand
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.IntSize
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.LocalRvShown
-import dev.doona.android.designsystem.rv.LocalRvUpdating
-import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvBackDisc
 import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvBar
-import dev.doona.android.designsystem.rv.RvBusy
 import dev.doona.android.designsystem.rv.RvCaption
-import dev.doona.android.designsystem.rv.RvCard
-import dev.doona.android.designsystem.rv.RvChevron
 import dev.doona.android.designsystem.rv.RvChrome
-import dev.doona.android.designsystem.rv.RvConfirmSheet
-import dev.doona.android.designsystem.rv.RvEndMark
-import dev.doona.android.designsystem.rv.RvFlag
+import dev.doona.android.designsystem.rv.RvFilterChipRow
 import dev.doona.android.designsystem.rv.RvFrames
-import dev.doona.android.designsystem.rv.RvIconDisc
-import dev.doona.android.designsystem.rv.RvLatencyChange
+import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvLongPressTiming
-import dev.doona.android.designsystem.rv.RvMenuAnchor
-import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPageHeader
-import dev.doona.android.designsystem.rv.RvRow
-import dev.doona.android.designsystem.rv.RvRowEnd
 import dev.doona.android.designsystem.rv.RvSearchField
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
-import dev.doona.android.designsystem.rv.RvText
-import dev.doona.android.designsystem.rv.RvTheme
-import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rememberRvGlass
 import dev.doona.android.designsystem.rv.rvGlassSource
 import dev.doona.android.designsystem.rv.rvPageArrived
 import dev.doona.android.designsystem.rv.rvShade
 import dev.doona.android.designsystem.rv.rvSharedSearch
-import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.model.RV_INLINE
 import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.model.rvSectionOrder
+import dev.doona.android.feature.nodes.ui.RvApplyCard
+import dev.doona.android.feature.nodes.ui.RvApplyTo
 import dev.doona.android.feature.nodes.ui.RvNodeSection
+import dev.doona.android.feature.nodes.ui.RvNodeSectionSkeleton
 import dev.doona.android.feature.nodes.ui.RvRowsComposed
+import dev.doona.android.feature.nodes.ui.inPicked
 import dev.doona.android.feature.nodes.ui.matches
-import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.feature.nodes.ui.rememberRvNodeTitles
+import dev.doona.android.feature.nodes.ui.rvNodeChips
+import dev.doona.android.feature.nodes.ui.rvPicked
 import kotlinx.coroutines.flow.first
 
 /** The picker's root, for tests. */
@@ -118,7 +93,12 @@ internal const val RV_PICKER = "rv-picker"
  * the [searchPage] (brief rv-gestures G7) its field is the search pill's, and the keyboard comes up once the page has
  * arrived. The large title is [title], 節點 unless the caller opened the picker from a card that names it (規則's 主節點).
  * A [banner] (a failed action: a node switch) stands under the title and its caption, in [RvBannerSlot], and drops with
- * them. A group's picker passes its own [caption]. A subscription's end date reads as of [nowEpochMs].
+ * them. A group's picker passes its own [caption]; null leaves the line out (no main group, q-p3a-nomain). A
+ * subscription's end date reads as of [nowEpochMs].
+ * Under the caption, 節點's 訂閱 and 排序 chips ([rvNodeChips], decision 2026-11-25 19:25) pick one subscription's
+ * section (or 組態內's) and order every section's rows; the nodes of no subscription close the list under 組態內, in
+ * every order. While the main group's networks are apart ([apply] not null) 套用到 stands over the list (14:37) and a
+ * pick goes to its network; the node of each network is checked ([currentId], [alsoCurrent]).
  */
 @Composable
 internal fun RvNodePicker(
@@ -134,7 +114,12 @@ internal fun RvNodePicker(
     searchPage: Boolean = false,
     title: String = stringResource(R.string.rv_nodes_title),
     banner: RvNotice? = null,
-    caption: String = stringResource(R.string.rv_main_node_hint),
+    caption: String? = stringResource(R.string.rv_main_node_hint),
+    alsoCurrent: Set<String> = emptySet(),
+    apply: RvApplyTo? = null,
+    onApply: (RvApplyTo) -> Unit = {},
+    onAdd: () -> Unit = {},
+    loading: Boolean = false,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val focus = remember { FocusRequester() }
@@ -155,22 +140,41 @@ internal fun RvNodePicker(
     val scroll = rememberScrollState()
     val glass = rememberRvGlass()
     var query by rememberSaveable { mutableStateOf("") }
+    var chosen by rememberSaveable { mutableStateOf<String?>(null) }
+    val picked = rvPicked(chosen, nodes)
+    var order by rememberSaveable { mutableStateOf(RvNodeSort.Latency) }
     val labels = nodes.associate { it.id to stringResource(it.place.label) }
-    val matching = nodes.filter { it.matches(query.trim(), labels.getValue(it.id)) }.mapTo(mutableSetOf()) { it.id }
-    val composed = rememberRowsComposed(subscriptions.size + nodes.size)
+    val titles = rememberRvNodeTitles()
+    val scoped = nodes.filter { inPicked(it, picked) }
+    val matching = scoped.filter { it.matches(query.trim(), labels.getValue(it.id)) }.mapTo(mutableSetOf()) { it.id }
+    // The sections shown: the picked subscription's, or all, then 組態內 (a null subscription) when it has nodes.
+    val given = nodes.mapTo(HashSet()) { it.subscriptionId }
+    val ours = RV_INLINE in given && (picked == null || picked == RV_INLINE)
+    // A subscription whose fetch gave no node has no section, as the 訂閱 chip's menu leaves it out.
+    val sections: List<RvSubscription?> = subscriptions.filter { it.id in given && (picked == null || it.id == picked) } + if (ours) listOf(null) else emptyList()
+    val composed = rememberRowsComposed(sections.size + scoped.size)
     RvLongPressTiming {
         Box(Modifier.fillMaxSize().testTag(RV_PICKER)) {
             // A pull down at the top, which closes the picker, moves the list under the bar with the finger.
             Column(Modifier.fillMaxSize().rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll).graphicsLayer { translationY = stretch() }) {
                 Column(section(1)) {
-                    RvPageHeader(title, Modifier, insets, caption = { RvCaption(caption) })
+                    val (subChip, orderChip) = rvNodeChips(subscriptions, nodes, picked, order, { chosen = it }, { order = it })
+                    // With no node the chips have nothing to pick or order; the empty state takes the list's place. Before the
+                    // catalog is read the chips stand (their labels are known) over the list's skeleton.
+                    val empty = !loading && nodes.isEmpty()
+                    val chips: (@Composable () -> Unit)? = if (empty) null else ({ RvFilterChipRow(subChip, orderChip) })
+                    RvPageHeader(title, Modifier, insets, caption = caption?.let { line -> { RvCaption(line) } }, control = chips)
                     RvBannerSlot(banner)
+                    ListStart(loading, empty, apply, onApply, onAdd, noMatch = query.isNotBlank() && matching.isEmpty())
                 }
                 var first = 0
-                subscriptions.forEachIndexed { i, sub ->
-                    val members = nodes.filter { it.subscription == sub.name }
+                sections.forEachIndexed { i, sub ->
+                    val members = rvSectionOrder(scoped.filter { it.subscriptionId == (sub?.id ?: RV_INLINE) }, order, titles)
                     val rows = RvRowsComposed(first, composed)
-                    RvNodeSection(sub, members, matching, labels, currentId, searching = query.isNotBlank(), onPick, onDetail, rows, nowEpochMs, section(2 + i))
+                    // Keyed by section, so each keeps its open state while the 訂閱 chip changes which are listed.
+                    key(sub?.id ?: RV_INLINE) {
+                        RvNodeSection(sub, members, matching, labels, currentId, searching = query.isNotBlank(), onPick, onDetail, rows, nowEpochMs, section(2 + i), alsoCurrent = alsoCurrent)
+                    }
                     first += 1 + members.size
                 }
                 Spacer(Modifier.windowInsetsBottomHeight(bottom))
@@ -185,6 +189,26 @@ internal fun RvNodePicker(
             }
         }
     }
+}
+
+/**
+ * What stands over the picker's sections: before the catalog is read ([loading]) the list's skeleton; with no node
+ * ([empty]) the empty state and its 新增訂閱 ([onAdd]); else 套用到 while the main group's networks are apart ([apply]).
+ * A search that matches no node ([noMatch]) says so under the chips, where the list would start.
+ */
+@Composable
+private fun ListStart(loading: Boolean, empty: Boolean, apply: RvApplyTo?, onApply: (RvApplyTo) -> Unit, onAdd: () -> Unit, noMatch: Boolean) {
+    when {
+        loading -> return RvNodeSectionSkeleton()
+
+        empty -> RvGutter { RvNoSubscription(onAdd) }
+
+        apply != null -> {
+            RvGutter { RvApplyCard(apply, onApply) }
+            Spacer(Modifier.height(RvSpace.cardGap))
+        }
+    }
+    if (noMatch) RvGutter { RvCaption(stringResource(R.string.rv_nodes_no_match)) }
 }
 
 /**
@@ -218,11 +242,3 @@ private fun rememberRowsComposed(total: Int): () -> Int {
 private const val ROWS_PER_FRAME = 1
 private const val SEARCH_GESTURE = "search"
 private const val TRACE_FOCUS = "RvSearchFocus"
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvNodePickerPreview() {
-    val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvNodePickerSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {}) }
-}

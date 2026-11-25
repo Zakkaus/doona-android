@@ -13,6 +13,7 @@ import dev.doona.android.engine.ScoreState
 import dev.doona.android.engine.TodayTraffic
 import dev.doona.android.engine.Usage
 import dev.doona.android.engine.fake.rvSampleEngine
+import dev.doona.android.feature.model.CoreNodePlaces
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -189,11 +190,11 @@ class StatsMappingTest {
 
     @Test
     fun `places come from a city, a flag or a country code, else other`() {
-        assertEquals(RvPlace.JP, rvStatsPlace("Tokyo 02"))
-        assertEquals(RvPlace.HK, rvStatsPlace("🇭🇰 香港 01"))
-        assertEquals(RvPlace.US, rvStatsPlace("US-West 03"))
-        assertEquals(RvPlace.Other, rvStatsPlace("節點 A"))
-        assertEquals(RvPlace.Other, rvStatsPlace("Hourly"))
+        assertEquals(RvPlace.JP, CoreNodePlaces.placeOf("Tokyo 02"))
+        assertEquals(RvPlace.HK, CoreNodePlaces.placeOf("🇭🇰 香港 01"))
+        assertEquals(RvPlace.US, CoreNodePlaces.placeOf("US-West 03"))
+        assertEquals(RvPlace.Other, CoreNodePlaces.placeOf("節點 A"))
+        assertEquals(RvPlace.Other, CoreNodePlaces.placeOf("Hourly"))
     }
 
     @Test

@@ -14,11 +14,11 @@ import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvSheetLayout
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.nodes.RvNodesPage
 import dev.doona.android.feature.subscriptions.RvSubDetailState
 import dev.doona.android.feature.subscriptions.RvUserAgentField
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
@@ -83,7 +83,7 @@ class RvBoardTest {
      */
     @Test
     fun aLongPageGetsEveryScreenToItsEnd() {
-        val dir = capture("nodes") { RvNodesPage(sampleNodesPage(), onBack = {}, onFilter = {}, onOpen = {}, onAllNodes = {}) }
+        val dir = capture("nodes") { RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {}) }
         val windows = generateSequence(1) { it + 1 }.takeWhile { File(dir, "nodes-light-$it.json").isFile }.map { json(dir, "nodes-light-$it") }.toList()
         assertTrue("節點 takes more than two windows, got ${windows.size}", windows.size > 2)
         assertTrue(File(dir, "nodes-light-${windows.size}.png").isFile)

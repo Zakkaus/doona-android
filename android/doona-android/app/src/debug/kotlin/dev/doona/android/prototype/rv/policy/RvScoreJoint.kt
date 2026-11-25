@@ -13,6 +13,7 @@ import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.engine.ScoreGroup
 import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.rvScorePick
 import dev.doona.android.feature.nodes.ui.RvScoreCard
 
 /**
@@ -45,14 +46,14 @@ internal fun RvScoreJointCards(score: ScoreGroup, joint: RvScoreJoint, members: 
     val fallback = joint.fallback
     when {
         joint.separate -> {
-            RvScoreCard(tcp, score.tcp, members)
-            RvScoreCard(stringResource(R.string.ui_udp), score.udp, members)
+            RvScoreCard(tcp, rvScorePick(score.tcp), members)
+            RvScoreCard(stringResource(R.string.ui_udp), rvScorePick(score.udp), members)
         }
 
-        fallback == null -> RvScoreCard(stringResource(R.string.rv_network_both), score.tcp, members)
+        fallback == null -> RvScoreCard(stringResource(R.string.rv_network_both), rvScorePick(score.tcp), members)
 
         else -> {
-            RvScoreCard(tcp, score.tcp, members)
+            RvScoreCard(tcp, rvScorePick(score.tcp), members)
             UdpCard(members.first { it.id == score.udp.selectedId }, members.first { it.id == score.tcp.selectedId }, fallback)
         }
     }

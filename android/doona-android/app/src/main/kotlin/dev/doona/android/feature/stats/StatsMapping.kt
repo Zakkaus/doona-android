@@ -9,12 +9,13 @@ import dev.doona.android.engine.ScoreState
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.TodayTraffic
 import dev.doona.android.engine.Usage
-import dev.doona.android.feature.leafOf
-import dev.doona.android.feature.model.RvCity
+import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.feature.model.RvDay
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSplit
 import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.model.leafOf
+import dev.doona.android.feature.model.rvLeafMembers
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -42,8 +43,8 @@ internal class StatsInput(
  * The engine's reads as the 統計 page's model. Pure: the same input gives the same page. [placeOf] tells where a node is
  * from its name.
  */
-internal fun rvStatsState(input: StatsInput, placeOf: (String) -> RvPlace = ::rvStatsPlace): RvStatsState {
-    val nodes = input.catalog?.leafNodes(placeOf).orEmpty()
+internal fun rvStatsState(input: StatsInput, placeOf: (String) -> RvPlace = CoreNodePlaces::placeOf): RvStatsState {
+    val nodes = input.catalog?.let(::rvLeafMembers).orEmpty().map { rvNode(it, placeOf) }
     val day = input.usage?.today?.takeIf { it.date == localDate(input) }
     val today = rvDay(day, hoursSoFar(input))
     return RvStatsState(
@@ -133,10 +134,6 @@ private fun rvSubscription(sub: Subscription) = RvSubscription(
     expiresAtEpochMs = sub.expiresAtEpochMs,
 )
 
-/** Every node of every group once, in catalog order; subgroups are left out. */
-private fun Catalog.leafNodes(placeOf: (String) -> RvPlace): List<RvNode> =
-    groups.asSequence().flatMap { it.members }.filterNot { it.isGroup }.distinctBy { it.id }.map { rvNode(it, placeOf) }.toList()
-
 /**
  * A member as 節點分布 and 延遲分布 read it: its name, where it is, and its last test (a failed test as a timeout). The
  * endpoint fields stay empty: the page shows none of them.
@@ -153,7 +150,8 @@ private fun rvNode(member: Member, placeOf: (String) -> RvPlace) = RvNode(
     transport = "",
     tls = false,
     subscription = member.subscriptionId.orEmpty(),
-    subscriptionId = member.subscriptionId,
+    subscriptionId = member.subscriptionId.orEmpty(),
+    shareable = false,
     history = when {
         member.latencyMs != null -> listOf(member.latencyMs)
         member.failed -> listOf(null)
@@ -181,30 +179,7 @@ private fun rvStatsScore(state: ScoreState, catalog: Catalog?, nodes: List<RvNod
     return RvStatsScore(state, groups)
 }
 
-/**
- * Where a node is, from its name: a city (`Tokyo 02`), a flag (`🇯🇵 02`) or a country code as a word (`JP-02`, `HK 01`);
- * anything else is [RvPlace.Other]. A stand-in until the shared place mapper of the nodes pages exists.
- */
-internal fun rvStatsPlace(name: String): RvPlace {
-    RvCity.entries.firstOrNull { name.contains(it.en, ignoreCase = true) }?.let { return it.place }
-    flagCode(name)?.let { code -> RvPlace.entries.firstOrNull { it.name == code }?.let { return it } }
-    val words = name.split(Regex("[^A-Za-z]+")).toSet()
-    return RvPlace.entries.firstOrNull { it != RvPlace.Other && it.name in words } ?: RvPlace.Other
-}
-
-/** The two letters of the first flag emoji in [name] (two regional indicator symbols), or null. */
-private fun flagCode(name: String): String? {
-    val points = name.codePoints().toArray()
-    for (i in 0 until points.size - 1) {
-        val (a, b) = points[i] to points[i + 1]
-        if (a in REGIONAL_A..REGIONAL_Z && b in REGIONAL_A..REGIONAL_Z) return "${'A' + (a - REGIONAL_A)}${'A' + (b - REGIONAL_A)}"
-    }
-    return null
-}
-
 private const val DIRECT = "direct"
 internal const val DAYS_PER_WEEK = 7
 private const val SECONDS_PER_DAY = 86_400
 private const val SECONDS_PER_HOUR = 3_600
-private const val REGIONAL_A = 0x1F1E6
-private const val REGIONAL_Z = 0x1F1FF

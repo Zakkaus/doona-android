@@ -1,9 +1,7 @@
 package dev.doona.android.feature.policies
 
 import androidx.compose.runtime.Immutable
-
-/** The network a tap on a node applies to while 分開選擇 TCP 與 UDP is on, in the control's order (nborder). */
-internal enum class RvApplyTo { Both, Tcp, Udp }
+import dev.doona.android.feature.nodes.ui.RvApplyTo
 
 /**
  * A selector group's choice per network for the sample of the 套用到 control (nbtap): the node TCP uses ([tcpId]), the

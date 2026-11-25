@@ -41,18 +41,24 @@ import dev.doona.android.designsystem.rv.rvMarkName
 import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.designsystem.rv.rvShownName
 import dev.doona.android.engine.ScoreGroup
-import dev.doona.android.feature.model.RV_INLINE_KEY
+import dev.doona.android.feature.model.RV_INLINE
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.model.rvScorePick
+import dev.doona.android.feature.model.rvSectionOrder
 import dev.doona.android.feature.model.text
+import dev.doona.android.feature.nodes.ui.RvApplyCard
+import dev.doona.android.feature.nodes.ui.RvApplyTo
 import dev.doona.android.feature.nodes.ui.RvNodePickRow
 import dev.doona.android.feature.nodes.ui.RvNodeSection
 import dev.doona.android.feature.nodes.ui.RvRowsComposed
 import dev.doona.android.feature.nodes.ui.RvScoreCard
 import dev.doona.android.feature.nodes.ui.matches
+import dev.doona.android.feature.nodes.ui.rememberRvNodeTitles
+import dev.doona.android.feature.nodes.ui.rvNodeChips
 
 /** A group page's taps: back, a node's row ([tap]) and its detail ([detail]), the switch, 套用到, and 測試群組. */
 internal class RvGroupActions(
@@ -80,7 +86,7 @@ internal class RvGroupContent(
 
 /**
  * What the group page's search field and two chips hold when it opens: [source] is the picked subscription's id, or
- * [RV_INLINE_KEY] for 組態內, null for every source.
+ * [RV_INLINE] for 組態內, null for every source.
  */
 internal class RvGroupFilter(val query: String = "", val source: String? = null, val order: RvNodeSort = RvNodeSort.Latency)
 
@@ -117,16 +123,16 @@ internal fun RvGroupPage(
     var typed by rememberSaveable { mutableStateOf(filter.query) }
     var picked by rememberSaveable { mutableStateOf(filter.source) }
     var sorted by rememberSaveable { mutableStateOf(filter.order) }
+    val titles = rememberRvNodeTitles()
     val labels = group.members.associate { it.id to stringResource(it.place.label) }
-    val inline = group.members.any { it.inline }
-    val sources = content.subscriptions.map { it.id } + listOfNotNull(RV_INLINE_KEY.takeIf { inline })
+    val sources = content.subscriptions.map { it.id } + listOfNotNull(RV_INLINE.takeIf { group.members.any { it.inline } })
     // A pick whose subscription an update removed falls back to every subscription, chip and list alike.
     val pick = picked?.takeIf { it in sources }
-    val scoped = group.members.filter { pick == null || it.source == pick }
+    val scoped = group.members.filter { pick == null || it.subscriptionId == pick }
     val matching = scoped.filter { it.matches(typed.trim(), labels.getValue(it.id)) }.mapTo(mutableSetOf()) { it.id }
     // The node each network's choice ends on: a chosen node, or the node a chosen member group ends on.
     val ends = group.members.filter { choice.chosen(it.id) } + group.groups.filter { choice.chosen(it.id) }.mapNotNull { it.node }
-    val holders = ends.map { it.source }.toSet()
+    val holders = ends.map { it.subscriptionId }.toSet()
     val open = sources.size <= RV_SECTIONS_OPEN_UP_TO
     // Score chooses the nodes, so a tap on one opens its detail rather than choose it.
     val pickNode = if (content.score) actions.detail else actions.tap
@@ -136,12 +142,12 @@ internal fun RvGroupPage(
         RvGutter(banner = banner) {
             NetworkCard(group, choice, actions.detail, rows = evidence == null) { actions.apart(!it.apart) }
             if (evidence != null) ScoreCards(evidence, choice.apart, group.members)
-            if (choice.apart && !content.score) ApplyCard(content.apply, actions.apply)
+            if (choice.apart && !content.score) RvApplyCard(content.apply, actions.apply)
             if (group.groups.isNotEmpty()) MemberGroupsCard(group, choice, content.score, actions.tap)
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
             RvSearchSlot { RvSearchField(null, typed, { typed = it }, it) }
-            val (subChip, orderChip) = rvGroupChips(content.subscriptions, inline, pick, sorted, { picked = it }, { sorted = it })
+            val (subChip, orderChip) = rvNodeChips(content.subscriptions, group.members, pick, sorted, { picked = it }, { sorted = it })
             RvFilterChipRow(subChip, orderChip)
             Spacer(Modifier.height(RvSpace.controlGap))
         }
@@ -151,7 +157,7 @@ internal fun RvGroupPage(
             key(pick, source) {
                 RvNodeSection(
                     subs[source],
-                    rvSectionOrder(scoped.filter { it.source == source }, sorted),
+                    rvSectionOrder(scoped.filter { it.subscriptionId == source }, sorted, titles),
                     matching,
                     labels,
                     choice.tcpId,
@@ -288,25 +294,10 @@ private fun NetworkRow(node: RvNode, network: String?, onDetail: (String) -> Uni
 @Composable
 private fun ScoreCards(evidence: ScoreGroup, apart: Boolean, members: List<RvNode>) {
     if (apart) {
-        RvScoreCard(stringResource(R.string.ui_tcp), evidence.tcp, members)
-        RvScoreCard(stringResource(R.string.ui_udp), evidence.udp, members)
+        RvScoreCard(stringResource(R.string.ui_tcp), rvScorePick(evidence.tcp), members)
+        RvScoreCard(stringResource(R.string.ui_udp), rvScorePick(evidence.udp), members)
     } else {
-        RvScoreCard(stringResource(R.string.rv_network_both), evidence.tcp, members)
-    }
-}
-
-/**
- * 套用到 (nbtap): the library's segmented control, the one 策略's mode switch uses, in a card above the node list as
- * 'Top movers' holds its own ([RvNodesSize.topRowGap] and the card's foot as there). TCP/UDP first (nborder).
- */
-@Composable
-internal fun ApplyCard(selected: RvApplyTo, onSelect: (RvApplyTo) -> Unit) {
-    val options = RvApplyTo.entries
-    val labels = listOf(stringResource(R.string.rv_network_both), stringResource(R.string.ui_tcp), stringResource(R.string.ui_udp))
-    RvCard {
-        RvCardHeader(stringResource(R.string.rv_network_apply_to))
-        RvSegmented(labels, options.indexOf(selected), { onSelect(options[it]) }, Modifier.padding(horizontal = RvSpace.rowPadding))
-        Spacer(Modifier.height(RvNodesSize.topRowGap))
+        RvScoreCard(stringResource(R.string.rv_network_both), rvScorePick(evidence.tcp), members)
     }
 }
 
@@ -317,6 +308,3 @@ internal fun ApplyCard(selected: RvApplyTo, onSelect: (RvApplyTo) -> Unit) {
  * (nbmany)
  */
 internal const val RV_SECTIONS_OPEN_UP_TO = 2
-
-/** The section a node is listed under: its subscription's id, or [RV_INLINE_KEY] for a node added by hand. */
-private val RvNode.source: String get() = subscriptionId ?: RV_INLINE_KEY

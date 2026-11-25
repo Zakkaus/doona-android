@@ -14,6 +14,8 @@ import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.RuleRow
 import dev.doona.android.engine.RuleTarget
 import dev.doona.android.feature.errorCode
+import dev.doona.android.feature.model.CoreNodePlaces
+import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.subscriptions.rvSubscription
@@ -49,7 +51,7 @@ internal data class EffectiveConfigUiState(
  */
 internal class EffectiveConfigViewModel(
     private val engine: Engine,
-    private val places: RvNodePlaces = RV_UNKNOWN_PLACES,
+    private val places: NodePlaces = CoreNodePlaces,
     private val reads: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     private val read = MutableStateFlow(EffectiveConfigUiState())
@@ -94,7 +96,7 @@ internal class EffectiveConfigViewModel(
  * main id, null when no group has it), every rule [rows] lists, where the rules come from, the subscriptions, the DNS
  * servers and what their queries go through (the main group is 主節點), and the [apps] 依 App lists.
  */
-internal fun rvEffectiveConfig(effective: EffectiveConfig, catalog: Catalog, rows: List<RuleRow>, apps: Int, places: RvNodePlaces): RvEffectiveConfig {
+internal fun rvEffectiveConfig(effective: EffectiveConfig, catalog: Catalog, rows: List<RuleRow>, apps: Int, places: NodePlaces): RvEffectiveConfig {
     val nodes = rvNodes(catalog, emptyMap(), places)
     val byId = catalog.groups.associateBy { it.id }
     val groups = catalog.groups.map { rvPolicyGroup(it, byId, nodes) }.associateBy { it.id }

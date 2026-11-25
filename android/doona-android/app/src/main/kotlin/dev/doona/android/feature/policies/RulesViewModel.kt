@@ -12,6 +12,8 @@ import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.RuleRow
 import dev.doona.android.feature.errorCode
+import dev.doona.android.feature.model.CoreNodePlaces
+import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RvPolicyRule
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -51,7 +53,7 @@ internal data class RulesUiState(
  */
 internal class RulesViewModel(
     private val engine: Engine,
-    private val places: RvNodePlaces = RV_UNKNOWN_PLACES,
+    private val places: NodePlaces = CoreNodePlaces,
     private val reads: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     private val read = MutableStateFlow<RulesUiState?>(null)

@@ -2,6 +2,8 @@ package dev.doona.android.prototype.rv.nodes
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import dev.doona.android.feature.nodes.RvNodesPage
+import dev.doona.android.feature.nodes.RvNodesPageState
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
@@ -47,7 +49,7 @@ class RvWorldNodesShotTest {
     fun fs200() = compose.rvShot("nodes-world", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { Page() }
 
     @Composable
-    private fun Page() = RvNodesPage(RvNodesPageState(RvData.worldNodes, "ae-01", RvData.testTimes), onBack = {}, onFilter = {}, onOpen = {}, onAllNodes = {})
+    private fun Page() = RvNodesPage(RvNodesPageState(RvData.worldNodes, setOf("ae-01")), onBack = {}, onOpen = {}, onAllNodes = {})
 
     private companion object {
         /** Windows as tall as the whole page at each font scale, so one capture holds every card. */

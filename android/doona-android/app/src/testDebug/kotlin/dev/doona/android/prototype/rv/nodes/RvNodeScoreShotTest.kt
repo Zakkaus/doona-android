@@ -7,11 +7,16 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.text.TextLayoutResult
 import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.nodes.RvNodeDetail
+import dev.doona.android.feature.nodes.RvNodesPage
+import dev.doona.android.feature.nodes.RvScoreMarks
+import dev.doona.android.feature.nodes.rvScoreMarks
 import dev.doona.android.feature.nodes.ui.matches
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
+import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.policy.RvScoreSample
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvShot
@@ -178,15 +183,15 @@ class RvNodeScoreShotTest {
         compose.rvShot(name, dark, before = { assertWhole() }, fontScale = fontScale, content = content)
 
     @Composable
-    private fun Page(score: RvScoreMarks) = RvNodesPage(page, onBack = {}, onFilter = {}, onOpen = {}, onAllNodes = {}, score = score)
+    private fun Page(score: RvScoreMarks) = RvNodesPage(page, onBack = {}, onOpen = {}, onAllNodes = {}, score = score)
 
     @Composable
     private fun Detail(node: RvNode, score: RvScoreMarks) =
-        RvNodeDetail(node, current = node.id == page.currentId, page.testedAtEpochMs, onBack = {}, onUse = {}, onTest = {}, score = score)
+        RvNodeDetail(node, current = node.id in page.current, RvData.testTimes, onBack = {}, onUse = {}, onTest = {}, score = score)
 
     private companion object {
-        val marks = RvScoreMarks(listOf(RvScoreSample.chosen))
-        val both = RvScoreMarks(listOf(RvScoreSample.agreed))
+        val marks = checkNotNull(rvScoreMarks(listOf(RvScoreSample.chosen)))
+        val both = checkNotNull(rvScoreMarks(listOf(RvScoreSample.agreed)))
         val page = sampleNodesPage()
         val chosen: RvNode = page.nodes.first { it.id == RvScoreSample.chosen.tcp.selectedId }
 

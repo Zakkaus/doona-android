@@ -31,8 +31,8 @@ import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.nodes.RvNodesPage
 import dev.doona.android.feature.policies.RvPolicyScreen
-import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
@@ -170,7 +170,7 @@ class RvWindowShotTest {
     private fun Settings() = RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {})
 
     @Composable
-    private fun Nodes() = RvNodesPage(sampleNodesPage(), onBack = {}, onFilter = {}, onOpen = {}, onAllNodes = {})
+    private fun Nodes() = RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {})
 
     /** A notch phone: the status bar is as tall as the notch, which the page reads as its top inset. */
     @Composable

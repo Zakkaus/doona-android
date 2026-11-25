@@ -5,7 +5,7 @@ import dev.doona.android.designsystem.rv.RvRegion
 import dev.doona.android.designsystem.rv.RvSpot
 import dev.doona.android.designsystem.rv.rvFlagArt
 import dev.doona.android.feature.model.RvCity
-import dev.doona.android.prototype.rv.nodes.RvNodesPageState
+import dev.doona.android.feature.nodes.RvNodesPageState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -54,7 +54,7 @@ class RvPlaceTableTest {
         val world = RvData.worldNodes
         assertEquals(listOf("ae-01", "in-01", "tr-01", "us-07", "br-01", "ch-01", "pl-01", "za-01", "nz-01"), world.map { it.id })
         world.forEach { assertEquals(it.id, it, RvData.node(it.id)) }
-        val groups = RvNodesPageState(world, "ae-01", RvData.testTimes).byRegion().associate { (region, nodes) -> region to nodes.map { it.id }.sorted() }
+        val groups = RvNodesPageState(world, setOf("ae-01")).byRegion().associate { (region, nodes) -> region to nodes.map { it.id }.sorted() }
         assertEquals(
             mapOf(
                 RvRegion.Asia to listOf("ae-01", "in-01", "tr-01"),

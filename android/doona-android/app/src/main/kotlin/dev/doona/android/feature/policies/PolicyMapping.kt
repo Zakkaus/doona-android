@@ -12,7 +12,7 @@ import dev.doona.android.engine.RuleRow
 import dev.doona.android.engine.RuleSource
 import dev.doona.android.engine.RuleTarget
 import dev.doona.android.engine.Subscription
-import dev.doona.android.feature.leafOf
+import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RV_TESTS
 import dev.doona.android.feature.model.RvCity
 import dev.doona.android.feature.model.RvGroupKind
@@ -27,55 +27,16 @@ import dev.doona.android.feature.model.RvRuleEnd
 import dev.doona.android.feature.model.RvRuleMatch
 import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.feature.model.RvRuleState
+import dev.doona.android.feature.model.leafOf
 import dev.doona.android.feature.model.protocolName
+import dev.doona.android.feature.model.rvLeafMembers
 import dev.doona.android.feature.model.rvTemplate
+import dev.doona.android.feature.nodes.rvNode
+import dev.doona.android.feature.nodes.rvSource
 import dev.doona.android.feature.subscriptions.rvSubscription
-
-/** Where a node's name places it: its country or region, its city when the name gives one, and its short tile name. */
-internal data class RvNodePlace(val place: RvPlace, val city: RvCity?, val short: String)
-
-/**
- * Places a node by its name. The real mapper reads the core's region table on 節點 (P3c); this seam lets the policy pages
- * take it once it is wired, and until then they place every node under 其他 with its full name as the short one.
- */
-internal fun interface RvNodePlaces {
-    fun of(name: String): RvNodePlace
-}
-
-/** Every node under 其他, its full name standing for the short one: what the pages show before the real mapper is wired. */
-internal val RV_UNKNOWN_PLACES = RvNodePlaces { RvNodePlace(RvPlace.Other, null, it) }
 
 /** How many rules 策略's card lists: as many as the approved sample's card lists. */
 internal const val RV_POLICY_CARD_RULES = 5
-
-/**
- * A node as the pages show it. The history is the core's last tests, oldest first; a node the core has no details for
- * shows the catalog's last probe alone, so a probed node never reads as untested. [subscription] is the subscription's
- * name, empty for a node added by hand; the member's subscription id, null for such a node, is what the pages group by.
- */
-internal fun rvNode(member: Member, info: NodeInfo?, subscription: String, places: RvNodePlaces): RvNode {
-    val placed = places.of(member.name)
-    val history = when {
-        info != null -> info.tests.map { it.ms }.takeLast(RV_TESTS)
-        member.latencyMs != null || member.failed -> listOf(member.latencyMs)
-        else -> emptyList()
-    }
-    return RvNode(
-        id = member.id,
-        name = member.name,
-        short = placed.short,
-        place = placed.place,
-        city = placed.city,
-        protocol = protocolName(info?.protocol.orEmpty()),
-        host = info?.server.orEmpty(),
-        port = info?.port ?: 0,
-        transport = info?.transport.orEmpty(),
-        tls = info?.tls ?: false,
-        subscription = subscription,
-        subscriptionId = member.subscriptionId,
-        history = history,
-    )
-}
 
 internal fun rvGroupKind(kind: GroupKind): RvGroupKind = when (kind) {
     GroupKind.Selector -> RvGroupKind.Select
@@ -170,10 +131,9 @@ internal fun rvPolicyRule(row: RuleRow, groups: Map<String, RvPolicyGroup>, byte
  * Every node member of [catalog]'s groups once, in catalog order, mapped with its details from [infos] and its
  * subscription's name.
  */
-internal fun rvNodes(catalog: Catalog, infos: Map<String, NodeInfo>, places: RvNodePlaces): Map<String, RvNode> {
-    val names = catalog.subscriptions.associate { it.id to it.name }
-    return catalog.groups.asSequence().flatMap { it.members }.filterNot { it.isGroup }.distinctBy { it.id }
-        .associate { it.id to rvNode(it, infos[it.id], it.subscriptionId?.let(names::get).orEmpty(), places) }
+internal fun rvNodes(catalog: Catalog, infos: Map<String, NodeInfo>, places: NodePlaces): Map<String, RvNode> {
+    val subscriptions = catalog.subscriptions.associateBy { it.id }
+    return rvLeafMembers(catalog).associate { it.id to rvNode(it, infos[it.id], rvSource(it, subscriptions), places) }
 }
 
 /**
@@ -189,7 +149,7 @@ internal fun rvPolicyProfile(
     ruleTotal: Int,
     byRule: Map<String, Long>,
     nowEpochMs: Long,
-    places: RvNodePlaces,
+    places: NodePlaces,
 ): RvPolicyProfile {
     val nodes = rvNodes(catalog, infos, places)
     val byId = catalog.groups.associateBy { it.id }

@@ -4,7 +4,7 @@
 prototype/rv/connections/RvConnectionDetail.kt	RvText(host + PORT + connection.port, Rv.type.rowSub, color = secondary, align = TextAlign.Center, maxLines = Int.MAX_VA	the centred header's host and port, above the first card
 prototype/rv/connections/RvConnectionDetail.kt	RvText(stringResource(R.string.rv_conn_no_domain), Rv.type.rowSub, color = secondary, align = TextAlign.Center)	the centred header's no-domain line, above the first card
 prototype/rv/connections/RvConnectionsPage.kt	RvText(age, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a connection row's age at the row's end, inside the card
-prototype/rv/nodes/RvLatencyDots.kt	RvText(empty, Rv.type.rowSub, color = colors.textSecondary, align = TextAlign.Center)	the latency card's empty line, centred inside the card
+feature/nodes/RvLatencyDots.kt	RvText(empty, Rv.type.rowSub, color = colors.textSecondary, align = TextAlign.Center)	the latency card's empty line, centred inside the card
 feature/policies/RvPolicyParts.kt	RvText(end ?: bytes, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a rule row's bytes at the row's end, inside the card
 feature/policies/RvPolicyScreen.kt	RvText(stringResource(R.string.rv_policy_rules_order), Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.rowPadding)	the rules card's line under its header, inside the card
 feature/policies/RvPolicyScreen.kt	RvText(value, Rv.type.rowSub, color = Rv.colors.textSecondary)	a policy row's value, inside the card
@@ -23,16 +23,17 @@ prototype/rv/config/RvConfigSourcePage.kt	RvCaption(stringResource(R.string.rv_c
 prototype/rv/config/RvConfigTemplatePage.kt	RvCaption(stringResource(R.string.rv_config_based_on, apply.baseRev))	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/connections/RvConnectionsPage.kt	RvCaption(pluralStringResource(R.plurals.rv_conn_matches, shown.size, shown.size))	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/connections/RvConnectionsPage.kt	RvCaption(pluralStringResource(R.plurals.rv_conn_summary, connections.size, connections.size, down, up))	a page header's caption (RvCaption under the large title), not under a card
-prototype/rv/nodes/RvNodeDetail.kt	RvCaption(node.protocol + SEPARATOR + stringResource(node.place.label))	a page header's caption (RvCaption under the large title), not under a card
-prototype/rv/nodes/RvNodeList.kt	RvCaption(stringResource(R.string.rv_main_node_hint))	a page header's caption (RvCaption under the large title), not under a card
-prototype/rv/nodes/RvNodesPage.kt	RvCaption(stringResource(R.string.rv_main_node_hint))	a page header's caption (RvCaption under the large title), not under a card
+feature/nodes/RvNodeDetail.kt	RvCaption(rvNodeLine(node.protocol, stringResource(node.place.label)))	a page header's caption (RvCaption under the large title), not under a card
+feature/nodes/RvNodePickerPage.kt	RvCaption(line)	a page header's caption (RvCaption under the large title), not under a card
+feature/nodes/RvNodesPage.kt	RvCaption(line)	a page header's caption (RvCaption under the large title), not under a card
 feature/policies/RvEffectiveConfigPage.kt	RvCaption(stringResource(R.string.rv_effective_truncated), R.drawable.rv_nodes_ic_warning)	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/policy/RvPolicyGroupPage.kt	RvCaption(stringResource(R.string.rv_policy_auto_note))	a page header's caption (RvCaption under the large title), not under a card
 feature/policies/RvRulesPage.kt	RvCaption(stringResource(R.string.rv_policy_rules_order))	a page header's caption (RvCaption under the large title), not under a card
 feature/policies/RvGroupPage.kt	RvCaption(groupLine(group, kind), kind.glyph)	a page header's caption (RvCaption under the large title), not under a card
 feature/onboarding/RvWelcome.kt	RvCaption(stringResource(R.string.rv_welcome_line), lines = Int.MAX_VALUE)	歡迎's hero line under its centred title (RvCaption with lines), above the cards
 feature/nodes/ui/RvNodeList.kt	RvText(steady, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a node row's steadiness at the row's end, inside the card
-prototype/rv/nodes/RvNodePicker.kt	RvCaption(caption)	a page header's caption (RvCaption under the large title), not under a card
+feature/nodes/RvNodePicker.kt	RvCaption(line)	a page header's caption (RvCaption under the large title), not under a card
+feature/nodes/RvNodePicker.kt	RvCaption(stringResource(R.string.rv_nodes_no_match))	the node picker's no-match line under its chips, the page's one line in place of the list (q-p3c-noresult), not under a card
 prototype/rv/policy/RvPolicyGroupPage.kt	RvCaption(group.caption(), group.kind.glyph)	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/samples/RvGroupSamplePage.kt	RvCaption(stringResource(group.kind.label) + SEPARATOR + count, group.kind.glyph)	a sample page header's caption (RvCaption under the large title), not under a card
 feature/stats/RvStatsScoreCard.kt	RvText(stringResource(R.string.rv_stats_connections), Rv.type.rowSub, color = Rv.colors.textSecondary)	the Score card's label under its figure, inside the card

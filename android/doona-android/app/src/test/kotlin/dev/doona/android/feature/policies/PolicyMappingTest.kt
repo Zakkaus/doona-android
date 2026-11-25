@@ -13,6 +13,8 @@ import dev.doona.android.engine.RuleSkip
 import dev.doona.android.engine.RuleTarget
 import dev.doona.android.engine.fake.RvSampleRules
 import dev.doona.android.engine.fake.rvSampleEngine
+import dev.doona.android.feature.model.NodePlace
+import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvMatchKind
@@ -21,6 +23,8 @@ import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvRuleEnd
 import dev.doona.android.feature.model.RvRuleMatch
 import dev.doona.android.feature.model.RvRuleState
+import dev.doona.android.feature.nodes.RvSource
+import dev.doona.android.feature.nodes.rvNode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -30,7 +34,7 @@ class PolicyMappingTest {
     private fun node(id: String, latencyMs: Int? = null, failed: Boolean = false, subscriptionId: String? = null) =
         Member(id, "Node $id", latencyMs, failed, subscriptionId = subscriptionId)
 
-    private fun nodes(vararg members: Member) = members.associate { it.id to rvNode(it, null, "", RV_UNKNOWN_PLACES) }
+    private fun nodes(vararg members: Member) = members.associate { it.id to rvNode(it, null, null, NOWHERE) }
 
     private fun row(kind: RuleKind?, sample: String?, count: Int = 1, kindName: String = kind?.name.orEmpty(), target: RuleTarget = RuleTarget.Direct) =
         RuleRow("r-$kindName-$sample", 0, kind, kindName, sample, count, target)
@@ -54,9 +58,9 @@ class PolicyMappingTest {
     fun `a node takes the core's last tests and endpoint`() {
         val tests = (1..10).map { LatencyTest(it.toLong(), if (it == 9) null else it * 10) }
         val info = NodeInfo("n1", "s1", "vless", "hk.example.net", 443, "ws", true, tests)
-        val mapped = rvNode(node("n1", subscriptionId = "s1"), info, "Harbor", RV_UNKNOWN_PLACES)
+        val mapped = rvNode(node("n1", subscriptionId = "s1"), info, RvSource("s1", "Harbor", null), NOWHERE)
         assertEquals(listOf(30, 40, 50, 60, 70, 80, null, 100), mapped.history)
-        assertEquals(listOf("VLESS", "hk.example.net", "ws"), listOf(mapped.protocol, mapped.host, mapped.transport))
+        assertEquals(listOf("VLESS", "hk.example.net", "WebSocket"), listOf(mapped.protocol, mapped.host, mapped.transport))
         assertEquals(443, mapped.port)
         assertTrue(mapped.tls)
         assertEquals("Harbor", mapped.subscription)
@@ -66,9 +70,9 @@ class PolicyMappingTest {
 
     @Test
     fun `a node without details shows the catalog's last probe, or nothing before one`() {
-        assertEquals(listOf(42), rvNode(node("n1", 42), null, "", RV_UNKNOWN_PLACES).history)
-        assertEquals(listOf(null), rvNode(node("n1", failed = true), null, "", RV_UNKNOWN_PLACES).history)
-        val untested = rvNode(node("n1"), null, "", RV_UNKNOWN_PLACES)
+        assertEquals(listOf(42), rvNode(node("n1", 42), null, null, NOWHERE).history)
+        assertEquals(listOf(null), rvNode(node("n1", failed = true), null, null, NOWHERE).history)
+        val untested = rvNode(node("n1"), null, null, NOWHERE)
         assertEquals(emptyList<Int?>(), untested.history)
         assertEquals(listOf("", "", 0, false), listOf(untested.protocol, untested.host, untested.port, untested.tls))
     }
@@ -178,7 +182,7 @@ class PolicyMappingTest {
         val catalog = rvSampleEngine().catalog.value!!
         val reject = RuleRow("r-ads", 0, RuleKind.DomainSuffix, "DomainSuffix", "ads.example", 1, RuleTarget.Reject)
         val rows = listOf(reject) + RvSampleRules.rows
-        val profile = rvPolicyProfile(catalog, emptyMap(), rows, 15, mapOf("r-streaming" to 7L, "r-cn" to 3L), 99L, RV_UNKNOWN_PLACES)
+        val profile = rvPolicyProfile(catalog, emptyMap(), rows, 15, mapOf("r-streaming" to 7L, "r-cn" to 3L), 99L, NOWHERE)
         assertEquals("g-Proxy", profile.main?.id)
         assertEquals(catalog.groups.map { it.id }.drop(1), profile.groups.map { it.id })
         assertEquals(RV_POLICY_CARD_RULES, profile.rules.size)
@@ -199,7 +203,7 @@ class PolicyMappingTest {
         val static = Member("static-1", "Home", subscriptionId = null)
         val main = catalog.groups.first { it.id == catalog.mainGroupId }
         val withStatic = catalog.copy(groups = catalog.groups.map { if (it === main) it.copy(members = it.members + static) else it })
-        val profile = rvPolicyProfile(withStatic, emptyMap(), emptyList(), 0, emptyMap(), 0L, RV_UNKNOWN_PLACES)
+        val profile = rvPolicyProfile(withStatic, emptyMap(), emptyList(), 0, emptyMap(), 0L, NOWHERE)
         val node = profile.nodes.single { it.id == "static-1" }
         assertTrue(node.inline)
         assertEquals("", node.subscription)
@@ -210,11 +214,11 @@ class PolicyMappingTest {
     fun `a profile without the main group lists every group, and an empty main group stays the main one`() {
         val catalog = rvSampleEngine().catalog.value!!
         val renamed = catalog.copy(mainGroupId = "g-Gone")
-        val profile = rvPolicyProfile(renamed, emptyMap(), emptyList(), 0, emptyMap(), 0L, RV_UNKNOWN_PLACES)
+        val profile = rvPolicyProfile(renamed, emptyMap(), emptyList(), 0, emptyMap(), 0L, NOWHERE)
         assertNull(profile.main)
         assertEquals(catalog.groups.map { it.id }, profile.groups.map { it.id })
         val empty = catalog.copy(groups = catalog.groups.map { if (it.id == catalog.mainGroupId) it.copy(members = emptyList()) else it })
-        val main = rvPolicyProfile(empty, emptyMap(), emptyList(), 0, emptyMap(), 0L, RV_UNKNOWN_PLACES).main
+        val main = rvPolicyProfile(empty, emptyMap(), emptyList(), 0, emptyMap(), 0L, NOWHERE).main
         assertEquals(catalog.mainGroupId, main?.id)
         assertNull(main?.selected)
     }
@@ -228,7 +232,7 @@ class PolicyMappingTest {
         val backup = Group("g-備援", "備援", GroupKind.Fallback, listOf(b, a), selectedId = "b1")
         val catalog = rvSampleEngine().catalog.value!!.copy(groups = listOf(backup, exit, fast), mainGroupId = "g-出口", subscriptions = emptyList())
         val rows = listOf(RuleRow("r1", 0, RuleKind.DomainSuffix, "DomainSuffix", "example.com", 1, RuleTarget.Group("g-備援")))
-        val profile = rvPolicyProfile(catalog, emptyMap(), rows, 1, emptyMap(), 0L, RV_UNKNOWN_PLACES)
+        val profile = rvPolicyProfile(catalog, emptyMap(), rows, 1, emptyMap(), 0L, NOWHERE)
         assertEquals("g-出口", profile.main?.id)
         assertEquals("b1", profile.main?.selected?.id)
         assertEquals(listOf("g-備援", "g-快"), profile.groups.map { it.id })
@@ -237,3 +241,6 @@ class PolicyMappingTest {
         assertEquals(listOf("a1", "b1"), profile.nodes.map { it.id }.sorted())
     }
 }
+
+/** Every node under 其他, its full name standing for the short one. */
+private val NOWHERE = NodePlaces { NodePlace(RvPlace.Other, null, it) }
