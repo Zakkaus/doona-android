@@ -4,7 +4,7 @@ import androidx.compose.runtime.Immutable
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.Member
-import dev.doona.android.feature.leafOf
+import dev.doona.android.feature.model.leafOf
 
 /** A member of a group with the node it leads to ([node]: itself for a node, where its selection ends for a group). */
 @Immutable

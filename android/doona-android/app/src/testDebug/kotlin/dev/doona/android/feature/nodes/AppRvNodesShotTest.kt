@@ -4,8 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performTextInput
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.designsystem.rv.RvPullMotion
 import dev.doona.android.designsystem.rv.rememberRvPullState
@@ -13,8 +15,10 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Group
+import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.NodeInfo
+import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeRuleMode
 import dev.doona.android.engine.fake.RvSampleNodes
 import dev.doona.android.engine.fake.rvSampleEngine
@@ -127,6 +131,15 @@ class AppRvNodesShotTest {
     @Config(qualifiers = WHOLE_DETAIL)
     fun detailInlineLight() = shot("node-detail-inline", dark = false, whole = true, engine = ::inlineEngine) { NodeRoute(it, INLINE_ID, onBack = {}) }
 
+    /** A search that matches no node: the chips, then 找不到符合的節點 where the list would start. */
+    @Test
+    fun searchNoMatchLight() = shot("node-search-nomatch", dark = false, act = { compose.onNode(hasSetTextAction()).performTextInput("xyz") }) {
+        NodeSearchRoute(it, onClose = {}, onDetail = {}, onAdd = {})
+    }
+
+    /** No node at all: the pull-down's picker shows the empty state with 新增訂閱, not chips over nothing. */
+    @Test fun pickerEmptyLight() = shot("node-picker-empty", dark = false, engine = ::emptyEngine) { Picker(it) }
+
     @Test fun pickerLight() = shot("node-picker", dark = false) { Picker(it) }
 
     @Test fun pickerDark() = shot("node-picker", dark = true) { Picker(it) }
@@ -137,10 +150,19 @@ class AppRvNodesShotTest {
     @Config(qualifiers = "en-w412dp-h915dp-notnight-xhdpi")
     fun pickerEnLight() = shot("node-picker-en", dark = false) { Picker(it) }
 
-    private fun shot(screen: String, dark: Boolean = false, fontScale: Float = 1f, whole: Boolean = false, engine: () -> Engine = ::rvSampleEngine, content: @Composable (NodesViewModel) -> Unit) {
+    private fun shot(
+        screen: String,
+        dark: Boolean = false,
+        fontScale: Float = 1f,
+        whole: Boolean = false,
+        engine: () -> Engine = ::rvSampleEngine,
+        act: () -> Unit = {},
+        content: @Composable (NodesViewModel) -> Unit,
+    ) {
         rvAnimatorScale(0f)
         val vm = NodesViewModel(engine(), Dispatchers.Unconfined, CoreNodePlaces, clock = { RvData.nowEpochMs })
         compose.rvContent(dark, fontScale) { content(vm) }
+        act()
         if (whole) compose.assertWhole()
         compose.drawFully()
         val variant = when {
@@ -166,7 +188,7 @@ class AppRvNodesShotTest {
 
     @Composable
     private fun Picker(vm: NodesViewModel) =
-        NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true), onDetail = {}) {}
+        NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true), onDetail = {}, onAdd = {}) {}
 
     /** The sample with Proxy's UDP on another node than its TCP. */
     private fun splitEngine(): Engine = rvSampleEngine(
@@ -186,6 +208,9 @@ class AppRvNodesShotTest {
             override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> = Result.failure(EngineException(ErrorCode.Busy))
         }
     }
+
+    /** A profile with no node: an empty Proxy and no subscription. */
+    private fun emptyEngine(): Engine = FakeEngine(groups = listOf(Group(FakeRuleMode.MAIN_GROUP_ID, "Proxy", GroupKind.Selector, emptyList(), Group.Selection(null, pinned = false))))
 
     /** A hand-edited profile without Proxy: the sample's other groups, so the catalog's main group is missing. */
     private fun noMainEngine(): Engine = rvSampleEngine(RvSampleNodes.groups.filterNot { it.id == FakeRuleMode.MAIN_GROUP_ID })

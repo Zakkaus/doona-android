@@ -46,7 +46,10 @@ internal data class NodesState(
     }
 }
 
-/** What the pages read from the ViewModel: the mapped [state], a latency test running, the last failed action, Score's marks (null with no Score group), and now. */
+/**
+ * What the pages read from the ViewModel: the mapped [state], a latency test running, the last failed action, Score's
+ * marks (null with no Score group), the subscriptions being updated from a row's menu ([updating]), and now.
+ */
 @Immutable
 internal data class NodesUi(
     val state: NodesState = NodesState.Empty,
@@ -55,13 +58,17 @@ internal data class NodesUi(
     val failure: NodesFailure? = null,
     val score: RvScoreMarks? = null,
     val nowEpochMs: Long = 0L,
+    val updating: Set<String> = emptySet(),
 )
 
-/** An action that failed: a node switch, a latency test or the read of the nodes' details, with the engine's reason. */
+/**
+ * An action that failed, with the engine's reason: a node switch, a latency test, the read of the nodes' details, or a
+ * row menu's copy of a share link, update or deletion of a subscription. [subject] is the updated subscription's name.
+ */
 @Immutable
-internal data class NodesFailure(val action: NodesAction, val code: ErrorCode)
+internal data class NodesFailure(val action: NodesAction, val code: ErrorCode, val subject: String? = null)
 
-internal enum class NodesAction { Select, Test, Read }
+internal enum class NodesAction { Select, Test, Read, Share, Update, Remove }
 
 /** The nodes the Score groups in [groups] chose, per network; null with no Score group. */
 internal fun rvScoreMarks(groups: List<ScoreGroup>): RvScoreMarks? = if (groups.isEmpty()) {

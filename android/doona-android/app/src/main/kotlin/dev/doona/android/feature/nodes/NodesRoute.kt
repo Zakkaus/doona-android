@@ -1,5 +1,6 @@
 package dev.doona.android.feature.nodes
 
+import android.content.ClipData
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.systemBars
@@ -9,13 +10,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.LocalRvTesting
+import dev.doona.android.designsystem.rv.LocalRvUpdating
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
@@ -30,9 +35,13 @@ import dev.doona.android.designsystem.rv.RvSkeletonEnd
 import dev.doona.android.designsystem.rv.RvSkeletonHeader
 import dev.doona.android.designsystem.rv.RvSkeletonRow
 import dev.doona.android.designsystem.rv.RvSkeletonText
+import dev.doona.android.engine.Network
 import dev.doona.android.feature.messageRes
 import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.nodes.ui.LocalRvRowActions
 import dev.doona.android.feature.nodes.ui.RvApplyTo
+import dev.doona.android.feature.nodes.ui.RvRowActions
+import kotlinx.coroutines.launch
 
 /*
  * The 節點 pages on the one [NodesViewModel] that 活動's entry holds (plan 2.2): the routing builds it there with
@@ -46,7 +55,7 @@ internal fun NodesRoute(viewModel: NodesViewModel, onBack: () -> Unit, onOpen: (
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     if (!ui.loaded) return NodesSkeleton(onBack)
     val page = remember(ui.state) { RvNodesPageState(ui.state.nodes, ui.state.current, ui.state.subscriptions) }
-    CompositionLocalProvider(LocalRvTesting provides ui.testing) {
+    NodesLocals(viewModel, ui) {
         RvNodesPage(
             page,
             onBack,
@@ -65,8 +74,8 @@ internal fun NodesRoute(viewModel: NodesViewModel, onBack: () -> Unit, onOpen: (
 internal fun NodeRoute(viewModel: NodesViewModel, nodeId: String, onBack: () -> Unit) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     if (!ui.loaded) return NodesSkeleton(onBack)
-    val node = ui.state.nodes.firstOrNull { it.id == nodeId } ?: return LaunchedEffect(Unit) { onBack() }
-    CompositionLocalProvider(LocalRvTesting provides ui.testing) {
+    val node = ui.state.node(nodeId) ?: return LaunchedEffect(Unit) { onBack() }
+    NodesLocals(viewModel, ui) {
         RvNodeDetail(
             node,
             current = node.id in ui.state.current,
@@ -86,17 +95,17 @@ internal fun NodeRoute(viewModel: NodesViewModel, nodeId: String, onBack: () -> 
  * once the core has switched, closes. A failed pick leaves the page open under its banner.
  */
 @Composable
-internal fun NodeSearchRoute(viewModel: NodesViewModel, onClose: () -> Unit, onDetail: (String) -> Unit) {
+internal fun NodeSearchRoute(viewModel: NodesViewModel, onClose: () -> Unit, onDetail: (String) -> Unit, onAdd: () -> Unit) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     var applyTo by rememberSaveable { mutableStateOf(RvApplyTo.Both) }
     val apply = applyTo.takeIf { ui.state.split }
-    CompositionLocalProvider(LocalRvTesting provides ui.testing) {
+    NodesLocals(viewModel, ui) {
         RvNodePicker(
             ui.state.nodes,
             ui.state.subscriptions,
             ui.state.currentId,
             ui.nowEpochMs,
-            onPick = { viewModel.pick(it, apply?.network, onClose) },
+            onPick = { viewModel.pick(it, apply?.network(), onClose) },
             onDetail = onDetail,
             onClose = onClose,
             searchPage = true,
@@ -105,6 +114,7 @@ internal fun NodeSearchRoute(viewModel: NodesViewModel, onClose: () -> Unit, onD
             alsoCurrent = ui.state.current,
             apply = apply,
             onApply = { applyTo = it },
+            onAdd = onAdd,
         )
     }
 }
@@ -119,14 +129,14 @@ internal fun MainNodeRoute(viewModel: NodesViewModel, onBack: () -> Unit, onSear
     var sort by rememberSaveable { mutableStateOf(RvNodeSort.Latency) }
     var applyTo by rememberSaveable { mutableStateOf(RvApplyTo.Both) }
     val apply = applyTo.takeIf { ui.state.split }
-    CompositionLocalProvider(LocalRvTesting provides ui.testing) {
+    NodesLocals(viewModel, ui) {
         RvNodePickerPage(
             ui.state.nodes,
             ui.state.subscriptions,
             ui.state.currentId,
             sort,
             { sort = it },
-            onPick = { viewModel.pick(it, apply?.network) },
+            onPick = { viewModel.pick(it, apply?.network()) },
             onBack = onBack,
             onTest = viewModel::test,
             onSearch = onSearch,
@@ -144,8 +154,8 @@ internal fun MainNodeRoute(viewModel: NodesViewModel, onBack: () -> Unit, onSear
 /**
  * 活動 with the node picker it pulls down (ARCH D30), hosted inside 活動's entry and not on the back stack, so 活動 keeps
  * its state while the picker covers it. A pick switches the main node and, once the core has switched, closes the picker;
- * a failed pick leaves it open under its banner. A long press or the row's
- * info mark opens the node's page ([onDetail]). [activity] is 活動's route, given the pull's look.
+ * a failed pick leaves it open under its banner. A long press or the row's info mark opens the node's page ([onDetail]);
+ * with no node, the empty state's 新增訂閱 runs [onAdd]. [activity] is 活動's route, given the pull's look.
  */
 @Composable
 internal fun NodesPull(
@@ -153,19 +163,20 @@ internal fun NodesPull(
     variant: RvPullMotion,
     state: RvPullState,
     onDetail: (String) -> Unit,
+    onAdd: () -> Unit,
     activity: @Composable (RvPullLook) -> Unit,
 ) {
     RvPullDown(variant, state, activity) { motion ->
         val ui by viewModel.ui.collectAsStateWithLifecycle()
         var applyTo by rememberSaveable { mutableStateOf(RvApplyTo.Both) }
         val apply = applyTo.takeIf { ui.state.split }
-        CompositionLocalProvider(LocalRvTesting provides ui.testing) {
+        NodesLocals(viewModel, ui, shown = state.drawn) {
             RvNodePicker(
                 ui.state.nodes,
                 ui.state.subscriptions,
                 ui.state.currentId,
                 ui.nowEpochMs,
-                onPick = { viewModel.pick(it, apply?.network, motion.close) },
+                onPick = { viewModel.pick(it, apply?.network(), motion.close) },
                 onDetail = onDetail,
                 onClose = motion.close,
                 section = motion.section,
@@ -175,9 +186,39 @@ internal fun NodesPull(
                 alsoCurrent = ui.state.current,
                 apply = apply,
                 onApply = { applyTo = it },
+                onAdd = onAdd,
             )
         }
     }
+}
+
+/**
+ * What every 節點 route gives its page: the test running ([LocalRvTesting]), the subscriptions updating
+ * ([LocalRvUpdating]) and the rows' menus' actions ([LocalRvRowActions]) on [viewModel]: 設為主節點, 測試延遲, 複製分享連結
+ * (the core's link to the clipboard), and a subscription's 更新 and 刪除. A pull-down picker not [shown] follows no test or
+ * update, as [RvPullDown] keeps it (a busy bar would run in each row).
+ */
+@Composable
+private fun NodesLocals(viewModel: NodesViewModel, ui: NodesUi, shown: Boolean = true, content: @Composable () -> Unit) {
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    val actions = remember(viewModel, clipboard, scope) {
+        RvRowActions(
+            useNode = { viewModel.pick(it) },
+            testNode = viewModel::testNode,
+            updateSubscription = viewModel::update,
+            deleteSubscription = viewModel::remove,
+            copyLink = { node ->
+                viewModel.copyLink(node.id) { link -> scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(node.name, link))) } }
+            },
+        )
+    }
+    CompositionLocalProvider(
+        LocalRvTesting provides (shown && ui.testing),
+        LocalRvUpdating provides if (shown) ui.updating else emptySet(),
+        LocalRvRowActions provides actions,
+        content = content,
+    )
 }
 
 /**
@@ -209,7 +250,11 @@ private fun NodesSkeleton(onBack: () -> Unit) {
 @Composable
 private fun nodesBanner(failure: NodesFailure, onRetry: () -> Unit) = RvNotice(
     RvNoticeKind.Error,
-    stringResource(failure.action.title),
+    if (failure.action == NodesAction.Update) {
+        stringResource(R.string.rv_sub_failed_title, failure.subject.orEmpty())
+    } else {
+        stringResource(failure.action.title)
+    },
     stringResource(failure.code.messageRes()),
     stringResource(R.string.rv_retry),
     onRetry,
@@ -221,6 +266,16 @@ private val NodesAction.title: Int
         NodesAction.Select -> R.string.rv_failed_switch_node
         NodesAction.Test -> R.string.rv_failed_test_latency
         NodesAction.Read -> R.string.rv_failed_read_nodes
+        NodesAction.Share -> R.string.rv_failed_copy_link
+        NodesAction.Update -> R.string.rv_sub_failed_title
+        NodesAction.Remove -> R.string.rv_failed_remove_subscription
     }
+
+/** The engine's network for a 套用到 choice; null for both. */
+private fun RvApplyTo.network(): Network? = when (this) {
+    RvApplyTo.Both -> null
+    RvApplyTo.Tcp -> Network.Tcp
+    RvApplyTo.Udp -> Network.Udp
+}
 
 private const val SKELETON_ROWS = 6

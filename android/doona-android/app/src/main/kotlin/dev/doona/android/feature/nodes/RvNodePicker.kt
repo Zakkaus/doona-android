@@ -116,6 +116,7 @@ internal fun RvNodePicker(
     alsoCurrent: Set<String> = emptySet(),
     apply: RvApplyTo? = null,
     onApply: (RvApplyTo) -> Unit = {},
+    onAdd: () -> Unit = {},
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val focus = remember { FocusRequester() }
@@ -143,8 +144,10 @@ internal fun RvNodePicker(
     val scoped = nodes.filter { inPicked(it, picked) }
     val matching = scoped.filter { it.matches(query.trim(), labels.getValue(it.id)) }.mapTo(mutableSetOf()) { it.id }
     // The sections shown: the picked subscription's, or all, then 組態內 (a null subscription) when it has nodes.
-    val ours = nodes.any { it.inline } && (picked == null || picked == RV_INLINE)
-    val sections: List<RvSubscription?> = subscriptions.filter { picked == null || it.id == picked } + if (ours) listOf(null) else emptyList()
+    val given = nodes.mapTo(HashSet()) { it.subscriptionId }
+    val ours = RV_INLINE in given && (picked == null || picked == RV_INLINE)
+    // A subscription whose fetch gave no node has no section, as the 訂閱 chip's menu leaves it out.
+    val sections: List<RvSubscription?> = subscriptions.filter { it.id in given && (picked == null || it.id == picked) } + if (ours) listOf(null) else emptyList()
     val composed = rememberRowsComposed(sections.size + scoped.size)
     RvLongPressTiming {
         Box(Modifier.fillMaxSize().testTag(RV_PICKER)) {
@@ -152,12 +155,18 @@ internal fun RvNodePicker(
             Column(Modifier.fillMaxSize().rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll).graphicsLayer { translationY = stretch() }) {
                 Column(section(1)) {
                     val (subChip, orderChip) = rvNodeChips(subscriptions, nodes, picked, order, { chosen = it }, { order = it })
-                    RvPageHeader(title, Modifier, insets, caption = caption?.let { line -> { RvCaption(line) } }, control = { RvFilterChipRow(subChip, orderChip) })
+                    // With no node the chips have nothing to pick or order; the empty state takes the list's place.
+                    val chips: (@Composable () -> Unit)? = if (nodes.isEmpty()) null else ({ RvFilterChipRow(subChip, orderChip) })
+                    RvPageHeader(title, Modifier, insets, caption = caption?.let { line -> { RvCaption(line) } }, control = chips)
                     RvBannerSlot(banner)
-                    if (apply != null) {
+                    if (nodes.isEmpty()) {
+                        RvGutter { RvNoSubscription(onAdd) }
+                    } else if (apply != null) {
                         RvGutter { RvApplyCard(apply, onApply) }
                         Spacer(Modifier.height(RvSpace.cardGap))
                     }
+                    // A search that matches no node says so under the chips, where the list would start.
+                    if (query.isNotBlank() && matching.isEmpty()) RvGutter { RvCaption(stringResource(R.string.rv_nodes_no_match)) }
                 }
                 var first = 0
                 sections.forEachIndexed { i, sub ->

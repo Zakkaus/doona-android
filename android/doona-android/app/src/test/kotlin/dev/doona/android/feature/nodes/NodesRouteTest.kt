@@ -1,5 +1,7 @@
 package dev.doona.android.feature.nodes
 
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -13,6 +15,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onLast
@@ -20,6 +23,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.designsystem.rv.RvPullMotion
 import dev.doona.android.designsystem.rv.RvPullState
@@ -34,11 +39,13 @@ import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Network
 import dev.doona.android.engine.NodeInfo
+import dev.doona.android.engine.ShareLink
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeRuleMode
 import dev.doona.android.feature.model.CoreNodePlaces
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -64,6 +71,9 @@ class NodesRouteTest {
 
     @Volatile private var readsFail = false
 
+    private val tested = CopyOnWriteArrayList<String?>()
+    private val updated = CopyOnWriteArrayList<String>()
+
     private fun engine(extra: List<Member> = emptyList(), udp: String? = null): Engine {
         val sub = Subscription("s-1", "Harbor", "https://sub.example.net/token", nodes = 3, updatedAtEpochMs = 1L)
         val members = listOf(
@@ -81,8 +91,17 @@ class NodesRouteTest {
                 return fake.select(groupId, memberId, network)
             }
 
-            override suspend fun testLatency(groupId: String?): Result<Unit> =
-                if (testsFail) Result.failure(EngineException(ErrorCode.Internal)) else fake.testLatency(groupId)
+            override suspend fun testLatency(groupId: String?): Result<Unit> {
+                tested += groupId
+                return if (testsFail) Result.failure(EngineException(ErrorCode.Internal)) else fake.testLatency(groupId)
+            }
+
+            override suspend fun nodeShareLink(nodeId: String): Result<ShareLink> = Result.success(ShareLink("vless://$nodeId@example.net:443"))
+
+            override suspend fun updateSubscription(id: String): Result<Subscription> {
+                updated += id
+                return fake.updateSubscription(id)
+            }
 
             // A node the profile lists itself whose details the core has not sent yet.
             override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> =
@@ -100,7 +119,7 @@ class NodesRouteTest {
         compose.setContent {
             RvTheme(rvSystemScheme(false), false) {
                 val state = rememberRvPullState(open = true).also { pull = it }
-                NodesPull(vm, RvPullMotion.Sheet, state, onDetail = {}) {
+                NodesPull(vm, RvPullMotion.Sheet, state, onDetail = {}, onAdd = {}) {
                     // 活動's own state, which must outlive the picker covering it.
                     val kept = remember { ++drawn }
                     BasicText("activity $kept")
@@ -129,7 +148,7 @@ class NodesRouteTest {
     fun `search filters by the raw name and a pick makes the node the main one and closes`() {
         val vm = viewModel(engine())
         var closed = false
-        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeSearchRoute(vm, onClose = { closed = true }, onDetail = {}) } }
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeSearchRoute(vm, onClose = { closed = true }, onDetail = {}, onAdd = {}) } }
         compose.onNode(hasSetTextAction()).performTextInput("osaka")
         compose.waitForIdle()
         compose.onNodeWithText("Tokyo 01").assertDoesNotExist()
@@ -145,7 +164,7 @@ class NodesRouteTest {
         var pull: RvPullState? = null
         compose.setContent {
             RvTheme(rvSystemScheme(false), false) {
-                NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true).also { pull = it }, onDetail = {}) {}
+                NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true).also { pull = it }, onDetail = {}, onAdd = {}) {}
             }
         }
         compose.waitForIdle()
@@ -180,7 +199,7 @@ class NodesRouteTest {
     @Test
     fun `a node of no subscription is listed under 組態內 in the picker, and the 訂閱 chip can pick it`() {
         val vm = viewModel(engine(extra = listOf(Member("n-mine", "Home 01"))))
-        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeSearchRoute(vm, onClose = {}, onDetail = {}) } }
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeSearchRoute(vm, onClose = {}, onDetail = {}, onAdd = {}) } }
         compose.waitForIdle()
         compose.onNodeWithText("In configuration").assertExists()
         compose.onNodeWithText("Home 01").assertExists()
@@ -296,6 +315,11 @@ class NodesRouteTest {
         }
         compose.waitForIdle()
         compose.onNodeWithText("Could not read the nodes").assertExists()
+        // The row's menu has no share link for a node the core has not described (no `://:0`).
+        compose.onAllNodesWithText("Tokyo 01").onFirst().performTouchInput { longClick() }
+        compose.waitForIdle()
+        compose.onNodeWithText("Test latency").assertExists()
+        compose.onNodeWithText("Copy share link").assertDoesNotExist()
         node = true
         compose.waitForIdle()
         compose.onNodeWithText("Could not read the nodes").assertExists()
@@ -335,6 +359,82 @@ class NodesRouteTest {
         compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeRoute(vm, "n-mine", onBack = {}) } }
         compose.waitForIdle()
         compose.onNodeWithText("In configuration", useUnmergedTree = true).assertExists()
+    }
+
+    /** The app gives the rows' menus their actions (they were the sample's alone): 設為主節點, 測試延遲, 複製分享連結, 更新. */
+    @Test
+    fun `the rows' menus run the app's own actions`() {
+        val vm = viewModel(engine())
+        var pull by mutableStateOf(false)
+        compose.setContent {
+            RvTheme(rvSystemScheme(false), false) {
+                if (pull) {
+                    NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true), onDetail = {}, onAdd = {}) {}
+                } else {
+                    NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {})
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onAllNodesWithText("🦄 Osaka 02").onFirst().performTouchInput { longClick() }
+        compose.waitForIdle()
+        compose.onNodeWithText("Set as main node").performClick()
+        compose.waitUntil(5_000) { selected.isNotEmpty() }
+        assertEquals(listOf(Triple(MAIN, "n-odd", null)), selected.toList())
+        compose.waitForIdle()
+        compose.onAllNodesWithText("Tokyo 01").onFirst().performTouchInput { longClick() }
+        compose.waitForIdle()
+        compose.onNodeWithText("Test latency").performClick()
+        compose.waitUntil(5_000) { tested.isNotEmpty() }
+        assertEquals(listOf<String?>(MAIN), tested.toList())
+        compose.waitForIdle()
+        compose.onAllNodesWithText("Tokyo 01").onFirst().performTouchInput { longClick() }
+        compose.waitForIdle()
+        compose.onNodeWithText("Copy share link").performClick()
+        compose.waitForIdle()
+        val clipboard = ApplicationProvider.getApplicationContext<Context>().getSystemService(ClipboardManager::class.java)
+        assertEquals("vless://n-jp@example.net:443", clipboard.primaryClip?.getItemAt(0)?.text?.toString())
+        // The picker's 訂閱 row: 更新 updates that subscription.
+        pull = true
+        compose.waitForIdle()
+        compose.onAllNodesWithText("Harbor").onFirst().performTouchInput { longClick() }
+        compose.waitForIdle()
+        compose.onNodeWithText("Update").performClick()
+        compose.waitUntil(5_000) { updated.isNotEmpty() }
+        assertEquals(listOf("s-1"), updated.toList())
+    }
+
+    @Test
+    fun `the picker says when a search matches nothing and lists no subscription that gave no node`() {
+        val empty = Subscription("s-2", "Lantern", "https://lantern.example.net/c", nodes = 0, updatedAtEpochMs = 1L)
+        val fake = engine()
+        val vm = viewModel(object : Engine by fake {
+            override val subscriptions = MutableStateFlow(fake.subscriptions.value + empty)
+            override val catalog = MutableStateFlow(fake.catalog.value?.let { it.copy(subscriptions = it.subscriptions + empty) })
+        })
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeSearchRoute(vm, onClose = {}, onDetail = {}, onAdd = {}) } }
+        compose.waitForIdle()
+        compose.onNodeWithText("Harbor").assertExists()
+        compose.onNodeWithText("Lantern").assertDoesNotExist()
+        compose.onNodeWithText("No matching nodes").assertDoesNotExist()
+        compose.onNode(hasSetTextAction()).performTextInput("xyz")
+        compose.waitForIdle()
+        compose.onNodeWithText("No matching nodes").assertExists()
+    }
+
+    @Test
+    fun `with no node the pull-down picker offers 新增訂閱 instead of chips over nothing`() {
+        val vm = viewModel(FakeEngine(groups = listOf(Group(MAIN, "Proxy", GroupKind.Selector, emptyList(), Group.Selection(null, pinned = false)))))
+        var added = false
+        compose.setContent {
+            RvTheme(rvSystemScheme(false), false) {
+                NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true), onDetail = {}, onAdd = { added = true }) {}
+            }
+        }
+        compose.waitForIdle()
+        compose.onNodeWithText("All subscriptions").assertDoesNotExist()
+        compose.onNodeWithText("Add subscription").performClick()
+        assertTrue(added)
     }
 
     private companion object {

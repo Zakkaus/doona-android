@@ -19,6 +19,9 @@
     <string name="rv_failed_switch_node">Could not switch the node</string>
     <string name="rv_failed_test_latency">Could not test latency</string>
     <string name="rv_failed_read_nodes">Could not read the nodes</string>
+    <string name="rv_failed_copy_link">Could not copy the share link</string>
+    <string name="rv_failed_remove_subscription">Could not delete the subscription</string>
+    <string name="rv_nodes_no_match">No matching nodes</string>
     <string name="rv_lan_ask_title">Allow local network access</string>
     <string name="rv_lan_ask_body">doona needs this permission to reach subscriptions and nodes on your local network.</string>
     <string name="rv_lan_ask_continue">Continue</string>

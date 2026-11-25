@@ -15,6 +15,7 @@ import dev.doona.android.engine.ScoreCounters
 import dev.doona.android.engine.ScoreCoverage
 import dev.doona.android.engine.ScoreGroup
 import dev.doona.android.engine.ScoreNetwork
+import dev.doona.android.engine.ShareLink
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeRuleMode
@@ -60,6 +61,23 @@ class NodesViewModelTest {
         var gate: CompletableDeferred<Unit>? = null
         var readFails = false
         val selectGates = mutableMapOf<String, CompletableDeferred<Unit>>()
+        val links = mutableMapOf<String, String>()
+        val updated = mutableListOf<String>()
+        val removed = mutableListOf<String>()
+        var subFails = false
+
+        override suspend fun nodeShareLink(nodeId: String): Result<ShareLink> =
+            links[nodeId]?.let { Result.success(ShareLink(it)) } ?: Result.failure(EngineException(ErrorCode.NotFound))
+
+        override suspend fun updateSubscription(id: String): Result<Subscription> {
+            updated += id
+            return if (subFails) Result.failure(EngineException(ErrorCode.FetchFailed)) else base.updateSubscription(id)
+        }
+
+        override suspend fun removeSubscription(id: String): Result<Unit> {
+            removed += id
+            return if (subFails) Result.failure(EngineException(ErrorCode.Busy)) else base.removeSubscription(id)
+        }
 
         override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> = when {
             readFails -> Result.failure(EngineException(ErrorCode.Busy))
@@ -310,6 +328,64 @@ class NodesViewModelTest {
         assertEquals(emptyList<String>(), closed)
         second.complete(Unit)
         assertEquals(listOf("n-b"), closed)
+    }
+
+    /** A probe that timed out (failed, no latency) is a test with no answer, 逾時, not a node never tested. */
+    @Test
+    fun aTimedOutProbeIsATestWithNoAnswer() = runTest {
+        val ui = collected(engine(listOf(Member("n-a", "A 01", latencyMs = null, failed = true), Member("n-b", "B 02")))).ui.value
+        assertEquals(listOf<Int?>(null), ui.state.node("n-a")!!.history)
+        assertEquals(emptyList<Int?>(), ui.state.node("n-b")!!.history)
+    }
+
+    /** A row menu's 測試延遲 tests the groups that list the node; a failure retries that test, not every group's. */
+    @Test
+    fun aOneNodeTestTestsTheGroupsThatListItAndRetriesItself() = runTest {
+        val other = Group("g-Other", "Other", GroupKind.UrlTest, listOf(Member("n-a", "A 01"), Member("n-c", "C 03")), Group.Selection("n-a", pinned = false))
+        val main = Group(MAIN, "Proxy", GroupKind.Selector, listOf(Member("n-a", "A 01"), Member("n-b", "B 02")), Group.Selection("n-a", pinned = true))
+        val probe = Probe(FakeEngine(groups = listOf(main, other), subscriptions = listOf(sub)))
+        val vm = collected(probe)
+        vm.testNode("n-b")
+        assertEquals(listOf<String?>(MAIN), probe.tested)
+        probe.result = Result.failure(EngineException(ErrorCode.Internal))
+        vm.testNode("n-a")
+        assertEquals(listOf(MAIN, MAIN, "g-Other"), probe.tested)
+        assertEquals(NodesAction.Test, vm.ui.value.failure?.action)
+        probe.result = Result.success(Unit)
+        vm.retry()
+        assertEquals(listOf(MAIN, MAIN, "g-Other", MAIN, "g-Other"), probe.tested)
+        assertNull(vm.ui.value.failure)
+    }
+
+    /** 複製分享連結 copies the core's link; a node the core has none for fails with its banner, and the link is never made up. */
+    @Test
+    fun aShareLinkComesFromTheCoreAndANodeWithoutOneFails() = runTest {
+        val probe = Probe(engine(listOf(Member("n-a", "A 01"), Member("n-b", "B 02"))))
+        probe.links["n-a"] = "vless://id@a.example.net:443#A"
+        val vm = collected(probe)
+        val copied = mutableListOf<String>()
+        vm.copyLink("n-a") { copied += it }
+        assertEquals(listOf("vless://id@a.example.net:443#A"), copied)
+        vm.copyLink("n-b") { copied += it }
+        assertEquals(1, copied.size)
+        assertEquals(NodesFailure(NodesAction.Share, ErrorCode.NotFound), vm.ui.value.failure)
+    }
+
+    /** A subscription's 更新 shows it updating until the core answers; a failed one names it; 刪除 deletes it. */
+    @Test
+    fun aSubscriptionsUpdateAndDeleteGoToTheCoreAndAFailureNamesIt() = runTest {
+        val probe = Probe(engine(listOf(Member("n-a", "A 01", subscriptionId = "s-1")))).apply { subFails = true }
+        val vm = collected(probe)
+        vm.update("s-1")
+        assertEquals(listOf("s-1"), probe.updated)
+        assertEquals(emptySet<String>(), vm.ui.value.updating)
+        assertEquals(NodesFailure(NodesAction.Update, ErrorCode.FetchFailed, "Harbor"), vm.ui.value.failure)
+        probe.subFails = false
+        vm.retry()
+        assertEquals(listOf("s-1", "s-1"), probe.updated)
+        assertNull(vm.ui.value.failure)
+        vm.remove("s-1")
+        assertEquals(listOf("s-1"), probe.removed)
     }
 
     @Test

@@ -16,9 +16,10 @@ import kotlinx.coroutines.launch
 import java.net.URLEncoder
 
 /**
- * What the rows' long-press menus do in the running sample (brief rv-gestures G3): [useNode] makes a node the main one,
- * [testNode] tests one node's latency, [updateSubscription] updates one subscription, [deleteSubscription] removes it.
- * The default does nothing and offers no menu, as in the goldens and previews.
+ * What the rows' long-press menus do (brief rv-gestures G3), given by the app's 節點 routes and by the running sample:
+ * [useNode] makes a node the main one, [testNode] tests one node's latency, [copyLink] puts a node's share link on the
+ * clipboard (null: the sample's own link, [shareLink]), [updateSubscription] updates one subscription,
+ * [deleteSubscription] removes it. The default does nothing and offers no menu, as in the goldens and previews.
  */
 @Immutable
 internal class RvRowActions(
@@ -26,19 +27,21 @@ internal class RvRowActions(
     val testNode: ((String) -> Unit)? = null,
     val updateSubscription: ((String) -> Unit)? = null,
     val deleteSubscription: ((String) -> Unit)? = null,
+    val copyLink: ((RvNode) -> Unit)? = null,
 )
 
 internal val LocalRvRowActions = staticCompositionLocalOf { RvRowActions() }
 
 /**
  * A node row's menu: 設為主節點 (left out for the main node, or where [use] is null), 測試延遲, 詳情 (its page, through
- * [details]) and 複製分享連結 (the node's [shareLink] to the clipboard; Android shows that it was copied; left out for a
- * node whose details the core has not sent, [RvNode.described], which has no link to give). [use] is the
- * page's own switch: the picker's closes it as a tap does.
+ * [details]) and 複製分享連結 (the core's link through [RvRowActions.copyLink], or the sample's [shareLink], to the
+ * clipboard; Android shows that it was copied; left out for a node whose details the core has not sent,
+ * [RvNode.described], which has no link to give). [use] is the page's own switch: the picker's closes it as a tap does.
  */
 @Composable
 internal fun rvNodeMenu(node: RvNode, current: Boolean, use: ((String) -> Unit)?, details: (String) -> Unit): List<RvMenuItem> {
-    val test = LocalRvRowActions.current.testNode ?: return emptyList()
+    val actions = LocalRvRowActions.current
+    val test = actions.testNode ?: return emptyList()
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
     val setMain = stringResource(R.string.rv_menu_set_main)
@@ -49,7 +52,13 @@ internal fun rvNodeMenu(node: RvNode, current: Boolean, use: ((String) -> Unit)?
         if (use != null && !current) add(RvMenuItem(setMain, R.drawable.rv_nodes_ic_check_circle) { use(node.id) })
         add(RvMenuItem(testLabel, R.drawable.rv_sym_speed) { test(node.id) })
         add(RvMenuItem(detailsLabel, R.drawable.rv_sym_info) { details(node.id) })
-        if (node.described) add(RvMenuItem(copy, R.drawable.rv_sym_ios_share) { scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(node.name, node.shareLink()))) } })
+        if (node.described) {
+            add(
+                RvMenuItem(copy, R.drawable.rv_sym_ios_share) {
+                    actions.copyLink?.invoke(node) ?: scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(node.name, node.shareLink()))) }
+                },
+            )
+        }
     }
 }
 

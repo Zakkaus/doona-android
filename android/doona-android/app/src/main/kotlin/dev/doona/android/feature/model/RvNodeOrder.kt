@@ -89,8 +89,8 @@ internal sealed class RvNodeGroup(val key: String, val nodes: List<RvNode>) {
 
 /**
  * [nodes] as a list shows them under [sort]: by subscription in [subscriptions]' order (by [RvNode.subscriptionId], so two
- * subscriptions of one name stay apart), then the nodes of no subscription ([RvNode.inline]) in one 組態內 card, or by
- * country for 地區. Every order shows every node.
+ * subscriptions of one name stay apart; a subscription with no node has no card), then the nodes of no subscription
+ * ([RvNode.inline]) in one 組態內 card, or by country for 地區. Every order shows every node.
  */
 internal fun rvNodeGroups(nodes: List<RvNode>, subscriptions: List<RvSubscription>, sort: RvNodeSort): List<RvNodeGroup> = when (sort) {
     RvNodeSort.Region -> byPlace(nodes).map { (place, members) -> RvNodeGroup.Place(place, members) }
@@ -102,7 +102,9 @@ internal fun rvNodeGroups(nodes: List<RvNode>, subscriptions: List<RvSubscriptio
             else -> rvByLatency
         }
         val inline = nodes.filter { it.inline }.sortedWith(order)
-        subscriptions.map { sub -> RvNodeGroup.Subscription(sub, nodes.filter { it.subscriptionId == sub.id }.sortedWith(order)) } +
+        val bySub = nodes.groupBy { it.subscriptionId }
+        // A subscription whose fetch gave no node gets no card, as the 訂閱 chip's menu leaves it out.
+        subscriptions.mapNotNull { sub -> bySub[sub.id]?.let { RvNodeGroup.Subscription(sub, it.sortedWith(order)) } } +
             listOfNotNull(inline.takeIf { it.isNotEmpty() }?.let { RvNodeGroup.Inline(it) })
     }
 }

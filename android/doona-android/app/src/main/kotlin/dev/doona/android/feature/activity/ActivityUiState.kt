@@ -8,7 +8,7 @@ import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Settings
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Traffic
-import dev.doona.android.feature.leafOf
+import dev.doona.android.feature.model.leafOf
 
 /** Everything the 活動 screen shows, in engine terms; the screen formats and localizes it. */
 @Immutable

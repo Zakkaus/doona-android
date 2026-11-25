@@ -35,9 +35,10 @@ import kotlinx.coroutines.launch
  * The D30 picker's, 節點's, a node's page's and search's state, one instance scoped to 活動's entry and shared by the four
  * (plan 2.2). Each catalog revision reads the nodes' details (`nodes(ids)`) and maps every node once, on [work], into
  * immutable values, so nothing a page reads changes between revisions and 活動 under the picker is not composed again on
- * a tick. A pick switches the main group ([pick]); a test asks the core to test every group ([test]); a failure (of
- * those, or of reading the nodes' details) stays until the same action next succeeds, and [retry] runs it again. [clock]
- * is now, for the subscriptions' end dates.
+ * a tick. A pick switches the main group ([pick]); a test asks the core to test every group ([test]), or the groups that
+ * list one node ([testNode]); the rows' menus copy a node's share link ([copyLink]) and update or delete a subscription
+ * ([update], [remove]). A failure (of those, or of reading the nodes' details) stays until the same action next
+ * succeeds, and [retry] runs it again. [clock] is now, for the subscriptions' end dates.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class NodesViewModel internal constructor(
@@ -48,6 +49,14 @@ class NodesViewModel internal constructor(
 ) : ViewModel() {
     private val failure = MutableStateFlow<NodesFailure?>(null)
     private val running = MutableStateFlow(false)
+    private val updating = MutableStateFlow(emptySet<String>())
+
+    /** The node of the last one-node test (null: every group's), the last share link asked for, the last subscription acted on. */
+    private var lastTest: String? = null
+    private var lastShare: Share? = null
+    private var lastSub: String? = null
+
+    private class Share(val nodeId: String, val onLink: (String) -> Unit)
 
     /** Bumped by [retry] after a failed read of the nodes' details, to read them again. */
     private val reread = MutableStateFlow(0)
@@ -81,8 +90,8 @@ class NodesViewModel internal constructor(
     private val testing: Flow<Boolean> = combine(running, engine.groups.map { all -> all.any { it.testing } }) { mine, core -> mine || core }
         .distinctUntilChanged()
 
-    internal val ui: StateFlow<NodesUi> = combine(mapped, score, testing, failure) { state, score, testing, failure ->
-        NodesUi(state ?: NodesState.Empty, loaded = state != null, testing = testing, failure = failure, score = score, nowEpochMs = clock())
+    internal val ui: StateFlow<NodesUi> = combine(mapped, score, testing, failure, updating) { state, score, testing, failure, updating ->
+        NodesUi(state ?: NodesState.Empty, loaded = state != null, testing = testing, failure = failure, score = score, nowEpochMs = clock(), updating = updating)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), NodesUi())
 
     /**
@@ -109,6 +118,7 @@ class NodesViewModel internal constructor(
     /** Tests every group's nodes; the rows show the test running until the core's results arrive. */
     fun test() {
         if (running.value) return
+        lastTest = null
         running.value = true
         viewModelScope.launch {
             try {
@@ -119,22 +129,70 @@ class NodesViewModel internal constructor(
         }
     }
 
-    /** Runs the failed action again: the last pick, the test, or the read of the nodes' details. */
+    /**
+     * Tests [nodeId] from a row's menu: the core probes a group's members, so this tests each group that lists the node,
+     * or every group when none does.
+     */
+    fun testNode(nodeId: String) {
+        val holding = engine.catalog.value?.groups.orEmpty().filter { group -> group.members.any { it.id == nodeId } }
+        if (holding.isEmpty()) return test()
+        lastTest = nodeId
+        viewModelScope.launch {
+            holding.map { engine.testLatency(it.id) }.let { results -> results.firstOrNull { it.isFailure } ?: results.first() }.report(NodesAction.Test)
+        }
+    }
+
+    /** Reads [nodeId]'s share link from the core and hands it to [onLink] (the page puts it on the clipboard); a node with none fails. */
+    fun copyLink(nodeId: String, onLink: (String) -> Unit) {
+        lastShare = Share(nodeId, onLink)
+        viewModelScope.launch {
+            val link = engine.nodeShareLink(nodeId)
+            link.report(NodesAction.Share)
+            link.getOrNull()?.let { onLink(it.uri) }
+        }
+    }
+
+    /** Updates subscription [id]; its row shows it updating until the core answers ([NodesUi.updating]). */
+    fun update(id: String) {
+        if (id in updating.value) return
+        lastSub = id
+        updating.update { it + id }
+        viewModelScope.launch {
+            try {
+                engine.updateSubscription(id).report(NodesAction.Update, subscriptionName(id))
+            } finally {
+                updating.update { it - id }
+            }
+        }
+    }
+
+    /** Deletes subscription [id], once its row's sheet has asked. */
+    fun remove(id: String) {
+        lastSub = id
+        viewModelScope.launch { engine.removeSubscription(id).report(NodesAction.Remove) }
+    }
+
+    /** Runs the failed action again: the last pick, test, read of the nodes' details, share link, update or deletion. */
     fun retry() {
         when (failure.value?.action) {
             NodesAction.Select -> lastPick?.let { pick(it.nodeId, it.network, it.onPicked) }
-            NodesAction.Test -> test()
+            NodesAction.Test -> lastTest?.let(::testNode) ?: test()
             NodesAction.Read -> reread.update { it + 1 }
+            NodesAction.Share -> lastShare?.let { copyLink(it.nodeId, it.onLink) }
+            NodesAction.Update -> lastSub?.let(::update)
+            NodesAction.Remove -> lastSub?.let(::remove)
             null -> Unit
         }
     }
 
+    private fun subscriptionName(id: String): String? = engine.catalog.value?.subscriptions?.firstOrNull { it.id == id }?.name
+
     /** A failure stands for [action] until it next succeeds; a success clears only its own action's failure. */
-    private fun Result<*>.report(action: NodesAction) {
+    private fun Result<*>.report(action: NodesAction, subject: String? = null) {
         val error = exceptionOrNull()
         failure.update { last ->
             when {
-                error != null -> NodesFailure(action, (error as? EngineException)?.code ?: ErrorCode.Internal)
+                error != null -> NodesFailure(action, (error as? EngineException)?.code ?: ErrorCode.Internal, subject)
                 last?.action == action -> null
                 else -> last
             }

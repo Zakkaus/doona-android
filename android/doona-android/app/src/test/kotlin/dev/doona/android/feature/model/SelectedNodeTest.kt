@@ -1,4 +1,4 @@
-package dev.doona.android.feature
+package dev.doona.android.feature.model
 
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind

@@ -19,6 +19,9 @@
     <string name="rv_failed_switch_node">无法切换节点</string>
     <string name="rv_failed_test_latency">无法测试延迟</string>
     <string name="rv_failed_read_nodes">无法读取节点</string>
+    <string name="rv_failed_copy_link">无法复制分享链接</string>
+    <string name="rv_failed_remove_subscription">无法删除订阅</string>
+    <string name="rv_nodes_no_match">没有匹配的节点</string>
     <string name="rv_lan_ask_title">允许访问局域网</string>
     <string name="rv_lan_ask_body">访问局域网中的订阅和节点需要此权限。</string>
     <string name="rv_lan_ask_continue">继续</string>

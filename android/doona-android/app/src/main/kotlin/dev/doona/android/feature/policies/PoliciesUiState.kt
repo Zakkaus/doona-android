@@ -4,7 +4,7 @@ import androidx.compose.runtime.Immutable
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.Member
-import dev.doona.android.feature.leafOf
+import dev.doona.android.feature.model.leafOf
 
 /** Which groups the list shows: all, those the user picks a member of, or those that pick their own. */
 enum class GroupFilter {

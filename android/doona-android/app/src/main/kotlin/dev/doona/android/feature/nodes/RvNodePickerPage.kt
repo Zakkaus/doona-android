@@ -66,14 +66,7 @@ internal fun RvNodePickerPage(
         RvPageHeader(title, titleBlock, insets, caption = caption?.let { line -> { RvCaption(line) } }, control = controls)
         RvBannerSlot(banner)
         if (nodes.isEmpty()) {
-            RvGutter {
-                RvEmptyState(
-                    stringResource(R.string.rv_empty_subscription),
-                    stringResource(R.string.rv_empty_subscription_line),
-                    stringResource(R.string.rv_add_subscription),
-                    onAdd,
-                )
-            }
+            RvGutter { RvNoSubscription(onAdd) }
         } else {
             if (apply != null) {
                 RvGutter { RvApplyCard(apply, onApply) }
@@ -83,3 +76,12 @@ internal fun RvNodePickerPage(
         }
     }
 }
+
+/** The node lists' empty state: no subscription yet, and 新增訂閱 ([onAdd]). One for the main node's page and the pickers. */
+@Composable
+internal fun RvNoSubscription(onAdd: () -> Unit) = RvEmptyState(
+    stringResource(R.string.rv_empty_subscription),
+    stringResource(R.string.rv_empty_subscription_line),
+    stringResource(R.string.rv_add_subscription),
+    onAdd,
+)

@@ -32,7 +32,6 @@ import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
-import dev.doona.android.designsystem.rv.RvEmptyState
 import dev.doona.android.designsystem.rv.RvFilterChipRow
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvLatencyChange
@@ -111,14 +110,7 @@ internal fun RvNodesPage(
         RvPageHeader(title, titleBlock, insets, caption = caption?.let { line -> { RvCaption(line) } }, control = chips)
         RvBannerSlot(banner)
         if (empty) {
-            RvGutter {
-                RvEmptyState(
-                    stringResource(R.string.rv_empty_subscription),
-                    stringResource(R.string.rv_empty_subscription_line),
-                    stringResource(R.string.rv_add_subscription),
-                    onAdd,
-                )
-            }
+            RvGutter { RvNoSubscription(onAdd) }
         } else {
             RvGutter {
                 TopCard(shown.top(steadiest), shown.current, steadiest, { steadiest = it }, onOpen, onAllNodes)

@@ -14,21 +14,23 @@ internal fun rvLeafMembers(catalog: Catalog): List<Member> =
     catalog.groups.asSequence().flatMap { it.members }.filterNot { it.isGroup }.distinctBy { it.id }.toList()
 
 /**
- * The node [group] uses on [network]: its choice when that is a node, a nested group's own choice on that network when it
- * is a group, and so on down. Null with no choice, or for nesting deeper than [MAX_DEPTH] (a cycle the core should never
- * send). [groups] is every group of the catalog by id.
+ * The node a member leads to on [network]: the member itself when it is a node, and, for a group, the node its choice on
+ * that network ends on, through nested groups. Null when the chain ends in nothing (no choice, a choice that is not a
+ * member, a group the catalog lacks). The walk is bounded by the number of groups, so a cycle in a broken template cannot
+ * hang a screen. [groups] is every group by id. The one walker for a group's node (活動, the tile, a group's page, 節點).
  */
-internal fun rvSelectedLeaf(group: Group, network: Network, groups: Map<String, Group>): String? {
-    var id = group.choice(network)
-    // The choice itself, then one step per nested group followed.
-    repeat(MAX_DEPTH + 1) {
-        val nested = groups[id ?: return null] ?: return id
-        id = nested.choice(network)
+internal fun leafOf(member: Member, groups: Map<String, Group>, network: Network = Network.Tcp): Member? {
+    var current = member
+    repeat(groups.size + 1) {
+        if (!current.isGroup) return current
+        val group = groups[current.id] ?: return null
+        current = group.members.firstOrNull { it.id == group.choice(network) } ?: return null
     }
     return null
 }
 
-private fun Group.choice(network: Network): String? = if (network == Network.Udp) udp.selectedId else tcp.selectedId
+/** The id of the node [group] uses on [network] ([leafOf] its chosen member); null when it names none. */
+internal fun rvSelectedLeaf(group: Group, network: Network, groups: Map<String, Group>): String? =
+    group.members.firstOrNull { it.id == group.choice(network) }?.let { leafOf(it, groups, network) }?.id
 
-/** How many nested groups a selection may pass through before it is taken for a cycle and names no node. */
-private const val MAX_DEPTH = 8
+private fun Group.choice(network: Network): String? = if (network == Network.Udp) udp.selectedId else tcp.selectedId

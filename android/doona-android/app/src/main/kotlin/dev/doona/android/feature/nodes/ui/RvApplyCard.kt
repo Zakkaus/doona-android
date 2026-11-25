@@ -12,10 +12,9 @@ import dev.doona.android.designsystem.rv.RvCardHeader
 import dev.doona.android.designsystem.rv.RvNodesSize
 import dev.doona.android.designsystem.rv.RvSegmented
 import dev.doona.android.designsystem.rv.RvSpace
-import dev.doona.android.engine.Network
 
 /** The network a tap on a node applies to while a group's TCP and UDP choices are apart, in the control's order (nborder). */
-internal enum class RvApplyTo(val network: Network?) { Both(null), Tcp(Network.Tcp), Udp(Network.Udp) }
+internal enum class RvApplyTo { Both, Tcp, Udp }
 
 /**
  * 套用到 (decision 2026-11-25 14:37, nbtap; 16:30 TCP/UDP): the library's segmented control in a card above a node list,
