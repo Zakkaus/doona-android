@@ -1,0 +1,11 @@
+{
+  "outbounds": [
+    {"type": "selector", "tag": "Proxy", "outbounds": ["ss-01", "trojan-01"], "default": "ss-01", "server": "192.0.2.99", "server_port": 8388, "method": "aes-256-gcm", "password": "pass"},
+    {"type": "urltest", "tag": "Auto", "outbounds": ["trojan-01"], "url": "http://www.gstatic.com/generate_204", "interval": "3m", "server": "192.0.2.98", "server_port": 8388, "method": "aes-256-gcm", "password": "pass"},
+    {"type": "shadowsocks", "tag": "ss-01", "server": "192.0.2.11", "server_port": 8388, "method": "aes-256-gcm", "password": "pass"},
+    {"type": "trojan", "tag": "trojan-01", "server": "trojan.example.net", "server_port": 443, "password": "pass", "tls": {"enabled": true, "server_name": "trojan.example.net"}},
+    {"type": "direct", "tag": "direct"},
+    {"type": "block", "tag": "block"}
+  ],
+  "route": {"final": "Proxy", "rules": [{"domain_suffix": ["example.org"], "outbound": "Auto"}]}
+}

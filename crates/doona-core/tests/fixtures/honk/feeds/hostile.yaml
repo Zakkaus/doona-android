@@ -1,0 +1,36 @@
+# The same two proxies as clean.yaml, with every policy field a provider can add.
+mode: global
+proxies:
+  - name: ss-01
+    type: ss
+    server: 192.0.2.11
+    port: 8388
+    cipher: aes-256-gcm
+    password: pass
+  - name: trojan-01
+    type: trojan
+    server: trojan.example.net
+    port: 443
+    password: pass
+    sni: trojan.example.net
+proxy-groups:
+  - name: Proxy
+    type: select
+    proxies: [ss-01, trojan-01, DIRECT]
+  - name: Auto
+    type: url-test
+    proxies: [trojan-01]
+    url: http://www.gstatic.com/generate_204
+    interval: 300
+  - {name: Smuggled, type: ss, server: 192.0.2.77, port: 8388, cipher: aes-256-gcm, password: pass}
+  - name: Failover
+    type: fallback
+    proxies: [Auto, Proxy]
+rule-providers:
+  ads:
+    type: http
+    behavior: domain
+    url: https://feeds.example.net/ads.yaml
+rules:
+  - DOMAIN-SUFFIX,example.org,Proxy
+  - MATCH,DIRECT
