@@ -1,0 +1,82 @@
+[
+  {
+    "rev": 8,
+    "generation": 15,
+    "summary": {
+      "subscriptions": 0,
+      "nodes": 2,
+      "groups": 1,
+      "trafficRules": 1,
+      "dnsUpstreams": 0,
+      "dnsRequestRules": 1,
+      "dnsResponseRules": 0
+    },
+    "skipped": 0,
+    "constrained": 0,
+    "blockAds": "on",
+    "fallback": {
+      "target": "direct",
+      "must": false
+    }
+  },
+  {
+    "rev": 8,
+    "generation": 15,
+    "summary": {
+      "subscriptions": 0,
+      "nodes": 2,
+      "groups": 1,
+      "trafficRules": 1,
+      "dnsUpstreams": 0,
+      "dnsRequestRules": 1,
+      "dnsResponseRules": 0
+    },
+    "skipped": 0,
+    "constrained": 0,
+    "blockAds": "off",
+    "fallback": {
+      "target": "direct",
+      "must": false
+    }
+  },
+  {
+    "rev": 8,
+    "generation": 15,
+    "summary": {
+      "subscriptions": 0,
+      "nodes": 2,
+      "groups": 1,
+      "trafficRules": 0,
+      "dnsUpstreams": 0,
+      "dnsRequestRules": 0,
+      "dnsResponseRules": 0
+    },
+    "skipped": 0,
+    "constrained": 0,
+    "blockAds": "absent",
+    "fallback": {
+      "target": "direct",
+      "must": false
+    }
+  },
+  {
+    "rev": 8,
+    "generation": 15,
+    "summary": {
+      "subscriptions": 0,
+      "nodes": 2,
+      "groups": 1,
+      "trafficRules": 1,
+      "dnsUpstreams": 0,
+      "dnsRequestRules": 2,
+      "dnsResponseRules": 0
+    },
+    "skipped": 0,
+    "constrained": 0,
+    "blockAds": "elsewhere",
+    "fallback": {
+      "target": "direct",
+      "must": false
+    }
+  }
+]

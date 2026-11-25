@@ -1,0 +1,181 @@
+{
+  "revision": 12,
+  "running": false,
+  "generation": 0,
+  "sinceEpochMs": null,
+  "error": null,
+  "warning": null,
+  "traffic": {
+    "upTotal": 0,
+    "downTotal": 0,
+    "activeFlows": 0,
+    "upPeak": 0,
+    "downPeak": 0
+  },
+  "today": {
+    "upTotal": 0,
+    "downTotal": 0,
+    "yesterdayByNow": null
+  },
+  "catalog": {
+    "mode": "Rule",
+    "globalTargetId": null,
+    "groups": [
+      {
+        "id": "g-spread",
+        "name": "spread",
+        "kind": "LoadBalance",
+        "selectedId": null,
+        "tcpSelectedId": null,
+        "udpSelectedId": null,
+        "networksDiffer": false,
+        "pinned": false,
+        "tcpPinned": false,
+        "udpPinned": false,
+        "testing": false,
+        "members": [
+          {
+            "id": "n-0c41be7742aa9d03",
+            "name": "HK-01",
+            "latencyMs": 41,
+            "failed": false,
+            "error": null,
+            "isGroup": false,
+            "subscriptionId": "s1",
+            "region": null,
+            "regionCentroid": null,
+            "city": null
+          },
+          {
+            "id": "n-7f3a19c2e5b80d46",
+            "name": "HK-02",
+            "latencyMs": 52,
+            "failed": false,
+            "error": null,
+            "isGroup": false,
+            "subscriptionId": "s1",
+            "region": null,
+            "regionCentroid": null,
+            "city": null
+          }
+        ],
+        "default": null,
+        "final": null,
+        "exit": null,
+        "implicitAll": false,
+        "source": {
+          "file": "f1",
+          "line": 6
+        }
+      },
+      {
+        "id": "g-spread-pinned",
+        "name": "spread-pinned",
+        "kind": "LoadBalance",
+        "selectedId": "n-7f3a19c2e5b80d46",
+        "tcpSelectedId": "n-7f3a19c2e5b80d46",
+        "udpSelectedId": "n-7f3a19c2e5b80d46",
+        "networksDiffer": false,
+        "pinned": true,
+        "tcpPinned": true,
+        "udpPinned": true,
+        "testing": false,
+        "members": [
+          {
+            "id": "n-0c41be7742aa9d03",
+            "name": "HK-01",
+            "latencyMs": 41,
+            "failed": false,
+            "error": null,
+            "isGroup": false,
+            "subscriptionId": "s1",
+            "region": null,
+            "regionCentroid": null,
+            "city": null
+          },
+          {
+            "id": "n-7f3a19c2e5b80d46",
+            "name": "HK-02",
+            "latencyMs": 52,
+            "failed": false,
+            "error": null,
+            "isGroup": false,
+            "subscriptionId": "s1",
+            "region": null,
+            "regionCentroid": null,
+            "city": null
+          }
+        ],
+        "default": null,
+        "final": null,
+        "exit": null,
+        "implicitAll": false,
+        "source": {
+          "file": "f1",
+          "line": 10
+        }
+      }
+    ],
+    "nodes": [
+      {
+        "id": "n-0c41be7742aa9d03",
+        "name": "HK-01",
+        "latencyMs": 41,
+        "failed": false,
+        "error": null,
+        "subscriptionId": "s1",
+        "source": "subscription",
+        "region": null,
+        "regionCentroid": null,
+        "city": null
+      },
+      {
+        "id": "n-7f3a19c2e5b80d46",
+        "name": "HK-02",
+        "latencyMs": 52,
+        "failed": false,
+        "error": null,
+        "subscriptionId": "s1",
+        "source": "subscription",
+        "region": null,
+        "regionCentroid": null,
+        "city": null
+      }
+    ],
+    "subscriptions": [
+      {
+        "id": "s1",
+        "name": "office",
+        "url": "https://example.invalid/sub?token=REDACTED",
+        "nodes": 2,
+        "format": "clash",
+        "updatedAtEpochMs": 1795300000000,
+        "error": null,
+        "usedBytes": null,
+        "totalBytes": null,
+        "expiresAtEpochMs": null,
+        "userAgent": null
+      }
+    ],
+    "config": {
+      "rev": 8,
+      "generation": 15,
+      "summary": {
+        "subscriptions": 1,
+        "nodes": 2,
+        "groups": 2,
+        "trafficRules": 0,
+        "dnsUpstreams": 0,
+        "dnsRequestRules": 0,
+        "dnsResponseRules": 0
+      },
+      "skipped": 0,
+      "constrained": 0,
+      "blockAds": "absent",
+      "fallback": {
+        "target": "g-spread",
+        "must": false
+      }
+    }
+  }
+}

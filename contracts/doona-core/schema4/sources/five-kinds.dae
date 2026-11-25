@@ -1,0 +1,40 @@
+subscription {
+    office: 'https://example.invalid/sub?token=REDACTED'
+}
+
+node {
+    home: 'socks5://192.0.2.10:1080'
+    lab: 'socks5://192.0.2.11:1080'
+}
+
+group {
+    pick {
+        policy: select
+        default: home
+        final: direct
+    }
+    fastest {
+        filter: subtag(office) && name(keyword: 'HK')
+        policy: min_moving_avg
+        final: block
+    }
+    spread {
+        filter: subtag(office) && name(keyword: 'HK')
+        policy: roundrobin
+    }
+    backup {
+        filter: name('home')
+        filter: name('HK-01')
+        policy: fallback
+        final: pick
+        exit: lab
+    }
+    scored {
+        policy: score
+        final: home
+    }
+}
+
+routing {
+    fallback: pick
+}

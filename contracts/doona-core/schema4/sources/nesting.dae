@@ -1,0 +1,28 @@
+subscription {
+    office: 'https://example.invalid/sub?token=REDACTED'
+}
+
+group {
+    world {
+        filter: group('asia', 'home-only')
+        policy: select
+    }
+    asia {
+        filter: group('hk')
+        filter: subtag(office) && name(keyword: 'JP')
+        policy: min_moving_avg
+    }
+    hk {
+        filter: subtag(office) && name(keyword: 'HK')
+        filter: name(direct)
+        policy: fallback
+    }
+    home-only {
+        filter: name('no-such-node')
+        policy: select
+    }
+}
+
+routing {
+    fallback: world
+}

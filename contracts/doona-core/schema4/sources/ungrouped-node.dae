@@ -1,0 +1,18 @@
+node {
+    home: 'socks5://192.0.2.10:1080'
+    lab: 'socks5://192.0.2.11:1080'
+    spare: 'socks5://192.0.2.12:1080'
+}
+
+group {
+    Main {
+        filter: name('home')
+        filter: name('lab')
+        policy: select
+        default: home
+    }
+}
+
+routing {
+    fallback: Main
+}
