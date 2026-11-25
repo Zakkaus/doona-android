@@ -66,10 +66,10 @@ records, the ZIP and GitHub draft omit visited domains by default and include ap
 by default. Neither output extracts these fields from log text or collects new traffic data.
 Subscription links, tokens, credentials and raw payloads are not export options.
 
-A report can also include a prefilled GitHub link. The ZIP and link use the same scrubber and
-event snapshot. The link contains failure and device details and at most 50 recent actions.
-It drops the oldest actions first to keep the encoded URL below 8,000 characters. No network
-request is made; the user attaches the ZIP separately.
+A report can also include a GitHub link that fills in the bug form with failure context, device details,
+and at most 50 recent actions. The ZIP and link use the same scrubber and event snapshot. The link drops
+the oldest actions first to keep the encoded URL below 8,000 characters. No network request is made;
+the reporter completes the remaining fields and attaches the ZIP on GitHub.
 
 ## Icons and flags
 

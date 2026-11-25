@@ -1,0 +1,88 @@
+name: Bug report / 问题报告
+description: Report a reproducible problem in doona for Android. / 报告 doona Android 版中可复现的问题。
+title: 'bug: '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        AI may help you write this; unverified content must not be submitted.
+        可以用 AI 辅助撰写，但提交前须自行核实全部内容。
+
+        State each fact once; do not restate the title, diff or template.
+        同一件事只写一次，不要重复标题、代码改动或模板内容。
+        No filler, praise, summaries of your own work or emoji.
+        不写客套话、夸赞和自我总结，不用表情符号。
+        Paste only relevant log lines; link or collapse long output.
+        日志只贴相关的几行；较长的输出请附链接或折叠。
+        Say what you could not verify.
+        没有验证过的地方请注明。
+  - type: input
+    id: version
+    attributes:
+      label: App version / 应用版本
+      description: Name the affected app or Rust crate and give its version or build commit. / 请填写受影响的应用或 Rust crate 的名称，以及版本号或构建所用的提交。
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Android version / Android 版本
+      description: For a host-only failure, enter “not applicable”. / 如果问题只出现在开发主机上，请填“不适用”。
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device / 设备
+      description: Include the device manufacturer and model, or enter “not applicable” for a host-only failure. / 请填写设备厂商和型号。如果问题只出现在开发主机上，请填“不适用”。
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened / 问题现象
+      description: Describe the actual and expected results. / 请说明实际结果和预期结果。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / 复现步骤
+      description: Give the smallest sequence that reproduces the problem. / 请列出能复现问题的最少步骤。
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostic ZIP / 诊断 ZIP
+      description: |
+        Attach the ZIP from Export diagnostics. Review it for credentials and private data before uploading. If you cannot attach it, explain why.
+        请附上通过“导出诊断”生成的 ZIP。上传前请检查文件是否含有凭据或个人数据。无法上传时请说明原因。
+    validations:
+      required: true
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots / 截图
+      description: Attach screenshots if they help reproduce the problem. / 如果截图有助于复现问题，请附上。
+  - type: input
+    id: owner
+    attributes:
+      label: Human responsible / 负责人
+      description: Enter your GitHub username; you verified this content and will answer follow-up questions. / 请填写你的 GitHub 用户名。填写即表示你已核实内容，并会回复后续提问。
+      placeholder: '@your-name'
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Confirm / 确认
+      description: Check only true claims; an applicable unchecked box or a false claim closes the issue. / 只勾选属实的选项。适用的选项没有勾选，或勾选的内容不属实，issue 会被关闭。
+      options:
+        - label: I searched existing issues / 我已搜索过现有 issue
+          required: true
+        - label: This describes what I observed / 以上是我实际遇到的情况
+          required: true
+        - label: I checked the boxes above without reading them / 我没有阅读上面的选项就直接勾选了
+        - label: I am an AI agent, and this content was submitted without human review / 我是 AI 代理，这些内容没有经过人工审核

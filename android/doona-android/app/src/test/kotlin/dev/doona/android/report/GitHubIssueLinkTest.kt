@@ -22,9 +22,13 @@ class GitHubIssueLinkTest {
         assertEquals("github.com", uri.host)
         assertEquals("/Zakkaus/doona-android/issues/new", uri.path)
         val query = query(uri)
-        assertEquals("Doona: start (Internal)", query.getValue("title"))
-        val body = query.getValue("body")
-        for (expected in listOf("Error code: Internal", "Command: start", "Time (UTC): $at", "App: 0.1", "Core: 0.2.0", "Android: 16", "Device: Pixel 9", "Please attach the exported diagnostic ZIP.")) {
+        assertEquals("bug: start (Internal)", query.getValue("title"))
+        assertEquals("bug_report.yml", query.getValue("template"))
+        assertEquals("doona 0.1", query.getValue("version"))
+        assertEquals("16 (SDK 36)", query.getValue("android"))
+        assertEquals("Google Pixel 9", query.getValue("device"))
+        val body = query.getValue("what")
+        for (expected in listOf("Error code: Internal", "Command: start", "Time (UTC): $at", "Core: 0.2.0")) {
             assertTrue(expected, expected in body)
         }
         assertEquals((2..51).toList(), indices(body))
@@ -42,12 +46,13 @@ class GitHubIssueLinkTest {
         val longModel = app.copy(model = "界".repeat(64))
         val url = link(events, longModel)
         assertTrue(url.length < 8000)
-        val body = query(URI(url)).getValue("body")
+        val body = query(URI(url)).getValue("what")
         val included = indices(body)
         assertTrue(included.size in 1..49)
         assertEquals((200 - included.size until 200).toList(), included)
-        val nextLine = query(URI(link(events.take(200 - included.size), longModel)))
-            .getValue("body").lineSequence().last { it.contains("elapsedMs=") } + "\n"
+        val nextEvent = events[200 - included.size - 1]
+        val nextLine = query(URI(link(listOf(nextEvent), longModel)))
+            .getValue("what").lineSequence().single { it.contains("elapsedMs=") } + "\n"
         assertTrue(url.length + URLEncoder.encode(nextLine, Charsets.UTF_8.name()).length >= 8000)
     }
 
@@ -58,7 +63,7 @@ class GitHubIssueLinkTest {
         val events = listOf(event(1), event(2).copy(text = "token=fixture-token $credential $sub"))
         val url = GitHubIssueLink.build(ErrorCode.Internal, credential, at, app, sub, events)
         val query = query(URI(url))
-        val body = query.getValue("body")
+        val body = query.getValue("what")
         assertEquals(listOf(1), indices(body))
         for (secret in listOf(sub, "subscription.example", "fixture-token", "fixture-user", "fixture-password")) {
             assertFalse(secret, query.values.any { secret in it })
