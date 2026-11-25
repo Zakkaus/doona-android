@@ -18,6 +18,8 @@ CORE = ROOT / 'crates/doona-core'
 OUT = APP / 'app/src/main/assets/licenses'
 SOURCES = TOOLS / 'notice-sources'
 APACHE = OUT / 'Apache-2.0.txt'
+GPL = SOURCES / 'GPL-3.0-only.txt'
+PROJECT_SOURCE = 'https://github.com/Zakkaus/doona-android'
 LEGAL = re.compile(r'^(?:licen[sc]e|notice|copying|copyright|unlicense|third.party.notices)(?:$|[-._])', re.I)
 components = []
 outputs = {}
@@ -32,7 +34,8 @@ def add(kind, name, version, license, source, texts, note=''):
     refs = set()
     for text in texts:
         if isinstance(text, Path) and text.parent == OUT:
-            outputs[text] = text.read_bytes()
+            if text not in outputs:
+                outputs[text] = text.read_bytes()
             refs.add(text.name)
             continue
         data = text.read_bytes() if isinstance(text, Path) else text
@@ -47,6 +50,11 @@ def add(kind, name, version, license, source, texts, note=''):
 def cargo():
     target = 'aarch64-linux-android'
     meta = json.loads(run(CORE, 'cargo', 'metadata', '--locked', '--format-version', '1', '--filter-platform', target))
+    root_id = meta['resolve']['root']
+    project = next(p for p in meta['packages'] if p['id'] == root_id)
+    project_text = OUT / f"{project['license']}.txt"
+    outputs[project_text] = (ROOT / 'LICENSE').read_bytes()
+    add('project', project['name'], project['version'], project['license'], PROJECT_SOURCE, [project_text])
     # `metadata` includes dev, build and proc-macro edges. Use the target-normal tree for membership.
     tree = run(CORE, 'cargo', 'tree', '--locked', '--target', target, '-e', 'normal,no-proc-macro',
                '--prefix', 'none', '--format', '{p}')
@@ -54,7 +62,7 @@ def cargo():
     external = json.loads((TOOLS / 'notice-sources.json').read_text())
     for p in meta['packages']:
         n, v = p['name'], p['version']
-        if (n, 'v' + v) not in linked or p['id'] == meta['resolve']['root']:
+        if (n, 'v' + v) not in linked or p['id'] == root_id:
             continue
         # This reviewed version is a Cargo-to-Gradle version marker. Its lib.rs is entirely doc comments.
         if (n, v) == ('rustls-platform-verifier-android', '0.2.0'):
@@ -90,6 +98,7 @@ def cargo():
     version = run(CORE, 'rustc', '--version').split()[1]
     add('native', 'Rust standard library', version, 'MIT OR Apache-2.0; see bundled exceptions',
         f'https://github.com/rust-lang/rust/tree/{version}/library', [text.encode(), APACHE])
+    return project['license']
 
 
 def archive(z, texts, native):
@@ -161,7 +170,7 @@ def geo(apk):
                     'substantially similar contractual duties downstream. Section 6.3 requires cessation of use and '
                     'destruction of old versions within 30 days after an updated database is released. '
                     'https://www.maxmind.com/en/geolite/eula')
-            texts = [SOURCES / 'geo-cc.txt', SOURCES / 'maxmind-eula.txt', ROOT / 'LICENSE']
+            texts = [SOURCES / 'geo-cc.txt', SOURCES / 'maxmind-eula.txt', GPL]
         else:
             lic = 'Mixed: GPL-3.0, GPL-2.0, LGPL-2.1, MIT, WTFPL; xishang0128/rules has no licence file'
             note = ('MetaCubeX compiles v2fly/domain-list-community with Loyalsoldier/domain-list-custom, its own '
@@ -170,7 +179,7 @@ def geo(apk):
                     'crazy-max/WindowsSpyBlocker, https://gitea.com/XIU2/TrackersListCollection (GPL-3.0), and '
                     'biliintl.list and sharepoint.list from xishang0128/rules. Build recipe: '
                     'https://github.com/MetaCubeX/meta-rules-dat/blob/4178770badecb1b349fbcd62c737e0d7a2079729/.github/workflows/run.yml.')
-            texts = [f for f in SOURCES.glob('geo-*.txt') if f.name != 'geo-cc.txt'] + [ROOT / 'LICENSE']
+            texts = [f for f in SOURCES.glob('geo-*.txt') if f.name != 'geo-cc.txt'] + [GPL]
         add('data', name, p['version'], lic, p['source'], texts, note)
 
 
@@ -223,7 +232,7 @@ def native_and_data(apk, native):
     geo(apk)
 
 
-def render():
+def render(project_license):
     components.sort(key=lambda c: (c['kind'], c['name'], c['version']))
     bundle = bytearray()
     locations = {}
@@ -237,7 +246,8 @@ def render():
     outputs[OUT / 'notices.txt'] = bytes(bundle)
     index = dict(schema=1, components=components, ranges=locations)
     outputs[OUT / 'index.json'] = (json.dumps(index, ensure_ascii=False, indent=2) + '\n').encode()
-    lines = ['# Third-party notices', '', 'Android client source: https://github.com/Zakkaus/doona-android', '']
+    lines = ['# Third-party notices', '', f'Android client licence: [{project_license}](LICENSE).',
+             f'Android client source: {PROJECT_SOURCE}', '']
     for c in components:
         lines.extend([f"### {c['name']} {c['version']}", '', f"{c['kind']} · {c['license']} · [Source]({c['source']})", ''])
         if c['notice']:
@@ -253,12 +263,12 @@ def main():
     parser.add_argument('--write', action='store_true', help='replace generated files instead of checking them')
     parser.add_argument('--apk', type=Path, default=APP / 'app/build/outputs/apk/release/app-release.apk')
     args = parser.parse_args()
-    cargo()
+    project_license = cargo()
     native = maven()
     assets()
     with ZipFile(args.apk) as apk:
         native_and_data(apk, native)
-    render()
+    render(project_license)
     stale = {p for p in OUT.rglob('*') if p.is_file()} - outputs.keys()
     changed = [p for p, data in outputs.items() if not p.exists() or p.read_bytes() != data]
     if args.write:

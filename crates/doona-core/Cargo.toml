@@ -2,7 +2,7 @@
 name = "doona-core"
 version = "0.1.0"
 edition = "2024"
-license = "GPL-3.0-only"
+license = "AGPL-3.0-only"
 publish = false
 description = "doona-Android's Rust core: the tun data path, state and the JNI surface of dev.doona.android.vpn.NativeCore"
 

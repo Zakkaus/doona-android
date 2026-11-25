@@ -1,5 +1,6 @@
 # Third-party notices
 
+Android client licence: [AGPL-3.0-only](LICENSE).
 Android client source: https://github.com/Zakkaus/doona-android
 
 ### Inter 4.001
@@ -1967,3 +1968,9 @@ native · MIT OR Apache-2.0; see bundled exceptions · [Source](https://github.c
 
 - [Licence or notice 1](android/doona-android/app/src/main/assets/licenses/Apache-2.0.txt)
 - [Licence or notice 2](android/doona-android/app/src/main/assets/licenses/notices.txt#L8351)
+
+### doona-core 0.1.0
+
+project · AGPL-3.0-only · [Source](https://github.com/Zakkaus/doona-android)
+
+- [Licence or notice 1](android/doona-android/app/src/main/assets/licenses/AGPL-3.0-only.txt)

@@ -159,8 +159,8 @@ variant.
 From this directory, build with `./gradlew assembleRelease`. Run `python3 tools/notices.py` to check
 the checked-in inventory and the notices inside the APK. The generator uses Python's standard library,
 the project's Gradle wrapper and the pinned Rust toolchain with `rust-docs` installed. After a dependency
-change, run `python3 tools/notices.py --write`, rebuild the APK and run the check again. The Maven list
-covers runtime archives before shrinking, not build plugins, test artifacts or the Compose BOM.
+or licence change, run `python3 tools/notices.py --write`, rebuild the APK and run the check again.
+The Maven list covers runtime archives before shrinking, not build plugins, test artifacts or the Compose BOM.
 Gradle resolves parent POMs when a library inherits its licences. Each Geo DAT appears in the inventory
 only if the APK contains it; bundled bytes must match the reviewed pin.
 
@@ -168,6 +168,8 @@ only if the APK contains it; bundled bytes must match the reviewed pin.
 `version`, `license`, `source`, `notice` and `texts`. Display the component's `notice` as well as its texts.
 For a text key in `ranges`, read `[byteOffset, byteLength]` from `licenses/notices.txt`, then decode that
 slice as UTF-8. Other keys name UTF-8 files under `licenses/`. Public-domain entries can have no texts.
+The `project` entry records the app's licence using the `doona-core` manifest and the repository's
+`LICENSE` file.
 
 When adding artwork, classify the release resources in `tools/notices.py`; record each logo's upstream
 revision, copyright status and trademark restrictions. Do not list artwork from an unmerged branch.

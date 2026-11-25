@@ -3355,6 +3355,17 @@
         "b9e4ceba54bf167f42505765153f19b594cced60c7ec7a925640cefbc7df8218"
       ],
       "notice": ""
+    },
+    {
+      "kind": "project",
+      "name": "doona-core",
+      "version": "0.1.0",
+      "license": "AGPL-3.0-only",
+      "source": "https://github.com/Zakkaus/doona-android",
+      "texts": [
+        "AGPL-3.0-only.txt"
+      ],
+      "notice": ""
     }
   ],
   "ranges": {
