@@ -67,31 +67,44 @@ class NodesViewModel internal constructor(
     private class Pick(val nodeId: String, val network: Network?, val onPicked: () -> Unit)
 
     /**
-     * Each catalog mapped once, with every node's details read again (`nodes()`, the core's every node, grouped or not).
-     * A failed read is reported (the pages show it with 重試) and the nodes keep the last details read; a node never
-     * described shows none ([dev.doona.android.feature.model.RvNode.described]).
+     * Each catalog mapped once, with every node's details read again (`nodes()`, the core's every node, grouped or not)
+     * and, while the catalog has a Score group, Score's choices. A failed read is reported (the pages show it with 重試):
+     * the nodes the catalog lists keep the last details read and Score keeps its last marks, but a node no group lists is
+     * shown only from a read that succeeded, so a node an older revision had (a deleted subscription's) never comes back
+     * as a row. A node never described shows none ([dev.doona.android.feature.model.RvNode.described]).
      */
-    private val mapped: Flow<NodesState?> = flow {
+    private val mapped: Flow<Mapped?> = flow {
         var info = emptyMap<String, NodeInfo>()
+        var marks: RvScoreMarks? = null
         emitAll(
             combine(engine.catalog, reread) { catalog, _ -> catalog }.mapLatest { catalog ->
                 catalog ?: return@mapLatest null
-                engine.nodes(null).also { it.report(NodesAction.Read) }.getOrNull()?.let { read -> info = read.associateBy { it.id } }
-                nodesState(catalog, info, places)
+                val read = engine.nodes(null)
+                read.getOrNull()?.let { nodes -> info = nodes.associateBy { it.id } }
+                val scored = if (catalog.groups.any { it.kind == GroupKind.Score }) engine.scoreState() else null
+                marks = scored?.fold({ rvScoreMarks(it.groups) }, { marks })
+                (if (read.isFailure) read else scored ?: read).report(NodesAction.Read)
+                Mapped(nodesState(catalog, info, places, ungrouped = read.isSuccess), marks)
             },
         )
     }.flowOn(work)
 
-    /** Score's choices, read again with each catalog revision while the catalog has a Score group. */
-    private val score: Flow<RvScoreMarks?> = engine.catalog.mapLatest { catalog ->
-        if (catalog?.groups?.any { it.kind == GroupKind.Score } == true) rvScoreMarks(engine.scoreState().getOrNull()?.groups.orEmpty()) else null
-    }.distinctUntilChanged().flowOn(work)
+    /** One revision as the pages show it, with Score's marks (null with no Score group). */
+    private class Mapped(val state: NodesState, val score: RvScoreMarks?)
 
     private val testing: Flow<Boolean> = combine(running, engine.groups.map { all -> all.any { it.testing } }) { mine, core -> mine || core }
         .distinctUntilChanged()
 
-    internal val ui: StateFlow<NodesUi> = combine(mapped, score, testing, failure, updating) { state, score, testing, failure, updating ->
-        NodesUi(state ?: NodesState.Empty, loaded = state != null, testing = testing, failure = failure, score = score, nowEpochMs = clock(), updating = updating)
+    internal val ui: StateFlow<NodesUi> = combine(mapped, testing, failure, updating) { mapped, testing, failure, updating ->
+        NodesUi(
+            mapped?.state ?: NodesState.Empty,
+            loaded = mapped != null,
+            testing = testing,
+            failure = failure,
+            score = mapped?.score,
+            nowEpochMs = clock(),
+            updating = updating,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), NodesUi())
 
     /**

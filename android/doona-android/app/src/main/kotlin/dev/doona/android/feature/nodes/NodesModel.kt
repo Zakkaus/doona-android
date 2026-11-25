@@ -81,13 +81,14 @@ internal fun rvScoreMarks(groups: List<ScoreGroup>): RvScoreMarks? = if (groups.
  * [catalog] as the pages show it, with each node's details from [infos] and its place from [places]. The nodes are every
  * group's nodes in the catalog's order, then the nodes of [infos] (the core's every node) that no group lists: a profile
  * edited by hand may leave a node out of every group. The core names a node only as a group's member, so such a node is
- * named by its server. With no main group (a hand-edited profile may have none) no node is the current one.
+ * named by its server. [ungrouped] false (the read of [infos] failed, so they may be an older revision's) leaves those
+ * nodes out. With no main group (a hand-edited profile may have none) no node is the current one.
  */
-internal fun nodesState(catalog: Catalog, infos: Map<String, NodeInfo>, places: NodePlaces): NodesState {
+internal fun nodesState(catalog: Catalog, infos: Map<String, NodeInfo>, places: NodePlaces, ungrouped: Boolean = true): NodesState {
     val names = catalog.subscriptions.associate { it.id to it.name }
     val grouped = rvLeafMembers(catalog)
     val listed = grouped.mapTo(HashSet()) { it.id }
-    val members = grouped + infos.values.filter { it.id !in listed }.map { Member(it.id, it.server) }
+    val members = if (ungrouped) grouped + infos.values.filter { it.id !in listed }.map { Member(it.id, it.server) } else grouped
     val groups = catalog.groups.associateBy { it.id }
     val main = groups[catalog.mainGroupId]
     return NodesState(

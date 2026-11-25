@@ -15,6 +15,7 @@ import dev.doona.android.engine.ScoreCounters
 import dev.doona.android.engine.ScoreCoverage
 import dev.doona.android.engine.ScoreGroup
 import dev.doona.android.engine.ScoreNetwork
+import dev.doona.android.engine.ScoreState
 import dev.doona.android.engine.ShareLink
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.fake.FakeEngine
@@ -51,9 +52,14 @@ class NodesViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     /** An engine over [base] whose details, select and test answer as set, recording what they were asked. */
-    private class Probe(val base: FakeEngine, var infos: Map<String, NodeInfo>? = null, mainGroupId: String? = null) : Engine by base {
+    private class Probe(
+        val base: FakeEngine,
+        var infos: Map<String, NodeInfo>? = null,
+        mainGroupId: String? = null,
+        revisions: MutableStateFlow<Catalog?>? = null,
+    ) : Engine by base {
         override val catalog: StateFlow<Catalog?> =
-            mainGroupId?.let { id -> MutableStateFlow(base.catalog.value?.copy(mainGroupId = id)) } ?: base.catalog
+            revisions ?: mainGroupId?.let { id -> MutableStateFlow(base.catalog.value?.copy(mainGroupId = id)) } ?: base.catalog
 
         var result: Result<Unit> = Result.success(Unit)
         val selected = mutableListOf<Triple<String, String?, Network?>>()
@@ -65,6 +71,9 @@ class NodesViewModelTest {
         val updated = mutableListOf<String>()
         val removed = mutableListOf<String>()
         var subFails = false
+        var score: Result<ScoreState>? = null
+
+        override suspend fun scoreState(): Result<ScoreState> = score ?: base.scoreState()
 
         override suspend fun nodeShareLink(nodeId: String): Result<ShareLink> =
             links[nodeId]?.let { Result.success(ShareLink(it)) } ?: Result.failure(EngineException(ErrorCode.NotFound))
@@ -312,6 +321,51 @@ class NodesViewModelTest {
         assertNull(vm.ui.value.failure)
         assertEquals("a.example.net", vm.ui.value.state.node("n-a")!!.host)
         assertTrue(vm.ui.value.state.node("n-a")!!.described)
+    }
+
+    /**
+     * A subscription deleted while the read of the details fails: the new revision's rows are the nodes its groups list,
+     * with the details last read, and the deleted subscription's node that no group listed is gone, not a stale row.
+     */
+    @Test
+    fun aFailedReadNeverBringsBackANodeOfAnOlderRevision() = runTest {
+        val listed = Member("n-a", "A 01", subscriptionId = "s-1")
+        val base = engine(listOf(listed))
+        val revisions = MutableStateFlow(base.catalog.value)
+        val info = listOf("n-a", "n-lone").associateWith { NodeInfo(it, "vless", "$it.example.net", 443, "tcp", true, emptyList()) }
+        val probe = Probe(base, info, revisions = revisions)
+        val vm = collected(probe)
+        assertEquals(listOf("n-a", "n-lone"), vm.ui.value.state.nodes.map { it.id })
+        probe.readFails = true
+        revisions.value = revisions.value!!.copy(subscriptions = emptyList())
+        assertEquals(NodesFailure(NodesAction.Read, ErrorCode.Busy), vm.ui.value.failure)
+        assertEquals(listOf("n-a"), vm.ui.value.state.nodes.map { it.id })
+        assertEquals("n-a.example.net", vm.ui.value.state.node("n-a")!!.host)
+        probe.readFails = false
+        probe.infos = info - "n-lone"
+        vm.retry()
+        assertNull(vm.ui.value.failure)
+        assertEquals(listOf("n-a"), vm.ui.value.state.nodes.map { it.id })
+    }
+
+    /** A failed read of Score's choices shows as the details' does, keeps the last marks, and 重試 reads them again. */
+    @Test
+    fun aFailedScoreReadShowsKeepsTheLastMarksAndRetries() = runTest {
+        val members = listOf(Member("n-a", "A 01", subscriptionId = "s-1"), Member("n-b", "B 02", subscriptionId = "s-1"))
+        val base = FakeEngine(groups = listOf(Group(MAIN, "Proxy", GroupKind.Score, members, Group.Selection("n-a", pinned = false))), subscriptions = listOf(sub))
+        val revisions = MutableStateFlow(base.catalog.value)
+        val probe = Probe(base, revisions = revisions).apply { score = Result.success(ScoreState(0, listOf(ScoreGroup(MAIN, listOf("n-a", "n-b"), chose("n-a"), chose("n-a"))))) }
+        val vm = collected(probe)
+        val marks = RvScoreMarks(setOf("n-a"), setOf("n-a"))
+        assertEquals(marks, vm.ui.value.score)
+        probe.score = Result.failure(EngineException(ErrorCode.Busy))
+        revisions.value = revisions.value!!.copy(subscriptions = listOf(sub.copy(nodes = 3)))
+        assertEquals(NodesFailure(NodesAction.Read, ErrorCode.Busy), vm.ui.value.failure)
+        assertEquals(marks, vm.ui.value.score)
+        probe.score = Result.success(ScoreState(0, listOf(ScoreGroup(MAIN, listOf("n-a", "n-b"), chose("n-b"), chose("n-a")))))
+        vm.retry()
+        assertNull(vm.ui.value.failure)
+        assertEquals(RvScoreMarks(setOf("n-b"), setOf("n-a")), vm.ui.value.score)
     }
 
     /** Two quick picks: the first one's answer does not close the page while the second is still switching. */
