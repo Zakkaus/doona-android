@@ -20,6 +20,9 @@ cat > "$page/RvCleanPage.kt" <<'KT'
 @Composable
 internal fun RvCleanPage() {
     // Text(" a comment may name Text( and 16.dp")
+    val note = """
+        the raw text's own line
+    """ // and a comment after the closing quotes: Text(" is no call")
     RvText("clean", Rv.type.rowTitle, Modifier.padding(RvSpace.gutter).rvRowPress(Role.Button, {}))
 }
 KT
@@ -42,6 +45,10 @@ plant click 'Box(Modifier.selectable(true, onClick = { }))'
 # A `//` inside a string literal starts no comment, so what follows the string is still read.
 plant widget 'val note = "see https://doona.dev // the site"; Text("a raw Text")'
 plant dp "val quote = '\"'; Box(Modifier.padding(13.dp))"
+# A `"""` raw string runs over lines: its text may hold a `//`, and what follows its closing quotes is code again.
+# (The gate once read each line alone: the `//` in the raw text hid the call after the closing quotes.)
+plant widget "$(printf 'val note = """\n        see https://doona.dev"""; Text("a raw Text")')"
+plant widget 'val say = """He said "hi" // and left"""; Text("a raw Text")'
 rm "$page/RvPlanted.kt"
 
 # An allowlist line: at its measure it passes, below the measure it fails (new hit), above it fails (stale).
