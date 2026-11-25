@@ -24,15 +24,14 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvChartSize
+import dev.doona.android.designsystem.rv.RvEmptyChartLine
 import dev.doona.android.designsystem.rv.RvPillInk
 import dev.doona.android.designsystem.rv.RvStatsAlpha
 import dev.doona.android.designsystem.rv.RvStatsSize
-import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvUsageSize
 import dev.doona.android.designsystem.rv.latencyColor
 import dev.doona.android.designsystem.rv.pillName
@@ -53,7 +52,7 @@ internal fun RvEmptyChart(line: String, modifier: Modifier = Modifier, slots: In
     val colors = Rv.colors
     Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Canvas(Modifier.matchParentSize()) { slotGrid(colors.grid, slots) }
-        RvText(line, Rv.type.tileCaption, color = colors.textSecondary, align = TextAlign.Center)
+        RvEmptyChartLine(line)
     }
 }
 
