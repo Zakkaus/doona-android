@@ -63,7 +63,7 @@ import dev.doona.android.feature.settings.RvUpdateRow
 import dev.doona.android.feature.settings.rvUpdateActionLabel
 import dev.doona.android.feature.settings.rvUpdateLabel
 import dev.doona.android.feature.settings.rvUpdateNotice
-import dev.doona.android.prototype.rv.settings.RV_SAMPLE_GEO_SHIPPED_MS
+import dev.doona.android.prototype.rv.settings.RV_SAMPLE_GEO_SHIPPED
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 
 /**
@@ -80,7 +80,7 @@ internal fun RvSettingsLabSample(
     onTab: (Int) -> Unit = {},
     routes: RvSettingsRoutes = RvSettingsRoutes(),
     configRev: Int? = null,
-    geoData: RvGeoData = RvGeoData(RV_SAMPLE_GEO_SHIPPED_MS),
+    geoData: RvGeoData = RvGeoData(RV_SAMPLE_GEO_SHIPPED),
     update: RvUpdate = RvUpdate.Idle,
     onOpenLab: () -> Unit = {},
     lab: Boolean = true,

@@ -19,8 +19,8 @@ import dev.doona.android.data.settings.ThemeMode
 import dev.doona.android.data.settings.UpdateCheck
 import dev.doona.android.data.settings.UpdateInterval
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
-import dev.doona.android.designsystem.rv.rvSystemScheme
-import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.designsystem.rv.RvOldPage
+import dev.doona.android.designsystem.rv.rvSystemSchemes
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.feature.NOT_WIRED
@@ -69,7 +69,8 @@ internal class AppSettingsStore(
     override val notifyOnDrop: Flow<Boolean> = settings.notifyOnDrop
     override val autoUpdate: Flow<Boolean> = settings.subscriptionUpdate.map { it.enabled }
     override val updateHours: Flow<Int> = settings.subscriptionUpdate.map { it.interval.hours }
-    override val updateIntervals: List<Int> = UpdateInterval.entries.map { it.hours }
+    override val updateIntervals: List<Int> = UpdateInterval.PRESETS.map { it.hours }
+    override val updateHoursRange: IntRange = UpdateInterval.RANGE
     override val appearance: Flow<RvAppearance> = settings.appearance.map(::rvAppearance)
 
     override suspend fun setAppearance(appearance: RvAppearance) = settings.setAppearance(themeAppearance(appearance))
@@ -167,8 +168,8 @@ internal class AppLogLevels(private val controller: LogLevelController) : LogLev
  * What 主題's 預覽 draws in the app: the 活動 page the app shows today, on the sample's traffic, in the chosen scheme.
  * The RV 活動 page replaces it once it leaves the debug sandbox (integ3).
  */
-private val APP_THEME_PREVIEW: RvThemePreviewPage = { scheme, dark ->
-    DoonaTheme(dark, scheme) { ActivityScreen(sampleActivityState(), onAction = {}, onConnect = {}, onOpenGroup = {}) }
+private val APP_THEME_PREVIEW: RvThemePreviewPage = {
+    RvOldPage { ActivityScreen(sampleActivityState(), onAction = {}, onConnect = {}, onOpenGroup = {}) }
 }
 
 /** 檢查更新 in the app: GitHub's releases API, asked only when the user taps it. */
@@ -215,12 +216,12 @@ internal fun EntryProviderScope<NavKey>.settingsEntries(backStack: MutableList<N
         RvAboutScreen(RvAboutVersions(version.ifBlank { RV_NO_VALUE }, HONK_REVISION), onBack = { backStack.pop(key) }, routes)
     }
     entry<ThemeKey> { key ->
-        ThemeRoute(rememberSettingsStore(), rvSystemScheme(false), rvSystemScheme(true), APP_THEME_PREVIEW, onBack = { backStack.pop(key) })
+        ThemeRoute(rememberSettingsStore(), rvSystemSchemes(), APP_THEME_PREVIEW, onBack = { backStack.pop(key) })
     }
     entry<DnsKey> { key -> DnsRoute(engine, onBack = { backStack.pop(key) }) }
     entry<LanguageKey> { key -> LanguageRoute(rememberSettingsStore(), onBack = { backStack.pop(key) }) }
     // 自訂 has no page yet (plan 8: built, not hidden).
-    entry<IntervalKey> { key -> IntervalRoute(rememberSettingsStore(), onCustom = NOT_WIRED, onBack = { backStack.pop(key) }) }
+    entry<IntervalKey> { key -> IntervalRoute(rememberSettingsStore(), onBack = { backStack.pop(key) }) }
     entry<LabKey> { key ->
         val context = LocalContext.current
         LabRoute(rememberSettingsStore(), onBack = { backStack.pop(key) }, onRestart = { restartApp(context) })

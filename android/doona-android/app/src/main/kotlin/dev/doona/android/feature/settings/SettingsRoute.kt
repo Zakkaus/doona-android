@@ -86,12 +86,13 @@ internal fun SettingsPage(viewModel: SettingsViewModel, system: SettingsSystem, 
 @Composable
 internal fun RvSettingsLoading() = Box(Modifier.fillMaxSize().background(Rv.colors.page))
 
-/** 更新間隔: the store's interval, a choice stored at once. Its 自訂 has no page yet (plan 8: built, not hidden). */
+/** 更新間隔: the store's interval, a choice stored at once, and 自訂's sheet for a typed count of hours. */
 @Composable
-internal fun IntervalRoute(store: SettingsStore, onCustom: () -> Unit, onBack: () -> Unit) {
+internal fun IntervalRoute(store: SettingsStore, onBack: () -> Unit) {
     val viewModel: IntervalViewModel = viewModel(factory = IntervalViewModel.factory(store))
-    val hours = viewModel.uiState.collectAsStateWithLifecycle().value ?: return RvSettingsLoading()
-    RvIntervalScreen(hours, viewModel.choices, viewModel::select, onBack, onCustom)
+    val state = viewModel.uiState.collectAsStateWithLifecycle().value ?: return RvSettingsLoading()
+    RvIntervalScreen(state.selected, viewModel.choices, viewModel::select, onBack, viewModel::openCustom)
+    RvIntervalCustomSheet(state, viewModel.range, viewModel::editCustom, viewModel::saveCustom, viewModel::dismissCustom)
 }
 
 /**

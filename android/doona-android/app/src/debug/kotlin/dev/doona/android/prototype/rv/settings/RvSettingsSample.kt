@@ -15,9 +15,10 @@ import dev.doona.android.feature.settings.RvUpdate
 import dev.doona.android.prototype.rv.RvActivityScreenSample
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.rvSampleActivity
+import java.time.LocalDate
 
 /** 主題's 預覽 in the sandbox and the tests: the RV 活動 page on the sample, as the approved screens show it. */
-internal val RV_SAMPLE_THEME_PREVIEW: RvThemePreviewPage = { _, _ -> RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}) }
+internal val RV_SAMPLE_THEME_PREVIEW: RvThemePreviewPage = { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}) }
 
 internal fun rvSampleAppearance() = RvAppearance(RvThemeMode.System, followWallpaper = false, accent = 0)
 
@@ -31,11 +32,11 @@ internal fun rvSampleSettings() = RvSettingsState(
     dns = RvDnsUpstream.Cloudflare,
 )
 
-/** The sample's data: the copy the APK ships, 2026-11-20 (UTC). */
-internal const val RV_SAMPLE_GEO_SHIPPED_MS = 1_795_132_800_000L
+/** The sample's data: the copy the APK ships. */
+internal val RV_SAMPLE_GEO_SHIPPED: LocalDate = LocalDate.of(2026, 11, 20)
 
-/** The sample's newer data, 2026-11-24 (UTC), as an update leaves it. */
-internal const val RV_SAMPLE_GEO_NEWER_MS = 1_795_478_400_000L
+/** The sample's newer data, as an update leaves it. */
+internal val RV_SAMPLE_GEO_NEWER: LocalDate = LocalDate.of(2026, 11, 24)
 
 /** The sample's versions: the app at the build files' 0.1.0, honk at the core's pinned daeuniverse/honk revision. */
 internal val rvSampleVersions = RvAboutVersions(app = "0.1.0", honk = "8919784")
@@ -53,7 +54,7 @@ internal fun RvSettingsScreenSample(
     routes: RvSettingsRoutes = rvSettingsRoutes(),
     configRev: Int? = null,
     update: RvUpdate = RvUpdate.Idle,
-) = RvSettingsScreen(state, rvSampleVersions.app, onChange, onOpenTheme, onTab, routes, configRev, RvGeoData(RV_SAMPLE_GEO_SHIPPED_MS), update)
+) = RvSettingsScreen(state, rvSampleVersions.app, onChange, onOpenTheme, onTab, routes, configRev, RvGeoData(RV_SAMPLE_GEO_SHIPPED), update)
 
 /** The sample's newer release. */
 internal const val RV_SAMPLE_RELEASE = "0.2.0"

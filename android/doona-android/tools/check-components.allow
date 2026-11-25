@@ -3,4 +3,3 @@
 debug/kotlin/dev/doona/android/prototype/rv/nodes/RvLatencyDots.kt|dp|5|the latency dots' own plot metrics in RvLatencyDotsSize; to move into the library's tokens with the nodes pages
 debug/kotlin/dev/doona/android/prototype/rv/nodes/RvLatencyDots.kt|style|1|the picked dot's label is the pill style at semibold; a library pill variant is owed
 debug/kotlin/dev/doona/android/prototype/rv/stats/RvStatsCharts.kt|style|1|a chart chip's label is the pill style at semibold; a library pill variant is owed
-debug/kotlin/dev/doona/android/prototype/rv/settings/RvThemePreview.kt|colour|3|the theme preview derives each accent's scheme from white and black, not from the live Rv.colors

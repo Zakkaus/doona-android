@@ -14,11 +14,14 @@ internal interface SettingsStore {
     /** Whether the subscriptions update by themselves. */
     val autoUpdate: Flow<Boolean>
 
-    /** How often they do, in hours: one of [updateIntervals]. */
+    /** How often they do, in hours: one of [updateIntervals] or a count in [updateHoursRange]. */
     val updateHours: Flow<Int>
 
-    /** The intervals the store keeps, in hours, shortest first: what 更新間隔 offers. */
+    /** The preset intervals, in hours, shortest first: 更新間隔's radios. */
     val updateIntervals: List<Int>
+
+    /** The counts of hours 更新間隔's 自訂 can store. */
+    val updateHoursRange: IntRange
 
     /** The theme page's choices; 設定 shows the mode on 主題's row. */
     val appearance: Flow<RvAppearance>
@@ -42,7 +45,7 @@ internal interface SettingsStore {
 
     suspend fun setAutoUpdate(enabled: Boolean)
 
-    /** Stores [hours], which must be one of [updateIntervals]. */
+    /** Stores [hours], which must be in [updateHoursRange]. */
     suspend fun setUpdateHours(hours: Int)
 
     /** 實驗室's 效能模式 as stored, which the core reads only when it starts. */

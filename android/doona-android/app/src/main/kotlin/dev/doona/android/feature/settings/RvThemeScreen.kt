@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -42,12 +41,14 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.RV_ACCENTS
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvChrome
 import dev.doona.android.designsystem.rv.RvColors
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvRadio
+import dev.doona.android.designsystem.rv.RvSchemes
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSettingsAlpha
 import dev.doona.android.designsystem.rv.RvSettingsCard
@@ -60,6 +61,7 @@ import dev.doona.android.designsystem.rv.RvSettingsText
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.primary
 import dev.doona.android.designsystem.rv.rvPressSelect
 import dev.doona.android.feature.model.RvAppearance
 import dev.doona.android.feature.model.RvThemeMode
@@ -73,32 +75,31 @@ import kotlinx.coroutines.launch
  * titled cards: 預覽, the preview of the choice; 模式, the three modes side by side, each a small picture of the page over
  * its label and radio; and 強調色, the wallpaper switch and five colour discs. The first disc is the scheme's own primary;
  * the page itself wears the chosen accent, so its radio, switch and preview agree with the ringed disc (S8-10, S07).
- * [light] and [dark] are the two schemes the page and the preview wear; the discs are dimmed and inert while the
+ * [schemes] are the light and dark schemes the page and the preview wear; the discs are dimmed and inert while the
  * wallpaper's colour is followed, since the accent then comes from it. [previewPage] is the page 預覽 draws.
  */
 @Composable
 internal fun RvThemeScreen(
     appearance: RvAppearance,
     onChange: (RvAppearance) -> Unit,
-    light: ColorScheme,
-    dark: ColorScheme,
+    schemes: RvSchemes,
     previewPage: RvThemePreviewPage,
     onBack: () -> Unit,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_settings_theme)
     val pageDark = Rv.colors.dark
-    RvTheme(appearance.scheme(if (pageDark) dark else light, pageDark), pageDark) {
+    RvTheme(schemes, pageDark, appearance.shownAccent) {
         RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
             RvLargeTitle(title, titleBlock, insets)
             // Each card has its outside title, as 強調色 has (N-07); the first one sits on the header's gap.
             RvSettingsColumn {
                 RvSettingsSection(stringResource(R.string.rv_settings_preview), first = true)
-                RvThemePreview(appearance, light, dark, previewPage)
+                RvThemePreview(appearance, schemes, previewPage)
                 RvSettingsSection(stringResource(R.string.rv_settings_mode))
-                ModeCard(appearance, light, dark, onChange)
+                ModeCard(appearance, schemes, onChange)
                 RvSettingsSection(stringResource(R.string.rv_settings_accent))
-                AccentCard(appearance, if (pageDark) dark.primary else light.primary, onChange)
+                AccentCard(appearance, schemes.primary(pageDark), onChange)
             }
         }
     }
@@ -106,9 +107,9 @@ internal fun RvThemeScreen(
 
 /** The three modes side by side: each a picture of the page in that mode, its name and its radio; the whole column picks it. */
 @Composable
-private fun ModeCard(appearance: RvAppearance, light: ColorScheme, dark: ColorScheme, onChange: (RvAppearance) -> Unit) {
-    val lightColors = remember(light) { RvColors(light, dark = false) }
-    val darkColors = remember(dark) { RvColors(dark, dark = true) }
+private fun ModeCard(appearance: RvAppearance, schemes: RvSchemes, onChange: (RvAppearance) -> Unit) {
+    val lightColors = remember(schemes) { schemes.colors(dark = false) }
+    val darkColors = remember(schemes) { schemes.colors(dark = true) }
     RvSettingsCard {
         Row(Modifier.fillMaxWidth().padding(horizontal = RvSpace.tight)) {
             RvThemeMode.entries.forEach { mode ->
@@ -210,14 +211,14 @@ private const val THUMB_CARD = 0.22f
 
 /**
  * 主題 in the app: the [store]'s choices, each stored as it is made. The app's theme reads the same store, so the whole
- * app, this page included, wears a choice as soon as it lands. [light] and [dark] are the system's schemes.
+ * app, this page included, wears a choice as soon as it lands. [schemes] are the system's.
  */
 @Composable
-internal fun ThemeRoute(store: SettingsStore, light: ColorScheme, dark: ColorScheme, previewPage: RvThemePreviewPage, onBack: () -> Unit) {
+internal fun ThemeRoute(store: SettingsStore, schemes: RvSchemes, previewPage: RvThemePreviewPage, onBack: () -> Unit) {
     val viewModel: ThemeViewModel = viewModel(factory = ThemeViewModel.factory(store))
     // The page waits for the store, as 設定 does, rather than show a choice the user may not have made.
     val appearance = viewModel.appearance.collectAsStateWithLifecycle().value ?: return RvSettingsLoading()
-    RvThemeScreen(appearance, viewModel::set, light, dark, previewPage, onBack)
+    RvThemeScreen(appearance, viewModel::set, schemes, previewPage, onBack)
 }
 
 /** 主題's choices as the store has them, null until it answers; a choice is stored in the view model's scope, so leaving the page does not cancel it. */

@@ -28,7 +28,7 @@ class AppSettingsTest {
             settings.setGeoUpdateInterval(GeoUpdateInterval.Daily)
             settings.recordGeoUpdateSuccess(1234L)
             settings.setNotifyOnDrop(false)
-            settings.setUpdateInterval(UpdateInterval.One)
+            settings.setUpdateInterval(UpdateInterval.ofHours(36))
             settings.setAutoUpdate(false)
             settings.setAppearance(ThemeAppearance(ThemeMode.Light, followWallpaper = true, accent = ThemeAccent.Purple))
             assertFalse(settings.performanceMode.first())
@@ -41,7 +41,7 @@ class AppSettingsTest {
         try {
             val settings = AppSettings(AppSettings.store(CoroutineScope(reader + Dispatchers.IO)) { file })
             assertFalse(settings.notifyOnDrop.first())
-            assertEquals(SubscriptionUpdate(false, UpdateInterval.One), settings.subscriptionUpdate.first())
+            assertEquals(SubscriptionUpdate(false, UpdateInterval.ofHours(36)), settings.subscriptionUpdate.first())
             assertEquals(GeoUpdateSchedule(GeoUpdateInterval.Daily, 1234L), settings.geoUpdateSchedule.first())
             assertEquals(ThemeAppearance(ThemeMode.Light, true, ThemeAccent.Purple), settings.appearance.first())
             assertTrue(settings.performanceMode.first())
@@ -51,14 +51,15 @@ class AppSettingsTest {
     }
 
     @Test
-    fun theIntervalsAreThoseOfTheIntervalPage() {
-        assertEquals(listOf(1L, 6L, 12L, 24L), UpdateInterval.entries.map { it.duration.inWholeHours })
+    fun thePresetsAreThoseOfTheIntervalPage() {
+        assertEquals(listOf(1L, 6L, 12L, 24L), UpdateInterval.PRESETS.map { it.duration.inWholeHours })
+        assertEquals(12, UpdateInterval.DEFAULT.hours)
     }
 
     @Test
-    fun `an interval is found by its hours, and hours of no interval are refused`() {
-        assertEquals(listOf(1, 6, 12, 24), UpdateInterval.entries.map { it.hours })
-        for (interval in UpdateInterval.entries) assertEquals(interval, UpdateInterval.ofHours(interval.hours))
-        assertThrows(IllegalArgumentException::class.java) { UpdateInterval.ofHours(48) }
+    fun `a typed interval is any whole count of hours from one to a week, and others are refused`() {
+        assertEquals(1..168, UpdateInterval.RANGE)
+        for (hours in listOf(1, 48, 168)) assertEquals(hours.toLong(), UpdateInterval.ofHours(hours).duration.inWholeHours)
+        for (hours in listOf(0, -1, 169)) assertThrows(IllegalArgumentException::class.java) { UpdateInterval.ofHours(hours) }
     }
 }

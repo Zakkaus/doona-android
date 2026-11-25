@@ -16,6 +16,7 @@ import androidx.compose.ui.test.performClick
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.R
 import dev.doona.android.data.settings.LogLevelController
+import dev.doona.android.data.settings.UpdateInterval
 import dev.doona.android.designsystem.rv.RvSheetLayout
 import dev.doona.android.engine.AppPolicy
 import dev.doona.android.engine.Catalog
@@ -38,14 +39,13 @@ import dev.doona.android.feature.report.RvReportScreen
 import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
-import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.rvAnimatorScale
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvRowRules
-import dev.doona.android.prototype.rv.seedColorScheme
-import dev.doona.android.prototype.rv.settings.RV_SAMPLE_GEO_SHIPPED_MS
+import dev.doona.android.prototype.rv.seedSchemes
+import dev.doona.android.prototype.rv.settings.RV_SAMPLE_GEO_SHIPPED
 import dev.doona.android.prototype.rv.settings.RV_SAMPLE_THEME_PREVIEW
 import dev.doona.android.prototype.rv.settings.RvPerAppData
 import dev.doona.android.prototype.rv.settings.rvReportActions
@@ -78,8 +78,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import java.time.Instant
-import java.time.ZoneOffset
 
 private val SHOTS = System.getProperty("doona.shots") ?: "src/test/screenshots"
 
@@ -266,12 +264,36 @@ class SettingsAppShotTest {
         }
     }
 
+    /** 更新間隔's 自訂 open on a typed count, over the page. */
+    @Test fun intervalCustomLight() = compose.app("settings-interval-custom", dark = false) { IntervalCustom(IntervalUiState(RvData.UPDATE_HOURS, true, "36")) }
+
+    @Test fun intervalCustomDark() = compose.app("settings-interval-custom", dark = true) { IntervalCustom(IntervalUiState(RvData.UPDATE_HOURS, true, "36")) }
+
+    /** A count past a week: the sheet stays open and says the range. */
+    @Test
+    fun intervalCustomInvalidLight() = compose.app("settings-interval-custom-invalid", dark = false) { IntervalCustom(IntervalUiState(RvData.UPDATE_HOURS, true, "200", true)) }
+
+    @Test
+    fun intervalCustomInvalidFs200() =
+        compose.app("settings-interval-custom-invalid", fontScale = RV_FS200) { IntervalCustom(IntervalUiState(RvData.UPDATE_HOURS, true, "200", true)) }
+
+    /** The 更新間隔 page under 自訂's sheet, drawn open in the page's window as DNS's is. */
     @Composable
-    private fun Theme() =
-        ThemeRoute(FakeSettingsStore(), seedColorScheme(Seed.Cyan.argb, false), seedColorScheme(Seed.Cyan.argb, true), RV_SAMPLE_THEME_PREVIEW, onBack = {})
+    private fun IntervalCustom(state: IntervalUiState) {
+        Box(Modifier.fillMaxSize()) {
+            RvIntervalScreen(state.selected, RvData.UPDATE_INTERVALS, onSelect = {}, onBack = {}, onCustom = {})
+            RvSheetLayout({ 1f }, {}, stringResource(R.string.rv_settings_interval_custom_title)) {
+                RvIntervalCustomContent(state, UpdateInterval.RANGE, onText = {}, onSave = {}, onDismiss = {})
+            }
+        }
+    }
 
     @Composable
-    private fun Interval() = IntervalRoute(sampleStore(), onCustom = {}, onBack = {})
+    private fun Theme() =
+        ThemeRoute(FakeSettingsStore(), seedSchemes(), RV_SAMPLE_THEME_PREVIEW, onBack = {})
+
+    @Composable
+    private fun Interval() = IntervalRoute(sampleStore(), onBack = {})
 
     @Composable
     private fun LogLevel() = LogLevelRoute(InfoLevels, onBack = {})
@@ -316,7 +338,7 @@ class SettingsAppEnShotTest {
         RvReportScreen(RvReportBuild.Ready(RvRedaction()), rvSampleReport, RvRedaction(), onRedaction = {}, onBack = {}, actions = rvReportActions())
     }
 
-    @Test fun interval() = compose.app("settings-interval-en", dark = false) { IntervalRoute(sampleStore(), onCustom = {}, onBack = {}) }
+    @Test fun interval() = compose.app("settings-interval-en", dark = false) { IntervalRoute(sampleStore(), onBack = {}) }
 
     @Test fun intervalSample() = compose.sample("settings-interval-en") { RvIntervalScreen(RvData.UPDATE_HOURS, RvData.UPDATE_INTERVALS, onSelect = {}, onBack = {}, onCustom = {}) }
 
@@ -393,7 +415,7 @@ private fun reportPage(built: Built, tmp: TemporaryFolder, linkFailed: Boolean =
  */
 private fun sampleStore() = FakeSettingsStore(
     updateHours = RvData.UPDATE_HOURS,
-    shippedGeoDate = Instant.ofEpochMilli(RV_SAMPLE_GEO_SHIPPED_MS).atOffset(ZoneOffset.UTC).toLocalDate().toString(),
+    shippedGeoDate = RV_SAMPLE_GEO_SHIPPED.toString(),
     languages = "zh-TW",
 )
 

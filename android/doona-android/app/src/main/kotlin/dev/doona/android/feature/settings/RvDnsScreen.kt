@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,7 +16,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -26,8 +23,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvChevron
-import dev.doona.android.designsystem.rv.RvConfirmContent
 import dev.doona.android.designsystem.rv.RvFootnote
+import dev.doona.android.designsystem.rv.RvInputContent
+import dev.doona.android.designsystem.rv.RvInputSheet
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvScrollPage
@@ -37,9 +35,7 @@ import dev.doona.android.designsystem.rv.RvSettingsRadioRow
 import dev.doona.android.designsystem.rv.RvSettingsRow
 import dev.doona.android.designsystem.rv.RvSettingsSection
 import dev.doona.android.designsystem.rv.RvSettingsSpace
-import dev.doona.android.designsystem.rv.RvSheet
 import dev.doona.android.designsystem.rv.RvSpace
-import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvRowPress
 import dev.doona.android.designsystem.rv.rvSystemScheme
@@ -90,36 +86,24 @@ internal fun DnsRoute(engine: Engine, onBack: () -> Unit) {
  */
 @Composable
 internal fun RvDnsCustomSheet(state: DnsUiState, onText: (String) -> Unit, onSave: () -> Unit, onDismiss: () -> Unit) {
-    RvSheet(state.customOpen, onDismiss, stringResource(R.string.rv_settings_dns_custom_title)) { RvDnsCustomContent(state, onText, onSave, onDismiss) }
+    val (title, hint, error) = customWords(state)
+    RvInputSheet(state.customOpen, title, state.customText, onText, onSave, onDismiss, PLACEHOLDER, hint, error, KeyboardType.Uri)
 }
 
 /** What [RvDnsCustomSheet] shows in its card. */
 @Composable
 internal fun ColumnScope.RvDnsCustomContent(state: DnsUiState, onText: (String) -> Unit, onSave: () -> Unit, onDismiss: () -> Unit) {
-    val title = stringResource(R.string.rv_settings_dns_custom_title)
-    val error = state.customError?.let { stringResource(if (it == ErrorCode.InvalidArgument) R.string.rv_settings_dns_custom_invalid else it.messageRes()) }
-    RvConfirmContent(
-        title = title,
-        body = null,
-        confirm = stringResource(R.string.rv_save),
-        dismiss = stringResource(R.string.rv_cancel),
-        onConfirm = onSave,
-        onDismiss = onDismiss,
-        confirmEnabled = state.customText.isNotBlank(),
-    ) {
-        RvTextField(
-            state.customText,
-            onText,
-            label = null,
-            name = title,
-            placeholder = PLACEHOLDER,
-            supporting = stringResource(R.string.rv_settings_dns_custom_hint),
-            error = error,
-            keyboard = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
-            actions = KeyboardActions(onDone = { onSave() }),
-        )
-    }
+    val (title, hint, error) = customWords(state)
+    RvInputContent(title, state.customText, onText, onSave, onDismiss, PLACEHOLDER, hint, error, KeyboardType.Uri)
 }
+
+/** 自訂's title, hint and, once a save failed, why. */
+@Composable
+private fun customWords(state: DnsUiState): Triple<String, String, String?> = Triple(
+    stringResource(R.string.rv_settings_dns_custom_title),
+    stringResource(R.string.rv_settings_dns_custom_hint),
+    state.customError?.let { stringResource(if (it == ErrorCode.InvalidArgument) R.string.rv_settings_dns_custom_invalid else it.messageRes()) },
+)
 
 /** 自訂's placeholder: two presets' addresses, the form the field takes. */
 private val PLACEHOLDER = "${RvDnsUpstream.Cloudflare.address}, ${RvDnsUpstream.Google.address}"

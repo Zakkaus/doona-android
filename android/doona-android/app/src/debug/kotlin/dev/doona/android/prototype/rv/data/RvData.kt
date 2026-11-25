@@ -72,7 +72,7 @@ internal object RvData {
     const val UPDATE_HOURS = 12
 
     /** 更新間隔's choices, as the app's store keeps them. */
-    val UPDATE_INTERVALS = UpdateInterval.entries.map { it.hours }
+    val UPDATE_INTERVALS = UpdateInterval.PRESETS.map { it.hours }
 
     const val CURRENT_ID = "hk-02"
 }

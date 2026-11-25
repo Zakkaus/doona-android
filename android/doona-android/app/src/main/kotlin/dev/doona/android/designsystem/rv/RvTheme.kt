@@ -316,8 +316,11 @@ internal fun RvTheme(scheme: ColorScheme, dark: Boolean, content: @Composable ()
     val motion = rememberRvMotion()
     val tokens = remember(scheme, dark, motion) { RvTokens(RvColors(scheme, dark), RvType(), motion) }
     val overscroll = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) LocalOverscrollFactory.current else null
-    CompositionLocalProvider(LocalRv provides tokens, LocalOverscrollFactory provides overscroll, content = content)
+    CompositionLocalProvider(LocalRv provides tokens, LocalRvScheme provides scheme, LocalOverscrollFactory provides overscroll, content = content)
 }
+
+/** The scheme the RV theme around was built from, for an old page drawn inside an RV one ([RvOldPage]). */
+internal val LocalRvScheme = staticCompositionLocalOf<ColorScheme> { error("no RvTheme above") }
 
 /** The wallpaper's scheme on Android 12 and later; below that there is no wallpaper colour, so Material's baseline. */
 @Composable

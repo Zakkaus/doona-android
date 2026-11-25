@@ -29,7 +29,7 @@ import dev.doona.android.feature.model.RvGeoUpdate
 internal fun RvGeoDataRow(data: RvGeoData, onUpdate: () -> Unit) {
     val failed = data.update == RvGeoUpdate.Failed
     val format = rememberRvFormat()
-    val date = data.dateEpochMs?.let(format::date) ?: RV_NO_VALUE
+    val date = data.date?.let(format::date) ?: RV_NO_VALUE
     // Each part whole, so a line that wraps at a large font size breaks after the dot, never inside 已是最新.
     val line = rvConfigLine(listOf(date) + geoState(data).map { stringResource(it) })
     val action: @Composable () -> Unit = {

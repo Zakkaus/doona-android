@@ -60,6 +60,9 @@
     <string name="rv_settings_dns_custom_title">自定义 DNS 服务器</string>
     <string name="rv_settings_dns_custom_hint">最多 4 个 IP 地址，以逗号分隔</string>
     <string name="rv_settings_dns_custom_invalid">请输入 1 到 4 个 IP 地址，例如 1.1.1.1 或 1.1.1.1:53</string>
+    <string name="rv_settings_interval_custom_title">自定义更新间隔</string>
+    <string name="rv_settings_interval_custom_hint">%1$d 到 %2$d 小时</string>
+    <string name="rv_settings_interval_custom_invalid">请输入 %1$d 到 %2$d 之间的整数</string>
 
     <string name="rv_report_title">报告问题</string>
     <string name="rv_report_failed">无法导出诊断报告</string>

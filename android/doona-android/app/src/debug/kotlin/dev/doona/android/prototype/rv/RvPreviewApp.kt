@@ -36,9 +36,11 @@ import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.designsystem.rv.RvPullDown
 import dev.doona.android.designsystem.rv.RvPullLook
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.accented
 import dev.doona.android.designsystem.rv.rememberRvPullState
 import dev.doona.android.designsystem.rv.rvEverySample
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.designsystem.rv.rvSystemSchemes
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.activity.ActivityAction
@@ -59,7 +61,7 @@ import dev.doona.android.feature.settings.RvThemeScreen
 import dev.doona.android.feature.settings.isDark
 import dev.doona.android.feature.settings.rvLicenseEntries
 import dev.doona.android.feature.settings.rvSystemLanguage
-import dev.doona.android.feature.settings.scheme
+import dev.doona.android.feature.settings.shownAccent
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
 import dev.doona.android.prototype.rv.connections.RvConnectionsPage
 import dev.doona.android.prototype.rv.connections.RvConnectionsRoutes
@@ -157,7 +159,7 @@ internal fun RvPreviewApp(options: RvMotionOptions = RvMotionOptions(), start: R
     // map's pulse); a frame where nothing moves votes nothing.
     Box(Modifier.fillMaxSize().preferredFrameRate(FrameRateCategory.High), propagateMinConstraints = true) {
         RvLookFade(settings.appearance.isDark(systemDark) to settings.appearance) { (dark, appearance) ->
-            RvTheme(appearance.scheme(rvSystemScheme(dark), dark), dark) {
+            RvTheme(rvSystemScheme(dark).accented(appearance.shownAccent, dark), dark) {
                 RvSample(options, start, settings) { settings = it }
             }
         }
@@ -237,7 +239,7 @@ private fun RvSamplePage(
 
         SETTINGS -> SettingsPage(settings, onSettings, pages, route.substringAfter(':', ""))
 
-        THEME -> RvThemeScreen(settings.appearance, { onSettings(settings.copy(appearance = it)) }, rvSystemScheme(false), rvSystemScheme(true), RV_SAMPLE_THEME_PREVIEW, onBack = pages.pop)
+        THEME -> RvThemeScreen(settings.appearance, { onSettings(settings.copy(appearance = it)) }, rvSystemSchemes(), RV_SAMPLE_THEME_PREVIEW, onBack = pages.pop)
 
         DNS -> RvDnsScreen(settings.dns, { onSettings(settings.copy(dns = it)) }, onBack = pages.pop)
 

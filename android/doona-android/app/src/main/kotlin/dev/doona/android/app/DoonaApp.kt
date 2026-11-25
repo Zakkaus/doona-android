@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,7 +16,7 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import dev.doona.android.designsystem.components.DoonaHubShell
 import dev.doona.android.designsystem.components.DoonaHubTab
 import dev.doona.android.designsystem.rv.RvFloatingNav
-import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.RvOverDoona
 import dev.doona.android.designsystem.rv.rememberRvGlass
 import dev.doona.android.designsystem.rv.rvGlassSource
 import dev.doona.android.designsystem.rv.rvNavClearance
@@ -91,12 +90,6 @@ fun DoonaApp(
         }
     }
     localNetwork?.let { LocalNetworkPrompts(it) }
-}
-
-/** RV's tokens on the scheme the old pages' [DoonaTheme] wears ([AppTheme]'s, with 主題's choices), for every RV page. */
-@Composable
-private fun RvOverDoona(content: @Composable () -> Unit) {
-    RvTheme(MaterialTheme.colorScheme, DoonaTheme.colors.dark, content)
 }
 
 /**

@@ -12,10 +12,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.doona.android.data.settings.AppSettings
+import dev.doona.android.designsystem.rv.accented
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.feature.settings.isDark
-import dev.doona.android.feature.settings.scheme
+import dev.doona.android.feature.settings.shownAccent
 
 /**
  * The app's theme from 主題's stored choices: dark as the mode says (the system's for 跟隨系統), the wallpaper's scheme
@@ -28,7 +29,7 @@ internal fun AppTheme(settings: AppSettings, content: @Composable () -> Unit) {
     val appearance = stored?.let(::rvAppearance) ?: return
     val dark = appearance.isDark(isSystemInDarkTheme())
     val context = LocalContext.current
-    val scheme = remember(context, appearance, dark) { appearance.scheme(rvSystemScheme(context, dark), dark) }
+    val scheme = remember(context, appearance, dark) { rvSystemScheme(context, dark).accented(appearance.shownAccent, dark) }
     LaunchedEffect(context, dark) {
         val style = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { dark }
         (context as? ComponentActivity)?.enableEdgeToEdge(style, style)

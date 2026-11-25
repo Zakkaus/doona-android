@@ -14,9 +14,8 @@ import dev.doona.android.app.themeAppearance
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.model.RvAppearance
 import dev.doona.android.feature.model.RvThemeMode
-import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.rvContent
-import dev.doona.android.prototype.rv.seedColorScheme
+import dev.doona.android.prototype.rv.seedSchemes
 import dev.doona.android.prototype.rv.settings.RV_SAMPLE_THEME_PREVIEW
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -40,7 +39,7 @@ class ThemeDnsRouteTest {
     fun aThemeChoiceIsStoredAtOnce() {
         val store = FakeSettingsStore()
         compose.rvContent(dark = false) {
-            ThemeRoute(store, seedColorScheme(Seed.Cyan.argb, false), seedColorScheme(Seed.Cyan.argb, true), RV_SAMPLE_THEME_PREVIEW, onBack = {})
+            ThemeRoute(store, seedSchemes(), RV_SAMPLE_THEME_PREVIEW, onBack = {})
         }
         compose.onNodeWithText(DARK).performClick()
         compose.waitForIdle()

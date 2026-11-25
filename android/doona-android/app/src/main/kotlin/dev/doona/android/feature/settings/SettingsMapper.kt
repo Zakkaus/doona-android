@@ -9,8 +9,6 @@ import dev.doona.android.feature.model.RvGeoData
 import dev.doona.android.feature.model.RvGeoUpdate
 import dev.doona.android.feature.model.RvPerApp
 import java.time.LocalDate
-import java.time.LocalTime
-import java.time.ZoneOffset
 import java.time.format.DateTimeParseException
 
 /** The page's per-app setting for the engine's [perApp]. */
@@ -43,14 +41,14 @@ internal fun rvGeoUpdate(lastResult: String): RvGeoUpdate = when (lastResult) {
  * and whether the VPN is [connected], which an update needs.
  */
 internal fun rvGeoData(assets: ConfigAssets?, shippedDate: String, connected: Boolean) = RvGeoData(
-    dateEpochMs = assets?.release?.let(::releaseEpochMs) ?: releaseEpochMs(shippedDate),
+    date = assets?.release?.let(::releaseDate) ?: releaseDate(shippedDate),
     update = assets?.let { rvGeoUpdate(it.lastResult) } ?: RvGeoUpdate.Idle,
     connected = connected,
 )
 
-/** Noon UTC of a `YYYY-MM-DD` release, so the date reads the same in every time zone the row is shown in; null for any other text. */
-private fun releaseEpochMs(date: String): Long? = try {
-    LocalDate.parse(date).atTime(LocalTime.NOON).toInstant(ZoneOffset.UTC).toEpochMilli()
+/** The day of a `YYYY-MM-DD` release, kept a calendar day so no time zone moves it; null for any other text. */
+private fun releaseDate(date: String): LocalDate? = try {
+    LocalDate.parse(date)
 } catch (_: DateTimeParseException) {
     null
 }

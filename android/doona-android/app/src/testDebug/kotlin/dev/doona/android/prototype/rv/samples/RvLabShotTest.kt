@@ -7,7 +7,7 @@ import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.rvShot
-import dev.doona.android.prototype.rv.settings.RV_SAMPLE_GEO_SHIPPED_MS
+import dev.doona.android.prototype.rv.settings.RV_SAMPLE_GEO_SHIPPED
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import dev.doona.android.prototype.rv.settings.rvSampleVersions
 import dev.doona.android.prototype.rv.settings.rvSettingsRoutes
@@ -79,5 +79,5 @@ class RvLabShotTest {
     fun pageEn() = compose.rvShot("samples-lab-page-en", dark = false, before = { assertWhole() }) { RvLabScreen(performance = false) }
 
     @androidx.compose.runtime.Composable
-    private fun Settings() = RvSettingsScreen(rvSampleSettings(), rvSampleVersions.app, onChange = {}, onOpenTheme = {}, routes = rvSettingsRoutes(), geoData = RvGeoData(RV_SAMPLE_GEO_SHIPPED_MS))
+    private fun Settings() = RvSettingsScreen(rvSampleSettings(), rvSampleVersions.app, onChange = {}, onOpenTheme = {}, routes = rvSettingsRoutes(), geoData = RvGeoData(RV_SAMPLE_GEO_SHIPPED))
 }

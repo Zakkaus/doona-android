@@ -19,7 +19,8 @@ internal class FakeSettingsStore(
     override val notifyOnDrop = MutableStateFlow(notifyOnDrop)
     override val autoUpdate = MutableStateFlow(autoUpdate)
     override val updateHours = MutableStateFlow(updateHours)
-    override val updateIntervals = UpdateInterval.entries.map { it.hours }
+    override val updateIntervals = UpdateInterval.PRESETS.map { it.hours }
+    override val updateHoursRange = UpdateInterval.RANGE
     override val appearance = MutableStateFlow(appearance)
     override val tileAdded = MutableStateFlow(tileAdded)
     override val performanceMode = MutableStateFlow(performanceMode)
@@ -44,7 +45,7 @@ internal class FakeSettingsStore(
     }
 
     override suspend fun setUpdateHours(hours: Int) {
-        require(hours in updateIntervals) { "no update interval of $hours h" }
+        require(hours in updateHoursRange) { "no update interval of $hours h" }
         updateHours.value = hours
     }
 

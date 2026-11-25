@@ -24,6 +24,7 @@ import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.rvText
 import dev.doona.android.prototype.rv.seedColorScheme
+import dev.doona.android.prototype.rv.seedSchemes
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -141,7 +142,7 @@ class RvSettingsShotTest {
 
     @Composable
     private fun Theme() =
-        RvThemeScreen(rvSampleAppearance(), onChange = {}, light = seedColorScheme(Seed.Cyan.argb, false), dark = seedColorScheme(Seed.Cyan.argb, true), previewPage = RV_SAMPLE_THEME_PREVIEW, onBack = {})
+        RvThemeScreen(rvSampleAppearance(), onChange = {}, schemes = seedSchemes(), previewPage = RV_SAMPLE_THEME_PREVIEW, onBack = {})
 
     private companion object {
         /**

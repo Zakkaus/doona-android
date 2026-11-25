@@ -1,5 +1,6 @@
 package dev.doona.android.feature.settings
 
+import dev.doona.android.designsystem.rv.RvFormat
 import dev.doona.android.engine.AppPolicy
 import dev.doona.android.engine.ConfigAssets
 import dev.doona.android.engine.EffectiveConfig
@@ -35,7 +36,9 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.time.Instant
+import java.time.LocalDate
+import java.util.Locale
+import java.util.TimeZone
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -230,25 +233,39 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `the row's date is the core's release, else the APK's copy, at noon UTC`() {
-        fun date(ms: Long?) = Instant.ofEpochMilli(checkNotNull(ms)).toString()
-        assertEquals("2026-11-23T12:00:00Z", date(rvGeoData(null, "2026-11-23", connected = false).dateEpochMs))
+    fun `the row's date is the core's release, else the APK's copy`() {
+        val day = LocalDate.of(2026, 11, 23)
+        assertEquals(day, rvGeoData(null, "2026-11-23", connected = false).date)
         val builtin = ConfigAssets("builtin", null, "idle", null, false)
-        assertEquals("2026-11-23T12:00:00Z", date(rvGeoData(builtin, "2026-11-23", connected = true).dateEpochMs))
+        assertEquals(day, rvGeoData(builtin, "2026-11-23", connected = true).date)
         val download = ConfigAssets("download", "2026-11-30", "activated", null, false)
         val row = rvGeoData(download, "2026-11-23", connected = true)
-        assertEquals("2026-11-30T12:00:00Z", date(row.dateEpochMs))
+        assertEquals(LocalDate.of(2026, 11, 30), row.date)
         assertEquals(RvGeoUpdate.Updated, row.update)
         assertTrue(row.connected)
         val odd = ConfigAssets("download", "20261130", "idle", null, false)
-        assertEquals("a release that is no date falls back", "2026-11-23T12:00:00Z", date(rvGeoData(odd, "2026-11-23", connected = true).dateEpochMs))
+        assertEquals("a release that is no date falls back", day, rvGeoData(odd, "2026-11-23", connected = true).date)
+    }
+
+    @Test
+    fun `the release day reads the same at UTC+14 and UTC-12`() {
+        val zone = TimeZone.getDefault()
+        try {
+            for (id in listOf("Pacific/Kiritimati", "Etc/GMT+12", "UTC")) {
+                TimeZone.setDefault(TimeZone.getTimeZone(id))
+                val date = checkNotNull(rvGeoData(null, "2026-11-23", connected = true).date)
+                assertEquals(id, "11/23/26", RvFormat(Locale.US).date(date))
+            }
+        } finally {
+            TimeZone.setDefault(zone)
+        }
     }
 
     @Test
     fun `no date at all when neither the core's release nor the APK's is a date, rather than ending the page`() {
         val odd = ConfigAssets("download", "20261130", "idle", null, false)
-        assertNull(rvGeoData(odd, "unknown", connected = true).dateEpochMs)
-        assertNull(rvGeoData(null, "", connected = false).dateEpochMs)
+        assertNull(rvGeoData(odd, "unknown", connected = true).date)
+        assertNull(rvGeoData(null, "", connected = false).date)
     }
 
     @Test
@@ -419,11 +436,11 @@ class SettingsViewModelTest {
         val store = FakeSettingsStore(updateHours = 24)
         val vm = IntervalViewModel(store)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
-        assertEquals(24, vm.uiState.value)
+        assertEquals(24, vm.uiState.value?.selected)
         assertEquals(listOf(1, 6, 12, 24), vm.choices)
         vm.select(1)
         assertEquals(1, store.updateHours.value)
-        assertEquals(1, vm.uiState.value)
+        assertEquals(1, vm.uiState.value?.selected)
     }
 
     private fun assets(lastResult: String) = ConfigAssets("builtin", null, lastResult, null, false)

@@ -1,6 +1,5 @@
 package dev.doona.android.feature.settings
 
-import androidx.annotation.StringRes
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -10,16 +9,13 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -27,8 +23,8 @@ import androidx.compose.ui.semantics.contentDescription
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.Rv
-import dev.doona.android.designsystem.rv.RvAccentColors
 import dev.doona.android.designsystem.rv.RvChrome
+import dev.doona.android.designsystem.rv.RvSchemes
 import dev.doona.android.designsystem.rv.RvSettingsCard
 import dev.doona.android.designsystem.rv.RvSettingsSize
 import dev.doona.android.designsystem.rv.RvSettingsSpace
@@ -36,40 +32,8 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.feature.model.RvAppearance
 import dev.doona.android.feature.model.RvThemeMode
 
-/** One accent: its name for a screen reader and its primary in the light theme. */
-internal class RvAccent(@StringRes val name: Int, val light: Color)
-
-/** The four fixed colours the theme page offers after the first swatch, which is the scheme's own primary (S8-10). */
-internal val RV_ACCENTS = listOf(
-    RvAccent(R.string.rv_settings_accent_blue, RvAccentColors.blue),
-    RvAccent(R.string.rv_settings_accent_purple, RvAccentColors.purple),
-    RvAccent(R.string.rv_settings_accent_orange, RvAccentColors.orange),
-    RvAccent(R.string.rv_settings_accent_pink, RvAccentColors.pink),
-)
-
-/** The accent as a primary: as it is in light, lifted toward white in dark so it keeps its contrast on the black page. */
-internal fun RvAccent.primary(dark: Boolean): Color = if (dark) lerp(light, Color.White, RvAccentColors.DARK_LIFT) else light
-
-/** This scheme with [accent] for its primary roles, which are what the sample's dots, positive hue and download line read. */
-internal fun ColorScheme.withAccent(accent: RvAccent, dark: Boolean): ColorScheme {
-    val primary = accent.primary(dark)
-    return copy(
-        primary = primary,
-        onPrimary = if (dark) RvAccentColors.onPrimaryDark else Color.White,
-        primaryContainer = if (dark) lerp(primary, Color.Black, RvAccentColors.CONTAINER_DARK) else lerp(primary, Color.White, RvAccentColors.CONTAINER_LIGHT),
-        onPrimaryContainer = onSurface,
-    )
-}
-
 /** The swatch the page shows as chosen: the first (the scheme's own primary) while the wallpaper's colour is followed. */
 internal val RvAppearance.shownAccent: Int get() = if (followWallpaper) 0 else accent
-
-/**
- * The scheme [base] becomes under these choices: itself for the first swatch or the wallpaper's colour, else with the
- * chosen fixed accent. The theme page wears it too, so its radio, switch and preview agree with the ringed swatch (S07).
- */
-internal fun RvAppearance.scheme(base: ColorScheme, dark: Boolean): ColorScheme =
-    if (shownAccent == 0) base else base.withAccent(RV_ACCENTS[shownAccent - 1], dark)
 
 /** Whether these choices are dark when the system is [systemDark]: the system's for 跟隨系統, else the chosen mode. */
 internal fun RvAppearance.isDark(systemDark: Boolean): Boolean = when (mode) {
@@ -84,9 +48,8 @@ internal fun RvAppearance.isDark(systemDark: Boolean): Boolean = when (mode) {
  * a picture of [page]: the screen reader hears 預覽 and a touch does nothing.
  */
 @Composable
-internal fun RvThemePreview(appearance: RvAppearance, light: ColorScheme, dark: ColorScheme, page: RvThemePreviewPage, modifier: Modifier = Modifier) {
+internal fun RvThemePreview(appearance: RvAppearance, schemes: RvSchemes, page: RvThemePreviewPage, modifier: Modifier = Modifier) {
     val isDark = appearance.isDark(Rv.colors.dark)
-    val scheme = appearance.scheme(if (isDark) dark else light, isDark)
     val label = stringResource(R.string.rv_settings_preview)
     val size = RvSettingsSize
     val shape = RoundedCornerShape(Rv.highlightRadius)
@@ -112,7 +75,7 @@ internal fun RvThemePreview(appearance: RvAppearance, light: ColorScheme, dark: 
                     },
             ) {
                 CompositionLocalProvider(LocalFrameInsets provides WindowInsets(top = size.previewStatus)) {
-                    RvTheme(scheme, isDark) { page(scheme, isDark) }
+                    RvTheme(schemes, isDark, appearance.shownAccent, page)
                 }
             }
             // Above the page, so no tap or drag reaches it.
@@ -124,5 +87,5 @@ internal fun RvThemePreview(appearance: RvAppearance, light: ColorScheme, dark: 
 /** The preview shows the 活動 page at this share of its size. */
 private const val PREVIEW_SCALE = 0.6f
 
-/** The page the preview draws, scaled down, in the [scheme] the choices give and [dark] or not: 活動. */
-internal typealias RvThemePreviewPage = @Composable (scheme: ColorScheme, dark: Boolean) -> Unit
+/** The page the preview draws, scaled down, inside the RV theme the choices give: 活動. */
+internal typealias RvThemePreviewPage = @Composable () -> Unit

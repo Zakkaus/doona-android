@@ -49,6 +49,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.time.LocalDate
 
 /**
  * 設定's GeoIP/GeoSite row (owner-fix2 item 16; in 更新 under 檢查更新 since owner-fix3 item 27): the whole 設定 page, as
@@ -182,12 +183,12 @@ class RvGeoDataShotTest {
     fun eachStateSaysItselfAfterTheDateWithItsAction() {
         var data by mutableStateOf(IDLE)
         compose.setContent { Themed { Page(data) } }
-        val shipped = date(RV_SAMPLE_GEO_SHIPPED_MS)
+        val shipped = date(RV_SAMPLE_GEO_SHIPPED)
         expect(shipped, R.string.rv_menu_update, enabled = true)
         compose.runOnIdle { data = UPDATING }
         expect(after(shipped, R.string.rv_geodata_updating), action = null)
         compose.runOnIdle { data = UPDATED }
-        expect(after(date(RV_SAMPLE_GEO_NEWER_MS), R.string.rv_geodata_updated), R.string.rv_menu_update, enabled = true)
+        expect(after(date(RV_SAMPLE_GEO_NEWER), R.string.rv_geodata_updated), R.string.rv_menu_update, enabled = true)
         compose.runOnIdle { data = LATEST }
         expect(after(shipped, R.string.rv_update_latest), R.string.rv_menu_update, enabled = true)
         compose.runOnIdle { data = FAILED }
@@ -205,11 +206,11 @@ class RvGeoDataShotTest {
         var updates = 0
         var data by mutableStateOf(FAILED_WAITING)
         compose.setContent { Themed { Page(data) { updates++ } } }
-        compose.onNode(line(after(after(date(RV_SAMPLE_GEO_SHIPPED_MS), R.string.rv_geodata_failed), R.string.status_stopped))).assertExists()
+        compose.onNode(line(after(after(date(RV_SAMPLE_GEO_SHIPPED), R.string.rv_geodata_failed), R.string.status_stopped))).assertExists()
         compose.onNodeWithText(rvText(R.string.rv_retry)).assertIsNotEnabled().performClick()
         assertEquals(0, updates)
         compose.runOnIdle { data = FAILED }
-        compose.onNode(line(after(date(RV_SAMPLE_GEO_SHIPPED_MS), R.string.rv_geodata_failed))).assertExists()
+        compose.onNode(line(after(date(RV_SAMPLE_GEO_SHIPPED), R.string.rv_geodata_failed))).assertExists()
         compose.onNodeWithText(rvText(R.string.rv_retry)).assertIsEnabled().performClick()
         assertEquals(1, updates)
     }
@@ -220,7 +221,7 @@ class RvGeoDataShotTest {
     fun aFailureStaysOnTheRowAndRetries() {
         var updates = 0
         compose.setContent { Themed { Page(FAILED) { updates++ } } }
-        compose.onAllNodes(line(after(date(RV_SAMPLE_GEO_SHIPPED_MS), R.string.rv_geodata_failed))).assertCountEquals(1)
+        compose.onAllNodes(line(after(date(RV_SAMPLE_GEO_SHIPPED), R.string.rv_geodata_failed))).assertCountEquals(1)
         compose.onAllNodes(isDialog()).assertCountEquals(0)
         compose.onNodeWithText(rvText(R.string.rv_retry)).performClick()
         assertEquals(1, updates)
@@ -296,7 +297,7 @@ class RvGeoDataShotTest {
         compose.rvShot("settings-geodata-$name", dark, before = { assertWhole() }, fontScale = fontScale) { Page(data) }
     }
 
-    private fun date(epochMs: Long) = RvFormat(RuntimeEnvironment.getApplication().resources.configuration.locales[0]).date(epochMs)
+    private fun date(day: LocalDate) = RvFormat(RuntimeEnvironment.getApplication().resources.configuration.locales[0]).date(day)
 
     private fun after(date: String, state: Int) = date + " · " + rvText(state)
 
@@ -336,9 +337,9 @@ class RvGeoDataShotTest {
         const val ZERO_WIDTH_SPACE = "​"
         const val NO_BREAK_SPACE = "\u00A0"
 
-        val IDLE = RvGeoData(RV_SAMPLE_GEO_SHIPPED_MS)
+        val IDLE = RvGeoData(RV_SAMPLE_GEO_SHIPPED)
         val UPDATING = IDLE.copy(update = RvGeoUpdate.Updating)
-        val UPDATED = RvGeoData(RV_SAMPLE_GEO_NEWER_MS, RvGeoUpdate.Updated)
+        val UPDATED = RvGeoData(RV_SAMPLE_GEO_NEWER, RvGeoUpdate.Updated)
         val LATEST = IDLE.copy(update = RvGeoUpdate.Latest)
         val FAILED = IDLE.copy(update = RvGeoUpdate.Failed)
         val WAITING = IDLE.copy(connected = false)

@@ -40,21 +40,26 @@ interface SubscriptionUpdateSettings {
 data class SubscriptionUpdate(val enabled: Boolean, val interval: UpdateInterval)
 
 /**
- * The subscription update intervals the 更新間隔 page offers (owner, 2026-11-25: storage follows the approved page), the
- * one list of them: the page reads [hours] of each through 設定's store.
+ * How often the subscriptions update, in whole [hours]: one of [PRESETS], the 更新間隔 page's radios (owner,
+ * 2026-11-25: storage follows the approved page), or a count in [RANGE] typed in its 自訂 sheet.
  */
-enum class UpdateInterval(val duration: Duration) {
-    One(1.hours),
-    Six(6.hours),
-    Twelve(12.hours),
-    TwentyFour(24.hours),
-    ;
-
-    val hours: Int get() = duration.inWholeHours.toInt()
+@JvmInline
+value class UpdateInterval private constructor(val hours: Int) {
+    val duration: Duration get() = hours.hours
 
     companion object {
-        /** The interval of [hours]; any other count is a caller's error, not a choice to drop. */
-        fun ofHours(hours: Int): UpdateInterval = requireNotNull(entries.firstOrNull { it.hours == hours }) { "no update interval of $hours h" }
+        /** The counts 自訂 takes: an hour, the shortest preset, to a week. */
+        val RANGE = 1..168
+
+        val PRESETS = listOf(1, 6, 12, 24).map(::UpdateInterval)
+
+        val DEFAULT = UpdateInterval(12)
+
+        /** The interval of [hours]; a count outside [RANGE] is a caller's error, not a choice to drop. */
+        fun ofHours(hours: Int): UpdateInterval {
+            require(hours in RANGE) { "no update interval of $hours h" }
+            return UpdateInterval(hours)
+        }
     }
 }
 
@@ -72,7 +77,7 @@ data class ThemeAppearance(val mode: ThemeMode, val followWallpaper: Boolean, va
 class AppSettings internal constructor(private val store: DataStore<Preferences>) : DropNoticeSettings, SubscriptionUpdateSettings {
     override val notifyOnDrop = preference { it[NOTIFY_ON_DROP] ?: true }
     override val subscriptionUpdate = preference { prefs ->
-        val interval = UpdateInterval.entries.firstOrNull { it.hours == prefs[UPDATE_HOURS] } ?: UpdateInterval.Twelve
+        val interval = prefs[UPDATE_HOURS]?.takeIf { it in UpdateInterval.RANGE }?.let(UpdateInterval::ofHours) ?: UpdateInterval.DEFAULT
         SubscriptionUpdate(prefs[AUTO_UPDATE] ?: true, interval)
     }
     internal val geoUpdateSchedule = preference { prefs ->

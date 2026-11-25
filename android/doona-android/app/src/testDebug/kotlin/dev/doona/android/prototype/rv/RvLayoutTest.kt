@@ -187,7 +187,7 @@ class RvLayoutTest {
 
     @Test
     fun theme() = measure("settings-theme", Top.Title) {
-        RvThemeScreen(rvSampleAppearance(), onChange = {}, light = seedColorScheme(Seed.Cyan.argb, false), dark = seedColorScheme(Seed.Cyan.argb, true), previewPage = RV_SAMPLE_THEME_PREVIEW, onBack = {})
+        RvThemeScreen(rvSampleAppearance(), onChange = {}, schemes = seedSchemes(), previewPage = RV_SAMPLE_THEME_PREVIEW, onBack = {})
     }
 
     @Test
