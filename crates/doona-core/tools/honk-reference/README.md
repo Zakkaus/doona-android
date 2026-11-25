@@ -17,7 +17,22 @@ Inputs are fixed. The geo bundle is the MetaCubeX pair pinned in `../geo-pins.js
 SHA-256 are checked before honk reads it, and `DAE_LOCATION_ASSET` points honk at it, so no host
 copy can stand in. Provider bodies are static `node { ... }` entries in each case's `.dae`.
 Health and latency are set per case in `corpus.json` through `AliveDialerSet`, and Selector
-choices through `GroupManager::set_selector_choice`; nothing reads the clock or the network.
+choices through `GroupManager::set_selector_choice`. Nothing reads the network. The clock is not
+injected: honk reads it on the selection path in three places, and no corpus case depends on any
+of them.
+
+- A node's first 60 s after registration (`GRACE_PERIOD`) ignores plain deaths. The harness marks
+  deaths forced, which bypasses it. A case that used a plain death would depend on time.
+- Samples carry timestamps (`SystemTime`, `Instant`), but the ranking reads only the moving
+  average, not their age.
+- Score groups read the clock when traffic feedback and verification are recorded
+  (`group/score/{feedback,evidence,verification}.rs`). The corpus records none, so its Score
+  groups stay cold. A case with recorded Score feedback would depend on time.
+
+Each probe's `protocol` picks the selection: `tcp` reads the TCP health domain, `udp` the data-UDP
+one. A health entry's `network` says which one it sets; `udp` death marks both UDP domains, since
+either keeps a node selectable. `five-policies-udp` makes TCP and UDP pick different leaves under
+urltest, loadbalance, fallback and score.
 
 Corpus and expected report: `../../tests/fixtures/honk/reference/` (`corpus.json`, `cases/*.dae`,
 `expected.json`).
@@ -49,4 +64,5 @@ regenerated `expected.json`, reviewed as a diff.
 - Subscription bodies through honk's supervisor: its parsers are crate-private. Nodes come from
   the `.dae` instead.
 - The repin to the revision slice 6 chooses: change `rev` in `Cargo.toml`, regenerate, review.
-- UDP selection: probes route by protocol, but the leaf is the TCP selection.
+- UDP selection through nested groups and Selector choices: the Selector choice is set for both
+  networks, so the UDP case covers only the policies above.

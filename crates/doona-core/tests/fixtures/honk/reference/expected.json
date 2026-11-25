@@ -341,6 +341,167 @@
     {
       "diagnostics": [],
       "error": null,
+      "name": "five-policies-udp",
+      "probes": [
+        {
+          "leaf": {
+            "chain": [
+              "p-select",
+              "b"
+            ],
+            "kind": "node",
+            "name": "b"
+          },
+          "mark": null,
+          "must": false,
+          "name": "select-tcp",
+          "outbound": "p-select",
+          "rule": 0,
+          "rule_payload": "select.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "p-select",
+              "b"
+            ],
+            "kind": "node",
+            "name": "b"
+          },
+          "mark": null,
+          "must": false,
+          "name": "select-udp",
+          "outbound": "p-select",
+          "rule": 0,
+          "rule_payload": "select.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "p-urltest"
+            ],
+            "kind": "node",
+            "name": "b"
+          },
+          "mark": null,
+          "must": false,
+          "name": "urltest-tcp",
+          "outbound": "p-urltest",
+          "rule": 1,
+          "rule_payload": "urltest.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "p-urltest"
+            ],
+            "kind": "node",
+            "name": "c"
+          },
+          "mark": null,
+          "must": false,
+          "name": "urltest-udp",
+          "outbound": "p-urltest",
+          "rule": 1,
+          "rule_payload": "urltest.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "p-balance"
+            ],
+            "kind": "node",
+            "name": "a"
+          },
+          "mark": null,
+          "must": false,
+          "name": "balance-tcp",
+          "outbound": "p-balance",
+          "rule": 2,
+          "rule_payload": "balance.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "p-balance"
+            ],
+            "kind": "node",
+            "name": "b"
+          },
+          "mark": null,
+          "must": false,
+          "name": "balance-udp",
+          "outbound": "p-balance",
+          "rule": 2,
+          "rule_payload": "balance.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "p-fallback"
+            ],
+            "kind": "node",
+            "name": "a"
+          },
+          "mark": null,
+          "must": false,
+          "name": "fallback-tcp",
+          "outbound": "p-fallback",
+          "rule": 3,
+          "rule_payload": "fallback.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "p-fallback"
+            ],
+            "kind": "node",
+            "name": "b"
+          },
+          "mark": null,
+          "must": false,
+          "name": "fallback-udp",
+          "outbound": "p-fallback",
+          "rule": 3,
+          "rule_payload": "fallback.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "p-score",
+              "a"
+            ],
+            "kind": "node",
+            "name": "a"
+          },
+          "mark": null,
+          "must": false,
+          "name": "score-tcp",
+          "outbound": "p-score",
+          "rule": 4,
+          "rule_payload": "score.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "p-score",
+              "b"
+            ],
+            "kind": "node",
+            "name": "b"
+          },
+          "mark": null,
+          "must": false,
+          "name": "score-udp",
+          "outbound": "p-score",
+          "rule": 4,
+          "rule_payload": "score.test"
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "error": null,
       "name": "nested",
       "probes": [
         {

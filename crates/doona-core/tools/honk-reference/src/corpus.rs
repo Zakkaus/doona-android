@@ -34,6 +34,9 @@ pub struct Case {
 #[serde(deny_unknown_fields)]
 pub struct Health {
     pub node: String,
+    /// The health domain the entry applies to; a UDP probe reads the UDP one.
+    #[serde(default)]
+    pub network: Protocol,
     pub alive: bool,
     /// Probe latency in milliseconds, recorded for an alive node.
     pub latency_ms: Option<u64>,
@@ -56,9 +59,10 @@ pub struct Probe {
     pub protocol: Protocol,
 }
 
-#[derive(Clone, Copy, Deserialize)]
+#[derive(Clone, Copy, Default, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Protocol {
+    #[default]
     Tcp,
     Udp,
 }

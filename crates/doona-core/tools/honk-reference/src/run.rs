@@ -8,12 +8,12 @@ use anyhow::{Context, Result};
 use honk_config::config::{BLOCK_NODE_ID, DIRECT_NODE_ID};
 use honk_config::diagnostic::DetailedDiagnostic;
 use honk_config::parser::parse_dae_config_file_with_detailed_diagnostics;
-use honk_core::group::{GroupManager, SelectorNetworks};
+use honk_core::group::{GroupManager, SelectionNetwork, SelectorNetworks};
 use honk_core::outbound::{AliveDialerSet, IpVersion, ProbeDomain};
 use honk_core::routing::{ConnectionInfo, Router};
 use serde::Serialize;
 
-use crate::corpus::{Case, Probe};
+use crate::corpus::{Case, Probe, Protocol};
 
 #[derive(Serialize)]
 pub struct CaseReport {
@@ -93,16 +93,19 @@ pub fn run(case: &Case, corpus_dir: &Path) -> Result<CaseReport> {
         let node = groups
             .node_by_name(&health.node)
             .with_context(|| format!("{}: health names unknown node {}", case.name, health.node))?;
+        let domain = domain(health.network);
         if !health.alive {
-            // Forced, because a fresh registration is in its grace period and ignores plain deaths.
-            alive.report_unavailable_forced(node.id, ProbeDomain::Tcp, IpVersion::V4);
+            // A node's UDP is down only when both UDP domains are; either one keeps it selectable.
+            let dead: &[ProbeDomain] = match health.network {
+                Protocol::Tcp => &[ProbeDomain::Tcp],
+                Protocol::Udp => &[ProbeDomain::DataUdp, ProbeDomain::DnsUdp],
+            };
+            for &domain in dead {
+                // Forced, because a fresh registration is in its grace period and ignores plain deaths.
+                alive.report_unavailable_forced(node.id, domain, IpVersion::V4);
+            }
         } else if let Some(ms) = health.latency_ms {
-            alive.record_probe_latency(
-                node.id,
-                ProbeDomain::Tcp,
-                IpVersion::V4,
-                Duration::from_millis(ms),
-            );
+            alive.record_probe_latency(node.id, domain, IpVersion::V4, Duration::from_millis(ms));
         }
     }
     for choice in &case.select {
@@ -145,14 +148,15 @@ fn probe_report(probe: &Probe, router: &Router, groups: &GroupManager) -> ProbeR
         outbound: action.outbound.clone(),
         must: action.must,
         mark: action.mark.map(|mark| mark.get()),
-        leaf: leaf(&action.outbound, groups),
+        leaf: leaf(&action.outbound, domain(probe.protocol), groups),
     }
 }
 
-fn leaf(outbound: &str, groups: &GroupManager) -> Leaf {
+fn leaf(outbound: &str, domain: ProbeDomain, groups: &GroupManager) -> Leaf {
     if groups.get_group_policy(outbound).is_some() {
-        let chain = groups.selection_chain(outbound);
-        return match groups.select_node(outbound) {
+        let chain = groups
+            .selection_chain_for_network(outbound, SelectionNetwork::from_probe_domain(domain));
+        return match groups.select_node_for_domain(outbound, domain, IpVersion::V4) {
             Some(node) => Leaf {
                 kind: kind(node.id),
                 name: Some(node.name.clone()),
@@ -186,6 +190,13 @@ fn leaf(outbound: &str, groups: &GroupManager) -> Leaf {
             name: None,
             chain: vec![outbound.to_owned()],
         },
+    }
+}
+
+fn domain(network: Protocol) -> ProbeDomain {
+    match network {
+        Protocol::Tcp => ProbeDomain::Tcp,
+        Protocol::Udp => ProbeDomain::DataUdp,
     }
 }
 

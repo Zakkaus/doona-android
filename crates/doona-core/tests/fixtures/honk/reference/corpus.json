@@ -209,6 +209,116 @@
       ]
     },
     {
+      "name": "five-policies-udp",
+      "config": "cases/five-policies.dae",
+      "health": [
+        {
+          "node": "a",
+          "alive": true,
+          "latency_ms": 120
+        },
+        {
+          "node": "b",
+          "alive": true,
+          "latency_ms": 40
+        },
+        {
+          "node": "c",
+          "alive": true,
+          "latency_ms": 80
+        },
+        {
+          "node": "a",
+          "network": "udp",
+          "alive": false
+        },
+        {
+          "node": "b",
+          "network": "udp",
+          "alive": true,
+          "latency_ms": 90
+        },
+        {
+          "node": "c",
+          "network": "udp",
+          "alive": true,
+          "latency_ms": 60
+        }
+      ],
+      "probes": [
+        {
+          "name": "select-tcp",
+          "domain": "x.select.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "select-udp",
+          "domain": "x.select.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "udp"
+        },
+        {
+          "name": "urltest-tcp",
+          "domain": "x.urltest.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "urltest-udp",
+          "domain": "x.urltest.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "udp"
+        },
+        {
+          "name": "balance-tcp",
+          "domain": "x.balance.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "balance-udp",
+          "domain": "x.balance.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "udp"
+        },
+        {
+          "name": "fallback-tcp",
+          "domain": "x.fallback.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "fallback-udp",
+          "domain": "x.fallback.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "udp"
+        },
+        {
+          "name": "score-tcp",
+          "domain": "x.score.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "score-udp",
+          "domain": "x.score.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "udp"
+        }
+      ]
+    },
+    {
       "name": "nested",
       "config": "cases/nested.dae",
       "health": [
