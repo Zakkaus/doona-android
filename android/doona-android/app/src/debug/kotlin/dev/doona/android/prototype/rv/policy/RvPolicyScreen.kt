@@ -161,10 +161,13 @@ internal fun RvPolicyScreen(
 
 /**
  * What 策略 shows of the profile: the main node's group, every other group, the rules the card lists and how many the
- * profile has, the nodes and subscriptions 全域 lists, and now, for the subscriptions' end dates.
+ * profile has, the nodes and subscriptions 全域 lists, and now, for the subscriptions' end dates. The lists are copied
+ * on construction, so a caller's mutable list cannot change the profile afterwards, and two profiles that list the same
+ * nodes and subscriptions are equal in those.
  */
+@ConsistentCopyVisibility
 @Immutable
-internal class RvPolicyProfile(
+internal data class RvPolicyProfile private constructor(
     val main: RvPolicyGroup,
     val groups: List<RvPolicyGroup>,
     val rules: List<RvPolicyRule>,
@@ -172,7 +175,19 @@ internal class RvPolicyProfile(
     val nodes: List<RvNode>,
     val subscriptions: List<RvSubscription>,
     val nowEpochMs: Long,
-)
+) {
+    companion object {
+        operator fun invoke(
+            main: RvPolicyGroup,
+            groups: List<RvPolicyGroup>,
+            rules: List<RvPolicyRule>,
+            ruleCount: Int,
+            nodes: List<RvNode>,
+            subscriptions: List<RvSubscription>,
+            nowEpochMs: Long,
+        ) = RvPolicyProfile(main, groups.toList(), rules.toList(), ruleCount, nodes.toList(), subscriptions.toList(), nowEpochMs)
+    }
+}
 
 /**
  * 規則 | 全域 | 直連, each after its glyph, in a card, as Revolut sets a segmented control, and one line under it saying what
@@ -285,7 +300,7 @@ private fun mainLine(main: RvPolicyGroup): String =
 @Composable
 private fun GlobalPicker(state: RvPolicyState, profile: RvPolicyProfile, onChange: (RvPolicyState) -> Unit) {
     val main = state.group(profile.main)
-    val groups = remember(state.nodeSort, profile) { rvNodeGroups(profile.nodes, profile.subscriptions, state.nodeSort) }
+    val groups = remember(state.nodeSort, profile.nodes, profile.subscriptions) { rvNodeGroups(profile.nodes, profile.subscriptions, state.nodeSort) }
     RvControlRow({ RvNodeListControls(state.nodeSort, { onChange(state.copy(nodeSort = it)) }, onSearch = null) })
     RvNodeGroups(groups, main.selectedId, state.nodeSort, profile.nowEpochMs) { onChange(state.choose(main.id, it)) }
 }

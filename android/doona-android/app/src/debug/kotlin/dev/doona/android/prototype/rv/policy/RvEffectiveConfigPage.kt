@@ -170,16 +170,28 @@ private fun SourceCard(config: RvEffectiveConfig) {
 
 /**
  * What the effective configuration holds beyond the page's own state: the main node's group, every other group, all the
- * rules in the profile's order, the template's name and the subscriptions the nodes come from.
+ * rules in the profile's order, the template's name and the subscriptions the nodes come from. The lists are copied on
+ * construction, so a caller's mutable list cannot change the configuration afterwards.
  */
+@ConsistentCopyVisibility
 @Immutable
-internal class RvEffectiveConfig(
+internal data class RvEffectiveConfig private constructor(
     val main: RvPolicyGroup,
     val groups: List<RvPolicyGroup>,
     val rules: List<RvPolicyRule>,
     @StringRes val template: Int,
     val subscriptions: List<RvSubscription>,
-)
+) {
+    companion object {
+        operator fun invoke(
+            main: RvPolicyGroup,
+            groups: List<RvPolicyGroup>,
+            rules: List<RvPolicyRule>,
+            @StringRes template: Int,
+            subscriptions: List<RvSubscription>,
+        ) = RvEffectiveConfig(main, groups.toList(), rules.toList(), template, subscriptions.toList())
+    }
+}
 
 private const val MEMBERS_SHOWN = 2
 
