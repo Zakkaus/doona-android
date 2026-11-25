@@ -73,7 +73,6 @@ class PermissionAsks(private val saved: SavedStateHandle) {
         }
 
         Permission.Notify -> {
-            notifyOpen = true
             next()
             PermissionStep.AskNotify
         }
@@ -107,6 +106,11 @@ class PermissionAsks(private val saved: SavedStateHandle) {
         if (given) return PermissionStep.Connect
         saved[KEY_REFUSED] = Permission.Vpn
         return PermissionStep.Wait
+    }
+
+    /** The activity launched the system's dialog; if the launch throws, the flag stays clear and the next status explains again. */
+    fun notifyLaunched() {
+        notifyOpen = true
     }
 
     /** The system's notification dialog answered. */

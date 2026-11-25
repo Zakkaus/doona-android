@@ -148,6 +148,7 @@ class PermissionAsksTest {
     fun theSystemsDialogIsNotExplainedOverAndItsAnswerIsStored() {
         status(running = true)
         assertEquals(PermissionStep.AskNotify, asks.confirm())
+        asks.notifyLaunched()
         status(running = true)
         assertNull("not explained again while the system's dialog is open", asks.showing.value)
         assertEquals(0, records)
@@ -163,10 +164,21 @@ class PermissionAsksTest {
     fun theSystemsDialogsAnswerInANewProcessClearsTheOpenFlag() {
         status(running = true)
         asks.confirm()
+        asks.notifyLaunched()
         val handle = SavedStateHandle(saved.keys().associateWith { saved.get<Any?>(it) })
         assertEquals("open while the dialog is up", true, handle.get<Boolean>("notify_open"))
         PermissionAsks(handle).notifyAnswered(granted = true)
         assertEquals("closed by the answer", false, handle.get<Boolean>("notify_open"))
+    }
+
+    @Test
+    fun aDialogThatFailedToLaunchIsExplainedAgainByTheNextStatus() {
+        status(running = true)
+        assertEquals(PermissionStep.AskNotify, asks.confirm())
+        // launch() threw, so notifyLaunched() was never reached.
+        status(running = true)
+        assertEquals(Permission.Notify, asks.showing.value)
+        assertEquals(0, records)
     }
 
     @Test

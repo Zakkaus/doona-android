@@ -121,6 +121,7 @@ class MainActivity : ComponentActivity() {
 
             PermissionStep.AskNotify -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                asks.notifyLaunched()
             }
         }
     }
