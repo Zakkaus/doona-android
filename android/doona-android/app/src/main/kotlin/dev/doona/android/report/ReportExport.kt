@@ -111,6 +111,9 @@ class ReportExport(
         }
     }
 
+    /** Whether [zip] is still on disk: the system may clear the app's cache while a report waits to be shared. */
+    suspend fun present(zip: ReportZip): Boolean = withContext(io) { zip.file.exists() }
+
     /** The share sheet for [zip] returned, whatever the user did there. The zip goes after [SHARE_GRACE_MS]. */
     fun returned(zip: ReportZip) {
         scope.launch(io) {

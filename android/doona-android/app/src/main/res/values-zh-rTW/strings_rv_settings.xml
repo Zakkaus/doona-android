@@ -7,13 +7,14 @@
     <string name="rv_settings_group_connection">連線</string>
     <string name="rv_settings_notify_drop">中斷連線時通知</string>
     <string name="rv_settings_per_app">依 App</string>
-    <string name="rv_settings_per_app_value">只代理 %1$d 個 App</string>
-    <string name="rv_settings_connection_footer">只有勾選的 App 經由代理，其他 App 與區域網路位址直接連線。</string>
+    <plurals name="rv_settings_per_app_value">
+        <item quantity="other">只代理 %1$d 個 App</item>
+    </plurals>
+    <string name="rv_settings_connection_footer">只有選取的 App 經由代理，其他 App 與區域網路位址直接連線。</string>
 
     <string name="rv_settings_group_subscription">訂閱</string>
     <string name="rv_settings_auto_update">自動更新</string>
     <string name="rv_settings_update_interval">更新間隔</string>
-    <string name="rv_settings_update_interval_value">每 %1$d 小時</string>
 
     <string name="rv_settings_group_appearance">外觀</string>
     <string name="rv_settings_theme">主題</string>
@@ -68,11 +69,14 @@
     <string name="rv_log_warn">警告</string>
     <string name="rv_log_info">資訊</string>
     <string name="rv_log_debug">除錯</string>
-    <string name="rv_settings_per_app_except">不代理 %1$d 個 App</string>
+    <plurals name="rv_settings_per_app_except">
+        <item quantity="other">不代理 %1$d 個 App</item>
+    </plurals>
     <string name="rv_perapp_needs_app">請至少勾選一個 App</string>
     <string name="rv_perapp_loading">正在載入 App…</string>
     <string name="rv_perapp_saving">正在儲存…</string>
     <string name="rv_perapp_save_failed">無法儲存</string>
     <string name="rv_perapp_rebuild_failed">已儲存，但 VPN 無法重新連線</string>
     <string name="rv_lab_restart_hint">重開 App 後生效</string>
+    <string name="rv_lab_restart">重開 App</string>
 </resources>

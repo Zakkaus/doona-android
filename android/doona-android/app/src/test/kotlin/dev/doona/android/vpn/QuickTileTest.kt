@@ -9,11 +9,15 @@ import android.app.StatusBarManager.TILE_ADD_REQUEST_ERROR_REQUEST_IN_PROGRESS
 import android.app.StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ADDED
 import android.app.StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED
 import android.app.StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_NOT_ADDED
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -22,6 +26,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.IOException
 
 class QuickTileTest {
     @get:Rule
@@ -57,6 +62,16 @@ class QuickTileTest {
         assertTrue(tile.added.first())
         tile.record(false).join()
         assertFalse(tile.added.first())
+    }
+
+    @Test
+    fun aStoreThatCannotBeReadReadsAsNotAdded() = runBlocking {
+        val unreadable = object : DataStore<Preferences> {
+            override val data: Flow<Preferences> = flow { throw IOException("disk") }
+
+            override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences = throw IOException("disk")
+        }
+        assertFalse(QuickTile(unreadable, scope).added.first())
     }
 
     private companion object {

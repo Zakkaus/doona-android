@@ -75,13 +75,13 @@ internal fun SettingsPage(viewModel: SettingsViewModel, system: SettingsSystem, 
  * background alone. A skeleton would only flash, and no approved 設定 skeleton exists (STATE q-p6a-settingsloading).
  */
 @Composable
-private fun RvSettingsLoading() = Box(Modifier.fillMaxSize().background(Rv.colors.page))
+internal fun RvSettingsLoading() = Box(Modifier.fillMaxSize().background(Rv.colors.page))
 
 /** 更新間隔: the store's interval, a choice stored at once. Its 自訂 has no page yet (plan 8: built, not hidden). */
 @Composable
 internal fun IntervalRoute(store: SettingsStore, onCustom: () -> Unit, onBack: () -> Unit) {
     val viewModel: IntervalViewModel = viewModel(factory = IntervalViewModel.factory(store))
-    val hours by viewModel.uiState.collectAsStateWithLifecycle()
+    val hours = viewModel.uiState.collectAsStateWithLifecycle().value ?: return RvSettingsLoading()
     RvIntervalScreen(hours, viewModel.choices, viewModel::select, onBack, onCustom)
 }
 
@@ -108,10 +108,11 @@ internal fun LogLevelRoute(levels: LogLevels, onBack: () -> Unit) {
 
 /**
  * 實驗室: 效能模式 is the page's own until the core takes a worker count at its start (owner, 2026-11-25 15:20); no
- * setting or engine call carries it yet.
+ * setting or engine call carries it yet, so the running app [started] with it off. Once the switch differs from that,
+ * the page offers 重開 App, which runs [onRestart].
  */
 @Composable
-internal fun LabRoute(onBack: () -> Unit) {
-    var performance by rememberSaveable { mutableStateOf(false) }
-    RvLabScreen(performance, { performance = it }, onBack)
+internal fun LabRoute(onBack: () -> Unit, onRestart: () -> Unit, started: Boolean = false) {
+    var performance by rememberSaveable { mutableStateOf(started) }
+    RvLabScreen(performance, { performance = it }, onBack, restart = onRestart.takeIf { performance != started })
 }

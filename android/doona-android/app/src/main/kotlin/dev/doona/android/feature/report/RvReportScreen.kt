@@ -24,6 +24,7 @@ import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSettingsCard
+import dev.doona.android.designsystem.rv.RvSettingsColumn
 import dev.doona.android.designsystem.rv.RvSettingsRow
 import dev.doona.android.designsystem.rv.RvSettingsSection
 import dev.doona.android.designsystem.rv.RvSettingsSpace
@@ -70,7 +71,7 @@ internal fun RvReportScreen(
         val banner = failure(build, actions.retry) ?: linkFailure(linkFailed && ready, actions.share)
         // The banner stands where the first section title stood, which then keeps its own gap above it.
         banner?.let { RvBanner(it, Modifier.padding(horizontal = RvSpace.gutter)) }
-        Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
+        RvSettingsColumn {
             if (building) {
                 RvSettingsCard {
                     RvSettingsRow(stringResource(R.string.rv_report_building), icon = R.drawable.rv_stats_ic_sync) { RvBusy(Modifier.width(RvSize.busy)) }
@@ -82,7 +83,7 @@ internal fun RvReportScreen(
             Redaction(redaction, onRedaction)
             // One paragraph, so it runs to the cards' right edge as 設定's connection footer does (owner-fix3 item 29); what a
             // report never holds is never cut, however many lines it takes.
-            RvFootnote(stringResource(R.string.rv_redact_footer), inset = RvSpace.none, whole = true)
+            RvFootnote(stringResource(R.string.rv_redact_footer), whole = true)
         }
         Spacer(Modifier.height(RvSettingsSpace.bottom))
     }
@@ -149,7 +150,7 @@ private fun linkFailure(shown: Boolean, onShare: () -> Unit): RvNotice? = if (sh
     null
 }
 
-/** The banner of a build that failed: the export's own words, and 重試. */
+/** The banner of a build that failed: the page's fixed reason (the export gives no cause), and 重試. */
 @Composable
 private fun failure(build: RvReportBuild, onRetry: () -> Unit): RvNotice? = if (build == RvReportBuild.Failed) {
     RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_report_failed), stringResource(R.string.rv_report_failed_reason), stringResource(R.string.rv_retry), onRetry)

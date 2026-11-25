@@ -51,7 +51,7 @@ internal fun ReportPage(viewModel: ReportViewModel, onBack: () -> Unit) {
                 }
             },
             share = {
-                viewModel.uiState.value.share?.let { share ->
+                viewModel.share { share ->
                     try {
                         sharing = share
                         sheet.launch(share.intent)

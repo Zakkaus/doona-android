@@ -24,6 +24,7 @@ import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSettingsCard
+import dev.doona.android.designsystem.rv.RvSettingsColumn
 import dev.doona.android.designsystem.rv.RvSettingsRadioRow
 import dev.doona.android.designsystem.rv.RvSettingsRow
 import dev.doona.android.designsystem.rv.RvSettingsSection
@@ -47,7 +48,7 @@ internal fun RvDnsScreen(selected: RvDnsUpstream?, onSelect: (RvDnsUpstream) -> 
     val title = stringResource(R.string.rv_settings_dns)
     RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
-        Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
+        RvSettingsColumn {
             // The first section sits on the header's gap, as 主題's does.
             RvSettingsSection(stringResource(R.string.rv_settings_dns_server), first = true)
             RvSettingsCard {
@@ -57,7 +58,7 @@ internal fun RvDnsScreen(selected: RvDnsUpstream?, onSelect: (RvDnsUpstream) -> 
                     RvChevron()
                 }
             }
-            RvFootnote(stringResource(R.string.rv_settings_dns_footer), inset = RvSpace.none)
+            RvFootnote(stringResource(R.string.rv_settings_dns_footer))
         }
     }
 }

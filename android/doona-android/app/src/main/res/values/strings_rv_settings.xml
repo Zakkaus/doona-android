@@ -8,13 +8,15 @@
     <string name="rv_settings_group_connection">Connection</string>
     <string name="rv_settings_notify_drop">Notify when disconnected</string>
     <string name="rv_settings_per_app">Per-app</string>
-    <string name="rv_settings_per_app_value">%1$d apps only</string>
-    <string name="rv_settings_connection_footer">Only the checked apps use the proxy. Others and local-network addresses connect directly.</string>
+    <plurals name="rv_settings_per_app_value">
+        <item quantity="one">%1$d app only</item>
+        <item quantity="other">%1$d apps only</item>
+    </plurals>
+    <string name="rv_settings_connection_footer">Only the selected apps go through the proxy. Other apps and local-network addresses connect directly.</string>
 
     <string name="rv_settings_group_subscription">Subscriptions</string>
     <string name="rv_settings_auto_update">Auto-update</string>
     <string name="rv_settings_update_interval">Update interval</string>
-    <string name="rv_settings_update_interval_value">Every %1$d hours</string>
 
     <string name="rv_settings_group_appearance">Appearance</string>
     <string name="rv_settings_theme">Theme</string>
@@ -74,11 +76,15 @@
     <string name="rv_log_warn">Warning</string>
     <string name="rv_log_info">Info</string>
     <string name="rv_log_debug">Debug</string>
-    <string name="rv_settings_per_app_except">All but %1$d apps</string>
+    <plurals name="rv_settings_per_app_except">
+        <item quantity="one">All but %1$d app</item>
+        <item quantity="other">All but %1$d apps</item>
+    </plurals>
     <string name="rv_perapp_needs_app">Check at least one app</string>
     <string name="rv_perapp_loading">Loading apps…</string>
     <string name="rv_perapp_saving">Saving…</string>
     <string name="rv_perapp_save_failed">Could not save</string>
     <string name="rv_perapp_rebuild_failed">Saved, but the VPN could not reconnect</string>
     <string name="rv_lab_restart_hint">Takes effect after the app restarts</string>
+    <string name="rv_lab_restart">Restart the app</string>
 </resources>

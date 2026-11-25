@@ -25,10 +25,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.IOException
 
 /** What a request to add [ToggleTileService] came to: the tile is there, nothing changed, or the request failed. */
 enum class QuickTileResult { Added, Kept, Failed }
@@ -49,10 +51,14 @@ fun quickTileResult(code: Int): QuickTileResult = when (code) {
 /**
  * Whether the quick settings tile is added, as far as the app has seen it: the system's answer to [request], and
  * [ToggleTileService]'s `onTileAdded` and `onTileRemoved`, which also cover a tile added or removed by hand. Android has
- * no call that asks, so a tile added before this was stored reads as not added until one of those reports it.
+ * no call that asks, so a tile added before this was stored reads as not added until one of those reports it. A file
+ * that cannot be read reads as not added too, as a damaged one does ([store]): that only offers the row again.
  */
 class QuickTile(private val store: DataStore<Preferences>, private val scope: CoroutineScope) {
-    val added: Flow<Boolean> = store.data.map { it[ADDED] ?: false }.distinctUntilChanged()
+    val added: Flow<Boolean> = store.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[ADDED] ?: false }
+        .distinctUntilChanged()
 
     /** Stores [added] on the process-wide scope, so a tile service destroyed right after its callback still saves it. */
     fun record(added: Boolean): Job = scope.launch { store.edit { it[ADDED] = added } }

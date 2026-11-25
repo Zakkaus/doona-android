@@ -165,7 +165,7 @@ private fun UpdatesCard(userAgent: String?, updateHours: Int, onUserAgent: () ->
         RvRow(
             { RvIconDisc(R.drawable.rv_sym_schedule) },
             stringResource(R.string.rv_sub_auto_update),
-            stringResource(R.string.rv_settings_update_interval_value, updateHours),
+            pluralStringResource(R.plurals.rv_interval_hours, updateHours, updateHours),
             onClick = NOT_WIRED,
         ) { RvChevron() }
         RvRow(

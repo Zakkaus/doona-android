@@ -11,6 +11,7 @@ import dev.doona.android.feature.model.RvPerApp
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneOffset
+import java.time.format.DateTimeParseException
 
 /** The page's per-app setting for the engine's [perApp]. */
 internal fun rvPerApp(perApp: PerApp) = RvPerApp(
@@ -37,17 +38,21 @@ internal fun rvGeoUpdate(lastResult: String): RvGeoUpdate = when (lastResult) {
 
 /**
  * The GeoIP/GeoSite row for the core's [assets]: the active data's release date, the APK's own ([shippedDate]) when the
- * core reports none or could not be read, where an update stands, and whether the VPN is [connected], which an update
- * needs.
+ * core reports none, could not be read, or reports a release that is not a `YYYY-MM-DD` date; where an update stands;
+ * and whether the VPN is [connected], which an update needs.
  */
 internal fun rvGeoData(assets: ConfigAssets?, shippedDate: String, connected: Boolean) = RvGeoData(
-    dateEpochMs = releaseEpochMs(assets?.release ?: shippedDate),
+    dateEpochMs = assets?.release?.let(::releaseEpochMs) ?: releaseEpochMs(shippedDate) ?: error("shipped geo date $shippedDate"),
     update = assets?.let { rvGeoUpdate(it.lastResult) } ?: RvGeoUpdate.Idle,
     connected = connected,
 )
 
-/** Noon UTC of a `YYYY-MM-DD` release, so the date reads the same in every time zone the row is shown in. */
-private fun releaseEpochMs(date: String): Long = LocalDate.parse(date).atTime(LocalTime.NOON).toInstant(ZoneOffset.UTC).toEpochMilli()
+/** Noon UTC of a `YYYY-MM-DD` release, so the date reads the same in every time zone the row is shown in; null for any other text. */
+private fun releaseEpochMs(date: String): Long? = try {
+    LocalDate.parse(date).atTime(LocalTime.NOON).toInstant(ZoneOffset.UTC).toEpochMilli()
+} catch (_: DateTimeParseException) {
+    null
+}
 
 /**
  * The preset the core's DNS [servers] are (`effectiveConfig`'s `dnsUpstreams`: `ip:port`, IPv6 as `[addr]:port`, in

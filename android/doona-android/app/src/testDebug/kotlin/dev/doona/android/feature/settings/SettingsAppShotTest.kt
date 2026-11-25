@@ -198,15 +198,23 @@ class SettingsAppShotTest {
 
     @Test fun languageFs200() = compose.app("settings-language", fontScale = RV_FS200) { Language() }
 
-    @Test fun labLight() = compose.app("settings-lab", dark = false, whole = true) { LabRoute(onBack = {}) }
+    @Test fun labLight() = compose.app("settings-lab", dark = false, whole = true) { LabRoute(onBack = {}, onRestart = {}) }
 
     /** The dark sample shows 效能模式 on: the user turns it on. */
     @Test
-    fun labDark() = compose.app("settings-lab", dark = true, whole = true, before = { onNode(isToggleable()).performClick() }) { LabRoute(onBack = {}) }
+    fun labDark() = compose.app("settings-lab", dark = true, whole = true, before = { turnPerformance() }) { LabRoute(onBack = {}, onRestart = {}) }
 
-    @Test fun labFs115() = compose.app("settings-lab", fontScale = RV_FS115, whole = true) { LabRoute(onBack = {}) }
+    @Test fun labFs115() = compose.app("settings-lab", fontScale = RV_FS115, whole = true) { LabRoute(onBack = {}, onRestart = {}) }
 
-    @Test fun labFs200() = compose.app("settings-lab", fontScale = RV_FS200, whole = true) { LabRoute(onBack = {}) }
+    @Test fun labFs200() = compose.app("settings-lab", fontScale = RV_FS200, whole = true) { LabRoute(onBack = {}, onRestart = {}) }
+
+    /** 效能模式 turned: the banner over the card says it takes effect after a restart, with 重開 App. */
+    @Test
+    fun labRestartLight() = compose.app("settings-lab-restart", dark = false, whole = true, before = { turnPerformance() }) { LabRoute(onBack = {}, onRestart = {}) }
+
+    @Test
+    fun labRestartFs200() =
+        compose.app("settings-lab-restart", fontScale = RV_FS200, whole = true, before = { turnPerformance() }) { LabRoute(onBack = {}, onRestart = {}) }
 
     @Composable
     private fun Interval() = IntervalRoute(sampleStore(), onCustom = {}, onBack = {})
@@ -238,7 +246,11 @@ class SettingsAppEnShotTest {
     @Config(qualifiers = "+h1872dp")
     fun settings() = compose.app("settings-en", dark = false, whole = true, content = settingsPage())
 
-    @Test fun lab() = compose.app("settings-lab-en", dark = false, whole = true) { LabRoute(onBack = {}) }
+    @Test fun lab() = compose.app("settings-lab-en", dark = false, whole = true) { LabRoute(onBack = {}, onRestart = {}) }
+
+    @Test
+    fun labRestart() =
+        compose.app("settings-lab-restart-en", dark = false, whole = true, before = { turnPerformance() }) { LabRoute(onBack = {}, onRestart = {}) }
 
     @Test
     @Config(qualifiers = READY_EN)
@@ -449,3 +461,8 @@ private const val FAILED_FS115 = "+h1371dp"
 private const val FAILED_FS200 = "+h2053dp"
 private const val LINK_FAILED = "+h1352dp"
 private const val LINK_FAILED_FS200 = "+h2053dp"
+
+/** Turns 實驗室's 效能模式, the page's one switch. */
+private fun ComposeContentTestRule.turnPerformance() {
+    onNode(isToggleable()).performClick()
+}

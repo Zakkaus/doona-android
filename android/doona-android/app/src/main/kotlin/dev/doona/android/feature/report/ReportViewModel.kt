@@ -33,7 +33,8 @@ internal interface ReportFacts {
  * and on 重試, and holds the written report ([ReportUiState.share]) for 在 GitHub 回報 and 分享檔案. A report written
  * for switches that no longer stand is not offered (the page shows it being written again); a newer write replaces it,
  * and the one it replaces goes: after the share grace once a share sheet returned for it ([ReportShare.returned]), at
- * once when none did ([ReportShare.notOpened]). A share sheet's return keeps the report ready to share again.
+ * once when none did ([ReportShare.notOpened]). A share sheet's return keeps the report ready to share again, and a
+ * report whose zip is gone by then is written again rather than shared ([share]).
  */
 internal class ReportViewModel(
     private val engine: Engine,
@@ -60,6 +61,20 @@ internal class ReportViewModel(
     }
 
     fun retry() = build()
+
+    /**
+     * 分享檔案 on the ready report: [open] gets it while its zip is still on disk. One whose zip is gone (the system
+     * cleared the app's cache while the page waited) is not offered: the report is written again, and the page shows it
+     * being written.
+     */
+    fun share(open: (ReportShare) -> Unit) {
+        val share = state.value.share ?: return
+        viewModelScope.launch {
+            val present = share.present()
+            if (state.value.share !== share) return@launch
+            if (present) open(share) else build()
+        }
+    }
 
     /** 在 GitHub 回報 could not open its link (no app on the phone opens it): the page says so and offers 分享檔案. */
     fun linkFailed() = state.update { it.copy(linkFailed = true) }

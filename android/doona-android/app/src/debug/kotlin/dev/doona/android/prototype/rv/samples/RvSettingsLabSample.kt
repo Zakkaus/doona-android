@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -210,7 +211,7 @@ private fun SubscriptionGroup(state: RvSettingsState, onChange: (RvSettingsState
             stringResource(R.string.rv_settings_update_interval),
             R.drawable.rv_sym_schedule,
             NOT_WIRED,
-            stringResource(R.string.rv_settings_update_interval_value, state.updateHours),
+            pluralStringResource(R.plurals.rv_interval_hours, state.updateHours, state.updateHours),
         )
     }
 }
@@ -245,8 +246,8 @@ private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes, conf
 @Composable
 private fun perAppValue(perApp: RvPerApp): String = when (perApp.policy) {
     RvAppPolicy.All -> stringResource(R.string.perapp_policy_all)
-    RvAppPolicy.Only -> stringResource(R.string.rv_settings_per_app_value, perApp.packages.size)
-    RvAppPolicy.Except -> stringResource(R.string.rv_settings_per_app_except, perApp.packages.size)
+    RvAppPolicy.Only -> pluralStringResource(R.plurals.rv_settings_per_app_value, perApp.packages.size, perApp.packages.size)
+    RvAppPolicy.Except -> pluralStringResource(R.plurals.rv_settings_per_app_except, perApp.packages.size, perApp.packages.size)
 }
 
 /** 更新 as the page has it ([dev.doona.android.prototype.rv.settings.RvUpdateGroup]), then, when [lab], 實驗室 in the same card. */

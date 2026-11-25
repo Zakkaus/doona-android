@@ -20,6 +20,7 @@ import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSettingsCard
+import dev.doona.android.designsystem.rv.RvSettingsColumn
 import dev.doona.android.designsystem.rv.RvSettingsNavRow
 import dev.doona.android.designsystem.rv.RvSettingsSpace
 import dev.doona.android.designsystem.rv.RvSpace
@@ -90,7 +91,7 @@ internal fun RvLicensesScreen(onOpen: (Int) -> Unit, onBack: () -> Unit) {
     val title = stringResource(R.string.rv_settings_licenses)
     RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
-        Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
+        RvSettingsColumn {
             val entries = rvLicenseEntries()
             RvSettingsCard { entries.forEachIndexed { i, it -> RvSettingsNavRow(it.name, null, { onOpen(i) }, it.license, titleKeepWords = false, subtitleKeepWords = false) } }
         }

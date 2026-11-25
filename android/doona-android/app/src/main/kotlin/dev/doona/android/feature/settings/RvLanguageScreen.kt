@@ -14,6 +14,7 @@ import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSettingsColumn
 import dev.doona.android.designsystem.rv.RvSettingsRadioCard
 import dev.doona.android.designsystem.rv.RvSettingsRadioRow
 import dev.doona.android.designsystem.rv.RvSettingsSpace
@@ -35,7 +36,7 @@ internal fun RvLanguageScreen(selected: RvLanguage, system: RvLanguage, onSelect
     val title = stringResource(R.string.rv_settings_language)
     RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
-        Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
+        RvSettingsColumn {
             RvSettingsRadioCard {
                 RvLanguage.entries.forEach {
                     val subtitle = if (it == RvLanguage.System) stringResource(system.label) else null

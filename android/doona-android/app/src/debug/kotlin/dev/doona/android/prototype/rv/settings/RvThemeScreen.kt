@@ -50,6 +50,7 @@ import dev.doona.android.designsystem.rv.RvRadio
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSettingsAlpha
 import dev.doona.android.designsystem.rv.RvSettingsCard
+import dev.doona.android.designsystem.rv.RvSettingsColumn
 import dev.doona.android.designsystem.rv.RvSettingsSection
 import dev.doona.android.designsystem.rv.RvSettingsSize
 import dev.doona.android.designsystem.rv.RvSettingsSpace
@@ -86,7 +87,7 @@ internal fun RvThemeScreen(
         RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
             RvLargeTitle(title, titleBlock, insets)
             // Each card has its outside title, as 強調色 has (N-07); the first one sits on the header's gap.
-            Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
+            RvSettingsColumn {
                 RvSettingsSection(stringResource(R.string.rv_settings_preview), first = true)
                 RvThemePreview(appearance, light, dark)
                 RvSettingsSection(stringResource(R.string.rv_settings_mode))

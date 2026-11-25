@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 internal class FakeSettingsStore(
     notifyOnDrop: Boolean = true,
     autoUpdate: Boolean = true,
-    updateHours: Int = IntervalViewModel.DEFAULT_HOURS,
+    updateHours: Int = 12,
     appearance: RvAppearance = RvAppearance(RvThemeMode.System, followWallpaper = false, accent = 0),
     tileAdded: Boolean = true,
     override val shippedGeoDate: String = "2026-11-23",

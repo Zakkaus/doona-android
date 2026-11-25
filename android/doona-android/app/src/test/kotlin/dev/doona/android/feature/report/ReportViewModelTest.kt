@@ -11,6 +11,7 @@ import dev.doona.android.report.ExportFixture
 import dev.doona.android.report.FakeReports
 import dev.doona.android.report.RedactionOptions
 import dev.doona.android.report.ReportExport
+import dev.doona.android.report.ReportShare
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -143,6 +144,51 @@ class ReportViewModelTest : ExportFixture() {
         assertTrue("kept to share again", first.exists())
         vm.shareReturned(share)
         assertTrue(first.exists())
+    }
+
+    @Test
+    fun `each switch shows or hides only its own part`() {
+        val shown = RvRedaction(nodes = false, ip = false, domains = false, apps = false).options()
+        assertEquals(RedactionOptions(showNodeEndpoints = true, showOwnAddresses = true, showVisitedDomains = true, showAppNames = true), shown)
+        assertEquals(shown.copy(showNodeEndpoints = false), RvRedaction(nodes = true, ip = false, domains = false, apps = false).options())
+        assertEquals(shown.copy(showOwnAddresses = false), RvRedaction(nodes = false, ip = true, domains = false, apps = false).options())
+        assertEquals(shown.copy(showVisitedDomains = false), RvRedaction(nodes = false, ip = false, domains = true, apps = false).options())
+        assertEquals(shown.copy(showAppNames = false), RvRedaction(nodes = false, ip = false, domains = false, apps = true).options())
+    }
+
+    @Test
+    fun `share opens the ready report while its zip is there`() = runTest {
+        val (vm, reports) = page()
+        advanceUntilIdle()
+        val share = checkNotNull(vm.uiState.value.share)
+        val opened = mutableListOf<ReportShare>()
+
+        vm.share { opened += it }
+        advanceUntilIdle()
+        assertEquals(listOf(share), opened)
+        assertEquals("not written again", 1, reports.options.size)
+    }
+
+    @Test
+    fun `a ready report whose zip is gone is written again, not shared`() = runTest {
+        val (vm, reports) = page()
+        advanceUntilIdle()
+        val share = checkNotNull(vm.uiState.value.share)
+        vm.shareReturned(share)
+        assertTrue(zips().single().delete())
+        val opened = mutableListOf<ReportShare>()
+
+        vm.share { opened += it }
+        advanceUntilIdle()
+        assertEquals("nothing shared", emptyList<ReportShare>(), opened)
+        assertEquals("written again with the same switches", listOf(reports.options[0], reports.options[0]), reports.options)
+        val again = checkNotNull(vm.uiState.value.share)
+        assertTrue(again !== share)
+        assertEquals(RvReportBuild.Ready(RvRedaction()), vm.uiState.value.build)
+        assertTrue(zips().single().exists())
+        vm.share { opened += it }
+        advanceUntilIdle()
+        assertEquals(listOf(again), opened)
     }
 
     @Test

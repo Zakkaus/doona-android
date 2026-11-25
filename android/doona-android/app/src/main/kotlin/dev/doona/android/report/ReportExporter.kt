@@ -37,6 +37,9 @@ interface ReportExporter {
 class ReportShare internal constructor(val intent: Intent, private val zip: ReportZip, private val reports: ReportExport) {
     val issueLink: String get() = zip.issueLink
 
+    /** Whether the zip is still there to share; read on the export's dispatcher. */
+    suspend fun present(): Boolean = reports.present(zip)
+
     fun returned() = reports.returned(zip)
 
     fun notOpened() = reports.notOpened(zip)

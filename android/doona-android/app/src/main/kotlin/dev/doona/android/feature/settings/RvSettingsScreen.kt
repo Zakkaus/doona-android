@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -37,6 +38,7 @@ import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSettingsAlpha
 import dev.doona.android.designsystem.rv.RvSettingsCard
+import dev.doona.android.designsystem.rv.RvSettingsColumn
 import dev.doona.android.designsystem.rv.RvSettingsNavRow
 import dev.doona.android.designsystem.rv.RvSettingsSection
 import dev.doona.android.designsystem.rv.RvSettingsSize
@@ -95,7 +97,7 @@ internal fun RvSettingsScreen(
         rvUpdateNotice(update, version, routes.release)?.let {
             RvBanner(it, Modifier.padding(start = RvSpace.gutter, top = RvSpace.sectionAbove, end = RvSpace.gutter))
         }
-        Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
+        RvSettingsColumn {
             ConnectionGroup(state, onChange, routes, perAppLoaded)
             SubscriptionGroup(state, onChange, routes.interval)
             AppearanceGroup(state, onOpenTheme, routes.language)
@@ -197,7 +199,7 @@ private fun ConnectionGroup(state: RvSettingsState, onChange: (RvSettingsState) 
         RvSettingsSwitchRow(stringResource(R.string.rv_settings_notify_drop), R.drawable.rv_settings_ic_notifications, state.notifyOnDrop, { onChange(state.copy(notifyOnDrop = it)) })
         RvSettingsNavRow(stringResource(R.string.rv_settings_per_app), R.drawable.rv_sym_apps, routes.perApp, perAppValue(state.perApp).takeIf { perAppLoaded })
     }
-    RvFootnote(stringResource(R.string.rv_settings_connection_footer), inset = RvSpace.none)
+    RvFootnote(stringResource(R.string.rv_settings_connection_footer))
 }
 
 @Composable
@@ -209,7 +211,7 @@ private fun SubscriptionGroup(state: RvSettingsState, onChange: (RvSettingsState
             stringResource(R.string.rv_settings_update_interval),
             R.drawable.rv_sym_schedule,
             onOpenInterval,
-            stringResource(R.string.rv_settings_update_interval_value, state.updateHours),
+            pluralStringResource(R.plurals.rv_interval_hours, state.updateHours, state.updateHours),
         )
     }
 }
@@ -248,6 +250,6 @@ private fun dnsValue(dns: RvDnsUpstream?): String = stringResource(dns?.label ?:
 @Composable
 private fun perAppValue(perApp: RvPerApp): String = when (perApp.policy) {
     RvAppPolicy.All -> stringResource(R.string.perapp_policy_all)
-    RvAppPolicy.Only -> stringResource(R.string.rv_settings_per_app_value, perApp.packages.size)
-    RvAppPolicy.Except -> stringResource(R.string.rv_settings_per_app_except, perApp.packages.size)
+    RvAppPolicy.Only -> pluralStringResource(R.plurals.rv_settings_per_app_value, perApp.packages.size, perApp.packages.size)
+    RvAppPolicy.Except -> pluralStringResource(R.plurals.rv_settings_per_app_except, perApp.packages.size, perApp.packages.size)
 }

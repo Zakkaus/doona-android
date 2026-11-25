@@ -34,15 +34,15 @@ internal enum class RvNoticeKind(@DrawableRes val glyph: Int) {
 }
 
 /**
- * One banner: its [kind], the [title] over its [reason], and the one [action] that [onAction] runs. [titleKeepWords] and
- * [reasonKeepWords] false for a title or reason that names something (a subscription, a file's path: [RvText]'s
- * `keepWords`).
+ * One banner: its [kind], the [title] over its [reason] (none when the title says it all), and the one [action] that
+ * [onAction] runs. [titleKeepWords] and [reasonKeepWords] false for a title or reason that names something (a
+ * subscription, a file's path: [RvText]'s `keepWords`).
  */
 @Immutable
 internal class RvNotice(
     val kind: RvNoticeKind,
     val title: String,
-    val reason: String,
+    val reason: String?,
     val action: String,
     val onAction: () -> Unit,
     val titleKeepWords: Boolean = true,
@@ -52,7 +52,7 @@ internal class RvNotice(
 /**
  * The one banner of the RV pages, as Revolut's notice card with a button (revolut-ux3 §3): 16 dp padding on every side;
  * a row's 40 dp disc with its kind's glyph in ink, its top on the title's line; the title over its reason (wrapping, in
- * secondary ink) 16 dp after the disc; then, [RvSpace.noticeToAction] under the text, the one action as the full-width
+ * secondary ink) 16 dp after the disc, or a title with no reason centred on the disc, as a one-line row's; then, [RvSpace.noticeToAction] under the text, the one action as the full-width
  * secondary pill. No hue anywhere: Revolut's notice is neutral, and the owner ruled out a red glyph over a teal action
  * (2026-11-23). A screen reader announces it when it appears. A page places it with [RvBannerSlot] (or [RvGutter]'s
  * `banner`), never by itself.
@@ -61,12 +61,13 @@ internal class RvNotice(
 internal fun RvBanner(notice: RvNotice, modifier: Modifier = Modifier) {
     RvCard(modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
         Column(Modifier.fillMaxWidth().padding(RvSpace.rowPadding), verticalArrangement = Arrangement.spacedBy(RvSpace.noticeToAction)) {
-            Row(Modifier.fillMaxWidth().testTag(RvRowPart.NOTICE_ROW)) {
+            val alone = if (notice.reason == null) Alignment.CenterVertically else Alignment.Top
+            Row(Modifier.fillMaxWidth().testTag(RvRowPart.NOTICE_ROW), verticalAlignment = alone) {
                 RvIconDisc(notice.kind.glyph, glyph = RvSize.noticeGlyph)
                 Spacer(Modifier.width(RvSpace.rowGap))
                 Column(Modifier.weight(1f)) {
                     RvText(notice.title, Rv.type.rowTitle, maxLines = BANNER_TITLE_LINES, keepWords = notice.titleKeepWords)
-                    RvText(notice.reason, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BANNER_REASON_LINES, keepWords = notice.reasonKeepWords)
+                    notice.reason?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BANNER_REASON_LINES, keepWords = notice.reasonKeepWords) }
                 }
             }
             RvSecondaryButton(notice.action, notice.onAction)

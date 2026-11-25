@@ -50,6 +50,7 @@ import dev.doona.android.feature.nodes.ui.RvRowActions
 import dev.doona.android.feature.settings.RvLanguageScreen
 import dev.doona.android.feature.settings.RvLicenseText
 import dev.doona.android.feature.settings.RvLicensesScreen
+import dev.doona.android.feature.settings.RvSettingsLoading
 import dev.doona.android.feature.settings.RvSettingsRoutes
 import dev.doona.android.feature.settings.rvLicenseEntries
 import dev.doona.android.feature.settings.rvSystemLanguage
@@ -290,7 +291,9 @@ private fun SettingsPage(settings: RvSettingsState, onSettings: (RvSettingsState
         checkUpdate = update.check,
         language = { pages.push(RvSettingsPreviewRoutes.LANGUAGE) },
     )
-    RvSettingsScreenSample(settings.copy(tileAdded = tile.added), onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab, routes = routes, update = update.update)
+    // Until the tile store answers only the page's background shows, so no row is inserted into a card already drawn.
+    val added = tile.added ?: return RvSettingsLoading()
+    RvSettingsScreenSample(settings.copy(tileAdded = added), onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab, routes = routes, update = update.update)
 }
 
 /** 設定's 依 App, and 授權條款 with each licence's text (`license:<n>`). */

@@ -70,6 +70,19 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `the first settings the page draws hold the tile store's answer, so no row comes in later`() = runTest {
+        val tile = MutableSharedFlow<Boolean>()
+        val fake = FakeSettingsStore(tileAdded = true)
+        val store = object : SettingsStore by fake {
+            override val tileAdded: Flow<Boolean> = tile
+        }
+        val vm = collected(SettingsViewModel(FakeEngine(), store))
+        assertNull("nothing drawn before the tile store answers", vm.uiState.value.settings)
+        tile.emit(false)
+        assertFalse("the first drawn state offers the tile row", vm.settings.tileAdded)
+    }
+
+    @Test
     fun `a second tap on the same switch from the same drawing writes the same value`() = runTest {
         val store = FakeSettingsStore()
         val vm = collected(SettingsViewModel(FakeEngine(), store))
@@ -227,6 +240,8 @@ class SettingsViewModelTest {
         assertEquals("2026-11-30T12:00:00Z", date(row.dateEpochMs))
         assertEquals(RvGeoUpdate.Updated, row.update)
         assertTrue(row.connected)
+        val odd = ConfigAssets("download", "20261130", "idle", null, false)
+        assertEquals("a release that is no date falls back", "2026-11-23T12:00:00Z", date(rvGeoData(odd, "2026-11-23", connected = true).dateEpochMs))
     }
 
     @Test
