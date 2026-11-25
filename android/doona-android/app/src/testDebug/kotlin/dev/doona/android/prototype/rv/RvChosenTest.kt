@@ -205,5 +205,5 @@ class RvChosenTest {
     fun trafficRangesKeepTheCheckInZhCn() = trafficKeepsTheCheck("1 分")
 
     @Test
-    fun trafficRangesKeepTheCheckInEn() = trafficKeepsTheCheck("1m")
+    fun trafficRangesKeepTheCheckInEn() = trafficKeepsTheCheck("1 min")
 }
