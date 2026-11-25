@@ -35,16 +35,20 @@ import kotlinx.coroutines.launch
  * (plan 2.2). Each catalog revision reads the nodes' details (`nodes(ids)`) and maps every node once, on [work], into
  * immutable values, so nothing a page reads changes between revisions and 活動 under the picker is not composed again on
  * a tick. A pick switches the main group ([pick]); a test asks the core to test every group ([test]); a failure stays
- * until the same action next succeeds.
+ * until the same action next succeeds, and [retry] runs it again. [clock] is now, for the subscriptions' end dates.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class NodesViewModel internal constructor(
     private val engine: Engine,
     work: CoroutineDispatcher,
     places: NodePlaces,
+    private val clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
     private val failure = MutableStateFlow<NodesFailure?>(null)
     private val running = MutableStateFlow(false)
+
+    /** The last pick, which [retry] makes again after it failed. */
+    private var lastPick: Pair<String, Network?>? = null
 
     /** Each catalog mapped once; when a details read fails the nodes keep the last details read, by id. */
     private val mapped: Flow<NodesState?> = flow {
@@ -68,7 +72,7 @@ class NodesViewModel internal constructor(
         .distinctUntilChanged()
 
     internal val ui: StateFlow<NodesUi> = combine(mapped, score, testing, failure) { state, score, testing, failure ->
-        NodesUi(state ?: NodesState.Empty, loaded = state != null, testing = testing, failure = failure, score = score)
+        NodesUi(state ?: NodesState.Empty, loaded = state != null, testing = testing, failure = failure, score = score, nowEpochMs = clock())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), NodesUi())
 
     /**
@@ -77,6 +81,7 @@ class NodesViewModel internal constructor(
      */
     fun pick(nodeId: String, network: Network? = null) {
         val main = engine.catalog.value?.mainGroupId ?: return
+        lastPick = nodeId to network
         viewModelScope.launch { engine.select(main, nodeId, network).report(NodesAction.Select) }
     }
 
@@ -90,6 +95,15 @@ class NodesViewModel internal constructor(
             } finally {
                 running.value = false
             }
+        }
+    }
+
+    /** Runs the failed action again: the last pick, or the test. */
+    fun retry() {
+        when (failure.value?.action) {
+            NodesAction.Select -> lastPick?.let { (id, network) -> pick(id, network) }
+            NodesAction.Test -> test()
+            null -> Unit
         }
     }
 

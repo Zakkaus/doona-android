@@ -39,7 +39,7 @@ internal data class NodesState(
     }
 }
 
-/** What the pages read from the ViewModel: the mapped [state], a latency test running, the last failed action, Score's choices. */
+/** What the pages read from the ViewModel: the mapped [state], a latency test running, the last failed action, Score's choices, and now. */
 @Immutable
 internal data class NodesUi(
     val state: NodesState = NodesState.Empty,
@@ -47,6 +47,7 @@ internal data class NodesUi(
     val testing: Boolean = false,
     val failure: NodesFailure? = null,
     val score: List<ScoreGroup> = emptyList(),
+    val nowEpochMs: Long = 0L,
 )
 
 /** An action that failed: a node switch or a latency test, with the engine's reason. */

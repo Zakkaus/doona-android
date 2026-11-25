@@ -71,7 +71,7 @@ class NodesViewModelTest {
     }
 
     private fun TestScope.collected(engine: Engine, places: NodePlaces = CoreNodePlaces) =
-        NodesViewModel(engine, UnconfinedTestDispatcher(testScheduler), places).also { vm ->
+        NodesViewModel(engine, UnconfinedTestDispatcher(testScheduler), places, clock = { NOW }).also { vm ->
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.ui.collect {} }
         }
 
@@ -125,6 +125,30 @@ class NodesViewModelTest {
         assertEquals(NodesAction.Select, vm.ui.value.failure?.action)
         vm.pick("n-b")
         assertNull(vm.ui.value.failure)
+    }
+
+    @Test
+    fun retryRunsTheFailedPickOrTestAgainAndTheClockIsNow() = runTest {
+        val probe = Probe(engine(listOf(Member("n-a", "A 01"), Member("n-b", "B 02"))))
+        val vm = collected(probe)
+        assertEquals(NOW, vm.ui.value.nowEpochMs)
+        probe.result = Result.failure(EngineException(ErrorCode.Busy))
+        vm.pick("n-b", Network.Tcp)
+        probe.result = Result.success(Unit)
+        vm.retry()
+        assertEquals(listOf(Triple(MAIN, "n-b", Network.Tcp), Triple(MAIN, "n-b", Network.Tcp)), probe.selected)
+        assertNull(vm.ui.value.failure)
+        probe.result = Result.failure(EngineException(ErrorCode.Busy))
+        vm.test()
+        assertEquals(NodesAction.Test, vm.ui.value.failure?.action)
+        probe.result = Result.success(Unit)
+        vm.retry()
+        assertEquals(listOf<String?>(null, null), probe.tested)
+        assertNull(vm.ui.value.failure)
+        // With nothing failed, a retry does nothing.
+        vm.retry()
+        assertEquals(2, probe.selected.size)
+        assertEquals(2, probe.tested.size)
     }
 
     @Test
@@ -189,5 +213,6 @@ class NodesViewModelTest {
     private companion object {
         const val NODES = 300
         const val MAIN = FakeRuleMode.MAIN_GROUP_ID
+        const val NOW = 1_764_000_000_000L
     }
 }
