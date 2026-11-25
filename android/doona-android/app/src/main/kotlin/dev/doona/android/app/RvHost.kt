@@ -41,9 +41,9 @@ import dev.doona.android.designsystem.rv.RvShared
  * Back pops the top page, following the finger while a predictive back gesture runs; a cancelled gesture runs the
  * page back and pops nothing, a committed one pops once: a second back while the popped page still leaves pops
  * nothing, whether that page had been shown or was still coming in, as it is the one back would pop
- * ([RvTabMoves.shown]). On a tab root back pops to 活動, which is always underneath, and on 活動 back is left to the
- * system, which leaves the app. A page that handles back itself (the pull-down's picker on 活動) registers after the
- * host, so it closes first.
+ * ([RvTabMoves.shown]); a page pushed while it leaves is popped. On a tab root back pops to 活動, which is always
+ * underneath, and on 活動 back is left to the system, which leaves the app. A page that handles back itself (the
+ * pull-down's picker on 活動) registers after the host, so it closes first.
  *
  * Every entry shares one [SharedTransitionLayout] ([LocalRvShared]); the floating nav shows the app's three tabs
  * ([LocalRvNav]); a tab root a hard-cut tab switch is showing gets [LocalRvTabEntry].
@@ -103,7 +103,7 @@ private fun rvEntryDecorator(layout: SharedTransitionScope, moves: RvTabMoves) =
     val entering = moves.tabSwitch && key == moves.top
     val move = LocalNavAnimatedContentScope.current.transition
     if (key != null && move.currentState == EnterExitState.Visible && move.targetState == EnterExitState.Visible) {
-        SideEffect { moves.shown = key }
+        SideEffect { moves.show(key) }
     }
     if (key != null) DisposableEffect(key) { onDispose { moves.left(key) } }
     CompositionLocalProvider(LocalRvShared provides shared, LocalRvTabEntry provides entering) {
@@ -129,6 +129,25 @@ private class RvTabMoves(private var stack: List<NavKey>) {
      * nothing is, until the page under it is shown on its own.
      */
     var shown: NavKey? = null
+        private set
+
+    /** The stack [shown] was on top of when it was shown or popped. */
+    private var shownOn: List<NavKey> = emptyList()
+
+    /** Takes [key], on top of [on], as the page shown. */
+    fun show(key: NavKey, on: List<NavKey> = stack) {
+        shown = key
+        shownOn = on
+    }
+
+    /**
+     * Whether the shown page is leaving [now]: it is off the stack and nothing has come on since, [now] being what was
+     * under it. A page pushed while it leaves is the one back pops.
+     */
+    fun leaving(now: List<NavKey>): Boolean {
+        val key = shown ?: return false
+        return key !in now && now.size < shownOn.size && shownOn.subList(0, now.size) == now
+    }
 
     /** [key]'s page has left the composition: if it was the shown page and is off the stack, its exit is over. */
     fun left(key: NavKey) {
@@ -144,16 +163,16 @@ private class RvTabMoves(private var stack: List<NavKey>) {
 
 /**
  * Back from the host: pops the page on top once, and takes that page as the one shown ([RvTabMoves.shown]) until it
- * has left. A second back meanwhile finds the shown page off the stack and pops nothing, rather than the page
- * underneath: after a pop, and as well after a back that popped a pushed page while it still came in, when the page
- * last shown was the one under it.
+ * has left. A second back meanwhile finds the shown page leaving and pops nothing, rather than the page underneath:
+ * after a pop, and as well after a back that popped a pushed page while it still came in, when the page last shown was
+ * the one under it. A page pushed while the shown page leaves is popped, as any page coming in is.
  */
 private fun MutableList<NavKey>.popShown(moves: RvTabMoves) {
-    val shown = moves.shown
-    if (size < 2 || (shown != null && shown !in this)) return
+    if (size < 2 || moves.leaving(this)) return
     val top = last()
+    val on = toList()
     pop(top)
-    moves.shown = top
+    moves.show(top, on)
 }
 
 private const val TRACE_PAGE = "RvPage"

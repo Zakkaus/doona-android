@@ -378,6 +378,24 @@ class RvNavHostTest {
     }
 
     @Test
+    fun backWhileAPagePushedDuringAnExitComesInPopsThatPage() {
+        start(ActivityKey, PoliciesKey, GroupKey("a"), GroupKey("b"))
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { back.onBackPressed() }
+        frames(1)
+        compose.runOnIdle { stack.push(GroupKey("c")) }
+        frames(PIPELINE_FRAMES + 1)
+        assertEquals("b still leaves", 1, shown("group b"))
+        assertEquals("c comes in", 1, shown("group c"))
+        compose.runOnIdle { back.onBackPressed() }
+        assertEquals("back pops the page coming in", listOf(ActivityKey, PoliciesKey, GroupKey("a")), stack.toList())
+
+        frames(SETTLE_FRAMES)
+        assertEquals(1, shown("group a"))
+        assertEquals(setOf("group b", "group c"), cleared.toSet())
+    }
+
+    @Test
     fun thePickerClosesBeforeAnyPop() {
         start(ActivityKey, NodesKey)
         assertTrue(pull!!.open)
