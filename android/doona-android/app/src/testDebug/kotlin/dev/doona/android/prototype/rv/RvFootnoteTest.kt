@@ -24,9 +24,10 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * The footnote check itself ([rvFootnoteRules], run on every golden): [RvFootnote] under a card stands where
- * [RvSpace.footnoteStart] and [RvSpace.footnoteEnd] put it, in a page's gutter and in a settings column that insets
- * the cards itself; a footnote-tagged text set on the gutter (16 dp) is caught.
+ * The footnote check itself ([rvFootnoteRules], run on every golden): [RvFootnote] under a card is the card's text
+ * column on both sides, in a page's gutter and in a settings column that insets the cards itself; a footnote-tagged
+ * text set on the gutter (16 dp) is caught, and so is a box that starts at the column but runs to the card's end (the
+ * 32..396 of 811cda31, owner q-s1125c-footgap 19:05 「我感覺向右歪了」). The tokens themselves are the column.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -68,6 +69,29 @@ class RvFootnoteTest {
         }
         compose.waitForIdle()
         assertTrue("the gutter footnote is off", rvFootnotes(compose.rvRowNodes()).single().off)
+    }
+
+    @Test
+    fun aBoxThatRunsToTheCardsEndIsCaught() {
+        compose.setContent {
+            RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
+                Column {
+                    RvGutter { RvCard { RvText(CARD, Rv.type.rowTitle, Modifier.padding(RvSpace.rowPadding)) } }
+                    // 811cda31's footnote: in by the card's padding at the start, at the card's edge at the end.
+                    val box = Modifier.padding(start = RvSpace.gutter + RvSpace.rowPadding, end = RvSpace.gutter).fillMaxWidth().testTag(RvPart.FOOTER)
+                    RvText(NOTE, Rv.type.rowSub, box, color = Rv.colors.textSecondary)
+                }
+            }
+        }
+        compose.waitForIdle()
+        val read = rvFootnotes(compose.rvRowNodes()).single()
+        assertTrue("${read.line("test")}: the asymmetric box is off", read.off)
+    }
+
+    @Test
+    fun theTokensAreTheCardsTextColumnOnBothSides() {
+        assertEquals("footnote start = the card's text inset", RvSpace.rowPadding, RvSpace.footnoteStart)
+        assertEquals("footnote end = the card's text inset (q-s1125c-footgap 19:05)", RvSpace.rowPadding, RvSpace.footnoteEnd)
     }
 
     private companion object {

@@ -24,7 +24,7 @@ Icon alignment: **C** = centred on the row; **T** = top on the title's top (the 
 | Notice, `RvBanner` | T | 40 disc (24 glyph), x 32 | 88 | 2 (q-s1125c-titlegap) | none; the button stands under the text, 16 below, at x 88 | text + 32 | 16 / 16 | 16 below the card |
 | Menu item, `RvLongPressMenu` | C | 24 bare glyph, x 16 in the item | 56 | – | none | 50 | centred | 0 / – |
 | Section header | – | – | 16 (page gutter) | – | – | 24 box | 24 above, 12 below to the card | – |
-| Footnote | – | – | `footnoteStart` in from the card's start, to `footnoteEnd` in from its end: today 32 to 396 (owner, q-s1125c-footgap; values pending Revolut's measure, R20) | – | – | text | 12 above (to the card; was 8), 24 below | – |
+| Footnote | – | – | the card's text column on both sides: `footnoteStart` in from the card's start, `footnoteEnd` in from its end, 32 to 380 (owner, q-s1125c-footgap, 19:05 「右邊也內縮到 32 dp」; was 32 to 396; R20) | – | – | text | 12 above (to the card; was 8), 24 below | – |
 | Card | – | – | – | – | – | – | 16 gutter, 20 radius | 16 |
 | Primary button | – | – | – | – | – | 52 | – | 12 to a secondary below |
 | Secondary button, chip, segmented control | – | – | – | – | – | 40; a segmented control's parts take their labels' widths where a label does not fit an equal part (s1125c) | 12 each side in a chip | 8 between buttons |
@@ -56,7 +56,7 @@ Component code uses only these through tokens (`RvSpace`, `RvSettingsSpace`, a c
 | Gap between cards | `RvSpace.cardGap` | S4 |
 | Section header above / below | `sectionAbove` / `sectionBelow` | S5 / S3 |
 | Footnote above | `footnoteAbove` | S3 (owner, q-s1125c-footgap: 12; was S2, 8) |
-| Footnote start and end, in from the card's edges | `footnoteStart`, `footnoteEnd` | S4 and S0 today (R20; values pending) |
+| Footnote start and end, in from the card's edges | `footnoteStart`, `footnoteEnd` | S4 and S4, the card's text column (R20; the end was S0) |
 | Row text above and below | `rowTextInset` | S4 |
 | Icon to text | `rowGap` | S4 |
 | Text to trailing part | `trailingGap` | S3 |
@@ -122,7 +122,7 @@ A row is **one-line** (no subtitle, title on one line), **with subtitle**, or **
 | R18 | Padding | text keeps ≥ 16 above and below, equal when the minimum height governs | §7 | gate R18 |
 | R19 | Spacing scale | only S0–S5 | this file | `check-scale.sh`, `check-tokens.sh` |
 | R2 | Cards and sections | card on the 16 gutter, 20 radius, 16 apart; section 24 above, 12 below | §2, §13.4 | `RvLayoutTest` |
-| R20 | Footnote | one component, `RvFootnote`, on every page; its box `RvSpace.footnoteStart` in from the card above's start edge and `footnoteEnd` in from its end, 12 under it; the values live only in that token pair | owner, q-s1125c-footgap (2026-11-25 18:55; flagged again 19:05 「我感覺向右歪了」, 19:07 「就是這個超出了」, 19:10 「小字備註的啟始 結束位置統一沒做好」; values to follow Revolut's measure) | (a) `rvFootnoteRules` on every golden (each `RvPart.FOOTER` within 0.5 dp of the tokens, every locale and font size; `RvFootnoteTest` plants one on the gutter); (b) `RvFootnoteGateTest`: no page file draws secondary text in the footnote's role (the colour by its name or through a local `val` that holds it) except through `RvFootnote` (`rv-footnote-gate.txt` lists the in-card exceptions with reasons); `RvLayoutTest` rulers |
+| R20 | Footnote | one component, `RvFootnote`, on every page; its box is the text column of the card above, on both sides: `RvSpace.footnoteStart` in from the card's start edge and `footnoteEnd` in from its end, both 16 (32 to 380 on a 412 dp page), 12 under it; the values live only in that token pair | owner, q-s1125c-footgap (2026-11-25 18:55; 19:05 「右邊也內縮到 32 dp」 after 「我感覺向右歪了」, 19:07 「就是這個超出了」, 19:10 「小字備註的啟始 結束位置統一沒做好」) | (a) `rvFootnoteRules` on every golden: each `RvPart.FOOTER` within 0.5 dp of the card's text column (`RvSpace.rowPadding` in from both card edges, not the tokens, so an asymmetric pair fails), every locale and font size; `RvFootnoteTest` plants one on the gutter and one at 811cda31's 32..396, and pins both tokens to the column; (b) `RvFootnoteGateTest`: no page file draws secondary text in the footnote's role except through `RvFootnote`: the colour by its name or through a name that holds it in scope (`val` or `var`, typed or not, over one line or more, a parameter's default, an alias of an alias; one function's name does not reach another's, and an argument's name is not its value; each form planted), `rv-footnote-gate.txt` lists the in-card exceptions with reasons; `RvLayoutTest` rulers |
 
 Decided here (2026-11-25), to be confirmed with the package:
 
@@ -172,6 +172,7 @@ Each earlier change that contradicts a rule. A change goes back to the rule, nev
 | `cdbc415f` (latinrow) | all rows | gives mixed rows the Latin line box; rows differ by 0.5 dp (1 px) from CJK-only rows | R13 holds within 1 dp; kept |
 | node picker, info mark (to `RvEndMark`) | 節點 picker | a 48 dp layout box offset 13 dp for a 22 dp glyph: 26 dp of the row's text width went to empty room | R21 |
 | `RvSegmented` (`rvSegmentStyle`) | every segmented control at 200% | shrank every label to the size at which the longest fit an equal part, where the labels fit side by side at full size | Text roles, segment label |
+| `25dc5430` (footnote tokens, `footnoteEnd` 0) | every page with a footnote | box 32..396: in by the card's padding at the start, at the card's edge at the end (owner 19:05 「我感覺向右歪了」) | R20 (end set to 16) |
 | node picker (`node-picker-action-failed-*`) | 節點 picker with a failed action | trailing part ends 13 dp short of the row's end | R16 (cause to be read in the code) |
 
 The gate's before list, per golden and rule, is in `rv-row-rules.txt`; it only shrinks.

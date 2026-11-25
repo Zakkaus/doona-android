@@ -82,10 +82,11 @@ internal object RvSpace {
 
     /**
      * Where a footnote's box starts and ends, in from the card's start and end edges above it ([RvFootnote]; LAYOUT-RULES.md
-     * R20, owner q-s1125c-footgap). The one place these values live: the footnote and its checks read them.
+     * R20): the card's text column on both sides (owner, q-s1125c-footgap, 2026-11-25 19:05: 「右邊也內縮到 32 dp」; the
+     * end was 0, the box ran 16 dp past the text column). The footnote reads them; its check measures the card's column.
      */
     val footnoteStart = 16.dp
-    val footnoteEnd = 0.dp
+    val footnoteEnd = 16.dp
 
     /** A card's in-card header row sits this far under the card's top, so the card's padding is the same at both ends. */
     val headerInset = 4.dp

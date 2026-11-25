@@ -159,14 +159,18 @@ class RvReportShotTest {
         assertTrue("the footnote stands under the switches", footer.top > apps.bottom)
     }
 
-    /** The footnote spans the cards' column and is laid out that wide, so its first line runs to their right edge (owner-fix3 item 29). */
+    /**
+     * The footnote spans the cards' text column and is laid out that wide, so its first line runs to the column's end
+     * (owner-fix3 item 29, then q-s1125c-footgap 19:05: 「右邊也內縮到 32 dp」, the end in by the card's text inset as
+     * the start; it ran to the card's edge before).
+     */
     @Test
     @Config(qualifiers = READY)
-    fun theFootnoteRunsToTheCardsRightEdge() = footnoteSpansTheCards(1f)
+    fun theFootnoteRunsToTheCardsTextColumnEnd() = footnoteSpansTheCards(1f)
 
     @Test
     @Config(qualifiers = READY_FS200)
-    fun theFootnoteRunsToTheCardsRightEdgeAtFs200() = footnoteSpansTheCards(RV_FS200)
+    fun theFootnoteRunsToTheCardsTextColumnEndAtFs200() = footnoteSpansTheCards(RV_FS200)
 
     private fun footnoteSpansTheCards(fontScale: Float) {
         compose.rvContent(dark = false, fontScale = fontScale) { Page(READY_BUILD) }
@@ -174,7 +178,7 @@ class RvReportShotTest {
         val node = compose.onNodeWithTag(RvPart.FOOTER).fetchSemanticsNode()
         val box = node.boundsInRoot
         assertEquals("starts at the cards' text inset", card.left + RvSpace.rowPadding.value * compose.density.density, box.left, EDGE_PX)
-        assertEquals("ends on the cards' right edge", card.right, box.right, EDGE_PX)
+        assertEquals("ends at the cards' text inset from their right edge", card.right - RvSpace.rowPadding.value * compose.density.density, box.right, EDGE_PX)
         val layouts = mutableListOf<TextLayoutResult>().also { node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(it) }
         val layout = layouts.single()
         assertEquals("laid out as wide as its box", box.width, layout.layoutInput.constraints.maxWidth.toFloat(), EDGE_PX)
