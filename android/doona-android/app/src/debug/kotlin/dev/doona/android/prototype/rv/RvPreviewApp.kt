@@ -369,7 +369,7 @@ private fun ActivityPage(route: String, run: RvSampleRun, options: RvMotionOptio
         stats = { pages.push(STATS) },
         search = { pages.push(SEARCH) },
         nodes = { pages.push(NODES) },
-        node = { pages.push("$NODE:${run.currentId}") },
+        node = { pages.push("$NODE:$it") },
         tab = pages.tab,
         mode = toPolicy,
         rule = { id -> RvPolicyData.groups.firstOrNull { it.id == id }?.let { pages.push("${RvPolicyPreviewRoutes.GROUP}:${it.id}") } ?: toPolicy() },

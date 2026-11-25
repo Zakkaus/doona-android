@@ -3,7 +3,9 @@ package dev.doona.android.app
 import android.content.Context
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -35,6 +37,11 @@ class NavigationTest {
 
     /** Waits for [text]: the pages read the engine off the main thread, which waitForIdle does not wait for. */
     private fun appears(text: String) = compose.waitUntil(READ_MS) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
+
+    /** The search page is up once its field holds the focus, which the page gives it a frame after it is placed. */
+    private fun searchOpens() = compose.waitUntil(READ_MS) { compose.onAllNodes(hasSetTextAction() and isFocused()).fetchSemanticsNodes().isNotEmpty() }
+
+    private fun string(id: Int) = ApplicationProvider.getApplicationContext<Context>().getString(id)
 
     @Test
     fun `switching tabs keeps 活動 at the bottom`() {
@@ -132,6 +139,45 @@ class NavigationTest {
 
         compose.onNodeWithContentDescription("Back").performClick()
         compose.onNodeWithText("This connection").assertDoesNotExist()
+    }
+
+    @Test
+    fun `搜尋節點 on 活動 opens the node search`() {
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS), FakeInstalledApps(), onConnect = {}) } }
+        compose.onNode(hasClickAction() and hasText(string(R.string.rv_search_nodes))).performSemanticsAction(SemanticsActions.OnClick)
+        searchOpens()
+    }
+
+    @Test
+    fun `最快節點 on 活動 opens 節點`() {
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS), FakeInstalledApps(), onConnect = {}) } }
+        compose.onNode(hasClickAction() and hasText(string(R.string.rv_fastest_nodes))).performSemanticsAction(SemanticsActions.OnClick)
+        appears(string(R.string.rv_nodes_spread))
+    }
+
+    @Test
+    fun `the main node on 活動 opens the node's page`() {
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS, mode = Mode.Rule), FakeInstalledApps(), onConnect = {}) } }
+        appears(string(R.string.rv_main_node))
+        compose.onNode(hasClickAction() and hasText(string(R.string.rv_main_node))).performSemanticsAction(SemanticsActions.OnClick)
+        appears(string(R.string.rv_nodes_details))
+    }
+
+    @Test
+    fun `主節點 on 策略 opens the main node's picker`() {
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS, mode = Mode.Rule), FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, PoliciesKey)) } }
+        appears(string(R.string.rv_main_node))
+        compose.onNode(hasClickAction() and hasText(string(R.string.rv_main_node))).performSemanticsAction(SemanticsActions.OnClick)
+        appears(string(R.string.rv_main_node_hint))
+        compose.onNodeWithContentDescription("Back").assertExists()
+    }
+
+    @Test
+    fun `搜尋節點 on 策略 opens the node search`() {
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS), FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, PoliciesKey)) } }
+        appears(POLICIES)
+        compose.onNode(hasClickAction() and hasText(string(R.string.rv_search_nodes))).performSemanticsAction(SemanticsActions.OnClick)
+        searchOpens()
     }
 
     @Test
