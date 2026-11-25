@@ -1,0 +1,13 @@
+node {
+    u1: 'socks5://10.10.8.1:1080'
+    u2: 'socks5://10.10.8.2:1080'
+}
+group {
+    odd {
+        filter: name('u1', 'u2')
+        policy: sometimes
+    }
+}
+routing {
+    fallback: odd
+}

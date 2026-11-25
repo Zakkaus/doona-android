@@ -1,0 +1,14 @@
+node {
+    m1: 'socks5://10.10.9.1:1080'
+}
+group {
+    proxy {
+        filter: name('m1')
+        policy: select
+    }
+}
+routing {
+    dport(22) -> proxy(must)
+    domain(suffix: marked.test) -> direct(mark: 300, must)
+    fallback: direct(mark: 256)
+}

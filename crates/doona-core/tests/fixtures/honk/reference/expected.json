@@ -1,0 +1,821 @@
+{
+  "cases": [
+    {
+      "diagnostics": [],
+      "error": null,
+      "name": "no-proxy-group",
+      "probes": [
+        {
+          "leaf": {
+            "chain": [
+              "hk",
+              "hk-2"
+            ],
+            "kind": "node",
+            "name": "hk-2"
+          },
+          "mark": null,
+          "must": false,
+          "name": "google",
+          "outbound": "hk",
+          "rule": 0,
+          "rule_payload": "google"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "jp",
+              "jp-1"
+            ],
+            "kind": "node",
+            "name": "jp-1"
+          },
+          "mark": null,
+          "must": false,
+          "name": "jp-site",
+          "outbound": "jp",
+          "rule": 1,
+          "rule_payload": "example.jp"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "direct"
+            ],
+            "kind": "direct",
+            "name": null
+          },
+          "mark": null,
+          "must": false,
+          "name": "cn-ip",
+          "outbound": "direct",
+          "rule": 2,
+          "rule_payload": "cn"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "jp",
+              "jp-1"
+            ],
+            "kind": "node",
+            "name": "jp-1"
+          },
+          "mark": null,
+          "must": false,
+          "name": "fallthrough",
+          "outbound": "jp",
+          "rule": null,
+          "rule_payload": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "error": null,
+      "name": "no-proxy-group-chosen",
+      "probes": [
+        {
+          "leaf": {
+            "chain": [
+              "hk",
+              "hk-1"
+            ],
+            "kind": "node",
+            "name": "hk-1"
+          },
+          "mark": null,
+          "must": false,
+          "name": "google",
+          "outbound": "hk",
+          "rule": 0,
+          "rule_payload": "google"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "jp",
+              "jp-1"
+            ],
+            "kind": "node",
+            "name": "jp-1"
+          },
+          "mark": null,
+          "must": false,
+          "name": "jp-site",
+          "outbound": "jp",
+          "rule": 1,
+          "rule_payload": "example.jp"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "direct"
+            ],
+            "kind": "direct",
+            "name": null
+          },
+          "mark": null,
+          "must": false,
+          "name": "cn-ip",
+          "outbound": "direct",
+          "rule": 2,
+          "rule_payload": "cn"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "jp",
+              "jp-1"
+            ],
+            "kind": "node",
+            "name": "jp-1"
+          },
+          "mark": null,
+          "must": false,
+          "name": "fallthrough",
+          "outbound": "jp",
+          "rule": null,
+          "rule_payload": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "error": null,
+      "name": "five-policies",
+      "probes": [
+        {
+          "leaf": {
+            "chain": [
+              "p-select",
+              "b"
+            ],
+            "kind": "node",
+            "name": "b"
+          },
+          "mark": null,
+          "must": false,
+          "name": "select",
+          "outbound": "p-select",
+          "rule": 0,
+          "rule_payload": "select.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "p-urltest"
+            ],
+            "kind": "node",
+            "name": "b"
+          },
+          "mark": null,
+          "must": false,
+          "name": "urltest",
+          "outbound": "p-urltest",
+          "rule": 1,
+          "rule_payload": "urltest.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "p-balance"
+            ],
+            "kind": "node",
+            "name": "a"
+          },
+          "mark": null,
+          "must": false,
+          "name": "balance",
+          "outbound": "p-balance",
+          "rule": 2,
+          "rule_payload": "balance.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "p-fallback"
+            ],
+            "kind": "node",
+            "name": "a"
+          },
+          "mark": null,
+          "must": false,
+          "name": "fallback",
+          "outbound": "p-fallback",
+          "rule": 3,
+          "rule_payload": "fallback.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "p-score",
+              "a"
+            ],
+            "kind": "node",
+            "name": "a"
+          },
+          "mark": null,
+          "must": false,
+          "name": "score",
+          "outbound": "p-score",
+          "rule": 4,
+          "rule_payload": "score.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "direct"
+            ],
+            "kind": "direct",
+            "name": null
+          },
+          "mark": null,
+          "must": false,
+          "name": "unmatched",
+          "outbound": "direct",
+          "rule": null,
+          "rule_payload": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "error": null,
+      "name": "five-policies-degraded",
+      "probes": [
+        {
+          "leaf": {
+            "chain": [
+              "p-select",
+              "b"
+            ],
+            "kind": "node",
+            "name": "b"
+          },
+          "mark": null,
+          "must": false,
+          "name": "select",
+          "outbound": "p-select",
+          "rule": 0,
+          "rule_payload": "select.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "p-urltest"
+            ],
+            "kind": "node",
+            "name": "c"
+          },
+          "mark": null,
+          "must": false,
+          "name": "urltest",
+          "outbound": "p-urltest",
+          "rule": 1,
+          "rule_payload": "urltest.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "p-balance"
+            ],
+            "kind": "node",
+            "name": "b"
+          },
+          "mark": null,
+          "must": false,
+          "name": "balance",
+          "outbound": "p-balance",
+          "rule": 2,
+          "rule_payload": "balance.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "p-fallback"
+            ],
+            "kind": "node",
+            "name": "b"
+          },
+          "mark": null,
+          "must": false,
+          "name": "fallback",
+          "outbound": "p-fallback",
+          "rule": 3,
+          "rule_payload": "fallback.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "p-score",
+              "b"
+            ],
+            "kind": "node",
+            "name": "b"
+          },
+          "mark": null,
+          "must": false,
+          "name": "score",
+          "outbound": "p-score",
+          "rule": 4,
+          "rule_payload": "score.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "direct"
+            ],
+            "kind": "direct",
+            "name": null
+          },
+          "mark": null,
+          "must": false,
+          "name": "unmatched",
+          "outbound": "direct",
+          "rule": null,
+          "rule_payload": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "error": null,
+      "name": "nested",
+      "probes": [
+        {
+          "leaf": {
+            "chain": [
+              "asia",
+              "hk"
+            ],
+            "kind": "node",
+            "name": "hk-2"
+          },
+          "mark": null,
+          "must": false,
+          "name": "asia",
+          "outbound": "asia",
+          "rule": 0,
+          "rule_payload": "asia.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "world"
+            ],
+            "kind": "node",
+            "name": "hk-2"
+          },
+          "mark": null,
+          "must": false,
+          "name": "world",
+          "outbound": "world",
+          "rule": 1,
+          "rule_payload": "world.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "world",
+              "asia",
+              "hk",
+              "hk-2"
+            ],
+            "kind": "node",
+            "name": "hk-2"
+          },
+          "mark": null,
+          "must": false,
+          "name": "unmatched",
+          "outbound": "world",
+          "rule": null,
+          "rule_payload": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "error": null,
+      "name": "nested-asia-chosen",
+      "probes": [
+        {
+          "leaf": {
+            "chain": [
+              "asia",
+              "jp"
+            ],
+            "kind": "node",
+            "name": "jp-1"
+          },
+          "mark": null,
+          "must": false,
+          "name": "asia",
+          "outbound": "asia",
+          "rule": 0,
+          "rule_payload": "asia.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "world"
+            ],
+            "kind": "node",
+            "name": "us-1"
+          },
+          "mark": null,
+          "must": false,
+          "name": "world",
+          "outbound": "world",
+          "rule": 1,
+          "rule_payload": "world.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "world",
+              "us-1"
+            ],
+            "kind": "node",
+            "name": "us-1"
+          },
+          "mark": null,
+          "must": false,
+          "name": "unmatched",
+          "outbound": "world",
+          "rule": null,
+          "rule_payload": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "error": null,
+      "name": "fallback-final-all-dead",
+      "probes": [
+        {
+          "leaf": {
+            "chain": [
+              "to-direct"
+            ],
+            "kind": "direct",
+            "name": "direct"
+          },
+          "mark": null,
+          "must": false,
+          "name": "direct",
+          "outbound": "to-direct",
+          "rule": 0,
+          "rule_payload": "direct.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "to-block"
+            ],
+            "kind": "block",
+            "name": "block"
+          },
+          "mark": null,
+          "must": false,
+          "name": "block",
+          "outbound": "to-block",
+          "rule": 1,
+          "rule_payload": "block.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "block"
+            ],
+            "kind": "block",
+            "name": null
+          },
+          "mark": null,
+          "must": false,
+          "name": "refused",
+          "outbound": "block",
+          "rule": 2,
+          "rule_payload": "refused.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "direct"
+            ],
+            "kind": "direct",
+            "name": null
+          },
+          "mark": null,
+          "must": true,
+          "name": "cn-must",
+          "outbound": "direct",
+          "rule": 3,
+          "rule_payload": "cn"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "direct"
+            ],
+            "kind": "direct",
+            "name": null
+          },
+          "mark": null,
+          "must": false,
+          "name": "unmatched",
+          "outbound": "direct",
+          "rule": null,
+          "rule_payload": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "error": null,
+      "name": "fallback-final-recovered",
+      "probes": [
+        {
+          "leaf": {
+            "chain": [
+              "to-direct"
+            ],
+            "kind": "node",
+            "name": "n2"
+          },
+          "mark": null,
+          "must": false,
+          "name": "direct",
+          "outbound": "to-direct",
+          "rule": 0,
+          "rule_payload": "direct.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "to-block"
+            ],
+            "kind": "node",
+            "name": "n2"
+          },
+          "mark": null,
+          "must": false,
+          "name": "block",
+          "outbound": "to-block",
+          "rule": 1,
+          "rule_payload": "block.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "block"
+            ],
+            "kind": "block",
+            "name": null
+          },
+          "mark": null,
+          "must": false,
+          "name": "refused",
+          "outbound": "block",
+          "rule": 2,
+          "rule_payload": "refused.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "direct"
+            ],
+            "kind": "direct",
+            "name": null
+          },
+          "mark": null,
+          "must": true,
+          "name": "cn-must",
+          "outbound": "direct",
+          "rule": 3,
+          "rule_payload": "cn"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "direct"
+            ],
+            "kind": "direct",
+            "name": null
+          },
+          "mark": null,
+          "must": false,
+          "name": "unmatched",
+          "outbound": "direct",
+          "rule": null,
+          "rule_payload": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "error": null,
+      "name": "zero-groups",
+      "probes": [
+        {
+          "leaf": {
+            "chain": [
+              "lone"
+            ],
+            "kind": "node",
+            "name": "lone"
+          },
+          "mark": null,
+          "must": false,
+          "name": "lone",
+          "outbound": "lone",
+          "rule": 0,
+          "rule_payload": "lone.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "direct"
+            ],
+            "kind": "direct",
+            "name": null
+          },
+          "mark": null,
+          "must": false,
+          "name": "cn",
+          "outbound": "direct",
+          "rule": 1,
+          "rule_payload": "cn"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "lone"
+            ],
+            "kind": "node",
+            "name": "lone"
+          },
+          "mark": null,
+          "must": false,
+          "name": "unmatched",
+          "outbound": "lone",
+          "rule": null,
+          "rule_payload": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "error": null,
+      "name": "node-in-no-group",
+      "probes": [
+        {
+          "leaf": {
+            "chain": [
+              "only",
+              "grouped"
+            ],
+            "kind": "node",
+            "name": "grouped"
+          },
+          "mark": null,
+          "must": false,
+          "name": "grouped",
+          "outbound": "only",
+          "rule": 0,
+          "rule_payload": "grouped.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "loose"
+            ],
+            "kind": "node",
+            "name": "loose"
+          },
+          "mark": null,
+          "must": false,
+          "name": "loose",
+          "outbound": "loose",
+          "rule": 1,
+          "rule_payload": "loose.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "only",
+              "grouped"
+            ],
+            "kind": "node",
+            "name": "grouped"
+          },
+          "mark": null,
+          "must": false,
+          "name": "unmatched",
+          "outbound": "only",
+          "rule": null,
+          "rule_payload": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [
+        {
+          "code": "legacy-config-warning",
+          "line": 8,
+          "message": "policy is not recognised; using fallback selector",
+          "setting": "groups[1].policy",
+          "severity": "warning",
+          "value": ""
+        }
+      ],
+      "error": null,
+      "name": "unknown-policy",
+      "probes": [
+        {
+          "leaf": {
+            "chain": [
+              "odd",
+              "u1"
+            ],
+            "kind": "node",
+            "name": "u1"
+          },
+          "mark": null,
+          "must": false,
+          "name": "any",
+          "outbound": "odd",
+          "rule": null,
+          "rule_payload": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "error": null,
+      "name": "mark-must",
+      "probes": [
+        {
+          "leaf": {
+            "chain": [
+              "proxy",
+              "m1"
+            ],
+            "kind": "node",
+            "name": "m1"
+          },
+          "mark": null,
+          "must": true,
+          "name": "ssh",
+          "outbound": "proxy",
+          "rule": 0,
+          "rule_payload": "22"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "direct"
+            ],
+            "kind": "direct",
+            "name": null
+          },
+          "mark": 300,
+          "must": true,
+          "name": "marked",
+          "outbound": "direct",
+          "rule": 1,
+          "rule_payload": "marked.test"
+        },
+        {
+          "leaf": {
+            "chain": [
+              "direct"
+            ],
+            "kind": "direct",
+            "name": null
+          },
+          "mark": 256,
+          "must": false,
+          "name": "unmatched",
+          "outbound": "direct",
+          "rule": null,
+          "rule_payload": null
+        }
+      ]
+    }
+  ],
+  "geo": [
+    {
+      "name": "geoip.dat",
+      "sha256": "d4ec4c5e5d5a38c1399964ea9fd8c94288426a3b31b483904b67819fc07f4466",
+      "version": "5f22a3b3371d1a489fb3d0df25d00db049a6a603"
+    },
+    {
+      "name": "geosite.dat",
+      "sha256": "06ca12228fbea293e003c68ab71e5071d3af7e491f972266fbc5466e531c4f70",
+      "version": "5f22a3b3371d1a489fb3d0df25d00db049a6a603"
+    }
+  ],
+  "honk_rev": "f7415d0ac505e330cf22bda562719d396e6b9a26",
+  "version": 1
+}

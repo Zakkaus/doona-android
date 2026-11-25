@@ -1,0 +1,36 @@
+node {
+    a: 'socks5://10.10.3.1:1080'
+    b: 'socks5://10.10.3.2:1080'
+    c: 'socks5://10.10.3.3:1080'
+}
+group {
+    p-select {
+        filter: name('a', 'b', 'c')
+        policy: select
+        default: 'b'
+    }
+    p-urltest {
+        filter: name('a', 'b', 'c')
+        policy: min_moving_avg
+    }
+    p-balance {
+        filter: name('a', 'b', 'c')
+        policy: loadbalance
+    }
+    p-fallback {
+        filter: name('a', 'b', 'c')
+        policy: fallback
+    }
+    p-score {
+        filter: name('a', 'b', 'c')
+        policy: score
+    }
+}
+routing {
+    domain(suffix: select.test) -> p-select
+    domain(suffix: urltest.test) -> p-urltest
+    domain(suffix: balance.test) -> p-balance
+    domain(suffix: fallback.test) -> p-fallback
+    domain(suffix: score.test) -> p-score
+    fallback: direct
+}

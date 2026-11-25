@@ -1,0 +1,28 @@
+[package]
+name = "doona-honk-reference"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-only"
+publish = false
+
+# Its own workspace: this tool links stock honk on the Linux host and must not join doona-core's.
+[workspace]
+
+[dependencies]
+anyhow = "1"
+# Stock honk main, linked without its default features, so without clash-api and axum. libsystemd is
+# an unconditional dependency of honk-core at this revision and is compiled but never called.
+# build.rs reads the honk-core rev for the report.
+honk-config = { git = "https://github.com/daeuniverse/honk", rev = "f7415d0ac505e330cf22bda562719d396e6b9a26" }
+honk-core = { git = "https://github.com/daeuniverse/honk", rev = "f7415d0ac505e330cf22bda562719d396e6b9a26", default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.11"
+tracing = "0.1"
+uuid = "1"
+tracing-subscriber = "0.3"
+
+[patch.crates-io]
+boring-sys = { git = "https://github.com/Glassyiris/boring-sys", rev = "3beb573b65ecaa69b7eefe3c2fecd074b97facd2" }
+quinn = { git = "https://github.com/Glassyiris/quinn", rev = "d98acc02b8c26417a84180a366e1eb5b22af2b24" }
+quinn-proto = { git = "https://github.com/Glassyiris/quinn", rev = "d98acc02b8c26417a84180a366e1eb5b22af2b24" }

@@ -1,0 +1,22 @@
+node {
+    hk-1: 'socks5://10.10.1.1:1080'
+    hk-2: 'socks5://10.10.1.2:1080'
+    jp-1: 'socks5://10.10.2.1:1080'
+}
+group {
+    hk {
+        filter: name(keyword: 'hk')
+        policy: select
+        default: 'hk-2'
+    }
+    jp {
+        filter: name(keyword: 'jp')
+        policy: select
+    }
+}
+routing {
+    domain(geosite:google) -> hk
+    domain(suffix: example.jp) -> jp
+    dip(geoip:cn) -> direct
+    fallback: jp
+}
