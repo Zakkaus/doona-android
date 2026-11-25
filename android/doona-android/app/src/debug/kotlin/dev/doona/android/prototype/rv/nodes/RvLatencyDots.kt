@@ -31,11 +31,11 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.doona.android.R
-import dev.doona.android.designsystem.components.latencyTone
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvChartSize
 import dev.doona.android.designsystem.rv.RvPillInk
 import dev.doona.android.designsystem.rv.RvText
+import dev.doona.android.designsystem.rv.latencyTone
 import dev.doona.android.designsystem.rv.rvChartMarker
 import dev.doona.android.designsystem.rv.rvLatencyAxisMiddle
 import dev.doona.android.designsystem.rv.rvLatencyAxisTop

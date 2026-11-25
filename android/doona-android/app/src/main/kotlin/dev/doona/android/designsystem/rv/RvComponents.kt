@@ -78,7 +78,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
-import dev.doona.android.designsystem.components.AppIcons
 import java.text.DecimalFormatSymbols
 import java.util.Locale
 import kotlin.math.max
