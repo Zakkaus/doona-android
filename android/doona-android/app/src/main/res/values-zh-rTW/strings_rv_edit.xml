@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_list_remove">刪除 %1$s</string>
+    <string name="rv_member_remove">從群組移除 %1$s</string>
+    <string name="rv_list_delete_failed_title">無法刪除 %1$s</string>
+    <string name="rv_list_delete_failed_storage">手機儲存空間不足，沒有任何變動。</string>
+    <string name="rv_group_edit_title">編輯群組</string>
+    <string name="rv_group_edit_name">名稱</string>
+    <string name="rv_group_edit_policy">策略</string>
+    <string name="rv_group_edit_members">成員</string>
+    <string name="rv_group_edit_add_member">新增成員</string>
+    <string name="rv_group_edit_options">選項</string>
+    <string name="rv_group_edit_default">預設</string>
+    <string name="rv_group_edit_final">全部不可用時</string>
+    <string name="rv_group_edit_exit">出口節點</string>
+    <string name="rv_group_edit_unset">未設定</string>
+    <string name="rv_group_member_node">節點</string>
+    <string name="rv_group_member_group">群組 · %1$s</string>
+    <string name="rv_group_member_remove_title">移除 %1$s？</string>
+    <string name="rv_group_member_remove_body">它的流量改由群組的其他成員處理。</string>
+    <string name="rv_group_member_remove_confirm">移除</string>
+</resources>

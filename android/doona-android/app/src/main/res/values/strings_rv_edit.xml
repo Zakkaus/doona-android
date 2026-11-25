@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_list_remove">Delete %1$s</string>
+    <string name="rv_member_remove">Remove %1$s from the group</string>
+    <string name="rv_list_delete_failed_title">Couldn’t delete %1$s</string>
+    <string name="rv_list_delete_failed_storage">The phone is out of storage. Nothing changed.</string>
+    <string name="rv_group_edit_title">Edit group</string>
+    <string name="rv_group_edit_name">Name</string>
+    <string name="rv_group_edit_policy">Policy</string>
+    <string name="rv_group_edit_members">Members</string>
+    <string name="rv_group_edit_add_member">Add member</string>
+    <string name="rv_group_edit_options">Options</string>
+    <string name="rv_group_edit_default">Default</string>
+    <string name="rv_group_edit_final">When none is available</string>
+    <string name="rv_group_edit_exit">Exit node</string>
+    <string name="rv_group_edit_unset">Not set</string>
+    <string name="rv_group_member_node">Node</string>
+    <string name="rv_group_member_group">Group · %1$s</string>
+    <string name="rv_group_member_remove_title">Remove %1$s?</string>
+    <string name="rv_group_member_remove_body">Its traffic goes to the group’s other members.</string>
+    <string name="rv_group_member_remove_confirm">Remove</string>
+</resources>

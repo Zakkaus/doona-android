@@ -17,8 +17,10 @@ import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvRadio
+import dev.doona.android.designsystem.rv.RvRemovableLeading
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvRowEndName
+import dev.doona.android.designsystem.rv.RvRowRemove
 import dev.doona.android.designsystem.rv.RvSeeAll
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvText
@@ -26,6 +28,7 @@ import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.latencyColor
 import dev.doona.android.designsystem.rv.latencyText
 import dev.doona.android.designsystem.rv.rememberRvFormat
+import dev.doona.android.designsystem.rv.rvRemoveTrailing
 import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.feature.model.RV_DIRECT
 import dev.doona.android.feature.model.RvNode
@@ -87,7 +90,7 @@ internal fun RvRuleMatch.kind(): String = when (this) {
  * after its kind and shows no bytes.
  */
 @Composable
-internal fun RvRuleRow(rule: RvPolicyRule, modifier: Modifier = Modifier, end: String? = null) {
+internal fun RvRuleRow(rule: RvPolicyRule, modifier: Modifier = Modifier, end: String? = null, remove: RvRowRemove? = null) {
     val format = rememberRvFormat()
     val subtitle = when (rule.state) {
         RvRuleState.On -> rule.match.kind()
@@ -95,14 +98,17 @@ internal fun RvRuleRow(rule: RvPolicyRule, modifier: Modifier = Modifier, end: S
         RvRuleState.Skipped -> rule.match.kind() + SEPARATOR + stringResource(R.string.rv_policy_rule_skipped)
     }
     val bytes = if (rule.state == RvRuleState.On) format.bytes(rule.bytes).toString() else RV_NO_VALUE
+    val title = rule.match.title()
+    val removeLabel = stringResource(R.string.rv_list_remove, title)
     RvRow(
-        { RvRuleEndMark(rule) },
-        rule.match.title(),
+        { RvRemovableLeading(remove, removeLabel) { RvRuleEndMark(rule) } },
+        title,
         subtitle,
         modifier,
         titleEnd = { RvRowEndName(rule.targetName()) },
         subtitleEnd = { RvText(end ?: bytes, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End) },
         titleKeepWords = false,
+        trailing = rvRemoveTrailing(remove, removeLabel),
     )
 }
 

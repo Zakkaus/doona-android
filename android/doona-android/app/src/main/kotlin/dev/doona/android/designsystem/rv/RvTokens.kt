@@ -169,6 +169,10 @@ internal object RvSize {
     /** A list card's 'See all' row (S7-12, Revolut's 56 dp). */
     val seeAll = 56.dp
     val touch = 48.dp
+
+    /** A list's remove mark (owner question 2026-11-26, A and B): a filled disc at a row's start, or a disc at its end. */
+    val removeDisc = 24.dp
+    val removeGlyph = 18.dp
     val navGlyph = 24.dp
     val progress = 5.dp
 

@@ -14,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.RvAddRow
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
@@ -27,7 +28,9 @@ import dev.doona.android.designsystem.rv.RvMenuItem
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvPrimaryButton
+import dev.doona.android.designsystem.rv.RvRemoveStyle
 import dev.doona.android.designsystem.rv.RvRow
+import dev.doona.android.designsystem.rv.RvRowRemove
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSkeletonCard
 import dev.doona.android.designsystem.rv.RvSkeletonCards
@@ -64,7 +67,8 @@ internal class RvRulesRoutes(
  * opens its page; a long press its menu. 刪除 asks in the library's confirm sheet. A [banner] (the source did not parse,
  * or the rules could not be read) stands in [RvGutter]'s slot over the rules a failed reread kept, or in place of the
  * cards when none were kept; the title, the bar and the bottom action stay. While [loading] (the first read) a skeleton
- * of the rules card stands in for the cards, and they fade in over it.
+ * of the rules card stands in for the cards, and they fade in over it. [removeStyle] puts a remove control on every rule
+ * but the last and ends the rules card with 新增規則: in edit mode (A) or at all times (B), the owner's open question.
  */
 @Composable
 internal fun RvRulesPage(
@@ -75,6 +79,7 @@ internal fun RvRulesPage(
     routes: RvRulesRoutes = RvRulesRoutes(),
     banner: RvNotice? = null,
     loading: Boolean = false,
+    removeStyle: RvRemoveStyle? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_policy_rules)
@@ -92,7 +97,7 @@ internal fun RvRulesPage(
             if (banner != null && rules.isEmpty()) return@RvGutter
             RvSkeletonCards(loading, { RulesSkeleton() }) {
                 if (pending.isNotEmpty() && !editing) PendingCard(pending, routes.discard)
-                RulesCard(rules, editing, routes)
+                RulesCard(rules, editing, routes, removeStyle)
                 if (!editing) {
                     CountsCard(rules)
                     RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, stringResource(R.string.rv_effective_open), null, onClick = routes.effective) { RvChevron() } }
@@ -139,17 +144,25 @@ private fun PendingCard(pending: List<RvPolicyRule>, onDiscard: () -> Unit) {
  * merged; the last rule stays last).
  */
 @Composable
-private fun RulesCard(rules: List<RvPolicyRule>, editing: Boolean, routes: RvRulesRoutes) {
+private fun RulesCard(rules: List<RvPolicyRule>, editing: Boolean, routes: RvRulesRoutes, removeStyle: RvRemoveStyle?) {
     var deleting by rememberSaveable { mutableStateOf<Int?>(null) }
+    // A list with remove controls (owner question 2026-11-26): A shows them in edit mode, B at all times.
+    val removing = when (removeStyle) {
+        RvRemoveStyle.Editing -> editing
+        RvRemoveStyle.Trailing -> true
+        null -> false
+    }
     RvCard {
         rules.forEachIndexed { i, rule ->
             val last = i == rules.lastIndex
+            val remove = removeStyle?.takeIf { removing }?.let { RvRowRemove(it, if (last) null else ({ deleting = i })) }
             when {
-                editing -> RvRuleRow(rule)
-                last -> RvRuleRow(rule, Modifier.rvRowPress(Role.Button, { routes.open(i) }))
-                else -> RvLongPressMenu(ruleMenu(rule, { routes.open(i) }, { routes.toggle(i) }, { deleting = i }), { routes.open(i) }) { RvRuleRow(rule, it) }
+                editing -> RvRuleRow(rule, remove = remove)
+                last -> RvRuleRow(rule, Modifier.rvRowPress(Role.Button, { routes.open(i) }), remove = remove)
+                else -> RvLongPressMenu(ruleMenu(rule, { routes.open(i) }, { routes.toggle(i) }, { deleting = i }), { routes.open(i) }) { RvRuleRow(rule, it, remove = remove) }
             }
         }
+        if (removing) RvAddRow(stringResource(R.string.rv_policy_new_rule), routes.newRule)
     }
     val target = deleting?.let(rules::getOrNull)
     RvConfirmSheet(

@@ -107,7 +107,7 @@ A row is **one-line** (no subtitle, title on one line), **with subtitle**, or **
 |---|---|---|---|---|
 | R1 | Row height | ≥ 58 one-line, ≥ 82 with a subtitle; otherwise text block (title, 2 dp, subtitle) + 32; never taller than its text, padding or trailing part need | §7 (148 px pitch; 82 dp 2-line) | gate R1 |
 | R4 | Leading visual | 40 dp disc with a 22 dp glyph, a 40 dp flag, or a 40 dp app icon; a notice's disc has a 24 dp glyph; never a bare glyph in a row | owner, iconstyle; Revolut money rows 40 dp (§7), settings bare 24 dp (§12.2) | gate R4 |
-| R5 | Leading x | row content starts 16 inside the card; the visual at its start | §7 Leading inset | gate R5 |
+| R5 | Leading x | row content starts 16 inside the card; the visual at its start. In an editable list's edit mode (A, owner question 2026-11-26) a 24 dp remove disc starts there and the visual starts 16 after it | §7 Leading inset | gate R5 |
 | R6 | Text x | 16 after the leading visual (88), or at the row start without one | §7 Leading to text gap | gate R6 |
 | R7 | One column per card | rows of one card with the same leading visual start their text at one x | owner 「圖示文字沒對齊」 | gate R7 |
 | R8 | Leading, one-line and wrapped row | centred on the row | Revolut: no subtitle, everything centred; D1 for wrapped | gate R8 |
