@@ -5,6 +5,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isEnabled
@@ -102,10 +103,22 @@ class SubscriptionFlowsTest {
     }
 
     @Test
-    fun `新增訂閱's name field stops at the core's 64 code points`() {
+    fun `新增訂閱 says under the link field why a link that is not http or https is refused`() {
         show(FakeEngine(subscriptions = emptyList()), ActivityKey, SubAddKey)
+        compose.onNodeWithText(string(R.string.rv_add_link_invalid)).assertDoesNotExist()
+        compose.onAllNodes(hasSetTextAction() and isEnabled())[0].performTextInput("ftp://sub.example/x")
+        compose.onNodeWithText(string(R.string.rv_add_link_invalid)).assertExists()
+        compose.onNodeWithText(string(R.string.rv_add_import)).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `新增訂閱 keeps a name over the core's 64 code points as typed, says why under it, and does not add`() {
+        show(FakeEngine(subscriptions = emptyList()), ActivityKey, SubAddKey)
+        typeUrl()
         compose.onAllNodes(hasSetTextAction() and isEnabled())[1].performTextInput("a".repeat(70))
-        compose.onNodeWithText("a".repeat(64)).assertExists()
+        compose.onNodeWithText("a".repeat(70)).assertExists()
+        compose.onNodeWithText(string(R.string.rv_sub_name_invalid)).assertExists()
+        compose.onNodeWithText(string(R.string.rv_add_import)).assertIsNotEnabled()
     }
 
     @Test
@@ -182,7 +195,7 @@ class SubscriptionFlowsTest {
                 )
             }
             entry<SubAddKey> { key -> SubAddRoute(engine, imports, onBack = { backStack.pop(key) }) }
-            entry<SubDetailKey> { key -> SubDetailRoute(engine, MutableStateFlow(12), key.subscriptionId, onBack = { backStack.pop(key) }) }
+            entry<SubDetailKey> { key -> SubDetailRoute(engine, MutableStateFlow(12), key.subscriptionId, onBack = { backStack.pop(key) }, onAutoUpdate = {}) }
         }
     }
 

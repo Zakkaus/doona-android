@@ -120,12 +120,14 @@ private fun Form(state: RvAddState, onChange: (RvAddState) -> Unit, onPaste: () 
             { onChange(state.copy(link = it.trim())) },
             stringResource(R.string.rv_add_link),
             placeholder = RV_LINK_PLACEHOLDER,
+            // An empty field is not yet wrong; anything else 新增 would refuse says why.
+            error = if (urlProblem(state.link) == UrlProblem.Invalid) stringResource(R.string.rv_add_link_invalid) else null,
             enabled = editable,
             keyboard = KeyboardOptions(keyboardType = KeyboardType.Uri),
         )
         RvTextField(
             state.name,
-            { onChange(state.copy(name = rvNameTyped(it))) },
+            { onChange(state.copy(name = it)) },
             stringResource(R.string.rv_add_name),
             error = if (rvNameValid(state.name)) null else stringResource(R.string.rv_sub_name_invalid),
             enabled = editable,

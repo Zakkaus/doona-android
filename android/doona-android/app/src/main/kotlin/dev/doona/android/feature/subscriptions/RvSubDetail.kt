@@ -31,8 +31,9 @@ import dev.doona.android.feature.model.RvSubFormat
 import dev.doona.android.feature.model.RvSubscription
 
 /**
- * A subscription's page: which sheet is open, if any, the name or User-Agent being typed into it, and whether the core
- * refused the last rename ([renameFailed], shown under the field until the name changes).
+ * A subscription's page: which sheet is open, if any, the name or User-Agent being typed into it, whether the core
+ * refused the last rename ([renameFailed], shown under the field until the name changes), and whether it refused the
+ * last delete ([deleteFailed], a banner over the page until the next try).
  */
 @Immutable
 internal data class RvSubDetailState(
@@ -40,7 +41,24 @@ internal data class RvSubDetailState(
     val name: String = "",
     val userAgent: String = "",
     val renameFailed: Boolean = false,
+    val deleteFailed: Boolean = false,
 )
+
+/**
+ * 自動更新 on a subscription's page, as the app's settings give it: [Unread] until they answer (the row has no value
+ * yet, never a guess), [Off] (關閉, as 設定 says it), or every [Every.hours] hours.
+ */
+@Immutable
+internal sealed interface RvAutoUpdate {
+    data object Unread : RvAutoUpdate
+
+    data object Off : RvAutoUpdate
+
+    data class Every(val hours: Int) : RvAutoUpdate
+}
+
+/** The settings' interval in [hours] as the row shows it: null while auto-update is off. */
+internal fun rvAutoUpdate(hours: Int?): RvAutoUpdate = hours?.let(RvAutoUpdate::Every) ?: RvAutoUpdate.Off
 
 internal enum class RvSubSheet { Rename, UserAgent, Delete }
 
@@ -50,8 +68,8 @@ internal enum class RvSubSheet { Rename, UserAgent, Delete }
  * has one; a sheet with a field, as 重新命名, opens on it and saves it to this subscription through [onUserAgent], and
  * an empty field goes back to the default, null); 訂閱 with the name
  * (重新命名 in a sheet with a field) and the link's host; then 刪除訂閱 alone in its card, its glyph in the error hue,
- * asking in the confirm sheet. 立即更新 floats at the bottom. The interval reads [updateHours] (關閉, as 設定 says
- * it, while null: auto-update is off), and its row runs [onAutoUpdate]. A saved name goes to [onRename], a confirmed
+ * asking in the confirm sheet. 立即更新 floats at the bottom. The interval reads [autoUpdate], and its row runs
+ * [onAutoUpdate]. A saved name goes to [onRename], a confirmed
  * delete to [onDelete].
  */
 @Composable
@@ -62,7 +80,7 @@ internal fun RvSubDetail(
     onBack: () -> Unit,
     onUpdate: () -> Unit,
     onUserAgent: (String?) -> Unit = {},
-    updateHours: Int?,
+    autoUpdate: RvAutoUpdate,
     onAutoUpdate: () -> Unit,
     onRename: (String) -> Unit = {},
     onDelete: () -> Unit = {},
@@ -75,9 +93,9 @@ internal fun RvSubDetail(
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_sub_update_now), onUpdate) },
     ) { titleBlock ->
         RvLargeTitle(sub.name, titleBlock, insets)
-        RvGutter { KeyStats(sub) }
+        RvGutter(banner = if (state.deleteFailed) rvDeleteFailedBanner(sub, onDelete) else null) { KeyStats(sub) }
         RvSectionTitle(stringResource(R.string.rv_sub_updates), Modifier.padding(horizontal = RvSpace.gutter))
-        RvGutter { UpdatesCard(sub.userAgent, updateHours, onAutoUpdate) { onChange(state.copy(sheet = RvSubSheet.UserAgent, userAgent = sub.userAgent.orEmpty())) } }
+        RvGutter { UpdatesCard(sub.userAgent, autoUpdate, onAutoUpdate) { onChange(state.copy(sheet = RvSubSheet.UserAgent, userAgent = sub.userAgent.orEmpty())) } }
         RvSectionTitle(stringResource(R.string.rv_sub_section), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {
             RvCard {
@@ -102,7 +120,7 @@ internal fun RvSubDetail(
         },
         onDismiss = close,
         confirmEnabled = state.name.isNotBlank() && rvNameValid(state.name),
-    ) { RvRenameField(state.name, state.renameFailed) { onChange(state.copy(name = rvNameTyped(it), renameFailed = false)) } }
+    ) { RvRenameField(state.name, state.renameFailed) { onChange(state.copy(name = it, renameFailed = false)) } }
     RvConfirmSheet(
         visible = state.sheet == RvSubSheet.UserAgent,
         title = stringResource(R.string.rv_sub_user_agent),
@@ -144,10 +162,6 @@ internal fun RvRenameField(name: String, failed: Boolean = false, onName: (Strin
     }
     RvTextField(name, onName, label = null, name = stringResource(R.string.rv_sub_rename), error = error)
 }
-
-/** [typed] cut to the core's longest name, [MAX_NAME] code points, so the field takes no more. */
-internal fun rvNameTyped(typed: String): String =
-    if (typed.codePointCount(0, typed.length) <= MAX_NAME) typed else typed.substring(0, typed.offsetByCodePoints(0, MAX_NAME))
 
 /** Whether the core takes [name] (`Engine.renameSubscription`): at most [MAX_NAME] code points, none a control or line break. */
 internal fun rvNameValid(name: String): Boolean =
@@ -195,16 +209,23 @@ private fun KeyStats(sub: RvSubscription) {
 }
 
 /**
- * The auto-update interval ([updateHours]; 關閉 while null), whose row runs [onAutoUpdate], and the subscription's
+ * The auto-update interval ([autoUpdate]; an empty line until it is read), whose row runs [onAutoUpdate], and the subscription's
  * [userAgent] (預設 while null), whose row opens its sheet ([onUserAgent]).
  */
 @Composable
-private fun UpdatesCard(userAgent: String?, updateHours: Int?, onAutoUpdate: () -> Unit, onUserAgent: () -> Unit) {
+private fun UpdatesCard(userAgent: String?, autoUpdate: RvAutoUpdate, onAutoUpdate: () -> Unit, onUserAgent: () -> Unit) {
     RvCard {
         RvRow(
             { RvIconDisc(R.drawable.rv_sym_schedule) },
             stringResource(R.string.rv_sub_auto_update),
-            updateHours?.let { stringResource(R.string.rv_settings_update_interval_value, it) } ?: stringResource(R.string.ui_off),
+            when (autoUpdate) {
+                // An empty line keeps the row's two-line height, so nothing moves when the settings answer.
+                RvAutoUpdate.Unread -> ""
+
+                RvAutoUpdate.Off -> stringResource(R.string.ui_off)
+
+                is RvAutoUpdate.Every -> stringResource(R.string.rv_settings_update_interval_value, autoUpdate.hours)
+            },
             onClick = onAutoUpdate,
         ) { RvChevron() }
         RvRow(

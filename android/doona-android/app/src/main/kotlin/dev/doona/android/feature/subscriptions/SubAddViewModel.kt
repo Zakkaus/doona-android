@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -62,7 +63,10 @@ internal class SubAddViewModel(
     init {
         refreshClipboard()
         viewModelScope.launch {
-            val added = imports.state.first { local.value.own != null && it.lastId == local.value.own && !it.busy && it.added != null }.added ?: return@launch
+            // Both flows: an import can end inside start(), before the page has noted it as its own.
+            val added = combine(local, imports.state) { page, import -> import.added?.takeIf { page.own != null && import.lastId == page.own && !import.busy } }
+                .filterNotNull()
+                .first()
             // The catalog takes the nodes in after the call returns; it lists the subscription once it holds them. Every
             // node counts, whether or not a group of the user's names it.
             engine.subscriptions.first { subs -> subs.any { it.id == added.id } }
@@ -86,7 +90,7 @@ internal class SubAddViewModel(
     /** Imports what the fields describe (重試 does the same). Nothing starts while an import runs or the fields are not valid. */
     fun import() {
         val typed = local.value
-        if (urlProblem(typed.link) != null || !rvAgentValid(typed.userAgent)) return
+        if (urlProblem(typed.link) != null || !rvNameValid(typed.name) || !rvAgentValid(typed.userAgent)) return
         val id = imports.start(ImportRequest(typed.link, typed.name.trim().ifEmpty { null }, rvAgentOf(typed.userAgent))) ?: return
         local.update { it.copy(own = id) }
     }

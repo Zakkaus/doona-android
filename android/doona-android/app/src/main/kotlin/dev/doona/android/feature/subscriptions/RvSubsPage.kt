@@ -50,8 +50,8 @@ import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.feature.model.RvSubscription
 
 /**
- * What the subscriptions page shows: the subscriptions, now (for their end dates), the one whose last update failed, and
- * the one asked to delete.
+ * What the subscriptions page shows: the subscriptions, now (for their end dates), the one whose last update failed, the
+ * one asked to delete, and the one the core would not delete.
  */
 @Immutable
 internal data class RvSubsState(
@@ -59,6 +59,7 @@ internal data class RvSubsState(
     val nowEpochMs: Long,
     val failedId: String? = null,
     val deletingId: String? = null,
+    val deleteFailedId: String? = null,
 )
 
 /** Where the subscriptions page leads: back, a subscription's page, the add page; and what it asks for. */
@@ -73,7 +74,8 @@ internal class RvSubsActions(
 )
 
 /**
- * 訂閱: a pushed page with the large title and 更新所有訂閱 in the bar. A failed update shows the banner first, with 重試.
+ * 訂閱: a pushed page with the large title and 更新所有訂閱 in the bar. A failed update or delete shows the banner first,
+ * with 重試; a failed delete, the latest thing the user asked for, takes the place.
  * Each subscription is a card: its row (name, node count and last update, chevron to its page), then what it has used
  * of its quota and when it ends over the progress bar. A long press on a card opens 更新, 編輯 and 刪除; 刪除 asks in
  * the confirm sheet. 新增訂閱 floats at the bottom. With no subscription there is nothing to update or to float over: the
@@ -90,7 +92,12 @@ internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions, loading: Boo
         if (empty) null else ({ RvGlassButton(it, R.drawable.rv_stats_ic_sync, stringResource(R.string.rv_stats_update_all), actions.updateAll) })
     val add: (@Composable () -> Unit)? = if (empty) null else ({ RvPrimaryButton(stringResource(R.string.rv_add_subscription), actions.add) })
     // A failed update's banner waits for the cards: while they load it is not known yet.
-    val failed = state.subscriptions.firstOrNull { it.id == state.failedId }?.takeUnless { loading }?.let { rvFailedBanner(it) { actions.update(it.id) } }
+    val failed = if (loading) {
+        null
+    } else {
+        state.subscriptions.firstOrNull { it.id == state.deleteFailedId }?.let { rvDeleteFailedBanner(it) { actions.confirmDelete(it.id) } }
+            ?: state.subscriptions.firstOrNull { it.id == state.failedId }?.let { rvFailedBanner(it) { actions.update(it.id) } }
+    }
     RvScrollPage(title, insets, onBack = actions.back, actions = updateAll, bottomAction = add) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         RvGutter(banner = failed) {
@@ -127,6 +134,17 @@ internal fun rvFailedBanner(sub: RvSubscription, onRetry: () -> Unit) = RvNotice
     RvNoticeKind.Error,
     stringResource(R.string.rv_sub_failed_title, sub.name),
     pluralStringResource(R.plurals.rv_sub_failed_reason, sub.nodes, sub.nodes),
+    stringResource(R.string.rv_retry),
+    onRetry,
+    titleKeepWords = false,
+)
+
+/** The banner of a subscription the core would not delete, an error: nothing changed, and 重試 deletes it again. */
+@Composable
+internal fun rvDeleteFailedBanner(sub: RvSubscription, onRetry: () -> Unit) = RvNotice(
+    RvNoticeKind.Error,
+    stringResource(R.string.rv_sub_delete_failed_title, sub.name),
+    stringResource(R.string.rv_sub_delete_failed_reason),
     stringResource(R.string.rv_retry),
     onRetry,
     titleKeepWords = false,

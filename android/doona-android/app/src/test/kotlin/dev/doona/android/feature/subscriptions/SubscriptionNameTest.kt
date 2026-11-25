@@ -1,6 +1,5 @@
 package dev.doona.android.feature.subscriptions
 
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -8,11 +7,12 @@ import org.junit.Test
 /** A subscription's name as the fields take it: the core's 64 code points, on one line (`Engine.renameSubscription`). */
 class SubscriptionNameTest {
     @Test
-    fun `the field takes 64 code points and no more, counting a surrogate pair as one`() {
+    fun `a name of 64 code points is taken and one more is refused, a surrogate pair counting as one`() {
         val duck = "🦆"
-        assertEquals("a".repeat(64), rvNameTyped("a".repeat(70)))
-        assertEquals(duck.repeat(64), rvNameTyped(duck.repeat(65)))
-        assertEquals("Harbor Cloud", rvNameTyped("Harbor Cloud"))
+        assertTrue(rvNameValid("a".repeat(64)))
+        assertFalse(rvNameValid("a".repeat(65)))
+        assertTrue(rvNameValid(duck.repeat(64)))
+        assertFalse(rvNameValid(duck.repeat(65)))
     }
 
     @Test

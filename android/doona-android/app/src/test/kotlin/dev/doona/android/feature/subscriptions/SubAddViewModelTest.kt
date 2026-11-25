@@ -142,13 +142,15 @@ class SubAddViewModelTest {
     }
 
     @Test
-    fun `nothing is imported while the link or the User-Agent is not valid`() = runTest {
+    fun `nothing is imported while the link, the name or the User-Agent is not valid`() = runTest {
         val engine = Slow()
         val vm = page(engine, imports(engine))
         vm.type("ftp://x.example/s")
         vm.import()
         vm.type()
-        vm.edit(vm.uiState.value.copy(userAgent = "a\nb"))
+        vm.edit(vm.uiState.value.copy(name = "a".repeat(65)))
+        vm.import()
+        vm.edit(vm.uiState.value.copy(name = "", userAgent = "a\nb"))
         vm.import()
         assertEquals(0, engine.calls)
     }

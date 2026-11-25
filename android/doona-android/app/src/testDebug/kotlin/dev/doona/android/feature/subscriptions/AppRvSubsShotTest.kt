@@ -43,8 +43,8 @@ import dev.doona.android.prototype.rv.gallery.RV_SAMPLE_LINK
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.subs.RV_LAN_LINK
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -81,15 +81,15 @@ class AppRvSubsShotTest {
     @Config(qualifiers = RV_EN)
     fun subsEn() = shot("subs", english = true) { Subs() }
 
-    @Test fun subsEmptyLight() = shot("subs-empty") { Subs(FakeEngine(subscriptions = emptyList())) }
+    @Test fun subsEmptyLight() = shot("subs-empty") { Subs { FakeEngine(subscriptions = emptyList()) } }
 
-    @Test fun subsEmptyDark() = shot("subs-empty", dark = true) { Subs(FakeEngine(subscriptions = emptyList())) }
+    @Test fun subsEmptyDark() = shot("subs-empty", dark = true) { Subs { FakeEngine(subscriptions = emptyList()) } }
 
-    @Test fun subsEmptyFs200() = shot("subs-empty", fontScale = RV_FS200, whole = false) { Subs(FakeEngine(subscriptions = emptyList())) }
+    @Test fun subsEmptyFs200() = shot("subs-empty", fontScale = RV_FS200, whole = false) { Subs { FakeEngine(subscriptions = emptyList()) } }
 
     @Test
     @Config(qualifiers = RV_EN)
-    fun subsEmptyEn() = shot("subs-empty", english = true) { Subs(FakeEngine(subscriptions = emptyList())) }
+    fun subsEmptyEn() = shot("subs-empty", english = true) { Subs { FakeEngine(subscriptions = emptyList()) } }
 
     @Test
     @Config(qualifiers = WHOLE_DETAIL)
@@ -186,9 +186,9 @@ class AppRvSubsShotTest {
     fun tooLargeEn() = add("sub-add-too-large", Answer.Fails(ErrorCode.TooLarge), english = true)
 
     /** Harbor Cloud's last update failed: the banner over the cards, as the engine reports the failure. */
-    @Test fun failedLight() = shot("subs-failed") { Subs(failedEngine()) }
+    @Test fun failedLight() = shot("subs-failed") { Subs(::failedEngine) }
 
-    @Test fun failedDark() = shot("subs-failed", dark = true) { Subs(failedEngine()) }
+    @Test fun failedDark() = shot("subs-failed", dark = true) { Subs(::failedEngine) }
 
     /** Harbor Cloud's card held where the prototype's finger held it; the menu opens at the finger. */
     @Test fun menuLight() = shot("subs-menu", whole = false, windows = true, before = { holdHarbor() }) { Subs() }
@@ -340,14 +340,15 @@ class AppRvSubsShotTest {
     }
 
     @Composable
-    private fun Subs(engine: Engine = rvSampleEngine()) {
+    private fun Subs(build: () -> Engine = ::rvSampleEngine) {
+        val engine = remember { build() }
         SubscriptionsRoute(engine, onBack = {}, clock = { RvData.nowEpochMs })
     }
 
     @Composable
-    private fun Detail(hours: StateFlow<Int?> = TWELVE_HOURS) {
+    private fun Detail(hours: Flow<Int?> = TWELVE_HOURS) {
         val (engine, id) = remember { harborEngine().let { it to it.subscriptions.value.first().id } }
-        SubDetailRoute(engine, hours, id, onBack = {})
+        SubDetailRoute(engine, hours, id, onBack = {}, onAutoUpdate = {})
     }
 
     @Composable

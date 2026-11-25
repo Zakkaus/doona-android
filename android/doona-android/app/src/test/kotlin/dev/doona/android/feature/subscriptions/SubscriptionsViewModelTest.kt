@@ -9,8 +9,9 @@ import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.model.RvSubFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -19,6 +20,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -32,7 +34,7 @@ class SubscriptionsViewModelTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    /** [FakeEngine] whose updates fail with [failing] while it is set. */
+    /** [FakeEngine] whose updates and deletes fail with [failing] while it is set. */
     private class Failing(val fake: FakeEngine = FakeEngine()) : Engine by fake {
         var failing: ErrorCode? = null
         val updated = mutableListOf<String>()
@@ -41,13 +43,16 @@ class SubscriptionsViewModelTest {
             updated += id
             return failing?.let { Result.failure(EngineException(it)) } ?: fake.updateSubscription(id)
         }
+
+        override suspend fun removeSubscription(id: String): Result<Unit> =
+            failing?.let { Result.failure(EngineException(it)) } ?: fake.removeSubscription(id)
     }
 
     private fun TestScope.list(engine: Engine) = SubscriptionsViewModel(engine, clock = { NOW }).also { vm ->
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
     }
 
-    private fun TestScope.detail(engine: Engine, id: String, hours: StateFlow<Int?> = MutableStateFlow(6)) = SubDetailViewModel(engine, hours, id).also { vm ->
+    private fun TestScope.detail(engine: Engine, id: String, hours: Flow<Int?> = MutableStateFlow(6)) = SubDetailViewModel(engine, hours, id).also { vm ->
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
     }
 
@@ -107,11 +112,39 @@ class SubscriptionsViewModelTest {
     }
 
     @Test
+    fun `a delete the core refuses shows its banner over the update's, and 重試 that succeeds removes it`() = runTest {
+        val engine = Failing().apply { failing = ErrorCode.Internal }
+        val vm = list(engine)
+        val id = engine.subscriptions.value.first().id
+        vm.update(id)
+        vm.confirmDelete(id)
+        assertEquals(id, vm.uiState.value.page.deleteFailedId)
+        assertEquals(id, vm.uiState.value.page.failedId)
+        engine.failing = null
+        vm.confirmDelete(id)
+        assertNull(vm.uiState.value.page.deleteFailedId)
+        assertTrue(engine.subscriptions.value.none { it.id == id })
+    }
+
+    @Test
+    fun `a subscription's page shows a delete the core refuses, stays, and clears it on the next try`() = runTest {
+        val engine = Failing().apply { failing = ErrorCode.Internal }
+        val vm = detail(engine, engine.subscriptions.value.first().id)
+        vm.delete()
+        assertTrue(vm.uiState.value.sheet.deleteFailed)
+        assertFalse(vm.uiState.value.gone)
+        engine.failing = null
+        vm.delete()
+        assertFalse(vm.uiState.value.sheet.deleteFailed)
+        assertTrue(vm.uiState.value.gone)
+    }
+
+    @Test
     fun `a subscription's page renames, sets its User-Agent and deletes through the engine`() = runTest {
         val engine = FakeEngine()
         val id = engine.subscriptions.value.first().id
         val vm = detail(engine, id)
-        assertEquals(6, vm.uiState.value.updateHours)
+        assertEquals(RvAutoUpdate.Every(6), vm.uiState.value.autoUpdate)
         vm.rename("Harbor 2")
         vm.setUserAgent("clash.meta")
         assertEquals("Harbor 2", vm.uiState.value.sub?.name)
@@ -124,7 +157,7 @@ class SubscriptionsViewModelTest {
     }
 
     @Test
-    fun `a rename the core refuses opens the sheet again with the failure, and typing clears it`() = runTest {
+    fun `a rename the core refuses opens the sheet again on the name with the failure, and the next rename goes through`() = runTest {
         val engine = FakeEngine()
         val sub = engine.subscriptions.value.first()
         val vm = detail(engine, sub.id)
@@ -136,15 +169,17 @@ class SubscriptionsViewModelTest {
     }
 
     @Test
-    fun `a subscription's page follows the settings' interval, and has none while auto-update is off`() = runTest {
+    fun `a subscription's page follows the settings' interval, shows 關閉 while auto-update is off, and nothing before the settings answer`() = runTest {
         val engine = FakeEngine()
-        val hours = MutableStateFlow<Int?>(12)
+        val hours = MutableSharedFlow<Int?>()
         val vm = detail(engine, engine.subscriptions.value.first().id, hours)
-        assertEquals(12, vm.uiState.value.updateHours)
-        hours.value = null
-        assertNull(vm.uiState.value.updateHours)
-        hours.value = 24
-        assertEquals(24, vm.uiState.value.updateHours)
+        assertEquals(RvAutoUpdate.Unread, vm.uiState.value.autoUpdate)
+        hours.emit(12)
+        assertEquals(RvAutoUpdate.Every(12), vm.uiState.value.autoUpdate)
+        hours.emit(null)
+        assertEquals(RvAutoUpdate.Off, vm.uiState.value.autoUpdate)
+        hours.emit(24)
+        assertEquals(RvAutoUpdate.Every(24), vm.uiState.value.autoUpdate)
     }
 
     @Test

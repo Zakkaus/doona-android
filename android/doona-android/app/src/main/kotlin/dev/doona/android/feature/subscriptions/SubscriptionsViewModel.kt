@@ -17,18 +17,33 @@ import kotlinx.coroutines.launch
 @Immutable
 internal data class SubsUiState(val page: RvSubsState, val updating: Set<String> = emptySet(), val loading: Boolean = false)
 
-/** What the view model keeps besides the engine's values: updates running, the last one that failed, the delete asked. */
-internal data class SubsLocal(val updating: Set<String> = emptySet(), val failedId: String? = null, val deletingId: String? = null)
+/**
+ * What the view model keeps besides the engine's values: updates running, the last one that failed, the delete asked,
+ * and the last delete the core refused.
+ */
+internal data class SubsLocal(
+    val updating: Set<String> = emptySet(),
+    val failedId: String? = null,
+    val deletingId: String? = null,
+    val deleteFailedId: String? = null,
+)
 
 /**
  * 訂閱: the engine's subscriptions mapped to the page, with the updates the user started, the banner of the last one
- * that failed (or of a subscription whose last refresh failed, by the core's report), and the delete question.
+ * that failed (or of a subscription whose last refresh failed, by the core's report), the delete question, and the
+ * banner of a delete the core refused.
  */
 internal fun subsUiState(ready: Boolean, subscriptions: List<Subscription>, local: SubsLocal, nowEpochMs: Long): SubsUiState {
     val ids = subscriptions.map { it.id }.toSet()
     val failedId = local.failedId?.takeIf { it in ids } ?: subscriptions.firstOrNull { it.error != null && it.id !in local.updating }?.id
     return SubsUiState(
-        page = RvSubsState(subscriptions.map(::rvSubscription), nowEpochMs, failedId, local.deletingId?.takeIf { it in ids }),
+        page = RvSubsState(
+            subscriptions.map(::rvSubscription),
+            nowEpochMs,
+            failedId,
+            local.deletingId?.takeIf { it in ids },
+            local.deleteFailedId?.takeIf { it in ids },
+        ),
         updating = local.updating intersect ids,
         loading = !ready,
     )
@@ -72,10 +87,12 @@ internal class SubscriptionsViewModel(private val engine: Engine, private val cl
     /** Asks to delete [id], or closes the question when null. */
     fun delete(id: String?) = local.update { it.copy(deletingId = id) }
 
-    /** Deletes [id] after the question. A failure leaves the subscription in the list, where it still shows. */
+    /** Deletes [id] after the question (重試 on the banner, again). A refusal leaves it in the list, with the banner. */
     fun confirmDelete(id: String) {
-        local.update { it.copy(deletingId = null) }
-        viewModelScope.launch { engine.removeSubscription(id) }
+        local.update { it.copy(deletingId = null, deleteFailedId = null) }
+        viewModelScope.launch {
+            if (engine.removeSubscription(id).isFailure) local.update { it.copy(deleteFailedId = id) }
+        }
     }
 }
 

@@ -6,48 +6,51 @@ import androidx.lifecycle.viewModelScope
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.Subscription
 import dev.doona.android.feature.model.RvSubscription
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.runningReduce
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * A subscription's page as it is drawn: the subscription, the sheet open on it, and the auto-update interval in hours,
- * null while auto-update is off. Once the subscription is gone (removed here or elsewhere) [gone] is set and the page
+ * A subscription's page as it is drawn: the subscription, the sheet open on it, and the auto-update interval. Once the subscription is gone (removed here or elsewhere) [gone] is set and the page
  * leaves; [sub] then stays the last one seen, so the page is still drawn while it leaves.
  */
 @Immutable
 internal data class SubDetailUiState(
     val sub: RvSubscription?,
     val sheet: RvSubDetailState = RvSubDetailState(),
-    val updateHours: Int?,
+    val autoUpdate: RvAutoUpdate,
     val gone: Boolean = sub == null,
 )
 
-internal fun subDetailUiState(id: String, subscriptions: List<Subscription>, sheet: RvSubDetailState, updateHours: Int?) =
-    SubDetailUiState(subscriptions.firstOrNull { it.id == id }?.let(::rvSubscription), sheet, updateHours)
+internal fun subDetailUiState(id: String, subscriptions: List<Subscription>, sheet: RvSubDetailState, autoUpdate: RvAutoUpdate) =
+    SubDetailUiState(subscriptions.firstOrNull { it.id == id }?.let(::rvSubscription), sheet, autoUpdate)
 
 /**
  * Subscription [id]'s page state holder (plan §2.2): the subscription as the engine has it, the auto-update interval
- * in hours as the app's settings give it ([updateHours], null while auto-update is off), and the calls behind 立即更新, 重新命名, the User-Agent sheet and 刪除訂閱. A call that fails leaves the
+ * in hours as the app's settings give it ([updateHours], null while auto-update is off; none shown until its first
+ * value), and the calls behind 立即更新, 重新命名, the User-Agent sheet and 刪除訂閱. A call that fails leaves the
  * subscription as the engine has it; an update's failure shows on 訂閱, from the core's report.
  */
 internal class SubDetailViewModel(
     private val engine: Engine,
-    updateHours: StateFlow<Int?>,
+    updateHours: Flow<Int?>,
     private val id: String,
 ) : ViewModel() {
     private val sheet = MutableStateFlow(RvSubDetailState())
 
     val uiState: StateFlow<SubDetailUiState> =
-        combine(engine.subscriptions, sheet, updateHours) { subscriptions, sheet, hours ->
-            subDetailUiState(id, subscriptions, sheet, hours)
+        combine(engine.subscriptions, sheet, updateHours.map(::rvAutoUpdate).onStart { emit(RvAutoUpdate.Unread) }) { subscriptions, sheet, autoUpdate ->
+            subDetailUiState(id, subscriptions, sheet, autoUpdate)
         }.runningReduce { last, next -> if (next.gone) next.copy(sub = last.sub) else next }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), subDetailUiState(id, engine.subscriptions.value, sheet.value, updateHours.value))
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), subDetailUiState(id, engine.subscriptions.value, sheet.value, RvAutoUpdate.Unread))
 
     fun change(state: RvSubDetailState) = sheet.update { state }
 
@@ -62,7 +65,13 @@ internal class SubDetailViewModel(
 
     fun setUserAgent(userAgent: String?) = call { engine.setSubscriptionUserAgent(id, userAgent) }
 
-    fun delete() = call { engine.removeSubscription(id) }
+    /** Deletes through the core (重試 on the banner, again); a refusal shows the banner over the page. */
+    fun delete() {
+        sheet.update { it.copy(deleteFailed = false) }
+        viewModelScope.launch {
+            if (engine.removeSubscription(id).isFailure) sheet.update { it.copy(deleteFailed = true) }
+        }
+    }
 
     private fun call(action: suspend () -> Result<*>) {
         viewModelScope.launch { action() }

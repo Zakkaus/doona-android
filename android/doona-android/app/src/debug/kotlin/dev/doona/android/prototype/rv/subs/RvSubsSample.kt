@@ -6,6 +6,7 @@ import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.subscriptions.RvAddPhase
 import dev.doona.android.feature.subscriptions.RvAddState
+import dev.doona.android.feature.subscriptions.RvAutoUpdate
 import dev.doona.android.feature.subscriptions.RvProtocolCount
 import dev.doona.android.feature.subscriptions.RvSubAdd
 import dev.doona.android.feature.subscriptions.RvSubDetail
@@ -29,7 +30,7 @@ internal fun RvSubDetailSample(
     onBack: () -> Unit,
     onUpdate: () -> Unit,
     onUserAgent: (String?) -> Unit = {},
-) = RvSubDetail(sub, state, onChange, onBack, onUpdate, onUserAgent, RvData.UPDATE_HOURS, onAutoUpdate = NOT_WIRED)
+) = RvSubDetail(sub, state, onChange, onBack, onUpdate, onUserAgent, RvAutoUpdate.Every(RvData.UPDATE_HOURS), onAutoUpdate = NOT_WIRED)
 
 /**
  * 新增訂閱 on the sample: what came in counted over [RvData]'s nodes, and the local network prompt [lan] in its sheet over
