@@ -442,7 +442,7 @@ internal object RvChrome {
      */
     val barTop = 6.dp
 
-    /** A focused clickable's outline, in the primary colour, inside its shape (keyboard and switch focus; owner, 2026-11-25, q-a11y-focus). */
+    /** A focused clickable's outline, in the primary colour, inside its shape (keyboard and D-pad focus; owner, 2026-11-25, q-a11y-focus). */
     val focusRing = 2.dp
 
     /**

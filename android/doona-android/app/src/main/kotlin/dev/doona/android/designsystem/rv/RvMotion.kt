@@ -280,8 +280,10 @@ private data class RvPressIndication(
 
 /**
  * Shows the layer while any press lasts (a short tap still shows it fully before it goes), and, over it, a
- * [RvChrome.focusRing] outline in [RvPressIndication.focus] while the clickable has focus from a keyboard or a switch.
+ * [RvChrome.focusRing] outline in [RvPressIndication.focus] while the clickable has focus from a keyboard or a D-pad.
  * Compose gives a clickable focus only outside touch mode, so a tap never draws it; the input mode is checked as well.
+ * Switch Access moves accessibility focus, which emits no FocusInteraction, so it draws no outline here; the system draws
+ * its own switch highlight.
  */
 private class PressNode(private val source: InteractionSource, private val spec: RvPressIndication) :
     Modifier.Node(),

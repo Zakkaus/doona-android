@@ -60,7 +60,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** A focused clickable draws a 2 dp primary outline for a keyboard or a switch and never for a touch (owner, 2026-11-25, q-a11y-focus). The sheet's scrim takes no focus at all. */
+/**
+ * A focused clickable draws a 2 dp primary outline under keyboard or D-pad focus and never for a touch (owner, 2026-11-25,
+ * q-a11y-focus). Switch Access moves accessibility focus, which emits no FocusInteraction, so the outline does not show
+ * there; the system draws its own switch highlight. The sheet's scrim takes no focus at all.
+ */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = RV_EN)
