@@ -211,7 +211,7 @@ private fun RvSamplePage(
     picking: Boolean,
 ) {
     when (route.substringBefore(':')) {
-        TRAFFIC -> RvTrafficScreen(run.activity(), RvData.session, onBack = pages.pop)
+        TRAFFIC -> RvTrafficSample(run.activity(), RvData.session, onBack = pages.pop)
 
         STATS -> RvStatsScreenSample(rvStatsSample(), onBack = pages.pop)
 

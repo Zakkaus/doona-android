@@ -83,6 +83,15 @@ class NavigationTest {
     }
 
     @Test
+    fun `流量詳情 opens on its key and back returns to 活動`() {
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(), FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, TrafficKey)) } }
+        compose.onNodeWithText("This connection").assertExists()
+
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.onNodeWithText("This connection").assertDoesNotExist()
+    }
+
+    @Test
     fun `a second back while the page leaves does not pop the tab underneath`() {
         compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS), FakeInstalledApps(), onConnect = {}, start = GROUP) } }
         compose.mainClock.autoAdvance = false

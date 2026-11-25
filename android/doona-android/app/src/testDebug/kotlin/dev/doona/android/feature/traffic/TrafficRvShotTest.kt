@@ -1,0 +1,172 @@
+package dev.doona.android.feature.traffic
+
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.github.takahirom.roborazzi.captureRoboImage
+import dev.doona.android.R
+import dev.doona.android.engine.Engine
+import dev.doona.android.engine.EngineException
+import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.Status
+import dev.doona.android.engine.Traffic
+import dev.doona.android.engine.TrafficSeries
+import dev.doona.android.engine.fake.FakeEngine
+import dev.doona.android.engine.fake.rvSampleEngine
+import dev.doona.android.prototype.rv.RV_EN
+import dev.doona.android.prototype.rv.RV_FS115
+import dev.doona.android.prototype.rv.RV_FS200
+import dev.doona.android.prototype.rv.RvTrafficSample
+import dev.doona.android.prototype.rv.Utc
+import dev.doona.android.prototype.rv.assertWhole
+import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.rvContent
+import dev.doona.android.prototype.rv.rvRowRules
+import dev.doona.android.prototype.rv.rvSampleActivity
+import dev.doona.android.prototype.rv.rvShot
+import dev.doona.android.prototype.rv.rvText
+import dev.doona.android.testing.drawFully
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+import kotlin.math.roundToInt
+
+/**
+ * 流量詳情 as the app draws it: [rvSampleEngine] through [TrafficViewModel] to the page, at the sample's 10:24 UTC.
+ * Goldens `app-rv-traffic-*` beside the prototype's `proto-rv-traffic-*`: the live minute in light, dark, fs115, fs200
+ * and English, scrubbed, the 1 小時 window, a stopped tunnel and an engine whose reads fail; and the whole page in
+ * light, dark, fs200 and English for the review panels, with the prototype's whole page where it has none.
+ */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(qualifiers = "zh-rTW-w412dp-h915dp-notnight-xhdpi")
+class TrafficRvShotTest {
+    @get:Rule
+    val compose = createComposeRule()
+
+    @get:Rule
+    val utc = Utc()
+
+    @Test fun trafficLight() = shot("traffic")
+
+    @Test fun trafficDark() = shot("traffic", dark = true)
+
+    @Test fun trafficFs115() = shot("traffic", fontScale = RV_FS115)
+
+    @Test fun trafficFs200() = shot("traffic", fontScale = RV_FS200)
+
+    @Test
+    @Config(qualifiers = RV_EN)
+    fun trafficEn() = shot("traffic-en")
+
+    @Test fun scrubLight() = shot("traffic-scrub", scrub = SCRUB)
+
+    @Test fun scrubDark() = shot("traffic-scrub", dark = true, scrub = SCRUB)
+
+    /** 1 小時: the sample engine's hour, read as the core answers it (300 points of 12 s), drawn as 60 of a minute. */
+    @Test
+    fun hourLight() = shot("traffic-1h") { compose.onNodeWithText(rvText(R.string.rv_range_1h)).performClick() }
+
+    /** Stopped: the minute the core kept, no history of the app's own, and no session in the card. */
+    @Test
+    fun stoppedLight() = shot("traffic-stopped", engine = rvSampleEngine().apply { stop() })
+
+    /** Stopped, and every read fails: no chart is drawn, only its grid, and the card has no figures. */
+    @Test
+    fun emptyLight() = shot("traffic-empty", engine = Failing(rvSampleEngine().apply { stop() }))
+
+    @Test
+    @Config(qualifiers = FULL_PAGE)
+    fun fullLight() = shot("traffic-full", whole = true)
+
+    @Test
+    @Config(qualifiers = FULL_PAGE)
+    fun fullDark() = shot("traffic-full", dark = true, whole = true)
+
+    @Test
+    @Config(qualifiers = FULL_PAGE_FS200)
+    fun fullFs200() = shot("traffic-full", fontScale = RV_FS200, whole = true)
+
+    @Test
+    @Config(qualifiers = FULL_PAGE_EN)
+    fun fullEn() = shot("traffic-full-en", whole = true)
+
+    /** The prototype's whole page, which `proto-rv-traffic-*` (phone height) lacks: the approved side of the panels. */
+    @Test
+    @Config(qualifiers = FULL_PAGE)
+    fun prototypeFullLight() = prototypeFull("traffic-full", dark = false)
+
+    @Test
+    @Config(qualifiers = FULL_PAGE)
+    fun prototypeFullDark() = prototypeFull("traffic-full", dark = true)
+
+    @Test
+    @Config(qualifiers = FULL_PAGE_FS200)
+    fun prototypeFullFs200() = prototypeFull("traffic-full", dark = false, fontScale = RV_FS200)
+
+    @Test
+    @Config(qualifiers = FULL_PAGE_EN)
+    fun prototypeFullEn() = prototypeFull("traffic-full-en", dark = false)
+
+    private fun prototypeFull(screen: String, dark: Boolean, fontScale: Float = 1f) =
+        compose.rvShot(screen, dark, fontScale = fontScale, before = { assertWhole() }) { RvTrafficSample(rvSampleActivity(), RvData.session, onBack = {}) }
+
+    /** The engine stopped: no tunnel, no traffic. */
+    private fun FakeEngine.stop() {
+        status.value = Status.Stopped
+        traffic.value = Traffic()
+    }
+
+    /** [fake] whose every `trafficSeries` read fails. */
+    private class Failing(private val fake: FakeEngine) : Engine by fake {
+        override suspend fun trafficSeries(seconds: Long): Result<TrafficSeries> = Result.failure(EngineException(ErrorCode.Internal))
+    }
+
+    private fun shot(
+        screen: String,
+        dark: Boolean = false,
+        fontScale: Float = 1f,
+        scrub: Int? = null,
+        whole: Boolean = false,
+        engine: Engine = rvSampleEngine(),
+        then: () -> Unit = {},
+    ) {
+        val model = TrafficViewModel(engine) { RvData.nowEpochMs }
+        compose.rvContent(dark, fontScale) {
+            val state by model.ui.collectAsStateWithLifecycle()
+            RvTrafficScreen(state, onRange = model::onRange, onBack = {}, initialScrub = scrub)
+        }
+        then()
+        compose.drawFully()
+        if (whole) compose.assertWhole()
+        val variant = when {
+            fontScale != 1f -> "fs${(fontScale * PERCENT).roundToInt()}"
+            dark -> "dark"
+            else -> "light"
+        }
+        val name = "app-rv-$screen-$variant"
+        compose.rvRowRules(name)
+        compose.onRoot().captureToImage().asAndroidBitmap().captureRoboImage("$SHOTS/$name.png")
+    }
+
+    private companion object {
+        const val PERCENT = 100
+
+        /** The prototype's scrubbed golden's point. */
+        const val SCRUB = 30
+
+        /** Screens as tall as the whole page: 56 dp past the phone's 915 at 1.0, 120.5 at 2.0, 56.5 in English. */
+        const val FULL_PAGE = "+h971dp"
+        const val FULL_PAGE_FS200 = "+h1036dp"
+        const val FULL_PAGE_EN = "en-w412dp-h972dp-notnight-xhdpi"
+        val SHOTS: String = System.getProperty("doona.shots") ?: "src/test/screenshots"
+    }
+}

@@ -1,6 +1,8 @@
 package dev.doona.android.prototype.rv.data
 
 import dev.doona.android.feature.model.fastest
+import dev.doona.android.feature.traffic.RV_TRAFFIC_POINTS
+import dev.doona.android.feature.traffic.RV_TRAFFIC_RANGE_SECONDS
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -47,10 +49,10 @@ class RvSessionSecondsTest {
     fun everyRangeHasItsWindowsMeanAndNoPointAboveThePeak() {
         for (upload in listOf(false, true)) {
             val all = if (upload) seconds.up else seconds.down
-            RV_RANGE_SECONDS.forEachIndexed { range, span ->
+            RV_TRAFFIC_RANGE_SECONDS.forEachIndexed { range, span ->
                 val chart = seconds.chart(range, upload)
                 val what = "${if (upload) "up" else "down"} over $span s"
-                assertEquals("$what has $RV_RANGE_POINTS points", RV_RANGE_POINTS, chart.size)
+                assertEquals("$what has $RV_TRAFFIC_POINTS points", RV_TRAFFIC_POINTS, chart.size)
                 val window = all.takeLast(span).sumOf { it.toDouble() } / span
                 assertEquals("$what keeps its window's mean", 1.0, chart.sumOf { it.toDouble() } / chart.size / window, RELATIVE)
                 assertTrue("$what stays under the peak", chart.max() <= if (upload) session.peakUp else session.peakDown)

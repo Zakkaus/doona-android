@@ -43,6 +43,7 @@ import dev.doona.android.feature.subscriptions.SubscriptionsRoute
 import dev.doona.android.feature.subscriptions.rememberSubscriptionImports
 import dev.doona.android.report.CrashOffer
 import kotlinx.coroutines.flow.Flow
+import dev.doona.android.feature.traffic.TrafficRoute
 
 /**
  * The old hub bar's frame (see [DoonaHubShell]), which the old pages' screenshot cases still draw them in until the page
@@ -119,6 +120,7 @@ fun DoonaApp(
                     onBack = { backStack.pop(key) },
                 )
             }
+            entry<TrafficKey> { key -> TrafficRoute(engine, onBack = { backStack.pop(key) }) }
         }
     }
 }

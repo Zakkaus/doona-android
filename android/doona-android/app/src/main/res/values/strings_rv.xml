@@ -20,8 +20,6 @@
     <string name="rv_uploaded">Uploaded</string>
     <string name="rv_connected_for">Connected for</string>
     <string name="rv_duration">%1$d h %2$d min</string>
-    <string name="rv_chart_type">Chart type</string>
-    <string name="rv_full_screen">Full screen</string>
     <string name="rv_range_1m">1 min</string>
     <string name="rv_range_5m">5 min</string>
     <string name="rv_range_15m">15 min</string>

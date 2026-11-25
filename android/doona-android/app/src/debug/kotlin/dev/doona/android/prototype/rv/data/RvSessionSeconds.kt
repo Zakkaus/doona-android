@@ -2,15 +2,11 @@ package dev.doona.android.prototype.rv.data
 
 import dev.doona.android.feature.model.RvSession
 import dev.doona.android.feature.model.fastest
+import dev.doona.android.feature.traffic.RV_TRAFFIC_POINTS
+import dev.doona.android.feature.traffic.RV_TRAFFIC_RANGE_SECONDS
 import kotlin.math.exp
 import kotlin.math.min
 import kotlin.random.Random
-
-/** The ranges under 流量詳情's chart, 1 分, 5 分, 15 分 and 1 小時, by the seconds each spans back from now. */
-internal val RV_RANGE_SECONDS = listOf(60, 300, 900, 3_600)
-
-/** Every range's chart has this many points, a second each over 1 分 and a minute each over 1 小時, so its line keeps one density. */
-internal const val RV_RANGE_POINTS = 60
 
 /**
  * [session]'s traffic second by second from the start of the hour before now's (09:00:01) to now (10:24:00), each way,
@@ -25,7 +21,7 @@ internal class RvSessionSeconds(session: RvSession) {
     val down: List<Float>
     val up: List<Float>
 
-    /** Each range's chart, by [RV_RANGE_SECONDS]: download's, then upload's. */
+    /** Each range's chart, by [RV_TRAFFIC_RANGE_SECONDS]: download's, then upload's. */
     private val downCharts: List<List<Float>>
     private val upCharts: List<List<Float>>
 
@@ -41,11 +37,11 @@ internal class RvSessionSeconds(session: RvSession) {
             fit(laterDown, session.downByHour[hour] - session.minuteDown.sumOf { it.toDouble() }) + session.minuteDown
         up = fit(earlierUp, session.upByHour[hour - 1].toDouble(), session.peakUp, PEAK_UP_AT) +
             fit(laterUp, session.upByHour[hour] - session.minuteUp.sumOf { it.toDouble() }) + session.minuteUp
-        downCharts = RV_RANGE_SECONDS.map { chart(down, it) }
-        upCharts = RV_RANGE_SECONDS.map { chart(up, it) }
+        downCharts = RV_TRAFFIC_RANGE_SECONDS.map { chart(down, it) }
+        upCharts = RV_TRAFFIC_RANGE_SECONDS.map { chart(up, it) }
     }
 
-    /** The chart of [range] (an index of [RV_RANGE_SECONDS]), download's or [upload]'s. */
+    /** The chart of [range] (an index of [RV_TRAFFIC_RANGE_SECONDS]), download's or [upload]'s. */
     fun chart(range: Int, upload: Boolean): List<Float> = (if (upload) upCharts else downCharts)[range]
 
     private companion object {
@@ -70,11 +66,11 @@ private fun fit(raw: FloatArray, total: Double, peak: Float? = null, at: Int = -
     return raw.indices.map { if (it == at && peak != null) peak else (raw[it] * rest / others).toFloat() }
 }
 
-/** [seconds]' last [span] seconds averaged into [RV_RANGE_POINTS] points of equal length, so the chart's mean is the window's. */
+/** [seconds]' last [span] seconds averaged into [RV_TRAFFIC_POINTS] points of equal length, so the chart's mean is the window's. */
 private fun chart(seconds: List<Float>, span: Int): List<Float> {
     val window = seconds.subList(seconds.size - span, seconds.size)
-    val per = span / RV_RANGE_POINTS
-    return List(RV_RANGE_POINTS) { point -> window.subList(point * per, (point + 1) * per).average().toFloat() }
+    val per = span / RV_TRAFFIC_POINTS
+    return List(RV_TRAFFIC_POINTS) { point -> window.subList(point * per, (point + 1) * per).average().toFloat() }
 }
 
 /** [RvSessionSeconds]' seconds before scaling, download's and upload's, each term non-negative. */

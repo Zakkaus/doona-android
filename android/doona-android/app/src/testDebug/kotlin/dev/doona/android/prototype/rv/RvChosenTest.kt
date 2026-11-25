@@ -191,7 +191,7 @@ class RvChosenTest {
 
     /** 流量's range row keeps the chosen chip's check at the default size in every locale (a11y-fix, 2026-11-25). */
     private fun trafficKeepsTheCheck(first: String) {
-        compose.rvContent(dark = false) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}) }
+        compose.rvContent(dark = false) { RvTrafficSample(rvSampleActivity(), RvData.session, onBack = {}) }
         assertEquals(FontWeight.Bold, weightOf(first))
         assertEquals("the chosen range has its check", 1, checks(first))
     }

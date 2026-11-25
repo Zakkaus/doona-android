@@ -413,7 +413,7 @@ internal fun rememberRvGlide(values: List<Float>): RvGlide {
         val before = seen[0]
         seen[0] = values
         val shifted = before != null && before.size == values.size && values.size > 1 && before.subList(1, before.size) == values.subList(0, values.size - 1)
-        val lead = before?.first()?.takeIf { shifted && !instant }
+        val lead = before?.firstOrNull()?.takeIf { shifted && !instant }
         RvGlide(lead, Animatable(if (lead == null) 0f else 1f), covered)
     }
     LaunchedEffect(glide) { glide.shift.animateTo(0f, tween(RvMotion.SAMPLE_MS, easing = LinearEasing)) }
