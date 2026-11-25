@@ -15,16 +15,12 @@ import dev.doona.android.designsystem.rv.RvCardHeader
 import dev.doona.android.designsystem.rv.RvFigure
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.engine.ScoreNetwork
-import dev.doona.android.engine.ScoreState
 import dev.doona.android.feature.model.RvNode
-import dev.doona.android.feature.model.RvPolicyGroup
+import dev.doona.android.feature.stats.RvStatsScore
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.policy.RvScoreChoiceRow
 import dev.doona.android.prototype.rv.policy.stateText
 import java.text.NumberFormat
-
-/** What the Score card reads: honk's `scoreState`, and each Score group's name and members as the group page has them. */
-internal class RvStatsScore(val state: ScoreState, val groups: List<RvPolicyGroup>)
 
 /**
  * 綜合評分, in 分流比例's grammar: the connections the Score groups started as the figure (`rootBusinessStarts`), and a
@@ -60,7 +56,7 @@ internal fun RvScoreStatsCard(score: RvStatsScore) {
         val named = score.state.groups.size > 1
         for (group in score.state.groups) {
             val known = score.groups.firstOrNull { it.id == group.id }
-            val name = if (named) known?.let { stringResource(it.name) } ?: group.id else null
+            val name = if (named) known?.name ?: group.id else null
             val members = known?.members.orEmpty()
             Choice(name, TCP, group.tcp, members)
             Choice(name, UDP, group.udp, members)

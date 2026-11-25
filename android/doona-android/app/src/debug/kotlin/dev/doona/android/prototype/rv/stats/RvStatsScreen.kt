@@ -39,6 +39,8 @@ import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.model.RvDay
+import dev.doona.android.feature.stats.RvStatsScore
+import dev.doona.android.feature.stats.RvStatsState
 import java.text.NumberFormat
 
 /**

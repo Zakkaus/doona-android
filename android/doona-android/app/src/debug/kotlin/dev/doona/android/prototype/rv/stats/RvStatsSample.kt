@@ -2,6 +2,10 @@ package dev.doona.android.prototype.rv.stats
 
 import dev.doona.android.engine.ScoreCounters
 import dev.doona.android.engine.ScoreState
+import dev.doona.android.feature.stats.RvStatsRange
+import dev.doona.android.feature.stats.RvStatsScore
+import dev.doona.android.feature.stats.RvStatsScoreGroup
+import dev.doona.android.feature.stats.RvStatsState
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.policy.RvScoreSample
 
@@ -39,7 +43,9 @@ internal fun rvStatsScore(): RvStatsScore {
         tcp = chosen.tcp.copy(counters = ScoreCounters(BUSINESS_TCP, TRIALS_OK_TCP, TRIALS_FAILED_TCP, 1)),
         udp = chosen.udp.copy(state = "provisional", waitReason = "comparableTraffic", counters = ScoreCounters(BUSINESS_UDP, TRIALS_OK_UDP, 0, 0)),
     )
-    return RvStatsScore(ScoreState(BUSINESS_ROOT, listOf(group)), listOf(RvScoreSample.group))
+    // One group, so the card never shows its name; the sample's name is a string resource, and the id stands in.
+    val members = RvStatsScoreGroup(RvScoreSample.group.id, RvScoreSample.group.id, RvScoreSample.group.members)
+    return RvStatsScore(ScoreState(BUSINESS_ROOT, listOf(group)), listOf(members))
 }
 
 private const val BUSINESS_TCP = 128L
