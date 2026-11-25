@@ -65,7 +65,6 @@ internal object RvSampleConfig {
     """.trimIndent()
 
     private val nodes = """
-        # 節點
         include {
           nodes/office.dae
         }

@@ -19,9 +19,9 @@ internal fun rvLineDiff(source: String, base: String, candidate: String): RvDiff
     if (changed.isEmpty()) return null
     val shown = BooleanArray(edits.size)
     changed.forEach { i ->
-        shown[i] = true
-        reach(edits, i, -1)?.let { shown[it] = true }
-        reach(edits, i, 1)?.let { shown[it] = true }
+        val from = reach(edits, i, -1) ?: i
+        val to = reach(edits, i, 1) ?: i
+        (from..to).forEach { shown[it] = true }
     }
     val hunks = mutableListOf<MutableList<RvDiffLine>>()
     edits.forEachIndexed { i, line ->
