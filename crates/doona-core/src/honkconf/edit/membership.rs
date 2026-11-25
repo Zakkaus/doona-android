@@ -32,10 +32,9 @@ pub enum AddNodeError {
     /// No group of the tree has this name.
     Group(String),
     /// A write failed with `error`, and restoring what the edit had already written failed
-    /// too: `paths` still hold the edit's bytes.
+    /// too. The draft is discarded; the published configuration is untouched.
     Unrestored {
         error: EditError,
-        paths: Vec<PathBuf>,
         failures: Vec<StoreError>,
     },
 }
@@ -50,11 +49,11 @@ thread_local! {
 /// One store call of `write_files`; a test can make it fail.
 fn store_call(call: impl FnOnce() -> Result<(), StoreError>) -> Result<(), StoreError> {
     #[cfg(test)]
-    if FAULTS.with_borrow_mut(|(count, fail)| {
+    if let Some(n) = FAULTS.with_borrow_mut(|(count, fail)| {
         *count += 1;
-        fail.contains(count)
+        fail.contains(count).then_some(*count)
     }) {
-        return Err(std::io::Error::other("injected fault").into());
+        return Err(std::io::Error::other(format!("injected fault {n}")).into());
     }
     call()
 }
@@ -312,7 +311,8 @@ impl HonkStore {
     }
 
     /// Writes back every file in `written`, then the draft record from before the edit, whose
-    /// meters and edited flag the writes changed. Returns `error`, with what stayed unrestored.
+    /// meters and edited flag the writes changed. Returns `error`, and discards the draft when
+    /// any of that fails.
     fn restore(
         &mut self,
         draft: u64,
@@ -322,28 +322,21 @@ impl HonkStore {
         error: EditError,
     ) -> AddNodeError {
         let root = root(edited);
-        let (mut paths, mut failures) = (Vec::new(), Vec::new());
-        for (path, original) in written.into_iter().rev() {
-            if let Err(failure) = store_call(|| self.write_edit(draft, path, root, &original, None))
-            {
-                paths.push(relative(edited, path));
-                failures.push(failure);
-            }
-        }
-        // A file left with the edit's bytes needs the meters the edit recorded for them.
-        if paths.is_empty()
-            && let Err(failure) = store_call(|| Ok(self.publish(record)?))
-        {
+        let restored = (written.into_iter().rev())
+            .try_for_each(|(path, original)| {
+                store_call(|| self.write_edit(draft, path, root, &original, None))
+            })
+            .and_then(|()| store_call(|| Ok(self.publish(record)?)));
+        let Err(failure) = restored else {
+            return AddNodeError::Edit(error);
+        };
+        // Bytes or meters of the edit would stay behind, so the whole draft goes. The next edit
+        // starts again from the published configuration.
+        let mut failures = vec![failure];
+        if let Err(failure) = store_call(|| self.discard(draft)) {
             failures.push(failure);
         }
-        if failures.is_empty() {
-            return AddNodeError::Edit(error);
-        }
-        AddNodeError::Unrestored {
-            error,
-            paths,
-            failures,
-        }
+        AddNodeError::Unrestored { error, failures }
     }
 }
 

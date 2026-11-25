@@ -28,8 +28,16 @@ fn text(store: &HonkStore, id: u64, path: &str) -> String {
     store.text(id, Path::new(path)).unwrap().to_string()
 }
 
-fn injected(error: &StoreError) -> bool {
-    matches!(error, StoreError::Io(e) if e.to_string() == "injected fault")
+/// Whether `error` is the fault injected at store call `n`.
+fn injected(error: &StoreError, n: u32) -> bool {
+    matches!(error, StoreError::Io(e) if e.to_string() == format!("injected fault {n}"))
+}
+
+fn discarded(store: &HonkStore, id: u64) -> bool {
+    matches!(
+        store.text(id, Path::new(ENTRY)),
+        Err(StoreError::UnknownDraft)
+    )
 }
 
 fn two_files() -> [(&'static str, String); 2] {
@@ -46,7 +54,7 @@ fn a_failed_second_write_restores_the_entry_and_the_draft_record() {
     let files = files.each_ref().map(|(p, t)| (*p, t.as_str()));
     let (mut store, id, record) = draft(&dir, &files, &[2]);
     match store.add_node(id, "tw1", LINK, &["B"]) {
-        Err(AddNodeError::Edit(EditError::Store(error))) => assert!(injected(&error)),
+        Err(AddNodeError::Edit(EditError::Store(error))) => assert!(injected(&error, 2)),
         other => panic!("{other:?}"),
     }
     for (path, original) in files {
@@ -56,53 +64,47 @@ fn a_failed_second_write_restores_the_entry_and_the_draft_record() {
 }
 
 #[test]
-fn every_file_is_restored_and_the_ones_that_fail_are_reported() {
+fn a_failed_file_restore_discards_the_draft_and_keeps_the_original_error() {
     let dir = TempDir::new("membership-unrestored");
     let entry = format!("include {{ 'a.dae', 'b.dae' }}\n{NODES}");
     let a = "group { A { filter: name(hk1) } }\n";
     let b = "group { B { filter: name(hk1) } }\n";
     let files = [(ENTRY, entry.as_str()), ("a.dae", a), ("b.dae", b)];
-    // b.dae (call 3) fails, then restoring a.dae (call 4); the entry (call 5) is restored.
-    let (mut store, id, record) = draft(&dir, &files, &[3, 4]);
+    // b.dae (call 3) fails, then restoring a.dae (call 4); call 5 discards the draft.
+    let (mut store, id, _) = draft(&dir, &files, &[3, 4]);
     match store.add_node(id, "tw1", LINK, &["A", "B"]) {
         Err(AddNodeError::Unrestored {
             error: EditError::Store(error),
-            paths,
             failures,
         }) => {
-            assert!(injected(&error));
-            assert_eq!(paths, [Path::new("a.dae")]);
-            assert!(matches!(failures.as_slice(), [f] if injected(f)));
+            assert!(injected(&error, 3));
+            assert!(matches!(failures.as_slice(), [f] if injected(f, 4)));
         }
         other => panic!("{other:?}"),
     }
-    assert_eq!(text(&store, id, ENTRY), entry);
-    assert!(text(&store, id, "a.dae").contains("filter: name('tw1')"));
-    assert_eq!(text(&store, id, "b.dae"), b);
-    // a.dae keeps the edit's bytes, so the record keeps the meters written for them.
-    assert_ne!(serde_json::to_string(&store.manifest).unwrap(), record);
+    assert!(discarded(&store, id));
 }
 
 #[test]
-fn a_failed_record_restore_is_reported_with_every_file_restored() {
-    let dir = TempDir::new("membership-record");
+fn a_failed_record_restore_discards_the_draft_and_reports_a_failed_discard() {
     let files = two_files();
     let files = files.each_ref().map(|(p, t)| (*p, t.as_str()));
-    // b.dae (call 2) fails, the entry (call 3) is restored, the record (call 4) fails.
-    let (mut store, id, _) = draft(&dir, &files, &[2, 4]);
-    match store.add_node(id, "tw1", LINK, &["B"]) {
-        Err(AddNodeError::Unrestored {
-            error: EditError::Store(error),
-            paths,
-            failures,
-        }) => {
-            assert!(injected(&error));
-            assert!(paths.is_empty());
-            assert!(matches!(failures.as_slice(), [f] if injected(f)));
+    // b.dae (call 2) fails, the entry (call 3) is restored, the record (call 4) fails, and
+    // call 5 discards the draft.
+    for (fail, reported) in [(&[2, 4][..], &[4][..]), (&[2, 4, 5], &[4, 5])] {
+        let dir = TempDir::new("membership-record");
+        let (mut store, id, _) = draft(&dir, &files, fail);
+        match store.add_node(id, "tw1", LINK, &["B"]) {
+            Err(AddNodeError::Unrestored {
+                error: EditError::Store(error),
+                failures,
+            }) => {
+                assert!(injected(&error, 2));
+                assert_eq!(failures.len(), reported.len());
+                assert!(failures.iter().zip(reported).all(|(f, n)| injected(f, *n)));
+            }
+            other => panic!("{other:?}"),
         }
-        other => panic!("{other:?}"),
-    }
-    for (path, original) in files {
-        assert_eq!(text(&store, id, path), original);
+        assert_eq!(discarded(&store, id), reported.len() == 1, "{fail:?}");
     }
 }
