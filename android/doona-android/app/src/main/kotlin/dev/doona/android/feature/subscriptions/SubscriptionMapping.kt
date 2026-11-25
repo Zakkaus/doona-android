@@ -20,7 +20,7 @@ internal fun rvSubscription(sub: Subscription): RvSubscription = RvSubscription(
     usedBytes = sub.usedBytes ?: 0L,
     totalBytes = sub.totalBytes ?: 0L,
     expiresAtEpochMs = sub.expiresAtEpochMs,
-    host = hostOf(sub.url),
+    host = subscriptionHost(sub.url),
     format = sub.lastFetch?.let { rvSubFormat(it.format) },
     userAgent = sub.userAgent,
 )
@@ -57,7 +57,15 @@ internal fun rvProtocolLabel(protocol: String): String = PROTOCOL_LABELS[protoco
 internal fun rvProtocolCounts(protocols: List<String>): List<RvProtocolCount> =
     protocols.map(::rvProtocolLabel).groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.map { RvProtocolCount(it.key, it.value) }
 
-private fun hostOf(url: String): String = runCatching { URI(url.trim()).host }.getOrNull().orEmpty()
+/**
+ * The host of a subscription's link as written, without user info or port. [URI.getHost] is null for an
+ * internationalized name such as `bücher.example`, which [urlProblem] accepts, so the host is cut from the authority.
+ */
+internal fun subscriptionHost(url: String): String {
+    val authority = runCatching { URI(url.trim()).authority }.getOrNull() ?: return ""
+    val host = authority.substringAfterLast('@')
+    return if (host.startsWith('[')) host.substringBefore(']') + "]" else host.substringBefore(':')
+}
 
 private val PROTOCOL_LABELS = mapOf(
     "trojan" to "Trojan",
