@@ -14,6 +14,9 @@ import androidx.navigation3.runtime.NavKey
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.R
+import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.FailureReason
+import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeInstalledApps
 import dev.doona.android.testing.SeedTheme
@@ -84,6 +87,15 @@ class NavigationTest {
         compose.onNodeWithContentDescription("Back").performClick()
         compose.onNodeWithText(res.getString(R.string.rv_stats_title)).assertDoesNotExist()
         compose.onNodeWithContentDescription(res.getString(R.string.rv_stats)).assertExists()
+    }
+
+    @Test
+    fun `新增訂閱 on a start without nodes opens the add page`() {
+        val res = ApplicationProvider.getApplicationContext<Context>().resources
+        val engine = FakeEngine(FakeEngine.SAMPLE_GROUPS).apply { status.value = Status.Failed(FailureReason.StartFailed, ErrorCode.NoNodes) }
+        compose.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}) } }
+        compose.onNode(hasClickAction() and hasText(res.getString(R.string.rv_add_subscription))).performSemanticsAction(SemanticsActions.OnClick)
+        compose.onNodeWithText(res.getString(R.string.rv_add_import)).assertExists()
     }
 
     @Test
