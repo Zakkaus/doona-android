@@ -332,8 +332,8 @@ private fun MainNodeFigure(state: ActivityUiState, mode: RvRouteMode, nodes: Lis
 }
 
 /**
- * Connect or disconnect (busy while either is under way), the outbound mode, a latency test ([onTest]) and more, their
- * labels one size ([rvActionRowFit]). 中斷連線 holds from the connect's start to the disconnect's end, so a disconnect
+ * Connect or disconnect (busy while either is under way), the outbound mode and a latency test ([onTest]) (Mode and Latency
+ * drawn, their full names read, so the four labels keep their size) and more, their labels one size ([rvActionRowFit]). 中斷連線 holds from the connect's start to the disconnect's end, so a disconnect
  * under way keeps its word beside its busy bar and turns to 連線 with the glyph when it has ended; while it is under way
  * the action takes no tap.
  */
@@ -342,10 +342,12 @@ private fun HeroActions(state: ActivityUiState, onAction: (ActivityAction) -> Un
     val on = state.status is Status.Running || state.status.busy
     val labels = listOf(
         stringResource(if (on) R.string.rv_disconnect else R.string.rv_connect),
-        stringResource(R.string.act_mode),
-        stringResource(R.string.rv_test_latency),
+        stringResource(R.string.rv_action_mode),
+        stringResource(R.string.rv_action_latency),
         stringResource(R.string.rv_more),
     )
+    val modeName = stringResource(R.string.act_mode)
+    val testName = stringResource(R.string.rv_test_latency)
     BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
         val style = rvActionRowFit(labels, maxWidth / labels.size)
         Row(Modifier.fillMaxWidth()) {
@@ -353,8 +355,8 @@ private fun HeroActions(state: ActivityUiState, onAction: (ActivityAction) -> Un
             val toggle = if (on) ({ onAction(ActivityAction.Disconnect) }) else onConnect
             // A disconnect under way takes no second one: the tap would only start it again.
             RvAction(R.drawable.rv_sym_power, labels[0], toggle, Modifier.weight(1f), busy = state.status.busy, labelStyle = style, enabled = state.status != Status.Stopping)
-            RvAction(R.drawable.rv_sym_directions, labels[1], { onAction(ActivityAction.SetMode(other)) }, Modifier.weight(1f), labelStyle = style)
-            RvAction(R.drawable.rv_sym_speed, labels[2], onTest, Modifier.weight(1f), labelStyle = style)
+            RvAction(R.drawable.rv_sym_directions, labels[1], { onAction(ActivityAction.SetMode(other)) }, Modifier.weight(1f), labelStyle = style, description = modeName)
+            RvAction(R.drawable.rv_sym_speed, labels[2], onTest, Modifier.weight(1f), labelStyle = style, description = testName)
             RvAction(R.drawable.rv_sym_more_horiz, labels[3], NOT_WIRED, Modifier.weight(1f), labelStyle = style)
         }
     }

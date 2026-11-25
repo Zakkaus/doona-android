@@ -44,6 +44,11 @@ internal const val RV_SAMPLE_RELEASE = "0.2.0"
 internal fun rvUpdateLabel(update: RvUpdate): String =
     stringResource(if (update == RvUpdate.Latest) R.string.rv_update_latest else R.string.rv_settings_check_update)
 
+/** What the action draws: [rvUpdateLabel], but Updates for 檢查更新 so that Export beside it keeps its size; [rvUpdateLabel] is still what it reads. */
+@Composable
+internal fun rvUpdateActionLabel(update: RvUpdate): String =
+    if (update == RvUpdate.Latest) rvUpdateLabel(update) else stringResource(R.string.rv_settings_check_update_short)
+
 /**
  * The page's banner for a newer release, whose action opens its GitHub page ([onRelease]). Nothing otherwise: a check
  * that got no answer says so on its row only, in the error hue with 重試 (owner-fix3 item 27).

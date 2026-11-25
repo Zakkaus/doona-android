@@ -4,6 +4,8 @@
     <string name="rv_disconnect">断开连接</string>
     <string name="rv_test_latency">测试延迟</string>
     <string name="rv_more">更多</string>
+    <string name="rv_action_mode">出站模式</string>
+    <string name="rv_action_latency">测试延迟</string>
     <string name="rv_expires">%1$s 到期</string>
     <string name="rv_updated">%1$s 更新</string>
     <string name="rv_peak">峰值 %1$s</string>

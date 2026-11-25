@@ -214,7 +214,8 @@ internal fun rvSplitDecimals(figure: String, locale: Locale): Pair<String, Strin
  * height, so nothing under it moves. Only the disc takes the press ([rvDiscPress]), and none while not [enabled]. [busy]
  * swaps the glyph for [RvBusy]; that swap and a new [label] fade through ([RvFadeThrough]). A screen reader finds one
  * button: the label names it, it clicks as the disc does, and it reads as disabled with the disc. It hears only the
- * current [label], the one the click acts on: the word fading out is drawn, not read.
+ * current [label], the one the click acts on: the word fading out is drawn, not read. A short [label] that keeps a
+ * row at its size (Mode, Updates) names the button by its full wording, [description].
  */
 @Composable
 internal fun RvAction(
@@ -225,9 +226,11 @@ internal fun RvAction(
     busy: Boolean = false,
     labelStyle: TextStyle = Rv.type.action,
     enabled: Boolean = true,
+    description: String = label,
 ) {
     val button = modifier.semantics(mergeDescendants = true) {
         role = Role.Button
+        if (description != label) contentDescription = description
         onClick {
             if (enabled) onClick()
             enabled

@@ -106,7 +106,8 @@ internal fun RvSettingsScreen(
 /**
  * The mark beside the centred title ([titleBlock]), on a faint dot texture that runs up behind the bar, and the two
  * round actions under it, their labels one size ([rvActionRowFit]); 匯出診斷 opens 回報問題, and 檢查更新 runs the
- * same check as 關於's row, named by its [update] ([rvUpdateLabel]) and busy, deaf to a second tap, while it asks.
+ * same check as 關於's row, drawn as [rvUpdateActionLabel], read as [rvUpdateLabel] (named by its [update]) and busy, deaf to a
+ * second tap, while it asks.
  */
 @Composable
 private fun Hero(titleBlock: Modifier, insets: WindowInsets, routes: RvSettingsRoutes, update: RvUpdate) {
@@ -126,13 +127,13 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, routes: RvSettingsR
                 RvSettingsText(stringResource(R.string.hub_settings), Rv.type.largeTitle, Modifier.semantics { heading() })
             }
             Spacer(Modifier.height(RvSettingsSpace.titleToActions))
-            val labels = listOf(stringResource(R.string.rv_settings_export_diagnostics), rvUpdateLabel(update))
+            val labels = listOf(stringResource(R.string.rv_settings_export_diagnostics), rvUpdateActionLabel(update))
             val style = rvActionRowFit(labels, RvSettingsSpace.actionColumn)
             val checking = update == RvUpdate.Checking
             Row(horizontalArrangement = Arrangement.spacedBy(RvSettingsSpace.actionGap)) {
                 RvAction(R.drawable.rv_sym_ios_share, labels[0], routes.report, Modifier.width(RvSettingsSpace.actionColumn), labelStyle = style)
                 val column = Modifier.width(RvSettingsSpace.actionColumn)
-                RvAction(R.drawable.rv_settings_ic_update, labels[1], routes.checkUpdate, column, busy = checking, labelStyle = style, enabled = !checking)
+                RvAction(R.drawable.rv_settings_ic_update, labels[1], routes.checkUpdate, column, busy = checking, labelStyle = style, enabled = !checking, description = rvUpdateLabel(update))
             }
         }
     }

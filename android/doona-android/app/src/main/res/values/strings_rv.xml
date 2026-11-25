@@ -5,6 +5,8 @@
     <string name="rv_disconnect">Disconnect</string>
     <string name="rv_test_latency">Test latency</string>
     <string name="rv_more">More</string>
+    <string name="rv_action_mode">Mode</string>
+    <string name="rv_action_latency">Latency</string>
     <string name="rv_expires">Expires %1$s</string>
     <string name="rv_updated">Updated %1$s</string>
     <string name="rv_peak">Peak %1$s</string>

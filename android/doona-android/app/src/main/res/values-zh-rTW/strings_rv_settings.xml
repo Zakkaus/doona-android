@@ -2,6 +2,7 @@
 <resources>
     <string name="rv_settings_export_diagnostics">匯出診斷</string>
     <string name="rv_settings_check_update">檢查更新</string>
+    <string name="rv_settings_check_update_short">檢查更新</string>
 
     <string name="rv_settings_group_connection">連線</string>
     <string name="rv_settings_notify_drop">中斷連線時通知</string>

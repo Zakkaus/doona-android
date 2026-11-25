@@ -30,6 +30,10 @@ One concept, one word per locale. "Web key" is the doona web locale key that set
 | Save | Save | 儲存 | 保存 | - |
 | Disconnect (state and action) | Disconnect | 中斷連線 (never 斷線) | 断开连接 | event.disconnected |
 | Outbound mode | Outbound mode | 出站模式 | 出站模式 | act.mode |
+| Outbound mode, quick-action label (only on the Activity round action, where the full wording shrinks the row) | Mode | 出站模式 | 出站模式 | - |
+| Test latency, quick-action label (only on the Activity round action, for the same reason) | Latency | 測試延遲 | 测试延迟 | - |
+| Check for updates | Check for updates | 檢查更新 | 检查更新 | - |
+| Check for updates, quick-action label (only on the Settings round action, for the same reason) | Updates | 檢查更新 | 检查更新 | - |
 | Global | Global | 全域 | 全局 | act.global |
 | Direct | Direct | 直連 | 直连 | mode.direct |
 | Permission | permission | 權限 | 权限 | ui.backend.permissionDenied |
