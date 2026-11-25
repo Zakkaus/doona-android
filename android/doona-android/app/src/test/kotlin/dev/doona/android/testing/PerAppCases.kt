@@ -2,7 +2,6 @@ package dev.doona.android.testing
 
 import androidx.compose.runtime.Composable
 import dev.doona.android.app.ActivityKey
-import dev.doona.android.app.DoonaApp
 import dev.doona.android.app.DoonaAppShell
 import dev.doona.android.app.PerAppKey
 import dev.doona.android.app.SettingsKey
@@ -33,7 +32,7 @@ internal fun perAppCases(): List<ScreenCase> {
     }
     return listOf(
         ScreenCase("perapp", PageLayout(controls, emptyList())) {
-            DoonaApp(sampleEngine(), FakeInstalledApps(), onConnect = {}, listOf(ActivityKey, SettingsKey, PerAppKey))
+            OldShellApp(sampleEngine(), FakeInstalledApps(), listOf(ActivityKey, SettingsKey, PerAppKey))
         },
         // The segmented control's 48 dp target makes the header taller than a landscape window, so no row is composed at the
         // first offset there; the rows are still checked wherever they show.

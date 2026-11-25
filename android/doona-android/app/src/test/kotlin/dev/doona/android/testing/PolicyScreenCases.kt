@@ -2,7 +2,6 @@ package dev.doona.android.testing
 
 import androidx.compose.runtime.remember
 import dev.doona.android.app.ActivityKey
-import dev.doona.android.app.DoonaApp
 import dev.doona.android.app.DoonaAppShell
 import dev.doona.android.app.GroupKey
 import dev.doona.android.app.PoliciesKey
@@ -51,13 +50,13 @@ internal fun policyScreenCases(): List<ScreenCase> {
     val form = subscriptions + setOf(LayoutRole.Field, LayoutRole.Dot)
     val firstRun = bars + setOf(LayoutRole.Card, LayoutRole.Button, LayoutRole.Field)
     return listOf(
-        ScreenCase("policies", PageLayout(list, listRhythm)) { DoonaApp(engine, apps, onConnect = {}, listOf(ActivityKey, PoliciesKey)) },
+        ScreenCase("policies", PageLayout(list, listRhythm)) { OldShellApp(engine, apps, listOf(ActivityKey, PoliciesKey)) },
         ScreenCase("policies-error", PageLayout(list + LayoutRole.Dot, listRhythm)) {
             DoonaAppShell(Tab.Policies, onSelect = {}) {
                 PoliciesScreen(samplePoliciesState(SAMPLE_TESTING_GROUPS, ErrorCode.Busy), onAction = {}, onOpenGroup = {}, onOpenSubscriptions = {})
             }
         },
-        ScreenCase("group", PageLayout(group, groupRhythm + space.block)) { DoonaApp(engine, apps, onConnect = {}, listOf(ActivityKey, PoliciesKey, GroupKey("g-Proxy"))) },
+        ScreenCase("group", PageLayout(group, groupRhythm + space.block)) { OldShellApp(engine, apps, listOf(ActivityKey, PoliciesKey, GroupKey("g-Proxy"))) },
         ScreenCase("group-automatic", PageLayout(flatGroup, groupRhythm)) {
             DoonaAppShell(Tab.Policies, onSelect = {}) {
                 GroupScreen(sampleGroupDetail("g-Auto", SAMPLE_TESTING_GROUPS.map { it.copy(testing = false) }), null, {}, {}, {})
@@ -80,13 +79,13 @@ internal fun policyScreenCases(): List<ScreenCase> {
             val state = sampleSubscriptionsState(adding = true, form = AddFormState(attempted = true, error = ErrorCode.FetchFailed))
             DoonaAppShell(Tab.Policies, onSelect = {}) { SubscriptionsScreen(state, remember { sampleAddFields() }, {}, {}) }
         },
-        ScreenCase("first-run", PageLayout(firstRun, listOf(space.section, space.section))) { DoonaApp(noSubscriptions, apps, onConnect = {}, listOf(ActivityKey)) },
+        ScreenCase("first-run", PageLayout(firstRun, listOf(space.section, space.section))) { OldShellApp(noSubscriptions, apps, listOf(ActivityKey)) },
         ScreenCase("first-run-hint", PageLayout(firstRun, listOf(space.section, space.section))) {
-            DoonaApp(noSubscriptionsFailed, apps, onConnect = {}, listOf(ActivityKey))
+            OldShellApp(noSubscriptionsFailed, apps, listOf(ActivityKey))
         },
         ScreenCase("first-run-failed", PageLayout(firstRun, listOf(space.section, space.section))) {
-            DoonaApp(noSubscriptionsStopped, apps, onConnect = {}, listOf(ActivityKey))
+            OldShellApp(noSubscriptionsStopped, apps, listOf(ActivityKey))
         },
-        ScreenCase("activity-loading", PageLayout(bars, listOf(space.section))) { DoonaApp(loading, apps, onConnect = {}, listOf(ActivityKey)) },
+        ScreenCase("activity-loading", PageLayout(bars, listOf(space.section))) { OldShellApp(loading, apps, listOf(ActivityKey)) },
     )
 }
