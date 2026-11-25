@@ -11,6 +11,8 @@
     <string name="rv_stats_nothing_today">No data used today</string>
     <string name="rv_stats_vs_last_week">vs. last week at this time</string>
     <string name="rv_stats_nothing_week">No data used this week</string>
+    <string name="rv_a11y_stat_week_up">Up %1$s on last week at this time</string>
+    <string name="rv_a11y_stat_week_down">Down %1$s on last week at this time</string>
     <string name="rv_stats_nothing_month">No data used this month</string>
     <string name="rv_stats_no_data">No data yet</string>
     <string name="rv_stats_connections">Connections</string>

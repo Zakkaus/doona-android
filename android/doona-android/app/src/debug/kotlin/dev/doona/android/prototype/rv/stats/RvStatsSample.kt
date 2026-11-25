@@ -9,7 +9,6 @@ import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.engine.ScoreCounters
 import dev.doona.android.engine.ScoreState
 import dev.doona.android.feature.NOT_WIRED
-import dev.doona.android.feature.stats.RvStatsEmptyLook
 import dev.doona.android.feature.stats.RvStatsRange
 import dev.doona.android.feature.stats.RvStatsScore
 import dev.doona.android.feature.stats.RvStatsScoreGroup
@@ -28,6 +27,7 @@ internal fun rvStatsSample(score: RvStatsScore? = null) = RvStatsState(
     selectedId = RvData.CURRENT_ID,
     split = RvData.split,
     nowEpochMs = RvData.nowEpochMs,
+    nowHour = RvData.nowHour,
     score = score,
 )
 
@@ -41,6 +41,7 @@ internal fun rvStatsQuiet() = RvStatsState(
     selectedId = RvData.CURRENT_ID,
     split = null,
     nowEpochMs = RvData.nowEpochMs,
+    nowHour = RvData.nowHour,
 )
 
 /**
@@ -69,8 +70,8 @@ private const val TRIALS_OK_UDP = 3L
 
 /** The page on a sample [state], its chips and tools not wired (the prototype's, the goldens' and the previews'). */
 @Composable
-internal fun RvStatsScreenSample(state: RvStatsState, onBack: () -> Unit = {}, empty: RvStatsEmptyLook = RvStatsEmptyLook.Grid) =
-    RvStatsScreen(state, onBack, onSubscription = {}, onRange = {}, NOT_WIRED, NOT_WIRED, NOT_WIRED, empty)
+internal fun RvStatsScreenSample(state: RvStatsState, onBack: () -> Unit = {}) =
+    RvStatsScreen(state, onBack, onSubscription = {}, onRange = {}, NOT_WIRED, NOT_WIRED, NOT_WIRED)
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 2200)
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 2200, uiMode = Configuration.UI_MODE_NIGHT_YES)

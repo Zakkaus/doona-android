@@ -10,6 +10,8 @@
     <string name="rv_stats_nothing_today">今天尚無流量</string>
     <string name="rv_stats_vs_last_week">比上週同時段</string>
     <string name="rv_stats_nothing_week">本週尚無流量</string>
+    <string name="rv_a11y_stat_week_up">較上週同時段增加 %1$s</string>
+    <string name="rv_a11y_stat_week_down">較上週同時段減少 %1$s</string>
     <string name="rv_stats_nothing_month">本月尚無流量</string>
     <string name="rv_stats_no_data">尚無資料</string>
     <string name="rv_stats_connections">連線次數</string>

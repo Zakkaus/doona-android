@@ -21,14 +21,12 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
-import dev.doona.android.designsystem.rv.RV_GHOST_DOWN
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
 import dev.doona.android.designsystem.rv.RvChevron
 import dev.doona.android.designsystem.rv.RvFigure
-import dev.doona.android.designsystem.rv.RvGhostBars
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLegendItem
 import dev.doona.android.designsystem.rv.RvPlace
@@ -77,13 +75,13 @@ internal fun RvSpentCard(state: RvStatsState) {
                         before != null && before > 0 && against != null -> {
                             val change = (day.total - before).toDouble() / before
                             val percent = format.percent(abs(change))
-                            RvStatsDelta(change >= 0, percent, stringResource(against), Rv.colors.positive)
+                            RvStatsDelta(change >= 0, percent, against, Rv.colors.positive)
                         }
                     }
                 }
             }
             val share = Modifier.weight(RvStatsSize.SPENT_CHART_SHARE).testTag(RV_SPENT_CHART).fillMaxHeight().padding(top = RvStatsSpace.pad, end = RvStatsSpace.pad)
-            if (period == null) RvUsageChart(day, nowInHours(state), share) else RvUsageChart(day, period.now, share, period.slots, gridEvery(period.slots))
+            if (period == null) RvUsageChart(day, state.nowHour, share) else RvUsageChart(day, period.now, share, period.slots, gridEvery(period.slots))
         }
         Spacer(Modifier.height(RvUsageSize.chartAboveLegend))
         RvUsageLegend(day, cardBody)
@@ -94,51 +92,34 @@ internal fun RvSpentCard(state: RvStatsState) {
 internal const val RV_SPENT_CHART = "rv-spent-chart"
 
 /**
- * The current hour's index plus the share of it gone: where the running total ends. The share comes from the instant
- * itself, as the hour buckets do, so a zone with a half-hour offset does not move it.
- */
-private fun nowInHours(state: RvStatsState): Float = state.today.hours.lastIndex + (state.nowEpochMs % MS_PER_HOUR).toFloat() / MS_PER_HOUR
-
-/**
  * One of the paged tiles: what it counts ([tag] when that differs from the chips), its figure, its bars ([hours], one per
- * hour or day of [slots]), its ghost bars' heights with no traffic, and the line it shows then ([quiet]).
+ * hour or day of [slots]), and the line it shows with no traffic ([quiet]).
  */
 internal class RvDayTile(
     val label: String,
     val figure: RvFigure,
     val hours: List<Long>?,
     val color: Color,
-    val ghost: FloatArray = RV_GHOST_DOWN,
     val slots: Int = HOURS,
     val quiet: String,
     val tag: String? = null,
 )
 
 /**
- * How a tile with no traffic today looks, for the owner to compare (brief pv-c1). [Grid] is today's: the empty grid
- * and a short line. [Activity] (v1) is 活動's tile with no traffic ([RvSparkTile]): `目前沒有流量` under the figure and the
- * tile's own ghost bars. [First] (v2) is the first statistics sample's (b02dbc0e): the ghost bars under the figure alone,
- * one set of heights on every tile.
- */
-internal enum class RvStatsEmptyLook { Grid, Activity, First }
-
-/**
  * A paged tile, Revolut's 'Income' card: its header, the day's figure, then a bar per hour along the bottom. With no
- * data it shows the empty grid and a short line, never made-up bars (Addendum A); with no traffic, as [empty] says.
+ * data or no traffic it shows the empty grid and a short line, never made-up bars (Addendum A; the owner picked the
+ * grid, 2026-11-24 15:24).
  */
 @Composable
-internal fun RvDayTileCard(tile: RvDayTile, modifier: Modifier = Modifier, empty: RvStatsEmptyLook = RvStatsEmptyLook.Grid) {
+internal fun RvDayTileCard(tile: RvDayTile, modifier: Modifier = Modifier) {
     RvCard(modifier.aspectRatio(1f)) {
         RvCardHeader(tile.label, tag = tile.tag)
         Column(Modifier.weight(1f).then(cardBody)) {
             RvStatsFigure(tile.figure, Rv.type.tileValue, Rv.type.tileUnit)
             val hours = tile.hours
-            val ghost = empty != RvStatsEmptyLook.Grid && hours != null && hours.all { it == 0L }
-            if (ghost && empty == RvStatsEmptyLook.Activity) RvText(stringResource(R.string.rv_no_traffic), Rv.type.tileCaption, color = Rv.colors.textSecondary)
             Spacer(Modifier.weight(1f))
             when {
                 hours == null -> RvEmptyChart(stringResource(R.string.rv_stats_no_data), Modifier.height(RvStatsSize.bars), tile.slots)
-                ghost -> RvGhostBars(if (empty == RvStatsEmptyLook.First) RV_GHOST_DOWN else tile.ghost, Modifier.height(RvStatsSize.bars))
                 hours.all { it == 0L } -> RvEmptyChart(tile.quiet, Modifier.height(RvStatsSize.bars), tile.slots)
                 else -> RvHourBars(hours, tile.color, slots = tile.slots)
             }
@@ -311,5 +292,4 @@ internal fun gridEvery(slots: Int): Int = when (slots) {
     else -> DAYS_PER_WEEK
 }
 
-private const val MS_PER_HOUR = 3_600_000L
 private const val DAYS_PER_WEEK = 7

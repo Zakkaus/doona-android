@@ -20,6 +20,7 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.DayOfWeek
+import java.time.ZoneId
 import java.time.ZoneOffset
 
 class StatsMappingTest {
@@ -46,8 +47,27 @@ class StatsMappingTest {
         assertEquals(day.down.take(11), state.today.down)
         assertEquals(day.up.take(11), state.today.up)
         assertEquals(day.flows.take(11).map(Long::toInt), state.today.connections)
-        assertEquals(day.down.sum() + day.up.sum(), state.today.total)
         assertEquals(input.today.yesterdayByNow, state.yesterdaySoFar)
+        assertEquals(10.4f, state.nowHour, 1e-4f)
+    }
+
+    @Test
+    fun `hours after the current one are left out of today's total`() {
+        val hours = List(24) { it + 1L }
+        val day = DayUsage("2026-11-22", hours, hours.map { it * 10 }, hours, emptyList())
+        val state = rvStatsState(StatsInput(Usage(day, null, emptyList()), TodayTraffic(), emptyList(), null, null, SAMPLE_NOW, ZoneOffset.UTC))
+        // Hours 0 to 10 hold 1..11 up and 10..110 down; 11 to 23 are later today and must not count.
+        assertEquals(66L + 660L, state.today.total)
+    }
+
+    @Test
+    fun `the time of day is local, so a half-hour zone moves the running total's end`() {
+        val zone = ZoneId.of("Asia/Kolkata")
+        val day = DayUsage("2026-11-22", List(24) { 0L }, List(24) { 0L }, List(24) { 0L }, emptyList())
+        val state = rvStatsState(StatsInput(Usage(day, null, emptyList()), TodayTraffic(), emptyList(), null, null, SAMPLE_NOW, zone))
+        // 10:24 UTC is 15:54 in Kolkata (UTC+05:30): hour 15, 54 minutes in, not 24.
+        assertEquals(16, state.today.hours.size)
+        assertEquals(15.9f, state.nowHour, 1e-4f)
     }
 
     @Test
@@ -76,7 +96,6 @@ class StatsMappingTest {
         val input = sampleInput()
         val state = rvStatsState(input)
         assertEquals(listOf(61_700_000_000L, 36_400_000_000L), state.subscriptions.map { it.usedBytes })
-        assertEquals(listOf("sub.harbor-cloud.example", "lantern-net.example"), state.subscriptions.map { it.host })
         val members = input.catalog!!.groups.flatMap { it.members }.filterNot { it.isGroup }.distinctBy { it.id }
         assertEquals(members.map { it.id }, state.nodes.map { it.id })
         assertEquals(members.map { it.latencyMs }, state.nodes.map { it.latencyMs })

@@ -40,16 +40,17 @@ internal fun RvStatsFigure(figure: RvFigure, style: TextStyle = Rv.type.cardValu
 
 /** Revolut's delta: a filled triangle and the change in [color], then what it compares with in secondary ink. */
 @Composable
-internal fun RvStatsDelta(up: Boolean, change: String, against: String, color: Color) {
-    // The triangle and the hue show the direction; a screen reader is told it in words, with what it compares with.
-    val spoken = stringResource(if (up) R.string.rv_a11y_stat_up else R.string.rv_a11y_stat_down, change)
+internal fun RvStatsDelta(up: Boolean, change: String, against: RvStatsAgainst, color: Color) {
+    // The triangle and the hue show the direction; a screen reader is told it in words, for the period the line names.
+    val spoken = stringResource(if (up) against.up else against.down, change)
+    val line = stringResource(against.line)
     Row(verticalAlignment = Alignment.CenterVertically) {
         Triangle(up, color, RvStatsSize.delta)
         Spacer(Modifier.width(RvSpace.tight))
         val text = buildAnnotatedString {
             withStyle(SpanStyle(color = color)) { append(change) }
             append(" ")
-            append(scripted(against))
+            append(scripted(line))
         }
         RvSpanText(text, Rv.type.tileCaption.copy(color = Rv.colors.textSecondary), Modifier.semantics { contentDescription = spoken }, maxLines = 1)
     }

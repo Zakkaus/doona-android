@@ -15,6 +15,8 @@ import dev.doona.android.feature.model.RvSubscription
  * - [yesterdaySoFar]: yesterday's bytes by the same time of day (`today.yesterdayByNow`), null when not kept.
  * - [subscriptions]: `usedBytes`, `totalBytes` and `expiresAtEpochMs` of the engine's subscriptions.
  * - [nodes] and [selectedId]: the catalog's nodes with their last latency, and the main group's node.
+ * - [nowHour]: the local time of day in hours (10.4 at 10:24), where today's running total ends; the hour buckets are
+ *   local (`DayUsage`), so a zone 30 or 45 minutes off UTC moves it.
  * - [split]: today's bytes that went direct (`outbounds` id `direct`) against the rest; null before the first byte.
  * - [score]: honk's `scoreState` with the Score groups' names and members; null when no group uses Score.
  * - [period]: 本週 or 本月 by the day, from `usage().days` and today; null for 今天.
@@ -32,6 +34,7 @@ internal class RvStatsState(
     val selectedId: String?,
     val split: RvSplit?,
     val nowEpochMs: Long,
+    val nowHour: Float,
     val score: RvStatsScore? = null,
     val period: RvStatsPeriod? = null,
     val subscriptionId: String? = null,
@@ -54,19 +57,21 @@ internal class RvStatsPeriod(val days: RvDay, val slots: Int, val now: Float, va
 
 /**
  * The range chip's choices, with the line a range with no bytes shows and what its change compares with (none for a
- * month). v0.1 keeps days, so a week and a month are seven or about thirty of them.
+ * month). The app keeps days, so 本週 is the seven days from the locale's first day and 本月 the month's 28 to 31 from
+ * the 1st.
  */
-internal enum class RvStatsRange(@StringRes val label: Int, @StringRes val quiet: Int, @StringRes val against: Int?) {
-    Today(R.string.rv_stats_today, R.string.rv_stats_nothing_today, R.string.rv_stats_vs_yesterday),
-    Week(R.string.rv_stats_week, R.string.rv_stats_nothing_week, R.string.rv_stats_vs_last_week),
+internal enum class RvStatsRange(@StringRes val label: Int, @StringRes val quiet: Int, val against: RvStatsAgainst?) {
+    Today(R.string.rv_stats_today, R.string.rv_stats_nothing_today, RvStatsAgainst(R.string.rv_stats_vs_yesterday, R.string.rv_a11y_stat_up, R.string.rv_a11y_stat_down)),
+    Week(R.string.rv_stats_week, R.string.rv_stats_nothing_week, RvStatsAgainst(R.string.rv_stats_vs_last_week, R.string.rv_a11y_stat_week_up, R.string.rv_a11y_stat_week_down)),
     Month(R.string.rv_stats_month, R.string.rv_stats_nothing_month, null),
 }
 
 /**
- * How 連線次數 and 分流比例 look in 本週 and 本月, where the app has no daily figures for them, for the owner to compare.
- * [Today] (recommended) keeps today's figures and adds 今天 to the card's name; [NoData] shows their empty state.
+ * What a range's change compares with: the [line] under the figure, and what a screen reader says for a rise ([up]) or a
+ * fall ([down]), which names the same period (q-a11y-wording).
  */
-internal enum class RvStatsGapLook { Today, NoData }
+@Immutable
+internal class RvStatsAgainst(@StringRes val line: Int, @StringRes val up: Int, @StringRes val down: Int)
 
 /** What the Score card reads: honk's `scoreState`, and each Score group's name and members. */
 @Immutable

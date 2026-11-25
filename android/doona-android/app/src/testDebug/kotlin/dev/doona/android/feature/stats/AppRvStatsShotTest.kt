@@ -9,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
@@ -16,8 +17,9 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.unit.Density
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.R
@@ -152,14 +154,13 @@ class AppRvStatsShotTest {
     @Config(qualifiers = WINDOW_EN)
     fun subscriptionEnLight() = shot("stats-sub-en", dark = false) { Page(::historyEngine, subscription = PICKED) }
 
-    /** The alternative for 連線次數 and 分流比例 in a longer range, for the owner to compare: their empty state. */
+    /** 本週 with the tiles paged on: 連線次數 in view with its 今天 tag (past days keep no flows). */
     @Test
     @Config(qualifiers = WINDOW)
-    fun weekNoDataLight() = shot("stats-week-nodata", dark = false) { Page(::historyEngine, RvStatsRange.Week, gap = RvStatsGapLook.NoData) }
-
-    @Test
-    @Config(qualifiers = WINDOW)
-    fun weekNoDataDark() = shot("stats-week-nodata", dark = true) { Page(::historyEngine, RvStatsRange.Week, gap = RvStatsGapLook.NoData) }
+    fun weekTilesPagedLight() = shot("stats-week-tiles", dark = false, before = {
+        compose.onNode(hasText(text(R.string.ui_upload)), useUnmergedTree = true).performTouchInput { swipeLeft() }
+        compose.waitForIdle()
+    }) { Page(::historyEngine, RvStatsRange.Week) }
 
     /** 本週 and 本月 say what 連線次數 and 分流比例 count (今天), and a picked subscription tags the traffic cards 全部訂閱. */
     @Test
@@ -173,8 +174,9 @@ class AppRvStatsShotTest {
         range = RvStatsRange.Week
         compose.waitForIdle()
         assertEquals("連線次數's and 分流比例's tags", 2, count(R.string.rv_stats_today))
-        // The delta is one line: the change, then what it compares with.
+        // The delta is one line: the change, then what it compares with; a screen reader hears the same week.
         assertEquals(1, count(R.string.rv_stats_vs_last_week, substring = true))
+        compose.onNode(hasContentDescription("較上週同時段", substring = true), useUnmergedTree = true).assertExists()
         range = RvStatsRange.Month
         compose.waitForIdle()
         assertEquals("a month compares with nothing", 0, count(R.string.rv_stats_vs_last_week, true) + count(R.string.rv_stats_vs_yesterday, true))
@@ -256,8 +258,9 @@ class AppRvStatsShotTest {
 
     private fun text(id: Int) = ApplicationProvider.getApplicationContext<Context>().getString(id)
 
-    private fun shot(screen: String, dark: Boolean, fontScale: Float = 1f, content: @Composable () -> Unit) {
+    private fun shot(screen: String, dark: Boolean, fontScale: Float = 1f, before: () -> Unit = {}, content: @Composable () -> Unit) {
         compose.rvContent(dark, fontScale, content = content)
+        before()
         compose.assertWhole()
         compose.drawFully()
         val variant = when {
@@ -272,22 +275,16 @@ class AppRvStatsShotTest {
 
     /**
      * The route on a view model with the sample's clock and zone, weeks from Monday (the sample day is a Sunday, so 本週
-     * is a whole week), and the chips at [range] and [subscription]. With a [gap] other than the route's, the page with
-     * that look on the same view model.
+     * is a whole week), and the chips at [range] and [subscription].
      */
     @Composable
-    private fun Page(engine: () -> Engine, range: RvStatsRange = RvStatsRange.Today, subscription: String? = null, gap: RvStatsGapLook = RvStatsGapLook.Today) {
+    private fun Page(engine: () -> Engine, range: RvStatsRange = RvStatsRange.Today, subscription: String? = null) {
         val vm = remember { StatsViewModel(engine(), clock = { SAMPLE_NOW }, zone = { ZoneOffset.UTC }, firstDay = { DayOfWeek.MONDAY }, work = Dispatchers.Unconfined) }
         LaunchedEffect(range, subscription) {
             vm.pickRange(range)
             vm.pickSubscription(subscription)
         }
-        if (gap == RvStatsGapLook.Today) {
-            StatsRoute(vm, onBack = {}, onOpenReport = {})
-        } else {
-            val state by vm.uiState.collectAsStateWithLifecycle()
-            RvStatsScreen(state, {}, {}, {}, {}, {}, {}, gap = gap)
-        }
+        StatsRoute(vm, onBack = {}, onOpenReport = {})
     }
 
     /**

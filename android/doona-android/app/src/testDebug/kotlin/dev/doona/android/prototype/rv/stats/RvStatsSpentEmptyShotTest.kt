@@ -24,7 +24,7 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * The 統計 page before the first byte of the day: 已用流量 draws its chart with the line along zero up to now (the owner's
  * pick A of owner-fix2 item 13), light, dark, fs115 and fs200 (`proto-rv-stats-empty-a-*`), in the window that holds the
- * whole page, as `proto-rv-stats-empty-v1-*` does. The tiles keep the default [RvStatsEmptyLook.Grid].
+ * whole page.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

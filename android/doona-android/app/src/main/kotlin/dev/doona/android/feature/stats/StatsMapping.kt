@@ -14,7 +14,6 @@ import dev.doona.android.feature.model.RvDay
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSplit
 import dev.doona.android.feature.model.RvSubscription
-import java.net.URI
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -55,6 +54,7 @@ internal fun rvStatsState(input: StatsInput, placeOf: (String) -> RvPlace = ::rv
         selectedId = input.catalog?.mainNodeId(),
         split = day?.let(::rvSplit),
         nowEpochMs = input.nowEpochMs,
+        nowHour = Instant.ofEpochMilli(input.nowEpochMs).atZone(input.zone).toLocalTime().toSecondOfDay().toFloat() / SECONDS_PER_HOUR,
         score = input.score?.let { rvStatsScore(it, input.catalog, nodes) },
         period = rvPeriod(input, today),
         // A subscription deleted since it was picked leaves the chip at all of them.
@@ -130,7 +130,6 @@ private fun rvSubscription(sub: Subscription) = RvSubscription(
     usedBytes = sub.usedBytes ?: 0L,
     totalBytes = sub.totalBytes ?: 0L,
     expiresAtEpochMs = sub.expiresAtEpochMs,
-    host = runCatching { URI(sub.url).host }.getOrNull().orEmpty(),
 )
 
 /** Every node of every group once, in catalog order; subgroups are left out. */
@@ -205,5 +204,6 @@ private fun flagCode(name: String): String? {
 private const val DIRECT = "direct"
 private const val DAYS_PER_WEEK = 7
 private const val SECONDS_PER_DAY = 86_400
+private const val SECONDS_PER_HOUR = 3_600
 private const val REGIONAL_A = 0x1F1E6
 private const val REGIONAL_Z = 0x1F1FF

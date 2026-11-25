@@ -20,7 +20,6 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
-import dev.doona.android.designsystem.rv.RV_GHOST_UP
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvChipPick
@@ -47,7 +46,8 @@ import java.text.NumberFormat
  * each figure comes from is noted on [RvStatsState], not on the page (N-14). With a Score group ([RvStatsState.score]), a
  * 綜合評分 card follows 延遲分布. The chips open menus of the subscriptions ([onSubscription], null for all) and of the
  * ranges ([onRange]); the tools test every node, update every subscription and open the export. A [banner] (a tool that
- * failed) heads the cards. In 本週 and 本月, [gap] says how 連線次數 and 分流比例 look, which have no daily figures.
+ * failed) heads the cards. In 本週 and 本月, 連線次數 and 分流比例 keep today's figures under a 今天 tag, since past days keep
+ * neither (owner, 2026-11-26 01:03, q-stats-rangegap A).
  */
 @Composable
 internal fun RvStatsScreen(
@@ -58,9 +58,7 @@ internal fun RvStatsScreen(
     onTestAll: () -> Unit,
     onUpdateAll: () -> Unit,
     onExport: () -> Unit,
-    empty: RvStatsEmptyLook = RvStatsEmptyLook.Grid,
     banner: RvNotice? = null,
-    gap: RvStatsGapLook = RvStatsGapLook.Today,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_stats_title)
@@ -68,14 +66,14 @@ internal fun RvStatsScreen(
         RvPageHeader(title, titleBlock, insets, control = { Chips(state, onSubscription, onRange) })
         RvGutter(banner = banner) { RvSpentCard(state) }
         Spacer(Modifier.height(RvSpace.cardGap))
-        DayTiles(state, empty, gap)
+        DayTiles(state)
         Spacer(Modifier.height(RvSpace.cardGap))
         RvGutter {
             RvQuotaCard(state.shownSubscriptions, state.nowEpochMs)
             RvNodeMapCard(state)
             RvLatencyCard(state)
             state.score?.let { RvScoreStatsCard(it) }
-            RvSplitCard(if (state.period != null && gap == RvStatsGapLook.NoData) null else state.split, splitScope(state, gap))
+            RvSplitCard(state.split, splitScope(state))
             RvToolsCard(tools(state, onTestAll, onUpdateAll, onExport))
         }
     }
@@ -99,21 +97,21 @@ private fun Chips(state: RvStatsState, onSubscription: (String?) -> Unit, onRang
  * 下載, 上傳 and 連線次數 as Revolut's paged half tiles: two side by side, as far apart as 活動's pair, and the third's edge
  * at the screen's edge, which says the row scrolls, and the pager's dots under them (owner, 2026-11-24 01:33). 下載 and
  * 上傳 are the range's bytes each way, by the hour today and by the day in 本週 and 本月; 連線次數 is the flows opened
- * today, which past days do not keep, so in a longer range its tag says 今天 or, as [gap] picks, it has no data.
+ * today, which past days do not keep, so in a longer range its tag says 今天.
  */
 @Composable
-private fun DayTiles(state: RvStatsState, empty: RvStatsEmptyLook, gap: RvStatsGapLook) {
+private fun DayTiles(state: RvStatsState) {
     val locale = LocalConfiguration.current.locales[0]
     val format = rememberRvFormat()
     val period = state.period
     val bytes = period?.days ?: state.today
     val slots = period?.slots ?: HOURS
     val quiet = stringResource(state.range.quiet)
-    val flows = state.today.connections.takeUnless { period != null && gap == RvStatsGapLook.NoData }
+    val flows = state.today.connections
     val count = flows?.sum()?.let { NumberFormat.getIntegerInstance(locale).format(it) }
     val tiles = listOf(
         RvDayTile(stringResource(R.string.ui_download), format.bytes(bytes.downTotal).figure(), bytes.down, Rv.colors.down.line, slots = slots, quiet = quiet),
-        RvDayTile(stringResource(R.string.ui_upload), format.bytes(bytes.upTotal).figure(), bytes.up, Rv.colors.up.line, ghost = RV_GHOST_UP, slots = slots, quiet = quiet),
+        RvDayTile(stringResource(R.string.ui_upload), format.bytes(bytes.upTotal).figure(), bytes.up, Rv.colors.up.line, slots = slots, quiet = quiet),
         RvDayTile(
             stringResource(R.string.rv_stats_connections),
             RvFigure(count ?: RV_NO_VALUE, ""),
@@ -134,7 +132,7 @@ private fun DayTiles(state: RvStatsState, empty: RvStatsEmptyLook, gap: RvStatsG
                 pageSize = PageSize.Fixed(width),
                 pageSpacing = RvSpace.tileGap,
                 verticalAlignment = Alignment.Top,
-            ) { page -> RvDayTileCard(tiles[page], empty = empty) }
+            ) { page -> RvDayTileCard(tiles[page]) }
             Spacer(Modifier.height(RvStatsSpace.dotsGap))
             RvStatsDots(tiles.size, pager.currentPage)
         }
@@ -146,8 +144,8 @@ private fun DayTiles(state: RvStatsState, empty: RvStatsEmptyLook, gap: RvStatsG
  * subscriptions while one is picked (bytes are not counted by subscription); empty when it follows them.
  */
 @Composable
-private fun splitScope(state: RvStatsState, gap: RvStatsGapLook): List<String> = listOfNotNull(
-    stringResource(R.string.rv_stats_today).takeIf { state.period != null && gap == RvStatsGapLook.Today },
+private fun splitScope(state: RvStatsState): List<String> = listOfNotNull(
+    stringResource(R.string.rv_stats_today).takeIf { state.period != null },
     stringResource(R.string.rv_stats_all_subscriptions).takeIf { state.subscriptionId != null },
 )
 
