@@ -10,14 +10,15 @@ publish = false
 
 [dependencies]
 anyhow = "1"
-# Stock honk main, linked without its default features, so without clash-api and axum. libsystemd is
-# an unconditional dependency of honk-core at this revision and is compiled but never called.
-# build.rs reads the honk-core rev for the report.
-honk-config = { git = "https://github.com/daeuniverse/honk", rev = "f7415d0ac505e330cf22bda562719d396e6b9a26" }
-honk-core = { git = "https://github.com/daeuniverse/honk", rev = "f7415d0ac505e330cf22bda562719d396e6b9a26", default-features = false }
+# honk main with the embedded engine and its DNS (items 03, 04 and 09, on the fork until they land
+# upstream), linked without its default features, so without clash-api and axum; `embedded` adds
+# `Engine::resolve_dns`. build.rs reads the honk-core rev for the report.
+honk-config = { git = "https://github.com/Zakkaus/honk", rev = "89663a216b8232d4e419ec91ac5d6b74adf6445e" }
+honk-core = { git = "https://github.com/Zakkaus/honk", rev = "89663a216b8232d4e419ec91ac5d6b74adf6445e", default-features = false, features = ["embedded"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.11"
+tokio = { version = "1", features = ["net", "rt", "time"] }
 tracing = "0.1"
 uuid = "1"
 tracing-subscriber = "0.3"

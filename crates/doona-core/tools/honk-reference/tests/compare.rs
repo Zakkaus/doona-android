@@ -1,5 +1,5 @@
-//! The comparison must fail on a wrong pin, a missing corpus file, an edited expected leaf and a
-//! wrong geo asset. The geo bundle is not in the repository: set HONK_REFERENCE_GEO to a directory
+//! The comparison must fail on a wrong pin, a missing corpus file, an edited expected leaf or DNS
+//! reply and a wrong geo asset. The geo bundle is not in the repository: set HONK_REFERENCE_GEO to a directory
 //! that `update_geo.py` staged from geo-pins.json.
 
 use std::fs;
@@ -32,8 +32,12 @@ fn scratch(name: &str) -> PathBuf {
 }
 
 fn check(corpus: &Path, geo: &Path, pins: &Path, expected: &Path) -> Output {
+    run("check", corpus, geo, pins, expected)
+}
+
+fn run(mode: &str, corpus: &Path, geo: &Path, pins: &Path, expected: &Path) -> Output {
     Command::new(env!("CARGO_BIN_EXE_doona-honk-reference"))
-        .arg("check")
+        .arg(mode)
         .arg(expected)
         .args(["--corpus"])
         .arg(corpus)
@@ -156,4 +160,46 @@ fn uncovered_geo_code_fails() {
         "{}",
         stderr(&output)
     );
+}
+
+fn dns_corpus() -> PathBuf {
+    corpus().join("dns")
+}
+
+fn dns_check(corpus: &Path, expected: &Path) -> Output {
+    run("dns-check", corpus, &geo(), &pins(), expected)
+}
+
+#[test]
+fn stored_dns_report_matches() {
+    let output = dns_check(&dns_corpus(), &dns_corpus().join("expected.json"));
+    assert!(output.status.success(), "{}", stderr(&output));
+}
+
+#[test]
+fn edited_dns_reply_fails() {
+    let text = fs::read_to_string(dns_corpus().join("expected.json")).unwrap();
+    // The CN answer's address, 192.0.2.1, as the last bytes of the first reply.
+    let edited = text.replacen("c0000201\"", "c0000209\"", 1);
+    assert_ne!(edited, text);
+    let path = scratch("edited-dns-reply").join("expected.json");
+    fs::write(&path, edited).unwrap();
+    let output = dns_check(&dns_corpus(), &path);
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains(".reply"), "{}", stderr(&output));
+}
+
+#[test]
+fn missing_dns_case_file_fails() {
+    let copy = scratch("missing-dns-case");
+    fs::create_dir_all(copy.join("cases")).unwrap();
+    fs::copy(dns_corpus().join("corpus.json"), copy.join("corpus.json")).unwrap();
+    fs::copy(
+        dns_corpus().join("cases/geosite-cn.dae"),
+        copy.join("cases/geosite-cn.dae"),
+    )
+    .unwrap();
+    let output = dns_check(&copy, &dns_corpus().join("expected.json"));
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("split.dae"), "{}", stderr(&output));
 }

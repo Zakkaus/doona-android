@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "name": "geosite-cn",
+      "config": "cases/geosite-cn.dae",
+      "upstreams": {
+        "alidns": "192.0.2.1",
+        "google": "192.0.2.2"
+      },
+      "queries": [
+        { "name": "cn", "qname": "baidu.com", "network": "udp", "server": null, "edns": null },
+        { "name": "other", "qname": "example.com", "network": "udp", "server": null, "edns": null }
+      ]
+    },
+    {
+      "name": "split",
+      "config": "cases/split.dae",
+      "upstreams": {
+        "addressed": "203.0.113.9",
+        "alidns": "192.0.2.1",
+        "google": "192.0.2.2"
+      },
+      "queries": [
+        { "name": "alternate", "qname": "www.alt.test", "network": "udp", "server": null, "edns": null },
+        { "name": "fallback-edns", "qname": "example.org", "network": "udp", "server": null, "edns": 1232 },
+        { "name": "fallback-tcp", "qname": "example.net", "network": "tcp", "server": null, "edns": null },
+        { "name": "reject", "qname": "x.ads.test", "network": "udp", "server": null, "edns": null },
+        { "name": "asis-addressed", "qname": "www.asis.test", "network": "udp", "server": "addressed", "edns": null },
+        { "name": "asis-virtual", "qname": "www.asis.test", "network": "tcp", "server": null, "edns": null }
+      ]
+    },
+    {
+      "name": "requery",
+      "config": "cases/split.dae",
+      "upstreams": {
+        "alidns": "192.0.2.1",
+        "google": "198.51.100.7"
+      },
+      "queries": [
+        { "name": "requeried", "qname": "example.com", "network": "udp", "server": null, "edns": null },
+        { "name": "kept", "qname": "www.alt.test", "network": "udp", "server": null, "edns": null }
+      ]
+    }
+  ]
+}

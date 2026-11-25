@@ -1,0 +1,147 @@
+{
+  "cases": [
+    {
+      "name": "geosite-cn",
+      "queries": [
+        {
+          "dialed": [
+            "alidns"
+          ],
+          "final_upstream": "alidns",
+          "name": "cn",
+          "rcode": 0,
+          "reply": "00008180000100010000000005626169647503636f6d0000010001c00c00010001000002580004c0000201",
+          "requery_history": [
+            "alidns"
+          ]
+        },
+        {
+          "dialed": [
+            "google"
+          ],
+          "final_upstream": "google",
+          "name": "other",
+          "rcode": 0,
+          "reply": "000081800001000100000000076578616d706c6503636f6d0000010001c00c00010001000002580004c0000202",
+          "requery_history": [
+            "google"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "split",
+      "queries": [
+        {
+          "dialed": [
+            "alidns"
+          ],
+          "final_upstream": "alidns",
+          "name": "alternate",
+          "rcode": 0,
+          "reply": "0000818000010001000000000377777703616c7404746573740000010001c00c00010001000002580004c0000201",
+          "requery_history": [
+            "alidns"
+          ]
+        },
+        {
+          "dialed": [
+            "google"
+          ],
+          "final_upstream": "google",
+          "name": "fallback-edns",
+          "rcode": 0,
+          "reply": "000081800001000100000000076578616d706c65036f72670000010001c00c00010001000002580004c0000202",
+          "requery_history": [
+            "google"
+          ]
+        },
+        {
+          "dialed": [
+            "google"
+          ],
+          "final_upstream": "google",
+          "name": "fallback-tcp",
+          "rcode": 0,
+          "reply": "000081800001000100000000076578616d706c65036e65740000010001c00c00010001000002580004c0000202",
+          "requery_history": [
+            "google"
+          ]
+        },
+        {
+          "dialed": [],
+          "final_upstream": null,
+          "name": "reject",
+          "rcode": 0,
+          "reply": "00008180000100000000000001780361647304746573740000010001",
+          "requery_history": []
+        },
+        {
+          "dialed": [
+            "addressed"
+          ],
+          "final_upstream": "asis",
+          "name": "asis-addressed",
+          "rcode": 0,
+          "reply": "00008180000100010000000003777777046173697304746573740000010001c00c00010001000002580004cb007109",
+          "requery_history": [
+            "asis"
+          ]
+        },
+        {
+          "dialed": [],
+          "final_upstream": null,
+          "name": "asis-virtual",
+          "rcode": 2,
+          "reply": "00008182000100000000000003777777046173697304746573740000010001",
+          "requery_history": []
+        }
+      ]
+    },
+    {
+      "name": "requery",
+      "queries": [
+        {
+          "dialed": [
+            "alidns",
+            "google"
+          ],
+          "final_upstream": "alidns",
+          "name": "requeried",
+          "rcode": 0,
+          "reply": "000081800001000100000000076578616d706c6503636f6d0000010001c00c00010001000002580004c0000201",
+          "requery_history": [
+            "google",
+            "alidns"
+          ]
+        },
+        {
+          "dialed": [
+            "alidns"
+          ],
+          "final_upstream": "alidns",
+          "name": "kept",
+          "rcode": 0,
+          "reply": "0000818000010001000000000377777703616c7404746573740000010001c00c00010001000002580004c0000201",
+          "requery_history": [
+            "alidns"
+          ]
+        }
+      ]
+    }
+  ],
+  "geo": [
+    {
+      "name": "geoip.dat",
+      "sha256": "d4ec4c5e5d5a38c1399964ea9fd8c94288426a3b31b483904b67819fc07f4466",
+      "version": "5f22a3b3371d1a489fb3d0df25d00db049a6a603"
+    },
+    {
+      "name": "geosite.dat",
+      "sha256": "06ca12228fbea293e003c68ab71e5071d3af7e491f972266fbc5466e531c4f70",
+      "version": "5f22a3b3371d1a489fb3d0df25d00db049a6a603"
+    }
+  ],
+  "honk_rev": "89663a216b8232d4e419ec91ac5d6b74adf6445e",
+  "version": 1
+}

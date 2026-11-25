@@ -15,6 +15,8 @@
 //! [`Engine::resolve_dns`]: honk_core::embedded::Engine::resolve_dns
 
 pub(crate) mod names;
+#[cfg(test)]
+mod reference;
 
 pub(crate) use crate::honkconf::runtime::Network;
 use crate::honkconf::runtime::Runtime;

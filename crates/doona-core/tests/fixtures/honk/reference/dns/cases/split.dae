@@ -1,0 +1,23 @@
+# An alternate upstream by suffix, a requery of google's 198.51.100.0/24 answers at alidns, an
+# ad reject and an `asis` name that goes where the app sent it.
+dns {
+    upstream {
+        alidns: 'udp://{alidns}' -> direct
+        google: 'udp://{google}' -> direct
+    }
+    routing {
+        request {
+            qname(suffix: ads.test) -> reject
+            qname(suffix: asis.test) -> asis
+            qname(suffix: alt.test) -> alidns
+            fallback: google
+        }
+        response {
+            upstream(google) && ip(198.51.100.0/24) -> alidns
+            fallback: accept
+        }
+    }
+}
+routing {
+    fallback: direct
+}

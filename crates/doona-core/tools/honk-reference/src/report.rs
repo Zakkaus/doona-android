@@ -4,6 +4,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::assets::Asset;
+use crate::dns;
 use crate::run::CaseReport;
 
 pub const REPORT_VERSION: u64 = 1;
@@ -15,6 +16,15 @@ pub struct Report {
     pub honk_rev: &'static str,
     pub geo: Vec<Asset>,
     pub cases: Vec<CaseReport>,
+}
+
+/// The DNS corpus's report: the same header, with one entry per DNS case.
+#[derive(Serialize)]
+pub struct DnsReport {
+    pub version: u64,
+    pub honk_rev: &'static str,
+    pub geo: Vec<Asset>,
+    pub cases: Vec<dns::CaseReport>,
 }
 
 /// Every place where `actual` differs from `expected`, as `path: expected X, got Y`.

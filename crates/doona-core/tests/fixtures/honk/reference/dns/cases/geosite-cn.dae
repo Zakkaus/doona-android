@@ -1,0 +1,17 @@
+# CN names to alidns through the generation's geosite, the rest to google.
+dns {
+    upstream {
+        alidns: 'udp://{alidns}' -> direct
+        google: 'udp://{google}' -> direct
+    }
+    routing {
+        request {
+            qname(geosite: cn) -> alidns
+            fallback: google
+        }
+    }
+}
+routing {
+    domain(geosite: cn) -> direct
+    fallback: direct
+}

@@ -1,9 +1,11 @@
-//! Stock honk as the reference for doona-core: loads each corpus case with honk's own loader,
-//! routes its probes through `Router::route_action` and resolves the leaf with `GroupManager`.
-//! No network, no daemon, no doona-core code.
+//! honk as the reference for doona-core: loads each corpus case with honk's own loader, routes
+//! its probes through `Router::route_action` and resolves the leaf with `GroupManager`; the DNS
+//! corpus goes through the embedded engine's `resolve_dns` against local upstreams. No network
+//! beyond loopback, no daemon, no doona-core code.
 
 mod assets;
 mod corpus;
+mod dns;
 mod report;
 mod run;
 
@@ -15,10 +17,10 @@ use anyhow::{Context, Result, bail, ensure};
 use tracing::{Event, Level, Subscriber, field::Field};
 use tracing_subscriber::{Layer, layer, prelude::*};
 
-use report::{REPORT_VERSION, Report};
+use report::{DnsReport, REPORT_VERSION, Report};
 
-const USAGE: &str = "usage: honk-reference (emit OUT.json | check EXPECTED.json) \
---corpus DIR --geo BUNDLE_DIR --geo-pins geo-pins.json";
+const USAGE: &str = "usage: honk-reference (emit OUT.json | check EXPECTED.json | \
+dns-emit OUT.json | dns-check EXPECTED.json) --corpus DIR --geo BUNDLE_DIR --geo-pins geo-pins.json";
 
 static GEO_FAILED: AtomicBool = AtomicBool::new(false);
 
@@ -41,6 +43,7 @@ impl<S: Subscriber> Layer<S> for GeoFailures {
 
 struct Args {
     check: bool,
+    dns: bool,
     file: PathBuf,
     corpus: PathBuf,
     geo: PathBuf,
@@ -49,13 +52,15 @@ struct Args {
 
 fn parse_args() -> Result<Args> {
     let mut args = std::env::args_os().skip(1);
-    let check = match args
+    let (check, dns) = match args
         .next()
         .and_then(|mode| mode.into_string().ok())
         .as_deref()
     {
-        Some("emit") => false,
-        Some("check") => true,
+        Some("emit") => (false, false),
+        Some("check") => (true, false),
+        Some("dns-emit") => (false, true),
+        Some("dns-check") => (true, true),
         _ => bail!(USAGE),
     };
     let file = PathBuf::from(args.next().context(USAGE)?);
@@ -71,6 +76,7 @@ fn parse_args() -> Result<Args> {
     }
     Ok(Args {
         check,
+        dns,
         file,
         corpus: corpus.context(USAGE)?,
         geo: geo.context(USAGE)?,
@@ -100,9 +106,24 @@ fn build(args: &Args) -> Result<Report> {
     })
 }
 
+fn build_dns(args: &Args) -> Result<DnsReport> {
+    let geo = assets::verify(&args.geo, &args.pins)?;
+    let corpus = dns::load(&args.corpus)?;
+    Ok(DnsReport {
+        version: REPORT_VERSION,
+        honk_rev: env!("HONK_PIN"),
+        geo,
+        cases: dns::run(&corpus, &args.corpus, &args.geo)?,
+    })
+}
+
 fn main() -> Result<()> {
     let args = parse_args()?;
-    let actual = serde_json::to_value(build(&args)?)?;
+    let actual = if args.dns {
+        serde_json::to_value(build_dns(&args)?)?
+    } else {
+        serde_json::to_value(build(&args)?)?
+    };
     if !args.check {
         let mut text = serde_json::to_string_pretty(&actual)?;
         text.push('\n');
