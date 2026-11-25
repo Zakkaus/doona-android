@@ -32,14 +32,14 @@ import dev.doona.android.designsystem.rv.RvSectionTitle
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.SEPARATOR
+import dev.doona.android.designsystem.rv.rvConfigPhrase
 import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RvImpact
 import dev.doona.android.feature.model.RvImpactGroup
 import dev.doona.android.feature.model.RvImpactRule
 import dev.doona.android.feature.model.RvTemplate
-import dev.doona.android.prototype.rv.config.rvConfigPhrase
-import dev.doona.android.prototype.rv.nodes.SEPARATOR
 
 /**
  * 範本 (the 策略 options row), doona web's routing modes on a phone: one card of templates, each its glyph, its name over

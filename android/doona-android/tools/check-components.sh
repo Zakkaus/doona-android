@@ -36,6 +36,8 @@ colour='Color\(0x|\b0x[0-9A-Fa-f]{8}\b|\bColor\.[A-Z]|MaterialTheme\.'
 style='TextStyle\(|\bfontSize\b|\bFontWeight\.'
 widget='(^|[^A-Za-z_.])(Text|BasicText|Icon|Image|IconButton|Switch|Button|TextButton|OutlinedButton|Card|Surface|TextField|OutlinedTextField|RadioButton|Checkbox|HorizontalDivider|Divider)\('
 click='(^|[^A-Za-z_])(clickable|selectable|toggleable|combinedClickable)[[:space:]]*[({]'
+# A class, object or interface of a widget's name (`data class Icon(`): a declaration, read past by the widget rule.
+declared='^[0-9]+:.*\b(class|interface)[[:space:]]+(Text|BasicText|Icon|Image|IconButton|Switch|Button|TextButton|OutlinedButton|Card|Surface|TextField|OutlinedTextField|RadioButton|Checkbox|HorizontalDivider|Divider)\('
 
 # Prints each line blanked when it is a comment line or an import, else up to its first `//` outside a string literal
 # (a `"` opens and closes one, `\` escapes the next character); a char literal is skipped whole, so `'"'` opens no
@@ -87,7 +89,8 @@ for f in $pages; do
     awk "$uncomment" "$f" > "$stripped"
     for rule in dp colour style widget click; do
         eval "pattern=\$$rule"
-        grep -nE "$pattern" "$stripped" | sed -E "s#^([0-9]+):#$rel:\1:$rule:#" || true
+        # A declaration is no call: `data class Icon(` names a type, it draws nothing.
+        grep -nE "$pattern" "$stripped" | { [ "$rule" = widget ] && grep -vE "$declared" || cat; } | sed -E "s#^([0-9]+):#$rel:\1:$rule:#" || true
     done
 done > "$hits"
 

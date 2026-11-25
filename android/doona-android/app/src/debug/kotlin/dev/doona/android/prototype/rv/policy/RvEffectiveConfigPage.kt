@@ -31,6 +31,7 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RvPolicyGroup
@@ -38,9 +39,8 @@ import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvRuleState
+import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.model.RvSubscription
-import dev.doona.android.prototype.rv.nodes.SEPARATOR
-import dev.doona.android.prototype.rv.settings.RvSettingsState
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 
 /**

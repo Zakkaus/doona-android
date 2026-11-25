@@ -2,7 +2,6 @@ package dev.doona.android.prototype.rv.settings
 
 import android.content.res.Configuration
 import android.content.res.Resources
-import androidx.annotation.StringRes
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -22,36 +21,12 @@ import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSettingsRadioCard
+import dev.doona.android.designsystem.rv.RvSettingsRadioRow
+import dev.doona.android.designsystem.rv.RvSettingsSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
-import java.util.Locale
-
-/** The app's languages, each named in itself, as a language list names them; [System] follows the phone's. */
-internal enum class RvLanguage(@StringRes val label: Int, val tag: String) {
-    System(R.string.rv_settings_theme_system, ""),
-    English(R.string.rv_language_english, "en"),
-    TraditionalChinese(R.string.rv_language_zh_hant, "zh-TW"),
-    SimplifiedChinese(R.string.rv_language_zh_hans, "zh-CN"),
-    ;
-
-    companion object {
-        /**
-         * The choice a per-app locale list ([tag]s as `LanguageSettings.languageTags` gives them) stands for: none is
-         * [System]; Chinese is Traditional when its script is Hant or its region Taiwan, Hong Kong or Macao, else
-         * Simplified; any other language shows the app's English.
-         */
-        fun of(tags: String): RvLanguage {
-            val first = tags.substringBefore(',').trim()
-            if (first.isEmpty()) return System
-            val locale = Locale.forLanguageTag(first)
-            if (locale.language != "zh") return English
-            val traditional = locale.script == "Hant" || (locale.script.isEmpty() && locale.country in TRADITIONAL_REGIONS)
-            return if (traditional) TraditionalChinese else SimplifiedChinese
-        }
-
-        private val TRADITIONAL_REGIONS = setOf("TW", "HK", "MO")
-    }
-}
+import dev.doona.android.feature.model.RvLanguage
 
 /** The language the phone's own setting gives the app: its first locale, as [RvLanguage.of] reads it; never [RvLanguage.System]. */
 internal fun rvSystemLanguage(): RvLanguage = RvLanguage.of(Resources.getSystem().configuration.locales.toLanguageTags()).let {

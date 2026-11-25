@@ -1,5 +1,8 @@
 package dev.doona.android.prototype.rv.settings
 
+import dev.doona.android.feature.model.RvAppPolicy
+import dev.doona.android.feature.model.RvPerApp
+
 /**
  * The sample's apps: generic names and packages, not a real phone's list, so the rows show the app disc's fallback
  * glyph. [saved] is 設定's sample: only the twelve checked apps take the tunnel.

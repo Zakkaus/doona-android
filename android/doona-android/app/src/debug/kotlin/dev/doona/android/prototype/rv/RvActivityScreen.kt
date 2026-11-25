@@ -71,6 +71,7 @@ import dev.doona.android.designsystem.rv.RvFloatingNav
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvHeader
 import dev.doona.android.designsystem.rv.RvHero
+import dev.doona.android.designsystem.rv.RvHeroSwipe
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvInline
 import dev.doona.android.designsystem.rv.RvLatencyChange
@@ -94,6 +95,7 @@ import dev.doona.android.designsystem.rv.RvSkeletonSeeAll
 import dev.doona.android.designsystem.rv.RvSkeletonTiles
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSparkTile
+import dev.doona.android.designsystem.rv.RvStatsDots
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.RvTileRow
@@ -103,6 +105,8 @@ import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rememberRvGlass
 import dev.doona.android.designsystem.rv.rvActionRowFit
 import dev.doona.android.designsystem.rv.rvGlassSource
+import dev.doona.android.designsystem.rv.rvHeroArt
+import dev.doona.android.designsystem.rv.rvMapPan
 import dev.doona.android.designsystem.rv.rvNavMiddle
 import dev.doona.android.designsystem.rv.rvPullBlur
 import dev.doona.android.designsystem.rv.rvShade
@@ -120,7 +124,6 @@ import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvRuleOutbound
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.fastest
-import dev.doona.android.prototype.rv.stats.RvStatsDots
 
 /**
  * The 活動 screen in Revolut's home structure (#11, #15): a header with the connection state, the download rate as the
