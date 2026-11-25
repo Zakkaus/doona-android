@@ -593,6 +593,70 @@
       ]
     },
     {
+      "name": "empty-and-dead-groups",
+      "config": "cases/empty-and-dead-groups.dae",
+      "health": [
+        {
+          "node": "n1",
+          "alive": false
+        },
+        {
+          "node": "n2",
+          "alive": false
+        }
+      ],
+      "probes": [
+        {
+          "name": "empty",
+          "domain": "x.empty.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "dead-select",
+          "domain": "x.select.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "dead-auto",
+          "domain": "x.auto.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "unmatched",
+          "domain": "x.other.org",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    {
+      "name": "unknown-outbound",
+      "config": "cases/unknown-outbound.dae",
+      "probes": [
+        {
+          "name": "missing",
+          "domain": "x.nowhere.test",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "name": "unmatched",
+          "domain": "x.other.org",
+          "dst_ip": "203.0.113.9",
+          "dst_port": 443,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    {
       "name": "mark-must",
       "config": "cases/mark-must.dae",
       "probes": [

@@ -51,7 +51,9 @@ pub struct Leaf {
     /// `node`, `direct`, `block` or `none` (a group without a selectable member).
     pub kind: &'static str,
     pub name: Option<String>,
-    /// Group and node names from the routed outbound down to the leaf.
+    /// Group and node names from the routed outbound down to the leaf, read after the selection.
+    /// It stops at a group with no formed member (loadbalance, a `final:` edge), so `kind` and
+    /// `name` are authoritative for the leaf.
     pub chain: Vec<String>,
 }
 
@@ -154,9 +156,11 @@ fn probe_report(probe: &Probe, router: &Router, groups: &GroupManager) -> ProbeR
 
 fn leaf(outbound: &str, domain: ProbeDomain, groups: &GroupManager) -> Leaf {
     if groups.get_group_policy(outbound).is_some() {
+        // The chain reads caches that the selection fills, so it comes second.
+        let selected = groups.select_node_for_domain(outbound, domain, IpVersion::V4);
         let chain = groups
             .selection_chain_for_network(outbound, SelectionNetwork::from_probe_domain(domain));
-        return match groups.select_node_for_domain(outbound, domain, IpVersion::V4) {
+        return match selected {
             Some(node) => Leaf {
                 kind: kind(node.id),
                 name: Some(node.name.clone()),

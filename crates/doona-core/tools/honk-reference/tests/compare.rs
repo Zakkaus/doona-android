@@ -70,18 +70,13 @@ fn stored_report_matches() {
 
 #[test]
 fn wrong_pin_fails() {
-    let pin = fs::read_to_string(manifest().join("Cargo.toml")).unwrap();
-    let rev = pin
-        .split("rev = \"")
-        .nth(1)
-        .unwrap()
-        .split('"')
-        .next()
-        .unwrap()
-        .to_owned();
-    let other = expected_with("wrong-pin", |text| {
-        text.replace(&rev, "63de98ba32f871ac6a779e7462a0a79f8a595153")
-    });
+    let pin = env!("HONK_PIN");
+    let flipped = format!(
+        "{}{}",
+        if pin.starts_with('0') { '1' } else { '0' },
+        &pin[1..]
+    );
+    let other = expected_with("wrong-pin", |text| text.replace(pin, &flipped));
     let output = check(&corpus(), &geo(), &pins(), &other);
     assert!(!output.status.success());
     assert!(stderr(&output).contains("honk_rev"), "{}", stderr(&output));
@@ -126,4 +121,39 @@ fn wrong_geo_pin_fails() {
     let output = check(&corpus(), &geo(), &path, &expected());
     assert!(!output.status.success());
     assert!(stderr(&output).contains("SHA-256"), "{}", stderr(&output));
+}
+
+#[test]
+fn uncovered_geo_code_fails() {
+    let dir = scratch("uncovered-geo");
+    fs::create_dir_all(dir.join("cases")).unwrap();
+    fs::write(
+        dir.join("corpus.json"),
+        r#"{"version": 1, "cases": [{"name": "c", "config": "cases/c.dae",
+            "probes": [{"name": "p", "domain": "a.test", "dst_ip": "203.0.113.9", "dst_port": 443, "protocol": "tcp"}]}]}"#,
+    )
+    .unwrap();
+    fs::write(
+        dir.join("cases/c.dae"),
+        "routing {\n    domain(geosite:no-such-code-anywhere) -> direct\n    fallback: direct\n}\n",
+    )
+    .unwrap();
+    let out = dir.join("out.json");
+    let output = Command::new(env!("CARGO_BIN_EXE_doona-honk-reference"))
+        .arg("emit")
+        .arg(&out)
+        .arg("--corpus")
+        .arg(&dir)
+        .arg("--geo")
+        .arg(geo())
+        .arg("--geo-pins")
+        .arg(pins())
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(
+        stderr(&output).contains("failed coverage"),
+        "{}",
+        stderr(&output)
+    );
 }
