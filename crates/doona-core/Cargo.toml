@@ -62,6 +62,9 @@ glob = "0.3"
 # Debug builds of the app only (its Gradle build turns this on for the debug variant):
 # `call("debugFault")` ends the running data path as a crash would (`src/api/fault.rs`).
 fault-hook = []
+# The on-device check of the embedded honk engine only (`-Pdoona.engineProbe=true` in the app's
+# Gradle build): exports `dev.doona.android.probe.EngineProbe.decide` (`src/engine_probe.rs`).
+engine-probe = []
 
 [dev-dependencies]
 # Paused time for the TCP drain tests: a 30 s deadline without waiting 30 s.

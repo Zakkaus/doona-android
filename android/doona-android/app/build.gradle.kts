@@ -41,15 +41,22 @@ val coreCheckout = MessageDigest.getInstance("SHA-256")
     .joinToString("") { "%02x".format(it.toInt() and 0xff) }
 val skipCore = providers.gradleProperty("doona.skipCore").orNull.toBoolean()
 val coreProfile = providers.gradleProperty("doona.coreProfile").getOrElse("release")
+// The on-device check of the embedded honk engine (app/src/androidTest): the debug core also exports
+// `EngineProbe.decide`, and the debug app installs as dev.doona.android.engineprobe beside the real one.
+val engineProbe = providers.gradleProperty("doona.engineProbe").orNull.toBoolean()
 
 androidComponents {
     onVariants { variant ->
         if (skipCore) return@onVariants
         // The debug variant's core also takes `call("debugFault")`, the fault the core-failure check uses; release has none.
-        val features = if (variant.buildType == "debug") listOf("--features", "fault-hook") else emptyList()
+        val features = when {
+            variant.buildType != "debug" -> emptyList()
+            engineProbe -> listOf("--features", "fault-hook,engine-probe")
+            else -> listOf("--features", "fault-hook")
+        }
         // One target directory per feature set: in a shared one, a build of the other set would overwrite the library
         // that cargo-ndk copies, and each switch between debug and release would rebuild the core.
-        val featureSet = if (features.isEmpty()) "core" else "core-fault-hook"
+        val featureSet = if (features.isEmpty()) "core" else "core-" + features[1].replace(',', '-')
         val targetDir = coreTarget.resolve("android/$coreCheckout/$featureSet")
         val buildCore = tasks.register<CargoNdk>("buildDoonaCore" + variant.name.replaceFirstChar { it.uppercase() }) {
             description = "Builds libdoonacore.so for arm64-v8a with cargo-ndk and checks its JNI exports."
@@ -147,12 +154,16 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters += "arm64-v8a"
         }
     }
 
     buildTypes {
+        debug {
+            if (engineProbe) applicationIdSuffix = ".engineprobe"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -216,6 +227,9 @@ dependencies {
     testImplementation(libs.roborazzi.compose)
     testImplementation(libs.roborazzi.junit.rule)
     testImplementation(libs.roborazzi.accessibility)
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
     debugImplementation(libs.compose.ui.test.manifest)
     debugImplementation(libs.compose.ui.tooling)
 }

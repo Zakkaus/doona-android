@@ -8,6 +8,8 @@ mod catalog;
 mod diag;
 mod dns;
 pub mod dto;
+#[cfg(feature = "engine-probe")]
+mod engine_probe;
 mod groups;
 pub mod honkconf;
 mod ids;
