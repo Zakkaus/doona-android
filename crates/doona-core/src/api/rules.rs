@@ -66,15 +66,41 @@ impl Core {
         Ok(())
     }
 
+    pub(super) fn set_dns_upstreams(
+        &self,
+        args: crate::dto::DnsUpstreamsArgs,
+    ) -> Result<(), ErrorCode> {
+        let servers =
+            crate::dns::parse_upstreams(&args.servers).ok_or(ErrorCode::InvalidArgument)?;
+        let _writer = lock(&self.writer);
+        if lock(&self.shared.catalog).state.dns_upstreams.as_ref() == Some(&servers) {
+            return Ok(());
+        }
+        let live = Arc::from(servers.as_slice());
+        let mut next = lock(&self.shared.catalog).state.clone();
+        next.dns_upstreams = Some(servers);
+        self.write(&next, "setDnsUpstreams", None)?;
+        {
+            let mut c = lock(&self.shared.catalog);
+            c.state = next;
+            self.dns_upstreams.send_replace(live);
+        }
+        self.store.sync();
+        Ok(())
+    }
+
     /// `effectiveConfig`: the mode, where DNS goes, the rules' provenance and the rules as text.
     pub(super) fn effective_config(&self, args: &str) -> Result<String, ErrorCode> {
         let Empty {} = parse(args)?;
-        let (catalog, policy) = {
+        let (catalog, policy, upstreams) = {
             let c = lock(&self.shared.catalog);
-            (c.model.catalog(&c.state), Arc::clone(&c.model.policy))
+            (
+                c.model.catalog(&c.state),
+                Arc::clone(&c.model.policy),
+                Arc::clone(&self.dns_upstreams.borrow()),
+            )
         };
-        let upstreams = &self.options.dns_upstreams;
-        let config = effective(catalog, &policy, upstreams, MAX_TEXT);
+        let config = effective(catalog, &policy, &upstreams, MAX_TEXT);
         Ok(to_json(&Reply::Ok(config)))
     }
 }

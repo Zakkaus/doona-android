@@ -13,6 +13,10 @@
     <string name="vpn_drop_revoked">其他 VPN App 或系統設定關閉了 VPN。</string>
     <string name="vpn_failure_no_allowed_apps">清單中的 App 都沒有安裝。</string>
     <string name="vpn_failure_start_failed">無法啟動 VPN。</string>
+    <string name="vpn_start_blocked_title">VPN 無法連線</string>
+    <string name="vpn_failure_foreground_refused">Android 不允許 doona 在背景啟動 VPN。請開啟 doona 後重試。</string>
     <string name="vpn_failure_core_stopped">連線意外中斷。</string>
     <string name="vpn_failure_incompatible_core">VPN 核心與這個版本的 doona 不相容。</string>
+    <string name="vpn_failure_lockdown_enabled">已開啟「封鎖沒有 VPN 的連線」，doona 目前無法在此模式下運作。請在系統 VPN 設定中關閉此選項。</string>
+    <string name="vpn_failure_not_established">Android 未建立 VPN 連線。請開啟 doona 後重新連線。</string>
 </resources>

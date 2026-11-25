@@ -6,6 +6,7 @@
 
 use crate::dto::GroupKind;
 use crate::ids::group_id;
+use crate::regions::{TEMPLATE, template_region};
 use std::collections::BTreeMap;
 
 pub(crate) const PROXY: &str = "Proxy";
@@ -22,83 +23,26 @@ pub(crate) struct GroupDef {
     pub members: Vec<String>,
 }
 
-/// How a region shows in node names: its codes as words (`HK`, `hk01`), its flag, and its
-/// names in Chinese and English (compared in lower case).
-struct Region {
-    name: &'static str,
-    codes: &'static [&'static str],
-    flag: &'static str,
-    words: &'static [&'static str],
-}
-
-/// The regions with a group, in template order. Names matching none get no region group.
-const REGIONS: [Region; 6] = [
-    Region {
-        name: "HK",
-        codes: &["HK", "HKG"],
-        flag: "🇭🇰",
-        words: &["香港", "hong kong", "hongkong"],
-    },
-    Region {
-        name: "TW",
-        codes: &["TW", "TWN"],
-        flag: "🇹🇼",
-        words: &["台湾", "臺灣", "台灣", "台北", "taiwan", "taipei"],
-    },
-    Region {
-        name: "JP",
-        codes: &["JP", "JPN"],
-        flag: "🇯🇵",
-        words: &["日本", "东京", "東京", "大阪", "japan", "tokyo", "osaka"],
-    },
-    Region {
-        name: "SG",
-        codes: &["SG", "SGP"],
-        flag: "🇸🇬",
-        words: &["新加坡", "狮城", "獅城", "singapore"],
-    },
-    Region {
-        name: "US",
-        codes: &["US", "USA"],
-        flag: "🇺🇸",
-        words: &[
-            "美国",
-            "美國",
-            "洛杉矶",
-            "洛杉磯",
-            "硅谷",
-            "西雅图",
-            "united states",
-            "los angeles",
-            "seattle",
-            "silicon valley",
-        ],
-    },
-    Region {
-        name: "KR",
-        codes: &["KR", "KOR"],
-        flag: "🇰🇷",
-        words: &["韩国", "韓國", "首尔", "首爾", "korea", "seoul"],
-    },
-];
-
 /// The groups over `nodes` (id and display name, in feed order); none without nodes.
 pub(crate) fn template(nodes: &[(&str, &str)]) -> Vec<GroupDef> {
     if nodes.is_empty() {
         return Vec::new();
     }
     let all: Vec<String> = nodes.iter().map(|(id, _)| (*id).to_owned()).collect();
-    let tags: Vec<Option<&str>> = nodes.iter().map(|(_, name)| region_of(name)).collect();
-    let regions: Vec<GroupDef> = REGIONS
+    let tags: Vec<Option<&str>> = nodes
         .iter()
+        .map(|(_, name)| template_region(name))
+        .collect();
+    let regions: Vec<GroupDef> = TEMPLATE
+        .into_iter()
         .filter_map(|region| {
             let members: Vec<String> = all
                 .iter()
                 .zip(&tags)
-                .filter(|(_, tag)| **tag == Some(region.name))
+                .filter(|(_, tag)| **tag == Some(region))
                 .map(|(id, _)| id.clone())
                 .collect();
-            (!members.is_empty()).then(|| score(region.name, members))
+            (!members.is_empty()).then(|| score(region, members))
         })
         .collect();
     let mut proxy = vec![group_id(AUTO)];
@@ -133,33 +77,6 @@ fn score(name: &str, members: Vec<String>) -> GroupDef {
         kind: GroupKind::Score,
         members,
     }
-}
-
-/// The first region, in template order, that `name` mentions.
-fn region_of(name: &str) -> Option<&'static str> {
-    let lower = name.to_lowercase();
-    let codes = codes(name);
-    REGIONS
-        .iter()
-        .find(|r| {
-            lower.contains(r.flag)
-                || r.words.iter().any(|w| lower.contains(w))
-                || codes.iter().any(|c| r.codes.contains(&c.as_str()))
-        })
-        .map(|r| r.name)
-}
-
-/// The letters of each ASCII alphanumeric run made of letters then digits (`HK`, `hk01`, `JP2`),
-/// upper-cased. Runs that mix them otherwise (`4K`, `v2ray`) are not codes, and a code inside a
-/// longer word (`Plus`) is not a run of its own.
-fn codes(name: &str) -> Vec<String> {
-    name.split(|c: char| !c.is_ascii_alphanumeric())
-        .filter_map(|run| {
-            let letters = run.trim_end_matches(|c: char| c.is_ascii_digit());
-            (!letters.is_empty() && letters.bytes().all(|b| b.is_ascii_alphabetic()))
-                .then(|| letters.to_ascii_uppercase())
-        })
-        .collect()
 }
 
 /// The member `group` sends traffic to, and whether the user chose it: a pin that is still a
@@ -224,8 +141,13 @@ mod tests {
             ("v2ray relay", None),
             ("Remaining: 10 GB", None),
             ("🇩🇪 Frankfurt", None),
+            ("TWN", Some("TW")),
+            ("Silicon Valley", Some("US")),
+            ("🇯🇵 via 🇭🇰", Some("HK")),
+            ("TokyoExpress", Some("JP")),
+            ("LAX / NYC", None),
         ] {
-            assert_eq!(region_of(name), region, "{name}");
+            assert_eq!(template_region(name), region, "{name}");
         }
     }
 

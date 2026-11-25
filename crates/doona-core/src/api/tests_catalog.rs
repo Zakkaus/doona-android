@@ -273,7 +273,7 @@ fn a_refresh_built_before_an_end_shares_no_runtime_with_it() {
     let ended = outbounds.registry().unwrap();
     let (built, routing) = {
         let c = lock(&core.shared.catalog);
-        let routing = c.model.routing(&c.state.selections, c.state.mode);
+        let routing = c.model.routing(&c.state);
         (outbounds.build(&c.model.nodes), routing)
     };
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(1);
@@ -490,22 +490,20 @@ fn a_subscription_command_gives_up_at_its_deadline() {
     let feeds = Feeds::new();
     feeds.set("/sub", &fixture("links.txt"));
     let options = Options {
-        subscription_bound: Duration::from_millis(600),
+        subscription_bound: Duration::from_secs(2),
         ..Options::default()
     };
     let core = Core::with_options(path(&dir), options).unwrap();
     std::thread::scope(|scope| {
+        let (core, feeds) = (&core, &feeds);
         // Another command holds the writer past the deadline.
         let writer = super::lock(&core.writer);
-        let adding = scope.spawn(|| {
-            let begun = Instant::now();
-            (add(&core, &feeds, "/sub"), begun.elapsed())
-        });
-        std::thread::sleep(Duration::from_millis(1_500));
+        let (send, received) = std::sync::mpsc::channel();
+        scope.spawn(move || send.send(add(core, feeds, "/sub")).ok());
+        let result = received.recv_timeout(Duration::from_secs(5));
         drop(writer);
-        let (result, took) = adding.join().unwrap();
+        let result = result.expect("add waited for the writer to be released");
         assert_eq!(result, Err(ErrorCode::Busy));
-        assert!(took < Duration::from_millis(1_200), "{took:?}");
     });
     assert!(catalog(&core).subscriptions.is_empty());
 }

@@ -79,7 +79,7 @@ impl Score {
             let old = previous.and_then(|p| p.entries.get(&id));
             if !old.is_some_and(|e| e.node.name == node.name && e.node.address == node.address) {
                 self.alive
-                    .register_node(id, node.name.clone(), node.address.clone());
+                    .register_node(id, node.name.clone(), Some(node.address.clone()));
             }
         }
         if let Some(previous) = previous {
@@ -94,19 +94,14 @@ impl Score {
         self.manager.publish_score_membership();
     }
 
-    pub fn selected(&self, group: &str) -> Option<&str> {
-        match self
-            .manager
-            .peek_selection(group, SelectionNetwork::Tcp)?
-            .member
-        {
+    pub fn selected(&self, group: &str, network: SelectionNetwork) -> Option<&str> {
+        match self.manager.peek_selection(group, network)?.member {
             GroupMember::Node(n) => Some(&self.entries[&n.id].id),
             GroupMember::Group(g) => Some(&g.name),
         }
     }
 
-    pub fn pin(&self, group: &str, member: Option<SelectorMember>) {
-        let networks = SelectorNetworks::Both;
+    pub fn pin(&self, group: &str, member: Option<SelectorMember>, networks: SelectorNetworks) {
         match member {
             Some(m) => self.manager.publish_override(group, &m, networks),
             None => self.manager.clear_override(group, networks),

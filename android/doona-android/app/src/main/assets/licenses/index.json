@@ -1,0 +1,5701 @@
+{
+  "schema": 2,
+  "components": [
+    {
+      "kind": "artwork",
+      "name": "Inter",
+      "version": "4.001",
+      "license": "OFL-1.1",
+      "bodies": [
+        "OFL-1.1"
+      ],
+      "source": "https://github.com/rsms/inter",
+      "attribution": [
+        "Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)"
+      ],
+      "notice": "Latin subset, fixed weights and optical sizes.",
+      "extras": [
+        {
+          "file": "inter-OFL.txt",
+          "text": "5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "artwork",
+      "name": "Material Symbols Rounded",
+      "version": "10ecc14790612ca8fd164e3f4ffe9c16fc50d5b7",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/google/material-design-icons",
+      "attribution": [
+        "Copyright Google LLC. From google/material-design-icons at commit"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "NOTICE",
+          "text": "bf8e2ee14abe37650f7bfc63877fe6160b87103565f8797a0495f4315aaa912f",
+          "comment": "Upstream NOTICE; retain with this component."
+        }
+      ]
+    },
+    {
+      "kind": "artwork",
+      "name": "Noto Sans TC",
+      "version": "@fontsource-variable/noto-sans-tc 5.3.0",
+      "license": "OFL-1.1",
+      "bodies": [
+        "OFL-1.1"
+      ],
+      "source": "https://fontsource.org/fonts/noto-sans-tc",
+      "attribution": [
+        "Google Inc."
+      ],
+      "notice": "Subset and fixed-weight instances. Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.",
+      "extras": [
+        {
+          "file": "noto-sans-tc-OFL.txt",
+          "text": "18aabf190848725e2576eefb5c29ba06aac1029d02132252a7f312eac2e50cf3",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "artwork",
+      "name": "circle-flags",
+      "version": "379588b5da95482d6bbf10bd45644a35b0609ea6",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://github.com/HatScripts/circle-flags",
+      "attribution": [
+        "Copyright (c) 2026 HatScripts",
+        "Copyright (c) 2026 HatScripts. From HatScripts/circle-flags at commit"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "NOTICE",
+          "text": "75767e53e6d21a2af55621f37a521e1974824a94d3dff655ec7b9be78aadd0cd",
+          "comment": "Upstream NOTICE; retain with this component."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "aead",
+      "version": "0.6.1",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/aead/0.6.1",
+      "attribution": [
+        "Copyright (c) 2019-2026 The RustCrypto Project Developers",
+        "Copyright (c) 2019 MobileCoin, LLC"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "aes",
+      "version": "0.9.4",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/aes/0.9.4",
+      "attribution": [
+        "Copyright (c) 2018-2024 The RustCrypto Project Developers",
+        "Copyright (c) 2018 Artyom Pavlov"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "aes-gcm",
+      "version": "0.11.1",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/aes-gcm/0.11.1",
+      "attribution": [
+        "Copyright (c) 2019-2026 The RustCrypto Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "aho-corasick",
+      "version": "1.1.5",
+      "license": "Unlicense OR MIT",
+      "bodies": [
+        "MIT",
+        "Unlicense"
+      ],
+      "source": "https://crates.io/crates/aho-corasick/1.1.5",
+      "attribution": [
+        "Copyright (c) 2015 Andrew Gallant"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "COPYING",
+          "text": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "alloc-no-stdlib",
+      "version": "3.0.0",
+      "license": "BSD-3-Clause",
+      "bodies": [
+        "BSD-3-Clause"
+      ],
+      "source": "https://crates.io/crates/alloc-no-stdlib/3.0.0",
+      "attribution": [
+        "Copyright (c) 2016 Dropbox, Inc.",
+        "All rights reserved."
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "alloc-stdlib",
+      "version": "0.3.0",
+      "license": "BSD-3-Clause",
+      "bodies": [
+        "BSD-3-Clause"
+      ],
+      "source": "https://crates.io/crates/alloc-stdlib/0.3.0",
+      "attribution": [
+        "Copyright (c) 2016 Dropbox, Inc.",
+        "All rights reserved."
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "android_log-sys",
+      "version": "0.3.2",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/android_log-sys/0.3.2",
+      "attribution": [
+        "Copyright 2016 The android_log_sys Developers",
+        "Copyright (c) 2016 The android_log_sys Developers"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "4d4c32b31308f5a992434c2cf948205852bb2c7bb85cea4c1ab051f41a3eefb3",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "android_logger",
+      "version": "0.15.1",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/android_logger/0.15.1",
+      "attribution": [
+        "Copyright 2016 The android_logger Developers",
+        "Copyright (c) 2016 The android_logger Developers"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "99938c5864dd33decb62ab20fd883a9b00181d768ae887a4f19b2d0015c41dc9",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "android_system_properties",
+      "version": "0.1.6",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/android_system_properties/0.1.6",
+      "attribution": [
+        "Copyright 2016 Nicolas Silva",
+        "Copyright (c) 2013 Nicolas Silva"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "216486f29671a4262efe32af6d84a75bef398127f8c5f369b5c8305983887a06",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "anyhow",
+      "version": "1.0.104",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/anyhow/1.0.104",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "arrayvec",
+      "version": "0.7.8",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/arrayvec/0.7.8",
+      "attribution": [
+        "Copyright (c) Ulrik Sverdrup \"bluss\" 2015-2023"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "assert_matches",
+      "version": "1.5.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/assert_matches/1.5.0",
+      "attribution": [
+        "Copyright (c) 2016 Murarth"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "atomic-waker",
+      "version": "1.1.2",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/atomic-waker/1.1.2",
+      "attribution": [
+        "Copyright (c) 2016 Alex Crichton",
+        "Copyright (c) 2017 The Tokio Authors"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-THIRD-PARTY",
+          "text": "6226d0632e2e1a80c23597e964da9812ae193c535fe058154afb034e94167aa5",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "aya",
+      "version": "0.16.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/aya/0.16.0",
+      "attribution": [
+        "Copyright 2021 Alessandro Decina",
+        "Copyright (c) 2021 Alessandro Decina"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "aya-ebpf-bindings",
+      "version": "0.3.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/aya-ebpf-bindings/0.3.0",
+      "attribution": [
+        "Copyright (c) 2021 Alessandro Decina"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "aya-ebpf-cty",
+      "version": "0.4.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/aya-ebpf-cty/0.4.0",
+      "attribution": [
+        "Copyright (c) 2017 Jorge Aparicio"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "aya-obj",
+      "version": "0.6.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/aya-obj/0.6.0",
+      "attribution": [
+        "Copyright 2021 Alessandro Decina",
+        "Copyright (c) 2021 Alessandro Decina"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "base64",
+      "version": "0.23.1",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/base64/0.23.1",
+      "attribution": [
+        "Copyright (c) 2025 Alice Maz, Marshall Pierce"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "bitflags",
+      "version": "2.13.2",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/bitflags/2.13.2",
+      "attribution": [
+        "Copyright (c) 2014 The Rust Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "blake3",
+      "version": "1.8.7",
+      "license": "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception",
+      "bodies": [
+        "Apache-2.0",
+        "CC0-1.0",
+        "LLVM-exception"
+      ],
+      "source": "https://crates.io/crates/blake3/1.8.7",
+      "attribution": [
+        "   Copyright 2019 Jack O'Connor and Samuel Neves",
+        "    Copyright 2019 Jack O'Connor and Samuel Neves"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE_A2LLVM",
+          "text": "a5695f57ea0c221e0e8b7d784ff774c35e88c3d3270353646a925880bb3492cc",
+          "comment": "Upstream includes additional text after the Apache-2.0 body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "block-buffer",
+      "version": "0.12.1",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/block-buffer/0.12.1",
+      "attribution": [
+        "Copyright (c) 2018-2025 The RustCrypto Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "boring",
+      "version": "5.2.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://crates.io/crates/boring/5.2.0",
+      "attribution": [
+        "Copyright 2011-2017 Google Inc.",
+        "          2013 Jack Lloyd",
+        "          2013-2014 Steven Fackler",
+        "          2020 Ivan Nikulin <ifaaan@gmail.com>"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "48e488ce333f8a1e86a68b2a1df454464037f1ff580b5bff926053c56dbadc2d",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "boring-sys",
+      "version": "5.2.0",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://github.com/Glassyiris/boring-sys/tree/3beb573b65ecaa69b7eefe3c2fecd074b97facd2",
+      "attribution": [
+        "Copyright (c) 2014 Alex Crichton",
+        "Copyright (c) 2020 Ivan Nikulin <ifaaan@gmail.com>"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "brotli",
+      "version": "9.1.3",
+      "license": "BSD-3-Clause AND MIT",
+      "bodies": [
+        "BSD-3-Clause",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/brotli/9.1.3",
+      "attribution": [
+        "Copyright (c) 2016 Dropbox, Inc.",
+        "All rights reserved.",
+        "Copyright (c) 2009, 2010, 2013-2016 by the Brotli Authors."
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "brotli-decompressor",
+      "version": "6.3.2",
+      "license": "BSD-3-Clause OR MIT",
+      "bodies": [
+        "BSD-3-Clause",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/brotli-decompressor/6.3.2",
+      "attribution": [
+        "Copyright (c) 2016 Dropbox, Inc.",
+        "All rights reserved."
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "bytes",
+      "version": "1.12.2",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/bytes/1.12.2",
+      "attribution": [
+        "Copyright (c) 2018 Carl Lerche"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "cfg-if",
+      "version": "1.0.5",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/cfg-if/1.0.5",
+      "attribution": [
+        "Copyright (c) 2014 Alex Crichton"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "chacha20",
+      "version": "0.10.2",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/chacha20/0.10.2",
+      "attribution": [
+        "Copyright (c) 2019-2026 The RustCrypto Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "chacha20poly1305",
+      "version": "0.11.0",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/chacha20poly1305/0.11.0",
+      "attribution": [
+        "Copyright (c) 2019-2026 The RustCrypto Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "chrono",
+      "version": "0.4.45",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/chrono/0.4.45",
+      "attribution": [
+        "Copyright (c) 2014, Kang Seonghoon."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE.txt",
+          "text": "946c9835d8034d24404f8cfec5f4654cee5dad17e944afc3d06d742cf2882831",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "cipher",
+      "version": "0.5.2",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/cipher/0.5.2",
+      "attribution": [
+        "Copyright (c) 2016-2025 RustCrypto Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "cmov",
+      "version": "0.5.4",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/cmov/0.5.4",
+      "attribution": [
+        "Copyright (c) 2022-2026 The RustCrypto Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "combine",
+      "version": "4.6.9",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/combine/4.6.9",
+      "attribution": [
+        "Copyright (c) 2015 Markus Westerlind"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "const-oid",
+      "version": "0.10.3",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/const-oid/0.10.3",
+      "attribution": [
+        "Copyright (c) 2020-2026 The RustCrypto Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "constant_time_eq",
+      "version": "0.4.2",
+      "license": "CC0-1.0 OR MIT-0 OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "CC0-1.0",
+        "MIT-0"
+      ],
+      "source": "https://crates.io/crates/constant_time_eq/0.4.2",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        },
+        {
+          "file": "LICENSE-MIT0",
+          "text": "9a3aeb3f63659c4c6302d315e1d98784d1e8559858a47ff9562e091bb922d28d",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "cpubits",
+      "version": "0.1.1",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/cpubits/0.1.1",
+      "attribution": [
+        "Copyright (c) 2023-2026 The RustCrypto Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "cpufeatures",
+      "version": "0.3.1",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/cpufeatures/0.3.1",
+      "attribution": [
+        "Copyright (c) 2020-2026 The RustCrypto Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "crc32fast",
+      "version": "1.5.5",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/crc32fast/1.5.5",
+      "attribution": [
+        "Copyright (c) 2018 Sam Rijs, Alex Crichton and contributors"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "crypto-common",
+      "version": "0.2.2",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/crypto-common/0.2.2",
+      "attribution": [
+        "Copyright (c) 2021-2026 RustCrypto Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "ctr",
+      "version": "0.10.1",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/ctr/0.10.1",
+      "attribution": [
+        "Copyright (c) 2018-2022 RustCrypto Developers",
+        "Copyright (c) 2018 Artyom Pavlov"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "ctutils",
+      "version": "0.4.8",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/ctutils/0.4.8",
+      "attribution": [
+        "Copyright (c) 2025-2026 The RustCrypto Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "data-encoding",
+      "version": "2.11.1",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/data-encoding/2.11.1",
+      "attribution": [
+        "Copyright (c) 2015-2020 Julien Cretin",
+        "Copyright (c) 2017-2020 Google Inc."
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "digest",
+      "version": "0.11.3",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/digest/0.11.3",
+      "attribution": [
+        "Copyright (c) 2017-2025 RustCrypto Developers",
+        "Copyright (c) 2017 Artyom Pavlov"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "env_filter",
+      "version": "0.1.4",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/env_filter/0.1.4",
+      "attribution": [
+        "Copyright (c) Individual contributors"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "equivalent",
+      "version": "1.0.3",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/equivalent/1.0.3",
+      "attribution": [
+        "Copyright (c) 2016--2023"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "errno",
+      "version": "0.3.15",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/errno/0.3.15",
+      "attribution": [
+        "Copyright (c) 2014 Chris Wong"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "fastbloom",
+      "version": "0.17.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/fastbloom/0.17.0",
+      "attribution": [
+        "Copyright (c) 2023 Thomas Pendock"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "7cde763ba32b3ec2a84eddd8beb0dcb895fd6436aeb18491ab9572a7eb8de996",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "fnv",
+      "version": "1.0.7",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/fnv/1.0.7",
+      "attribution": [
+        "Copyright (c) 2017 Contributors"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "foldhash",
+      "version": "0.2.0",
+      "license": "Zlib",
+      "bodies": [
+        "Zlib"
+      ],
+      "source": "https://crates.io/crates/foldhash/0.2.0",
+      "attribution": [
+        "Copyright (c) 2024 Orson Peters"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "foreign-types",
+      "version": "0.5.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/foreign-types/0.5.0",
+      "attribution": [
+        "Copyright (c) 2017 The foreign-types Developers"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "foreign-types-shared",
+      "version": "0.3.1",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/foreign-types-shared/0.3.1",
+      "attribution": [
+        "Copyright (c) 2017 The foreign-types Developers"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "form_urlencoded",
+      "version": "1.2.3",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/form_urlencoded/1.2.3",
+      "attribution": [
+        "Copyright (c) 2013-2016 The rust-url developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "futures-core",
+      "version": "0.3.34",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/futures-core/0.3.34",
+      "attribution": [
+        "Copyright (c) 2016 Alex Crichton",
+        "Copyright (c) 2017 The Tokio Authors"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "futures-sink",
+      "version": "0.3.34",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/futures-sink/0.3.34",
+      "attribution": [
+        "Copyright (c) 2016 Alex Crichton",
+        "Copyright (c) 2017 The Tokio Authors"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "futures-task",
+      "version": "0.3.34",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/futures-task/0.3.34",
+      "attribution": [
+        "Copyright (c) 2016 Alex Crichton",
+        "Copyright (c) 2017 The Tokio Authors"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "futures-util",
+      "version": "0.3.34",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/futures-util/0.3.34",
+      "attribution": [
+        "Copyright (c) 2016 Alex Crichton",
+        "Copyright (c) 2017 The Tokio Authors"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "getrandom",
+      "version": "0.2.17",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/getrandom/0.2.17",
+      "attribution": [
+        "Copyright (c) 2018-2024 The rust-random Project Developers",
+        "Copyright (c) 2014 The Rust Project Developers"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "aaff376532ea30a0cd5330b9502ad4a4c8bf769c539c87ffe78819d188a18ebf",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "getrandom",
+      "version": "0.4.3",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/getrandom/0.4.3",
+      "attribution": [
+        "Copyright (c) 2018-2026 The rust-random Project Developers",
+        "Copyright (c) 2014 The Rust Project Developers"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "aaff376532ea30a0cd5330b9502ad4a4c8bf769c539c87ffe78819d188a18ebf",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "ghash",
+      "version": "0.6.0",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/ghash/0.6.0",
+      "attribution": [
+        "Copyright (c) 2019-2026 The RustCrypto Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "glob",
+      "version": "0.3.4",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/glob/0.3.4",
+      "attribution": [
+        "Copyright (c) 2014 The Rust Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "h2",
+      "version": "0.4.20",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/h2/0.4.20",
+      "attribution": [
+        "Copyright (c) 2017 h2 authors"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "hashbrown",
+      "version": "0.17.2",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/hashbrown/0.17.2",
+      "attribution": [
+        "Copyright (c) 2016 Amanieu d'Antras"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "hkdf",
+      "version": "0.13.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/hkdf/0.13.0",
+      "attribution": [
+        "Copyright (c) 2015-2018 Vlad Filippov",
+        "Copyright (c) 2018-2021 RustCrypto Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "hmac",
+      "version": "0.13.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/hmac/0.13.0",
+      "attribution": [
+        "Copyright (c) 2017 Artyom Pavlov"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "honk-config",
+      "version": "0.1.0",
+      "license": "GPL-3.0-only",
+      "bodies": [
+        "GPL-3.0-only"
+      ],
+      "source": "https://github.com/daeuniverse/honk/tree/63de98ba32f871ac6a779e7462a0a79f8a595153",
+      "attribution": [
+        " Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>",
+        "    Copyright (C) <year>  <name of author>"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "honk-ebpf-common",
+      "version": "0.1.0",
+      "license": "GPL-3.0-only",
+      "bodies": [
+        "GPL-3.0-only"
+      ],
+      "source": "https://github.com/daeuniverse/honk/tree/63de98ba32f871ac6a779e7462a0a79f8a595153",
+      "attribution": [
+        " Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>",
+        "    Copyright (C) <year>  <name of author>"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "honk-netstack",
+      "version": "0.1.0",
+      "license": "GPL-3.0-only",
+      "bodies": [
+        "GPL-3.0-only"
+      ],
+      "source": "https://github.com/Glassyiris/honk/tree/92211429afea6abb6ee834350d6ff9a5d8d331d2",
+      "attribution": [
+        " Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>",
+        "    Copyright (C) <year>  <name of author>"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "honk-outbound",
+      "version": "0.1.0",
+      "license": "GPL-3.0-only",
+      "bodies": [
+        "GPL-3.0-only"
+      ],
+      "source": "https://github.com/daeuniverse/honk/tree/63de98ba32f871ac6a779e7462a0a79f8a595153",
+      "attribution": [
+        " Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>",
+        "    Copyright (C) <year>  <name of author>"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "http",
+      "version": "1.5.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/http/1.5.0",
+      "attribution": [
+        "Copyright 2017 http-rs authors",
+        "Copyright (c) 2017 http-rs authors"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "httparse",
+      "version": "1.10.1",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/httparse/1.10.1",
+      "attribution": [
+        "Copyright (c) 2015-2025 Sean McArthur"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "hybrid-array",
+      "version": "0.4.15",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/hybrid-array/0.4.15",
+      "attribution": [
+        "Copyright (c) 2022-2026 The RustCrypto Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "iana-time-zone",
+      "version": "0.1.65",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/iana-time-zone/0.1.65",
+      "attribution": [
+        "Copyright 2020 Andrew Straw",
+        "Copyright (c) 2020 Andrew D. Straw"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "icu_collections",
+      "version": "2.4.0",
+      "license": "Unicode-3.0",
+      "bodies": [
+        "Unicode-3.0"
+      ],
+      "source": "https://crates.io/crates/icu_collections/2.4.0",
+      "attribution": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2",
+          "comment": "Upstream includes additional text after the Unicode-3.0 body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "icu_locale_core",
+      "version": "2.4.0",
+      "license": "Unicode-3.0",
+      "bodies": [
+        "Unicode-3.0"
+      ],
+      "source": "https://crates.io/crates/icu_locale_core/2.4.0",
+      "attribution": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2",
+          "comment": "Upstream includes additional text after the Unicode-3.0 body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "icu_normalizer",
+      "version": "2.4.0",
+      "license": "Unicode-3.0",
+      "bodies": [
+        "Unicode-3.0"
+      ],
+      "source": "https://crates.io/crates/icu_normalizer/2.4.0",
+      "attribution": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2",
+          "comment": "Upstream includes additional text after the Unicode-3.0 body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "icu_normalizer_data",
+      "version": "2.4.0",
+      "license": "Unicode-3.0",
+      "bodies": [
+        "Unicode-3.0"
+      ],
+      "source": "https://crates.io/crates/icu_normalizer_data/2.4.0",
+      "attribution": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2",
+          "comment": "Upstream includes additional text after the Unicode-3.0 body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "icu_properties",
+      "version": "2.4.0",
+      "license": "Unicode-3.0",
+      "bodies": [
+        "Unicode-3.0"
+      ],
+      "source": "https://crates.io/crates/icu_properties/2.4.0",
+      "attribution": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2",
+          "comment": "Upstream includes additional text after the Unicode-3.0 body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "icu_properties_data",
+      "version": "2.4.0",
+      "license": "Unicode-3.0",
+      "bodies": [
+        "Unicode-3.0"
+      ],
+      "source": "https://crates.io/crates/icu_properties_data/2.4.0",
+      "attribution": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2",
+          "comment": "Upstream includes additional text after the Unicode-3.0 body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "icu_provider",
+      "version": "2.4.0",
+      "license": "Unicode-3.0",
+      "bodies": [
+        "Unicode-3.0"
+      ],
+      "source": "https://crates.io/crates/icu_provider/2.4.0",
+      "attribution": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2",
+          "comment": "Upstream includes additional text after the Unicode-3.0 body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "idna",
+      "version": "1.1.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/idna/1.1.0",
+      "attribution": [
+        "Copyright (c) 2013-2025 The rust-url developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "idna_adapter",
+      "version": "1.2.2",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/idna_adapter/1.2.2",
+      "attribution": [
+        "Copyright (c) The rust-url developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "indexmap",
+      "version": "2.14.2",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/indexmap/2.14.2",
+      "attribution": [
+        "Copyright (c) 2016--2017"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "inout",
+      "version": "0.2.6",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/inout/0.2.6",
+      "attribution": [
+        "Copyright (c) 2022-2025 The RustCrypto Project Developers",
+        "Copyright (c) 2022 Artyom Pavlov"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "ipnet",
+      "version": "2.12.2",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/ipnet/2.12.2",
+      "attribution": [
+        "   Copyright 2017 Juniper Networks, Inc.",
+        "Copyright 2017 Juniper Networks, Inc."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "87d9feb9238c6bd8e0024fc4733b06cff036f89f36d93b7df1c8a0549bbb7a5b",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "itoa",
+      "version": "1.0.19",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/itoa/1.0.19",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "jni",
+      "version": "0.22.4",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/jni/0.22.4",
+      "attribution": [
+        "Copyright (c) 2016 Prevoty, Inc. and jni-rs contributors"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "jni-sys",
+      "version": "0.4.1",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/jni-sys/0.4.1",
+      "attribution": [
+        "Copyright (c) 2015 The rust-jni-sys Developers"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "keccak",
+      "version": "0.2.2",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/keccak/0.2.2",
+      "attribution": [
+        "Copyright (c) 2018-2026 The RustCrypto Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "libc",
+      "version": "0.2.191",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/libc/0.2.191",
+      "attribution": [
+        "Copyright (c) The Rust Project Developers"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "libm",
+      "version": "0.2.16",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/libm/0.2.16",
+      "attribution": [
+        "    Copyright (c) 2018 Jorge Aparicio",
+        "      Copyright © 2005-2020 Rich Felker, et al.",
+        "Copyright © 1993,2004 Sun Microsystems or",
+        "Copyright © 2003-2011 David Schultz or",
+        "Copyright © 2003-2009 Steven G. Kargl or",
+        "Copyright © 2003-2009 Bruce D. Evans or",
+        "Copyright © 2008 Stephen L. Moshier or",
+        "Copyright © 2017-2018 Arm Limited"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE.txt",
+          "text": "3823dda7cf046602f4b4e77ec8e227863dc4736037cc85bb33d9f19febe16bb7",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "litemap",
+      "version": "0.8.3",
+      "license": "Unicode-3.0",
+      "bodies": [
+        "Unicode-3.0"
+      ],
+      "source": "https://crates.io/crates/litemap/0.8.3",
+      "attribution": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2",
+          "comment": "Upstream includes additional text after the Unicode-3.0 body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "lock_api",
+      "version": "0.4.14",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/lock_api/0.4.14",
+      "attribution": [
+        "Copyright (c) 2016 The Rust Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "lock_api",
+      "version": "0.5.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/lock_api/0.5.0",
+      "attribution": [
+        "Copyright (c) 2016 The Rust Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "log",
+      "version": "0.4.35",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/log/0.4.35",
+      "attribution": [
+        "Copyright (c) 2014 The Rust Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "lru",
+      "version": "0.19.1",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/lru/0.19.1",
+      "attribution": [
+        "Copyright (c) 2016 Jerome Froelich"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "lru-slab",
+      "version": "0.1.3",
+      "license": "MIT OR Apache-2.0 OR Zlib",
+      "bodies": [
+        "Apache-2.0",
+        "MIT",
+        "Zlib"
+      ],
+      "source": "https://crates.io/crates/lru-slab/0.1.3",
+      "attribution": [
+        "Copyright (c) 2024 The lru-slab Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "md-5",
+      "version": "0.11.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/md-5/0.11.0",
+      "attribution": [
+        "Copyright (c) 2016-2026 The RustCrypto Project Developers",
+        "Copyright (c) 2016 Artyom Pavlov",
+        "Copyright (c) 2009-2013 Mozilla Foundation",
+        "Copyright (c) 2006-2009 Graydon Hoare"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "memchr",
+      "version": "2.8.3",
+      "license": "Unlicense OR MIT",
+      "bodies": [
+        "MIT",
+        "Unlicense"
+      ],
+      "source": "https://crates.io/crates/memchr/2.8.3",
+      "attribution": [
+        "Copyright (c) 2015 Andrew Gallant"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "COPYING",
+          "text": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "mio",
+      "version": "1.2.5",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/mio/1.2.5",
+      "attribution": [
+        "Copyright (c) 2014 Carl Lerche and other MIO contributors"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "network-types",
+      "version": "0.2.0",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/network-types/0.2.0",
+      "attribution": [
+        "Copyright (c) 2022 Michal Rostecki"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "num-traits",
+      "version": "0.2.19",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/num-traits/0.2.19",
+      "attribution": [
+        "Copyright (c) 2014 The Rust Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "object",
+      "version": "0.40.0",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/object/0.40.0",
+      "attribution": [
+        "Copyright (c) 2015 The Gimli Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "once_cell",
+      "version": "1.21.4",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/once_cell/1.21.4",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "parking_lot",
+      "version": "0.12.5",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/parking_lot/0.12.5",
+      "attribution": [
+        "Copyright (c) 2016 The Rust Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "parking_lot",
+      "version": "0.13.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/parking_lot/0.13.0",
+      "attribution": [
+        "Copyright (c) 2016 The Rust Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "parking_lot_core",
+      "version": "0.10.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/parking_lot_core/0.10.0",
+      "attribution": [
+        "Copyright (c) 2016 The Rust Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "parking_lot_core",
+      "version": "0.9.12",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/parking_lot_core/0.9.12",
+      "attribution": [
+        "Copyright (c) 2016 The Rust Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "percent-encoding",
+      "version": "2.3.2",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/percent-encoding/2.3.2",
+      "attribution": [
+        "Copyright (c) 2013-2025 The rust-url developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "pin-project-lite",
+      "version": "0.2.18",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/pin-project-lite/0.2.18",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "poly1305",
+      "version": "0.9.1",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/poly1305/0.9.1",
+      "attribution": [
+        "Copyright (c) 2015-2026 The RustCrypto Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "polyval",
+      "version": "0.7.3",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/polyval/0.7.3",
+      "attribution": [
+        "Copyright (c) 2019-2026 The RustCrypto Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "portable-atomic",
+      "version": "1.15.0",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/portable-atomic/1.15.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "potential_utf",
+      "version": "0.1.6",
+      "license": "Unicode-3.0",
+      "bodies": [
+        "Unicode-3.0"
+      ],
+      "source": "https://crates.io/crates/potential_utf/0.1.6",
+      "attribution": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2",
+          "comment": "Upstream includes additional text after the Unicode-3.0 body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "quinn",
+      "version": "0.11.12",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://github.com/Glassyiris/quinn/tree/d98acc02b8c26417a84180a366e1eb5b22af2b24",
+      "attribution": [
+        "Copyright (c) 2018 The quinn Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "quinn-proto",
+      "version": "0.11.19",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://github.com/Glassyiris/quinn/tree/d98acc02b8c26417a84180a366e1eb5b22af2b24",
+      "attribution": [
+        "Copyright (c) 2018 The quinn Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "quinn-udp",
+      "version": "0.5.16",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://github.com/Glassyiris/quinn/tree/d98acc02b8c26417a84180a366e1eb5b22af2b24",
+      "attribution": [
+        "Copyright (c) 2018 The quinn Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "rand",
+      "version": "0.10.4",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/rand/0.10.4",
+      "attribution": [
+        "Copyright 2018 Developers of the Rand project",
+        "Copyright (c) 2014 The Rust Project Developers"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "COPYRIGHT",
+          "text": "90eb64f0279b0d9432accfa6023ff803bc4965212383697eee27a0f426d5f8d5",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        },
+        {
+          "file": "LICENSE-APACHE",
+          "text": "35242e7a83f69875e6edeff02291e688c97caafe2f8902e4e19b49d3e78b4cab",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "rand_core",
+      "version": "0.10.1",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/rand_core/0.10.1",
+      "attribution": [
+        "Copyright (c) 2018-2026 The Rand Project Developers"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "COPYRIGHT",
+          "text": "92b81db30f7ab6d693e0af5661a40d273ca1947e891123ed823924192c10cbc7",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        },
+        {
+          "file": "LICENSE-APACHE",
+          "text": "6df43f6f4b5d4587f3d8d71e45532c688fd168afa5fe89d571cb32fa09c4ef51",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "rand_pcg",
+      "version": "0.10.3",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/rand_pcg/0.10.3",
+      "attribution": [
+        "Copyright (c) 2014-2017 Melissa O'Neill and PCG Project contributors",
+        "Copyright 2018 Developers of the Rand project"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "COPYRIGHT",
+          "text": "90eb64f0279b0d9432accfa6023ff803bc4965212383697eee27a0f426d5f8d5",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        },
+        {
+          "file": "LICENSE-APACHE",
+          "text": "6df43f6f4b5d4587f3d8d71e45532c688fd168afa5fe89d571cb32fa09c4ef51",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "regex",
+      "version": "1.13.2",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/regex/1.13.2",
+      "attribution": [
+        "Copyright (c) 2014 The Rust Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "regex-automata",
+      "version": "0.4.19",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/regex-automata/0.4.19",
+      "attribution": [
+        "Copyright (c) 2014 The Rust Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "regex-syntax",
+      "version": "0.8.12",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/regex-syntax/0.8.12",
+      "attribution": [
+        "Copyright (c) 2014 The Rust Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "ring",
+      "version": "0.17.14",
+      "license": "Apache-2.0 AND ISC",
+      "bodies": [
+        "Apache-2.0",
+        "ISC"
+      ],
+      "source": "https://crates.io/crates/ring/0.17.14",
+      "attribution": [
+        "Copyright (c) 2009 The Go Authors. All rights reserved.",
+        "Copyright 2015 The Chromium Authors. All rights reserved.",
+        "Copyright 2015-2025 Brian Smith.",
+        "Copyright 2015-2020 the fiat-crypto authors (see the AUTHORS file)"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "9eacbcb81be660840c714a560a9d65ba07913db98dd4baf969f78dd499fdd60f",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        },
+        {
+          "file": "LICENSE",
+          "text": "b3d734001a94efff3579978d953391aa7115f877657d25eb54037a43875d078a",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        },
+        {
+          "file": "LICENSE-BoringSSL",
+          "text": "005fc765ddc5115da796cca915baa9557abae13ff35e0a47c47affc56f6c414d",
+          "comment": "Upstream includes additional text after the Apache-2.0 body."
+        },
+        {
+          "file": "LICENSE-MIT",
+          "text": "6ee2ed6c77710de911761acd5fc1ad1da00f476beb1a7ef27e78c2d1858deafc",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        },
+        {
+          "file": "LICENSE-other-bits",
+          "text": "f025ccfb7dfb6bdfedc75ca0f67acc69e6fb4998143d834f7c2f38a29989680f",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "rustc-hash",
+      "version": "2.1.3",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/rustc-hash/2.1.3",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "95bd3988beee069fa2848f648dab43cc6e0b2add2ad6bcb17360caf749802bcc",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "rustls",
+      "version": "0.23.46",
+      "license": "Apache-2.0 OR ISC OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "ISC",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/rustls/0.23.46",
+      "attribution": [
+        "Copyright (c) 2016, Joseph Birr-Pixton <jpixton@gmail.com>",
+        "Copyright (c) 2016 Joseph Birr-Pixton <jpixton@gmail.com>"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-ISC",
+          "text": "7cfafc877eccc46c0e346ccbaa5c51bb6b894d2b818e617d970211e232785ad4",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "rustls-pki-types",
+      "version": "1.16.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/rustls-pki-types/1.16.0",
+      "attribution": [
+        "Copyright 2023 Dirkjan Ochtman",
+        "Copyright (c) 2023 Dirkjan Ochtman <dirkjan@ochtman.nl>"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "rustls-platform-verifier",
+      "version": "0.7.1",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/rustls-platform-verifier/0.7.1",
+      "attribution": [
+        "Copyright (c) 2022 1Password"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "rustls-webpki",
+      "version": "0.103.17",
+      "license": "ISC",
+      "bodies": [
+        "ISC"
+      ],
+      "source": "https://crates.io/crates/rustls-webpki/0.103.17",
+      "attribution": [
+        "Copyright 2015 Brian Smith."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "5b698ca13897be3afdb7174256fa1574f8c6892b8bea1a66dd6469d3fe27885a",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "ryu",
+      "version": "1.0.23",
+      "license": "Apache-2.0 OR BSL-1.0",
+      "bodies": [
+        "Apache-2.0",
+        "BSL-1.0"
+      ],
+      "source": "https://crates.io/crates/ryu/1.0.23",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "scopeguard",
+      "version": "1.2.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/scopeguard/1.2.0",
+      "attribution": [
+        "Copyright (c) 2016-2019 Ulrik Sverdrup \"bluss\" and scopeguard developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "serde",
+      "version": "1.0.229",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/serde/1.0.229",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "serde_core",
+      "version": "1.0.229",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/serde_core/1.0.229",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "serde_json",
+      "version": "1.0.154",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/serde_json/1.0.154",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "serde_path_to_error",
+      "version": "0.1.20",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/serde_path_to_error/0.1.20",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "serde_spanned",
+      "version": "1.1.3",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/serde_spanned/1.1.3",
+      "attribution": [
+        "   Copyright Individual contributors",
+        "Copyright (c) Individual contributors"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "249fdb6694467dd615b259f7ddde07be3f8ae5a72cecebb0e24f6629af4215fe",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "serde_yaml",
+      "version": "0.9.34+deprecated",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/serde_yaml/0.9.34+deprecated",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "sha1",
+      "version": "0.11.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/sha1/0.11.0",
+      "attribution": [
+        "Copyright (c) 2016-2026 The RustCrypto Project Developers",
+        "Copyright (c) 2016 Artyom Pavlov",
+        "Copyright (c) 2009-2013 Mozilla Foundation",
+        "Copyright (c) 2006-2009 Graydon Hoare"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "sha1_smol",
+      "version": "1.0.1",
+      "license": "BSD-3-Clause",
+      "bodies": [
+        "BSD-3-Clause"
+      ],
+      "source": "https://crates.io/crates/sha1_smol/1.0.1",
+      "attribution": [
+        "Copyright (c) 2018, the respective contributors, as shown by the AUTHORS file.",
+        "All rights reserved.",
+        "Copyright (c) 2006-2009 Graydon Hoare",
+        "Copyright (c) 2009-2013 Mozilla Foundation"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "282a21b0710441c364025461a447362daf18f5798a7b72ae2f801a2aa536da51",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "sha2",
+      "version": "0.11.1",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/sha2/0.11.1",
+      "attribution": [
+        "Copyright (c) 2016-2026 The RustCrypto Project Developers",
+        "Copyright (c) 2016 Artyom Pavlov",
+        "Copyright (c) 2009-2013 Mozilla Foundation",
+        "Copyright (c) 2006-2009 Graydon Hoare"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "sha3",
+      "version": "0.12.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/sha3/0.12.0",
+      "attribution": [
+        "Copyright (c) 2020-2026 The RustCrypto Project Developers",
+        "Copyright (c) 2016-2023 Artyom Pavlov, Marek Kotewicz",
+        "Copyright (c) 2014 Sébastien Martini",
+        "Copyright (c) 2009-2013 Mozilla Foundation",
+        "Copyright (c) 2006-2009 Graydon Hoare"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "shake",
+      "version": "0.1.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/shake/0.1.0",
+      "attribution": [
+        "Copyright (c) 2026 The RustCrypto Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "signal-hook-registry",
+      "version": "1.4.8",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/signal-hook-registry/1.4.8",
+      "attribution": [
+        "Copyright (c) 2017 tokio-jsonrpc developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "simd_cesu8",
+      "version": "1.2.0",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/simd_cesu8/1.2.0",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "simdutf8",
+      "version": "0.1.5",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/simdutf8/0.1.5",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-Apache",
+          "text": "0cec06e0e55fbc3dc5cee4fca9b607f66cb8f4e4dbcf3b3c013594dd156732e9",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "siphasher",
+      "version": "1.0.4",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/siphasher/1.0.4",
+      "attribution": [
+        "Copyright 2012-2016 The Rust Project Developers.",
+        "Copyright 2016-2026 Frank Denis."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "COPYING",
+          "text": "c962ee4d1d05ddc138b202b2540219ebc57893fcf97b364852094a9a94ce1365",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "slab",
+      "version": "0.4.12",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/slab/0.4.12",
+      "attribution": [
+        "Copyright (c) 2019 Carl Lerche"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "smallvec",
+      "version": "1.16.6",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/smallvec/1.16.6",
+      "attribution": [
+        "Copyright (c) 2018 The Servo Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "socket2",
+      "version": "0.6.5",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/socket2/0.6.5",
+      "attribution": [
+        "Copyright (c) 2014 Alex Crichton"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "sponge-cursor",
+      "version": "0.1.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/sponge-cursor/0.1.0",
+      "attribution": [
+        "Copyright (c) 2026 The RustCrypto Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "stable_deref_trait",
+      "version": "1.2.1",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/stable_deref_trait/1.2.1",
+      "attribution": [
+        "Copyright (c) 2017 Robert Grosse"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "subtle",
+      "version": "2.6.1",
+      "license": "BSD-3-Clause",
+      "bodies": [
+        "BSD-3-Clause"
+      ],
+      "source": "https://crates.io/crates/subtle/2.6.1",
+      "attribution": [
+        "Copyright (c) 2016-2017 Isis Agora Lovecruft, Henry de Valence. All rights reserved.",
+        "Copyright (c) 2016-2024 Isis Agora Lovecruft. All rights reserved."
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "thiserror",
+      "version": "2.0.21",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/thiserror/2.0.21",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "tinystr",
+      "version": "0.8.5",
+      "license": "Unicode-3.0",
+      "bodies": [
+        "Unicode-3.0"
+      ],
+      "source": "https://crates.io/crates/tinystr/0.8.5",
+      "attribution": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2",
+          "comment": "Upstream includes additional text after the Unicode-3.0 body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "tinyvec",
+      "version": "1.13.3",
+      "license": "Zlib OR Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT",
+        "Zlib"
+      ],
+      "source": "https://crates.io/crates/tinyvec/1.13.3",
+      "attribution": [
+        "Copyright (c) 2019 Daniel \"Lokathor\" Gee."
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "tokio",
+      "version": "1.54.1",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/tokio/1.54.1",
+      "attribution": [
+        "Copyright (c) Tokio Contributors"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "tokio-boring",
+      "version": "5.2.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/tokio-boring/5.2.0",
+      "attribution": [
+        "Copyright 2016 Tokio contributors",
+        "Copyright (c) 2016 Tokio contributors",
+        "Copyright (c) 2020 Ivan Nikulin <ifaaan@gmail.com>"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "tokio-tungstenite",
+      "version": "0.30.0",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/tokio-tungstenite/0.30.0",
+      "attribution": [
+        "Copyright (c) 2017 Daniel Abramov",
+        "Copyright (c) 2017 Alexey Galakhov"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "tokio-util",
+      "version": "0.7.20",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/tokio-util/0.7.20",
+      "attribution": [
+        "Copyright (c) Tokio Contributors"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "toml",
+      "version": "1.2.2+spec-1.1.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/toml/1.2.2+spec-1.1.0",
+      "attribution": [
+        "   Copyright Individual contributors",
+        "Copyright (c) Individual contributors"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "249fdb6694467dd615b259f7ddde07be3f8ae5a72cecebb0e24f6629af4215fe",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "toml_datetime",
+      "version": "1.1.3+spec-1.1.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/toml_datetime/1.1.3+spec-1.1.0",
+      "attribution": [
+        "   Copyright Individual contributors",
+        "Copyright (c) Individual contributors"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "249fdb6694467dd615b259f7ddde07be3f8ae5a72cecebb0e24f6629af4215fe",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "toml_parser",
+      "version": "1.1.6+spec-1.1.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/toml_parser/1.1.6+spec-1.1.0",
+      "attribution": [
+        "   Copyright Individual contributors",
+        "Copyright (c) Individual contributors"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "249fdb6694467dd615b259f7ddde07be3f8ae5a72cecebb0e24f6629af4215fe",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "toml_writer",
+      "version": "1.2.0+spec-1.1.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/toml_writer/1.2.0+spec-1.1.0",
+      "attribution": [
+        "   Copyright Individual contributors",
+        "Copyright (c) Individual contributors"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE-APACHE",
+          "text": "249fdb6694467dd615b259f7ddde07be3f8ae5a72cecebb0e24f6629af4215fe",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "tracing",
+      "version": "0.1.44",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/tracing/0.1.44",
+      "attribution": [
+        "Copyright (c) 2019 Tokio Contributors"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "tracing-core",
+      "version": "0.1.36",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/tracing-core/0.1.36",
+      "attribution": [
+        "Copyright (c) 2019 Tokio Contributors"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "tungstenite",
+      "version": "0.30.0",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/tungstenite/0.30.0",
+      "attribution": [
+        "Copyright (c) 2017 Alexey Galakhov",
+        "Copyright (c) 2016 Jason Housley"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "typenum",
+      "version": "1.20.1",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/typenum/1.20.1",
+      "attribution": [
+        "Copyright 2014 Paho Lurie-Gregg",
+        "Copyright (c) 2014 Paho Lurie-Gregg"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "db11fec9946737df39ca3898d9cd8c10ec6f6c3a884a6802b0ad0b81b4e8f23a",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "universal-hash",
+      "version": "0.6.1",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/universal-hash/0.6.1",
+      "attribution": [
+        "Copyright (c) 2019-2025 RustCrypto Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "unsafe-libyaml",
+      "version": "0.2.11",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/unsafe-libyaml/0.2.11",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "untrusted",
+      "version": "0.9.0",
+      "license": "ISC",
+      "bodies": [
+        "ISC"
+      ],
+      "source": "https://crates.io/crates/untrusted/0.9.0",
+      "attribution": [
+        "// Copyright 2015-2016 Brian Smith."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE.txt",
+          "text": "7abd9b6960dcf7d4d0a48606a5b71bfe37d472db68d70637f3a58a56785f1621",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "url",
+      "version": "2.5.9",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/url/2.5.9",
+      "attribution": [
+        "Copyright (c) 2013-2025 The rust-url developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "utf8_iter",
+      "version": "1.1.0",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/utf8_iter/1.1.0",
+      "attribution": [
+        "Copyright Mozilla Foundation"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "COPYRIGHT",
+          "text": "c30152c94a6d75e021adbc52b3a52470366a46edb917e17deae3259251af244c",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "utf_types",
+      "version": "1.0.0",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/utf_types/1.0.0",
+      "attribution": [
+        "Copyright Mozilla Foundation"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "COPYRIGHT",
+          "text": "3210be7332b5bdf48eb24a945258b9f38616a2cceb0dfc06e3c3c7e9740475a0",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "uuid",
+      "version": "1.29.3",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/uuid/1.29.3",
+      "attribution": [
+        "Copyright (c) 2014 The Rust Project Developers",
+        "Copyright (c) 2018 Ashley Mannix, Christopher Armstrong, Dylan DPC, Hunar Roop Kahlon"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "webpki-root-certs",
+      "version": "1.0.12",
+      "license": "CDLA-Permissive-2.0",
+      "bodies": [
+        "CDLA-Permissive-2.0"
+      ],
+      "source": "https://crates.io/crates/webpki-root-certs/1.0.12",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "e271993808fec50ab29350b39539cdec611a9103f827e0aa26d61da70e2d33f8",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "wincode",
+      "version": "0.5.5",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://crates.io/crates/wincode/0.5.5",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "winnow",
+      "version": "1.0.5",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/winnow/1.0.5",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "writeable",
+      "version": "0.6.4",
+      "license": "Unicode-3.0",
+      "bodies": [
+        "Unicode-3.0"
+      ],
+      "source": "https://crates.io/crates/writeable/0.6.4",
+      "attribution": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2",
+          "comment": "Upstream includes additional text after the Unicode-3.0 body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "yoke",
+      "version": "0.8.4",
+      "license": "Unicode-3.0",
+      "bodies": [
+        "Unicode-3.0"
+      ],
+      "source": "https://crates.io/crates/yoke/0.8.4",
+      "attribution": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2",
+          "comment": "Upstream includes additional text after the Unicode-3.0 body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "zerofrom",
+      "version": "0.1.8",
+      "license": "Unicode-3.0",
+      "bodies": [
+        "Unicode-3.0"
+      ],
+      "source": "https://crates.io/crates/zerofrom/0.1.8",
+      "attribution": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2",
+          "comment": "Upstream includes additional text after the Unicode-3.0 body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "zeroize",
+      "version": "1.9.2",
+      "license": "Apache-2.0 OR MIT",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/zeroize/1.9.2",
+      "attribution": [
+        "Copyright (c) 2018-2026 The RustCrypto Project Developers"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "cargo",
+      "name": "zerotrie",
+      "version": "0.2.5",
+      "license": "Unicode-3.0",
+      "bodies": [
+        "Unicode-3.0"
+      ],
+      "source": "https://crates.io/crates/zerotrie/0.2.5",
+      "attribution": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2",
+          "comment": "Upstream includes additional text after the Unicode-3.0 body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "zerovec",
+      "version": "0.11.9",
+      "license": "Unicode-3.0",
+      "bodies": [
+        "Unicode-3.0"
+      ],
+      "source": "https://crates.io/crates/zerovec/0.11.9",
+      "attribution": [
+        "Copyright © 2020-2024 Unicode, Inc."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2",
+          "comment": "Upstream includes additional text after the Unicode-3.0 body."
+        }
+      ]
+    },
+    {
+      "kind": "cargo",
+      "name": "zmij",
+      "version": "1.0.23",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://crates.io/crates/zmij/1.0.23",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "data",
+      "name": "Natural Earth 1:110m",
+      "version": "5.1.2",
+      "license": "LicenseRef-Public-domain",
+      "bodies": [],
+      "source": "https://www.naturalearthdata.com/about/terms-of-use/",
+      "attribution": [],
+      "notice": "Made with Natural Earth. Derived map geometry: LandMask, WorldShapes.",
+      "extras": []
+    },
+    {
+      "kind": "data",
+      "name": "geoip.dat",
+      "version": "5f22a3b3371d1a489fb3d0df25d00db049a6a603",
+      "license": "CC-BY-SA-4.0 AND GPL-3.0-only AND LicenseRef-MaxMind-GeoLite",
+      "bodies": [
+        "CC-BY-SA-4.0",
+        "GPL-3.0-only"
+      ],
+      "source": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/5f22a3b3371d1a489fb3d0df25d00db049a6a603/geoip.dat",
+      "attribution": [
+        " Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>",
+        "    Copyright (C) <year>  <name of author>"
+      ],
+      "notice": "This product includes GeoLite Data created by MaxMind, available from https://www.maxmind.com. Loyalsoldier/geoip converts and augments the country data; MetaCubeX redistributes its DAT unchanged. Under GeoLite EULA §6.1, disclosure requires prior notification and written consent from MaxMind except as explicitly permitted by CC BY-SA 4.0. Permitted disclosures require the same or substantially similar contractual duties downstream. Section 6.3 requires cessation of use and destruction of old versions within 30 days after an updated database is released. https://www.maxmind.com/en/geolite/eula",
+      "extras": [
+        {
+          "file": "GPL-3.0-only.txt",
+          "text": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        },
+        {
+          "file": "geo-cc.txt",
+          "text": "5e436ff8ffbb77d8607220e9bce20c8915d860010feeb6c1ebef5a85688e9b39",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        },
+        {
+          "file": "maxmind-eula.txt",
+          "text": "182ee97ac50080f12320e89a077f6eefdf5ebef1cde4a82c6c22fbadeb9cb480",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "data",
+      "name": "geosite.dat",
+      "version": "5f22a3b3371d1a489fb3d0df25d00db049a6a603",
+      "license": "GPL-3.0-only AND GPL-2.0-only AND LGPL-2.1-only AND MIT AND WTFPL AND LicenseRef-Unlicensed-rules",
+      "bodies": [
+        "GPL-2.0-only",
+        "GPL-3.0-only",
+        "LGPL-2.1-only",
+        "MIT",
+        "WTFPL"
+      ],
+      "source": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/5f22a3b3371d1a489fb3d0df25d00db049a6a603/geosite.dat",
+      "attribution": [
+        " Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>",
+        "    Copyright (C) <year>  <name of author>",
+        "Copyright © 2013 Felix Yan <felixonmars@archlinux.org>",
+        " Copyright (C) 2004 Sam Hocevar <sam@hocevar.net>",
+        "Copyright (c) 2018-2019 V2Ray",
+        "Copyright (c) 2020 Loyalsoldier",
+        " Copyright (C) 1991, 1999 Free Software Foundation, Inc.",
+        " Copyright (C) 1989, 1991 Free Software Foundation, Inc.,",
+        "Copyright (c) 2016-2022 CrazyMax"
+      ],
+      "notice": "MetaCubeX compiles v2fly/domain-list-community with Loyalsoldier/domain-list-custom, its own resouces/ directory and lists from mutable upstream branches: blackmatrix7/ios_rule_script, gfwlist/gfwlist via cokebar/gfwlist2dnsmasq, felixonmars/dnsmasq-china-list, crazy-max/WindowsSpyBlocker, https://gitea.com/XIU2/TrackersListCollection (GPL-3.0), and biliintl.list and sharepoint.list from xishang0128/rules (no licence file). Build recipe: https://github.com/MetaCubeX/meta-rules-dat/blob/4178770badecb1b349fbcd62c737e0d7a2079729/.github/workflows/run.yml.",
+      "extras": [
+        {
+          "file": "GPL-3.0-only.txt",
+          "text": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        },
+        {
+          "file": "geo-dnsmasq.txt",
+          "text": "f9e00539c44942d94e3c6d20f0c90e63e810ea181b10f16a252c93e4ea5cefd7",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        },
+        {
+          "file": "geo-gfwlist.txt",
+          "text": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        },
+        {
+          "file": "geo-ios.txt",
+          "text": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.activity:activity",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/activity#1.13.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/activity/activity/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.activity:activity-compose",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/activity#1.13.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/activity/activity-compose/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.activity:activity-ktx",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/activity#1.13.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/activity/activity-ktx/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.annotation:annotation-experimental",
+      "version": "1.4.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/annotation#1.4.1",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.annotation:annotation-jvm",
+      "version": "1.10.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/annotation#1.10.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/annotation/annotation/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.arch.core:core-common",
+      "version": "2.2.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/arch-core#2.2.0",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.arch.core:core-runtime",
+      "version": "2.2.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/arch-core#2.2.0",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.autofill:autofill",
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.collection:collection-jvm",
+      "version": "1.6.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/collection#1.6.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/collection/collection/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.collection:collection-ktx",
+      "version": "1.6.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/collection#1.6.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/collection/collection-ktx/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.compose.animation:animation-android",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/compose-animation#1.13.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/compose/animation/animation/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        },
+        {
+          "file": "lint.jar!/META-INF/androidx/compose/animation/animation-lint/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.compose.animation:animation-core-android",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/compose-animation#1.13.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/compose/animation/animation-core/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        },
+        {
+          "file": "lint.jar!/META-INF/androidx/compose/animation/animation-core-lint/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.compose.foundation:foundation-android",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/compose-foundation#1.13.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/compose/foundation/foundation/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        },
+        {
+          "file": "lint.jar!/META-INF/androidx/compose/foundation/foundation-lint/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.compose.foundation:foundation-layout-android",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/compose-foundation#1.13.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/compose/foundation/foundation-layout/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.compose.material3:material3-android",
+      "version": "1.5.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/compose-material3#1.5.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/compose/material3/material3/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        },
+        {
+          "file": "lint.jar!/META-INF/androidx/compose/material3/material3-lint/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.compose.material3:material3-ripple-android",
+      "version": "1.5.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/compose-material3#1.5.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/compose/material3/material3-ripple/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.compose.material:material-ripple-android",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/compose-material#1.13.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/compose/material/material-ripple/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.compose.runtime:runtime-android",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/compose-runtime#1.13.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/compose/runtime/runtime/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        },
+        {
+          "file": "lint.jar!/META-INF/androidx/compose/runtime/runtime-lint/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.compose.runtime:runtime-annotation-android",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/compose-runtime#1.13.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.compose.runtime:runtime-retain-android",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/compose-runtime#1.13.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        },
+        {
+          "file": "lint.jar!/META-INF/androidx/compose/runtime/runtime-retain-lint/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.compose.runtime:runtime-saveable-android",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/compose-runtime#1.13.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        },
+        {
+          "file": "lint.jar!/META-INF/androidx/compose/runtime/runtime-saveable-lint/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.compose.ui:ui-android",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/compose-ui#1.13.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/compose/ui/ui/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        },
+        {
+          "file": "lint.jar!/META-INF/androidx/compose/ui/ui-lint/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.compose.ui:ui-geometry-android",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/compose-ui#1.13.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.compose.ui:ui-graphics-android",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/compose-ui#1.13.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        },
+        {
+          "file": "lint.jar!/META-INF/androidx/compose/ui/ui-graphics-lint/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.compose.ui:ui-text-android",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/compose-ui#1.13.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/compose/ui/ui-text/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        },
+        {
+          "file": "lint.jar!/META-INF/androidx/compose/ui/ui-text-lint/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.compose.ui:ui-tooling-preview-android",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/compose-ui#1.13.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/compose/ui/ui-tooling-preview/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.compose.ui:ui-unit-android",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/compose-ui#1.13.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/compose/ui/ui-unit/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.compose.ui:ui-util-android",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/compose-ui#1.13.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/compose/ui/ui-util/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.concurrent:concurrent-futures",
+      "version": "1.1.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/topic/libraries/architecture/index.html",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.concurrent:concurrent-futures-ktx",
+      "version": "1.1.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/topic/libraries/architecture/index.html",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.core:core",
+      "version": "1.19.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/core#1.19.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/core/core/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.core:core",
+      "version": "1.19.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/core#1.19.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/core/core/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.core:core-ktx",
+      "version": "1.19.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/core#1.19.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/core/core-ktx/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.core:core-viewtree",
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/core#1.0.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/core/core-viewtree/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.customview:customview-poolingcontainer",
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/customview#1.0.0",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.datastore:datastore-android",
+      "version": "1.3.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/datastore#1.3.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/datastore/datastore/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.datastore:datastore-core-android",
+      "version": "1.3.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/datastore#1.3.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/datastore/datastore-core/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.datastore:datastore-core-okio-jvm",
+      "version": "1.3.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/datastore#1.3.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/datastore/datastore-core-okio/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.datastore:datastore-preferences-android",
+      "version": "1.3.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/datastore#1.3.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/datastore/datastore-preferences/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.datastore:datastore-preferences-core-android",
+      "version": "1.3.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/datastore#1.3.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/datastore/datastore-preferences-core/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.datastore:datastore-preferences-external-protobuf",
+      "version": "1.3.0",
+      "license": "BSD-3-Clause",
+      "bodies": [
+        "BSD-3-Clause"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/datastore#1.3.0",
+      "attribution": [],
+      "notice": "Copyright 2008 Google Inc. All rights reserved.",
+      "extras": [
+        {
+          "file": "META-INF/androidx/datastore/datastore-preferences-external-protobuf/LICENSE.txt",
+          "text": "a01b712fbb30f80b86851468b6fa58e80eab68f69f325e88bbc7ddf47cf1b063",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.datastore:datastore-preferences-proto",
+      "version": "1.3.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/datastore#1.3.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/datastore/datastore-preferences-proto/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.emoji2:emoji2",
+      "version": "1.7.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/emoji2#1.7.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/emoji2/emoji2/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.graphics:graphics-path",
+      "version": "1.1.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/graphics#1.1.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/graphics/graphics-path/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.graphics:graphics-shapes-android",
+      "version": "1.0.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/graphics#1.0.1",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/graphics/graphics-shapes/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.interpolator:interpolator",
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "http://developer.android.com/tools/extras/support-library.html",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.lifecycle:lifecycle-common-java8",
+      "version": "2.11.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.lifecycle:lifecycle-common-jvm",
+      "version": "2.11.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.lifecycle:lifecycle-livedata",
+      "version": "2.11.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/lifecycle/lifecycle-livedata/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.lifecycle:lifecycle-livedata-core",
+      "version": "2.11.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.lifecycle:lifecycle-livedata-core-ktx",
+      "version": "2.11.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.lifecycle:lifecycle-process",
+      "version": "2.11.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.lifecycle:lifecycle-runtime-android",
+      "version": "2.11.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.lifecycle:lifecycle-runtime-compose-android",
+      "version": "2.11.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.lifecycle:lifecycle-runtime-ktx-android",
+      "version": "2.11.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.lifecycle:lifecycle-service",
+      "version": "2.11.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/lifecycle/lifecycle-service/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.lifecycle:lifecycle-viewmodel-android",
+      "version": "2.11.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.lifecycle:lifecycle-viewmodel-compose-android",
+      "version": "2.11.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/lifecycle/lifecycle-viewmodel-compose/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.lifecycle:lifecycle-viewmodel-ktx",
+      "version": "2.11.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.lifecycle:lifecycle-viewmodel-navigation3-android",
+      "version": "2.11.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/lifecycle/lifecycle-viewmodel-navigation3/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.lifecycle:lifecycle-viewmodel-savedstate-android",
+      "version": "2.11.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.navigation3:navigation3-runtime-android",
+      "version": "1.2.2",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/navigation3#1.2.2",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/navigation3/navigation3-runtime/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.navigation3:navigation3-ui-android",
+      "version": "1.2.2",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/navigation3#1.2.2",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/navigation3/navigation3-ui/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.navigationevent:navigationevent-android",
+      "version": "1.1.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/navigationevent#1.1.1",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/navigationevent/navigationevent/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.navigationevent:navigationevent-compose-android",
+      "version": "1.1.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/navigationevent#1.1.1",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/navigationevent/navigationevent-compose/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.profileinstaller:profileinstaller",
+      "version": "1.4.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/profileinstaller#1.4.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.room:room-common-jvm",
+      "version": "2.7.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/room#2.7.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/room/room-common/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.room:room-runtime-android",
+      "version": "2.7.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/room#2.7.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/room/room-runtime/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.savedstate:savedstate-android",
+      "version": "1.5.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/savedstate#1.5.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/savedstate/savedstate/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.savedstate:savedstate-compose-android",
+      "version": "1.5.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/savedstate#1.5.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.savedstate:savedstate-ktx",
+      "version": "1.5.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/savedstate#1.5.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.sqlite:sqlite-android",
+      "version": "2.5.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/sqlite#2.5.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/sqlite/sqlite/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.sqlite:sqlite-framework-android",
+      "version": "2.5.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/sqlite#2.5.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/sqlite/sqlite-framework/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.startup:startup-runtime",
+      "version": "1.1.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/startup#1.1.1",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.tracing:tracing-android",
+      "version": "2.0.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/tracing#2.0.1",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/tracing/tracing/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.tracing:tracing-ktx",
+      "version": "2.0.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/tracing#2.0.1",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/tracing/tracing-ktx/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.versionedparcelable:versionedparcelable",
+      "version": "1.1.1",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "http://developer.android.com/tools/extras/support-library.html",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.window:window",
+      "version": "1.5.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/window#1.5.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/window/window/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.window:window-core-android",
+      "version": "1.5.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/window#1.5.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/window/window-core/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "androidx.work:work-runtime",
+      "version": "2.12.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://developer.android.com/jetpack/androidx/releases/work#2.12.0",
+      "attribution": [],
+      "notice": "",
+      "extras": [
+        {
+          "file": "META-INF/androidx/work/work-runtime/LICENSE.txt",
+          "text": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0",
+          "comment": "Upstream omits the end of the SPDX Apache-2.0 text."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "com.google.guava:listenablefuture",
+      "version": "1.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "maven",
+      "name": "com.squareup.okio:okio-jvm",
+      "version": "3.17.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/square/okio/",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "maven",
+      "name": "org.jetbrains.kotlin:kotlin-stdlib",
+      "version": "2.4.21",
+      "license": "Apache-2.0 AND BSD-3-Clause AND BSL-1.0",
+      "bodies": [
+        "Apache-2.0",
+        "BSD-3-Clause",
+        "BSL-1.0"
+      ],
+      "source": "https://kotlinlang.org/",
+      "attribution": [
+        "Copyright (c) 2007-present, Stephen Colebourne & Michael Nascimento Santos.",
+        "All rights reserved."
+      ],
+      "notice": "Copyright 2010-2024 JetBrains s.r.o. and Kotlin Programming Language contributors. Collections: GWT, copyright 2007-08 Google Inc. UnsignedLongs: copyright 2011 The Guava Authors. Time: copyright 2007-present Stephen Colebourne and Michael Nascimento Santos. Special math functions: copyright Eric Ford and Hubert Holin 2001.",
+      "extras": [
+        {
+          "file": "kotlin-time.txt",
+          "text": "d1bc53b493a3ab387b42717ed5c4b1976a5048996f81154278100bff86d39331",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "maven",
+      "name": "org.jetbrains.kotlinx:atomicfu-jvm",
+      "version": "0.28.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/Kotlin/kotlinx.atomicfu",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "maven",
+      "name": "org.jetbrains.kotlinx:kotlinx-coroutines-android",
+      "version": "1.9.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/Kotlin/kotlinx.coroutines",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "maven",
+      "name": "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm",
+      "version": "1.9.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/Kotlin/kotlinx.coroutines",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "maven",
+      "name": "org.jetbrains.kotlinx:kotlinx-serialization-core-jvm",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/Kotlin/kotlinx.serialization",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "maven",
+      "name": "org.jetbrains.kotlinx:kotlinx-serialization-json-jvm",
+      "version": "1.13.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/Kotlin/kotlinx.serialization",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "maven",
+      "name": "org.jetbrains:annotations",
+      "version": "23.0.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "https://github.com/JetBrains/java-annotations",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "maven",
+      "name": "org.jspecify:jspecify",
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "bodies": [
+        "Apache-2.0"
+      ],
+      "source": "http://jspecify.org/",
+      "attribution": [],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "native",
+      "name": "BoringSSL",
+      "version": "3beb573b65ecaa69b7eefe3c2fecd074b97facd2",
+      "license": "Apache-2.0 AND BSD-3-Clause",
+      "bodies": [
+        "Apache-2.0",
+        "BSD-3-Clause"
+      ],
+      "source": "https://github.com/Glassyiris/boring-sys/tree/3beb573b65ecaa69b7eefe3c2fecd074b97facd2/deps/boringssl",
+      "attribution": [
+        "Copyright (c) 2009 The Go Authors. All rights reserved."
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "827c8d8fc207c2392794eef9e00fe246f9f61fdcc132556c275be3dd8c3cd97f",
+          "comment": "Upstream includes additional text after the Apache-2.0 body."
+        }
+      ]
+    },
+    {
+      "kind": "native",
+      "name": "LLVM libc++ and libc++abi",
+      "version": "30.0.16248370",
+      "license": "Apache-2.0 WITH LLVM-exception",
+      "bodies": [
+        "Apache-2.0",
+        "LLVM-exception"
+      ],
+      "source": "https://developer.android.com/ndk",
+      "attribution": [
+        "Copyright (c) 2009-2019 by the contributors listed in CREDITS.TXT",
+        "All rights reserved.",
+        "Copyright (c) 2009-2014 by the contributors listed in CREDITS.TXT"
+      ],
+      "notice": "See the NDK notices for legacy licence options.",
+      "extras": [
+        {
+          "file": "NOTICE.toolchain",
+          "text": "3f3d1da78246d5c2ffc879f8239d6e856b19ba813b8349cbe48f85bd018ee3af",
+          "comment": "Upstream NOTICE; retain with this component."
+        },
+        {
+          "file": "NOTICE.toolchain",
+          "text": "b043b7c5fdaf8df24b2c3b50f7651e6acfc8bdd73cc152ec5d090b8a7e0ede33",
+          "comment": "Upstream NOTICE; retain with this component."
+        }
+      ]
+    },
+    {
+      "kind": "native",
+      "name": "LibYAML (Rust translation)",
+      "version": "2c891fc7a770e8ba2fec34fc6b545c672beb37e6",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://github.com/yaml/libyaml",
+      "attribution": [
+        "Copyright (c) 2017-2020 Ingy döt Net",
+        "Copyright (c) 2006-2016 Kirill Simonov"
+      ],
+      "notice": "",
+      "extras": []
+    },
+    {
+      "kind": "native",
+      "name": "Rust standard library",
+      "version": "1.99.1",
+      "license": "MIT OR Apache-2.0",
+      "bodies": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "source": "https://github.com/rust-lang/rust/tree/1.99.1/library",
+      "attribution": [
+        "    Copyright: The Rust Project Developers (see https://thanks.rust-lang.org)",
+        "    Copyright: 1991-2024 Unicode, Inc",
+        "    Copyright: 2014 Alex Crichton",
+        "    Copyright: 2019 The Crossbeam Project Developers",
+        "    Copyright: 2016 The Fuchsia Authors",
+        "Copyright (c) 2015 Andrew Gallant",
+        "Copyright (c) Individual contributors",
+        "Copyright (c) 2018 Josh Stone",
+        "Copyright (c) 2014 The Rust Project Developers",
+        "Copyright (c) 2014 Alex Crichton",
+        "Copyright (c) 2019 The Crossbeam Project Developers",
+        "Copyright (c) 2017 Ted Driggs",
+        "Copyright (c) 2015 Utkarsh Kukreti",
+        "Copyright (c) 2015",
+        "Copyright (c) 2016--2023",
+        "Copyright (c) 2014 Chris Wong",
+        "Copyright (c) 2024 Orson Peters",
+        "Copyright (c) 2018-2025 The rust-random Project Developers",
+        "Copyright (c) 2018-2026 The rust-random Project Developers",
+        "Copyright (c) 2015 The Rust Project Developers",
+        "Copyright (c) 2016 Amanieu d'Antras",
+        "Copyright (c) 2016 The humantime Developers",
+        "Copyright (c) 2016 Pyfisch",
+        "Copyright © 2005-2013 Rich Felker",
+        "Copyright (c) 2016--2017",
+        "Copyright (c) 2015-2019 Doug Tangren",
+        "Copyright (c) The Rust Project Developers",
+        "Copyright 2023 The Motor OS Project Developers",
+        "Copyright (c) 2023 The Motor OS Project Developers",
+        "Copyright 2019 The CryptoCorrosion Contributors",
+        "Copyright (c) 2019 The CryptoCorrosion Contributors",
+        "Copyright (c) 2017 Sean McArthur",
+        "Copyright (c) 2016 Johann Tuffe",
+        "COPYRIGHT: (ordered alphabetically)",
+        "        Copyright (C) 2017-2023 Red Hat, Inc.",
+        "        Copyright (C) 2019-2023 Microsoft Corporation",
+        "        Copyright (C) 2022-2023 David Rheinsberg",
+        "        Copyright (C) 2017-2022 Red Hat, Inc.",
+        "        Copyright (C) 2022-2025 David Rheinsberg",
+        "Copyright 2018 Developers of the Rand project",
+        "Copyright (c) 2018-2026 The Rand Project Developers",
+        "Copyright (c) 2010 The Rust Project Developers",
+        "Copyright (c) 2017 Andrew Gallant",
+        "Copyright (c) 2017 Ingvar Stepanyan",
+        "Copyright 2015 Nicholas Allegra (comex).",
+        "Copyright (c) 2015 Nicholas Allegra (comex).",
+        "Copyright (c) 2015 Danny Guo",
+        "Copyright (c) 2016 Titus Wormer <tituswormer@gmail.com>",
+        "Copyright (c) 2018 Akash Kurdekar",
+        "Copyright (c) 2020-2021, Jason White",
+        "Copyright (c) 2018-2019, Trustees of Indiana University",
+        "Copyright (c) 2018-2019, Ryan Newton",
+        "All rights reserved.",
+        "Copyright (c) 2015 Steven Allen",
+        "Copyright © 1991-2023 Unicode, Inc.",
+        "Copyright (c) 2016 Joe Wilm",
+        "   Copyright (c) Microsoft Corporation.",
+        "    Copyright (c) Microsoft Corporation.",
+        "Copyright (c) 2014 Vladimir Matveev",
+        "Copyright (c) 2015 Chen Yuheng",
+        "   Copyright 2023 The Fuchsia Authors",
+        "Copyright 2019 The Fuchsia Authors.",
+        "Copyright 2023 The Fuchsia Authors"
+      ],
+      "notice": "See the bundled library notice for vendored exceptions.",
+      "extras": [
+        {
+          "file": "COPYRIGHT-library.html (text)",
+          "text": "6eba42070530eca7185a8a28f138fd24180423945aa6c6fa33b96393a8ab0008",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    },
+    {
+      "kind": "project",
+      "name": "doona-core",
+      "version": "0.1.0",
+      "license": "AGPL-3.0-only",
+      "bodies": [
+        "AGPL-3.0-only"
+      ],
+      "source": "https://github.com/Zakkaus/doona-android",
+      "attribution": [
+        " Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>",
+        "    Copyright (C) <year>  <name of author>"
+      ],
+      "notice": "",
+      "extras": [
+        {
+          "file": "LICENSE",
+          "text": "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0",
+          "comment": "Upstream wording does not match a complete declared SPDX body."
+        }
+      ]
+    }
+  ],
+  "ranges": {
+    "AGPL-3.0-only": [
+      15,
+      34020
+    ],
+    "Apache-2.0": [
+      34049,
+      10280
+    ],
+    "BSD-2-Clause": [
+      44345,
+      1267
+    ],
+    "BSD-3-Clause": [
+      45628,
+      1460
+    ],
+    "BSL-1.0": [
+      47099,
+      1338
+    ],
+    "CC-BY-SA-4.0": [
+      48453,
+      18375
+    ],
+    "CC0-1.0": [
+      66839,
+      7048
+    ],
+    "CDLA-Permissive-2.0": [
+      73910,
+      2354
+    ],
+    "GPL-2.0-only": [
+      76280,
+      17337
+    ],
+    "GPL-3.0-only": [
+      93633,
+      34674
+    ],
+    "ISC": [
+      128314,
+      823
+    ],
+    "LGPL-2.1-only": [
+      129154,
+      26001
+    ],
+    "LLVM-exception": [
+      155173,
+      919
+    ],
+    "MIT": [
+      156099,
+      1078
+    ],
+    "MIT-0": [
+      157186,
+      915
+    ],
+    "OFL-1.1": [
+      158112,
+      4016
+    ],
+    "Unicode-3.0": [
+      162143,
+      1995
+    ],
+    "Unlicense": [
+      164151,
+      1211
+    ],
+    "WTFPL": [
+      165371,
+      432
+    ],
+    "Zlib": [
+      165811,
+      838
+    ],
+    "6eba42070530eca7185a8a28f138fd24180423945aa6c6fa33b96393a8ab0008": [
+      166708,
+      1443243
+    ],
+    "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986": [
+      1609987,
+      35149
+    ],
+    "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0": [
+      1645162,
+      34523
+    ],
+    "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551": [
+      1679720,
+      26530
+    ],
+    "5e436ff8ffbb77d8607220e9bce20c8915d860010feeb6c1ebef5a85688e9b39": [
+      1706278,
+      20137
+    ],
+    "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643": [
+      1726446,
+      18092
+    ],
+    "b043b7c5fdaf8df24b2c3b50f7651e6acfc8bdd73cc152ec5d090b8a7e0ede33": [
+      1744588,
+      16707
+    ],
+    "3f3d1da78246d5c2ffc879f8239d6e856b19ba813b8349cbe48f85bd018ee3af": [
+      1761345,
+      16704
+    ],
+    "005fc765ddc5115da796cca915baa9557abae13ff35e0a47c47affc56f6c414d": [
+      1778079,
+      14870
+    ],
+    "182ee97ac50080f12320e89a077f6eefdf5ebef1cde4a82c6c22fbadeb9cb480": [
+      1792983,
+      14256
+    ],
+    "3823dda7cf046602f4b4e77ec8e227863dc4736037cc85bb33d9f19febe16bb7": [
+      1807263,
+      14088
+    ],
+    "827c8d8fc207c2392794eef9e00fe246f9f61fdcc132556c275be3dd8c3cd97f": [
+      1778079,
+      13115
+    ],
+    "946c9835d8034d24404f8cfec5f4654cee5dad17e944afc3d06d742cf2882831": [
+      1821377,
+      12307
+    ],
+    "a5695f57ea0c221e0e8b7d784ff774c35e88c3d3270353646a925880bb3492cc": [
+      1833713,
+      12267
+    ],
+    "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08": [
+      172239,
+      11358
+    ],
+    "87d9feb9238c6bd8e0024fc4733b06cff036f89f36d93b7df1c8a0549bbb7a5b": [
+      1846008,
+      11352
+    ],
+    "249fdb6694467dd615b259f7ddde07be3f8ae5a72cecebb0e24f6629af4215fe": [
+      1857394,
+      11349
+    ],
+    "aaff376532ea30a0cd5330b9502ad4a4c8bf769c539c87ffe78819d188a18ebf": [
+      553611,
+      10849
+    ],
+    "6df43f6f4b5d4587f3d8d71e45532c688fd168afa5fe89d571cb32fa09c4ef51": [
+      553611,
+      10282
+    ],
+    "4d4c32b31308f5a992434c2cf948205852bb2c7bb85cea4c1ab051f41a3eefb3": [
+      1868781,
+      10258
+    ],
+    "99938c5864dd33decb62ab20fd883a9b00181d768ae887a4f19b2d0015c41dc9": [
+      1879076,
+      10257
+    ],
+    "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0": [
+      172238,
+      10175
+    ],
+    "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594": [
+      172238,
+      10174
+    ],
+    "0cec06e0e55fbc3dc5cee4fca9b607f66cb8f4e4dbcf3b3c013594dd156732e9": [
+      172238,
+      10173
+    ],
+    "7cde763ba32b3ec2a84eddd8beb0dcb895fd6436aeb18491ab9572a7eb8de996": [
+      1889365,
+      9897
+    ],
+    "35242e7a83f69875e6edeff02291e688c97caafe2f8902e4e19b49d3e78b4cab": [
+      553611,
+      9724
+    ],
+    "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a": [
+      236245,
+      9723
+    ],
+    "95bd3988beee069fa2848f648dab43cc6e0b2add2ad6bcb17360caf749802bcc": [
+      236245,
+      9722
+    ],
+    "5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57": [
+      1899289,
+      4377
+    ],
+    "18aabf190848725e2576eefb5c29ba06aac1029d02132252a7f312eac2e50cf3": [
+      1903707,
+      4314
+    ],
+    "282a21b0710441c364025461a447362daf18f5798a7b72ae2f801a2aa536da51": [
+      1908046,
+      2719
+    ],
+    "e271993808fec50ab29350b39539cdec611a9103f827e0aa26d61da70e2d33f8": [
+      1910798,
+      2371
+    ],
+    "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2": [
+      1913192,
+      2195
+    ],
+    "6226d0632e2e1a80c23597e964da9812ae193c535fe058154afb034e94167aa5": [
+      1915427,
+      1849
+    ],
+    "c30152c94a6d75e021adbc52b3a52470366a46edb917e17deae3259251af244c": [
+      1917303,
+      1742
+    ],
+    "d1bc53b493a3ab387b42717ed5c4b1976a5048996f81154278100bff86d39331": [
+      1919103,
+      1520
+    ],
+    "a01b712fbb30f80b86851468b6fa58e80eab68f69f325e88bbc7ddf47cf1b063": [
+      1920769,
+      1434
+    ],
+    "6ee2ed6c77710de911761acd5fc1ad1da00f476beb1a7ef27e78c2d1858deafc": [
+      1922227,
+      1022
+    ],
+    "5b698ca13897be3afdb7174256fa1574f8c6892b8bea1a66dd6469d3fe27885a": [
+      1923278,
+      916
+    ],
+    "9a3aeb3f63659c4c6302d315e1d98784d1e8559858a47ff9562e091bb922d28d": [
+      1924231,
+      858
+    ],
+    "7cfafc877eccc46c0e346ccbaa5c51bb6b894d2b818e617d970211e232785ad4": [
+      1925115,
+      775
+    ],
+    "3210be7332b5bdf48eb24a945258b9f38616a2cceb0dfc06e3c3c7e9740475a0": [
+      1917303,
+      770
+    ],
+    "7abd9b6960dcf7d4d0a48606a5b71bfe37d472db68d70637f3a58a56785f1621": [
+      1925919,
+      769
+    ],
+    "f9e00539c44942d94e3c6d20f0c90e63e810ea181b10f16a252c93e4ea5cefd7": [
+      1926723,
+      736
+    ],
+    "f025ccfb7dfb6bdfedc75ca0f67acc69e6fb4998143d834f7c2f38a29989680f": [
+      1927490,
+      731
+    ],
+    "48e488ce333f8a1e86a68b2a1df454464037f1ff580b5bff926053c56dbadc2d": [
+      1928243,
+      665
+    ],
+    "9eacbcb81be660840c714a560a9d65ba07913db98dd4baf969f78dd499fdd60f": [
+      1928928,
+      638
+    ],
+    "90eb64f0279b0d9432accfa6023ff803bc4965212383697eee27a0f426d5f8d5": [
+      954392,
+      569
+    ],
+    "216486f29671a4262efe32af6d84a75bef398127f8c5f369b5c8305983887a06": [
+      1929614,
+      554
+    ],
+    "bf8e2ee14abe37650f7bfc63877fe6160b87103565f8797a0495f4315aaa912f": [
+      1930207,
+      522
+    ],
+    "b3d734001a94efff3579978d953391aa7115f877657d25eb54037a43875d078a": [
+      1930749,
+      499
+    ],
+    "92b81db30f7ab6d693e0af5661a40d273ca1947e891123ed823924192c10cbc7": [
+      954392,
+      478
+    ],
+    "75767e53e6d21a2af55621f37a521e1974824a94d3dff655ec7b9be78aadd0cd": [
+      1931275,
+      359
+    ],
+    "c962ee4d1d05ddc138b202b2540219ebc57893fcf97b364852094a9a94ce1365": [
+      1931659,
+      281
+    ],
+    "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f": [
+      1931962,
+      126
+    ],
+    "db11fec9946737df39ca3898d9cd8c10ec6f6c3a884a6802b0ad0b81b4e8f23a": [
+      172124,
+      17
+    ]
+  }
+}

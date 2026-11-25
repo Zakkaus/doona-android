@@ -18,6 +18,7 @@ doona-android 是 [honk](https://github.com/daeuniverse/honk) 的 Android 部分
 | `android/scripts/` | 執行測試的 `run.sh`、分析用的 `analyze.py`、`build-netstack-bench.sh`，以及建置與執行說明。 |
 | `android/plans/` | 測試計畫：`smoke.json`、`compare.json`（第一輪）和 `compare-v2.json`（第二輪，加上目標速率 2000 Mbit/s 的 bulk）。 |
 | `doc/en/design/android-bench.md` | 測試工具的設計，以及保證數據有效的規則（[簡體中文版](doc/zh/design/android-bench.md)）。 |
+| `doc/zh-TW/troubleshooting.md` | [Android 上的 doona VPN 疑難排解](doc/zh-TW/troubleshooting.md)。 |
 | `.github/workflows/android.yml` | CI：腳本檢查、檔案與函式的上限、rustfmt、Clippy、測試、Kotlin 格式、APK 建置、Android lint、JVM 測試和 16 KiB 分頁對齊檢查。 |
 
 `crates/honk-android/Cargo.toml` 從 Git 取得 honk-netstack，固定在 [Glassyiris/honk](https://github.com/Glassyiris/honk) 的 `c5b36a64`，也就是 [daeuniverse/honk#483](https://github.com/daeuniverse/honk/pull/483) 的頂端。
@@ -36,9 +37,30 @@ APK 位於 `android/tunbench/app/build/outputs/apk/debug/app-debug.apk`。`assem
 
 [`.github/workflows/android.yml`](.github/workflows/android.yml) 列出 CI 執行的檢查。
 
+## 驗證 Geo 資料版本
+
+在倉庫根目錄使用 `uv` 與 Python 3.11 以上版本，下載鎖定版本的 MetaCubeX 完整 DAT 檔，並將 `geo-manifest.json` 寫入獨立的輸出目錄。Rust 驗證工具沿用 `doona-core` 的工具鏈與 honk commit；在主機上建置還需要 CMake 和 libclang。
+
+```sh
+bundle=$(mktemp -d)
+uv run crates/doona-core/tools/update_geo.py "$bundle"
+uv run crates/doona-core/tools/update_geo.py --check "$bundle"
+(cd crates/doona-core/tools/geo-check && DAE_LOCATION_ASSET="$bundle" cargo run --locked -- tests/fixtures/required-labels.dae)
+```
+
+[每週排程](.github/workflows/geo-bundle.yml) 驗證最新版本後，只向 `v1/base` 提出更新版本鎖定檔的 PR。排程必須放在預設分支。啟用 **Allow GitHub Actions to create and approve pull requests**，預設 token 才能建立 PR。[`GITHUB_TOKEN` 建立的 PR 不會自動執行 CI](https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs)；有寫入權限的維護者須選擇 **Approve workflows to run**。DAT 檔不納入版本控制；doona 的 APK 內含鎖定版本的兩個 DAT 檔。
+
+MetaCubeX 會替換 `latest` 的附件，並強制推送 `release` 分支。版本鎖定檔使用含 commit SHA 的快照 URL，大小與 SHA-256 取自 release API。URL 不會指向新版內容，但 GitHub 可能回收舊的 `release` commit；是否設置第一方鏡像仍由維護者決定。
+
+啟動 VPN 時，若核心未使用任何一組 Geo 資料，或 APK 內的發行日期較新，應用程式會解壓縮資料並交給核心。啟動成功後會刪除暫存檔，殘留的暫存檔則在下次啟動時清除。若距上次成功更新已超過設定間隔，VPN 連線時會檢查更新；定期排程也會在已連線時檢查。預設間隔為一週，下載的資料下次啟動 VPN 時才會生效。
+
 ## 執行測試
 
 執行測試需要 `adb`，以及開啟 USB 偵錯的手機。也可以拔掉傳輸線、改用無線 adb 執行，量測期間手機就不會被 USB 充電。安裝 APK、用 `run.sh` 執行測試計畫、用 `analyze.py` 把 Perfetto trace 換算成能耗和喚醒次數，都寫在 [`android/scripts/README.md`](android/scripts/README.md)。
+
+## 參與貢獻
+
+回報問題前請閱讀[支援指南](.github/SUPPORT.md)；提交 PR 前請閱讀[貢獻指南](CONTRIBUTING.md)。
 
 ## 相關專案
 
@@ -47,4 +69,8 @@ APK 位於 `android/tunbench/app/build/outputs/apk/debug/app-debug.apk`。`assem
 
 ## 授權
 
-GPL-3.0-only，見 [LICENSE](LICENSE)。hev-socks5-tunnel submodule 沿用它自己的 MIT 授權。
+doona-android 採用 AGPL-3.0-only 授權，見 [LICENSE](LICENSE)。
+如果你散布修改版，或執行修改版並讓使用者透過網路與它互動，就必須向這些使用者提供取得對應原始碼的方式。
+
+honk 維持 GPL-3.0-only 授權，依 [GPL-3.0 第 13 條](https://www.gnu.org/licenses/gpl-3.0.html#section13) 與 doona-android 結合。
+hev-socks5-tunnel 子模組維持原有的 MIT 授權。

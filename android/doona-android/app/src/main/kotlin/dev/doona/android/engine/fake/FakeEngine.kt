@@ -1,6 +1,7 @@
 package dev.doona.android.engine.fake
 
 import dev.doona.android.engine.Catalog
+import dev.doona.android.engine.ConfigAssets
 import dev.doona.android.engine.CoreDiagnostics
 import dev.doona.android.engine.CrashFile
 import dev.doona.android.engine.EffectiveConfig
@@ -13,12 +14,19 @@ import dev.doona.android.engine.LatencyTest
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Mode
+import dev.doona.android.engine.Network
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.PerApp
+import dev.doona.android.engine.RecentFlow
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RulePage
 import dev.doona.android.engine.ScoreState
 import dev.doona.android.engine.Settings
+import dev.doona.android.engine.ShareLink
+import dev.doona.android.engine.StaticNode
+import dev.doona.android.engine.StaticNodeDraft
+import dev.doona.android.engine.StaticNodeResult
+import dev.doona.android.engine.StaticNodeUpdateResult
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.TodayTraffic
@@ -64,6 +72,8 @@ class FakeEngine internal constructor(
     override val settings: StateFlow<Settings> get() = settingsFlow
     private val settingsFlow = MutableStateFlow(Settings(mode = mode))
     private val ruleSource = MutableStateFlow(data.source)
+    private var assets = ConfigAssets("builtin", null, "idle", null, false)
+    private var dnsUpstreams = FakeRuleMode.DNS_UPSTREAMS
 
     /** The number in the next subscription id: as in the core, an id is never given twice, also after a removal. */
     private var nextSubscription = (subscriptions.maxOfOrNull(::subscriptionNumber) ?: 0) + 1
@@ -84,6 +94,10 @@ class FakeEngine internal constructor(
     override val warning = MutableStateFlow<ErrorCode?>(null)
 
     override fun connect() {
+        if (status.value is Status.Running) return
+        if (assets.updateWaitingForNextStart) {
+            assets = ConfigAssets("download", GEO_RELEASE, "activated", null, false)
+        }
         status.value = Status.Running(sinceEpochMs = 0)
     }
 
@@ -91,10 +105,17 @@ class FakeEngine internal constructor(
         status.value = Status.Stopped
     }
 
-    override suspend fun select(groupId: String, memberId: String?): Result<Unit> {
+    override suspend fun select(groupId: String, memberId: String?, network: Network?): Result<Unit> {
         groups.update { all ->
             all.map { g ->
-                if (g.id != groupId) g else g.copy(selectedId = memberId ?: g.members.firstOrNull()?.id, pinned = memberId != null)
+                if (g.id != groupId) {
+                    g
+                } else {
+                    val selection = Group.Selection(memberId ?: g.members.firstOrNull()?.id, pinned = memberId != null)
+                    val tcp = if (network == Network.Udp) g.tcp else selection
+                    val udp = if (network == Network.Tcp) g.udp else selection
+                    g.copy(tcp = tcp, udp = udp)
+                }
             }
         }
         return Result.success(Unit)
@@ -104,7 +125,9 @@ class FakeEngine internal constructor(
 
     override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> {
         val agent = userAgentOf(userAgent).getOrElse { return Result.failure(it) }
-        val added = Subscription(id = takeSubscriptionId(), name = name ?: url, url = url, nodes = 0, updatedAtEpochMs = 0, userAgent = agent)
+        val label = (if (name == null) runCatching { java.net.URI(url).host?.take(NAME_CAP) }.getOrNull() else displayName(name))
+            ?: return Result.failure(EngineException(ErrorCode.InvalidArgument))
+        val added = Subscription(id = takeSubscriptionId(), name = label, url = url, nodes = 0, updatedAtEpochMs = 0, userAgent = agent)
         subscriptions.update { it + added }
         return Result.success(added)
     }
@@ -120,6 +143,17 @@ class FakeEngine internal constructor(
     override suspend fun updateSubscription(id: String): Result<Subscription> =
         Result.success(subscriptions.value.first { it.id == id })
 
+    override suspend fun renameSubscription(id: String, name: String): Result<Subscription> {
+        val trimmed = displayName(name) ?: return Result.failure(EngineException(ErrorCode.InvalidArgument))
+        val changed = subscriptions.value.firstOrNull { it.id == id }?.copy(name = trimmed)
+            ?: return Result.failure(EngineException(ErrorCode.NotFound))
+        subscriptions.update { all -> all.map { if (it.id == id) changed else it } }
+        return Result.success(changed)
+    }
+
+    // Preview nodes have no original feed or credentials.
+    override suspend fun nodeShareLink(nodeId: String): Result<ShareLink> = Result.failure(EngineException(ErrorCode.NotFound))
+
     override suspend fun removeSubscription(id: String): Result<Unit> {
         subscriptions.update { all -> all.filterNot { it.id == id } }
         return Result.success(Unit)
@@ -132,6 +166,18 @@ class FakeEngine internal constructor(
         subscriptions.update { all -> all.map { if (it.id == id) changed else it } }
         return Result.success(changed)
     }
+
+    override suspend fun previewStaticNodes(rows: List<StaticNodeDraft>): Result<List<StaticNodeResult>> = staticEditorRequiresCore()
+
+    override suspend fun addStaticNodes(rows: List<StaticNodeDraft>): Result<List<StaticNodeResult>> = staticEditorRequiresCore()
+
+    override suspend fun readStaticNode(id: String): Result<StaticNode> = staticEditorRequiresCore()
+
+    override suspend fun updateStaticNode(expected: StaticNode, node: StaticNodeDraft): Result<StaticNodeUpdateResult> = staticEditorRequiresCore()
+
+    override suspend fun removeStaticNode(expected: StaticNode, confirmed: Boolean): Result<Unit> = staticEditorRequiresCore()
+
+    private fun <T> staticEditorRequiresCore(): Result<T> = Result.failure(EngineException(ErrorCode.Internal))
 
     override suspend fun setMode(mode: Mode): Result<Unit> {
         settingsFlow.update { it.copy(mode = mode) }
@@ -152,8 +198,16 @@ class FakeEngine internal constructor(
         return Result.success(Unit)
     }
 
+    override suspend fun setDnsUpstreams(servers: List<String>): Result<Unit> {
+        if (servers.size !in 1..4) return Result.failure(EngineException(ErrorCode.InvalidArgument))
+        val endpoints = servers.map { fakeResolver(it) ?: return Result.failure(EngineException(ErrorCode.InvalidArgument)) }
+        if (endpoints.distinct().size != endpoints.size) return Result.failure(EngineException(ErrorCode.InvalidArgument))
+        dnsUpstreams = endpoints
+        return Result.success(Unit)
+    }
+
     override suspend fun effectiveConfig(): Result<EffectiveConfig> =
-        Result.success(FakeRuleMode.effectiveConfig(settingsFlow.value.mode, groups.value, ruleSource.value, data.configLines))
+        Result.success(FakeRuleMode.effectiveConfig(settingsFlow.value.mode, groups.value, ruleSource.value, data.configLines, dnsUpstreams))
 
     override suspend fun usage(): Result<Usage> = Result.success(data.usage)
 
@@ -170,6 +224,23 @@ class FakeEngine internal constructor(
         Result.success(if (ids == null) data.nodes else ids.mapNotNull(nodesById::get))
 
     override suspend fun scoreState(): Result<ScoreState> = Result.success(data.scoreState)
+
+    override suspend fun configAssets(): Result<ConfigAssets> = Result.success(assets)
+
+    override suspend fun updateConfigAssets(): Result<ConfigAssets> {
+        if (assets.updateWaitingForNextStart) return Result.failure(EngineException(ErrorCode.Busy))
+        if (status.value !is Status.Running) {
+            assets = assets.copy(lastResult = "failed", reason = "not_connected")
+            return Result.failure(EngineException(ErrorCode.FetchFailed))
+        }
+        val checking = assets.copy(lastResult = "checking", reason = null)
+        assets = if (checking.release == GEO_RELEASE) {
+            checking.copy(lastResult = "up_to_date")
+        } else {
+            checking.copy(lastResult = "ready_on_next_start", updateWaitingForNextStart = true)
+        }
+        return Result.success(checking)
+    }
 
     override suspend fun setPerApp(perApp: PerApp): Result<Unit> {
         settingsFlow.update { it.copy(perApp = perApp) }
@@ -192,6 +263,11 @@ class FakeEngine internal constructor(
         return Result.success(CoreDiagnostics(logLevel, crashes, crashMark, json))
     }
 
+    var recentFlowRows = RECENT_FLOWS
+
+    override suspend fun recentFlows(): Result<List<RecentFlow>> =
+        Result.success(if (status.value is Status.Running) recentFlowRows else emptyList())
+
     override suspend fun setLogLevel(level: LogLevel): Result<Unit> {
         logLevel = level
         return Result.success(Unit)
@@ -204,6 +280,11 @@ class FakeEngine internal constructor(
 
     companion object {
         private const val MAX_RULES_PAGE = 500
+        private const val GEO_RELEASE = "2026-11-23"
+        private val RECENT_FLOWS = listOf(
+            RecentFlow("tcp", "172.19.0.1:41002", "192.0.2.2:443", "example.test", "g-Proxy", 371, true),
+            RecentFlow("udp", "172.19.0.1:41001", "192.0.2.1:443", null, "direct", 12, false),
+        )
 
         private fun node(id: String, name: String, latencyMs: Int?) =
             Member(id = id, name = name, latencyMs = latencyMs, subscriptionId = "s1")
@@ -261,6 +342,13 @@ class FakeEngine internal constructor(
             Subscription(id = "s1", name = "harbor", url = "https://example.invalid/sub", nodes = 4, updatedAtEpochMs = 0),
         )
     }
+}
+
+private const val NAME_CAP = 64
+
+private fun displayName(text: String): String? {
+    if (text.any { it.isISOControl() || it == '\u2028' || it == '\u2029' }) return null
+    return text.trim().takeIf { it.codePointCount(0, it.length) in 1..NAME_CAP }
 }
 
 private const val MAX_USER_AGENT = 256

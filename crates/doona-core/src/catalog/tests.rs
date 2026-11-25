@@ -6,7 +6,7 @@ use crate::testutil::fixture;
 
 /// The catalog `state` gives, its failures recorded nowhere.
 fn load(state: &State) -> Model {
-    super::load(state, &Diag::default())
+    super::load(&mut state.clone(), &Diag::default())
 }
 
 fn urltest(mut model: Model) -> Model {
@@ -44,7 +44,7 @@ fn state(subs: &[(&str, &str)]) -> State {
 }
 
 fn fresh(s: &StoredSubscription) -> Vec<Arc<NodeEntry>> {
-    entries(&s.id, stored_nodes(s).unwrap())
+    entries(&s.id, stored_nodes(s).unwrap().nodes)
 }
 
 fn ids(model: &Model) -> Vec<(String, String)> {
@@ -228,24 +228,33 @@ fn a_test_needs_a_group_that_exists_and_some_node() {
 
 #[test]
 fn leaves_follow_pins_and_nested_groups() {
-    let s = state(&[("s1", "links.txt")]);
+    let mut s = state(&[("s1", "links.txt")]);
     let model = load(&s);
     let first = &model.nodes[0];
-    let leaves = model.leaves(&s.selections);
+    let leaves = model.leaves(&s);
     assert_eq!(
-        leaves["g-Proxy"].peek(&model.score).unwrap().id,
+        leaves["g-Proxy"]
+            .tcp
+            .as_ref()
+            .unwrap()
+            .peek(&model.score)
+            .unwrap()
+            .id,
         first.node.id
     );
     let last = &model.nodes[8];
-    let pinned = BTreeMap::from([("g-Proxy".to_owned(), last.id.clone())]);
+    s.selections.insert("g-Proxy".into(), last.id.clone());
     assert_eq!(
-        model.leaves(&pinned)["g-Proxy"]
+        model.leaves(&s)["g-Proxy"]
+            .tcp
+            .as_ref()
+            .unwrap()
             .peek(&model.score)
             .unwrap()
             .id,
         last.node.id
     );
-    assert!(load(&State::default()).leaves(&s.selections).is_empty());
+    assert!(load(&State::default()).leaves(&s).is_empty());
 }
 
 #[test]

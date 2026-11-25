@@ -1,6 +1,8 @@
 //! Every example payload in `contracts/doona-core/` parses into its DTO and serializes back to the
 //! same JSON, so the Rust types and the Kotlin ones (tested against the same files) agree.
 
+mod common;
+
 use doonacore::dto::score::ScoreState;
 use doonacore::dto::{
     AddSubscriptionArgs, ClearCrashesArgs, Diagnostics, DiagnosticsArgs, EffectiveConfig, Empty,
@@ -31,24 +33,70 @@ fn round_trip<T: DeserializeOwned + Serialize>(name: &str) -> T {
     value
 }
 
-const COVERED: [&str; 26] = [
+#[test]
+fn catalog_member_locations() {
+    let dir = common::TempDir::new("contract-locations");
+    let state = serde_json::json!({
+        "stateVersion": 1, "mode": "Global",
+        "subscriptions": [{"id":"s1", "name":"sample", "url":"https://example.invalid",
+            "links":["socks5://192.0.2.1:1080#JP-NRT", "socks5://192.0.2.2:1080#anonymous",
+                     "socks5://192.0.2.3:1080#DE"]}],
+        "staticNodes": [{"id":"n-static", "name":"Dallas", "link":"socks5://192.0.2.4:1080"}]
+    });
+    std::fs::write(dir.path().join("state.json"), state.to_string()).unwrap();
+    let core = doonacore::api::Core::new(dir.path().to_str().unwrap()).unwrap();
+    let snapshot: Value = serde_json::from_str(&core.snapshot(-1)).unwrap();
+    let proxy = &snapshot["catalog"]["groups"][0];
+    assert_eq!(proxy["id"], "g-Proxy");
+    let locations: Vec<_> = proxy["members"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| {
+            let fields: serde_json::Map<_, _> = ["name", "region", "regionCentroid", "city"]
+                .map(|key| (key.to_owned(), m.get(key).unwrap().clone()))
+                .into_iter()
+                .collect();
+            Value::Object(fields)
+        })
+        .collect();
+    assert_eq!(
+        Value::Array(locations),
+        read("catalog/member-locations.json")
+    );
+}
+
+const COVERED: [&str; 40] = [
     "call-add-subscription-args.json",
     "call-clear-crashes-args.json",
+    "call-config-assets-update-args.json",
     "call-diagnostics-args.json",
+    "call-error-bootstrap-dns.json",
+    "call-error-state-write.json",
+    "call-error-static-row-count.json",
     "call-error.json",
+    "call-node-share-link-args.json",
     "call-nodes-args.json",
+    "call-ok-config-assets.json",
     "call-ok-diagnostics.json",
     "call-ok-effective-config.json",
     "call-ok-empty.json",
+    "call-ok-node-share-link.json",
     "call-ok-nodes.json",
+    "call-ok-recent-flows.json",
     "call-ok-rules.json",
     "call-ok-score-state.json",
+    "call-ok-static-limits.json",
     "call-ok-subscription.json",
     "call-ok-traffic-series.json",
     "call-ok-usage.json",
+    "call-recent-flows-args.json",
+    "call-rename-subscription-args.json",
     "call-rules-args.json",
     "call-score-state-args.json",
     "call-select-args.json",
+    "call-set-bootstrap-dns-args.json",
+    "call-set-dns-upstreams-args.json",
     "call-set-log-level-args.json",
     "call-set-mode-args.json",
     "call-set-rule-source-args.json",
@@ -58,6 +106,7 @@ const COVERED: [&str; 26] = [
     "snapshot-running.json",
     "snapshot-stopped-catalog.json",
     "start-config.json",
+    "static-nodes.json",
 ];
 
 #[test]
@@ -83,7 +132,79 @@ fn init_and_start_config() {
 }
 
 #[test]
+fn static_editor_fixture_is_an_executable_session() {
+    let dir = common::TempDir::new("contract-static");
+    let core = doonacore::api::Core::new(dir.path().to_str().unwrap()).unwrap();
+    for step in read("static-nodes.json").as_array().unwrap() {
+        let command = step["command"].as_str().unwrap();
+        let reply = core.call(command, &step["args"].to_string());
+        assert_eq!(
+            serde_json::from_str::<Value>(&reply).unwrap(),
+            step["reply"],
+            "{command}"
+        );
+    }
+}
+
+#[test]
+fn static_batch_limit_replies() {
+    use serde_json::json;
+    let dir = common::TempDir::new("contract-static-limits");
+    let nodes: Vec<_> = (1..=5000)
+        .map(|port| {
+            json!({
+                "id":format!("n-{port:016x}"), "name":port.to_string(),
+                "link":format!("socks5://192.0.2.1:{port}")
+            })
+        })
+        .collect();
+    let state = json!({"stateVersion":1,"mode":"Global","staticNodes":nodes});
+    std::fs::write(dir.path().join("state.json"), state.to_string()).unwrap();
+    let core = doonacore::api::Core::new(dir.path().to_str().unwrap()).unwrap();
+    let link = "socks5://192.0.2.2:1080#";
+    let long = format!("{link}{}", "x".repeat(8193 - link.len()));
+    let rows =
+        json!({"rows":[{"kind":"link","link":long},{"kind":"link","link":link}]}).to_string();
+    for command in ["previewStaticNodes", "addStaticNodes"] {
+        for count in [0, 201] {
+            let args = json!({"rows":vec![Value::Null; count]}).to_string();
+            let reply: Value = serde_json::from_str(&core.call(command, &args)).unwrap();
+            assert_eq!(reply, read("call-error-static-row-count.json"));
+        }
+        let reply: Value = serde_json::from_str(&core.call(command, &rows)).unwrap();
+        assert_eq!(reply, read("call-ok-static-limits.json"));
+    }
+}
+
+#[test]
+fn unknown_static_reasons_do_not_decode() {
+    for status in ["invalid", "unsupported"] {
+        let reply = serde_json::json!({"status":status,"reason":"unknown"});
+        assert!(serde_json::from_value::<doonacore::dto::StaticResult>(reply).is_err());
+    }
+}
+
+#[test]
+fn failed_static_write_publishes_none_of_the_batch() {
+    let dir = common::TempDir::new("contract-static-write");
+    let core = doonacore::api::Core::new(dir.path().to_str().unwrap()).unwrap();
+    std::fs::create_dir(dir.path().join("state.json.tmp")).unwrap();
+    let steps = read("static-nodes.json");
+    let reply = core.call("addStaticNodes", &steps[2]["args"].to_string());
+    assert_eq!(
+        serde_json::from_str::<Value>(&reply).unwrap(),
+        read("call-error-state-write.json")
+    );
+    assert_eq!(
+        core.call("nodes", r#"{"ids":null}"#),
+        r#"{"ok":{"nodes":[]}}"#
+    );
+    assert!(!dir.path().join("state.json").exists());
+}
+
+#[test]
 fn call_replies_and_args() {
+    round_trip::<doonacore::dto::BootstrapDnsArgs>("call-set-bootstrap-dns-args.json");
     let error = round_trip::<Reply<Empty>>("call-error.json");
     assert!(matches!(error, Reply::Error(e) if e.code == ErrorCode::TooLarge));
     assert_eq!(
@@ -97,6 +218,10 @@ fn call_replies_and_args() {
     );
     let add = round_trip::<AddSubscriptionArgs>("call-add-subscription-args.json");
     assert_eq!((add.name, add.user_agent.as_deref()), (None, agent));
+    round_trip::<doonacore::dto::RenameSubscriptionArgs>("call-rename-subscription-args.json");
+    round_trip::<doonacore::dto::IdArgs>("call-node-share-link-args.json");
+    round_trip::<Reply<String>>("call-ok-node-share-link.json");
+    round_trip::<doonacore::dto::DnsUpstreamsArgs>("call-set-dns-upstreams-args.json");
     // Null returns the subscription to the default agent, as the stopped catalog shows.
     let set = round_trip::<SubscriptionUserAgentArgs>("call-set-subscription-user-agent-args.json");
     assert_eq!((set.id.as_str(), set.user_agent), ("s1", None));
@@ -104,6 +229,8 @@ fn call_replies_and_args() {
     assert_eq!(mode.mode, Mode::Rule);
     let select = round_trip::<SelectArgs>("call-select-args.json");
     assert_eq!(select.member_id.as_deref(), Some("n-0c41be77"));
+    let udp = round_trip::<SelectArgs>("catalog/select-udp-args.json");
+    assert_eq!(udp.network, Some(doonacore::dto::Network::Udp));
 }
 
 #[test]
@@ -117,7 +244,21 @@ fn snapshots() {
     let died = round_trip::<Snapshot>("snapshot-died.json");
     assert!(!died.running && died.error.is_some() && died.warning.is_none());
     assert_eq!(running.today.yesterday_by_now, Some(1_610_612_736));
-    let stopped = round_trip::<Snapshot>("snapshot-stopped-catalog.json");
+    // Before location hints, schema 3 omitted the three keys. The rest still round-trips.
+    let legacy = read("snapshot-stopped-catalog.json");
+    let stopped: Snapshot = serde_json::from_value(legacy.clone()).unwrap();
+    let mut encoded = serde_json::to_value(&stopped).unwrap();
+    for group in encoded["catalog"]["groups"].as_array_mut().unwrap() {
+        for member in group["members"].as_array_mut().unwrap() {
+            for key in ["region", "regionCentroid", "city"] {
+                assert_eq!(
+                    member.as_object_mut().unwrap().remove(key),
+                    Some(Value::Null)
+                );
+            }
+        }
+    }
+    assert_eq!(encoded, legacy);
     // No yesterday was kept.
     assert_eq!(stopped.today.yesterday_by_now, None);
     let catalog = stopped.catalog.unwrap();
@@ -172,6 +313,12 @@ fn score_state_fixtures() {
     let g = &state.groups[0];
     assert_ne!(g.tcp.selected_id, g.udp.selected_id);
     assert_eq!(g.tcp.challengers[0].node_id, g.udp.selected_id);
+}
+
+#[test]
+fn recent_flow_fixtures() {
+    round_trip::<Empty>("call-recent-flows-args.json");
+    round_trip::<Reply<doonacore::dto::recent::RecentFlows>>("call-ok-recent-flows.json");
 }
 
 #[test]

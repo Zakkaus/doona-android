@@ -12,6 +12,18 @@ can try one other eligible member before the app sends any data; the retry share
 A network outage does not permanently exclude failed nodes or start background probes. A subscription
 refresh keeps probe latency for unchanged nodes.
 
+`Engine.renameSubscription` changes only the display name. Names may repeat because subscriptions,
+node memberships and selections use IDs. Add and rename accept 1 to 64 Unicode code points after
+trimming and reject controls and line separators. `Engine.nodeShareLink` returns a `ShareLink` only
+for a `share_links` feed; read its `uri` explicitly when sharing. Other formats, local nodes and
+unknown IDs return `NotFound`. Refresh a legacy subscription with no recorded format before sharing.
+
+`Engine.setDnsUpstreams` persists one to four distinct unicast IPv4 or IPv6 endpoints in preference order. The default
+is `1.1.1.1:53`, then `8.8.8.8:53`. A bare IP uses port 53; use `IP:port` or `[IPv6]:port` to
+override it. `effectiveConfig().dnsUpstreams` reports the active endpoints. New UDP DNS queries and
+new TCP DNS connections use the list immediately; existing TCP DNS connections keep theirs.
+This setting does not change Android's bootstrap resolvers for node hostnames.
+
 ```sh
 . ~/.cache/android-dev/env.sh
 ./gradlew spotlessCheck :app:lintDebug :app:testDebugUnitTest verifyRoborazziDebug
@@ -40,6 +52,36 @@ and with a taller line, so a rebuild that takes in such a character moves the ro
 characters a change needs, pass `--add <files>` after `app/src/main`: the files keep what they hold and gain those
 characters. A rebuild keeps the bounding box of the files it replaces; `FontMetricsTest` pins the metrics, and
 `tools/font_metrics.py <old dir> <new dir>` compares two builds.
+
+## Diagnostic capture
+
+`AppContainer.logLevels` owns the core log level for the process. A new process starts at Info.
+Selecting Debug starts a one-hour capture measured in elapsed time, including deep sleep.
+`remainingMs()` gives the countdown. The capture ends when the tunnel stops or fails, or
+when the app writes a report. If the core refuses the reset, the app retries once. The app
+never saves the level.
+
+The app and VPN service share a ring of 200 recent events. One background writer saves each
+event's time, level and scrubbed text in the app's no-backup directory. Reports load the saved
+events after a restart. Visited domains and app package names stay in memory; a process that dies
+before a write finishes can lose the newest events. A JVM crash file preserves up to 50
+allowlisted actions from its own process within the 64 KiB file limit.
+
+`AppEventRingTest` uses a fresh event log per test and a plain Android `Application`. App startup
+and background workers cannot write into the ring under test.
+
+The ZIP records each group's TCP and UDP choices and pins using scrubbed node and group identifiers.
+
+The ZIP omits node endpoints and local IP addresses by default. With either option enabled, it
+reads endpoints only for listed nodes or IPs from Android's active link. For structured event
+records, the ZIP and GitHub draft omit visited domains by default and include app package names
+by default. Neither output extracts these fields from log text or collects new traffic data.
+Subscription links, tokens, credentials and raw payloads are not export options.
+
+A report can also include a GitHub link that fills in the bug form with failure context, device details,
+and at most 50 recent actions. The ZIP and link use the same scrubber and event snapshot. The link drops
+the oldest actions first to keep the encoded URL below 8,000 characters. No network request is made;
+the reporter completes the remaining fields and attaches the ZIP on GitHub.
 
 ## Icons and flags
 
@@ -110,6 +152,10 @@ variant.
   Navigation and steps that need the activity (`onOpenGroup`, `onConnect`) are separate screen parameters.
 - **Errors:** engine actions return `Result`. On failure, store `it.errorCode()` in the state, show it with
   `DoonaErrorBanner(stringResource(code.messageRes()), …)` (`feature/ErrorText.kt`), and clear it on dismiss.
+- **Manual static nodes:** build drafts with `StaticNodeDraft.Manual.create`. Ports outside `1..65535` fail with
+  `StaticNodeDraftException` and reason `Port`. Use the reason to mark the field without calling the engine.
+  In a batch, a bad port fails only that row. Submit the remaining drafts and map the engine results back to the
+  original UI rows in submission order.
 - **UI:** components come from `designsystem/components` only; no `androidx.compose.material3`, `clickable` or
   literal sizes in `feature/`. Gaps are spacing roles (`DoonaGap(DoonaTheme.spacing.section)`), never numbers. A component that is always interactive takes a required callback; one that can be static (`DoonaCard`, `DoonaTagChip`, `DoonaPageTabs`) takes a nullable one; an action with no screen behind it yet is passed `NOT_WIRED`, so it can be found. Strings go in `values/strings.xml` and `values-zh-rTW/strings.xml`.
 - **Previews:** in `<Screen>Previews.kt`, light and dark, built from `FakeEngine` fixtures through the same pure
@@ -119,3 +165,35 @@ variant.
   fail), and a case in `screenCases()` (`testing/ScreenCases.kt`) that names the layout roles the screen shows and the spacing role of each gap between the blocks of its sheet: it gets the spacing check on a phone, a wide window and
   a landscape one, the reachability check, and a golden in every variant. Record the goldens and look at them before
   committing.
+
+## Release notices
+
+From this directory, build with `./gradlew assembleRelease`. Run `python3 tools/notices.py` to check
+the checked-in inventory and the notices inside the APK. The generator uses Python's standard library,
+the project's Gradle wrapper and the pinned Rust toolchain with `rust-docs` installed. After a dependency
+or licence change, run `python3 tools/notices.py --write`, rebuild the APK and run the check again.
+The Maven list covers runtime archives before shrinking, not build plugins, test artifacts or the Compose BOM.
+Gradle resolves parent POMs when a library inherits its licences. Each Geo DAT appears in the inventory
+only if the APK contains it; bundled bytes must match the reviewed pin.
+
+`assets/licenses/index.json` (schema `2`) has two fields besides `schema`:
+
+- `components`: each entry gives `kind`, `name`, `version`, `source` and the SPDX expression in
+  `license`. Group entries by the identifiers in `bodies`, but display the expression so readers can
+  distinguish `OR`, `AND` and `WITH`. `LicenseRef-` terms have no SPDX body; see `notice` and `extras`.
+  Display the component's `attribution` lines and `notice` alongside its licence. Each `extras` entry
+  gives the upstream `file`, its `text` key and a `comment` explaining why the full text is retained.
+- `ranges`: maps each body identifier or extra text key to `[byteOffset, byteLength]` in
+  `licenses/notices.txt`. Read that byte range before decoding UTF-8. Components can share a range,
+  including when two archives contain identical NOTICE files.
+
+The `project` component uses the `doona-core` manifest and repository `LICENSE`. The standard bodies in
+`tools/spdx/` come from the [SPDX licence list, v3.27.0](https://github.com/spdx/license-list-data/tree/v3.27.0/text).
+The generator compares the complete upstream file, ignoring layout, recognised licence titles and
+attribution fields. If it cannot match the body, it keeps the original file, including extra terms.
+It always retains component NOTICE files, even when their contents match a standard licence.
+
+When adding artwork, classify the release resources in `tools/notices.py`; record each logo's upstream
+revision, copyright status and trademark restrictions. Do not list artwork from an unmerged branch.
+`tools/notice-sources.json` records upstream paths for licence files missing from published packages and
+for the reviewed Geo inputs. Distribution conditions appear in [Third-party notices](../../THIRD_PARTY_NOTICES.md).

@@ -2,7 +2,7 @@
 name = "doona-core"
 version = "0.1.0"
 edition = "2024"
-license = "GPL-3.0-only"
+license = "AGPL-3.0-only"
 publish = false
 description = "doona-Android's Rust core: the tun data path, state and the JNI surface of dev.doona.android.vpn.NativeCore"
 
@@ -14,10 +14,10 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 # Full SHAs: daeuniverse/honk main for config and outbounds, Glassyiris/honk for the netstack
-# (daeuniverse/honk#483), as in crates/honk-android. honk-outbound's flow observation, as
-# honk-core's native API enables it, reports which node address each dial tried (ARCH D26).
-honk-config = { git = "https://github.com/daeuniverse/honk", rev = "8919784a6fe11fd8c6b9516b79f5553b93810ab2" }
-honk-outbound = { git = "https://github.com/daeuniverse/honk", rev = "8919784a6fe11fd8c6b9516b79f5553b93810ab2", features = ["rprx", "flow-observation"] }
+# (daeuniverse/honk#483). Keep geo-check on the same upstream revision. honk-outbound's
+# flow observation reports which node address each dial tried (ARCH D26).
+honk-config = { git = "https://github.com/daeuniverse/honk", rev = "63de98ba32f871ac6a779e7462a0a79f8a595153" }
+honk-outbound = { git = "https://github.com/daeuniverse/honk", rev = "63de98ba32f871ac6a779e7462a0a79f8a595153", features = ["rprx", "flow-observation"] }
 honk-netstack = { git = "https://github.com/Glassyiris/honk", rev = "92211429afea6abb6ee834350d6ff9a5d8d331d2" }
 jni = { version = "=0.22.4", default-features = false }
 libc = "0.2"
@@ -47,6 +47,7 @@ webpki-root-certs = "1"
 # Rule mode's DOMAIN-KEYWORD: one automaton over every keyword of a source. Already in the graph
 # through regex.
 aho-corasick = "1"
+regex = "1"
 # Rule mode's names of DNS answers, least recently used first out. Already in the graph through
 # honk-outbound.
 lru = "0.19"
@@ -86,5 +87,5 @@ codegen-units = 16
 # its boring-sys fork and its Quinn fork. Git dependencies do not carry them, so they are repeated.
 [patch.crates-io]
 boring-sys = { git = "https://github.com/Glassyiris/boring-sys", rev = "3beb573b65ecaa69b7eefe3c2fecd074b97facd2" }
-quinn = { git = "https://github.com/Glassyiris/quinn", rev = "11f1de84c28305a3c98ace6d681c35219a8d1e6c" }
-quinn-proto = { git = "https://github.com/Glassyiris/quinn", rev = "11f1de84c28305a3c98ace6d681c35219a8d1e6c" }
+quinn = { git = "https://github.com/Glassyiris/quinn", rev = "d98acc02b8c26417a84180a366e1eb5b22af2b24" }
+quinn-proto = { git = "https://github.com/Glassyiris/quinn", rev = "d98acc02b8c26417a84180a366e1eb5b22af2b24" }

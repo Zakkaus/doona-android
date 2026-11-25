@@ -158,7 +158,7 @@ jobs:
           tools/check-layers.sh
       - name: Check Kotlin format, lint, run the JVM tests and the screenshots
         working-directory: android/doona-android
-        # The JVM checks need no native library; the release job builds and checks it.
+        # The release job builds the native library and bundles Geo data; JVM checks need neither.
         run: ./gradlew -Pdoona.skipCore=true spotlessCheck :app:lintDebug :icons:lintDebug :flags:lintDebug :app:testDebugUnitTest :flags:testDebugUnitTest :app:verifyRoborazziDebug
 
   doona-release:
@@ -180,22 +180,44 @@ jobs:
         with:
           toolchain: ${{ steps.toolchain.outputs.stable }}
           targets: aarch64-linux-android
+          components: rust-docs
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: crates/doona-core
           key: doona-core-android
           cache-on-failure: true
           save-if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+      - name: Cache pinned Geo assets
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ~/.gradle/caches/doona-geo
+          key: doona-geo-${{ hashFiles('crates/doona-core/tools/geo-pins.json') }}
       - name: Install the NDK, the API 37.1 platform and cargo-ndk
         run: |
           set -euo pipefail
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;30.0.16248370" "platforms;android-37.1"
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/30.0.16248370" >> "$GITHUB_ENV"
           cargo install --locked cargo-ndk@4.1.2
-      - name: Build the release APK with the core and check its 16 KiB page alignment
+      - name: Build the release APK and check its size and 16 KiB page alignment
         working-directory: android/doona-android
+        env:
+          CORE_PROFILE: ${{ github.event_name == 'pull_request' && 'ci-release' || 'release' }}
         run: |
           set -euo pipefail
-          ./gradlew assembleRelease ${{ github.event_name == 'pull_request' && '-Pdoona.coreProfile=ci-release' || '' }}
+          ./gradlew assembleRelease -Pdoona.coreProfile="$CORE_PROFILE"
           apk=app/build/outputs/apk/release/app-release.apk
+          python3 -m unittest discover -s tools -p 'test_notices.py'
+          python3 tools/notices.py --apk "$apk"
+          # Owner decision (2026-11-24): ship both full DATs. Baselines include them.
+          # Allow 256 KiB above each measured APK, including signer and alignment variation.
+          # Measured by CI at 821738f6 (geo DATs and the geo core): release 23,439,017, ci-release 27,945,273.
+          baseline_apk_bytes=23439017
+          if [[ "$CORE_PROFILE" == ci-release ]]; then baseline_apk_bytes=27945273; fi
+          max_apk_bytes=$((baseline_apk_bytes + 256 * 1024))
+          apk_bytes=$(stat -c %s "$apk")
+          echo "Release APK: $apk_bytes bytes (limit: $max_apk_bytes)"
+          if (( apk_bytes > max_apk_bytes )); then
+            echo "::error::Release APK exceeds its size budget"
+            exit 1
+          fi
           "$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/zipalign" -c -P 16 4 "$apk"

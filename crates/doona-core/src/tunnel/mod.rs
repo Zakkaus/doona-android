@@ -7,12 +7,15 @@
 //! within the same deadline (see `outbounds.rs`).
 
 mod blocked;
+mod control;
 mod driver;
 mod flow;
 mod gate;
 #[cfg(test)]
 pub(crate) mod pause;
+mod recent;
 pub mod route;
+mod sniff;
 mod splice;
 mod tcp;
 mod tun;
@@ -57,7 +60,7 @@ pub struct Settings {
     /// The virtual resolver the tun advertises.
     pub dns: Ipv4Addr,
     /// Where DNS the core answers is forwarded, in order.
-    pub dns_upstreams: Vec<SocketAddr>,
+    pub dns_upstreams: tokio::sync::watch::Receiver<Arc<[SocketAddr]>>,
     /// A UDP association with no datagram either way for this long ends.
     pub udp_idle: Duration,
     /// How long a TCP flow may move no byte after either side's FIN, and a TCP/53 connection to the
@@ -226,6 +229,7 @@ pub struct Session {
     catalog: Weak<Shared>,
     /// The names the generation's DNS answers gave addresses (ARCH D33).
     names: Names,
+    pub(crate) recent: Arc<recent::Recent>,
 }
 
 /// Whether a dial through a node was refused at an address on the local network, with none that
@@ -263,6 +267,7 @@ impl Session {
             local_network: Mutex::default(),
             catalog,
             names: Names::new(),
+            recent: recent::Recent::new(),
         }
     }
 
@@ -518,12 +523,6 @@ impl Tunnel {
         &self.gen_.session
     }
 
-    /// Panics in a task of the generation, which ends its data path as a crash would.
-    #[cfg(feature = "fault-hook")]
-    pub fn fault(&self) {
-        self.gen_.spawn(async { panic!("debugFault") });
-    }
-
     /// Lets the driver serve the tun: `start` committed the generation.
     pub fn release(&mut self) {
         if let Some(release) = self.release.take() {
@@ -542,6 +541,7 @@ impl Tunnel {
     pub fn halt(&self) {
         self.gen_.cancel.cancel();
         self.tun.revoke();
+        self.session().recent.stop();
         if let Some(ended) = self.outbounds.end(self.gen_.session.generation) {
             *lock(&self.ended) = Some(ended);
         }

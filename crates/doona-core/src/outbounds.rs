@@ -41,7 +41,7 @@ mod routing;
 pub(crate) use self::layers::Registries;
 use self::layers::layers;
 use self::routing::Table;
-pub(crate) use self::routing::{Leaf, Routing, View};
+pub(crate) use self::routing::{Leaf, NetworkLeaves, Routing, View};
 
 /// Threads of a carriers runtime: the protocol work of every proxied flow (TLS, QUIC, session
 /// framing) runs there.

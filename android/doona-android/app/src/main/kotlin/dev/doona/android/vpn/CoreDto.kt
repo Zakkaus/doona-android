@@ -8,8 +8,6 @@ import dev.doona.android.engine.DayUsage
 import dev.doona.android.engine.EffectiveConfig
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.Group
-import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.LatencyTest
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Member
@@ -24,12 +22,16 @@ import dev.doona.android.engine.RuleRow
 import dev.doona.android.engine.RuleSkip
 import dev.doona.android.engine.RuleSource
 import dev.doona.android.engine.RuleTarget
+import dev.doona.android.engine.StaticNodeReason
+import dev.doona.android.engine.StaticNodeResult
+import dev.doona.android.engine.StaticNodeUpdateResult
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.engine.TodayTraffic
 import dev.doona.android.engine.TrafficSeries
 import dev.doona.android.engine.Usage
 import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -37,28 +39,16 @@ import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonClassDiscriminator
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 
 /** The contract schema this app speaks (`plans/v1/core-api.md`). */
-internal const val CORE_SCHEMA = 2
+internal const val CORE_SCHEMA = 3
 
 @Serializable
 internal data class InitDto(val schema: Int)
-
-/** The tun the service builds uses the same values. */
-@Serializable
-internal data class StartConfigDto(val mtu: Int, val ipv4: String, val dns: String, val bootstrapDns: List<String>) {
-    companion object {
-        const val MTU = 65535
-        const val IPV4 = "172.19.0.1"
-        const val IPV4_PREFIX = 30
-        const val DNS = "172.19.0.2"
-
-        fun of(bootstrapDns: List<String>, mtu: Int = MTU) = StartConfigDto(mtu, IPV4, DNS, bootstrapDns)
-    }
-}
 
 @Serializable
 internal data class SnapshotDto(
@@ -170,6 +160,54 @@ internal data class NodeInfoDto(
 /** A test: when its round began, and the time it measured; null when the probe failed. */
 @Serializable
 internal data class LatencyTestDto(val atEpochMs: Long, val ms: Int? = null)
+
+@OptIn(ExperimentalSerializationApi::class)
+@JsonClassDiscriminator("status")
+@Serializable
+internal sealed interface StaticNodeRowDto {
+    fun toRow(): StaticNodeResult
+
+    @Serializable
+    sealed interface Update : StaticNodeRowDto {
+        override fun toRow(): StaticNodeUpdateResult
+    }
+
+    @Serializable
+    @SerialName("ready")
+    class Ready(val id: String, val name: String, val protocol: String) : StaticNodeRowDto {
+        override fun toRow() = StaticNodeResult.Ready(id, name, protocol)
+    }
+
+    @Serializable
+    @SerialName("added")
+    class Added(val id: String, val name: String, val protocol: String) : StaticNodeRowDto {
+        override fun toRow() = StaticNodeResult.Added(id, name, protocol)
+    }
+
+    @Serializable
+    @SerialName("updated")
+    class Updated(val id: String, val name: String, val protocol: String) : Update {
+        override fun toRow() = StaticNodeResult.Updated(id, name, protocol)
+    }
+
+    @Serializable
+    @SerialName("duplicate")
+    class Duplicate(val id: String) : Update {
+        override fun toRow() = StaticNodeResult.Duplicate(id)
+    }
+
+    @Serializable
+    @SerialName("invalid")
+    class Invalid(val reason: StaticNodeReason) : Update {
+        override fun toRow() = StaticNodeResult.Invalid(reason)
+    }
+
+    @Serializable
+    @SerialName("unsupported")
+    class Unsupported(val reason: StaticNodeReason) : Update {
+        override fun toRow() = StaticNodeResult.Unsupported(reason)
+    }
+}
 
 /** [mainGroupId] is the group Global sends every flow through, and Rule the flows no rule matched. */
 @Serializable
@@ -299,25 +337,12 @@ private val RULE_SKIPS = mapOf(
 )
 
 @Serializable
-internal data class GroupDto(
-    val id: String,
-    val name: String,
-    val kind: GroupKind,
-    val selectedId: String? = null,
-    val pinned: Boolean,
-    val testing: Boolean,
-    val members: List<MemberDto>,
-) {
-    fun toGroup() = Group(id, name, kind, members.map(MemberDto::toMember), selectedId, pinned, testing)
-}
-
-@Serializable
 internal data class MemberDto(
     val id: String,
     val name: String,
     val latencyMs: Int? = null,
     val failed: Boolean,
-    /** Why the last probe failed, when the core knows: `local_network`. */
+    /** Why the last probe failed, when the core knows: `dns_failed` or `local_network`. */
     val error: String? = null,
     val isGroup: Boolean,
     val subscriptionId: String? = null,
@@ -364,14 +389,14 @@ private val SUBSCRIPTION_FORMATS = mapOf(
 )
 
 @Serializable
-internal data class SelectArgs(val group: String, val memberId: String?)
-
-@Serializable
 internal data class GroupArgs(val group: String?)
 
 /** `addSubscription`: [userAgent] may be absent, as from a caller before it; absent or null is the default. */
 @Serializable
 internal data class AddSubscriptionArgs(val url: String, val name: String?, val userAgent: String? = null)
+
+@Serializable
+internal data class RenameSubscriptionArgs(val id: String, val name: String)
 
 /** `setSubscriptionUserAgent`: the key is required, and null returns the subscription to the default. */
 @Serializable
@@ -382,6 +407,16 @@ internal data class IdArgs(val id: String)
 
 @Serializable
 internal data class ModeArgs(val mode: Mode)
+
+@Serializable
+internal data class BootstrapDnsArgs(val servers: List<String>) {
+    companion object {
+        const val COMMAND = "setBootstrapDns"
+    }
+}
+
+@Serializable
+internal data class DnsUpstreamsArgs(val servers: List<String>)
 
 /** `rules`' page: [limit] is 1 to 500. */
 @Serializable
@@ -399,10 +434,6 @@ internal data class RuleSourceArgs(val kind: String, val template: String, val o
 @Serializable
 internal data class SeriesArgs(val seconds: Long)
 
-/** `nodes`: every node when [ids] is null. */
-@Serializable
-internal data class NodesArgs(val ids: List<String>?)
-
 @Serializable
 internal data class CallErrorDto(val code: String)
 
@@ -419,6 +450,7 @@ private val ERROR_CODES = mapOf(
     "busy" to ErrorCode.Busy,
     "internal" to ErrorCode.Internal,
     "local_network" to ErrorCode.LocalNetwork,
+    "dns_failed" to ErrorCode.DnsFailed,
 )
 
 /** An unknown code from a newer core is [ErrorCode.Internal]. */

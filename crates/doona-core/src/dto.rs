@@ -1,6 +1,5 @@
-//! The JSON payloads of the JNI contract (`plans/v1/core-api.md`, schema 2). Kotlin's twin is
-//! `vpn/CoreDto.kt`; `contracts/doona-core/*.json` holds the examples both sides test against.
-//! Unknown fields are ignored; a missing required field fails to parse (`invalid_argument`).
+//! JNI schema 3 (`plans/v1/core-api.md`); Kotlin's `vpn/CoreDto.kt` shares `contracts/doona-core/*.json`.
+//! Unknown fields are ignored; missing required fields yield `invalid_argument`.
 
 pub use crate::diag::report::{
     ClearCrashesArgs, CoreBuild, CrashFile, DiagEvent, Diagnostics, DiagnosticsArgs, LastSnapshot,
@@ -8,13 +7,17 @@ pub use crate::diag::report::{
 };
 use serde::{Deserialize, Serialize};
 
+pub mod location;
+pub mod recent;
 pub mod score;
+mod selection;
+pub use selection::{Network, SelectArgs};
+mod start;
+pub use start::{DnsUpstreamsArgs, StartConfig};
 
-/// The contract schema this core speaks; `init` returns it. Schema 2 added `Rule` to the modes,
-/// which a schema-1 app cannot read; later additions within it stay additive.
-pub const SCHEMA: u32 = 2;
+/// Schema 3 admits catalog leaves without a subscription and adds the static editor commands.
+pub const SCHEMA: u32 = 3;
 
-/// The closed set of error codes, as `ErrorCode` in Kotlin's `Engine.kt`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ErrorCode {
@@ -26,9 +29,9 @@ pub enum ErrorCode {
     NoNodes,
     Busy,
     Internal,
-    /// A dial or a fetch failed and its target was an address on the local network, which
-    /// Android 17 lets doona reach only with `ACCESS_LOCAL_NETWORK` (ARCH D26).
+    /// A local-network dial or fetch failed (Android 17 `ACCESS_LOCAL_NETWORK`, ARCH D26).
     LocalNetwork,
+    DnsFailed,
 }
 
 impl ErrorCode {
@@ -43,6 +46,7 @@ impl ErrorCode {
             ErrorCode::Busy => "busy",
             ErrorCode::Internal => "internal",
             ErrorCode::LocalNetwork => "local_network",
+            ErrorCode::DnsFailed => "dns_failed",
         }
     }
 }
@@ -68,20 +72,12 @@ pub struct Init {
     pub schema: u32,
 }
 
-/// `start`'s config. The tun was built with the same values.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct StartConfig {
-    pub mtu: u16,
-    pub ipv4: std::net::Ipv4Addr,
-    /// The virtual resolver the tun advertises; DNS sent to it is answered by the core.
-    pub dns: std::net::Ipv4Addr,
-    /// The underlying network's resolvers, as Android reports them; they may carry a scope
-    /// (`fe80::1%wlan0`), so they stay text until a dialer needs them.
-    pub bootstrap_dns: Vec<String>,
+pub struct BootstrapDnsArgs {
+    pub servers: Vec<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Snapshot {
     pub revision: i64,
@@ -190,7 +186,7 @@ pub struct TrafficSeries {
     pub down_peak: u64,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Catalog {
     pub mode: Mode,
@@ -318,30 +314,39 @@ pub struct EffectiveConfig {
     pub truncated: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Group {
     pub id: String,
     pub name: String,
     pub kind: GroupKind,
     pub selected_id: Option<String>,
+    pub tcp_selected_id: Option<String>,
+    pub udp_selected_id: Option<String>,
+    #[serde(default)]
+    pub networks_differ: bool,
     pub pinned: bool,
+    #[serde(default)]
+    pub tcp_pinned: bool,
+    #[serde(default)]
+    pub udp_pinned: bool,
     pub testing: bool,
     pub members: Vec<Member>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Member {
     pub id: String,
     pub name: String,
     pub latency_ms: Option<u32>,
     pub failed: bool,
-    /// Why the last probe failed, when the core knows: `local_network` when it was refused on its
-    /// way to the node at an address on the local network. Null otherwise, and for groups.
+    /// Known cause of the last probe failure, e.g. `local_network` or `dns_failed`; null for groups.
     pub error: Option<ErrorCode>,
     pub is_group: bool,
     pub subscription_id: Option<String>,
+    #[serde(flatten)]
+    pub location: location::Location,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -393,14 +398,6 @@ pub struct Empty {}
 // missing `Option` field as `None` unless it is deserialized as a plain value.
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SelectArgs {
-    pub group: String,
-    #[serde(deserialize_with = "Option::deserialize")]
-    pub member_id: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GroupArgs {
     #[serde(deserialize_with = "Option::deserialize")]
     pub group: Option<String>,
@@ -414,6 +411,12 @@ pub struct AddSubscriptionArgs {
     /// Optional, unlike the other nullable keys: a caller from before it sends the default.
     #[serde(default, rename = "userAgent")]
     pub user_agent: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct RenameSubscriptionArgs {
+    pub id: String,
+    pub name: String,
 }
 
 /// `setSubscriptionUserAgent`: null returns the subscription to the default.
@@ -462,8 +465,7 @@ pub struct NodeInfo {
     pub tests: Vec<LatencyTest>,
 }
 
-/// One latency test: when its round began, and the time it measured; none when the probe
-/// failed.
+/// One latency test: when its round began, and the time it measured; none when the probe failed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LatencyTest {
@@ -475,4 +477,123 @@ pub struct LatencyTest {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SeriesArgs {
     pub seconds: u64,
+}
+
+/// The private editor view; catalog members never include the credential-bearing link.
+#[derive(Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct StaticNode {
+    pub id: String,
+    pub name: String,
+    pub link: String,
+}
+
+impl std::fmt::Debug for StaticNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StaticNode")
+            .field("id", &self.id)
+            .finish_non_exhaustive()
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(tag = "kind", rename_all = "lowercase", deny_unknown_fields)]
+pub enum StaticDraft {
+    Link { link: String, name: Option<String> },
+    Manual(ManualNode),
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ManualNode {
+    pub protocol: String,
+    pub server: String,
+    pub port: u16,
+    pub name: Option<String>,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub uuid: Option<String>,
+    pub cipher: Option<String>,
+    #[serde(default)]
+    pub options: std::collections::BTreeMap<String, String>,
+}
+
+/// Deserialize each draft independently: one malformed field must not discard valid siblings.
+#[derive(Deserialize)]
+#[serde(untagged)]
+pub enum StaticInput {
+    Draft(StaticDraft),
+    Malformed(serde::de::IgnoredAny),
+}
+
+#[derive(Deserialize)]
+pub struct StaticBatch {
+    pub rows: Vec<StaticInput>,
+}
+
+#[derive(Deserialize)]
+pub struct StaticUpdate {
+    pub expected: StaticNode,
+    pub node: StaticInput,
+}
+
+#[derive(Deserialize)]
+pub struct StaticRemove {
+    pub expected: StaticNode,
+    pub confirmed: bool,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StaticReason {
+    CatalogFull,
+    Chain,
+    Cipher,
+    Credentials,
+    DuplicateOption,
+    Fields,
+    Link,
+    LinkLength,
+    Name,
+    Option,
+    Password,
+    Path,
+    Port,
+    Protocol,
+    Server,
+    Username,
+    Uuid,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(tag = "status", rename_all = "lowercase")]
+pub enum StaticResult {
+    Ready {
+        id: String,
+        name: String,
+        protocol: String,
+    },
+    Added {
+        id: String,
+        name: String,
+        protocol: String,
+    },
+    Updated {
+        id: String,
+        name: String,
+        protocol: String,
+    },
+    Duplicate {
+        id: String,
+    },
+    Invalid {
+        reason: StaticReason,
+    },
+    Unsupported {
+        reason: StaticReason,
+    },
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct StaticResults {
+    pub rows: Vec<StaticResult>,
 }

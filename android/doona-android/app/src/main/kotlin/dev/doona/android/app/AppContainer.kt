@@ -4,10 +4,14 @@ import android.Manifest
 import android.app.Application
 import android.content.pm.PackageManager
 import android.database.sqlite.SQLiteException
+import android.net.ConnectivityManager
 import android.os.Build
+import android.os.SystemClock
 import androidx.work.WorkManager
 import dev.doona.android.data.network.networkState
+import dev.doona.android.data.network.ownAddresses
 import dev.doona.android.data.settings.AppSettings
+import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.InstalledApps
 import dev.doona.android.feature.localnetwork.LocalNetworkAccess
@@ -18,13 +22,18 @@ import dev.doona.android.report.AppReportExporter
 import dev.doona.android.report.CrashFiles
 import dev.doona.android.report.CrashOffer
 import dev.doona.android.report.ExportTokens
+import dev.doona.android.report.FlowEvents
 import dev.doona.android.report.ReportExport
 import dev.doona.android.report.ReportExporter
+import dev.doona.android.report.connectionOwnerUid
 import dev.doona.android.report.reportDir
 import dev.doona.android.vpn.QuickTile
 import dev.doona.android.vpn.VpnLog
 import dev.doona.android.work.ForegroundRefresh
+import dev.doona.android.work.GeoRefresh
 import dev.doona.android.work.SubscriptionRefresh
+import dev.doona.android.work.scheduleGeoRefresh
+import dev.doona.android.work.scheduleGeoRefreshOnConnect
 import dev.doona.android.work.scheduleSubscriptionRefresh
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -53,6 +62,8 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
     /** Outlives every screen: imports and local network prompts that a page started go on when it is left. */
     private val uiScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) }
 
+    val logLevels: LogLevelController by lazy { LogLevelController({ engine.setLogLevel(it) }, uiScope, SystemClock::elapsedRealtime) }
+
     val networkState by lazy { networkState(application, uiScope) }
 
     internal val subscriptionRefresh by lazy { SubscriptionRefresh(AppSettings.get(application), { engine }) }
@@ -73,6 +84,31 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
                         VpnLog.warn("subscription-refresh: schedule write failed (${e.javaClass.simpleName})")
                     }
                 }
+        }
+    }
+
+    internal val geoRefresh by lazy { GeoRefresh(AppSettings.get(application)) { engine } }
+
+    internal fun startGeoRefresh() {
+        uiScope.launch {
+            geoRefresh.watchConnections { scheduleGeo { scheduleGeoRefreshOnConnect(it) } }
+        }
+        uiScope.launch {
+            AppSettings.get(application).geoUpdateInterval
+                .catch {
+                    if (it !is IOException) throw it
+                    VpnLog.warn("geo-refresh: settings read failed (${it.javaClass.simpleName})")
+                }.collect { setting ->
+                    scheduleGeo { scheduleGeoRefresh(it, setting) }
+                }
+        }
+    }
+
+    private suspend fun scheduleGeo(schedule: suspend (WorkManager) -> Unit) {
+        try {
+            schedule(WorkManager.getInstance(application))
+        } catch (e: SQLiteException) {
+            VpnLog.warn("geo-refresh: schedule write failed (${e.javaClass.simpleName})")
         }
     }
 
@@ -97,13 +133,40 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
     /** The report offered after a crash, once per crash; the number it last offered is kept beside the crash files. */
     val crashOffer: CrashOffer by lazy { CrashOffer(crashFiles) { File(application.noBackupFilesDir, "crash-offered") } }
 
+    private val flowEvents by lazy {
+        val connectivity = checkNotNull(application.getSystemService(ConnectivityManager::class.java))
+        val lookup = connectivity::getConnectionOwnerUid
+        FlowEvents(
+            engine,
+            Dispatchers.IO,
+            { protocol, local, remote -> connectionOwnerUid(protocol, local, remote, lookup) },
+            application.packageManager::getPackagesForUid,
+        )
+    }
+
+    internal fun startFlowCapture() {
+        uiScope.launch { flowEvents.followCapture(logLevels) }
+    }
+
     /**
      * The diagnostic report export, process-wide. The exports a share sheet may still call back for are kept beside the
      * crash files, so a pick reaches them after a restart.
      */
     val reports: ReportExport by lazy {
         val tokens = ExportTokens { File(application.noBackupFilesDir, "report-exports.json") }
-        ReportExport(engine, crashFiles, crashOffer, { reportDir(application) }, tokens, { AppInfo.of(application) }, uiScope, Dispatchers.IO)
+        ReportExport(
+            engine,
+            crashFiles,
+            crashOffer,
+            { reportDir(application) },
+            tokens,
+            { AppInfo.of(application) },
+            uiScope,
+            Dispatchers.IO,
+            logLevels,
+            ownAddresses = { ownAddresses(application) },
+            flowEvents = flowEvents,
+        )
     }
 
     /** The diagnostic report for a page to export and share, and the crash offer; no UI of its own. */

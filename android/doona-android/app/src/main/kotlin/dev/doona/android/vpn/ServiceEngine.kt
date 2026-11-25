@@ -1,10 +1,14 @@
 package dev.doona.android.vpn
 
 import android.content.Context
+import android.net.ConnectivityManager
 import android.os.Process
 import android.os.SystemClock
+import dev.doona.android.data.geo.GeoAssets
+import dev.doona.android.data.network.followBootstrapDns
 import dev.doona.android.data.settings.PerAppSettings
 import dev.doona.android.engine.Catalog
+import dev.doona.android.engine.ConfigAssets
 import dev.doona.android.engine.CoreDiagnostics
 import dev.doona.android.engine.EffectiveConfig
 import dev.doona.android.engine.Engine
@@ -14,13 +18,20 @@ import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
+import dev.doona.android.engine.Network
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RebuildFailedException
+import dev.doona.android.engine.RecentFlow
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RulePage
 import dev.doona.android.engine.ScoreState
 import dev.doona.android.engine.Settings
+import dev.doona.android.engine.ShareLink
+import dev.doona.android.engine.StaticNode
+import dev.doona.android.engine.StaticNodeDraft
+import dev.doona.android.engine.StaticNodeResult
+import dev.doona.android.engine.StaticNodeUpdateResult
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.TodayTraffic
@@ -31,6 +42,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableJob
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -53,6 +65,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.builtins.serializer
 import java.io.IOException
@@ -60,8 +73,8 @@ import java.io.IOException
 /**
  * The process-wide [Engine] behind the UI, the tile and the notification (ARCH D2). The tunnel status is the
  * [TunnelController]'s; the catalog, traffic and actions come from the core. The catalog is read after `init`, after
- * every command that is not a read, and whenever a snapshot shows a new revision. Snapshots are taken every 5 s while running (health),
- * every second while running and someone collects [traffic], and every second while a latency test runs.
+ * every command that can change it, and whenever a snapshot shows a new revision. Snapshots are taken every 5 s while
+ * running (health), every second while running and someone collects [traffic], and every second during a latency test.
  */
 class ServiceEngine internal constructor(
     private val core: CoreBridge,
@@ -73,12 +86,14 @@ class ServiceEngine internal constructor(
     private val io: CoroutineDispatcher,
     /** Owns the engine's own work: polling, and commands the core has begun. */
     private val scope: CoroutineScope,
+    private val expireDebugCapture: () -> Job?,
     /** The pause before the settings read a per-app policy again after a read failed. */
     private val perAppRetryMs: Long = PER_APP_RETRY_MS,
 ) : Engine {
     private val _ready = MutableStateFlow(false)
     override val ready: StateFlow<Boolean> = _ready.asStateFlow()
     override val status: StateFlow<Status> get() = controller.status
+
     private val _traffic = MutableStateFlow(Traffic())
     override val traffic: StateFlow<Traffic> = _traffic.asStateFlow()
     private val _today = MutableStateFlow(TodayTraffic())
@@ -94,6 +109,10 @@ class ServiceEngine internal constructor(
     override val settings: StateFlow<Settings> = _settings.asStateFlow()
     private val _perAppLoaded = MutableStateFlow(false)
     override val perAppLoaded: StateFlow<Boolean> = _perAppLoaded.asStateFlow()
+
+    internal fun updateLockdown(enabled: Boolean) {
+        _settings.update { if (it.lockdownEnabled == enabled) it else it.copy(lockdownEnabled = enabled) }
+    }
 
     /**
      * The last snapshot's warning and the session that ran as it was taken. [warning] shows it only while that session
@@ -111,9 +130,14 @@ class ServiceEngine internal constructor(
     private var revision = -1L // Written under publishing: the revision of the catalog the flows show.
 
     /** [lane] is the controller's single thread. */
-    internal fun launch(lane: CoroutineDispatcher) {
+    internal fun launch(lane: CoroutineDispatcher, connectivity: ConnectivityManager? = null) {
         scope.launch(lane) { controller.run() }
         scope.launch { open() }
+        if (connectivity != null) {
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                connectivity.followBootstrapDns(controller::refreshBootstrapDns)
+            }
+        }
         scope.launch { followPerApp() }
         scope.launch { checkHealth() }
         scope.launch { sampleTraffic() }
@@ -170,14 +194,17 @@ class ServiceEngine internal constructor(
             sent = startService(generation)
         } finally {
             // The system refused the foreground service or found none, so nothing will take this start.
-            if (!sent) controller.abandon(generation)
+            if (!sent) {
+                controller.abandon(generation)
+                VpnLog.action("start", "dispatch", "failed", FailureReason.StartFailed.name)
+            }
         }
     }
 
     override fun disconnect() = controller.stop()
 
-    override suspend fun select(groupId: String, memberId: String?): Result<Unit> =
-        command("select", SelectArgs.serializer(), SelectArgs(groupId, memberId), Unit.serializer(), ordered = true)
+    override suspend fun select(groupId: String, memberId: String?, network: Network?): Result<Unit> =
+        command("select", SelectArgs.serializer(), SelectArgs(groupId, memberId, SelectionNetwork.of(network)), Unit.serializer(), ordered = true)
 
     override suspend fun testLatency(groupId: String?): Result<Unit> =
         command("testLatency", GroupArgs.serializer(), GroupArgs(groupId), Unit.serializer(), ordered = true)
@@ -188,6 +215,13 @@ class ServiceEngine internal constructor(
 
     override suspend fun updateSubscription(id: String): Result<Subscription> =
         command("updateSubscription", IdArgs.serializer(), IdArgs(id), SubscriptionDto.serializer()).map(SubscriptionDto::toSubscription)
+
+    override suspend fun renameSubscription(id: String, name: String): Result<Subscription> =
+        command("renameSubscription", RenameSubscriptionArgs.serializer(), RenameSubscriptionArgs(id, name), SubscriptionDto.serializer())
+            .map(SubscriptionDto::toSubscription)
+
+    override suspend fun nodeShareLink(nodeId: String): Result<ShareLink> =
+        read("nodeShareLink", IdArgs.serializer(), IdArgs(nodeId), String.serializer()).map(::ShareLink)
 
     override suspend fun removeSubscription(id: String): Result<Unit> =
         command("removeSubscription", IdArgs.serializer(), IdArgs(id), Unit.serializer())
@@ -200,6 +234,40 @@ class ServiceEngine internal constructor(
             SubscriptionDto.serializer(),
         ).map(SubscriptionDto::toSubscription)
 
+    override suspend fun previewStaticNodes(rows: List<StaticNodeDraft>): Result<List<StaticNodeResult>> =
+        read("previewStaticNodes", StaticNodeBatchArgs.serializer(), StaticNodeBatchArgs(rows.map(StaticNodeDraftDto::of)), StaticNodeRowsDto.serializer())
+            .map(StaticNodeRowsDto::toRows)
+
+    override suspend fun addStaticNodes(rows: List<StaticNodeDraft>): Result<List<StaticNodeResult>> =
+        command(
+            "addStaticNodes",
+            StaticNodeBatchArgs.serializer(),
+            StaticNodeBatchArgs(rows.map(StaticNodeDraftDto::of)),
+            StaticNodeRowsDto.serializer(),
+            pollOnFailure = false,
+        ).map(StaticNodeRowsDto::toRows)
+
+    override suspend fun readStaticNode(id: String): Result<StaticNode> =
+        read("readStaticNode", IdArgs.serializer(), IdArgs(id), StaticNodeDto.serializer()).map(StaticNodeDto::toStaticNode)
+
+    override suspend fun updateStaticNode(expected: StaticNode, node: StaticNodeDraft): Result<StaticNodeUpdateResult> =
+        command(
+            "updateStaticNode",
+            StaticNodeUpdateArgs.serializer(),
+            StaticNodeUpdateArgs(StaticNodeDto.of(expected), StaticNodeDraftDto.of(node)),
+            StaticNodeRowDto.Update.serializer(),
+            pollOnFailure = false,
+        ).map(StaticNodeRowDto.Update::toRow)
+
+    override suspend fun removeStaticNode(expected: StaticNode, confirmed: Boolean): Result<Unit> =
+        command(
+            "removeStaticNode",
+            StaticNodeRemoveArgs.serializer(),
+            StaticNodeRemoveArgs(StaticNodeDto.of(expected), confirmed),
+            Unit.serializer(),
+            pollOnFailure = false,
+        )
+
     override suspend fun setMode(mode: Mode): Result<Unit> = command("setMode", ModeArgs.serializer(), ModeArgs(mode), Unit.serializer())
 
     override suspend fun rules(offset: Int, limit: Int): Result<RulePage> =
@@ -207,6 +275,9 @@ class ServiceEngine internal constructor(
 
     override suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit> =
         command("setRuleSource", RuleSourceArgs.serializer(), RuleSourceArgs.template(template, options), Unit.serializer())
+
+    override suspend fun setDnsUpstreams(servers: List<String>): Result<Unit> =
+        command("setDnsUpstreams", DnsUpstreamsArgs.serializer(), DnsUpstreamsArgs(servers), Unit.serializer(), ordered = true)
 
     override suspend fun effectiveConfig(): Result<EffectiveConfig> =
         read("effectiveConfig", Unit.serializer(), Unit, EffectiveConfigDto.serializer()).map(EffectiveConfigDto::toEffectiveConfig)
@@ -222,16 +293,38 @@ class ServiceEngine internal constructor(
     override suspend fun scoreState(): Result<ScoreState> =
         read("scoreState", Unit.serializer(), Unit, ScoreStateDto.serializer()).map(ScoreStateDto::toScoreState)
 
+    override suspend fun configAssets(): Result<ConfigAssets> =
+        read("configAssets", ConfigAssetsArgs.serializer(), ConfigAssetsArgs("status"), ConfigAssetsDto.serializer()).map(::toConfigAssets)
+
+    override suspend fun updateConfigAssets(): Result<ConfigAssets> {
+        expireDebugCapture()?.join()
+        return callCore("configAssets", ConfigAssetsArgs.serializer(), ConfigAssetsArgs("update"), ConfigAssetsDto.serializer()).map(::toConfigAssets)
+    }
+
     override suspend fun setPerApp(perApp: PerApp): Result<Unit> =
         // Stored, shown and rebuilt as one unit in the engine's scope: a caller that leaves the page cannot split them.
         scope.async { savePerApp(perApp) }.await()
 
     override suspend fun diagnostics(level: LogLevel?): Result<CoreDiagnostics> =
-        read("diagnostics", DiagnosticsArgs.serializer(), DiagnosticsArgs(level?.let(CoreLevel::of)), DiagnosticsReplyReader)
+        callCore("diagnostics", DiagnosticsArgs.serializer(), DiagnosticsArgs(level?.let(CoreLevel::of)), DiagnosticsReplyReader)
             .map { it.dto.toCoreDiagnostics(it.json) }
 
-    override suspend fun setLogLevel(level: LogLevel): Result<Unit> =
-        command("setLogLevel", LevelArgs.serializer(), LevelArgs(CoreLevel.of(level)), Unit.serializer())
+    override suspend fun recentFlows(): Result<List<RecentFlow>> {
+        if (opener.schema() != CORE_SCHEMA) return Result.failure(EngineException(ErrorCode.Internal))
+        return call("recentFlows", "{}", RecentFlowsDto.serializer())
+            .map(RecentFlowsDto::toRecentFlows)
+    }
+
+    override suspend fun setLogLevel(level: LogLevel): Result<Unit> {
+        val outcome = if (opener.schema() == CORE_SCHEMA) {
+            call("setLogLevel", CoreJson.encode(LevelArgs.serializer(), LevelArgs(CoreLevel.of(level))), Unit.serializer())
+        } else {
+            Result.failure(EngineException(ErrorCode.Internal))
+        }
+        val code = (outcome.exceptionOrNull() as? EngineException)?.code?.name ?: "ok"
+        VpnLog.action("setLogLevel", "complete", if (outcome.isSuccess) "ok" else "failed", code)
+        return outcome
+    }
 
     override suspend fun clearCrashes(names: List<String>, mark: Long): Result<Unit> =
         command("clearCrashes", ClearCrashesArgs.serializer(), ClearCrashesArgs(names, mark), Unit.serializer())
@@ -281,18 +374,26 @@ class ServiceEngine internal constructor(
         args: A,
         result: DeserializationStrategy<R>,
         ordered: Boolean = false,
+        pollOnFailure: Boolean = true,
     ): Result<R> {
         val turn = if (ordered) takeTurn() else null
         // The core commits a command it has begun, so the refresh after it must run even if the caller is cancelled.
         return scope.async {
+            val begun = System.nanoTime()
             val outcome = try {
                 turn?.before?.join()
+                expireDebugCapture()?.join()
                 // A core whose init failed or speaks another schema takes no call and no snapshot.
                 if (opener.schema() != CORE_SCHEMA) null else call(name, CoreJson.encode(argsSerializer, args), result)
             } finally {
                 turn?.done?.complete()
             }
-            if (outcome == null) Result.failure<R>(EngineException(ErrorCode.Internal)) else outcome.also { poll() }
+            val reply = outcome ?: Result.failure(EngineException(ErrorCode.Internal))
+            val code = (reply.exceptionOrNull() as? EngineException)?.code?.name ?: "ok"
+            VpnLog.action(name, if (outcome == null) "dispatch" else "complete", if (reply.isSuccess) "ok" else "failed", code, (System.nanoTime() - begun) / 1_000_000)
+            // A failed subscription refresh can still publish its error in the catalog; failed static commands cannot.
+            if (outcome != null && (pollOnFailure || outcome.isSuccess)) poll()
+            reply
         }.await()
     }
 
@@ -300,15 +401,26 @@ class ServiceEngine internal constructor(
      * Runs a read in the caller's job: a caller that leaves before the core is reached never reaches it. A read changes
      * nothing, so it waits for no ordered command and reads no catalog after.
      */
-    private suspend fun <A, R> read(name: String, argsSerializer: SerializationStrategy<A>, args: A, result: DeserializationStrategy<R>): Result<R> =
-        if (opener.schema() != CORE_SCHEMA) {
-            Result.failure(EngineException(ErrorCode.Internal))
-        } else {
-            call(name, CoreJson.encode(argsSerializer, args), result)
+    private suspend fun <A, R> read(
+        name: String,
+        argsSerializer: SerializationStrategy<A>,
+        args: A,
+        result: DeserializationStrategy<R>,
+    ): Result<R> {
+        expireDebugCapture()?.join()
+        return callCore(name, argsSerializer, args, result)
+    }
+
+    private suspend fun <A, R> callCore(name: String, argsSerializer: SerializationStrategy<A>, args: A, result: DeserializationStrategy<R>): Result<R> {
+        if (opener.schema() != CORE_SCHEMA) return Result.failure(EngineException(ErrorCode.Internal))
+        val begun = System.nanoTime()
+        return call(name, CoreJson.encode(argsSerializer, args), result).also { outcome ->
+            val code = (outcome.exceptionOrNull() as? EngineException)?.code?.name ?: "ok"
+            VpnLog.info("$name: $code after ${(System.nanoTime() - begun) / 1_000_000} ms")
         }
+    }
 
     private suspend fun <R> call(name: String, argsJson: String, result: DeserializationStrategy<R>): Result<R> {
-        val begun = System.nanoTime()
         val outcome = try {
             Result.success(withContext(io) { CoreJson.result(core.call(name, argsJson), result) })
         } catch (e: CancellationException) {
@@ -322,8 +434,6 @@ class ServiceEngine internal constructor(
             unlinked(name, e)
             Result.failure(EngineException(ErrorCode.Internal))
         }
-        val code = (outcome.exceptionOrNull() as? EngineException)?.code?.name ?: "ok"
-        VpnLog.info("$name: $code after ${(System.nanoTime() - begun) / 1_000_000} ms")
         return outcome
     }
 
@@ -369,13 +479,14 @@ class ServiceEngine internal constructor(
 
     /** Runs whatever the screen does, so a core that dies with the screen off is noticed (ARCH D10). */
     private suspend fun checkHealth() {
-        controller.status.collectLatest { status ->
-            if (status !is Status.Running) return@collectLatest
+        controller.session.collectLatest { session ->
+            if (session.status !is Status.Running) return@collectLatest
             while (true) {
                 delay(HEALTH_INTERVAL_MS)
-                if (poll()?.alive != true) {
+                val alive = poll()?.alive == true
+                if (!alive) {
                     VpnLog.warn("health check: data path down")
-                    controller.coreStopped(status)
+                    controller.coreStopped(session)
                     return@collectLatest
                 }
             }
@@ -422,7 +533,7 @@ class ServiceEngine internal constructor(
         private const val PER_APP_RETRY_MS = 5_000L
 
         /** The process-wide engine. The app container calls this once; the core library loads later, on IO. */
-        fun create(context: Context): ServiceEngine {
+        fun create(context: Context, endDebugCapture: () -> Unit, expireDebugCapture: () -> Job?): ServiceEngine {
             val app = context.applicationContext
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
             val core = DeferredCore { NativeCore }
@@ -436,10 +547,20 @@ class ServiceEngine internal constructor(
                 perApp = { perApp.perApp.first() },
                 scope = scope,
                 killProcess = { Process.killProcess(Process.myPid()) },
+                endDebugCapture = endDebugCapture,
+                expireDebugCapture = expireDebugCapture,
+                geoAssets = GeoAssets(app),
             )
-            val engine = ServiceEngine(core, opener, controller, perApp, { DoonaVpnService.start(app, it) }, Dispatchers.IO, scope)
-            engine.launch(Dispatchers.IO.limitedParallelism(1))
+            val engine = ServiceEngine(core, opener, controller, perApp, { DoonaVpnService.start(app, it) }, Dispatchers.IO, scope, expireDebugCapture)
+            engine.launch(Dispatchers.IO.limitedParallelism(1), app.getSystemService(ConnectivityManager::class.java))
             return engine
         }
     }
 }
+
+private fun toConfigAssets(dto: ConfigAssetsDto) =
+    ConfigAssets(dto.source, dto.release, dto.lastResult, dto.reason, dto.updateWaitingForNextStart)
+
+/** `nodes`: every node when [ids] is null. */
+@Serializable
+internal data class NodesArgs(val ids: List<String>?)

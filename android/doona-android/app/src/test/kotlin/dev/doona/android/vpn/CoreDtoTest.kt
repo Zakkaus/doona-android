@@ -3,6 +3,7 @@ package dev.doona.android.vpn
 import dev.doona.android.engine.CrashFile
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
@@ -10,12 +11,20 @@ import dev.doona.android.engine.RuleKind
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RuleSkip
 import dev.doona.android.engine.RuleTarget
+import dev.doona.android.engine.StaticNodeReason
+import dev.doona.android.engine.StaticNodeResult
 import dev.doona.android.engine.SubscriptionFormat
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -31,6 +40,8 @@ class CoreDtoTest {
     /** Each fixture's DTO; a reply's is that of its `ok` value. */
     private val dtos: Map<String, KSerializer<*>> = mapOf(
         "init.json" to InitDto.serializer(),
+        "call-config-assets-update-args.json" to ConfigAssetsArgs.serializer(),
+        "call-ok-config-assets.json" to ConfigAssetsDto.serializer(),
         "start-config.json" to StartConfigDto.serializer(),
         "snapshot-running.json" to SnapshotDto.serializer(),
         "snapshot-died.json" to SnapshotDto.serializer(),
@@ -38,24 +49,36 @@ class CoreDtoTest {
         "call-ok-empty.json" to Unit.serializer(),
         "call-ok-subscription.json" to SubscriptionDto.serializer(),
         "call-add-subscription-args.json" to AddSubscriptionArgs.serializer(),
+        "call-rename-subscription-args.json" to RenameSubscriptionArgs.serializer(),
+        "call-node-share-link-args.json" to IdArgs.serializer(),
+        "call-ok-node-share-link.json" to String.serializer(),
+        "call-set-dns-upstreams-args.json" to DnsUpstreamsArgs.serializer(),
         "call-set-subscription-user-agent-args.json" to SubscriptionUserAgentArgs.serializer(),
         "call-error.json" to CallErrorReplyDto.serializer(),
+        "call-error-state-write.json" to CallErrorReplyDto.serializer(),
+        "call-error-static-row-count.json" to CallErrorReplyDto.serializer(),
+        "call-error-bootstrap-dns.json" to CallErrorReplyDto.serializer(),
         "call-select-args.json" to SelectArgs.serializer(),
         "call-ok-traffic-series.json" to TrafficSeriesDto.serializer(),
         "call-ok-usage.json" to UsageDto.serializer(),
         "call-ok-nodes.json" to NodesDto.serializer(),
+        "call-ok-static-limits.json" to StaticNodeRowsDto.serializer(),
         "call-nodes-args.json" to NodesArgs.serializer(),
         "call-ok-score-state.json" to ScoreStateDto.serializer(),
         "call-score-state-args.json" to Unit.serializer(),
+        "call-ok-recent-flows.json" to RecentFlowsDto.serializer(),
+        "call-recent-flows-args.json" to Unit.serializer(),
         "call-ok-rules.json" to RulesDto.serializer(),
         "call-rules-args.json" to RulesArgs.serializer(),
         "call-set-rule-source-args.json" to RuleSourceArgs.serializer(),
+        "call-set-bootstrap-dns-args.json" to BootstrapDnsArgs.serializer(),
         "call-ok-effective-config.json" to EffectiveConfigDto.serializer(),
         "call-set-mode-args.json" to ModeArgs.serializer(),
         "call-ok-diagnostics.json" to DiagnosticsDto.serializer(),
         "call-diagnostics-args.json" to DiagnosticsArgs.serializer(),
         "call-set-log-level-args.json" to LevelArgs.serializer(),
         "call-clear-crashes-args.json" to ClearCrashesArgs.serializer(),
+        "static-nodes.json" to ListSerializer(StaticNodeCallFixture.serializer()),
     )
 
     @Test
@@ -116,6 +139,12 @@ class CoreDtoTest {
         assertEquals(Mode.Global, catalog.mode)
         val groups = catalog.groups.map(GroupDto::toGroup)
         assertEquals(listOf("g-Proxy", "g-Auto", "g-Streaming", "g-AI", "g-HK"), groups.map { it.id })
+        val proxy = groups.first()
+        assertEquals(Group.Selection("g-Auto", false), proxy.tcp)
+        assertEquals(Group.Selection("n-0c41be77", true), proxy.udp)
+        assertTrue(proxy.networksDiffer)
+        assertEquals("g-Auto", proxy.selectedId)
+        assertFalse(proxy.pinned)
         val auto = groups[1]
         assertEquals(GroupKind.Score, auto.kind)
         assertTrue(auto.testing)
@@ -134,6 +163,34 @@ class CoreDtoTest {
         assertEquals(107374182400L, subscription.totalBytes)
         assertNull(subscription.error)
         assertNull(subscription.userAgent)
+    }
+
+    @Test
+    fun legacyCatalogSharesTheSelectionAcrossNetworks() {
+        val snapshot = Json.parseToJsonElement(fixture("snapshot-stopped-catalog.json")).jsonObject
+        val catalog = snapshot.getValue("catalog").jsonObject
+        val networkFields = setOf("tcpSelectedId", "udpSelectedId", "networksDiffer", "tcpPinned", "udpPinned")
+        val groups = catalog.getValue("groups").jsonArray.mapIndexed { index, element ->
+            val shared = element.jsonObject - networkFields
+            JsonObject(if (index == 0) shared + ("pinned" to JsonPrimitive(true)) else shared)
+        }
+        val legacyCatalog = JsonObject(catalog + ("groups" to JsonArray(groups)))
+        val legacySnapshot = JsonObject(snapshot + ("catalog" to legacyCatalog))
+
+        val group = checkNotNull(CoreJson.snapshot(legacySnapshot.toString()).catalog).toCatalog().groups.first()
+        val shared = Group.Selection("g-Auto", true)
+        assertEquals(shared, group.tcp)
+        assertEquals(shared, group.udp)
+        assertFalse(group.networksDiffer)
+    }
+
+    @Test
+    fun dnsFailureIsAProbeErrorOnTheNode() {
+        val payload = """{"id":"n-dns","name":"DNS","failed":true,"error":"dns_failed","isGroup":false}"""
+        val member = Json.decodeFromString(MemberDto.serializer(), payload).toMember()
+        assertTrue(member.failed)
+        assertNull(member.latencyMs)
+        assertEquals(ErrorCode.DnsFailed, member.error)
     }
 
     @Test
@@ -292,6 +349,47 @@ class CoreDtoTest {
     }
 
     @Test
+    fun aFailedStateWriteMapsToInternal() {
+        val failure = assertThrows(EngineException::class.java) {
+            CoreJson.result(fixture("call-error-state-write.json"), Unit.serializer())
+        }
+        assertEquals(ErrorCode.Internal, failure.code)
+    }
+
+    @Test
+    fun staticBatchLimitsAreRowErrors() {
+        val reply = CoreJson.result(fixture("call-ok-static-limits.json"), StaticNodeRowsDto.serializer())
+        assertEquals(
+            listOf(StaticNodeResult.Invalid(StaticNodeReason.LinkLength), StaticNodeResult.Invalid(StaticNodeReason.CatalogFull)),
+            reply.toRows(),
+        )
+    }
+
+    @Test
+    fun coreStaticNodeBatchesDecodeFieldsAndPortErrors() {
+        val calls = Json.decodeFromString<List<StaticNodeCallFixture>>(fixture("static-nodes.json"))
+        val reasons = mapOf("fields" to StaticNodeReason.Fields, "port" to StaticNodeReason.Port)
+        val invalid = calls.flatMap { call ->
+            val rows = call.reply["ok"]?.jsonObject?.get("rows")?.jsonArray.orEmpty()
+            rows.mapNotNull { row ->
+                val reason = row.jsonObject["reason"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                reasons[reason]?.let { expected -> expected to Json.decodeFromJsonElement(StaticNodeRowDto.serializer(), row).toRow() }
+            }
+        }.toMap()
+        assertEquals(reasons.values.associateWith { StaticNodeResult.Invalid(it) }, invalid)
+    }
+
+    @Test
+    fun unknownStaticNodeReasonsFailDecoding() {
+        for (status in listOf("invalid", "unsupported")) {
+            val reply = """{"ok":{"rows":[{"status":"$status","reason":"unknown"}]}}"""
+            assertThrows(SerializationException::class.java) {
+                CoreJson.result(reply, StaticNodeRowsDto.serializer())
+            }
+        }
+    }
+
+    @Test
     fun anOlderSnapshotHasNoPeaksAndNoDay() {
         val old = CoreJson.snapshot(
             """{"revision":1,"running":false,"generation":0,"traffic":{"upTotal":0,"downTotal":0,"activeFlows":0}}""",
@@ -360,7 +458,7 @@ class CoreDtoTest {
 
     @Test
     fun selectArgsEncodeAsTheFixture() {
-        val encoded = CoreJson.encode(SelectArgs.serializer(), SelectArgs("g-Proxy", "n-0c41be77"))
+        val encoded = CoreJson.encode(SelectArgs.serializer(), SelectArgs("g-Proxy", "n-0c41be77", SelectionNetwork.Tcp))
         assertEquals(Json.parseToJsonElement(fixture("call-select-args.json")), Json.parseToJsonElement(encoded))
         val auto = CoreJson.encode(SelectArgs.serializer(), SelectArgs("g-Proxy", null))
         assertEquals("""{"group":"g-Proxy","memberId":null}""", auto)

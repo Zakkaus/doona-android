@@ -53,8 +53,22 @@ class SubscriptionRefreshTest {
         pending.complete(Unit)
         assertEquals(SubscriptionRefresh.Outcome.Failed, batch.await())
         assertEquals(listOf("boundary", "never"), engine.calls)
-        val warning = AppEvents.snapshot().single { it.level == AppEventLevel.Warn }
+        val warning = AppEvents.snapshot().single { it.level == AppEventLevel.Warn && it.text.startsWith("subscription-refresh:") }
         assertEquals("subscription-refresh: update failed (FetchFailed)", warning.text)
+    }
+
+    @Test
+    fun coreReadinessDeadlineWarnsWithoutStartingARefresh() = runTest {
+        AppEvents.clear()
+        val engine = RecordingEngine(listOf(sub("stale", null))) { error("updated before the core was ready") }
+        engine.ready.value = false
+
+        assertEquals(SubscriptionRefresh.Outcome.Failed, SubscriptionRefresh(settings, { engine }).run())
+        assertEquals(15_000L, testScheduler.currentTime)
+        assertTrue(engine.calls.isEmpty())
+        val warning = AppEvents.snapshot().single()
+        assertEquals(AppEventLevel.Warn, warning.level)
+        assertEquals("subscription-refresh: core readiness timed out", warning.text)
     }
 
     @Test
@@ -124,6 +138,7 @@ class SubscriptionRefreshTest {
     private class RecordingEngine(subs: List<Subscription>, val result: suspend (String) -> Result<Subscription>) :
         Engine by FakeEngine(subscriptions = subs) {
         override val status = MutableStateFlow<Status>(Status.Stopped)
+        override val ready = MutableStateFlow(true)
         val calls = mutableListOf<String>()
         val began = CompletableDeferred<Unit>()
 

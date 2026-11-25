@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 診斷報告（report/）：系統分享選單的標題。 -->
+<!-- 診斷報告（report/）。 -->
 <resources>
     <string name="report_share_title">分享診斷報告</string>
+    <string name="report_redaction_hint">隱藏的資訊越多，問題就越可能無法解答。</string>
 </resources>

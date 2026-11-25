@@ -121,6 +121,7 @@ pub(super) struct Queues {
 pub(crate) struct Association {
     pub client: SocketAddr,
     pub remote: SocketAddr,
+    pub recent: Option<super::recent::Handle>,
     up: mpsc::Sender<Datagram>,
     pub down: mpsc::Receiver<Datagram>,
     pub queues: Arc<Queues>,
@@ -212,6 +213,7 @@ impl Nat {
             Association {
                 client,
                 remote,
+                recent: None,
                 up: up_tx,
                 down: down_rx,
                 queues: Arc::clone(&queues),

@@ -518,6 +518,8 @@ private val Status.label: Int
             FailureReason.CoreStopped -> R.string.status_failed_core_stopped
             FailureReason.IncompatibleCore -> R.string.status_failed_incompatible_core
             FailureReason.Revoked -> R.string.vpn_drop_revoked
+            FailureReason.LockdownEnabled -> R.string.vpn_failure_lockdown_enabled
+            FailureReason.VpnNotEstablished -> R.string.vpn_failure_not_established
         }
     }
 

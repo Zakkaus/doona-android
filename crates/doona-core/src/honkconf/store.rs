@@ -35,7 +35,7 @@ pub enum StoreError {
     Incomplete,
     /// The edit does not identify a confined configuration file.
     InvalidEditPath,
-    /// A source or companion reaches a symlink; its path is private editor data.
+    /// The imported entry is itself a symlink; its path is private editor data.
     ImportSymlink(PathBuf),
     /// No such file exists in the selected source tree.
     MissingFile,
@@ -53,7 +53,7 @@ impl std::fmt::Display for StoreError {
             Self::Conflict { .. } => "draft base is not the current revision",
             Self::Incomplete => "configuration has a refused include",
             Self::InvalidEditPath => "invalid draft file path",
-            Self::ImportSymlink(_) => "configuration bundle contains a symlink",
+            Self::ImportSymlink(_) => "configuration entry is a symlink",
             Self::MissingFile => "configuration file not found",
             Self::UnknownDraft => "unknown draft",
             Self::UnknownRevision => "unknown revision",
@@ -183,6 +183,8 @@ impl HonkStore {
         if !config.complete() {
             return Err(StoreError::Incomplete);
         }
+        // A complete tree reaches symlinks only through hosts; keep reporting those escapes.
+        tree.kept = tree.hosts_links(config.config());
         files.extend(
             config
                 .loaded

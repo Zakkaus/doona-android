@@ -81,31 +81,73 @@ internal class KnownNames(private val loader: ClassLoader? = APP_LOADER) {
     }
 }
 
-/**
- * A crash file as the export sends it, or null when it goes out not at all. A core file goes as it is: the core writes
- * only its own fixed texts. An app file goes only in the current format ([APP_HEADER]), and of it only the lines of that
- * format, the class and the frames checked again by [names]: a file of an earlier format was written with names never
- * checked, which a line break in one could spread over lines of any shape. Any other file is no crash file of a known
- * format and stays out.
- */
-internal fun exportedCrash(bytes: ByteArray, names: KnownNames): ByteArray? {
+/** Only recognised crash files cross the export boundary; neither source header vouches for the rest of the file. */
+internal fun ReportScrubber.crash(bytes: ByteArray, names: KnownNames): ByteArray? {
     val text = bytes.decodeToString()
-    return when {
-        text.startsWith(CORE_SOURCE) -> bytes
-        text.startsWith(APP_HEADER) -> exportedApp(text.split('\n'), names).joinToString("\n").toByteArray()
-        else -> null
+    val lines = when {
+        text.startsWith(CORE_SOURCE) -> exportedCore(text.lineSequence().iterator())
+        text.startsWith(APP_HEADER) -> exportedApp(text.split('\n'), names)
+        else -> return null
     }
+    return lines.joinToString("\n").toByteArray()
 }
+
+private fun exportedCore(lines: Iterator<String>): List<String> = buildList {
+    add(lines.next())
+    var inBacktrace = false
+    while (lines.hasNext()) {
+        val line = lines.next()
+        if (inBacktrace) {
+            if (CORE_FRAME.matches(line)) add(line)
+        } else if (line == BACKTRACE) {
+            inBacktrace = true
+            add(line)
+        } else if (line in CORE_LINES || CORE_TIME.matches(line) || CORE_VERSION.matches(line) || CORE_LOCATION.matches(line) || CORE_PANIC.matches(line)) {
+            add(line)
+        } else if (line.startsWith("message: ")) {
+            add("message: $REDACTED")
+        }
+    }
+    add("")
+}
+
+private val CORE_TIME = Regex("""atEpochMs: -?\d{1,19}""")
+private const val CORE_SOURCE_PATH = "src/(?:[a-zA-Z0-9_]+/)*[a-zA-Z0-9_]+\\.rs:[0-9]+:[0-9]+"
+private const val CORE_DEPENDENCY = "[a-zA-Z0-9_+-]+(?: [0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][a-zA-Z0-9.+-]+)?)?"
+private val CORE_LOCATION = Regex("location: (?:$CORE_SOURCE_PATH|$CORE_DEPENDENCY)")
+private val CORE_PANIC = Regex("message: panic in [a-zA-Z0-9_]+(?:::[a-zA-Z0-9_]+)*")
+private val CORE_FRAME = Regex("""\d{1,2} (?:libdoonacore\.so|libc\.so(?:\.6)?|libart\.so|app_process64|libc\+\+_shared\.so|\?) 0x[0-9a-f]{1,16}""")
+private val CORE_LINES = setOf(
+    "",
+    "thread: doona-core",
+    "thread: doona-carrier",
+    "thread: other",
+    "message: internal error: entered unreachable code",
+    "message: internal error: entered unreachable code: stream_transport returned an unknown transport",
+    "message: debugFault",
+)
 
 /**
  * The [lines] of an app crash file the export sends. A line that states a value ([STATED]) goes only at its place in the
  * header, before [BACKTRACE]: once each, and never among the frames.
  */
-private fun exportedApp(lines: List<String>, names: KnownNames): List<String> {
+private fun exportedApp(lines: List<String>, names: KnownNames): List<String> = buildList {
     val backtrace = lines.indexOf(BACKTRACE).takeIf { it >= 0 } ?: lines.size
-    return lines.mapIndexedNotNull { at, line ->
-        if (at < backtrace && STATED[at]?.matches(line) == true) line else appLine(line, names)
+    val breadcrumbs = lines.indexOf(BREADCRUMBS).takeIf { it > backtrace } ?: lines.size
+    for (at in 0 until breadcrumbs) {
+        val line = lines[at]
+        if (at < backtrace && STATED[at]?.matches(line) == true) add(line) else appLine(line, names)?.let(::add)
     }
+    if (breadcrumbs == lines.size) return@buildList
+    add(BREADCRUMBS)
+    var count = 0
+    for (at in breadcrumbs + 1 until lines.size) {
+        val line = lines[at]
+        if (!BREADCRUMB_TEXT.matches(line)) continue
+        add(line)
+        if (++count == CRASH_EVENT_LIMIT) break
+    }
+    add("")
 }
 
 /** [line] of an app crash file ([crashText]) as the export sends it, or null when no line of the format has its shape. */
@@ -172,6 +214,8 @@ private val FIXED_LINES = setOf(
 /** A version name as the build sets it (`versionName`, `0.1`): up to four numbers joined by dots. */
 internal val VERSION_NAME = Regex("""\d{1,9}(?:\.\d{1,9}){0,3}""")
 
+private val CORE_VERSION = Regex("version: ${VERSION_NAME.pattern} (?:debug|release) (?:aarch64|arm|x86_64|x86|riscv64)-android")
+
 /** The build types the app is built as. */
 internal val BUILD_TYPES = setOf("debug", "release")
 
@@ -192,3 +236,5 @@ private val CRASH_VERSION = run {
 private val STATED = APP_HEADER.count { it == '\n' }.let { header ->
     mapOf(header to Regex("""atEpochMs: \d{1,19}"""), header + 1 to CRASH_VERSION)
 }
+
+private val BREADCRUMB_TEXT = Regex("$BREADCRUMB-?\\d{1,19} (?:Info|Warn) $ACTION_TEXT")

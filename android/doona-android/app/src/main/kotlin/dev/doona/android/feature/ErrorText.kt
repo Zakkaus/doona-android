@@ -18,6 +18,7 @@ fun ErrorCode.messageRes(): Int = when (this) {
     ErrorCode.Busy -> R.string.error_busy
     ErrorCode.Internal -> R.string.error_internal
     ErrorCode.LocalNetwork -> R.string.error_local_network
+    ErrorCode.DnsFailed -> R.string.error_dns_failed
 }
 
 /** The code of a failed engine action; anything that is not an [EngineException] is a bug, shown as internal. */
@@ -31,4 +32,6 @@ fun FailureReason.messageRes(): Int = when (this) {
     FailureReason.CoreStopped -> R.string.status_failed_core_stopped
     FailureReason.IncompatibleCore -> R.string.status_failed_incompatible_core
     FailureReason.Revoked -> R.string.vpn_drop_revoked
+    FailureReason.LockdownEnabled -> R.string.vpn_failure_lockdown_enabled
+    FailureReason.VpnNotEstablished -> R.string.vpn_failure_not_established
 }

@@ -14,6 +14,9 @@ internal interface TunHost {
     /** The tun's MTU, which the core's start config repeats; only a debug build may set another than the default. */
     val mtu: Int get() = StartConfigDto.MTU
 
+    /** Whether Android blocks connections outside the VPN; non-Android test hosts have no such policy. */
+    val lockdownEnabled: Boolean get() = false
+
     /** The subset of [packages] installed for this user and visible to doona. */
     fun installed(packages: Set<String>): Set<String>
 

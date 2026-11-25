@@ -17,14 +17,23 @@ use std::sync::Arc;
 use std::time::Instant;
 
 /// The commands, by the names the log may hold; never caller text.
-const COMMANDS: [&str; 17] = [
+const COMMANDS: [&str; 28] = [
+    "previewStaticNodes",
+    "addStaticNodes",
+    "readStaticNode",
+    "updateStaticNode",
+    "removeStaticNode",
     "select",
     "testLatency",
     "addSubscription",
     "updateSubscription",
+    "renameSubscription",
+    "nodeShareLink",
+    "setDnsUpstreams",
     "removeSubscription",
     "setSubscriptionUserAgent",
     "setMode",
+    "setBootstrapDns",
     "setRuleSource",
     "setLogLevel",
     "clearCrashes",
@@ -32,19 +41,24 @@ const COMMANDS: [&str; 17] = [
     "usage",
     "nodes",
     "scoreState",
+    "recentFlows",
     "rules",
     "effectiveConfig",
     "diagnostics",
+    "configAssets",
 ];
 /// The reads among them that screens repeat.
-const READS: [&str; 7] = [
+const READS: [&str; 10] = [
     "trafficSeries",
     "usage",
     "nodes",
+    "nodeShareLink",
     "scoreState",
+    "recentFlows",
     "rules",
     "effectiveConfig",
     "diagnostics",
+    "configAssets",
 ];
 
 impl Core {
@@ -99,8 +113,17 @@ impl Core {
             "usage" => self.usage(args),
             "nodes" => self.nodes(args),
             "scoreState" => self.score_state(args),
+            "recentFlows" => {
+                let dto::Empty {} = parse(args)?;
+                let session = match &*lock(&self.life) {
+                    Life::Running(tunnel) => Some(Arc::clone(tunnel.session())),
+                    _ => None,
+                };
+                Ok(ok(session.map(|s| s.recent.read()).unwrap_or_default()))
+            }
             "rules" => self.rules(args),
             "effectiveConfig" => self.effective_config(args),
+            "configAssets" => self.config_assets(args),
             "diagnostics" => self.diagnostics(args, event),
             "setLogLevel" => self.set_log_level(args, event),
             "clearCrashes" => self.clear_crashes(args, event),
@@ -171,6 +194,7 @@ impl Core {
 pub(super) fn loaded(diag: &Diag, state: &State, model: &Model, loaded: Loaded) {
     let event = match loaded {
         Loaded::SetAside => Event::warn("init").detail("stateSetAside"),
+        Loaded::DnsReset => Event::warn("init").detail("dnsUpstreamsReset"),
         _ => Event::info("init"),
     };
     let event = event.count(Count::Subscriptions, state.subscriptions.len());

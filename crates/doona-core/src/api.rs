@@ -22,6 +22,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 use tokio::runtime::Runtime;
 
+mod assets;
 mod diagnostics;
 #[cfg(feature = "fault-hook")]
 mod fault;
@@ -29,6 +30,7 @@ mod rules;
 mod score;
 mod selection;
 mod snapshot;
+pub(crate) mod static_nodes;
 mod subscriptions;
 
 pub use snapshot::snapshot_before_init;
@@ -77,6 +79,7 @@ pub struct Core {
     runtime: Runtime,
     options: Options,
     store: Store,
+    assets: Arc<assets::Assets>,
     /// The catalog and the data path's view of it, shared with probe tasks.
     shared: Arc<Shared>,
     /// Serializes the commands that write `state.json`, so a slow write never holds the
@@ -84,10 +87,13 @@ pub struct Core {
     writer: Mutex<()>,
     /// The committed mode, shared with the running generation.
     mode: Arc<ModeCell>,
+    dns_upstreams: tokio::sync::watch::Sender<Arc<[SocketAddr]>>,
     /// Which generation runs, or that one is starting. Held only to read or swap it, never
     /// across a wait, so `stop` and `snapshot` never wait for a `start`. Taken before the catalog
     /// lock when both are held.
     life: Mutex<Life>,
+    /// Counts accepted DNS handoffs. Publication by `finish` and by a handoff takes `life`.
+    bootstrap_revision: AtomicU64,
     /// The last generation `start` began; it stays in snapshots after `stop`.
     generation: AtomicI64,
     /// What serves a generation, and how long `start` may take: the driver and [`START_BOUND`]
@@ -144,7 +150,7 @@ impl Core {
         launch: (Launch, Duration),
         prober: Prober,
     ) -> Result<Core, ErrorCode> {
-        let (state, loaded) = store.load().map_err(|e| {
+        let (mut state, loaded) = store.load().map_err(|e| {
             log::error!("init: state unreadable ({:?})", e.kind());
             ErrorCode::Internal
         })?;
@@ -164,11 +170,16 @@ impl Core {
             .map_err(|_| ErrorCode::Internal)?;
         bootstrap::install();
         bootstrap::use_servers(options.bootstrap_fallback.clone());
-        let model = catalog::load(&state, &diag);
+        let model = catalog::load(&mut state, &diag);
         diagnostics::loaded(&diag, &state, &model, loaded);
         let outbounds = Arc::new(Outbounds::new(Arc::clone(&panics))?);
         let built = outbounds.build(&model.nodes);
         let mode = Arc::new(ModeCell::new(state.mode));
+        let upstreams = state
+            .dns_upstreams
+            .as_deref()
+            .unwrap_or(&options.dns_upstreams);
+        let dns_upstreams = tokio::sync::watch::Sender::new(Arc::from(upstreams));
         let catalog = CatalogState::new(state, model);
         let stats = Stats::with_diag(store.dir(), runtime.handle().clone(), &diag);
         let stats = Arc::new(stats);
@@ -184,11 +195,14 @@ impl Core {
         Ok(Core {
             runtime,
             options,
+            assets: Arc::new(assets::Assets::new(store.dir())),
             store,
             shared,
             mode,
+            dns_upstreams,
             writer: Mutex::new(()),
             life: Mutex::new(Life::Stopped),
+            bootstrap_revision: AtomicU64::new(0),
             generation: AtomicI64::new(0),
             launch,
             probes,
@@ -213,11 +227,11 @@ impl Core {
     /// `start` already under way makes this one `busy`. Returns by one deadline, cleanup
     /// included.
     pub fn start(&self, tun: OwnedFd, config: &str) -> Result<(), ErrorCode> {
+        let dns_revision = self.bootstrap_revision.load(Relaxed);
         let begun = Instant::now();
         let deadline = begun + self.launch.1;
-        let result = self
-            .settings(config)
-            .and_then(|settings| self.start_generation(tun, settings, deadline));
+        let result = parse(config)
+            .and_then(|config| self.start_generation(tun, config, deadline, dns_revision));
         self.diag.record(
             match result {
                 Ok(g) => Event::info("start").count(Count::Generation, g),
@@ -231,9 +245,11 @@ impl Core {
     fn start_generation(
         &self,
         tun: OwnedFd,
-        (settings, resolvers): (Settings, Vec<SocketAddr>),
+        config: StartConfig,
         deadline: Instant,
+        dns_revision: u64,
     ) -> Result<i64, ErrorCode> {
+        let (settings, resolvers) = self.settings(&config)?;
         let rt = self.runtime.handle();
         let tun = Tun::new(tun, rt).map_err(|_| ErrorCode::Internal)?;
         let gate = Gate::new();
@@ -243,6 +259,7 @@ impl Core {
             old.wait(rt, deadline);
             self.retire(&session);
         }
+        self.activate_assets(config.geo_asset_dir, &gate, deadline)?;
         let started = Tunnel::start(
             rt,
             tun,
@@ -251,7 +268,7 @@ impl Core {
             deadline,
             &gate,
         );
-        self.finish(started, &gate, deadline, resolvers)?;
+        self.finish(started, &gate, deadline, resolvers, dns_revision)?;
         Ok(generation)
     }
 
@@ -291,17 +308,15 @@ impl Core {
         Ok((generation, old))
     }
 
-    /// Publishes the started generation with its config's `resolvers`, unless it failed, a
-    /// `stop` aborted the start meanwhile (that `stop` closed the tun already and left the core
-    /// stopped, which a newer `start` may have changed since) or the deadline passed as the
-    /// driver became ready; then it halts and waits for the generation by the deadline. Its
-    /// driver serves the tun only once the resolvers are in use; a refused one never does.
+    /// Releases the driver only after its resolvers are ready. A handoff since `start` began
+    /// already installed a newer list. A failed, expired or aborted start installs nothing.
     fn finish(
         &self,
         (mut tunnel, ready): (Tunnel, Result<(), ErrorCode>),
         gate: &Gate,
         deadline: Instant,
         resolvers: Vec<SocketAddr>,
+        dns_revision: u64,
     ) -> Result<(), ErrorCode> {
         #[cfg(test)]
         self.hooks.before_finish(self);
@@ -311,7 +326,9 @@ impl Core {
         let code = match ready {
             _ if aborted => ErrorCode::Busy,
             Ok(()) if Instant::now() < deadline => {
-                bootstrap::use_servers(resolvers);
+                if self.bootstrap_revision.load(Relaxed) == dns_revision {
+                    bootstrap::use_servers(resolvers);
+                }
                 tunnel.release();
                 *life = Life::Running(tunnel);
                 return Ok(());
@@ -330,11 +347,10 @@ impl Core {
     }
 
     /// What a generation runs with, and the resolvers that serve host lookups once it is up (also
-    /// after `stop`). A resolver that is not an address is `invalid_argument`; Global with no node
-    /// in the main group is `no_nodes`, as it would refuse every flow. Rule starts without one: its
-    /// rules may still send flows direct, and refuse those bound for a group with no node.
-    fn settings(&self, config: &str) -> Result<(Settings, Vec<SocketAddr>), ErrorCode> {
-        let config: StartConfig = parse(config)?;
+    /// after `stop`). A malformed address or a nonempty list with no surviving scope is
+    /// `invalid_argument`. Global with no node in the main group is `no_nodes`, as it would refuse
+    /// every flow. Rule may still send flows direct and refuse those bound for a group with no node.
+    fn settings(&self, config: &StartConfig) -> Result<(Settings, Vec<SocketAddr>), ErrorCode> {
         if config.mtu < MIN_MTU {
             return Err(ErrorCode::InvalidArgument);
         }
@@ -342,7 +358,7 @@ impl Core {
             self.options.bootstrap_port,
             &self.options.bootstrap_fallback,
         );
-        let resolvers = bootstrap::servers(&config.bootstrap_dns, port, fallback)
+        let resolvers = bootstrap::servers(&config.bootstrap_dns, port, Some(fallback))
             .ok_or(ErrorCode::InvalidArgument)?;
         let view = self.shared.outbounds.view();
         if self.mode.get() == Mode::Global && view.dialer(view.policy().main()).is_none() {
@@ -351,7 +367,7 @@ impl Core {
         let settings = Settings {
             mtu: config.mtu,
             dns: config.dns,
-            dns_upstreams: self.options.dns_upstreams.clone(),
+            dns_upstreams: self.dns_upstreams.subscribe(),
             udp_idle: self.options.udp_idle,
             tcp_drain: self.options.tcp_drain,
             mode: Arc::clone(&self.mode),
@@ -406,6 +422,8 @@ impl Core {
     /// `api/diagnostics.rs`).
     pub fn call(&self, command: &str, args: &str) -> String {
         self.traced(command, |event| match command {
+            "setBootstrapDns" => parse(args).and_then(|a| self.set_bootstrap_dns(a).map(empty)),
+            "setDnsUpstreams" => parse(args).and_then(|a| self.set_dns_upstreams(a).map(empty)),
             "setMode" => parse(args).and_then(|a: ModeArgs| {
                 *event = event.detail(diagnostics::mode_name(a.mode));
                 self.set_mode(a.mode).map(empty)
@@ -420,6 +438,9 @@ impl Core {
             "updateSubscription" => parse(args)
                 .and_then(|a: IdArgs| self.update_subscription(&a.id))
                 .map(|s| diagnostics::refreshed(event, s)),
+            "renameSubscription" => parse(args)
+                .and_then(|a| self.rename_subscription(a))
+                .map(ok),
             "removeSubscription" => {
                 parse(args).and_then(|a: IdArgs| self.remove_subscription(&a.id).map(empty))
             }
@@ -429,8 +450,17 @@ impl Core {
             "setRuleSource" => parse(args).and_then(|a| self.set_rule_source(a).map(empty)),
             #[cfg(feature = "fault-hook")]
             "debugFault" => self.fault().map(empty),
-            _ => self.query_or_diagnostic(command, args, event),
+            _ => self.static_or_query(command, args, event),
         })
+    }
+
+    fn set_bootstrap_dns(&self, args: dto::BootstrapDnsArgs) -> Result<(), ErrorCode> {
+        let resolvers = bootstrap::servers(&args.servers, self.options.bootstrap_port, None)
+            .ok_or(ErrorCode::InvalidArgument)?;
+        let _life = lock(&self.life);
+        bootstrap::use_servers(resolvers);
+        self.bootstrap_revision.fetch_add(1, Relaxed);
+        Ok(())
     }
 
     /// Commits the mode to `state.json` first; new flows read it from then on.
@@ -455,7 +485,7 @@ impl Core {
         self.write(&next, command, deadline)?;
         {
             let mut c = lock(&self.shared.catalog);
-            c.model.update_pins(&c.state.selections, &next.selections);
+            c.model.update_pins(Some(&c.state), &next);
             c.state = next;
             c.revision += 1;
             self.mode.set(c.state.mode);
@@ -493,29 +523,6 @@ impl Core {
                 .record(Event::error("stateWrite").io(e.kind()).detail(command));
             ErrorCode::Internal
         })
-    }
-}
-
-#[cfg(test)]
-impl Core {
-    /// A core whose generations run `launch` instead of the driver and must start within
-    /// `bound`.
-    pub(crate) fn with_launch(data_dir: &str, launch: Launch, bound: Duration) -> Core {
-        let store = Store::new(Path::new(data_dir));
-        Core::build(store, Options::default(), (launch, bound), probe::urltest()).unwrap()
-    }
-
-    /// A core that keeps its state through `store`.
-    pub(crate) fn with_store(store: Store) -> Core {
-        let launch = (tunnel::drive as Launch, START_BOUND);
-        Core::build(store, Options::default(), launch, probe::urltest()).unwrap()
-    }
-
-    /// A core whose latency probes run `prober`.
-    pub(crate) fn with_prober(data_dir: &str, prober: Prober) -> Core {
-        let store = Store::new(Path::new(data_dir));
-        let launch = (tunnel::drive as Launch, START_BOUND);
-        Core::build(store, Options::default(), launch, prober).unwrap()
     }
 }
 
@@ -571,10 +578,14 @@ mod tests_latency;
 #[cfg(test)]
 mod tests_localnet;
 #[cfg(test)]
+mod tests_preferences;
+#[cfg(test)]
 mod tests_rule_source;
 #[cfg(test)]
 mod tests_rules;
 #[cfg(test)]
 mod tests_score;
+#[cfg(test)]
+mod tests_static;
 #[cfg(test)]
 mod tests_user_agent;

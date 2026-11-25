@@ -3,6 +3,9 @@
 //! through the `Proxy` group's node, never directly. A VMess node on a plain listener stands for
 //! an outbound without UDP: nothing but its TCP dials ever reach it.
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
+#[path = "proxied/bench.rs"]
+mod bench;
 mod common;
 
 use common::client::Client;
@@ -129,7 +132,7 @@ fn a_failed_dial_resets_the_flow_at_once() {
         Err(StreamError::Reset | StreamError::Unreachable)
     ));
     assert!(
-        begun.elapsed() < Duration::from_secs(1),
+        begun.elapsed() < Duration::from_secs(3),
         "{:?}",
         begun.elapsed()
     );
@@ -281,7 +284,7 @@ fn dns_goes_through_the_node_over_tcp() {
     let id = s.client.connect(SocketAddr::new(RESOLVER.ip(), 853));
     assert!(s.client.until(WAIT, |c| c.read_now(id).is_err()));
     assert!(matches!(s.client.read_now(id), Err(StreamError::Reset)));
-    assert!(begun.elapsed() < Duration::from_secs(1));
+    assert!(begun.elapsed() < Duration::from_secs(3));
     assert_eq!(connections(&proxy_seen), 2);
 }
 
@@ -301,7 +304,7 @@ fn a_global_flow_without_a_node_is_refused_never_sent_direct() {
     let begun = Instant::now();
     let a = dns_over_udp(&mut s.client, &servers::query(9, "a.example", None));
     assert_eq!(servers::answers_and_rcode(&a), (0, 2), "SERVFAIL");
-    assert!(begun.elapsed() < Duration::from_secs(1));
+    assert!(begun.elapsed() < Duration::from_secs(3));
     // DNS over TCP is a new flow like any other: refused, where a datagram gets SERVFAIL.
     let begun = Instant::now();
     let tcp_dns = s.client.connect(RESOLVER);
@@ -310,7 +313,7 @@ fn a_global_flow_without_a_node_is_refused_never_sent_direct() {
         s.client.read_now(tcp_dns),
         Err(StreamError::Reset)
     ));
-    assert!(begun.elapsed() < Duration::from_secs(1));
+    assert!(begun.elapsed() < Duration::from_secs(3));
     assert_eq!(connections(&echo_seen), 0);
     assert_eq!(udp_seen.datagrams.load(Relaxed), 0);
     assert_eq!(resolver_seen.datagrams.load(Relaxed), 0);

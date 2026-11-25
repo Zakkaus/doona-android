@@ -121,4 +121,6 @@
     <string name="local_network_denied_title">未允许访问局域网</string>
     <string name="local_network_denied_body">无法访问局域网中的订阅与节点。请在应用设置中允许 doona 访问局域网。</string>
     <string name="local_network_open_settings">打开设置</string>
+    <string name="error_dns_failed">DNS 查询失败</string>
+    <string name="report_redaction_hint">隐藏的信息越多，问题就越可能无法解答。</string>
 </resources>

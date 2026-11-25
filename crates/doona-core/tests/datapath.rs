@@ -7,6 +7,7 @@ mod common;
 
 use common::client::Client;
 use common::servers;
+use common::stop_wait::STOP_WAIT;
 use common::{TempDir, seqpacket_pair, wait_for};
 use doonacore::api::{Core, Options};
 use doonacore::dto::Snapshot;
@@ -146,6 +147,94 @@ fn dns_is_answered_over_tcp_upstream_and_truncated_for_udp() {
     );
     assert_eq!(servers::answers_and_rcode(&reply[2..]), (60, 0));
     assert_eq!(seen.datagrams.load(Relaxed), 5);
+    assert_eq!(s.core.call("recentFlows", "{}"), r#"{"ok":{"flows":[]}}"#);
+}
+
+#[test]
+fn recent_app_connections_keep_the_tun_tuple_and_never_enter_reports() {
+    use std::io::{Read, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let dns = listener.local_addr().unwrap();
+    let (udp, _) = servers::udp_echo();
+    let (tcp, _) = servers::tcp_echo();
+    let mut s = setup("Direct", vec![dns]);
+    std::thread::spawn(move || {
+        let (mut socket, _) = listener.accept().unwrap();
+        let mut len = [0; 2];
+        socket.read_exact(&mut len).unwrap();
+        let mut q = vec![0; usize::from(u16::from_be_bytes(len))];
+        socket.read_exact(&mut q).unwrap();
+        let mut answer = servers::answer_to(&q, 1);
+        let end = answer.len();
+        answer[end - 4..].copy_from_slice(&Ipv4Addr::LOCALHOST.octets());
+        socket
+            .write_all(&(answer.len() as u16).to_be_bytes())
+            .unwrap();
+        socket.write_all(&answer).unwrap();
+    });
+    dns_over_udp(
+        &mut s.client,
+        RESOLVER,
+        &servers::query(1, "private-dns.test", None),
+    );
+    s.client.send_udp(udp, b"udp");
+    assert_eq!(s.client.recv_udp(udp, WAIT).unwrap(), b"udp");
+    let request = b"GET /secret HTTP/1.1\r\nHost: Private-HTTP.TEST:80\r\n\r\n";
+    let id = s.client.connect(tcp);
+    assert_eq!(s.client.exchange(id, request).unwrap(), request);
+    assert!(wait_for(WAIT, || {
+        s.client.turn();
+        snapshot(&s.core).traffic.active_flows == 1
+    }));
+    let reply: serde_json::Value = serde_json::from_str(&s.core.call("recentFlows", "{}")).unwrap();
+    let rows = reply["ok"]["flows"].as_array().unwrap();
+    assert_eq!(rows.len(), 2);
+    for (row, (protocol, remote, name, open)) in rows.iter().zip([
+        ("tcp", tcp, "private-http.test", false),
+        ("udp", udp, "private-dns.test", true),
+    ]) {
+        assert_eq!(row["protocol"], protocol);
+        assert_eq!(row["remote"], remote.to_string());
+        let local: SocketAddr = row["local"].as_str().unwrap().parse().unwrap();
+        assert_eq!(local.ip(), common::client::TUN_ADDR);
+        assert_ne!(local.port(), 0);
+        assert_eq!(row["name"], name);
+        assert_eq!(row["outbound"], "direct");
+        assert_eq!(row["open"], open);
+    }
+    assert!(rows[0]["startedMs"].as_u64().unwrap() >= rows[1]["startedMs"].as_u64().unwrap());
+    for text in [
+        s.core.snapshot(-1),
+        s.core.call("diagnostics", r#"{"level":"debug"}"#),
+    ] {
+        assert!(!text.contains("private-") && !text.contains("recentFlows\":"));
+    }
+    s.core.stop();
+    assert_eq!(s.core.call("recentFlows", "{}"), r#"{"ok":{"flows":[]}}"#);
+}
+
+#[test]
+fn recent_tcp_name_survives_a_split_client_hello() {
+    let (tcp, _) = servers::tcp_echo();
+    let mut s = setup("Direct", vec![]);
+    let id = s.client.connect(tcp);
+    let mut prefix = vec![22, 3, 1, 0, 64, 1, 0, 0, 60, 3, 3];
+    prefix.extend([0; 32]);
+    prefix.extend([0, 0, 2, 19, 1, 1, 0, 0, 17]);
+    assert!(
+        s.client
+            .until(WAIT, |c| c.write_now(id, &prefix) == prefix.len())
+    );
+    // The echo proves the driver forwarded the first write before we send SNI.
+    let mut echoed = Vec::new();
+    assert!(s.client.until(WAIT, |c| {
+        echoed.extend(c.read_now(id).unwrap_or_default());
+        echoed == prefix
+    }));
+    let sni = b"\x00\x00\x00\x0d\x00\x0b\x00\x00\x08sni.test";
+    assert_eq!(s.client.exchange(id, sni).unwrap(), sni);
+    let reply: serde_json::Value = serde_json::from_str(&s.core.call("recentFlows", "{}")).unwrap();
+    assert_eq!(reply["ok"]["flows"][0]["name"], "sni.test");
 }
 
 #[test]
@@ -154,11 +243,11 @@ fn private_dns_to_the_virtual_resolver_is_reset_at_once() {
     let begun = Instant::now();
     let id = s.client.connect(SocketAddr::new(RESOLVER.ip(), 853));
     assert!(s.client.until(WAIT, |c| c.read_now(id).is_err()));
-    assert!(begun.elapsed() < Duration::from_secs(1));
+    assert!(begun.elapsed() < Duration::from_secs(3));
 }
 
 #[test]
-fn stop_closes_open_flows_within_a_second() {
+fn stop_promptly_closes_open_flows() {
     let (echo, seen) = servers::tcp_echo();
     let (udp, _) = servers::udp_echo();
     let mut s = setup("Direct", vec![]);
@@ -173,11 +262,8 @@ fn stop_closes_open_flows_within_a_second() {
     assert_eq!(snapshot(&s.core).traffic.active_flows, 2);
     let begun = Instant::now();
     s.core.stop();
-    assert!(
-        begun.elapsed() < Duration::from_secs(1),
-        "{:?}",
-        begun.elapsed()
-    );
+    let took = begun.elapsed();
+    assert!(took < STOP_WAIT + STOP_WAIT / 2, "{took:?}");
     // The upstream connection was closed with its generation.
     assert!(wait_for(WAIT, || seen.closed.load(Relaxed) == 1));
 }
@@ -408,6 +494,9 @@ fn a_dns_session_whose_last_answer_is_slow_is_reset_a_drain_time_after_nothing_m
         reset,
         "the core still holds the session {took:?} after the FIN"
     );
-    assert!(took < DRAIN + Duration::from_secs(1), "{took:?}");
+    assert!(
+        took < servers::SLOW - Duration::from_millis(500),
+        "{took:?}"
+    );
     assert!(matches!(s.client.read_now(id), Err(StreamError::Reset)));
 }

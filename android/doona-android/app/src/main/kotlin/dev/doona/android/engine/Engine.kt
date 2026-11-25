@@ -42,11 +42,10 @@ interface Engine {
     fun disconnect()
 
     /**
-     * Pins the member [memberId] in the group [groupId]; null hands an automatic group back to its own choice. This and
-     * [testLatency] reach the core in the order they are called, from any caller, and a caller that stops waiting does not
-     * cancel its call.
+     * Pins [memberId] in [groupId] on [network], or on both networks when [network] is null. A null [memberId] clears
+     * the affected pins. This and [testLatency] reach the core in call order, even if the caller stops waiting.
      */
-    suspend fun select(groupId: String, memberId: String?): Result<Unit>
+    suspend fun select(groupId: String, memberId: String?, network: Network? = null): Result<Unit>
 
     /**
      * Starts probing the members of the group [groupId], or of every group when null, and returns once started.
@@ -57,11 +56,17 @@ interface Engine {
     /**
      * Fetches [url], decodes its nodes and adds them to the group template. Its fetches send [userAgent] as the
      * User-Agent, or the core's default when null; a value must be 1 to 256 bytes of printable ASCII and not blank, else
-     * [ErrorCode.InvalidArgument] before anything is fetched.
+     * [ErrorCode.InvalidArgument] before anything is fetched. The name defaults to the URL host and follows [renameSubscription].
      */
     suspend fun addSubscription(url: String, name: String? = null, userAgent: String? = null): Result<Subscription>
 
     suspend fun updateSubscription(id: String): Result<Subscription>
+
+    /** Saves a trimmed name of 1 to 64 Unicode code points. Controls and line separators are invalid. Names may repeat. */
+    suspend fun renameSubscription(id: String, name: String): Result<Subscription>
+
+    /** Returns the original URI only for a share_links node. A legacy subscription with null format returns [ErrorCode.NotFound] until refreshed. */
+    suspend fun nodeShareLink(nodeId: String): Result<ShareLink>
 
     suspend fun removeSubscription(id: String): Result<Unit>
 
@@ -70,6 +75,21 @@ interface Engine {
      * same rules as [addSubscription]; nothing is fetched now. Returns the subscription as the catalog shows it.
      */
     suspend fun setSubscriptionUserAgent(id: String, userAgent: String?): Result<Subscription>
+
+    /** Validates drafts without saving or reserving their IDs. Results are in input order. */
+    suspend fun previewStaticNodes(rows: List<StaticNodeDraft>): Result<List<StaticNodeResult>>
+
+    /** Commits accepted drafts together and returns a result for each input row, in order. */
+    suspend fun addStaticNodes(rows: List<StaticNodeDraft>): Result<List<StaticNodeResult>>
+
+    /** Reads the private editor record, not a catalog or telemetry entry. */
+    suspend fun readStaticNode(id: String): Result<StaticNode>
+
+    /** An edit based on a changed record fails with [ErrorCode.Busy]; a missing record fails with [ErrorCode.NotFound]. */
+    suspend fun updateStaticNode(expected: StaticNode, node: StaticNodeDraft): Result<StaticNodeUpdateResult>
+
+    /** Uses the same stale-record check as [updateStaticNode]; [confirmed] must be true to remove the node. */
+    suspend fun removeStaticNode(expected: StaticNode, confirmed: Boolean): Result<Unit>
 
     suspend fun setMode(mode: Mode): Result<Unit>
 
@@ -86,6 +106,9 @@ interface Engine {
      */
     suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit>
 
+    /** Saves 1 to 4 IP literals, optionally with a port (default 53). New UDP queries and TCP DNS connections use them immediately. */
+    suspend fun setDnsUpstreams(servers: List<String>): Result<Unit>
+
     /** What routes flows and DNS now, with the rules as text for the read-only 生效設定 page. */
     suspend fun effectiveConfig(): Result<EffectiveConfig>
 
@@ -101,6 +124,12 @@ interface Engine {
     /** Live TCP and UDP Score evidence, independent of the catalog revision; reading starts no trial. */
     suspend fun scoreState(): Result<ScoreState>
 
+    /** Reads the active geo generation and the last update result, even while disconnected. */
+    suspend fun configAssets(): Result<ConfigAssets>
+
+    /** Starts a geo update through the running VPN. A downloaded generation takes effect at the next start. */
+    suspend fun updateConfigAssets(): Result<ConfigAssets>
+
     /**
      * Stores [perApp] and applies it: a running tunnel is rebuilt, which drops open connections, and the call returns
      * once the rebuilt tunnel is up or failed. The policy is committed whatever the caller does meanwhile. Fails with
@@ -114,6 +143,9 @@ interface Engine {
      * with the build, the last snapshot's codes, the stats and the crash files. Works while the tunnel is stopped.
      */
     suspend fun diagnostics(level: LogLevel? = null): Result<CoreDiagnostics>
+
+    /** The running tunnel's recent connections, newest first. Empty when the core has no running tunnel. */
+    suspend fun recentFlows(): Result<List<RecentFlow>>
 
     /** Sets the level the core's ring keeps from now on. The core does not save it; works while stopped. */
     suspend fun setLogLevel(level: LogLevel): Result<Unit>
@@ -131,7 +163,7 @@ interface Engine {
  * [LocalNetwork]: the failed connection or download went to an address on the local network, which Android 17 lets doona
  * reach only with the `ACCESS_LOCAL_NETWORK` permission (ARCH D26).
  */
-enum class ErrorCode { InvalidArgument, NotFound, FetchFailed, TooLarge, ParseFailed, NoNodes, Busy, Internal, LocalNetwork }
+enum class ErrorCode { InvalidArgument, NotFound, FetchFailed, TooLarge, ParseFailed, NoNodes, Busy, Internal, LocalNetwork, DnsFailed }
 
 class EngineException(val code: ErrorCode) : Exception(code.name)
 
@@ -166,6 +198,12 @@ enum class FailureReason {
 
     /** Android revoked VPN authorization, for example when another VPN took over. */
     Revoked,
+
+    /** The tunnel does not support Android's lockdown mode. */
+    LockdownEnabled,
+
+    /** Android did not provide a tunnel descriptor. */
+    VpnNotEstablished,
 }
 
 /** Rates in bytes per second; totals in bytes since connect; histories hold the last 60 one-second rates, oldest first. */
@@ -187,12 +225,14 @@ data class Traffic(
  */
 enum class Mode { Global, Direct, Rule }
 
+enum class Network { Tcp, Udp }
+
 enum class GroupKind(val manual: Boolean) { Selector(true), UrlTest(false), Score(false), Fallback(false) }
 
 /**
  * A node or a nested group. [id] stays the same across subscription refreshes; [name] is only for display and may
  * repeat. [latencyMs] is null before the first probe and after a failed one; [failed] tells them apart, and [error] says
- * why the probe failed when the core knows: [ErrorCode.LocalNetwork] for a node on the local network.
+ * why the probe failed when known: [ErrorCode.DnsFailed] for DNS or [ErrorCode.LocalNetwork] for a local dial.
  */
 data class Member(
     val id: String,
@@ -200,22 +240,45 @@ data class Member(
     val latencyMs: Int? = null,
     val failed: Boolean = false,
     val isGroup: Boolean = false,
-    /** The subscription a node came from; null for groups. */
+    /** The source subscription; null for static nodes and groups. */
     val subscriptionId: String? = null,
     val error: ErrorCode? = null,
 )
 
-/** [selectedId] is the member carrying traffic now; [pinned] says the user chose it rather than the group's own test. */
+/** Like the core catalog, [selectedId] and [pinned] report the TCP selection even when the networks differ. */
 data class Group(
     /** `g-` plus the group's name; stable. */
     val id: String,
     val name: String,
     val kind: GroupKind,
     val members: List<Member>,
-    val selectedId: String?,
-    val pinned: Boolean = false,
+    val tcp: Selection,
+    val udp: Selection = tcp,
     val testing: Boolean = false,
-)
+) {
+    constructor(
+        id: String,
+        name: String,
+        kind: GroupKind,
+        members: List<Member>,
+        selectedId: String?,
+        pinned: Boolean = false,
+        testing: Boolean = false,
+    ) : this(id, name, kind, members, Selection(selectedId, pinned), testing = testing)
+
+    data class Selection(val selectedId: String?, val pinned: Boolean)
+
+    val selectedId: String? get() = tcp.selectedId
+    val pinned: Boolean get() = tcp.pinned
+
+    /** Whether the selected members differ, regardless of which network is pinned. */
+    val networksDiffer: Boolean get() = tcp.selectedId != udp.selectedId
+
+    fun withSharedSelection(selectedId: String?, pinned: Boolean): Group {
+        val selection = Selection(selectedId, pinned)
+        return copy(tcp = selection, udp = selection)
+    }
+}
 
 /**
  * One revision of the core's catalog. [mainGroupId] is the group [Mode.Global] sends every flow through, and [Mode.Rule]
@@ -228,6 +291,12 @@ data class Catalog(
     val mainGroupId: String,
     val ruleSource: RuleSource,
 )
+
+/** Access [uri] only to share it. Formatting the value or its enclosing Result must not expose credentials. */
+@JvmInline
+value class ShareLink(val uri: String) {
+    override fun toString(): String = "ShareLink([redacted])"
+}
 
 enum class SubscriptionFormat { ShareLinks, Base64, Sip008, Clash, SingBox }
 
@@ -255,4 +324,12 @@ data class PerApp(val policy: AppPolicy = AppPolicy.All, val packages: Set<Strin
 
 enum class AppPolicy { All, OnlyListed, ExceptListed }
 
-data class Settings(val mode: Mode = Mode.Global, val perApp: PerApp = PerApp())
+data class Settings(
+    val mode: Mode = Mode.Global,
+    val perApp: PerApp = PerApp(),
+    /**
+     * Whether Android blocks traffic outside this VPN. False when the VPN service is not running;
+     * while connecting or reconnecting it keeps the last reading taken while running.
+     */
+    val lockdownEnabled: Boolean = false,
+)

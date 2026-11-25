@@ -47,7 +47,7 @@ impl Setup {
 pub(super) async fn connect(
     first: &Dialer,
     session: &Session,
-    dst: SocketAddr,
+    dst: (SocketAddr, Option<&str>),
     deadline: Instant,
     original: &mut Option<ScoreContinuation>,
 ) -> io::Result<Connected> {
@@ -75,18 +75,19 @@ pub(super) async fn connect(
 async fn dial(
     d: &Dialer,
     session: &Session,
-    dst: SocketAddr,
+    (dst, host): (SocketAddr, Option<&str>),
     deadline: Instant,
     original: &mut Option<ScoreContinuation>,
 ) -> Result<Connected, (ScoreOutcome, io::Error)> {
     let (registry, proxies, id) = (Arc::clone(&d.registry), Arc::clone(&d.proxies), d.node.id);
+    let host = host.map(str::to_owned);
     let dial = async move {
         proxies
             .dial_runtime(
                 registry,
                 id,
                 dst,
-                None,
+                host.as_deref(),
                 deadline.saturating_duration_since(Instant::now()),
             )
             .await

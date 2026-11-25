@@ -22,6 +22,7 @@
 //! every address it could have dialed for it is: the literal, or each answer this probe's own
 //! lookup of the node's name gave.
 
+use crate::dto::ErrorCode;
 use honk_outbound::runtime::flow_observation::{
     FlowContext, FlowEvent, FlowObserver, TransportStatus,
 };
@@ -198,6 +199,8 @@ struct Looked {
     target: bool,
     /// Whether every answer the node's name resolved to is local; `None` before the first.
     node: Option<bool>,
+    /// A lookup started but did not return any addresses before the probe ended.
+    unresolved: bool,
 }
 
 impl Lookups {
@@ -206,21 +209,22 @@ impl Lookups {
         PROBE.scope(self.clone(), probe)
     }
 
-    /// Whether the probe stopped at an address of its node on the local network: it went on to dial
-    /// the node, and whatever address it dialed for the node is local, the literal `host`, or each
-    /// answer the node's name resolved to for this probe. A name that also resolved to a public
-    /// address does not count, as honk may have dialed that one. A probe that failed before, at
-    /// the lookup of its target or of the node's name, did not. Whether the node then came up honk
-    /// does not say; without the permission no node on the local network does, and with it the app
-    /// asks nothing.
-    pub fn refused_locally(&self, host: &str) -> bool {
+    /// Why a failed probe stopped, if it stalled in DNS or only had local addresses to dial.
+    pub fn failure(&self, host: &str) -> Option<ErrorCode> {
         let looked = lock(&self.0);
+        if looked.unresolved {
+            return Some(ErrorCode::DnsFailed);
+        }
         let local = match literal(host) {
             Some(ip) => is_local(ip),
             None => looked.node == Some(true),
         };
-        looked.target && local
+        (looked.target && local).then_some(ErrorCode::LocalNetwork)
     }
+}
+
+pub(crate) fn lookup_started() {
+    let _ = PROBE.try_with(|probe| lock(&probe.0).unresolved = true);
 }
 
 /// Records what a lookup the core made for a running probe gave: the probe's own `target`, or its
@@ -228,9 +232,13 @@ impl Lookups {
 pub(crate) fn looked_up(target: bool, ips: &[IpAddr]) {
     let _ = PROBE.try_with(|probe| {
         let mut looked = lock(&probe.0);
+        looked.unresolved = ips.is_empty();
+        if looked.unresolved {
+            return;
+        }
         if target {
             looked.target = true;
-        } else if !ips.is_empty() {
+        } else {
             let all = ips.iter().all(|&ip| is_local(ip));
             looked.node = Some(looked.node.unwrap_or(true) && all);
         }

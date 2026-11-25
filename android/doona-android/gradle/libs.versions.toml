@@ -31,6 +31,7 @@ benchmark = "1.6.0-alpha02"
 uiautomator = "2.4.1"
 
 [libraries]
+android-gradle-api = { module = "com.android.tools.build:gradle-api", version.ref = "agp" }
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
 benchmark-macro-junit4 = { module = "androidx.benchmark:benchmark-macro-junit4", version.ref = "benchmark" }
 uiautomator = { module = "androidx.test.uiautomator:uiautomator", version.ref = "uiautomator" }

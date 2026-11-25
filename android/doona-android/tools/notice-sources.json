@@ -1,0 +1,19 @@
+{
+  "alloc-stdlib": "dropbox/rust-alloc-no-stdlib/0a81fd6928ea3b33c8cd484aa4575d50ffb98012/LICENSE",
+  "aya-ebpf-bindings": "aya-rs/aya/9a79f8e8ea2bbdfd8f884e097d13fbaa894f5a3d/LICENSE-MIT",
+  "jni": "jni-rs/jni-rs/5ae9458a4ec44c5318f37ddc7569c1d4ae8a69e7/LICENSE-MIT",
+  "kotlin-gwt": "JetBrains/kotlin/9180ce6a7a7d3627f88b424717583f28ddca052d/license/third_party/gwt_license.txt",
+  "kotlin-guava": "JetBrains/kotlin/9180ce6a7a7d3627f88b424717583f28ddca052d/license/third_party/guava_license.txt",
+  "kotlin-time": "JetBrains/kotlin/9180ce6a7a7d3627f88b424717583f28ddca052d/license/third_party/threetenbp_license.txt",
+  "kotlin-boost": "JetBrains/kotlin/9180ce6a7a7d3627f88b424717583f28ddca052d/license/third_party/boost_LICENSE.txt",
+  "wincode": "anza-xyz/wincode/a738c8a139629fb5f26e8473a1aad23eb8f0b6cc/LICENSE",
+  "libyaml": "yaml/libyaml/2c891fc7a770e8ba2fec34fc6b545c672beb37e6/License",
+  "geo-domain-list-community": "v2fly/domain-list-community/810aa5258c883f5a2a6fd43cf058d01db0f06be5/LICENSE",
+  "geo-domain-list-custom": "Loyalsoldier/domain-list-custom/0b3b2122b819ff0b8a747663890e6b3ef4ace4a0/LICENSE",
+  "geo-dnsmasq": "felixonmars/dnsmasq-china-list/a30697b2725cbe2691312e12878ab3fea5697513/LICENSE",
+  "geo-winspy": "crazy-max/WindowsSpyBlocker/87266541e57a5f4332d8fd939f2a03675566e17c/LICENSE",
+  "geo-ios": "blackmatrix7/ios_rule_script/0b6897dc17e0c513d25449c935a9694818e32f0c/LICENSE",
+  "geo-gfwlist": "gfwlist/gfwlist/f09bc923be065731331b570faf51f5d5402847c4/COPYING.txt",
+  "maxmind-eula": "https://www.maxmind.com/en/geolite/eula",
+  "geo-cc": "Loyalsoldier/geoip/f6d8fb1c3320a4bf9ee0cc146b2818b906ae4868/LICENSE"
+}

@@ -1,0 +1,42 @@
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directories:
+      - /android/doona-android
+      - /android/tunbench
+      - /android/ui-preview
+    schedule:
+      interval: weekly
+    groups:
+      gradle:
+        patterns: ['*']
+  - package-ecosystem: cargo
+    directories:
+      - /crates/doona-core
+      - /crates/doona-core/tools/geo-check
+      - /crates/honk-android
+    schedule:
+      interval: weekly
+    # Update these Git revisions together when changing the honk pins.
+    ignore:
+      - dependency-name: 'honk*'
+      - dependency-name: boring-sys
+      - dependency-name: quinn
+      - dependency-name: quinn-proto
+    groups:
+      cargo:
+        patterns: ['*']
+  - package-ecosystem: uv
+    directory: /android/scripts
+    schedule:
+      interval: weekly
+    groups:
+      uv:
+        patterns: ['*']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ['*']

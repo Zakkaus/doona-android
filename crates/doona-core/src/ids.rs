@@ -9,6 +9,36 @@ pub(crate) fn scoped_uuid(subscription: &str, endpoint: Uuid) -> Uuid {
     Uuid::new_v5(&endpoint, subscription.as_bytes())
 }
 
+pub(crate) fn static_uuid(node: &honk_config::node::Node) -> Uuid {
+    // Subscription scopes are UTF-8; this namespace cannot name one.
+    let base = Uuid::new_v5(&node.id, &[0xff]);
+    // These admitted dial options are absent from honk's endpoint fingerprint.
+    let tls = node.tls();
+    let vmess = node.vmess();
+    let tuic = node.tuic();
+    let extra = (
+        tls.is_some_and(|t| t.skip_cert_verify),
+        tls.and_then(|t| t.pin_sha256.as_deref()),
+        node.transport()
+            .is_some_and(|t| t.grpc_service.as_deref() == Some("")),
+        vmess.is_some_and(|v| v.tls.enabled),
+        vmess
+            .and_then(|v| v.encryption.as_deref())
+            .filter(|v| *v != "auto"),
+        tuic.and_then(|t| t.alpn.as_deref()),
+        tuic.and_then(|t| t.congestion.as_deref()),
+        node.hysteria2().and_then(|h| h.port_hopping.as_deref()),
+    );
+    if extra == Default::default() {
+        base
+    } else {
+        Uuid::new_v5(
+            &base,
+            &serde_json::to_vec(&extra).expect("string tuple serializes"),
+        )
+    }
+}
+
 /// `n-` and 16 hex digits: a node of `subscription` with honk's endpoint identity `endpoint`.
 #[cfg(test)]
 pub(crate) fn node_id(subscription: &str, endpoint: Uuid) -> String {

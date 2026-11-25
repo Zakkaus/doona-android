@@ -15,8 +15,7 @@ use crate::state::{State, StoredSubscription};
 use crate::stats::{Clock, Stats};
 use crate::subscription::parse;
 use honk_config::node::Node;
-use honk_outbound::group::SelectionNetwork;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
 use std::sync::{Arc, Mutex};
 use tokio_util::sync::CancellationToken;
@@ -36,13 +35,15 @@ pub(crate) fn incarnation() -> u64 {
     NEXT_INCARNATION.fetch_add(1, Relaxed)
 }
 
-/// One node of one subscription.
+/// A catalog leaf, either authored locally or owned by one subscription.
 #[derive(Debug)]
 pub(crate) struct NodeEntry {
     pub id: String,
     pub uuid: uuid::Uuid,
     pub name: String,
-    pub subscription: String,
+    pub location: dto::location::Location,
+    pub subscription: Option<String>,
+    pub feed_index: usize,
     pub node: Arc<Node>,
 }
 
@@ -50,7 +51,8 @@ pub(crate) struct NodeEntry {
 pub(crate) fn entries(subscription: &str, nodes: Vec<Node>) -> Vec<Arc<NodeEntry>> {
     nodes
         .into_iter()
-        .map(|node| {
+        .enumerate()
+        .map(|(feed_index, node)| {
             let name = if node.name.trim().is_empty() {
                 node.protocol().as_str().to_owned()
             } else {
@@ -60,8 +62,10 @@ pub(crate) fn entries(subscription: &str, nodes: Vec<Node>) -> Vec<Arc<NodeEntry
             Arc::new(NodeEntry {
                 id: ids::short_id(uuid),
                 uuid,
+                location: crate::regions::locate(&name),
                 name,
-                subscription: subscription.to_owned(),
+                subscription: Some(subscription.to_owned()),
+                feed_index,
                 node: Arc::new(node),
             })
         })
@@ -71,28 +75,37 @@ pub(crate) fn entries(subscription: &str, nodes: Vec<Node>) -> Vec<Arc<NodeEntry
 /// The nodes `state.json` lists, each subscription with a new incarnation. Only a file edited
 /// by hand holds a subscription over a node budget, or a document that gives no node; that one is
 /// shown without nodes.
-pub(crate) fn load(state: &State, diag: &Diag) -> Model {
+pub(crate) fn load(state: &mut State, diag: &Diag) -> Model {
     let mut nodes = Vec::new();
     let mut incarnations = HashMap::new();
-    for s in &state.subscriptions {
-        let parsed = stored_nodes(s).and_then(|p| within_budget(nodes.len(), &p).map(|()| p));
+    for s in &mut state.subscriptions {
+        let parsed = stored_nodes(s).and_then(|p| within_budget(nodes.len(), &p.nodes).map(|()| p));
         match parsed {
-            Ok(parsed) => nodes.extend(entries(&s.id, parsed)),
+            Ok(parsed) => {
+                // Admission may skip an obsolete or invalid stored link. Keep indices aligned.
+                s.links = parsed.links;
+                nodes.extend(entries(&s.id, parsed.nodes));
+            }
             Err(code) => diag.record(Event::warn("loadSubscription").code(code)),
         }
         incarnations.insert(s.id.clone(), incarnation());
+    }
+    for stored in &state.static_nodes {
+        match crate::api::static_nodes::stored_entry(stored) {
+            Ok(entry) if nodes.len() < MAX_NODES => nodes.push(entry),
+            _ => diag.record(Event::warn("loadStaticNode").code(ErrorCode::ParseFailed)),
+        }
     }
     Model::sourced(nodes, incarnations, &state.rule_source, None)
 }
 
 /// The nodes `state.json` keeps for `s`, parsed again: from its structured document when it has
 /// one, else from its share links.
-pub(crate) fn stored_nodes(s: &StoredSubscription) -> Result<Vec<Node>, ErrorCode> {
-    let parsed = match &s.document {
+pub(crate) fn stored_nodes(s: &StoredSubscription) -> Result<parse::Parsed, ErrorCode> {
+    match &s.document {
         Some(document) => parse::parse(document.as_bytes()),
         None => parse::admit(s.links.iter().map(String::as_str)),
-    };
-    parsed.map(|p| p.nodes)
+    }
 }
 
 /// `parse_failed` when `fresh` nodes and `others` already kept are more than [`MAX_NODES`].
@@ -130,7 +143,7 @@ impl Shared {
     /// Publishes the mode, each group's current node and the policy to the data path; called with
     /// `c` locked.
     pub fn publish(&self, c: &CatalogState) {
-        let routing = c.model.routing(&c.state.selections, c.state.mode);
+        let routing = c.model.routing(&c.state);
         self.outbounds.select(routing);
     }
 
@@ -138,9 +151,8 @@ impl Shared {
     /// policy in one step, so a new flow never pairs a node with a registry that lacks it, nor a
     /// rule with groups of another node set; `c` is locked.
     pub fn publish_nodes(&self, c: &CatalogState, built: Built) {
-        c.model.restore_pins(&c.state.selections);
-        self.outbounds
-            .replace(built, c.model.routing(&c.state.selections, c.state.mode));
+        c.model.update_pins(None, &c.state);
+        self.outbounds.replace(built, c.model.routing(&c.state));
     }
 }
 
@@ -184,6 +196,7 @@ pub(crate) struct Model {
     /// What chooses a new flow's group: the main group, and the rules of `state.json`'s source
     /// over `groups`.
     pub policy: Arc<Policy>,
+    pub(crate) geo: Option<Arc<crate::rules::dat::Data>>,
     latency: HashMap<String, Latency>,
     /// The automatic choice of each UrlTest group that has had a successful probe.
     auto: HashMap<String, String>,
@@ -222,7 +235,6 @@ pub(crate) struct Round {
 #[derive(Clone)]
 pub(crate) struct Target {
     pub entry: Arc<NodeEntry>,
-    pub incarnation: u64,
     pub generation: u64,
     /// When the test round began, epoch ms: its time in the node's latency history.
     pub began_ms: i64,
@@ -240,7 +252,7 @@ impl Model {
         nodes: Vec<Arc<NodeEntry>>,
         incarnations: HashMap<String, u64>,
         source: &RuleSourceSpec,
-        previous: Option<&Score>,
+        previous: Option<&Model>,
     ) -> Model {
         let index: HashMap<String, usize> = nodes
             .iter()
@@ -252,14 +264,17 @@ impl Model {
             .map(|n| (n.id.as_str(), n.name.as_str()))
             .collect();
         let groups = groups::template(&named);
-        let policy = compile(&groups, &index, source);
-        let score = Arc::new(Score::new(&groups, &nodes, &index, previous));
+        let geo = previous.and_then(|model| model.geo.clone());
+        let policy = compile(&groups, &index, source, geo.as_deref());
+        let prior_score = previous.map(|m| &*m.score);
+        let score = Arc::new(Score::new(&groups, &nodes, &index, prior_score));
         Model {
             nodes,
             index,
             incarnations,
             groups,
             policy: Arc::new(policy),
+            geo,
             score,
             latency: HashMap::new(),
             auto: HashMap::new(),
@@ -271,18 +286,18 @@ impl Model {
     /// The model after `subscription` gets `fresh` nodes (a new incarnation), or loses its nodes
     /// when it is no longer in `state`. The other subscriptions keep theirs.
     pub fn with(&self, state: &State, subscription: &str, fresh: Vec<Arc<NodeEntry>>) -> Model {
-        let mut fresh = Some(fresh);
+        let mut fresh = fresh.into_iter();
         let mut nodes = Vec::new();
         let mut incarnations = HashMap::new();
         for s in &state.subscriptions {
             if s.id == subscription {
-                nodes.extend(fresh.take().unwrap_or_default());
+                nodes.extend(fresh.by_ref());
                 incarnations.insert(s.id.clone(), incarnation());
             } else {
                 nodes.extend(
                     self.nodes
                         .iter()
-                        .filter(|n| n.subscription == s.id)
+                        .filter(|n| n.subscription.as_ref() == Some(&s.id))
                         .cloned(),
                 );
                 if let Some(&i) = self.incarnations.get(&s.id) {
@@ -290,12 +305,39 @@ impl Model {
                 }
             }
         }
-        Model::sourced(nodes, incarnations, &state.rule_source, Some(&self.score))
+        nodes.extend(
+            self.nodes
+                .iter()
+                .filter(|n| n.subscription.is_none())
+                .cloned(),
+        );
+        Model::sourced(nodes, incarnations, &state.rule_source, Some(self))
+    }
+
+    pub fn with_static(&self, fresh: Vec<Arc<NodeEntry>>, state: &State) -> Model {
+        let nodes = self
+            .nodes
+            .iter()
+            .filter(|n| n.subscription.is_some())
+            .cloned()
+            .chain(fresh)
+            .collect();
+        Model::sourced(
+            nodes,
+            self.incarnations.clone(),
+            &state.rule_source,
+            Some(self),
+        )
     }
 
     /// Compiles `source` over the groups and nodes as they are, for new flows.
     pub fn set_source(&mut self, source: &RuleSourceSpec) {
-        self.policy = Arc::new(compile(&self.groups, &self.index, source));
+        self.policy = Arc::new(compile(
+            &self.groups,
+            &self.index,
+            source,
+            self.geo.as_deref(),
+        ));
     }
 
     /// Whether node `id` is in the catalog.
@@ -346,7 +388,7 @@ impl Model {
     pub fn nodes_of(&self, subscription: &str) -> usize {
         self.nodes
             .iter()
-            .filter(|n| n.subscription == subscription)
+            .filter(|n| n.subscription.as_deref() == Some(subscription))
             .count()
     }
 
@@ -358,7 +400,7 @@ impl Model {
             groups: self
                 .groups
                 .iter()
-                .map(|g| self.group_dto(g, &state.selections))
+                .map(|g| self.group_dto(g, state))
                 .collect(),
             subscriptions: state
                 .subscriptions
@@ -384,23 +426,20 @@ impl Model {
         }
     }
 
-    fn group_dto(&self, g: &GroupDef, selections: &BTreeMap<String, String>) -> dto::Group {
-        let (selected, pinned) = if g.kind == GroupKind::Score {
-            (
-                self.score.selected(&g.id),
-                self.score
-                    .manager
-                    .has_override(&g.id, SelectionNetwork::Tcp),
-            )
-        } else {
-            groups::selected(g, selections.get(&g.id), self.auto.get(&g.id))
-        };
+    fn group_dto(&self, g: &GroupDef, state: &State) -> dto::Group {
+        let (tcp, tcp_pinned) = self.choice(g, state, dto::Network::Tcp);
+        let (udp, udp_pinned) = self.choice(g, state, dto::Network::Udp);
         dto::Group {
             id: g.id.clone(),
             name: g.name.clone(),
             kind: g.kind,
-            selected_id: selected.map(str::to_owned),
-            pinned,
+            selected_id: tcp.map(str::to_owned),
+            tcp_selected_id: tcp.map(str::to_owned),
+            udp_selected_id: udp.map(str::to_owned),
+            networks_differ: tcp != udp,
+            pinned: tcp_pinned,
+            tcp_pinned,
+            udp_pinned,
             testing: self.testing.contains_key(&g.id),
             members: g.members.iter().map(|m| self.member(m)).collect(),
         }
@@ -415,6 +454,7 @@ impl Model {
             error: None,
             is_group: is_group(id),
             subscription_id: None,
+            location: Default::default(),
         };
         if member.is_group {
             member.name = self.group(id).map(|g| g.name.clone()).unwrap_or_default();
@@ -422,10 +462,11 @@ impl Model {
             let entry = &self.nodes[i];
             let latency = self.latency.get(id).copied().unwrap_or_default();
             member.name = entry.name.clone();
+            member.location = entry.location.clone();
             member.latency_ms = latency.ms;
             member.failed = latency.failed;
             member.error = latency.error;
-            member.subscription_id = Some(entry.subscription.clone());
+            member.subscription_id.clone_from(&entry.subscription);
         }
         member
     }
@@ -452,11 +493,6 @@ impl Model {
             latency.probing = true;
             targets.push(Target {
                 entry: Arc::clone(entry),
-                incarnation: self
-                    .incarnations
-                    .get(&entry.subscription)
-                    .copied()
-                    .unwrap_or(0),
                 generation: self.next_probe,
                 began_ms,
             });
@@ -486,8 +522,13 @@ impl Model {
     /// arrive in.
     pub fn record(&mut self, target: &Target, ms: Option<u32>, error: Option<ErrorCode>) -> bool {
         let entry = &target.entry;
-        let current = self.index.contains_key(&entry.id)
-            && self.incarnations.get(&entry.subscription) == Some(&target.incarnation);
+        // A rename replaces the immutable name but keeps a static endpoint's probe generation.
+        // Removing it drops its latency entry; a later probe gets a fresh generation on re-add.
+        let current = entry.subscription.is_none()
+            || self
+                .index
+                .get(&entry.id)
+                .is_some_and(|&i| Arc::ptr_eq(&self.nodes[i], entry));
         let Some(latency) = self
             .latency
             .get_mut(&entry.id)
@@ -543,10 +584,15 @@ impl Model {
 }
 
 /// The policy of `source` over `groups`, whose nodes `index` holds.
-fn compile(groups: &[GroupDef], index: &HashMap<String, usize>, source: &RuleSourceSpec) -> Policy {
+fn compile(
+    groups: &[GroupDef],
+    index: &HashMap<String, usize>,
+    source: &RuleSourceSpec,
+    data: Option<&crate::rules::dat::Data>,
+) -> Policy {
     let RuleSourceSpec::Template { options, .. } = source;
     let is_node = |id: &str| index.contains_key(id);
-    Policy::template(groups, &is_node, template::Options::from(*options))
+    Policy::template_with_data(groups, &is_node, template::Options::from(*options), data)
 }
 
 #[cfg(test)]

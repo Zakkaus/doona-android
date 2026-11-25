@@ -16,7 +16,7 @@ val SAMPLE_TESTING_GROUPS: List<Group> = FakeEngine.SAMPLE_GROUPS.map { group ->
 
 /** The Auto group of [SAMPLE_TESTING_GROUPS] with the user's choice, jp-01, pinned over its own. */
 val SAMPLE_PINNED_GROUPS: List<Group> = SAMPLE_TESTING_GROUPS.map {
-    if (it.id == "g-Auto") it.copy(selectedId = "n-85d011c7e5f60718", pinned = true) else it
+    if (it.id == "g-Auto") it.withSharedSelection(selectedId = "n-85d011c7e5f60718", pinned = true) else it
 }
 
 fun samplePoliciesState(groups: List<Group> = FakeEngine.SAMPLE_GROUPS, error: ErrorCode? = null): PoliciesUiState =

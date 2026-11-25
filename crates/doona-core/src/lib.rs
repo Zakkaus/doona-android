@@ -1,5 +1,5 @@
 //! doona-Android's Rust core: the JNI surface of `dev.doona.android.vpn.NativeCore`
-//! (`plans/v1/core-api.md`, schema 2) over a plain Rust API, [`api::Core`], that host tests drive
+//! (`plans/v1/core-api.md`, schema 3) over a plain Rust API, [`api::Core`], that host tests drive
 //! without a JVM.
 
 pub mod api;
@@ -16,6 +16,7 @@ mod localnet;
 pub mod outbounds;
 mod panics;
 mod probe;
+mod regions;
 mod rules;
 mod score;
 pub mod state;

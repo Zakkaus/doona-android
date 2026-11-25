@@ -9,8 +9,8 @@ drawables named sym_<name>, plus the weight-600 variants of add and close as sym
 Android XML is taken as it is, bar two normalisations that keep it independent of the theme: the fill is black (the icon
 is tinted where it is drawn) and the colorControlNormal tint is dropped. Any other shape of file stops the script.
 
-Writes, relative to the doona-android directory: icons/src/main/res/drawable/sym_*.xml, icons/LICENSE, icons/NOTICE and
-app/src/main/assets/licenses/material-symbols-Apache-2.0.txt. Run it again with a new COMMIT to take a newer release.
+Writes icons/src/main/res/drawable/sym_*.xml, icons/LICENSE and icons/NOTICE under doona-android.
+Run it again with a new COMMIT to take a newer release, then regenerate the release notices.
 """
 
 import argparse
@@ -147,7 +147,6 @@ def main():
     notice = NOTICE.format(commit=COMMIT, style=STYLE)
     (MODULE / "icons/LICENSE").write_text(licence)
     (MODULE / "icons/NOTICE").write_text(notice)
-    (MODULE / "app/src/main/assets/licenses/material-symbols-Apache-2.0.txt").write_text(licence)
     print("wrote %d drawables from %s" % (len(files), COMMIT))
 
 

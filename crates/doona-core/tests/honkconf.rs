@@ -8,7 +8,7 @@ use std::{
 };
 
 use common::TempDir;
-use doonacore::honkconf::{Disposition, HonkConfigError, HonkStore, Summary, load};
+use doonacore::honkconf::{Disposition, HonkConfigError, HonkStore, StoreError, Summary, load};
 use honk_config::Config;
 
 fn write(dir: &TempDir, name: &str, text: &str) -> PathBuf {
@@ -19,18 +19,31 @@ fn write(dir: &TempDir, name: &str, text: &str) -> PathBuf {
 
 const FETCH: &str =
     "restore the pinned honk checkout with cargo fetch --locked from crates/doona-core";
+const PIN: &str = "63de98ba32f871ac6a779e7462a0a79f8a595153";
 
 fn checkout() -> PathBuf {
     let home = std::env::var_os("CARGO_HOME")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(std::env::var_os("HOME").unwrap()).join(".cargo"));
-    fs::read_dir(home.join("git/checkouts"))
+    let root = fs::read_dir(home.join("git/checkouts"))
         .into_iter()
         .flatten()
         .flatten()
-        .map(|repo| repo.path().join("8919784"))
+        .map(|repo| repo.path().join(&PIN[..7]))
         .find(|dir| dir.join("crates/honk-config/Cargo.toml").is_file())
-        .unwrap_or_else(|| panic!("missing honk 8919784: {FETCH}"))
+        .unwrap_or_else(|| panic!("missing honk {PIN}: {FETCH}"));
+    let head = std::process::Command::new("git")
+        .args(["rev-parse", "--verify", "HEAD"])
+        .current_dir(&root)
+        .output()
+        .expect("git is required to verify the honk corpus");
+    assert!(head.status.success(), "unreadable honk HEAD: {FETCH}");
+    assert_eq!(
+        String::from_utf8(head.stdout).unwrap().trim(),
+        PIN,
+        "wrong honk corpus: {FETCH}"
+    );
+    root
 }
 
 #[test]
@@ -270,7 +283,7 @@ fn corpus_files(dir: &Path, test: &impl Fn(&Path)) -> usize {
 fn upstream_syntax_and_conformance_admission() {
     let root = checkout();
     let tmp = TempDir::new("honk-corpus");
-    for (dir, expected) in [("tests/fixtures", 81), ("conformance/cases", 104)] {
+    for (dir, expected) in [("tests/fixtures", 81), ("conformance/cases", 105)] {
         let cases = corpus_files(&root.join("crates/honk-config").join(dir), &|fixture| {
             let entry = tmp.path().join("case.dae");
             fs::copy(fixture, &entry).unwrap();
@@ -341,7 +354,7 @@ fn upstream_syntax_and_conformance_admission() {
                 fixture.display()
             );
         });
-        assert_eq!(cases, expected, "incomplete {dir} at 8919784: {FETCH}");
+        assert_eq!(cases, expected, "incomplete {dir} at 63de98b: {FETCH}");
     }
 }
 
@@ -355,7 +368,7 @@ fn confined_includes_and_hosts() {
     symlink(&outside, stage.join("link.dae")).unwrap();
     fs::write(stage.join("rules-a.dae"), "global { pprof_port: 1234 }").unwrap();
     let text = format!(
-        "include {{\n ../outside.dae\n '{}/*.dae'\n link.dae\n '{}/missing/*.dae'\n rules-[ab].dae\n optional/*.dae\n ../stage/rules-a.dae\n}}\ndns {{ use_host: '../outside.dae' }}",
+        "include {{\n ../outside.dae\n '{0}/*.dae'\n link.dae\n '{1}/missing/*.dae'\n rules-[ab].dae\n optional/*.dae\n ../stage/rules-a.dae\n}}\ndns {{\n use_host: '../outside.dae'\n use_host: '{0}/outside.dae'\n use_host: link.dae\n use_host: absent\n use_host: rules-a.dae\n}}",
         dir.path().display(),
         stage.display()
     );
@@ -372,7 +385,11 @@ fn confined_includes_and_hosts() {
             .iter()
             .all(|r| r.disposition == Disposition::Incomplete)
     );
-    assert_eq!(records[5].disposition, Disposition::Skip);
+    assert!(
+        records[5..]
+            .iter()
+            .all(|r| r.disposition == Disposition::Skip)
+    );
     let codes: Vec<_> = records
         .iter()
         .map(|r| (r.reasons[0].code, r.locations[0].line))
@@ -385,7 +402,10 @@ fn confined_includes_and_hosts() {
             ("include_escape", 4),
             ("include_escape", 5),
             ("include_escape", 8),
-            ("use_host_escape", 10),
+            ("use_host_escape", 11),
+            ("use_host_escape", 12),
+            ("use_host_escape", 13),
+            ("missing_hosts_source", 14),
             ("daemon_listener", 1)
         ]
     );
@@ -416,6 +436,8 @@ fn source_budget_covers_entry_and_includes() {
 #[test]
 fn structured_documents_are_not_native_sources() {
     let dir = TempDir::new("honk-format");
+    let data = TempDir::new("honk-format-store");
+    let mut store = HonkStore::open(data.path()).unwrap();
     for text in [
         "\u{feff}{\"global\":{\"log_level\":\"debug\"}}",
         "[global]\nlog_level = 'debug'",
@@ -423,10 +445,13 @@ fn structured_documents_are_not_native_sources() {
         r#"{"global":{"log_level":"debug"}}"#,
     ] {
         let entry = write(&dir, "config.dae", text);
-        assert!(
-            matches!(load(entry), Err(HonkConfigError::NonNativeSource)),
-            "{text}"
-        );
+        let loaded = load(&entry);
+        assert!(matches!(loaded, Err(HonkConfigError::NonNativeSource)));
+        assert!(matches!(
+            store.import(&entry),
+            Err(StoreError::Config(HonkConfigError::NonNativeSource))
+        ));
+        assert!(store.current_draft().is_none());
     }
     let path = write(&dir, "config.yaml", "global { log_level: debug }");
     assert!(matches!(load(path), Err(HonkConfigError::NonNativeSource)));

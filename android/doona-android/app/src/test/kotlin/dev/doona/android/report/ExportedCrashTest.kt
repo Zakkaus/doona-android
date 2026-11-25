@@ -11,10 +11,11 @@ class ExportedCrashTest {
     private val head = listOf("source: app", "format: 1", "atEpochMs: 1795300150000")
     private val version = "version: 0.1 debug arm64-v8a-android"
     private val rest = listOf("thread: main", "location: unknown", "message: $CRASH_MESSAGE", "", BACKTRACE, "exception: java.lang.IllegalStateException")
+    private val scrubber = ReportScrubber(RedactionOptions())
 
     private fun file(lines: List<String>) = lines.joinToString("\n", postfix = "\n")
 
-    private fun exported(lines: List<String>) = exportedCrash(file(lines).toByteArray(), KnownNames())!!.decodeToString()
+    private fun exported(lines: List<String>) = scrubber.crash(file(lines).toByteArray(), KnownNames())!!.decodeToString()
 
     @Test
     fun `the version line as the app writes it goes out`() {
@@ -45,6 +46,27 @@ class ExportedCrashTest {
     }
 
     @Test
+    fun `only allowlisted actions cross the crash export boundary`() {
+        val prefix = "${BREADCRUMB}1795300150000 Warn "
+        val valid = prefix + "command=select phase=complete outcome=failed code=NotFound elapsedMs=3"
+        val forged = listOf(
+            prefix + "command=select phase=complete outcome=failed code=privatehost",
+            prefix + "command=select phase=complete outcome=failed code=NotFound https://example.net/token",
+            prefix + "command=select phase=complete outcome=failed code=NotFound elapsedMs=192.0.2.1",
+        )
+        val before = head + version + rest + BREADCRUMBS
+        assertEquals(file(before + valid), exported(before + forged + valid))
+    }
+
+    @Test
+    fun `native crash preserves crate locations and modules`() {
+        for (location in listOf("src/api/diagnostics.rs:24:6", "tokio 1.47.1", "honk-outbound", "unknown")) {
+            val text = "source: core\natEpochMs: 1795300140000\nlocation: $location\nmessage: panic in tokio::runtime::park\n\nbacktrace:\n0 libdoonacore.so 0x42\n"
+            assertEquals(text, scrubber.crash(text.toByteArray(), KnownNames())!!.decodeToString())
+        }
+    }
+
+    @Test
     fun `the app writes only a version line the export keeps`() {
         val app = AppInfo("0.1", 1, "debug", listOf("arm64-v8a"), "16", 36, "Google", "Pixel 9")
         assertEquals("0.1 debug arm64-v8a-android", app.crashVersion)
@@ -53,7 +75,7 @@ class ExportedCrashTest {
         assertEquals("unknown release unknown-android", app.copy(version = "", buildType = "release", abis = emptyList()).crashVersion)
         for (info in listOf(app, odd)) {
             val text = crashText("java.lang.IllegalStateException", null, true, info.crashVersion, 1_795_300_150_000)
-            assertEquals(text, exportedCrash(text.toByteArray(), KnownNames())!!.decodeToString())
+            assertEquals(text, scrubber.crash(text.toByteArray(), KnownNames())!!.decodeToString())
         }
     }
 }

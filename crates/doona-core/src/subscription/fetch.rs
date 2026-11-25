@@ -292,7 +292,7 @@ async fn connect(url: &Url, port: u16, dials: &Dials) -> Result<TcpStream, Error
 }
 
 /// BoringSSL with the webpki roots, as honk-outbound's TLS; built once.
-static CONNECTOR: LazyLock<Option<SslConnector>> = LazyLock::new(|| {
+pub(crate) static CONNECTOR: LazyLock<Option<SslConnector>> = LazyLock::new(|| {
     let mut builder = SslConnector::builder(SslMethod::tls()).ok()?;
     builder
         .set_min_proto_version(Some(SslVersion::TLS1_2))
@@ -342,10 +342,12 @@ struct Head {
     userinfo: Userinfo,
 }
 
-async fn exchange<S: AsyncRead + AsyncWrite + Unpin>(
+pub(crate) mod stream;
+
+async fn exchange_head<S: AsyncRead + AsyncWrite + Unpin>(
     mut stream: S,
     request: &[u8],
-) -> Result<Reply, ErrorCode> {
+) -> Result<(BufReader<S>, Head), ErrorCode> {
     stream
         .write_all(request)
         .await
@@ -353,6 +355,14 @@ async fn exchange<S: AsyncRead + AsyncWrite + Unpin>(
     stream.flush().await.map_err(|_| ErrorCode::FetchFailed)?;
     let mut reader = BufReader::new(stream);
     let head = parse_head(&read_head(&mut reader).await?)?;
+    Ok((reader, head))
+}
+
+async fn exchange<S: AsyncRead + AsyncWrite + Unpin>(
+    stream: S,
+    request: &[u8],
+) -> Result<Reply, ErrorCode> {
+    let (mut reader, head) = exchange_head(stream, request).await?;
     if matches!(head.status, 301 | 302 | 303 | 307 | 308) {
         return head
             .location
@@ -453,12 +463,16 @@ async fn read_to_end<R: AsyncRead + Unpin>(reader: &mut R) -> Result<Vec<u8>, Er
     Ok(body)
 }
 
+fn chunk_size(line: &str) -> Result<usize, ErrorCode> {
+    usize::from_str_radix(line.split(';').next().unwrap_or_default().trim(), 16)
+        .map_err(|_| ErrorCode::FetchFailed)
+}
+
 async fn read_chunked<R: AsyncBufRead + Unpin>(reader: &mut R) -> Result<Vec<u8>, ErrorCode> {
     let mut body = Vec::new();
     loop {
         let line = read_line(reader).await?;
-        let size = line.split(';').next().unwrap_or_default().trim();
-        let size = usize::from_str_radix(size, 16).map_err(|_| ErrorCode::FetchFailed)?;
+        let size = chunk_size(&line)?;
         if size == 0 {
             // Trailers, if any, end with an empty line; the connection closes after them.
             while !read_line(reader).await?.trim().is_empty() {}

@@ -114,6 +114,7 @@
     <string name="error_busy">另一項變更正在進行，請稍後再試</string>
     <string name="error_internal">發生內部錯誤</string>
     <string name="error_local_network">無法連線至區域網路上的位址</string>
+    <string name="error_dns_failed">DNS 查詢失敗</string>
     <string name="local_network_ask_title">允許存取區域網路</string>
     <string name="local_network_ask_body">存取區域網路上的訂閱與節點需要這項權限。</string>
     <string name="local_network_ask_continue">繼續</string>

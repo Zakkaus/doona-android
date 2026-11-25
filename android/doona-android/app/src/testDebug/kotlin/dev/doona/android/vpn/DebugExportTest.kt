@@ -8,6 +8,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.app.DoonaApplication
 import dev.doona.android.app.FakeEngineApplication
+import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.report.AppInfo
 import dev.doona.android.report.AppReportExporter
@@ -17,6 +18,7 @@ import dev.doona.android.report.ExportTokens
 import dev.doona.android.report.REPORT_MIME
 import dev.doona.android.report.ReportExport
 import dev.doona.android.report.reportDir
+import dev.doona.android.report.testFlowEvents
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -70,7 +72,9 @@ class DebugExportTest {
         val files = CrashFiles(File(data, "crash"))
         val offer = CrashOffer(files, File(data, "crash-offered"))
         val tokens = ExportTokens { File(data, "report-exports.json") }
-        val reports = ReportExport(FakeEngine(), files, offer, { reportDir(app) }, tokens, { AppInfo.of(app) }, this, io)
+        val engine = FakeEngine()
+        val logLevels = LogLevelController(engine::setLogLevel, backgroundScope) { testScheduler.currentTime }
+        val reports = ReportExport(engine, files, offer, { reportDir(app) }, tokens, { AppInfo.of(app) }, this, io, logLevels, testFlowEvents(io))
         val started = mutableListOf<Intent>()
         shareReport(AppReportExporter(app, reports, io)) { started += it }
         assertEquals(1, started.size)

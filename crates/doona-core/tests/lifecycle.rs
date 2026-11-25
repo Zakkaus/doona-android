@@ -5,6 +5,7 @@
 
 mod common;
 
+use common::stop_wait::STOP_WAIT;
 use common::{TempDir, seqpacket_pair, wait_for};
 use doonacore::api::Core;
 use doonacore::dto::{ErrorCode, Snapshot};
@@ -62,7 +63,7 @@ fn send(peer: &OwnedFd, packet: &[u8]) {
 }
 
 #[test]
-fn start_serves_the_duplicate_and_stop_closes_it_within_a_second() {
+fn start_serves_the_duplicate_and_stop_closes_it_promptly() {
     let _s = serial();
     let dir = TempDir::new("life-basic");
     let core = new_core(&dir);
@@ -83,11 +84,8 @@ fn start_serves_the_duplicate_and_stop_closes_it_within_a_second() {
 
     let begun = Instant::now();
     core.stop();
-    assert!(
-        begun.elapsed() < Duration::from_secs(1),
-        "{:?}",
-        begun.elapsed()
-    );
+    let took = begun.elapsed();
+    assert!(took < STOP_WAIT + STOP_WAIT / 2, "{took:?}");
     let s = snapshot(&core);
     assert!(!s.running && s.error.is_none() && s.since_epoch_ms.is_none());
     assert_eq!(s.generation, 1);

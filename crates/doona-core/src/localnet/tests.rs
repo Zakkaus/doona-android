@@ -206,11 +206,12 @@ async fn a_probe_counts_its_node_only_once_its_target_resolved() {
 
     let probe = Lookups::default();
     probe.scope(async { looked_up(false, &[lan]) }).await;
-    assert!(
-        !probe.refused_locally("nas.localnet.test"),
+    assert_eq!(
+        probe.failure("nas.localnet.test"),
+        None,
         "the target never resolved"
     );
-    assert!(!probe.refused_locally("192.168.8.2"));
+    assert_eq!(probe.failure("192.168.8.2"), None);
 
     let probe = Lookups::default();
     probe
@@ -219,15 +220,19 @@ async fn a_probe_counts_its_node_only_once_its_target_resolved() {
             looked_up(false, &[lan]);
         })
         .await;
-    assert!(probe.refused_locally("nas.localnet.test"));
+    assert_eq!(
+        probe.failure("nas.localnet.test"),
+        Some(ErrorCode::LocalNetwork)
+    );
 
     let probe = Lookups::default();
     probe.scope(async { looked_up(true, &[public]) }).await;
-    assert!(probe.refused_locally("192.168.8.2"));
-    assert!(probe.refused_locally("[fd00::2]"));
-    assert!(!probe.refused_locally("127.0.0.1"));
-    assert!(
-        !probe.refused_locally("nas.localnet.test"),
+    assert_eq!(probe.failure("192.168.8.2"), Some(ErrorCode::LocalNetwork));
+    assert_eq!(probe.failure("[fd00::2]"), Some(ErrorCode::LocalNetwork));
+    assert_eq!(probe.failure("127.0.0.1"), None);
+    assert_eq!(
+        probe.failure("nas.localnet.test"),
+        None,
         "its name never resolved"
     );
 }
@@ -244,7 +249,7 @@ async fn a_probe_through_a_name_with_a_public_answer_was_not_refused_locally() {
             looked_up(false, &["fd00::2".parse().unwrap()]);
         })
         .await;
-    assert!(!probe.refused_locally("nas.localnet.test"));
+    assert_eq!(probe.failure("nas.localnet.test"), None);
 }
 
 /// Every address a dial chose counts, however many came before: a node whose only local address
@@ -280,7 +285,10 @@ async fn every_answer_of_a_probe_s_node_name_counts() {
                 looked_up(false, &answers);
             })
             .await;
-        assert_eq!(probe.refused_locally("nas.localnet.test"), refused);
+        assert_eq!(
+            probe.failure("nas.localnet.test"),
+            refused.then_some(ErrorCode::LocalNetwork)
+        );
     }
 }
 
