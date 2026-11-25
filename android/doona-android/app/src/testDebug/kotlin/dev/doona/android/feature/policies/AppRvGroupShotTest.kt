@@ -274,8 +274,8 @@ class AppRvGroupShotTest {
 
         /** Windows as tall as each page whole; measured by assertWhole. */
         const val WHOLE = "+h3289dp"
-        const val WHOLE_FS200 = "+h6362dp"
-        const val WHOLE_EN = "en-w412dp-h3240dp-notnight-xhdpi"
+        const val WHOLE_FS200 = "+h6403dp"
+        const val WHOLE_EN = "en-w412dp-h3248dp-notnight-xhdpi"
         const val WHOLE_APART = "+h3495dp"
         const val WHOLE_SCORE = "+h1993dp"
         const val WHOLE_SCORE_FS200 = "+h3384dp"
