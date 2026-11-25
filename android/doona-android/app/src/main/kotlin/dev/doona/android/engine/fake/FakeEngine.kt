@@ -22,6 +22,7 @@ import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RulePage
 import dev.doona.android.engine.ScoreState
 import dev.doona.android.engine.Settings
+import dev.doona.android.engine.ShareLink
 import dev.doona.android.engine.StaticNode
 import dev.doona.android.engine.StaticNodeDraft
 import dev.doona.android.engine.StaticNodeResult
@@ -72,6 +73,7 @@ class FakeEngine internal constructor(
     private val settingsFlow = MutableStateFlow(Settings(mode = mode))
     private val ruleSource = MutableStateFlow(data.source)
     private var assets = ConfigAssets("builtin", null, "idle", null, false)
+    private var dnsUpstreams = FakeRuleMode.DNS_UPSTREAMS
 
     /** The number in the next subscription id: as in the core, an id is never given twice, also after a removal. */
     private var nextSubscription = (subscriptions.maxOfOrNull(::subscriptionNumber) ?: 0) + 1
@@ -123,7 +125,9 @@ class FakeEngine internal constructor(
 
     override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> {
         val agent = userAgentOf(userAgent).getOrElse { return Result.failure(it) }
-        val added = Subscription(id = takeSubscriptionId(), name = name ?: url, url = url, nodes = 0, updatedAtEpochMs = 0, userAgent = agent)
+        val label = (if (name == null) runCatching { java.net.URI(url).host?.take(NAME_CAP) }.getOrNull() else displayName(name))
+            ?: return Result.failure(EngineException(ErrorCode.InvalidArgument))
+        val added = Subscription(id = takeSubscriptionId(), name = label, url = url, nodes = 0, updatedAtEpochMs = 0, userAgent = agent)
         subscriptions.update { it + added }
         return Result.success(added)
     }
@@ -138,6 +142,17 @@ class FakeEngine internal constructor(
 
     override suspend fun updateSubscription(id: String): Result<Subscription> =
         Result.success(subscriptions.value.first { it.id == id })
+
+    override suspend fun renameSubscription(id: String, name: String): Result<Subscription> {
+        val trimmed = displayName(name) ?: return Result.failure(EngineException(ErrorCode.InvalidArgument))
+        val changed = subscriptions.value.firstOrNull { it.id == id }?.copy(name = trimmed)
+            ?: return Result.failure(EngineException(ErrorCode.NotFound))
+        subscriptions.update { all -> all.map { if (it.id == id) changed else it } }
+        return Result.success(changed)
+    }
+
+    // Preview nodes have no original feed or credentials.
+    override suspend fun nodeShareLink(nodeId: String): Result<ShareLink> = Result.failure(EngineException(ErrorCode.NotFound))
 
     override suspend fun removeSubscription(id: String): Result<Unit> {
         subscriptions.update { all -> all.filterNot { it.id == id } }
@@ -183,8 +198,16 @@ class FakeEngine internal constructor(
         return Result.success(Unit)
     }
 
+    override suspend fun setDnsUpstreams(servers: List<String>): Result<Unit> {
+        if (servers.size !in 1..4) return Result.failure(EngineException(ErrorCode.InvalidArgument))
+        val endpoints = servers.map { fakeResolver(it) ?: return Result.failure(EngineException(ErrorCode.InvalidArgument)) }
+        if (endpoints.distinct().size != endpoints.size) return Result.failure(EngineException(ErrorCode.InvalidArgument))
+        dnsUpstreams = endpoints
+        return Result.success(Unit)
+    }
+
     override suspend fun effectiveConfig(): Result<EffectiveConfig> =
-        Result.success(FakeRuleMode.effectiveConfig(settingsFlow.value.mode, groups.value, ruleSource.value, data.configLines))
+        Result.success(FakeRuleMode.effectiveConfig(settingsFlow.value.mode, groups.value, ruleSource.value, data.configLines, dnsUpstreams))
 
     override suspend fun usage(): Result<Usage> = Result.success(data.usage)
 
@@ -319,6 +342,13 @@ class FakeEngine internal constructor(
             Subscription(id = "s1", name = "harbor", url = "https://example.invalid/sub", nodes = 4, updatedAtEpochMs = 0),
         )
     }
+}
+
+private const val NAME_CAP = 64
+
+private fun displayName(text: String): String? {
+    if (text.any { it.isISOControl() || it == '\u2028' || it == '\u2029' }) return null
+    return text.trim().takeIf { it.codePointCount(0, it.length) in 1..NAME_CAP }
 }
 
 private const val MAX_USER_AGENT = 256

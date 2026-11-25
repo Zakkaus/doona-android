@@ -22,6 +22,44 @@ pub(super) const SUBSCRIPTION_BOUND: Duration = Duration::from_secs(30);
 /// part in this many.
 const AFTER_FETCH: u32 = 10;
 
+const NAME_CAP: usize = 64;
+
+fn add_name<'a>(name: Option<&'a str>, url: &'a Url) -> Result<&'a str, ErrorCode> {
+    if let Some(name) = name {
+        return display_name(name);
+    }
+    let host = url.host_str().unwrap_or_default();
+    let end = host
+        .char_indices()
+        .nth(NAME_CAP)
+        .map_or(host.len(), |(i, _)| i);
+    Ok(&host[..end])
+}
+
+fn display_name(text: &str) -> Result<&str, ErrorCode> {
+    let name = text.trim();
+    if name.is_empty()
+        || name.chars().count() > NAME_CAP
+        || text
+            .chars()
+            .any(|c| c.is_control() || matches!(c, '\u{2028}' | '\u{2029}'))
+    {
+        return Err(ErrorCode::InvalidArgument);
+    }
+    Ok(name)
+}
+
+#[test]
+fn unnamed_subscription_truncates_only_the_host_label() {
+    let prefix = "a".repeat(61);
+    let url = fetch::parse_url(&format!("https://{prefix}.bc.example/sub")).unwrap();
+    assert_eq!(add_name(None, &url).unwrap(), format!("{prefix}.bc"));
+    assert_eq!(
+        add_name(url.host_str(), &url),
+        Err(ErrorCode::InvalidArgument)
+    );
+}
+
 impl Core {
     pub(super) fn add_subscription(
         &self,
@@ -32,11 +70,7 @@ impl Core {
         let url = fetch::parse_url(&args.url)?;
         let agent = args.user_agent.as_deref().map(fetch::user_agent);
         let agent = agent.transpose()?;
-        let name = args
-            .name
-            .map(|n| n.trim().to_owned())
-            .filter(|n| !n.is_empty())
-            .unwrap_or_else(|| url.host_str().unwrap_or_default().to_owned());
+        let name = add_name(args.name.as_deref(), &url)?.to_owned();
         let (parsed, userinfo) = self.download(url, agent.clone(), deadline)?;
         let _writer = self.writer_until(deadline)?;
         let mut next = {
@@ -113,6 +147,40 @@ impl Core {
         let fresh = refreshed(stored, parsed, userinfo);
         self.replace_feed(next, id, fresh, "updateSubscription", Some(deadline))?;
         Ok(self.shown_subscription(id))
+    }
+
+    pub(super) fn rename_subscription(
+        &self,
+        args: dto::RenameSubscriptionArgs,
+    ) -> Result<dto::Subscription, ErrorCode> {
+        let name = display_name(&args.name)?;
+        let _writer = lock(&self.writer);
+        let mut next = lock(&self.shared.catalog).state.clone();
+        let stored = next
+            .subscriptions
+            .iter_mut()
+            .find(|s| s.id == args.id)
+            .ok_or(ErrorCode::NotFound)?;
+        if stored.name != name {
+            name.clone_into(&mut stored.name);
+            self.commit_state(next, "renameSubscription", None)?;
+        }
+        Ok(self.shown_subscription(&args.id))
+    }
+
+    pub(super) fn node_share_link(&self, args: dto::IdArgs) -> Result<String, ErrorCode> {
+        let c = lock(&self.shared.catalog);
+        let node = c.model.entry(&args.id).ok_or(ErrorCode::NotFound)?;
+        let sub = c
+            .state
+            .subscriptions
+            .iter()
+            .find(|s| Some(&s.id) == node.subscription.as_ref());
+        let link = sub
+            .filter(|s| s.format == Some(dto::SubscriptionFormat::ShareLinks))
+            .and_then(|s| s.links.get(node.feed_index))
+            .ok_or(ErrorCode::NotFound)?;
+        Ok(super::ok(link))
     }
 
     pub(super) fn remove_subscription(&self, id: &str) -> Result<(), ErrorCode> {

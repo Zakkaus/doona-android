@@ -23,6 +23,7 @@ fn entry(mut node: Node, stored: &StaticNode, uuid: uuid::Uuid) -> Arc<NodeEntry
         name: stored.name.clone(),
         location: crate::regions::locate(&stored.name),
         subscription: None,
+        feed_index: 0,
         node: Arc::new(node),
     })
 }
@@ -102,6 +103,7 @@ impl Core {
             "previewStaticNodes" => self.static_batch(parse(args)?, false).map(ok),
             "addStaticNodes" => self.static_batch(parse(args)?, true).map(ok),
             "readStaticNode" => self.read_static(parse(args)?).map(ok),
+            "nodeShareLink" => self.node_share_link(parse(args)?),
             "updateStaticNode" => self.update_static(parse(args)?).map(ok),
             "removeStaticNode" => self.remove_static(parse(args)?).map(empty),
             _ => self.query_or_diagnostic(command, args, event),

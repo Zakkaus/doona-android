@@ -102,7 +102,7 @@ class PolicyFlowsTest {
         compose.onNodeWithText("Add subscription").performClick()
         typeUrl()
         compose.onNodeWithText("Add").performClick()
-        compose.onNodeWithText(url).assertExists()
+        compose.onNodeWithText("example.invalid").assertExists()
         compose.runOnIdle { assertEquals(listOf(url), engine.subscriptions.value.map { it.url }) }
 
         compose.onNodeWithText("Remove").performClick()

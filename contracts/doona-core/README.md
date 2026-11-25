@@ -10,6 +10,22 @@ Example payloads for `plans/v1/core-api.md` (schema 3). `static-nodes.json` is a
 
 Android supplies DNS from the system-selected non-VPN network and keeps the last list when that network supplies none. A probe that cannot resolve its target or proxy server reports `dns_failed` in the member's `error` field.
 
+`setDnsUpstreams` takes `{"servers":["9.9.9.9","[2001:db8::53]:5353"]}` and returns `{}`.
+Unlike `setBootstrapDns`, it saves the endpoints for queries from apps. `effectiveConfig` reports
+them in order, including ports. An invalid entry rejects the entire list.
+Duplicate endpoints (including equivalent IP spellings and implicit port 53), scoped addresses,
+link-local, unspecified, multicast and broadcast addresses are invalid. Explicitly selecting the
+defaults saves that choice. An invalid list on disk resets only DNS to the built-in defaults.
+The core records an `init` warning with detail `dnsUpstreamsReset` when it resets the list.
+In Rule and Global modes, a loopback upstream refers to the proxy server's loopback, not the device's.
+
+`renameSubscription` takes `{"id":"s1","name":"harbor"}` and returns the updated subscription.
+Add and rename both reject blank names, controls, line separators and names over 64 Unicode code points after trimming.
+If add receives no name, it uses the first 64 code points of the URL host and keeps the full URL.
+`nodeShareLink` takes a node `id` and returns its original URI as the `ok` string, or `not_found`
+when the ID is absent or its source is not `share_links`. The URI is private to this reply.
+A legacy subscription with `format: null` returns `not_found` even if it has stored links. Refresh it to detect its format.
+
 The two `hk-01` nodes are distinct endpoints with the same display name, and the second one's probe failed with `local_network`; the running snapshot carries the `local_network` warning, and the stopped one kept no yesterday (`yesterdayByNow` null); the subscription URL's token is a placeholder. The subscription was added with its own User-Agent, which the `addSubscription` reply carries; `setSubscriptionUserAgent` then set it back to null, the default, as the stopped catalog shows. The stats replies use one invented day, 2026-11-22: a five-second rate window, today and yesterday by the hour with each outbound's payload, the daily totals (2026-11-20 had no bytes, so it is absent), and two nodes' details with their latency tests, one of them failed.
 
 `catalog/member-locations.json` shows the location fields for a group, feed nodes and a static node. The stopped snapshot above remains a schema 3 example from before these optional fields.

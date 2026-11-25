@@ -56,11 +56,17 @@ interface Engine {
     /**
      * Fetches [url], decodes its nodes and adds them to the group template. Its fetches send [userAgent] as the
      * User-Agent, or the core's default when null; a value must be 1 to 256 bytes of printable ASCII and not blank, else
-     * [ErrorCode.InvalidArgument] before anything is fetched.
+     * [ErrorCode.InvalidArgument] before anything is fetched. The name defaults to the URL host and follows [renameSubscription].
      */
     suspend fun addSubscription(url: String, name: String? = null, userAgent: String? = null): Result<Subscription>
 
     suspend fun updateSubscription(id: String): Result<Subscription>
+
+    /** Saves a trimmed name of 1 to 64 Unicode code points. Controls and line separators are invalid. Names may repeat. */
+    suspend fun renameSubscription(id: String, name: String): Result<Subscription>
+
+    /** Returns the original URI only for a share_links node. A legacy subscription with null format returns [ErrorCode.NotFound] until refreshed. */
+    suspend fun nodeShareLink(nodeId: String): Result<ShareLink>
 
     suspend fun removeSubscription(id: String): Result<Unit>
 
@@ -99,6 +105,9 @@ interface Engine {
      * [ErrorCode.NotFound] for a template the core does not have.
      */
     suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit>
+
+    /** Saves 1 to 4 IP literals, optionally with a port (default 53). New UDP queries and TCP DNS connections use them immediately. */
+    suspend fun setDnsUpstreams(servers: List<String>): Result<Unit>
 
     /** What routes flows and DNS now, with the rules as text for the read-only 生效設定 page. */
     suspend fun effectiveConfig(): Result<EffectiveConfig>
@@ -276,6 +285,12 @@ data class Catalog(
     val mainGroupId: String,
     val ruleSource: RuleSource,
 )
+
+/** Access [uri] only to share it. Formatting the value or its enclosing Result must not expose credentials. */
+@JvmInline
+value class ShareLink(val uri: String) {
+    override fun toString(): String = "ShareLink([redacted])"
+}
 
 enum class SubscriptionFormat { ShareLinks, Base64, Sip008, Clash, SingBox }
 
