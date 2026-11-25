@@ -155,6 +155,7 @@ class EngineTelemetryTest {
             nodes.replace("\"ms\": 33", "\"later\": 33") to { engine.nodes() },
             nodes.replace("\"port\": 443,", "") to { engine.nodes() },
         )
+        assertTrue(replies.none { it.first == series || it.first == nodes })
         for ((reply, read) in replies) {
             core.reply = reply
             assertEquals(reply, ErrorCode.Internal, (read().exceptionOrNull() as EngineException).code)
