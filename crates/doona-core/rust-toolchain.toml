@@ -1,6 +1,6 @@
-# Same compiler as honk (its root rust-toolchain.toml at the pinned honk-netstack revision).
+# Same compiler as honk main (its root rust-toolchain.toml). The pinned honk-netstack revision still pins 1.99.1 itself.
 [toolchain]
-channel = "1.99.1"
+channel = "1.100.0"
 components = ["rustfmt", "clippy"]
 targets = ["aarch64-linux-android"]
 profile = "minimal"
