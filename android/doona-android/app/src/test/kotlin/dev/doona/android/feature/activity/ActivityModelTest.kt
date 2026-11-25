@@ -127,7 +127,9 @@ class ActivityModelTest {
     @Test
     fun `the cards read the day, the clock, the rule count and the groups' kinds`() {
         val cards = activityCatalog(data()).cards
-        assertEquals(24L * 3, cards.today.total)
+        // 13.5 falls in hour 13: hours 0 to 13 are drawn, the 10 still to come are not.
+        assertEquals(14, cards.today.down.size)
+        assertEquals(14L * 3, cards.today.total)
         assertEquals(13.5f, cards.nowHour)
         assertEquals(42L, cards.yesterdayByNow)
         assertEquals(1_000L, cards.nowEpochMs)
@@ -136,6 +138,14 @@ class ActivityModelTest {
         assertEquals(RvGroupKind.Select, cards.groupKind("g-Stream"))
         assertEquals(RvGroupKind.Auto, cards.groupKind("g-Auto"))
         assertEquals(RvGroupKind.Score, cards.groupKind("g-AI"))
+    }
+
+    @Test
+    fun `a protocol is named as the pages name it, an unknown one as the core sends it`() {
+        assertEquals("VLESS", protocolLabel("vless"))
+        assertEquals("Hysteria2", protocolLabel("hysteria2"))
+        assertEquals("Shadowsocks", protocolLabel("ss"))
+        assertEquals("wireguard", protocolLabel("wireguard"))
     }
 
     @Test

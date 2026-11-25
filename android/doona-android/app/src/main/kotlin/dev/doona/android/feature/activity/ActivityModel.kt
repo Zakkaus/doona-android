@@ -76,7 +76,7 @@ internal fun activityCatalog(data: ActivityData, placeOf: (String) -> RvPlace = 
     val nodes = members.map { rvNode(it, data.nodeInfo[it.id], subscriptionNames, placeOf) }
     val byId = nodes.associateBy { it.id }
     val cards = RvActivityCards(
-        today = rvDay(data.usage),
+        today = rvDay(data.usage, data.nowHour),
         nowHour = data.nowHour,
         yesterdayByNow = data.yesterdayByNow,
         nowEpochMs = data.nowEpochMs,
@@ -201,7 +201,7 @@ private fun rvNode(member: Member, info: NodeInfo?, subscriptions: Map<String, S
         short = member.name,
         place = placeOf(member.name),
         city = null,
-        protocol = info?.protocol.orEmpty(),
+        protocol = protocolLabel(info?.protocol.orEmpty()),
         host = info?.server.orEmpty(),
         port = info?.port ?: 0,
         transport = info?.transport.orEmpty(),
@@ -237,10 +237,15 @@ private fun rvSubscription(sub: Subscription) = RvSubscription(
     userAgent = sub.userAgent,
 )
 
-/** Today by the hour; before the first read, a day with no bytes. */
-private fun rvDay(usage: Usage?): RvDay {
-    val day = usage?.today ?: return RvDay(List(HOURS) { 0L }, List(HOURS) { 0L }, null)
-    return RvDay(day.down, day.up, day.flows.map(Long::toInt))
+/**
+ * Today by the hour up to the current one, [nowHour]'s, which is still filling: the core sends all 24, and the chart
+ * draws a step for each hour it is given, so the hours still to come would run its lines on past now. Before the first
+ * read, a day with no bytes.
+ */
+private fun rvDay(usage: Usage?, nowHour: Float): RvDay {
+    val hours = (nowHour.toInt() + 1).coerceIn(1, HOURS)
+    val day = usage?.today ?: return RvDay(List(hours) { 0L }, List(hours) { 0L }, null)
+    return RvDay(day.down.take(hours), day.up.take(hours), day.flows.take(hours).map(Long::toInt))
 }
 
 /** A fallback group picks for itself, as a url-test does. */
@@ -261,4 +266,21 @@ internal fun leafIds(catalog: Catalog): List<String> = catalog.groups.flatMap { 
 
 private const val UNMATCHED = "unmatched"
 private const val OTHER = "other"
+
+/**
+ * A protocol as the pages name it (VLESS, Hysteria2), from the core's lower-case id; an id this list does not know is
+ * shown as the core sends it.
+ */
+internal fun protocolLabel(id: String): String = PROTOCOL_LABELS[id] ?: id
+
+private val PROTOCOL_LABELS = mapOf(
+    "vless" to "VLESS",
+    "vmess" to "VMess",
+    "trojan" to "Trojan",
+    "ss" to "Shadowsocks",
+    "shadowsocks" to "Shadowsocks",
+    "hysteria2" to "Hysteria2",
+    "tuic" to "TUIC",
+)
+
 private const val HOURS = 24
