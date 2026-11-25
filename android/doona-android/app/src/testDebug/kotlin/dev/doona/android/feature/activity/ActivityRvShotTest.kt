@@ -8,6 +8,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
+import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Traffic
 import dev.doona.android.engine.fake.FakeEngine
@@ -26,6 +27,7 @@ import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.testing.drawFully
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
@@ -38,7 +40,8 @@ import java.time.ZoneOffset
 /**
  * 活動 as the app draws it: [rvSampleEngine] through [ActivityViewModel] to the page ([ActivityPage]), at the sample's
  * 10:24 UTC. Goldens `app-rv-activity-*`, beside the prototype's `proto-rv-activity-*`: connected in light, dark, fs200
- * and English, and each notice the engine can raise, starting and stopping in light. A notice's engine is disconnected,
+ * and English, idle, Global mode and loading in light and dark, and each notice the engine can raise, starting and
+ * stopping in light. A notice's engine is disconnected,
  * with no traffic, as the prototype's notices are.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -87,6 +90,19 @@ class ActivityRvShotTest {
         RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {})
     }
 
+    @Test fun idleLight() = shot("activity-idle") { stop(Status.Stopped) }
+
+    @Test fun idleDark() = shot("activity-idle", dark = true) { stop(Status.Stopped) }
+
+    @Test fun globalLight() = shot("activity-global") { runBlocking { setMode(Mode.Global) } }
+
+    @Test fun globalDark() = shot("activity-global", dark = true) { runBlocking { setMode(Mode.Global) } }
+
+    /** Before the engine is ready the page waits under its skeleton, disconnected as `proto-rv-activity-loading-*` is. */
+    @Test fun loadingLight() = shot("activity-loading") { loading() }
+
+    @Test fun loadingDark() = shot("activity-loading", dark = true) { loading() }
+
     @Test fun startingLight() = shot("activity-starting") { stop(Status.Starting) }
 
     @Test fun stoppingLight() = shot("activity-stopping") { stop(Status.Stopping) }
@@ -117,6 +133,12 @@ class ActivityRvShotTest {
     fun emptyLight() = shot("activity-empty") {
         stop(Status.Stopped)
         subscriptions.value = emptyList()
+    }
+
+    /** The engine before it is ready, disconnected. */
+    private fun FakeEngine.loading() {
+        stop(Status.Stopped)
+        ready.value = false
     }
 
     /** The engine at [status], with no traffic. */
