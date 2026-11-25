@@ -105,6 +105,3 @@ internal fun RvStatsDots(count: Int, current: Int, modifier: Modifier = Modifier
 
 /** A row of the tools card: its glyph, title and subtitle. */
 internal class RvStatsTool(@DrawableRes val icon: Int, val title: String, val subtitle: String)
-
-/** The tag on a card whose data the v0.1 core does not report, so the sample invents it. */
-internal const val RV_V02 = "v0.2"

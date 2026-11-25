@@ -46,9 +46,8 @@ import java.text.NumberFormat
 /**
  * The 統計 page in the language of Revolut's Analytics page: the back disc and the large title, the subscription
  * and range chips, then the cards: 已用流量 and the paged tiles (the app-side daily history), 訂閱流量 (the
- * subscriptions' quota), 節點分布 (node names and flags), 延遲分布 (latency results), 分流比例 and the tools. A card
- * whose data v0.1 lacks (連線次數, 分流比例) carries a `v0.2` tag. Where each figure comes from is noted on
- * [RvStatsState], not on the page (N-14). The chips and the tools are not wired in the sample. With [score] (sample, for
+ * subscriptions' quota), 節點分布 (node names and flags), 延遲分布 (latency results), 分流比例 and the tools. Where
+ * each figure comes from is noted on [RvStatsState], not on the page (N-14). The chips and the tools are not wired in the sample. With [score] (sample, for
  * the owner), a 綜合評分 card follows 延遲分布.
  */
 @Composable
@@ -80,8 +79,7 @@ internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit, empty: RvSta
 
 /**
  * 下載, 上傳 and 連線次數 as Revolut's paged half tiles: two side by side, as far apart as 活動's pair, and the third's edge
- * at the screen's edge, which says the row scrolls. Download and upload come from the daily history; a count of opened
- * connections needs the core, so that tile is v0.2.
+ * at the screen's edge, which says the row scrolls. All three come from the day's usage: bytes each way and flows opened.
  */
 @Composable
 private fun DayTiles(day: RvDay, empty: RvStatsEmptyLook) {
@@ -89,14 +87,13 @@ private fun DayTiles(day: RvDay, empty: RvStatsEmptyLook) {
     val format = rememberRvFormat()
     val count = day.connections?.sum()?.let { NumberFormat.getIntegerInstance(locale).format(it) }
     val tiles = listOf(
-        RvDayTile(stringResource(R.string.ui_download), format.bytes(day.downTotal).figure(), day.down, Rv.colors.down.line, v02 = false),
-        RvDayTile(stringResource(R.string.ui_upload), format.bytes(day.upTotal).figure(), day.up, Rv.colors.up.line, v02 = false, ghost = RV_GHOST_UP),
+        RvDayTile(stringResource(R.string.ui_download), format.bytes(day.downTotal).figure(), day.down, Rv.colors.down.line),
+        RvDayTile(stringResource(R.string.ui_upload), format.bytes(day.upTotal).figure(), day.up, Rv.colors.up.line, ghost = RV_GHOST_UP),
         RvDayTile(
             stringResource(R.string.rv_stats_connections),
             RvFigure(count ?: RV_NO_VALUE, ""),
             day.connections?.map { it.toLong() },
             Rv.colors.textSecondary,
-            v02 = true,
         ),
     )
     val pager = rememberPagerState { tiles.size }

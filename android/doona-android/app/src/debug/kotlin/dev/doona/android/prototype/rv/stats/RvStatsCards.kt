@@ -93,7 +93,7 @@ internal const val RV_SPENT_CHART = "rv-spent-chart"
 private fun nowInHours(state: RvStatsState): Float = state.today.hours.lastIndex + (state.nowEpochMs % MS_PER_HOUR).toFloat() / MS_PER_HOUR
 
 /** One of the paged tiles: what it counts, its figure, its bars by the hour, and its ghost bars' heights with no traffic. */
-internal class RvDayTile(val label: String, val figure: RvFigure, val hours: List<Long>?, val color: Color, val v02: Boolean, val ghost: FloatArray = RV_GHOST_DOWN)
+internal class RvDayTile(val label: String, val figure: RvFigure, val hours: List<Long>?, val color: Color, val ghost: FloatArray = RV_GHOST_DOWN)
 
 /**
  * How a tile with no traffic today looks, for the owner to compare (brief pv-c1). [Grid] is today's: the empty grid
@@ -110,7 +110,7 @@ internal enum class RvStatsEmptyLook { Grid, Activity, First }
 @Composable
 internal fun RvDayTileCard(tile: RvDayTile, modifier: Modifier = Modifier, empty: RvStatsEmptyLook = RvStatsEmptyLook.Grid) {
     RvCard(modifier.aspectRatio(1f)) {
-        RvCardHeader(tile.label, tag = if (tile.v02) RV_V02 else null)
+        RvCardHeader(tile.label)
         Column(Modifier.weight(1f).then(cardBody)) {
             RvStatsFigure(tile.figure, Rv.type.tileValue, Rv.type.tileUnit)
             val hours = tile.hours
@@ -226,7 +226,7 @@ internal fun RvLatencyCard(state: RvStatsState) {
 
 /**
  * 分流比例, Revolut's analyst ratings: the share that went through a proxy as the figure, and a bar each for proxy and
- * direct. The core counts no bytes per outbound yet, so the card carries the v0.2 tag and the sample's figures; with no
+ * direct, from the bytes of each route target (`direct` against the rest); with no
  * figures it is its own empty state: a dash, 尚無資料 and the two bars as bare tracks (N-14).
  */
 @Composable
@@ -234,7 +234,7 @@ internal fun RvSplitCard(split: RvSplit?) {
     val format = rememberRvFormat()
     val proxy = split?.proxyShare ?: 0f
     RvCard {
-        RvCardHeader(stringResource(R.string.rv_stats_split), tag = RV_V02)
+        RvCardHeader(stringResource(R.string.rv_stats_split))
         Column(cardBody) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
