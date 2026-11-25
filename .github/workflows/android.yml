@@ -155,6 +155,8 @@ jobs:
         run: |
           set -euo pipefail
           tools/check-tokens.sh
+          tools/check-components.sh
+          tools/test-check-components.sh
           tools/check-layers.sh
       - name: Check Kotlin format, lint, run the JVM tests and the screenshots
         working-directory: android/doona-android
