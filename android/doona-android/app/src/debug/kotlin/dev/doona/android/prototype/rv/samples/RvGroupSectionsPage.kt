@@ -24,10 +24,10 @@ import dev.doona.android.designsystem.rv.RvSearchSlot
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.nodes.ui.RvNodeSection
+import dev.doona.android.feature.nodes.ui.RvRowsComposed
+import dev.doona.android.feature.nodes.ui.matches
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.nodes.RvNodeSection
-import dev.doona.android.prototype.rv.nodes.RvRowsComposed
-import dev.doona.android.prototype.rv.nodes.matches
 
 /**
  * A group with this many subscriptions or fewer lists every one open; with more, only the section that holds the chosen

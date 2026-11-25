@@ -61,8 +61,8 @@ import dev.doona.android.designsystem.rv.rvPress
 import dev.doona.android.designsystem.rv.rvSharedFlag
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RvNode
-import dev.doona.android.prototype.rv.LocalRvRowActions
-import dev.doona.android.prototype.rv.rvNodeMenu
+import dev.doona.android.feature.nodes.ui.LocalRvRowActions
+import dev.doona.android.feature.nodes.ui.rvNodeMenu
 
 /**
  * The 節點 page, pushed from 活動, in the language of Revolut's Analytics and Crypto pages: the back disc and the large

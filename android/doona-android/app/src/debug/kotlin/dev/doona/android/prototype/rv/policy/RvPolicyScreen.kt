@@ -78,8 +78,8 @@ import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.rvNodeGroups
-import dev.doona.android.prototype.rv.nodes.RvNodeGroups
-import dev.doona.android.prototype.rv.nodes.RvNodeListControls
+import dev.doona.android.feature.nodes.ui.RvNodeGroups
+import dev.doona.android.feature.nodes.ui.RvNodeListControls
 
 /**
  * Where the 策略 tab leads: a group's page, the main node's picker, all rules, the template, a new rule, the other tabs,
