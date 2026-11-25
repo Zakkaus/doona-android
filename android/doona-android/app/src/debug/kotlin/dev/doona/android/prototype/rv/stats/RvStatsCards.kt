@@ -30,10 +30,13 @@ import dev.doona.android.designsystem.rv.RvChevron
 import dev.doona.android.designsystem.rv.RvFigure
 import dev.doona.android.designsystem.rv.RvGhostBars
 import dev.doona.android.designsystem.rv.RvIconDisc
+import dev.doona.android.designsystem.rv.RvLegendItem
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvText
+import dev.doona.android.designsystem.rv.RvUsageChart
+import dev.doona.android.designsystem.rv.RvUsageLegend
 import dev.doona.android.designsystem.rv.RvUsageSize
 import dev.doona.android.designsystem.rv.RvWorldMap
 import dev.doona.android.designsystem.rv.figure
@@ -42,9 +45,6 @@ import dev.doona.android.feature.model.RvSplit
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.rvMedian
 import dev.doona.android.feature.stats.RvStatsState
-import dev.doona.android.prototype.rv.RvLegendItem
-import dev.doona.android.prototype.rv.RvUsageChart
-import dev.doona.android.prototype.rv.RvUsageLegend
 import kotlin.math.abs
 
 /**

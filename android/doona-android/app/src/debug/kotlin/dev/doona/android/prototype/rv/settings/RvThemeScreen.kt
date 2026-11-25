@@ -53,6 +53,8 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvPressSelect
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.model.RvAppearance
+import dev.doona.android.feature.model.RvThemeMode
 
 /**
  * The page 主題 opens, after Revolut's Appearance page (Addendum A): a large title that collapses into the bar, then three

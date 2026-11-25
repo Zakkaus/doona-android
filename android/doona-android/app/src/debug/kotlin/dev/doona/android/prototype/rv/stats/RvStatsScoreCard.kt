@@ -14,12 +14,12 @@ import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
 import dev.doona.android.designsystem.rv.RvFigure
 import dev.doona.android.designsystem.rv.RvText
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.engine.ScoreNetwork
 import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.nodes.ui.RvScoreChoiceRow
+import dev.doona.android.feature.nodes.ui.stateText
 import dev.doona.android.feature.stats.RvStatsScore
-import dev.doona.android.prototype.rv.nodes.SEPARATOR
-import dev.doona.android.prototype.rv.policy.RvScoreChoiceRow
-import dev.doona.android.prototype.rv.policy.stateText
 import java.text.NumberFormat
 
 /**

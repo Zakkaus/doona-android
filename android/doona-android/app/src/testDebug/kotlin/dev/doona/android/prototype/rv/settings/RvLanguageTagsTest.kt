@@ -1,5 +1,6 @@
 package dev.doona.android.prototype.rv.settings
 
+import dev.doona.android.feature.model.RvLanguage
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

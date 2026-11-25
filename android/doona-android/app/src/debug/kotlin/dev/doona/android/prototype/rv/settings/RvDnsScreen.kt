@@ -28,6 +28,7 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvRowPress
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.NOT_WIRED
+import dev.doona.android.feature.model.RvDnsUpstream
 
 /**
  * The page 進階 → DNS opens (features-gap item 11, v0.2), in 主題's language: the large title, then one titled card of

@@ -33,13 +33,15 @@ import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
+import dev.doona.android.designsystem.rv.RvChipPick
 import dev.doona.android.designsystem.rv.RvEmptyState
-import dev.doona.android.designsystem.rv.RvFilterChip
+import dev.doona.android.designsystem.rv.RvFilterChipRow
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvLatencyChange
 import dev.doona.android.designsystem.rv.RvMenuAnchor
 import dev.doona.android.designsystem.rv.RvMotion
+import dev.doona.android.designsystem.rv.RvNodesSize
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvRegion
 import dev.doona.android.designsystem.rv.RvRow
@@ -51,13 +53,16 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.RvWorldMap
+import dev.doona.android.designsystem.rv.SEPARATOR
+import dev.doona.android.designsystem.rv.latencyColor
+import dev.doona.android.designsystem.rv.latencyText
 import dev.doona.android.designsystem.rv.rvMoves
 import dev.doona.android.designsystem.rv.rvPress
+import dev.doona.android.designsystem.rv.rvSharedFlag
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RvNode
-import dev.doona.android.prototype.rv.LocalRvRowActions
-import dev.doona.android.prototype.rv.rvNodeMenu
-import dev.doona.android.prototype.rv.rvSharedFlag
+import dev.doona.android.feature.nodes.ui.LocalRvRowActions
+import dev.doona.android.feature.nodes.ui.rvNodeMenu
 
 /**
  * The 節點 page, pushed from 活動, in the language of Revolut's Analytics and Crypto pages: the back disc and the large
@@ -111,11 +116,7 @@ internal fun RvNodesPage(
 /** Under the large title, Analytics' two chips: the subscription at the start, the order at the end. */
 @Composable
 private fun Chips(onFilter: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        RvFilterChip(stringResource(R.string.rv_nodes_all_subscriptions), onFilter)
-        Spacer(Modifier.weight(1f))
-        RvFilterChip(stringResource(R.string.rv_nodes_by_latency), onFilter)
-    }
+    RvFilterChipRow(RvChipPick(stringResource(R.string.rv_nodes_all_subscriptions), onFilter), RvChipPick(stringResource(R.string.rv_nodes_by_latency), onFilter))
 }
 
 /** 'Top movers': the card's header (it opens the list, as on 活動), 最快 | 最穩, then the eight nodes in two rows of four. */
@@ -214,8 +215,6 @@ private fun RegionRow(node: RvNode, current: Boolean, order: Int, onOpen: (Strin
         ) { RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut, order, node.id) }
     }
 }
-
-internal const val SEPARATOR = " · "
 
 private const val TOP_COLUMNS = 4
 private const val REGION_ROWS = 5
