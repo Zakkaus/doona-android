@@ -14,6 +14,10 @@ import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvSheetLayout
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.subscriptions.RvSubAdd
+import dev.doona.android.feature.subscriptions.RvSubDetail
+import dev.doona.android.feature.subscriptions.RvSubDetailState
+import dev.doona.android.feature.subscriptions.RvUserAgentField
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
@@ -23,12 +27,8 @@ import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.settings.RvAboutScreen
 import dev.doona.android.prototype.rv.settings.rvSampleVersions
-import dev.doona.android.prototype.rv.subs.RvSubAdd
 import dev.doona.android.prototype.rv.subs.RvSubAddSample
-import dev.doona.android.prototype.rv.subs.RvSubDetail
 import dev.doona.android.prototype.rv.subs.RvSubDetailSample
-import dev.doona.android.prototype.rv.subs.RvSubDetailState
-import dev.doona.android.prototype.rv.subs.RvUserAgentField
 import dev.doona.android.prototype.rv.subs.rvAddSample
 import org.json.JSONObject
 import org.junit.Assert.assertEquals

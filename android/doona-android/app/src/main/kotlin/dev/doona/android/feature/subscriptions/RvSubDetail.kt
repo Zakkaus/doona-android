@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.subs
+package dev.doona.android.feature.subscriptions
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.WindowInsets
@@ -27,7 +27,6 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.designsystem.rv.rememberRvFormat
-import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.model.RvSubFormat
 import dev.doona.android.feature.model.RvSubscription
 
@@ -43,7 +42,8 @@ internal enum class RvSubSheet { Rename, UserAgent, Delete }
  * has one; a sheet with a field, as 重新命名, opens on it and saves it to this subscription through [onUserAgent], and
  * an empty field goes back to the default, null); 訂閱 with the name
  * (重新命名 in a sheet with a field) and the link's host; then 刪除訂閱 alone in its card, its glyph in the error hue,
- * asking in the confirm sheet. 立即更新 floats at the bottom. The interval reads [updateHours].
+ * asking in the confirm sheet. 立即更新 floats at the bottom. The interval reads [updateHours], and its row runs
+ * [onAutoUpdate]. A saved name goes to [onRename], a confirmed delete to [onDelete].
  */
 @Composable
 internal fun RvSubDetail(
@@ -54,6 +54,9 @@ internal fun RvSubDetail(
     onUpdate: () -> Unit,
     onUserAgent: (String?) -> Unit = {},
     updateHours: Int,
+    onAutoUpdate: () -> Unit,
+    onRename: (String) -> Unit = {},
+    onDelete: () -> Unit = {},
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     RvScrollPage(
@@ -65,7 +68,7 @@ internal fun RvSubDetail(
         RvLargeTitle(sub.name, titleBlock, insets)
         RvGutter { KeyStats(sub) }
         RvSectionTitle(stringResource(R.string.rv_sub_updates), Modifier.padding(horizontal = RvSpace.gutter))
-        RvGutter { UpdatesCard(sub.userAgent, updateHours) { onChange(state.copy(sheet = RvSubSheet.UserAgent, userAgent = sub.userAgent.orEmpty())) } }
+        RvGutter { UpdatesCard(sub.userAgent, updateHours, onAutoUpdate) { onChange(state.copy(sheet = RvSubSheet.UserAgent, userAgent = sub.userAgent.orEmpty())) } }
         RvSectionTitle(stringResource(R.string.rv_sub_section), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {
             RvCard {
@@ -84,7 +87,10 @@ internal fun RvSubDetail(
         body = null,
         confirm = stringResource(R.string.rv_save),
         dismiss = stringResource(R.string.rv_cancel),
-        onConfirm = close,
+        onConfirm = {
+            onRename(state.name.trim())
+            close()
+        },
         onDismiss = close,
         confirmEnabled = state.name.isNotBlank(),
     ) { RvRenameField(state.name) { onChange(state.copy(name = it)) } }
@@ -107,7 +113,10 @@ internal fun RvSubDetail(
         body = pluralStringResource(R.plurals.rv_sub_delete_body, sub.nodes, sub.nodes),
         confirm = stringResource(R.string.rv_menu_delete),
         dismiss = stringResource(R.string.rv_cancel),
-        onConfirm = close,
+        onConfirm = {
+            close()
+            onDelete()
+        },
         onDismiss = close,
         titleKeepWords = false,
     )
@@ -156,17 +165,17 @@ private fun KeyStats(sub: RvSubscription) {
 }
 
 /**
- * The auto-update interval ([updateHours]), and the subscription's [userAgent] (預設 while null), whose row opens its sheet
- * ([onUserAgent]).
+ * The auto-update interval ([updateHours]), whose row runs [onAutoUpdate], and the subscription's [userAgent] (預設 while
+ * null), whose row opens its sheet ([onUserAgent]).
  */
 @Composable
-private fun UpdatesCard(userAgent: String?, updateHours: Int, onUserAgent: () -> Unit) {
+private fun UpdatesCard(userAgent: String?, updateHours: Int, onAutoUpdate: () -> Unit, onUserAgent: () -> Unit) {
     RvCard {
         RvRow(
             { RvIconDisc(R.drawable.rv_sym_schedule) },
             stringResource(R.string.rv_sub_auto_update),
             stringResource(R.string.rv_settings_update_interval_value, updateHours),
-            onClick = NOT_WIRED,
+            onClick = onAutoUpdate,
         ) { RvChevron() }
         RvRow(
             { RvIconDisc(R.drawable.rv_sym_dns) },

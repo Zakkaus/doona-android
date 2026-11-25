@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.welcome
+package dev.doona.android.feature.onboarding
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column

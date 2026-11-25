@@ -10,6 +10,8 @@ import androidx.compose.ui.test.performClick
 import dev.doona.android.designsystem.rv.RvConfirmContent
 import dev.doona.android.designsystem.rv.RvSheetLayout
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.feature.onboarding.RvWelcome
+import dev.doona.android.feature.subscriptions.RvSubAdd
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.RvActivityScreen
@@ -20,11 +22,9 @@ import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.seedColorScheme
 import dev.doona.android.prototype.rv.subs.RvLanPrompt
-import dev.doona.android.prototype.rv.subs.RvSubAdd
 import dev.doona.android.prototype.rv.subs.RvSubAddSample
 import dev.doona.android.prototype.rv.subs.rvAddSample
 import dev.doona.android.prototype.rv.subs.text
-import dev.doona.android.prototype.rv.welcome.RvWelcome
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -168,7 +168,7 @@ class RvStatesShotTest {
     @Composable
     private fun Lan(sample: String, prompt: RvLanPrompt) {
         Box(Modifier.fillMaxSize()) {
-            RvSubAddSample(rvAddSample(sample).copy(lan = null), {}, onPaste = {}, onImport = {}, onBack = {})
+            RvSubAddSample(rvAddSample(sample), {}, onPaste = {}, onImport = {}, onBack = {})
             val text = prompt.text()
             RvSheetLayout({ 1f }, {}, text.title) {
                 RvConfirmContent(text.title, text.body, text.confirm, text.dismiss, onConfirm = {}, onDismiss = {})

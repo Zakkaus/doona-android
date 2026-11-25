@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.subs
+package dev.doona.android.feature.subscriptions
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row

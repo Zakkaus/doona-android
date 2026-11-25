@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.subs
+package dev.doona.android.feature.subscriptions
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,7 +19,6 @@ import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvBusy
 import dev.doona.android.designsystem.rv.RvCard
-import dev.doona.android.designsystem.rv.RvConfirmSheet
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLargeTitle
@@ -34,10 +33,7 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.designsystem.rv.rememberRvFormat
-import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSubscription
-import dev.doona.android.prototype.rv.gallery.RV_LINK_PLACEHOLDER
-import dev.doona.android.prototype.rv.nodes.SEPARATOR
 
 /** Why an import failed, as the core tells them apart: no answer, not a subscription, over the 8 MiB bound. */
 internal enum class RvAddFailure { Unreachable, NotSubscription, TooLarge }
@@ -57,8 +53,8 @@ internal sealed interface RvAddPhase {
 
 /**
  * The add page's state: the link and the optional name and User-Agent typed so far, whether the clipboard's description
- * says it holds a link (read from the description only, so Android shows no paste notice until the row is tapped), the
- * phase, and the local network prompt a link on the local network raises at 匯入.
+ * says it holds a link (read from the description only, so Android shows no paste notice until the row is tapped), and
+ * the phase. The local network prompt a link on the local network raises at 匯入 is the app's, shown over every page.
  */
 @Immutable
 internal data class RvAddState(
@@ -67,7 +63,6 @@ internal data class RvAddState(
     val userAgent: String = "",
     val clipboardHasLink: Boolean = true,
     val phase: RvAddPhase = RvAddPhase.Editing,
-    val lan: RvLanPrompt? = null,
 )
 
 /**
@@ -76,9 +71,8 @@ internal data class RvAddState(
  * default, which is its placeholder; a value the core would refuse shows the inline error and holds 匯入), and 匯入.
  * While importing, the fields rest
  * and a card shows the download over the bar; when done, a card says what came in (nodes, format, protocols) and 完成
- * returns; when it fails, the banner gives the reason and 重試, and the fields keep what was typed. A link on the local
- * network asks first ([RvLanSheet]); its confirmation runs [onLanConfirm]. The protocols of what came in are counted over
- * [nodes].
+ * returns; when it fails, the banner gives the reason and 重試, and the fields keep what was typed. [protocols] counts
+ * what came in by protocol, most nodes first.
  */
 @Composable
 internal fun RvSubAdd(
@@ -87,8 +81,7 @@ internal fun RvSubAdd(
     onPaste: () -> Unit,
     onImport: () -> Unit,
     onBack: () -> Unit,
-    onLanConfirm: () -> Unit = {},
-    nodes: List<RvNode>,
+    protocols: List<RvProtocolCount>,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val phase = state.phase
@@ -107,10 +100,9 @@ internal fun RvSubAdd(
     ) { titleBlock ->
         RvLargeTitle(stringResource(R.string.rv_add_subscription), titleBlock, insets)
         RvGutter(banner = (phase as? RvAddPhase.Failed)?.let { failure(it.failure, onImport) }) {
-            if (phase is RvAddPhase.Done) Imported(phase.sub, nodes) else Form(state, onChange, onPaste)
+            if (phase is RvAddPhase.Done) Imported(phase.sub, protocols) else Form(state, onChange, onPaste)
         }
     }
-    RvLanSheet(state.lan, onLanConfirm, onDismiss = { onChange(state.copy(lan = null)) })
 }
 
 @Composable
@@ -125,7 +117,7 @@ private fun Form(state: RvAddState, onChange: (RvAddState) -> Unit, onPaste: () 
             state.link,
             { onChange(state.copy(link = it.trim())) },
             stringResource(R.string.rv_add_link),
-            placeholder = RV_LINK_PLACEHOLDER,
+            placeholder = LINK_PLACEHOLDER,
             enabled = editable,
             keyboard = KeyboardOptions(keyboardType = KeyboardType.Uri),
         )
@@ -156,13 +148,16 @@ private fun Progress(phase: RvAddPhase.Importing) {
     }
 }
 
+/** A protocol and how many nodes of what came in speak it. */
+@Immutable
+internal data class RvProtocolCount(val protocol: String, val nodes: Int)
+
 /**
- * What came in: the subscription with its node count and the format found, then a stat row per protocol, most nodes
- * first, as Revolut's Key stats.
+ * What came in: the subscription with its node count and the format found, then a stat row per protocol in the order
+ * given, as Revolut's Key stats.
  */
 @Composable
-private fun Imported(sub: RvSubscription, nodes: List<RvNode>) {
-    val protocols = nodes.filter { it.subscription == sub.name }.groupingBy { it.protocol }.eachCount().entries.sortedByDescending { it.value }
+private fun Imported(sub: RvSubscription, protocols: List<RvProtocolCount>) {
     RvCard {
         RvRow(
             { RvIconDisc(R.drawable.rv_nodes_ic_check_circle, Rv.colors.good) },
@@ -185,26 +180,13 @@ private fun failure(failure: RvAddFailure, onRetry: () -> Unit): RvNotice {
     return RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_add_failed), reason, stringResource(R.string.rv_retry), onRetry)
 }
 
-/**
- * The deep link's question (`clash://install-config?url=…&name=…`, or a link shared to doona): the subscription's name
- * and the host it comes from, 加入 or 取消. Nothing is fetched before 加入.
- */
-@Composable
-internal fun RvImportSheet(visible: Boolean, name: String, host: String, onAdd: () -> Unit, onDismiss: () -> Unit) {
-    RvConfirmSheet(
-        visible,
-        stringResource(R.string.rv_import_title, name),
-        stringResource(R.string.rv_import_body, host),
-        stringResource(R.string.rv_import_add),
-        stringResource(R.string.rv_cancel),
-        onAdd,
-        onDismiss,
-        titleKeepWords = false,
-        bodyKeepWords = false,
-    )
-}
-
 private const val HTTP = "http"
+
+/** The link field's placeholder: where every subscription link starts. */
+private const val LINK_PLACEHOLDER = "https://"
+
+/** Between the node count and the format on the done card. Stands in for the shared node separator until v1/parts moves it to main. */
+private const val SEPARATOR = " · "
 
 /** The core's download bound (`fetch.rs` `MAX_BODY`, 8 << 20). */
 internal const val RV_MAX_BODY = "8 MiB"
