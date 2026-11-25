@@ -126,7 +126,7 @@ internal fun joinedGroups(catalog: Catalog, ids: Set<String>): List<RvGroupName>
 internal fun inlineIds(catalog: Catalog?): Set<String> =
     catalog?.groups.orEmpty().flatMap { it.members }.filter { !it.isGroup && it.subscriptionId == null }.mapTo(LinkedHashSet()) { it.id }
 
-/** After an add: how many nodes it added, the groups they joined, and the lines it skipped. */
+/** After an add: how many nodes it added, the groups they joined, and the lines the preview took but the add refused. */
 @Immutable
 internal data class RvAddedNodes(val count: Int, val groups: List<RvGroupName>, val skipped: RvSkipped)
 

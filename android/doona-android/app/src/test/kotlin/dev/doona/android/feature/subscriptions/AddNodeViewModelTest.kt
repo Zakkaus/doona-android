@@ -102,7 +102,7 @@ class AddNodeViewModelTest {
         val engine = engine()
         val vm = model(engine)
         vm.open()
-        vm.edit("$TOKYO\n$SINGAPORE")
+        vm.edit("$TOKYO\n$SINGAPORE\nnot a link")
         vm.add()
         val state = vm.uiState.value
         assertNull(state.sheet)
@@ -126,7 +126,8 @@ class AddNodeViewModelTest {
         val state = vm.uiState.value
         assertNull(state.sheet)
         assertEquals(listOf("東京 03"), state.nodes.map { it.name })
-        assertEquals(RvSkipped(notLink = listOf(3), duplicate = listOf(2)), state.added?.skipped)
+        // Line 3 was skipped as the sheet said before 新增; only line 2, refused by the add, is news.
+        assertEquals(RvSkipped(duplicate = listOf(2)), state.added?.skipped)
         assertEquals(1, state.added?.count)
     }
 

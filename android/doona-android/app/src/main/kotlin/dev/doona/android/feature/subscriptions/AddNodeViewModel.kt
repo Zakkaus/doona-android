@@ -87,10 +87,13 @@ internal class AddNodeViewModel(private val engine: Engine, private val clipboar
             }
             val (taken, skipped) = sortRows(lines, results)
             if (taken.isEmpty()) return@launch local.update { it.copy(sheet = it.sheet?.copy(adding = false, check = RvAddNodeCheck.Refused(skipped))) }
+            // The lines the sheet already said it would skip are no news: only rows the preview took and the add refused count.
+            val known = (sheet.check as? RvAddNodeCheck.Many)?.skipped ?: RvSkipped()
+            val refused = RvSkipped(skipped.notLink - known.notLink.toSet(), skipped.duplicate - known.duplicate.toSet(), skipped.other - known.other.toSet())
             val ids = taken.mapTo(HashSet()) { it.id }
             val catalog = withTimeoutOrNull(CATALOG_MS) { engine.catalog.first { holds(it, ids) } } ?: engine.catalog.value
             val groups = catalog?.let { joinedGroups(it, ids) }.orEmpty()
-            local.update { it.copy(sheet = null, added = RvAddedNodes(taken.size, groups, skipped)) }
+            local.update { it.copy(sheet = null, added = RvAddedNodes(taken.size, groups, refused)) }
         }
     }
 
