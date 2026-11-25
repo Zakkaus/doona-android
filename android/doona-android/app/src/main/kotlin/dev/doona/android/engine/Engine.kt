@@ -198,6 +198,12 @@ enum class FailureReason {
 
     /** Android revoked VPN authorization, for example when another VPN took over. */
     Revoked,
+
+    /** The tunnel does not support Android's lockdown mode. */
+    LockdownEnabled,
+
+    /** Android did not provide a tunnel descriptor. */
+    VpnNotEstablished,
 }
 
 /** Rates in bytes per second; totals in bytes since connect; histories hold the last 60 one-second rates, oldest first. */

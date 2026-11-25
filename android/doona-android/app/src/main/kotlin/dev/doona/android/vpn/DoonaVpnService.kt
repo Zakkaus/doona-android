@@ -155,6 +155,8 @@ internal class DoonaVpnService :
 
     override val mtu: Int get() = tunMtu()
 
+    override val lockdownEnabled: Boolean get() = isLockdownEnabled
+
     override fun installed(packages: Set<String>): Set<String> = packages.filterTo(mutableSetOf()) { name ->
         try {
             @Suppress("DEPRECATION") // The flags overload needs API 33.

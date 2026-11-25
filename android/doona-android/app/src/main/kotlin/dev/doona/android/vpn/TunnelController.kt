@@ -273,7 +273,8 @@ internal class TunnelController(
         (g == generation).also { current ->
             if (current) {
                 if (status is Status.Failed && startBlock == null && cancelSystemRestart != null &&
-                    status.reason != FailureReason.IncompatibleCore && status.reason != FailureReason.NoAllowedApps
+                    status.reason != FailureReason.IncompatibleCore && status.reason != FailureReason.NoAllowedApps &&
+                    status.reason != FailureReason.LockdownEnabled && status.reason != FailureReason.VpnNotEstablished
                 ) {
                     scheduleRecovery(g, status)
                 } else {
@@ -333,6 +334,7 @@ internal class TunnelController(
 
     /** Null once the core runs the tunnel, or when a newer command superseded [g] before the tun was built. */
     private suspend fun startCore(g: Long, host: TunHost): Status.Failed? {
+        if (host.lockdownEnabled) return Status.Failed(FailureReason.LockdownEnabled)
         val schema = opener.schema() ?: return Status.Failed(FailureReason.StartFailed)
         if (schema != CORE_SCHEMA) return Status.Failed(FailureReason.IncompatibleCore)
         val routing = AppRouting.resolve(perApp(), host.selfPackage, host::installed) ?: return Status.Failed(FailureReason.NoAllowedApps)
@@ -352,7 +354,7 @@ internal class TunnelController(
     private fun startWithTun(g: Long, host: TunHost, routing: AppRouting, mtu: Int, servers: List<String>, stage: File?): Status.Failed? {
         if (!isCurrent(g)) return null
         val config = CoreJson.encode(StartConfigDto.serializer(), StartConfigDto.of(servers, mtu, stage?.path))
-        val tun = host.establish(routing, mtu) ?: return Status.Failed(FailureReason.StartFailed)
+        val tun = host.establish(routing, mtu) ?: return Status.Failed(FailureReason.VpnNotEstablished)
         // The core duplicates the borrowed fd; ours is closed whether start returns or throws.
         tun.use {
             try {

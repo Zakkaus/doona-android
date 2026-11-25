@@ -22,6 +22,8 @@ import dev.doona.android.R
 import dev.doona.android.app.DoonaApplication
 import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.data.settings.PerAppSettings
+import dev.doona.android.engine.AppPolicy
+import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.Status
 import kotlinx.coroutines.CoroutineScope
@@ -36,7 +38,9 @@ import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -53,10 +57,14 @@ import org.robolectric.shadows.ShadowVpnService
 import java.net.Inet6Address
 import java.net.InetAddress
 import java.time.Duration
+import java.util.concurrent.CountDownLatch
 
 @RunWith(AndroidJUnit4::class)
 @Config(application = DoonaVpnServiceTest.LifecycleApplication::class, shadows = [DoonaVpnServiceTest.VpnPolicy::class, DoonaVpnServiceTest.VpnBuilder::class])
 class DoonaVpnServiceTest {
+    @Before
+    fun grantVpnConsent() = ShadowVpnService.setPrepareResult(null)
+
     @After
     fun stopEngine() {
         val app = ApplicationProvider.getApplicationContext<LifecycleApplication>()
@@ -77,7 +85,7 @@ class DoonaVpnServiceTest {
     @Test
     fun aSystemStartWithNoAppExtrasOwnsTheSessionAndCanBeRedelivered() = withService { service, _, engine ->
         val info = service.packageManager.getServiceInfo(ComponentName(service, DoonaVpnService::class.java), PackageManager.GET_META_DATA)
-        assertTrue(info.metaData?.getBoolean(VpnService.SERVICE_META_DATA_SUPPORTS_ALWAYS_ON, true) ?: true)
+        assertTrue(info.metaData?.getBoolean(VpnService.SERVICE_META_DATA_SUPPORTS_ALWAYS_ON) == true)
 
         val systemIntent = Intent(VpnService.SERVICE_INTERFACE).setPackage(service.packageName)
         assertEquals(Service.START_REDELIVER_INTENT, service.onStartCommand(systemIntent, 0, 1))
@@ -87,6 +95,70 @@ class DoonaVpnServiceTest {
         engine.disconnect()
         engine.awaitSession { it.status == Status.Stopped }
         assertEquals(1, shadowOf(service).stopSelfId)
+    }
+
+    @Test
+    fun aSystemStartWithNoAppExtrasUsesTheSavedPerAppPolicy() = withService { service, app, engine ->
+        runBlocking { engine.setPerApp(PerApp(AppPolicy.OnlyListed, setOf("test.not.installed"))).getOrThrow() }
+
+        assertEquals(Service.START_REDELIVER_INTENT, service.onStartCommand(Intent(VpnService.SERVICE_INTERFACE), 0, 1))
+
+        val ended = engine.awaitSession { it.status is Status.Failed }
+        assertEquals(Status.Failed(FailureReason.NoAllowedApps), ended.status)
+        assertTrue(app.core.configs.isEmpty())
+    }
+
+    @Test
+    fun lockdownStopsTheSystemStartAndExplainsWhyEvenWithDropAlertsOff() = withService { service, app, engine ->
+        shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        runBlocking { AppSettings.get(app).setNotifyOnDrop(false) }
+        Shadow.extract<VpnPolicy>(service).lockdown = true
+
+        service.onStartCommand(Intent(VpnService.SERVICE_INTERFACE), 0, 1)
+
+        val ended = engine.awaitSession { it.status is Status.Failed }
+        assertEquals(Status.Failed(FailureReason.LockdownEnabled), ended.status)
+        assertFalse(ended.recovering)
+        assertEquals(0, app.establishCalls)
+        assertStartBlocked(service, app, R.string.vpn_failure_lockdown_enabled)
+    }
+
+    @Test
+    fun aSystemStartWithoutConsentStopsAndNotifiesWithoutPrompting() = withService { service, app, engine ->
+        shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        runBlocking { AppSettings.get(app).setNotifyOnDrop(false) }
+        ShadowVpnService.setPrepareResult(Intent("dev.doona.test.CONSENT"))
+
+        service.onStartCommand(Intent(VpnService.SERVICE_INTERFACE), 0, 1)
+
+        val ended = engine.awaitSession { it.status is Status.Failed }
+        assertEquals(Status.Failed(FailureReason.VpnNotEstablished), ended.status)
+        assertFalse(ended.recovering)
+        assertEquals(1, app.establishCalls)
+        assertStartBlocked(service, app, R.string.vpn_failure_not_established)
+        assertNull(shadowOf(app).nextStartedActivity)
+    }
+
+    @Test
+    fun aSystemIntentDoesNotTakeOverAnAppStartInProgress() = withService { service, app, engine ->
+        val allowStart = CountDownLatch(1)
+        app.core.onStart = { allowStart.await() }
+        try {
+            engine.connect()
+            val intent = shadowOf(app).nextStartedService
+            assertEquals(Service.START_NOT_STICKY, service.onStartCommand(intent, 0, 1))
+            assertEquals(Status.Starting, engine.status.value)
+            assertEquals(Service.START_NOT_STICKY, service.onStartCommand(Intent(VpnService.SERVICE_INTERFACE), 0, 2))
+        } finally {
+            allowStart.countDown()
+        }
+        engine.awaitSession { it.status is Status.Running }
+        assertEquals(1, app.establishCalls)
+
+        engine.disconnect()
+        engine.awaitSession { it.status == Status.Stopped }
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(2, shadowOf(service).stopSelfResultId)
     }
 
     @Test
@@ -104,11 +176,12 @@ class DoonaVpnServiceTest {
             engine = runningEngine
             val policy = Shadow.extract<VpnPolicy>(service)
             assertFalse(engine.settings.value.lockdownEnabled)
-            policy.lockdown = true
+            val main = shadowOf(Looper.getMainLooper())
             service.onStartCommand(Intent(VpnService.SERVICE_INTERFACE), 0, 1)
             engine.awaitSession { it.status is Status.Running }
-            val main = shadowOf(Looper.getMainLooper())
             main.idle()
+            policy.lockdown = true
+            main.idleFor(Duration.ofSeconds(5))
             assertTrue(engine.settings.value.lockdownEnabled)
 
             policy.lockdown = false
@@ -126,10 +199,11 @@ class DoonaVpnServiceTest {
         lateinit var engine: ServiceEngine
         withService { service, _, runningEngine ->
             engine = runningEngine
-            Shadow.extract<VpnPolicy>(service).lockdown = true
             service.onStartCommand(Intent(VpnService.SERVICE_INTERFACE), 0, 1)
             engine.awaitSession { it.status is Status.Running }
             shadowOf(Looper.getMainLooper()).idle()
+            Shadow.extract<VpnPolicy>(service).lockdown = true
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(5))
             assertTrue(engine.settings.value.lockdownEnabled)
         }
         assertFalse("Destroy must clear lockdown without a prior disconnect", engine.settings.value.lockdownEnabled)
@@ -144,11 +218,7 @@ class DoonaVpnServiceTest {
         val failure = engine.awaitSession { it.status is Status.Failed }
         assertEquals(VpnStartBlock.ForegroundStartNotAllowed, failure.startBlock)
 
-        runBlocking { withContext(app.lane) {} }
-        shadowOf(Looper.getMainLooper()).idle()
-        val posted = app.getSystemService(NotificationManager::class.java).activeNotifications.single()
-        assertEquals(app.getString(R.string.vpn_start_blocked_title), posted.notification.extras.getString(Notification.EXTRA_TITLE))
-        assertEquals(app.getString(R.string.vpn_failure_foreground_refused), posted.notification.extras.getString(Notification.EXTRA_BIG_TEXT))
+        assertStartBlocked(service, app, R.string.vpn_failure_foreground_refused)
     }
 
     @Test
@@ -230,6 +300,15 @@ class DoonaVpnServiceTest {
 
     private fun dns(address: String) = LinkProperties().apply { setDnsServers(listOf(InetAddress.getByName(address))) }
 
+    private fun assertStartBlocked(service: DoonaVpnService, app: LifecycleApplication, message: Int) {
+        runBlocking { withContext(app.lane) {} }
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(1, shadowOf(service).stopSelfResultId)
+        val posted = app.getSystemService(NotificationManager::class.java).activeNotifications.single()
+        assertEquals(app.getString(R.string.vpn_start_blocked_title), posted.notification.extras.getString(Notification.EXTRA_TITLE))
+        assertEquals(app.getString(message), posted.notification.extras.getString(Notification.EXTRA_BIG_TEXT))
+    }
+
     private fun withService(test: (DoonaVpnService, LifecycleApplication, ServiceEngine) -> Unit) {
         val lifecycle = Robolectric.buildService(DoonaVpnService::class.java).create()
         val service = lifecycle.get()
@@ -262,7 +341,10 @@ class DoonaVpnServiceTest {
         fun addDisallowedApplication(packageName: String): VpnService.Builder = builder
 
         @Implementation
-        fun establish(): ParcelFileDescriptor {
+        fun establish(): ParcelFileDescriptor? {
+            val app = ApplicationProvider.getApplicationContext<LifecycleApplication>()
+            app.establishCalls++
+            if (VpnService.prepare(app) != null) return null
             val (input, output) = ParcelFileDescriptor.createPipe()
             output.close()
             return input
@@ -273,12 +355,14 @@ class DoonaVpnServiceTest {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         internal val core = FakeCore()
         val lane = Dispatchers.IO.limitedParallelism(1)
+        var establishCalls = 0
 
         override fun createEngine(): ServiceEngine {
             val io = Dispatchers.IO
             val opener = CoreOpener(core, { noBackupFilesDir.path }, io)
-            val controller = TunnelController(core, opener, { PerApp() }, scope, killProcess = {}, endDebugCapture = {}, expireDebugCapture = { null })
-            return ServiceEngine(core, opener, controller, PerAppSettings.create(this), { DoonaVpnService.start(this, it) }, io, scope, { null })
+            val perApp = PerAppSettings.create(this)
+            val controller = TunnelController(core, opener, { perApp.perApp.first() }, scope, killProcess = {}, endDebugCapture = {}, expireDebugCapture = { null })
+            return ServiceEngine(core, opener, controller, perApp, { DoonaVpnService.start(this, it) }, io, scope, { null })
                 .also { it.launch(lane, getSystemService(ConnectivityManager::class.java)) }
         }
     }
