@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv
 
 import android.os.Trace
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
@@ -48,6 +49,15 @@ import dev.doona.android.designsystem.rv.RvShared
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+
+/**
+ * Android's back from a tab home: on 策略, 連線 or 設定 with nothing stacked on it, back goes to the [home] tab (活動); on
+ * [home] it is left to the system, which leaves the app. A page stacked on a tab, or a page that is no tab, pops as before.
+ */
+@Composable
+internal fun RvBackToHome(stack: List<String>, home: String, tabs: Set<String>, onHome: () -> Unit) {
+    BackHandler(enabled = stack.size == 1 && stack[0] != home && stack[0] in tabs, onBack = onHome)
+}
 
 /** How a tab switch looks: T1 a hard cut with the hero art fading in (the default), T2 a cross-fade of the whole page. */
 internal enum class RvTabMotion(val code: String) { Cut("T1"), Fade("T2") }
