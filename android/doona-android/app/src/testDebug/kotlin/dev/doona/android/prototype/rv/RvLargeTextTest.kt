@@ -36,6 +36,7 @@ import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvReadsWell
 import dev.doona.android.engine.Mode
+import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
@@ -87,7 +88,7 @@ class RvLargeTextTest {
         val group = connection.rule.group ?: RvPolicyData.main
         large { RvPolicyRulePage(connection, RvQuickRule(), onChange = {}, onBack = {}, onApply = {}) }
         val labels = listOf(R.string.rv_policy_target, R.string.rv_policy_app, R.string.rv_policy_matched, R.string.rv_policy_via).map(::rvText)
-        val values = listOf(connection.host + ":" + connection.port, connection.app, rvText(group.name) + SEPARATOR + group.selected.name)
+        val values = listOf(connection.host + ":" + connection.port, connection.app, rvText((group.name as RvLabel.Res).id) + SEPARATOR + group.selected.name)
         (labels + values).forEach(::assertWhole)
     }
 

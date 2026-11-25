@@ -5,6 +5,7 @@ import androidx.compose.runtime.Immutable
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.feature.model.RvGroupKind
+import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvMatchKind
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvNodeSort
@@ -54,10 +55,10 @@ internal object RvPolicyData {
     private val aiOut = RvData.ruleOutbounds.first { it.group == R.string.rv_rule_ai }
 
     /** The final group: whatever no rule sends elsewhere goes through its choice, the node in use. */
-    val main = RvPolicyGroup(MAIN, R.string.rv_main_node, RvGroupKind.Select, nodes, RvData.CURRENT_ID)
+    val main = RvPolicyGroup(MAIN, RvLabel.Res(R.string.rv_main_node), RvGroupKind.Select, nodes, RvData.CURRENT_ID)
     val auto = fastest(AUTO, R.string.rv_policy_group_auto, nodes)
-    val streaming = RvPolicyGroup(STREAMING, R.string.rv_rule_streaming, RvGroupKind.Select, nodes.inPlaces(STREAMING_PLACES), streamingOut.nodeId!!)
-    val ai = RvPolicyGroup(AI, R.string.rv_rule_ai, RvGroupKind.Select, nodes.inPlaces(AI_PLACES), aiOut.nodeId!!)
+    val streaming = RvPolicyGroup(STREAMING, RvLabel.Res(R.string.rv_rule_streaming), RvGroupKind.Select, nodes.inPlaces(STREAMING_PLACES), streamingOut.nodeId!!)
+    val ai = RvPolicyGroup(AI, RvLabel.Res(R.string.rv_rule_ai), RvGroupKind.Select, nodes.inPlaces(AI_PLACES), aiOut.nodeId!!)
     private val regions = REGIONS.map { fastest(it.name.lowercase(), it.label, nodes.inPlaces(setOf(it))) }
 
     /** The 策略組 card's groups in the profile's order; the main group has its own card. */
@@ -119,7 +120,7 @@ internal object RvPolicyData {
     /** The quick rule's sample: a connection the last rule sent through the main node. */
     val connection = RvConnection(SAMPLE_HOST, HTTPS, SAMPLE_APP, rules.last())
 
-    private fun fastest(id: String, @StringRes name: Int, members: List<RvNode>) = RvPolicyGroup(id, name, RvGroupKind.Auto, members, members.fastest(1).first().id)
+    private fun fastest(id: String, @StringRes name: Int, members: List<RvNode>) = RvPolicyGroup(id, RvLabel.Res(name), RvGroupKind.Auto, members, members.fastest(1).first().id)
 
     private fun List<RvNode>.inPlaces(places: Set<RvPlace>) = filter { it.place in places }
 }

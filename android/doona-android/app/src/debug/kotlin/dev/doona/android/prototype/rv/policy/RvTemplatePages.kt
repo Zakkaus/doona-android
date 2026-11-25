@@ -38,6 +38,7 @@ import dev.doona.android.feature.model.RvImpact
 import dev.doona.android.feature.model.RvImpactGroup
 import dev.doona.android.feature.model.RvImpactRule
 import dev.doona.android.feature.model.RvTemplate
+import dev.doona.android.feature.model.text
 import dev.doona.android.prototype.rv.config.rvConfigPhrase
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 
@@ -133,7 +134,7 @@ private fun rules(n: Int) = pluralStringResource(R.plurals.rv_rules_count, n, n)
 private fun ImpactGroupRow(group: RvImpactGroup) {
     val count = pluralStringResource(R.plurals.rv_policy_node_count, group.nodes, group.nodes)
     val line = listOf(stringResource(group.change.label), stringResource(group.kind.label), count).joinToString(SEPARATOR)
-    RvRow({ RvIconDisc(group.kind.glyph) }, stringResource(group.name), line)
+    RvRow({ RvIconDisc(group.kind.glyph) }, group.name.text(), line)
 }
 
 /** A rule the template adds or changes: as the rules card draws it, with what happens in place of its bytes. */

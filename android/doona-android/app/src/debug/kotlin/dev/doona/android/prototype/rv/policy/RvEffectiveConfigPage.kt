@@ -39,6 +39,7 @@ import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvRuleState
 import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.model.text
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.settings.RvSettingsState
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
@@ -131,7 +132,7 @@ private fun GroupsCard(policy: RvPolicyState, groups: List<RvPolicyGroup>) {
             val members = if (group.members.size > MEMBERS_SHOWN) stringResource(R.string.rv_effective_members_more, shown, group.members.size) else shown
             RvRow(
                 { RvIconDisc(group.kind.glyph) },
-                stringResource(group.name),
+                group.name.text(),
                 members,
                 titleEnd = { RvText(group.selected.name, Rv.type.rowValue, align = TextAlign.End) },
                 titleKeepWords = false,

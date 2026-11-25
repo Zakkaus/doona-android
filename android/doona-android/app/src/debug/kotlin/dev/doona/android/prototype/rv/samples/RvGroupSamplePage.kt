@@ -41,6 +41,7 @@ import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
+import dev.doona.android.feature.model.text
 import dev.doona.android.prototype.rv.nodes.RvNodesSize
 import dev.doona.android.prototype.rv.nodes.RvStatusChip
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
@@ -65,7 +66,7 @@ internal fun RvGroupSamplePage(
     modifier: Modifier = Modifier,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    val name = stringResource(group.name)
+    val name = group.name.text()
     var state by remember { mutableStateOf(choice) }
     var apply by remember { mutableStateOf(applyTo) }
     val current = state

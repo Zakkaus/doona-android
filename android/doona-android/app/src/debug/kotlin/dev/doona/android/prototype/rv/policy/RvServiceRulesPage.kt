@@ -34,6 +34,7 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvRuleMatch
+import dev.doona.android.feature.model.text
 
 /** doona web's sections of the service list (`serviceSections` in `src/dae/templates.ts`), in its order. */
 internal enum class RvServiceSection(@StringRes val title: Int) {
@@ -145,7 +146,7 @@ internal fun RvServiceRulesPage(
 private fun OutboundCard(onOutbound: () -> Unit) {
     val main = RvPolicyData.main
     RvCard {
-        RvRow({ RvPolicyTarget(main) }, stringResource(R.string.rv_service_outbound), stringResource(main.name), onClick = onOutbound, subtitleKeepWords = false) { RvChevron() }
+        RvRow({ RvPolicyTarget(main) }, stringResource(R.string.rv_service_outbound), main.name.text(), onClick = onOutbound, subtitleKeepWords = false) { RvChevron() }
     }
 }
 

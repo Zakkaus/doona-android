@@ -75,6 +75,7 @@ import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.rvNodeGroups
+import dev.doona.android.feature.model.text
 import dev.doona.android.prototype.rv.nodes.RvNodeGroups
 import dev.doona.android.prototype.rv.nodes.RvNodeListControls
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
@@ -250,7 +251,7 @@ private fun PolicySkeleton(state: RvPolicyState, profile: RvPolicyProfile) {
                         RvSkeletonText.Mixed,
                         RvSkeletonEnd.Node,
                         chevron = true,
-                        title = group?.let { stringResource(it.name) },
+                        title = group?.name?.text(),
                         subtitleText = group?.let { groupLine(it) },
                         endText = group?.selected?.name,
                         titleKeepWords = false,
@@ -319,7 +320,7 @@ private fun GroupRow(group: RvPolicyGroup, onOpen: (String) -> Unit) {
     val node = group.selected
     RvRow(
         { RvIconDisc(group.kind.glyph) },
-        stringResource(group.name),
+        group.name.text(),
         groupLine(group),
         Modifier.rvRowPress(Role.Button, { onOpen(group.id) }),
         titleEnd = { RvText(node.name, Rv.type.rowValue, align = TextAlign.End, maxLines = RV_ROW_TITLE_LINES, keepWords = false) },

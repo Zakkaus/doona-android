@@ -42,6 +42,7 @@ import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.activity.ActivityAction
 import dev.doona.android.feature.activity.ActivityUiState
+import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.fastest
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
@@ -350,7 +351,7 @@ private fun ActivityPage(route: String, run: RvSampleRun, options: RvMotionOptio
         node = { pages.push("$NODE:${run.currentId}") },
         tab = pages.tab,
         mode = toPolicy,
-        rule = { name -> RvPolicyData.groups.firstOrNull { it.name == name }?.let { pages.push("${RvPolicyPreviewRoutes.GROUP}:${it.id}") } ?: toPolicy() },
+        rule = { name -> RvPolicyData.groups.firstOrNull { it.name == RvLabel.Res(name) }?.let { pages.push("${RvPolicyPreviewRoutes.GROUP}:${it.id}") } ?: toPolicy() },
         rules = toPolicy,
         test = run::test,
         subscriptions = { pages.push(RvSubsRoutes.LIST) },

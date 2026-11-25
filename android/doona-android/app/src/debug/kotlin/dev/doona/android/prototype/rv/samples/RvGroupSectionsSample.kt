@@ -2,6 +2,7 @@ package dev.doona.android.prototype.rv.samples
 
 import dev.doona.android.R
 import dev.doona.android.feature.model.RvGroupKind
+import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvSubscription
@@ -25,7 +26,7 @@ internal object RvGroupSectionsSample {
     val five: Sample = sample(RvData.nodes.take(NODES_FIVE).mapIndexed { i, node -> node.copy(subscription = names[i / PER_SUBSCRIPTION]) }, subscriptions = 5, chosen = CHOSEN_FIVE)
 
     private fun sample(nodes: List<RvNode>, subscriptions: Int, chosen: Int): Sample {
-        val group = RvPolicyGroup("sections", R.string.rv_rule_streaming, RvGroupKind.Select, nodes, nodes[chosen].id)
+        val group = RvPolicyGroup("sections", RvLabel.Res(R.string.rv_rule_streaming), RvGroupKind.Select, nodes, nodes[chosen].id)
         val subs = names.take(subscriptions).mapIndexed { i, name ->
             RvSubscription(
                 "s${i + 1}",

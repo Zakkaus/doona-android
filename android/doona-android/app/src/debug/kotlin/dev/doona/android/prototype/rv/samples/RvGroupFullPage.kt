@@ -32,6 +32,7 @@ import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.model.text
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RvNodePickRow
 import dev.doona.android.prototype.rv.nodes.RvNodeSection
@@ -67,7 +68,7 @@ internal fun RvGroupFullPage(
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val group = sample.group
-    val name = stringResource(group.name)
+    val name = group.name.text()
     var typed by remember { mutableStateOf(query) }
     var choice by remember { mutableStateOf(RvApplyChoice(sample.tcpId, if (apart) sample.udpId else sample.tcpId, apart)) }
     var apply by remember { mutableStateOf(RvApplyTo.Tcp) }

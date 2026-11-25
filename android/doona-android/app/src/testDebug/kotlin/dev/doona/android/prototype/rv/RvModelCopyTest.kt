@@ -1,5 +1,6 @@
 package dev.doona.android.prototype.rv
 
+import dev.doona.android.R
 import dev.doona.android.feature.model.RvDay
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSession
@@ -50,7 +51,7 @@ class RvModelCopyTest {
     @Test
     fun anEffectiveConfigKeepsItsLists() {
         val rules = RvPolicyData.allRules.toMutableList()
-        val config = RvEffectiveConfig(RvPolicyData.main, RvPolicyData.groups, rules, RvPolicyData.main.name, RvData.subscriptions)
+        val config = RvEffectiveConfig(RvPolicyData.main, RvPolicyData.groups, rules, R.string.rv_main_node, RvData.subscriptions)
         val size = rules.size
         rules.clear()
         assertEquals(size, config.rules.size)

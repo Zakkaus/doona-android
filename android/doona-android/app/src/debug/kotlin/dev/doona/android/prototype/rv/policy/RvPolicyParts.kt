@@ -28,6 +28,7 @@ import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvRuleMatch
 import dev.doona.android.feature.model.RvRuleState
+import dev.doona.android.feature.model.text
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 
 /**
@@ -88,7 +89,7 @@ internal fun RvRuleRow(rule: RvPolicyRule, modifier: Modifier = Modifier, end: S
 
 /** Where a rule sends: its group's name, or 直連. */
 @Composable
-internal fun RvPolicyRule.targetName(): String = group?.let { stringResource(it.name) } ?: stringResource(R.string.mode_direct)
+internal fun RvPolicyRule.targetName(): String = group?.name?.text() ?: stringResource(R.string.mode_direct)
 
 /**
  * The 送往 list of the quick rule and the rule page: the [groups] a rule can send to, then 直連: the first [TARGETS]
@@ -115,7 +116,7 @@ private fun Target(group: RvPolicyGroup?, selected: Boolean, onSelect: () -> Uni
     val pick = Modifier.rvRowSelect(selected, onSelect)
     RvRow(
         { RvPolicyTarget(group) },
-        group?.let { stringResource(it.name) } ?: stringResource(R.string.mode_direct),
+        group?.name?.text() ?: stringResource(R.string.mode_direct),
         group?.selected?.name ?: stringResource(R.string.rv_policy_no_proxy),
         pick,
         titleKeepWords = false,

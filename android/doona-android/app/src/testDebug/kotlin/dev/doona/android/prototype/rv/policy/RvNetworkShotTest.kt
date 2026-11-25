@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvMenuPanel
 import dev.doona.android.designsystem.rv.RvMenuSize
+import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.RvActivityScreen
@@ -247,7 +248,7 @@ class RvNetworkShotTest {
     @Test
     @Config(qualifiers = ACTIVITY)
     fun activityOneRegionNamesBoth() {
-        val udp = RvNetworkSample.rulesOneRegion.first { it.group == RvNetworkSample.group.name }.udpNodeId
+        val udp = RvNetworkSample.rulesOneRegion.first { RvLabel.Res(it.group) == RvNetworkSample.group.name }.udpNodeId
         compose.rvContent(dark = false) { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}, rules = RvNetworkSample.rulesOneRegion) }
         val name = RvNetworkSample.group.members.first { it.id == udp }.name
         assertTrue(lines().toString(), "TCP Taipei 04\nUDP $name" in lines())

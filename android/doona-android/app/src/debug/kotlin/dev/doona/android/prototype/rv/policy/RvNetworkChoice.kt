@@ -15,6 +15,7 @@ import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.model.text
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 
@@ -124,7 +125,7 @@ internal fun RvNetworkPicker(
         onPick = onPick,
         onDetail = {},
         onClose = {},
-        title = stringResource(group.name),
+        title = group.name.text(),
         caption = network?.let { stringResource(it.label) + SEPARATOR + caption } ?: caption,
     )
 }

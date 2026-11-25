@@ -24,6 +24,7 @@ import dev.doona.android.designsystem.rv.RvSearchSlot
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.model.text
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RvNodeSection
 import dev.doona.android.prototype.rv.nodes.RvRowsComposed
@@ -46,7 +47,7 @@ internal const val RV_SECTIONS_OPEN_UP_TO = 2
 @Composable
 internal fun RvGroupSectionsPage(group: RvPolicyGroup, subscriptions: List<RvSubscription>, modifier: Modifier = Modifier, query: String = "") {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    val name = stringResource(group.name)
+    val name = group.name.text()
     var typed by remember { mutableStateOf(query) }
     var chosen by remember { mutableStateOf(group.selectedId) }
     val labels = group.members.associate { it.id to stringResource(it.place.label) }

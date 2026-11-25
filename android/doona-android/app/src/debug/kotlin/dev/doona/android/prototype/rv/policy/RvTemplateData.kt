@@ -9,6 +9,7 @@ import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvImpact
 import dev.doona.android.feature.model.RvImpactGroup
 import dev.doona.android.feature.model.RvImpactRule
+import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvMatchKind
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvRuleMatch
@@ -36,10 +37,10 @@ internal object RvTemplateData {
             removed = 0,
             kept = KEPT,
             groups = listOf(
-                RvImpactGroup(R.string.rv_template_group_youtube, RvGroupKind.Select, RvPolicyData.streaming.members.size, RvChange.Add),
-                RvImpactGroup(R.string.rv_template_group_telegram, RvGroupKind.Auto, nodes, RvChange.Add),
-                RvImpactGroup(R.string.rv_rule_streaming, RvGroupKind.Select, RvPolicyData.streaming.members.size, RvChange.Keep),
-                RvImpactGroup(R.string.rv_rule_ai, RvGroupKind.Select, RvPolicyData.ai.members.size, RvChange.Keep),
+                RvImpactGroup(RvLabel.Res(R.string.rv_template_group_youtube), RvGroupKind.Select, RvPolicyData.streaming.members.size, RvChange.Add),
+                RvImpactGroup(RvLabel.Res(R.string.rv_template_group_telegram), RvGroupKind.Auto, nodes, RvChange.Add),
+                RvImpactGroup(RvLabel.Res(R.string.rv_rule_streaming), RvGroupKind.Select, RvPolicyData.streaming.members.size, RvChange.Keep),
+                RvImpactGroup(RvLabel.Res(R.string.rv_rule_ai), RvGroupKind.Select, RvPolicyData.ai.members.size, RvChange.Keep),
             ),
             rules = listOf(
                 RvImpactRule(RvPolicyRule(RvRuleMatch.Domains("youtube.com", YOUTUBE_DOMAINS), RvPolicyData.streaming, 0), RvChange.Add),

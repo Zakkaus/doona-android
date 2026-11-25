@@ -8,6 +8,7 @@ import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.activity.ActivityAction
 import dev.doona.android.feature.activity.ActivityUiState
+import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvRuleOutbound
@@ -60,7 +61,7 @@ internal val rvSampleActivityCards = RvActivityCards(
     ruleCount = RvData.RULES,
     mainNodeId = RvData.CURRENT_ID,
     node = RvData::node,
-    groupKind = { name -> RvPolicyData.groups.firstOrNull { it.name == name }?.kind },
+    groupKind = { name -> RvPolicyData.groups.firstOrNull { it.name == RvLabel.Res(name) }?.kind },
 )
 
 /**

@@ -6,7 +6,7 @@ import dev.doona.android.R
 
 /** A policy group: its id, its name as the profile gives it, how it picks, its nodes and the one it uses now. */
 @Immutable
-internal class RvPolicyGroup(val id: String, @StringRes val name: Int, val kind: RvGroupKind, val members: List<RvNode>, val selectedId: String) {
+internal class RvPolicyGroup(val id: String, val name: RvLabel, val kind: RvGroupKind, val members: List<RvNode>, val selectedId: String) {
     val selected: RvNode = members.first { it.id == selectedId }
 
     /** The members fastest first by their last test; a node whose last test timed out comes last. */

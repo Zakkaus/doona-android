@@ -51,6 +51,7 @@ import dev.doona.android.engine.ScoreGroup
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
+import dev.doona.android.feature.model.text
 import dev.doona.android.prototype.rv.nodes.RvStatusChip
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.nodes.latencyText
@@ -88,7 +89,7 @@ internal fun RvPolicyGroupPage(
     onSelectFor: (String, RvNetwork?) -> Unit = { id, _ -> onSelect(id) },
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    val name = stringResource(group.name)
+    val name = group.name.text()
     RvScrollPage(
         name,
         insets,

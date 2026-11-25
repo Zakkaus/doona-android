@@ -2,6 +2,7 @@ package dev.doona.android.prototype.rv.policy
 
 import androidx.compose.runtime.Composable
 import dev.doona.android.designsystem.rv.RvNotice
+import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyState
@@ -84,7 +85,7 @@ internal object RvNetworkSample {
     val rulesOneRegion: List<RvRuleOutbound> = rulesWithUdp(group.members.first { it.place == group.selected.place && it.id != group.selectedId }.id)
 
     private fun rulesWithUdp(udp: String) = RvData.ruleOutbounds.map {
-        if (it.group == group.name) RvRuleOutbound(it.group, it.nodeId, it.bytes, udp) else it
+        if (RvLabel.Res(it.group) == group.name) RvRuleOutbound(it.group, it.nodeId, it.bytes, udp) else it
     }
 }
 

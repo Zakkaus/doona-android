@@ -28,7 +28,7 @@ internal enum class RvChange(@StringRes val label: Int) {
 
 /** A group in the impact review: its name, how it picks, its node count, and what the new template does to it. */
 @Immutable
-internal class RvImpactGroup(@StringRes val name: Int, val kind: RvGroupKind, val nodes: Int, val change: RvChange)
+internal class RvImpactGroup(val name: RvLabel, val kind: RvGroupKind, val nodes: Int, val change: RvChange)
 
 /** A rule in the impact review: the rule as the new template writes it, what happens to it, and its old target. */
 @Immutable

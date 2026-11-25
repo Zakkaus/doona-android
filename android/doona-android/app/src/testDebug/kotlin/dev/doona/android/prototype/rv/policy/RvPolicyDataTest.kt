@@ -2,6 +2,7 @@ package dev.doona.android.prototype.rv.policy
 
 import dev.doona.android.R
 import dev.doona.android.feature.model.RvGroupKind
+import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRuleState
 import dev.doona.android.prototype.rv.data.RvData
@@ -23,7 +24,7 @@ class RvPolicyDataTest {
     fun ruleGroupsUseTheNodesActivityShows() {
         for ((group, name) in listOf(RvPolicyData.streaming to R.string.rv_rule_streaming, RvPolicyData.ai to R.string.rv_rule_ai)) {
             assertEquals(RvData.ruleOutbounds.first { it.group == name }.nodeId, group.selectedId)
-            assertEquals(name, group.name)
+            assertEquals(RvLabel.Res(name), group.name)
         }
         assertEquals("Taipei 04", RvPolicyData.streaming.selected.name)
         assertEquals("Tokyo 02", RvPolicyData.ai.selected.name)
