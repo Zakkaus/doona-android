@@ -33,6 +33,7 @@ import dev.doona.android.feature.nodes.ui.RvNodeGroups
 import dev.doona.android.feature.nodes.ui.RvNodePickerControls
 import dev.doona.android.feature.nodes.ui.RvNodeSectionSkeleton
 import dev.doona.android.feature.nodes.ui.inPicked
+import dev.doona.android.feature.nodes.ui.rememberRvNodeTitles
 import dev.doona.android.feature.nodes.ui.rvNodeChips
 import dev.doona.android.feature.nodes.ui.rvPicked
 
@@ -72,7 +73,8 @@ internal fun RvNodePickerPage(
     val test = stringResource(R.string.rv_test_latency)
     var chosen by rememberSaveable { mutableStateOf<String?>(null) }
     val picked = rvPicked(chosen, nodes)
-    val groups = remember(nodes, subscriptions, sort, picked) { rvNodeGroups(nodes.filter { inPicked(it, picked) }, subscriptions, sort) }
+    val titles = rememberRvNodeTitles()
+    val groups = remember(nodes, subscriptions, sort, picked, titles) { rvNodeGroups(nodes.filter { inPicked(it, picked) }, subscriptions, sort, titles) }
     RvScrollPage(title, insets, onBack = onBack, actions = { glass -> RvGlassButton(glass, R.drawable.rv_sym_speed, test, onTest) }) { titleBlock ->
         // Before the catalog is read the controls stand (their labels are known) over the list's skeleton.
         val empty = !loading && nodes.isEmpty()

@@ -74,6 +74,7 @@ import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.nodes.ui.LocalRvRowActions
 import dev.doona.android.feature.nodes.ui.RvNodeDisc
+import dev.doona.android.feature.nodes.ui.rememberRvNodeTitles
 import dev.doona.android.feature.nodes.ui.rvNodeChips
 import dev.doona.android.feature.nodes.ui.rvNodeLine
 import dev.doona.android.feature.nodes.ui.rvNodeMenu
@@ -114,6 +115,7 @@ internal fun RvNodesPage(
     var order by rememberSaveable { mutableStateOf(RvNodeSort.Latency) }
     val title = stringResource(R.string.rv_nodes_title)
     val shown = remember(state, picked) { state.scoped(picked) }
+    val titles = rememberRvNodeTitles()
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         // The pull-down from 活動 picks the main node; groups with their own choice open from 活動's rule rows (item 24).
         val empty = !loading && state.nodes.isEmpty()
@@ -138,7 +140,7 @@ internal fun RvNodesPage(
                     }
                     RvSectionTitle(stringResource(R.string.rv_nodes_all), Modifier.padding(horizontal = RvSpace.gutter), onAllNodes)
                     RvGutter {
-                        for ((region, nodes) in shown.byRegion(order)) RegionCard(region, nodes, shown.current, onOpen, score)
+                        for ((region, nodes) in shown.byRegion(order, titles)) RegionCard(region, nodes, shown.current, onOpen, score)
                     }
                 }
             }

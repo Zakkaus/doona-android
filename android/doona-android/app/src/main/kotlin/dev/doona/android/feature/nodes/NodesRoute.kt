@@ -71,7 +71,7 @@ internal fun NodeRoute(viewModel: NodesViewModel, nodeId: String, onBack: () -> 
             testedAtEpochMs = ui.state.testedAt[node.id].orEmpty(),
             onBack = onBack,
             onUse = { viewModel.pick(node.id) },
-            onTest = viewModel::test,
+            onTest = { viewModel.testNode(node.id) },
             banner = ui.failure?.let { nodesBanner(it, viewModel::retry) },
             score = ui.score,
             canUse = ui.state.mainGroupId != null,

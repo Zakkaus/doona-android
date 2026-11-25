@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The Revolut-style sample of the node page and a node's page (prototype/rv/nodes), debug builds only. -->
+<!-- 節點, a node's page and the node pickers (feature/nodes). -->
 <resources>
     <string name="rv_nodes_title">Nodes</string>
     <string name="rv_nodes_all_subscriptions">All subscriptions</string>

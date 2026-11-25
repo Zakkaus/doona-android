@@ -1,24 +1,18 @@
 package dev.doona.android.feature.nodes.ui
 
-import android.content.ClipData
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.platform.ClipEntry
-import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvMenuItem
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSubscription
-import kotlinx.coroutines.launch
-import java.net.URLEncoder
 
 /**
  * What the rows' long-press menus do (brief rv-gestures G3), given by the app's 節點 routes and by the running sample:
  * [useNode] makes a node the main one, [testNode] tests one node's latency, [copyLink] puts a node's share link on the
- * clipboard (null: the sample's own link, [shareLink]), [updateSubscription] updates one subscription,
+ * clipboard (null: no 複製分享連結), [updateSubscription] updates one subscription,
  * [deleteSubscription] removes it. The default does nothing and offers no menu, as in the goldens and previews.
  */
 @Immutable
@@ -34,16 +28,14 @@ internal val LocalRvRowActions = staticCompositionLocalOf { RvRowActions() }
 
 /**
  * A node row's menu: 設為主節點 (left out for the main node, or where [use] is null), 測試延遲, 詳情 (its page, through
- * [details]) and 複製分享連結 (the core's link through [RvRowActions.copyLink], or the sample's [shareLink], to the
- * clipboard; Android shows that it was copied; left out for a node whose details the core has not sent,
- * [RvNode.described], which has no link to give). [use] is the page's own switch: the picker's closes it as a tap does.
+ * [details]) and 複製分享連結 (the core's link through [RvRowActions.copyLink], to the clipboard; Android shows that
+ * it was copied), offered only for a node the core keeps a link for ([RvNode.shareable]) and has described
+ * ([RvNode.described]). [use] is the page's own switch: the picker's closes it as a tap does.
  */
 @Composable
 internal fun rvNodeMenu(node: RvNode, current: Boolean, use: ((String) -> Unit)?, details: (String) -> Unit): List<RvMenuItem> {
     val actions = LocalRvRowActions.current
     val test = actions.testNode ?: return emptyList()
-    val clipboard = LocalClipboard.current
-    val scope = rememberCoroutineScope()
     val setMain = stringResource(R.string.rv_menu_set_main)
     val testLabel = stringResource(R.string.rv_test_latency)
     val detailsLabel = stringResource(R.string.rv_menu_details)
@@ -52,13 +44,8 @@ internal fun rvNodeMenu(node: RvNode, current: Boolean, use: ((String) -> Unit)?
         if (use != null && !current) add(RvMenuItem(setMain, R.drawable.rv_nodes_ic_check_circle) { use(node.id) })
         add(RvMenuItem(testLabel, R.drawable.rv_sym_speed) { test(node.id) })
         add(RvMenuItem(detailsLabel, R.drawable.rv_sym_info) { details(node.id) })
-        if (node.described) {
-            add(
-                RvMenuItem(copy, R.drawable.rv_sym_ios_share) {
-                    actions.copyLink?.invoke(node) ?: scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(node.name, node.shareLink()))) }
-                },
-            )
-        }
+        val copyLink = actions.copyLink
+        if (copyLink != null && node.shareable && node.described) add(RvMenuItem(copy, R.drawable.rv_sym_ios_share) { copyLink(node) })
     }
 }
 
@@ -76,15 +63,4 @@ internal fun rvSubscriptionMenu(sub: RvSubscription, onDelete: () -> Unit): List
         add(RvMenuItem(updateLabel, R.drawable.rv_stats_ic_sync) { update(sub.id) })
         if (actions.deleteSubscription != null) add(RvMenuItem(deleteLabel, R.drawable.rv_sym_delete, destructive = true, separated = true, onClick = onDelete))
     }
-}
-
-/**
- * The node as a share link in the common URI form, `scheme://host:port?type=…&security=…#name`. The sample holds no
- * credentials, so the link carries the server's address and transport only; the app adds the subscription's user id.
- */
-internal fun RvNode.shareLink(): String {
-    val scheme = if (protocol == "Shadowsocks") "ss" else protocol.lowercase()
-    val type = if (transport == "WebSocket") "ws" else transport.lowercase()
-    val security = if (tls) "tls" else "none"
-    return "$scheme://$host:$port?type=$type&security=$security#" + URLEncoder.encode(name, "UTF-8").replace("+", "%20")
 }

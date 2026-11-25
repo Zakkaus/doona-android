@@ -2,6 +2,7 @@ package dev.doona.android.prototype.rv.data
 
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.designsystem.rv.RvRegion
+import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.fastest
 import dev.doona.android.feature.model.rvNodeGroups
@@ -31,7 +32,7 @@ class RvUnknownPlaceTest {
     fun otherEndsTheCountryListWhateverItsNodesLatency() {
         val fastest = nodes.minBy { it.latencyMs ?: Int.MAX_VALUE }
         assertEquals("the sample's fastest node has no country", RvPlace.Other, fastest.place)
-        val groups = rvNodeGroups(nodes, RvData.subscriptions, RvNodeSort.Region)
+        val groups = rvNodeGroups(nodes, RvData.subscriptions, RvNodeSort.Region, RvNode::name)
         assertEquals(listOf("TW", "Other"), groups.map { it.key })
         assertEquals(listOf("other-01", "other-03", "other-02").sorted(), groups.last().nodes.map { it.id }.sorted())
     }

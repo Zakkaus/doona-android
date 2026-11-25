@@ -19,8 +19,8 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RV_MENU
 import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.feature.nodes.RV_PICKER
-import dev.doona.android.feature.nodes.ui.shareLink
 import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.data.shareLink
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule

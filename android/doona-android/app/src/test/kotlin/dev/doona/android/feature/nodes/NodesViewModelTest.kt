@@ -18,6 +18,7 @@ import dev.doona.android.engine.ScoreNetwork
 import dev.doona.android.engine.ScoreState
 import dev.doona.android.engine.ShareLink
 import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeRuleMode
 import dev.doona.android.feature.model.CoreNodePlaces
@@ -147,6 +148,16 @@ class NodesViewModelTest {
         assertEquals(MAIN, ui.state.mainGroupId)
         assertEquals(listOf("Harbor"), ui.state.subscriptions.map { it.name })
         assertEquals("sub.example.net", ui.state.subscriptions.single().host)
+    }
+
+    /** Only a share-link subscription's node has a link the core keeps (Engine.nodeShareLink); a legacy one, of no format, has none until refetched. */
+    @Test
+    fun aNodeIsShareableOnlyFromAShareLinkSubscription() {
+        val subs = listOf(SubscriptionFormat.ShareLinks, SubscriptionFormat.Clash, null).mapIndexed { i, f -> sub.copy(id = "s-$i", format = f) }
+        val members = subs.mapIndexed { i, it -> Member("n-$i", "Node 0$i", subscriptionId = it.id) } + Member("n-static", "Tokyo NRT")
+        val catalog = FakeEngine(groups = listOf(Group(MAIN, "Proxy", GroupKind.Selector, members, Group.Selection("n-0", pinned = true))), subscriptions = subs).catalog.value!!
+        val state = nodesState(catalog, emptyMap(), CoreNodePlaces, ungrouped = true)
+        assertEquals(listOf(true, false, false, false), state.nodes.map { it.shareable })
     }
 
     /** A hand-edited profile (owner, 2026-11-26): a main group of the user's own name over a nested group, no Proxy group, a node in no group. */

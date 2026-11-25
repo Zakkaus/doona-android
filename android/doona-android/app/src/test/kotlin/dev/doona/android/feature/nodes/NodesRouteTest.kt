@@ -14,7 +14,6 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithText
@@ -43,6 +42,7 @@ import dev.doona.android.engine.Network
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.ShareLink
 import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeRuleMode
 import dev.doona.android.feature.model.CoreNodePlaces
@@ -76,8 +76,8 @@ class NodesRouteTest {
     private val tested = CopyOnWriteArrayList<String?>()
     private val updated = CopyOnWriteArrayList<String>()
 
-    private fun engine(extra: List<Member> = emptyList(), udp: String? = null): Engine {
-        val sub = Subscription("s-1", "Harbor", "https://sub.example.net/token", nodes = 3, updatedAtEpochMs = 1L)
+    private fun engine(extra: List<Member> = emptyList(), udp: String? = null, format: SubscriptionFormat = SubscriptionFormat.ShareLinks): Engine {
+        val sub = Subscription("s-1", "Harbor", "https://sub.example.net/token", nodes = 3, updatedAtEpochMs = 1L, format = format)
         val members = listOf(
             Member("n-jp", "🇯🇵 Tokyo 01", subscriptionId = "s-1"),
             Member("n-odd", "🦄 Osaka 02", subscriptionId = "s-1"),
@@ -240,14 +240,37 @@ class NodesRouteTest {
         assertEquals(listOf("Osaka 01", "Tokyo 01"), rowNames())
     }
 
+    /** 依名稱 orders by the name the row draws (decision 2026-11-25 19:25): a name of a recognised emoji alone reads as its mark's name. */
+    @Test
+    fun `the picker's 依名稱 sorts a name of a mark alone by what the row draws`() {
+        val vm = viewModel(engine())
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true), onDetail = {}, onAdd = {}) {} } }
+        compose.waitForIdle()
+        compose.onNodeWithText("By latency").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Name").performClick()
+        compose.waitForIdle()
+        // 🍎 is drawn as Apple, so it sorts as Apple; 🦄 is no mark of ours and stays in the name.
+        assertEquals(listOf("Apple", "Tokyo 01", "🦄 Osaka 02"), rowNames(setOf("Apple", "Tokyo 01", "🦄 Osaka 02")))
+    }
+
+    /** The node's page tests that node alone, with one plan (the main group, which lists it), as its row's menu does. */
+    @Test
+    fun `the node's page 測試延遲 tests that node, not every group`() {
+        val vm = viewModel(engine())
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeRoute(vm, "n-jp", onBack = {}) } }
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("Test latency").performClick()
+        compose.waitUntil(5_000) { tested.isNotEmpty() }
+        assertEquals(listOf<String?>(MAIN), tested.toList())
+    }
+
     /** The node rows' names, top to bottom. */
-    private fun rowNames(): List<String> {
-        val names = setOf("Tokyo 01", "Osaka 01")
-        return compose.onAllNodes(hasText("01", substring = true), useUnmergedTree = true).fetchSemanticsNodes()
+    private fun rowNames(names: Set<String> = setOf("Tokyo 01", "Osaka 01")): List<String> =
+        compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.Text), useUnmergedTree = true).fetchSemanticsNodes()
             .sortedBy { it.positionInRoot.y }
             .mapNotNull { node -> node.config.getOrNull(SemanticsProperties.Text)?.joinToString("") { it.text }?.takeIf { it in names } }
             .distinct()
-    }
 
     @Test
     fun `with the networks apart the picker checks both nodes and 套用到 sends a pick to one network`() {
@@ -404,6 +427,19 @@ class NodesRouteTest {
         compose.onNodeWithText("Update").performClick()
         compose.waitUntil(5_000) { updated.isNotEmpty() }
         assertEquals(listOf("s-1"), updated.toList())
+    }
+
+    /** The core keeps a share link only for a share-link subscription's node (Engine.nodeShareLink): no other node offers one. */
+    @Test
+    fun `a node of a subscription that is not share links offers no share link`() {
+        val vm = viewModel(engine(format = SubscriptionFormat.Clash))
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {}) } }
+        compose.waitForIdle()
+        assertTrue(vm.ui.value.state.node("n-jp")!!.described)
+        compose.onAllNodesWithText("Tokyo 01").onFirst().performTouchInput { longClick() }
+        compose.waitForIdle()
+        compose.onNodeWithText("Test latency").assertExists()
+        compose.onNodeWithText("Copy share link").assertDoesNotExist()
     }
 
     @Test

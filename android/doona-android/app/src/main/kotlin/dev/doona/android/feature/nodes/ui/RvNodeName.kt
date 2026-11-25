@@ -3,12 +3,15 @@ package dev.doona.android.feature.nodes.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvNameDisc
 import dev.doona.android.designsystem.rv.RvNameMark
 import dev.doona.android.designsystem.rv.SEPARATOR
+import dev.doona.android.designsystem.rv.rvMarkLabel
 import dev.doona.android.designsystem.rv.rvMarkName
 import dev.doona.android.designsystem.rv.rvShownName
 import dev.doona.android.feature.model.RvNode
@@ -24,6 +27,22 @@ import dev.doona.android.feature.model.RvNode
 internal fun rvNodeTitle(node: RvNode): String {
     val shown = remember(node.name) { rvShownName(node.name) }
     return shown.text.ifEmpty { rvMarkName(shown.mark, stringResource(node.place.label)) }
+}
+
+/**
+ * Every row's [rvNodeTitle] outside composition, for the lists' 依名稱 (decision 2026-11-25 19:25: the name the row
+ * draws), read with the screen's strings.
+ */
+@Composable
+internal fun rememberRvNodeTitles(): (RvNode) -> String {
+    val resources = LocalContext.current.resources
+    val locale = LocalConfiguration.current.locales[0]
+    return remember(resources, locale) {
+        { node ->
+            val shown = rvShownName(node.name)
+            shown.text.ifEmpty { resources.getString(rvMarkLabel(shown.mark) ?: node.place.label) }
+        }
+    }
 }
 
 /** The disc of [node]'s row: the flag or mark its name's first recognised emoji became, else the flag of its place. */

@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv.data
 
 import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvNodeGroup
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.rvNodeGroups
@@ -17,7 +18,7 @@ class RvNodeOrderTest {
     fun failedAndUntestedNodesComeLastInEveryGroupUnderEveryKey() {
         assertTrue("the sample has a node whose last test timed out", nodes.count { it.latencyMs == null } >= 2)
         for (sort in RvNodeSort.entries) {
-            for (group in rvNodeGroups(nodes, RvData.subscriptions, sort)) {
+            for (group in rvNodeGroups(nodes, RvData.subscriptions, sort, RvNode::name)) {
                 val failed = group.nodes.indexOfFirst { it.latencyMs == null }
                 if (failed >= 0) assertTrue("$sort ${group.key}", group.nodes.drop(failed).all { it.latencyMs == null })
             }
@@ -27,7 +28,7 @@ class RvNodeOrderTest {
     @Test
     fun everyKeyShowsEveryNodeOnce() {
         for (sort in RvNodeSort.entries) {
-            val shown = rvNodeGroups(nodes, RvData.subscriptions, sort).flatMap { it.nodes }.map { it.id }
+            val shown = rvNodeGroups(nodes, RvData.subscriptions, sort, RvNode::name).flatMap { it.nodes }.map { it.id }
             assertEquals(sort.name, nodes.map { it.id }.sorted(), shown.sorted())
         }
     }
@@ -35,18 +36,18 @@ class RvNodeOrderTest {
     @Test
     fun latencyNameAndStabilityKeepTheSubscriptionsAndOrderInsideThem() {
         for (sort in listOf(RvNodeSort.Latency, RvNodeSort.Stability, RvNodeSort.Name)) {
-            val groups = rvNodeGroups(nodes, RvData.subscriptions, sort)
+            val groups = rvNodeGroups(nodes, RvData.subscriptions, sort, RvNode::name)
             assertEquals(RvData.subscriptions.map { it.id }, groups.map { it.key })
             groups.forEach { group ->
                 val sub = (group as RvNodeGroup.Subscription).subscription
                 assertTrue(group.nodes.all { it.subscription == sub.name })
             }
         }
-        rvNodeGroups(nodes, RvData.subscriptions, RvNodeSort.Latency).forEach { group ->
+        rvNodeGroups(nodes, RvData.subscriptions, RvNodeSort.Latency, RvNode::name).forEach { group ->
             val answered = group.nodes.mapNotNull { it.latencyMs }
             assertEquals(answered.sorted(), answered)
         }
-        rvNodeGroups(nodes, RvData.subscriptions, RvNodeSort.Name).forEach { group ->
+        rvNodeGroups(nodes, RvData.subscriptions, RvNodeSort.Name, RvNode::name).forEach { group ->
             val names = group.nodes.filter { it.latencyMs != null }.map { it.name }
             assertEquals(names.sortedWith(String.CASE_INSENSITIVE_ORDER), names)
         }
@@ -54,7 +55,7 @@ class RvNodeOrderTest {
 
     @Test
     fun stabilityPutsMoreAnsweredTestsFirstThenTheSmallerSpread() {
-        rvNodeGroups(nodes, RvData.subscriptions, RvNodeSort.Stability).forEach { group ->
+        rvNodeGroups(nodes, RvData.subscriptions, RvNodeSort.Stability, RvNode::name).forEach { group ->
             group.nodes.filter { it.latencyMs != null }.zipWithNext().forEach { (a, b) ->
                 assertTrue("${a.id} before ${b.id}", a.answered > b.answered || (a.answered == b.answered && (a.spreadMs ?: Double.MAX_VALUE) <= (b.spreadMs ?: Double.MAX_VALUE)))
             }
@@ -63,7 +64,7 @@ class RvNodeOrderTest {
 
     @Test
     fun regionGroupsEachCountryAcrossSubscriptionsFastestCountryFirst() {
-        val groups = rvNodeGroups(nodes, RvData.subscriptions, RvNodeSort.Region).map { it as RvNodeGroup.Place }
+        val groups = rvNodeGroups(nodes, RvData.subscriptions, RvNodeSort.Region, RvNode::name).map { it as RvNodeGroup.Place }
         // One card per country the sample has nodes in; 其他, for nodes with no country, has none in it.
         assertEquals(nodes.map { it.place }.toSet().size, groups.size)
         groups.forEach { group -> assertTrue(group.nodes.all { it.place == group.place }) }

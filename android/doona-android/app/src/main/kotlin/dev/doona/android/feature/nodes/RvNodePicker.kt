@@ -62,11 +62,11 @@ import dev.doona.android.designsystem.rv.rvGlassSource
 import dev.doona.android.designsystem.rv.rvPageArrived
 import dev.doona.android.designsystem.rv.rvShade
 import dev.doona.android.designsystem.rv.rvSharedSearch
+import dev.doona.android.feature.model.RV_INLINE
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.rvSectionOrder
-import dev.doona.android.feature.nodes.ui.RV_INLINE
 import dev.doona.android.feature.nodes.ui.RvApplyCard
 import dev.doona.android.feature.nodes.ui.RvApplyTo
 import dev.doona.android.feature.nodes.ui.RvNodeSection
@@ -74,6 +74,7 @@ import dev.doona.android.feature.nodes.ui.RvNodeSectionSkeleton
 import dev.doona.android.feature.nodes.ui.RvRowsComposed
 import dev.doona.android.feature.nodes.ui.inPicked
 import dev.doona.android.feature.nodes.ui.matches
+import dev.doona.android.feature.nodes.ui.rememberRvNodeTitles
 import dev.doona.android.feature.nodes.ui.rvNodeChips
 import dev.doona.android.feature.nodes.ui.rvPicked
 import kotlinx.coroutines.flow.first
@@ -143,6 +144,7 @@ internal fun RvNodePicker(
     val picked = rvPicked(chosen, nodes)
     var order by rememberSaveable { mutableStateOf(RvNodeSort.Latency) }
     val labels = nodes.associate { it.id to stringResource(it.place.label) }
+    val titles = rememberRvNodeTitles()
     val scoped = nodes.filter { inPicked(it, picked) }
     val matching = scoped.filter { it.matches(query.trim(), labels.getValue(it.id)) }.mapTo(mutableSetOf()) { it.id }
     // The sections shown: the picked subscription's, or all, then 組態內 (a null subscription) when it has nodes.
@@ -167,7 +169,7 @@ internal fun RvNodePicker(
                 }
                 var first = 0
                 sections.forEachIndexed { i, sub ->
-                    val members = rvSectionOrder(scoped.filter { it.subscriptionId == (sub?.id ?: RV_INLINE) }, order)
+                    val members = rvSectionOrder(scoped.filter { it.subscriptionId == (sub?.id ?: RV_INLINE) }, order, titles)
                     val rows = RvRowsComposed(first, composed)
                     // Keyed by section, so each keeps its open state while the 訂閱 chip changes which are listed.
                     key(sub?.id ?: RV_INLINE) {

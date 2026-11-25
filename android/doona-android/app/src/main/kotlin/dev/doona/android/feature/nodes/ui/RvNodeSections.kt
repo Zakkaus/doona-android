@@ -57,6 +57,7 @@ import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvPress
 import dev.doona.android.designsystem.rv.rvSharedFlag
 import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
+import dev.doona.android.feature.model.RV_INLINE
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSubscription
 import kotlinx.coroutines.flow.first

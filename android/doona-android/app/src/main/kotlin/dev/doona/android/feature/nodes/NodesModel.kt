@@ -84,15 +84,15 @@ internal fun rvScoreMarks(groups: List<ScoreGroup>): RvScoreMarks? = if (groups.
  * named by its server. [ungrouped] false (the read of [infos] failed, so they may be an older revision's) leaves those
  * nodes out. With no main group (a hand-edited profile may have none) no node is the current one.
  */
-internal fun nodesState(catalog: Catalog, infos: Map<String, NodeInfo>, places: NodePlaces, ungrouped: Boolean = true): NodesState {
-    val names = catalog.subscriptions.associate { it.id to it.name }
+internal fun nodesState(catalog: Catalog, infos: Map<String, NodeInfo>, places: NodePlaces, ungrouped: Boolean): NodesState {
+    val subscriptions = catalog.subscriptions.associateBy { it.id }
     val grouped = rvLeafMembers(catalog)
     val listed = grouped.mapTo(HashSet()) { it.id }
     val members = if (ungrouped) grouped + infos.values.filter { it.id !in listed }.map { Member(it.id, it.server) } else grouped
     val groups = catalog.groups.associateBy { it.id }
     val main = groups[catalog.mainGroupId]
     return NodesState(
-        nodes = members.map { m -> rvNode(m, infos[m.id], m.subscriptionId?.let { id -> RvSource(id, names[id].orEmpty()) }, places) },
+        nodes = members.map { m -> rvNode(m, infos[m.id], m.subscriptionId?.let { id -> RvSource(id, subscriptions[id]?.name.orEmpty(), subscriptions[id]?.format) }, places) },
         subscriptions = catalog.subscriptions.map(::rvSubscription),
         currentId = main?.let { rvSelectedLeaf(it, Network.Tcp, groups) }.orEmpty(),
         mainGroupId = main?.id,
@@ -102,8 +102,8 @@ internal fun nodesState(catalog: Catalog, infos: Map<String, NodeInfo>, places: 
     )
 }
 
-/** The subscription a node came from: its id and its name. */
-internal class RvSource(val id: String, val name: String)
+/** The subscription a node came from: its id, its name and its format (null for a legacy one the core has not refetched). */
+internal class RvSource(val id: String, val name: String, val format: SubscriptionFormat?)
 
 /**
  * A node as the pages show it. The history is the core's last tests, oldest first; a node the core has no details for
@@ -132,6 +132,7 @@ internal fun rvNode(member: Member, info: NodeInfo?, source: RvSource?, places: 
         subscription = source?.name.orEmpty(),
         subscriptionId = source?.id.orEmpty(),
         history = history,
+        shareable = source?.format == SubscriptionFormat.ShareLinks,
     )
 }
 

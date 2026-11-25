@@ -5,6 +5,7 @@ import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvChipPick
 import dev.doona.android.designsystem.rv.RvMenuItem
+import dev.doona.android.feature.model.RV_INLINE
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvSubscription
@@ -49,9 +50,6 @@ internal fun rvPicked(picked: String?, nodes: List<RvNode>): String? = picked?.t
 
 /** Whether [node] is in the chips' [subscription] (an id): every node for null, the nodes of no subscription for [RV_INLINE]. */
 internal fun inPicked(node: RvNode, subscription: String?): Boolean = subscription == null || node.subscriptionId == subscription
-
-/** The 訂閱 chip's value for the nodes of no subscription: their [RvNode.subscriptionId]. */
-internal const val RV_INLINE = ""
 
 /** The order chip's label: 依延遲 and its kin. */
 private fun RvNodeSort.chipLabel(): Int = when (this) {

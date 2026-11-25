@@ -143,7 +143,7 @@ class NodesViewModel internal constructor(
     }
 
     /**
-     * Tests [nodeId] from a row's menu with one plan: the core probes a group's members, and each plan starts a new probe
+     * Tests [nodeId] (a row's menu, the node's page) with one plan: the core probes a group's members, and each plan starts a new probe
      * round for every node it reaches (a result from an older round is dropped), so this tests one group that lists the
      * node, the main group when it does, or every group when none does.
      */

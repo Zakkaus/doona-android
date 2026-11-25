@@ -80,6 +80,7 @@ import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.rvNodeGroups
 import dev.doona.android.feature.nodes.ui.RvNodeGroups
 import dev.doona.android.feature.nodes.ui.RvNodeListControls
+import dev.doona.android.feature.nodes.ui.rememberRvNodeTitles
 
 /**
  * Where the 策略 tab leads: a group's page, the main node's picker, all rules, the template, a new rule, the other tabs,
@@ -300,7 +301,8 @@ private fun mainLine(main: RvPolicyGroup): String =
 @Composable
 private fun GlobalPicker(state: RvPolicyState, profile: RvPolicyProfile, onChange: (RvPolicyState) -> Unit) {
     val main = state.group(profile.main)
-    val groups = remember(state.nodeSort, profile.nodes, profile.subscriptions) { rvNodeGroups(profile.nodes, profile.subscriptions, state.nodeSort) }
+    val titles = rememberRvNodeTitles()
+    val groups = remember(state.nodeSort, profile.nodes, profile.subscriptions, titles) { rvNodeGroups(profile.nodes, profile.subscriptions, state.nodeSort, titles) }
     RvControlRow({ RvNodeListControls(state.nodeSort, { onChange(state.copy(nodeSort = it)) }, onSearch = null) })
     RvNodeGroups(groups, main.selectedId, state.nodeSort, profile.nowEpochMs) { onChange(state.choose(main.id, it)) }
 }
