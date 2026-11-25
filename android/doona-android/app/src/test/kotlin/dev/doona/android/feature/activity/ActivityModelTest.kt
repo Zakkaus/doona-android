@@ -1,5 +1,6 @@
 package dev.doona.android.feature.activity
 
+import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.DayUsage
 import dev.doona.android.engine.ErrorCode
@@ -88,6 +89,20 @@ class ActivityModelTest {
     }
 
     @Test
+    fun `any hand-edited order and naming finds the main group by its id, and none leaves no main node`() {
+        // A config the user wrote: no group called Proxy, the main group last, the groups in reverse.
+        val renamed = main.copy(id = "g-Out", name = "Out")
+        val reordered = Catalog(Mode.Rule, listOf(ai, streaming, auto, first, renamed).reversed(), listOf(sub), "g-Out", FakeRuleMode.SOURCE)
+        assertEquals("n-2", activityCatalog(data(reordered)).node?.id)
+        assertEquals("n-2", activityCatalog(data(reordered.copy(groups = reordered.groups.reversed()))).node?.id)
+        // A main group id that names no group: no node is claimed (the page draws its no-node row), and the rest maps.
+        val missing = activityCatalog(data(reordered.copy(mainGroupId = "g-Gone")))
+        assertNull(missing.node)
+        assertEquals("", missing.cards.mainNodeId)
+        assertEquals(listOf(null, "Streaming", "AI"), missing.rules.map { it.label })
+    }
+
+    @Test
     fun `direct uses no node, while the cards still know the main group's choice`() {
         val mapped = activityCatalog(data(catalog(Mode.Direct)))
         assertNull(mapped.node)
@@ -122,6 +137,46 @@ class ActivityModelTest {
         val same = streaming.withSharedSelection("n-1", true)
         val rules = activityCatalog(data(catalog(groups = listOf(first, auto, main, same, ai)))).rules
         assertNull(rules.first { it.groupId == "g-Stream" }.udpNodeId)
+    }
+
+    @Test
+    fun `a rule row never repeats its title as its subtitle`() {
+        val direct = activityCatalog(data()).rules.single { it.label == null }
+        // A rule that sends to 直連 ends on no node: its line would be 直連 again, so it has none.
+        assertEquals(RuleRowText("直連", null), ruleRowText(direct.label, "直連", "直連"))
+        assertEquals(RuleRowText("Streaming", "Taipei 01"), ruleRowText("Streaming", "Taipei 01", "直連"))
+        // A group named as its node: the name once.
+        assertEquals(RuleRowText("Tokyo 02", null), ruleRowText("Tokyo 02", "Tokyo 02", "直連"))
+    }
+
+    @Test
+    fun `a node's place is the region the core reads from its name, else the name's`() {
+        val tw = n1.copy(region = "TW")
+        val kr = n3.copy(region = "kr")
+        val unknown = n2.copy(region = "XX")
+        val placed = catalog(groups = listOf(Group("g-Stream", "Streaming", GroupKind.Selector, listOf(tw, unknown, kr), Group.Selection("n-1", true), Group.Selection("n-3", true))))
+        val nodes = activityNodes(placed, emptyMap()) { if (it == "Tokyo 02") RvPlace.JP else RvPlace.Other }.byId
+        assertEquals(RvPlace.TW, nodes.getValue("n-1").place)
+        assertEquals(RvPlace.KR, nodes.getValue("n-3").place)
+        // A code the place table does not list falls back to the name.
+        assertEquals(RvPlace.JP, nodes.getValue("n-2").place)
+    }
+
+    @Test
+    fun `a rule row whose TCP and UDP nodes are in different places leads with its group's glyph`() {
+        // The placed group first: a node's first listing is the one mapped.
+        val placed = catalog(groups = listOf(streaming.copy(members = listOf(n1.copy(region = "TW"), n2, n3.copy(region = "KR"))), main, auto))
+        val catalogNodes = activityNodes(placed, emptyMap())
+        val ui = activityCatalog(data(placed), catalogNodes)
+        val rule = ui.rules.single { it.groupId == "g-Stream" }
+        val node = catalogNodes.byId.getValue(checkNotNull(rule.nodeId))
+        val udp = catalogNodes.byId.getValue(checkNotNull(rule.udpNodeId))
+        assertEquals(RuleLead.GroupGlyph, ruleLead(node, udp))
+        // In one place, or with no place for either, the one flag stands for both.
+        assertEquals(RuleLead.Flag, ruleLead(node, udp.copy(place = RvPlace.TW)))
+        assertEquals(RuleLead.Flag, ruleLead(node.copy(place = RvPlace.Other), udp.copy(place = RvPlace.Other)))
+        assertEquals(RuleLead.Flag, ruleLead(node, null))
+        assertEquals(RuleLead.Direct, ruleLead(null, null))
     }
 
     @Test

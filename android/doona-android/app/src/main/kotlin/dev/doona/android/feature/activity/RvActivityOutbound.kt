@@ -67,33 +67,36 @@ private fun groupGlyph(kind: RvGroupKind?): Int = (kind ?: RvGroupKind.Select).g
 
 /**
  * A rule group that sent traffic today: the node's flag, or for 直連 its own straight arrow (the diamond is the mode's), the
- * group (直連 when the rules send there themselves), its node, its bytes; a tap opens the group, or the rules for 直連. A group whose UDP uses another node (a sample) names both, a line each, each after its
- * network (`TCP Taipei 04`, `UDP Hong Kong 01`); when the two are in different regions no one flag stands for them, and
- * the group's glyph (how it picks, as 策略 draws the group) leads the row.
+ * group (直連 when the rules send there themselves, then with no subtitle: [ruleRowText]), its node, its bytes; a tap
+ * opens the group, or the rules for 直連. A group whose UDP uses another node (a sample) names both, a line each, each
+ * after its network (`TCP Taipei 04`, `UDP Hong Kong 01`); when the two are in different places no one flag stands for
+ * them, and the group's glyph (how it picks, as 策略 draws the group) leads the row ([ruleLead]).
  */
 @Composable
 private fun RuleRow(rule: RvActivityRule, cards: RvActivityCards, routes: RvActivityRoutes) {
     val format = rememberRvFormat()
     val node = rule.nodeId?.let(cards.node)
     val udp = rule.udpNodeId?.takeIf { it != rule.nodeId }?.let(cards.node)
+    val direct = stringResource(R.string.mode_direct)
     val line = when {
-        node == null -> stringResource(R.string.mode_direct)
+        node == null -> direct
 
         udp == null -> node.name
 
         else -> stringResource(R.string.rv_network_node, stringResource(R.string.ui_tcp), node.name) + "\n" +
             stringResource(R.string.rv_network_node, stringResource(R.string.ui_udp), udp.name)
     }
+    val text = ruleRowText(rule.label, line, direct)
     RvRow(
         {
-            when {
-                node == null -> RvIconDisc(R.drawable.rv_sym_arrow_right_alt)
-                udp != null && udp.place != node.place -> RvIconDisc(groupGlyph(rule.groupId?.let(cards.groupKind)))
-                else -> RvFlag(node.place.flag, RvSize.rowDisc)
+            when (ruleLead(node, udp)) {
+                RuleLead.Direct -> RvIconDisc(R.drawable.rv_sym_arrow_right_alt)
+                RuleLead.GroupGlyph -> RvIconDisc(groupGlyph(rule.groupId?.let(cards.groupKind)))
+                RuleLead.Flag -> RvFlag(node?.place?.flag, RvSize.rowDisc)
             }
         },
-        rule.label ?: stringResource(R.string.mode_direct),
-        line,
+        text.title,
+        text.subtitle,
         onClick = { rule.groupId?.let(routes.rule) ?: routes.rules() },
         titleKeepWords = false,
         subtitleKeepWords = false,

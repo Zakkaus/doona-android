@@ -69,7 +69,7 @@ internal class ActivityNodes(val nodes: List<RvNode>, val allFailed: Boolean) {
 
 /**
  * [catalog]'s nodes, each with its endpoint and tests from [nodeInfo] or, before they are read, its member's last
- * result; [placeOf] gives a node's place by its name.
+ * result, and its place: the region the core reads from its name ([Member.region]), else [placeOf] by its name.
  */
 internal fun activityNodes(catalog: Catalog?, nodeInfo: Map<String, NodeInfo>, placeOf: (String) -> RvPlace = { RvPlace.Other }): ActivityNodes {
     val subscriptionNames = catalog?.subscriptions.orEmpty().associate { it.id to it.name }
@@ -192,6 +192,32 @@ private fun ruleRows(catalog: Catalog, byRule: List<RuleBytes>, rows: Map<String
     }.sortedByDescending { it.bytes }
 }
 
+/**
+ * A rule row's words: the group's [label], or for 直連 the mode word ([direct]), over [line], the node or nodes it ends
+ * on (also [direct] when it ends on none). A row never repeats its title as its subtitle (a rule that sends to 直連 is
+ * 直連 over nothing), so [line] is dropped when it reads the same as the title.
+ */
+internal fun ruleRowText(label: String?, line: String, direct: String): RuleRowText {
+    val title = label ?: direct
+    return RuleRowText(title, line.takeUnless { it == title })
+}
+
+internal data class RuleRowText(val title: String, val subtitle: String?)
+
+/** What leads a rule row ([ruleLead]). */
+internal enum class RuleLead { Direct, GroupGlyph, Flag }
+
+/**
+ * What leads a rule row that ends on [node] (TCP) and [udp] (its UDP node, when that is another one): 直連's arrow when
+ * it ends on no node; the group's glyph when the two nodes are in different places, since no one flag stands for both;
+ * else the node's flag.
+ */
+internal fun ruleLead(node: RvNode?, udp: RvNode?): RuleLead = when {
+    node == null -> RuleLead.Direct
+    udp != null && udp.place != node.place -> RuleLead.GroupGlyph
+    else -> RuleLead.Flag
+}
+
 /** A group's row: its TCP node, and its UDP node when that is another one. */
 private fun groupRule(group: Group, bytes: Long, groups: Map<String, Group>): RvActivityRule {
     val tcp = selectedLeaf(group, group.tcp.selectedId, groups)
@@ -210,7 +236,7 @@ private fun rvNode(member: Member, info: NodeInfo?, subscriptions: Map<String, S
         name = member.name,
         // P3c's place mapper gives the country code and number; until then the narrow tiles show the name.
         short = member.name,
-        place = placeOf(member.name),
+        place = member.region?.let(::placeOfRegion) ?: placeOf(member.name),
         city = null,
         protocol = protocolLabel(info?.protocol.orEmpty()),
         host = info?.server.orEmpty(),
@@ -221,6 +247,9 @@ private fun rvNode(member: Member, info: NodeInfo?, subscriptions: Map<String, S
         history = history,
     )
 }
+
+/** The place whose ISO code is [code]; null for a code the place table does not list. */
+internal fun placeOfRegion(code: String): RvPlace? = RvPlace.entries.firstOrNull { it.flag.equals(code, ignoreCase = true) }
 
 /** A member's last result as a one-test history: its latency, a timeout when it failed, nothing when never tested. */
 private fun memberHistory(member: Member): List<Int?> = when {
