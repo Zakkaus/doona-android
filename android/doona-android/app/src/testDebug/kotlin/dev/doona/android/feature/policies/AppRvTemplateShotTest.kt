@@ -89,6 +89,14 @@ class AppRvTemplateShotTest {
     fun impactLoadingLight() = shot("template-impact-loading", dark = false) { TemplateImpactRoute(Late(), "cn-direct", onBack = {}, onApplied = {}) }
 
     @Test
+    fun impactLoadingDark() = shot("template-impact-loading", dark = true) { TemplateImpactRoute(Late(), "cn-direct", onBack = {}, onApplied = {}) }
+
+    @Test
+    fun impactLoadingFs200() = shot("template-impact-loading", dark = false, fontScale = RV_FS200) {
+        TemplateImpactRoute(Late(), "cn-direct", onBack = {}, onApplied = {})
+    }
+
+    @Test
     fun impactDark() = shot("template-impact", dark = true) { TemplateImpactRoute(handWritten(), "cn-direct", onBack = {}, onApplied = {}) }
 
     @Test
@@ -150,18 +158,24 @@ class AppRvTemplateShotTest {
         assertEquals(1, left)
     }
 
-    /** Before the catalog is read 套用 does nothing; once it is, the review shows and 套用 sets the template. */
+    /**
+     * Before the catalog is read 套用 does nothing and the line on new connections waits; once it is, the review shows
+     * with that line, and 套用 sets the template.
+     */
     @Test
     fun theReviewWaitsForTheCatalog() {
         val engine = Late()
         var left = 0
         compose.rvContent(dark = false) { TemplateImpactRoute(engine, "cn-direct", onBack = {}, onApplied = { left++ }) }
         val apply = compose.onNode(hasText(text(R.string.rv_policy_apply)), useUnmergedTree = true)
+        val footnote = compose.onNode(hasText(text(R.string.rv_template_new_flows)), useUnmergedTree = true)
+        footnote.assertDoesNotExist()
         apply.performClick()
         compose.waitForIdle()
         assertEquals(emptyList<String>(), engine.applied)
         engine.read.value = engine.loaded
         compose.waitForIdle()
+        footnote.assertExists()
         apply.performClick()
         compose.waitForIdle()
         assertEquals(listOf("cn-direct"), engine.applied)

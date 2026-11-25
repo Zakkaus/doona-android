@@ -222,6 +222,17 @@ internal fun RvSkeletonHeader(title: String? = null) {
     ) { if (title != null) RvSkeletonLabel(title, Rv.type.cardTitle, maxLines = 1) else RvSkeletonLine(Rv.type.cardTitle, RvSkeletonSize.HEADER) }
 }
 
+/**
+ * [RvSectionTitle]'s skeleton: its [title]'s bar (the page knows it before its data) on the title's one line, in its gaps
+ * above and below, under its own shimmer; past [LocalRvContentFloor] it keeps its place undrawn, as a skeleton row does.
+ */
+@Composable
+internal fun RvSkeletonSection(title: String, modifier: Modifier = Modifier) {
+    Box(modifier.padding(top = RvSpace.sectionAbove, bottom = RvSpace.sectionBelow).rvAboveFloor().rvShimmer()) {
+        RvSkeletonLabel(title, Rv.type.section, maxLines = 1)
+    }
+}
+
 /** [RvSeeAll]'s skeleton: its bar centred in the see-all line's height, on a line of words and a count. */
 @Composable
 internal fun RvSkeletonSeeAll() {
