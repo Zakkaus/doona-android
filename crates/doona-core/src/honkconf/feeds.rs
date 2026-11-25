@@ -12,6 +12,7 @@ use std::time::Duration;
 
 use honk_config::node::Node;
 use honk_config::parser::{SourceLimits, parse_dae_sources};
+use uuid::Uuid;
 
 use super::HonkConfig;
 use crate::dto::{ErrorCode, SubscriptionFormat};
@@ -42,8 +43,8 @@ pub struct Authored {
 /// One `subscription` declaration.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Provider {
-    /// `s-` and the tag; a second entry with the same tag gets `#2`, a third `#3`, in source
-    /// order. Node ids are scoped by it.
+    /// `s-` and 16 hex digits of the tag and URL, so another entry never shifts it. Entries
+    /// that repeat both get `#2`, `#3`, in source order. Node ids are scoped by it.
     pub id: String,
     pub name: String,
     pub url: String,
@@ -57,7 +58,7 @@ pub struct Provider {
 pub fn providers(config: &HonkConfig) -> Vec<Provider> {
     let cfg = config.config();
     let assets = cfg.assets.subscription.interval.is_some();
-    let mut seen = BTreeMap::<&str, usize>::new();
+    let mut seen = BTreeMap::<String, usize>::new();
     cfg.subscriptions
         .iter()
         .zip(own_intervals(config))
@@ -67,12 +68,13 @@ pub fn providers(config: &HonkConfig) -> Vec<Provider> {
             } else {
                 assets.then_some(IntervalSource::Assets)
             };
-            let n = seen.entry(&sub.name).or_default();
+            let id = provider_id(&sub.name, &sub.url);
+            let n = seen.entry(id.clone()).or_default();
             *n += 1;
             Provider {
                 id: match n {
-                    1 => format!("s-{}", sub.name),
-                    n => format!("s-{}#{n}", sub.name),
+                    1 => id,
+                    n => format!("{id}#{n}"),
                 },
                 name: sub.name.clone(),
                 url: sub.url.clone(),
@@ -84,6 +86,13 @@ pub fn providers(config: &HonkConfig) -> Vec<Provider> {
             }
         })
         .collect()
+}
+
+/// A hash, because the URL often carries the account's token and ids are shown and logged.
+fn provider_id(tag: &str, url: &str) -> String {
+    let url = Uuid::new_v5(&Uuid::NAMESPACE_URL, url.as_bytes());
+    let hash = Uuid::new_v5(&url, tag.as_bytes()).simple().to_string();
+    format!("s-{}", &hash[..16])
 }
 
 /// For each subscription in order, whether its entry writes `interval` itself. honk merges that

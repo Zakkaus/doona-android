@@ -1,6 +1,7 @@
 //! Lane c7-feeds: provider declarations, feed bodies and the refresh schedule.
 mod common;
 
+use std::collections::BTreeSet;
 use std::fs;
 use std::io::{Read, Write};
 use std::net::TcpListener;
@@ -21,10 +22,14 @@ fn fixture(name: &str) -> String {
 }
 
 fn config(name: &str) -> HonkConfig {
+    parse(&fixture(name))
+}
+
+fn parse(text: &str) -> HonkConfig {
     let dir = TempDir::new("honk-feeds");
     let path = dir.path().join("main.dae");
-    fs::write(&path, fixture(name)).unwrap();
-    load(path).unwrap_or_else(|e| panic!("{name}: {e}"))
+    fs::write(&path, text).unwrap();
+    load(path).unwrap_or_else(|e| panic!("{e}: {text}"))
 }
 
 fn provider(id: &str, interval: Option<(u32, IntervalSource)>) -> Provider {
@@ -51,14 +56,14 @@ fn entry_interval_beats_assets_and_assets_beats_the_default() {
     let providers = feeds::providers(&config("assets.dae"));
     let seen: Vec<_> = providers
         .iter()
-        .map(|p| (p.id.as_str(), p.interval.map(|a| (a.seconds, a.source))))
+        .map(|p| (p.name.as_str(), p.interval.map(|a| (a.seconds, a.source))))
         .collect();
     assert_eq!(
         seen,
         [
-            ("s-inherits", Some((21_600, IntervalSource::Assets))),
-            ("s-own", Some((3_600, IntervalSource::Subscription))),
-            ("s-agent", Some((21_600, IntervalSource::Assets))),
+            ("inherits", Some((21_600, IntervalSource::Assets))),
+            ("own", Some((3_600, IntervalSource::Subscription))),
+            ("agent", Some((21_600, IntervalSource::Assets))),
         ]
     );
 }
@@ -78,16 +83,16 @@ fn an_interval_written_as_honks_default_is_still_the_entrys_own() {
     let providers = feeds::providers(&config("plain.dae"));
     let seen: Vec<_> = providers
         .iter()
-        .map(|p| (p.id.as_str(), p.interval.map(|a| (a.seconds, a.source))))
+        .map(|p| (p.name.as_str(), p.interval.map(|a| (a.seconds, a.source))))
         .collect();
     assert_eq!(
         seen,
         [
-            ("s-bare", None),
-            ("s-day", Some((86_400, IntervalSource::Subscription))),
-            ("s-my feed", Some((3_600, IntervalSource::Subscription))),
-            ("s-manual", Some((0, IntervalSource::Subscription))),
-            ("s-old", Some((21_600, IntervalSource::Subscription))),
+            ("bare", None),
+            ("day", Some((86_400, IntervalSource::Subscription))),
+            ("my feed", Some((3_600, IntervalSource::Subscription))),
+            ("manual", Some((0, IntervalSource::Subscription))),
+            ("old", Some((21_600, IntervalSource::Subscription))),
         ]
     );
 }
@@ -100,7 +105,7 @@ fn entries_with_one_tag_get_distinct_ids_and_their_own_interval() {
         .map(|p| {
             let url = p.url.rsplit('/').next().unwrap();
             (
-                p.id.as_str(),
+                p.name.as_str(),
                 url,
                 p.interval.map(|a| (a.seconds, a.source)),
             )
@@ -109,16 +114,18 @@ fn entries_with_one_tag_get_distinct_ids_and_their_own_interval() {
     assert_eq!(
         seen,
         [
-            ("s-twin", "one", Some((10_800, IntervalSource::Assets))),
-            ("s-other", "other", Some((10_800, IntervalSource::Assets))),
-            (
-                "s-twin#2",
-                "two",
-                Some((7_200, IntervalSource::Subscription))
-            ),
-            ("s-twin#3", "three", Some((10_800, IntervalSource::Assets))),
+            ("twin", "one", Some((10_800, IntervalSource::Assets))),
+            ("other", "other", Some((10_800, IntervalSource::Assets))),
+            ("twin", "two", Some((7_200, IntervalSource::Subscription))),
+            // The same tag and URL as the first, with its own interval.
+            ("twin", "one", Some((3_600, IntervalSource::Subscription))),
         ]
     );
+    let ids: Vec<_> = providers.iter().map(|p| p.id.as_str()).collect();
+    // Stored with pins and statistics, so the value itself must not move.
+    assert_eq!(ids[0], "s-843aa99325295210");
+    assert_eq!(ids[3], format!("{}#2", ids[0]));
+    assert_eq!(BTreeSet::from_iter(&ids).len(), 4);
 }
 
 #[test]
@@ -126,16 +133,16 @@ fn every_form_honk_accepts_gives_the_entrys_own_interval() {
     let providers = feeds::providers(&config("wrapper.dae"));
     let seen: Vec<_> = providers
         .iter()
-        .map(|p| (p.id.as_str(), p.interval.map(|a| (a.seconds, a.source))))
+        .map(|p| (p.name.as_str(), p.interval.map(|a| (a.seconds, a.source))))
         .collect();
     assert_eq!(
         seen,
         [
-            ("s-a", Some((21_600, IntervalSource::Subscription))),
-            ("s-b", Some((43_200, IntervalSource::Assets))),
+            ("a", Some((21_600, IntervalSource::Subscription))),
+            ("b", Some((43_200, IntervalSource::Assets))),
             // honk reads `30s {` as an unsupported duration and falls back to 0.
-            ("s-quick", Some((0, IntervalSource::Subscription))),
-            ("s-old", Some((7_200, IntervalSource::Subscription))),
+            ("quick", Some((0, IntervalSource::Subscription))),
+            ("old", Some((7_200, IntervalSource::Subscription))),
         ]
     );
 }
@@ -161,6 +168,27 @@ fn a_scalar_value_is_the_entrys_own_and_a_nested_entry_is_not() {
 }
 
 #[test]
+fn inserting_an_entry_with_the_same_tag_keeps_the_other_ids() {
+    let ids = |tags: &[&str]| -> Vec<(String, String)> {
+        let entries: String = tags
+            .iter()
+            .map(|path| format!("    twin: 'https://feeds.example.net/{path}'\n"))
+            .collect();
+        let text = format!("subscription {{\n{entries}}}\nrouting {{ fallback: direct }}");
+        feeds::providers(&parse(&text))
+            .into_iter()
+            .map(|p| (p.url, p.id))
+            .collect()
+    };
+    let one = ids(&["one"]);
+    let two = ids(&["one", "two"]);
+    let inserted = ids(&["zero", "one", "two"]);
+    assert_eq!(two[0], one[0]);
+    assert_eq!(inserted[1..], two);
+    assert_ne!(inserted[0].1, inserted[1].1);
+}
+
+#[test]
 fn an_interval_too_long_for_u32_saturates() {
     let providers = feeds::providers(&config("huge.dae"));
     let interval = providers[0].interval.unwrap();
@@ -170,7 +198,7 @@ fn an_interval_too_long_for_u32_saturates() {
     let t0 = 1_000;
     schedule.refresh_due(&mut claims, &providers, t0);
     let mut schedule = schedule;
-    schedule.finish(&mut claims, &providers, "s-huge", true, t0);
+    schedule.finish(&mut claims, &providers, &providers[0].id, true, t0);
     let overview = schedule.overview(&claims, &providers, t0);
     assert_eq!(
         overview.next_refresh_at,
@@ -464,69 +492,63 @@ fn a_late_result_for_a_removed_or_changed_provider_is_dropped() {
     schedule.refresh_due(&mut claims, std::slice::from_ref(&original), t0);
     assert!(!schedule.finish(&mut claims, &[], "s-a", true, t0 + 1));
 
-    // The URL changed while the fetch ran.
-    let mut moved = original.clone();
-    moved.url = "https://feeds.example.net/moved".into();
+    // The User-Agent changed while the fetch ran.
+    let mut edited = original.clone();
+    edited.user_agent = Some("custom/2".into());
     schedule.refresh_due(&mut claims, std::slice::from_ref(&original), t0);
     assert!(!schedule.finish(
         &mut claims,
-        std::slice::from_ref(&moved),
+        std::slice::from_ref(&edited),
         "s-a",
         true,
         t0 + 1
     ));
 
     // Neither result was recorded: the provider is still due at once.
-    let again = schedule.refresh_due(&mut claims, std::slice::from_ref(&moved), t0 + 2);
-    assert_eq!(again.claimed, [moved]);
+    let again = schedule.refresh_due(&mut claims, std::slice::from_ref(&edited), t0 + 2);
+    assert_eq!(again.claimed, [edited]);
 }
 
 #[test]
 fn a_refused_claim_does_not_replace_the_fetch_in_flight() {
     let original = provider("s-a", None);
-    let mut moved = original.clone();
-    moved.url = "https://feeds.example.net/moved".into();
+    let mut edited = original.clone();
+    edited.user_agent = Some("custom/2".into());
     let mut schedule = Schedule::default();
     let mut claims = Claims::default();
     assert!(claims.claim(&original));
     assert!(
-        !claims.claim(&moved),
-        "a manual update of the edited URL joins the fetch"
+        !claims.claim(&edited),
+        "a manual update after the edit joins the fetch"
     );
-    // The body fetched from the old URL is not recorded under the new one.
-    assert!(!schedule.finish(&mut claims, std::slice::from_ref(&moved), "s-a", true, 1));
+    // The body fetched with the old User-Agent is not recorded under the new one.
+    assert!(!schedule.finish(&mut claims, std::slice::from_ref(&edited), "s-a", true, 1));
 }
 
 #[test]
-fn an_id_given_to_another_feed_does_not_inherit_the_old_progress() {
-    let old = provider("s-twin#2", None);
-    let mut replaced = old.clone();
-    replaced.url = "https://feeds.example.net/new".into();
+fn a_changed_user_agent_does_not_inherit_the_old_progress() {
+    let old = provider("s-a", None);
+    let mut edited = old.clone();
+    edited.user_agent = Some("custom/2".into());
     let mut schedule = Schedule::default();
     let mut claims = Claims::default();
     let t0 = 20_000_000_000;
     schedule.refresh_due(&mut claims, std::slice::from_ref(&old), t0);
-    assert!(schedule.finish(
-        &mut claims,
-        std::slice::from_ref(&old),
-        "s-twin#2",
-        true,
-        t0
-    ));
+    assert!(schedule.finish(&mut claims, std::slice::from_ref(&old), "s-a", true, t0));
 
-    let due = schedule.refresh_due(&mut claims, std::slice::from_ref(&replaced), t0 + 1);
-    assert_eq!(due.claimed, [replaced.clone()]);
+    let due = schedule.refresh_due(&mut claims, std::slice::from_ref(&edited), t0 + 1);
+    assert_eq!(due.claimed, [edited.clone()]);
     assert!(schedule.finish(
         &mut claims,
-        std::slice::from_ref(&replaced),
-        "s-twin#2",
+        std::slice::from_ref(&edited),
+        "s-a",
         false,
         t0 + 2
     ));
-    let again = schedule.refresh_due(&mut claims, std::slice::from_ref(&replaced), t0 + 3);
+    let again = schedule.refresh_due(&mut claims, std::slice::from_ref(&edited), t0 + 3);
     assert!(
         again.claimed.is_empty(),
-        "the new feed's own failure is remembered"
+        "the new User-Agent's own failure is remembered"
     );
 }
 
@@ -540,7 +562,7 @@ fn the_record_round_trips_as_camel_case_json() {
     let text = serde_json::to_string(&schedule).unwrap();
     assert_eq!(
         text,
-        r#"{"enabled":true,"defaultHours":12,"progress":{"s-a":{"url":"https://feeds.example.net/s-a","userAgent":null,"lastSuccessMs":42,"lastFailureMs":null}}}"#
+        r#"{"enabled":true,"defaultHours":12,"progress":{"s-a":{"userAgent":null,"lastSuccessMs":42,"lastFailureMs":null}}}"#
     );
     assert_eq!(serde_json::from_str::<Schedule>(&text).unwrap(), schedule);
 }
