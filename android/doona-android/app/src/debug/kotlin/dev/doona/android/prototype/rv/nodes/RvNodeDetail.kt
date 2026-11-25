@@ -70,7 +70,10 @@ internal fun RvNodeDetail(
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val format = rememberRvFormat()
-    val times = testedAtEpochMs.map(format::time)
+    // One time per test, the latest time the latest test's: a node probed fewer rounds than the list holds (one probe
+    // after an import) reads its own time, and a test the list has no time for reads as a dash.
+    val offset = testedAtEpochMs.size - node.history.size
+    val times = node.history.indices.map { i -> testedAtEpochMs.getOrNull(offset + i)?.let(format::time) ?: RV_NO_VALUE }
     // Only a test the user picked is kept; with none picked, or one the history no longer has, the latest is shown.
     var choice by rememberSaveable(node.id) { mutableIntStateOf(NONE_PICKED) }
     val picked = choice.takeIf { it in node.history.indices } ?: node.history.lastIndex

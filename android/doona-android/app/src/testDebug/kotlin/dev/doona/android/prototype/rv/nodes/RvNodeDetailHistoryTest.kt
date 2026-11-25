@@ -62,11 +62,52 @@ class RvNodeDetailHistoryTest {
         assertFigure(node.history.first())
     }
 
-    private fun show() {
+    /** One probe against every round's time: the probe is the latest test, so it reads the latest round's time. */
+    @Test
+    fun oneTestReadsTheLatestTimeOfALongerList() {
+        probes = 1
+        show(times = { rvTestTimes() })
+        assertFigure(node.history.first())
+        assertHasText(LATEST)
+        assertNoText(OLDEST)
+    }
+
+    /** No probe against every round's time: 上次測試 is a dash, not a round the node never had. */
+    @Test
+    fun noTestReadsNoTimeFromALongerList() {
+        probes = 0
+        show(times = { rvTestTimes() })
+        assertNoText(LATEST)
+        assertNoText(OLDEST)
+    }
+
+    /** Every test with only the latest time: the page opens, the latest test reads that time and the rest a dash. */
+    @Test
+    fun aShorterListOfTimesDoesNotCrash() {
+        probes = node.history.size
+        show(times = { rvTestTimes().takeLast(1) })
+        assertFigure(node.history.last())
+        assertHasText(LATEST)
+    }
+
+    /** [times] is read on each composition, so the times follow [probes] as the history does. */
+    private fun show(times: () -> List<Long> = { rvTestTimes().take(probes) }) {
         compose.rvContent(dark = false) {
-            RvNodeDetail(node.copy(history = node.history.take(probes)), current = false, rvTestTimes().take(probes), onBack = {}, onUse = {}, onTest = {})
+            RvNodeDetail(node.copy(history = node.history.take(probes)), current = false, times(), onBack = {}, onUse = {}, onTest = {})
         }
         compose.waitForIdle()
+    }
+
+    private fun texts(text: String) = compose.onAllNodes(hasText(text, substring = true), useUnmergedTree = true).fetchSemanticsNodes()
+
+    private fun assertHasText(text: String) = assertTrue("the page shows $text", texts(text).isNotEmpty())
+
+    private fun assertNoText(text: String) = assertTrue("the page shows no $text", texts(text).isEmpty())
+
+    private companion object {
+        /** The rounds' first and last times in UTC ([rvTestTimes]). */
+        const val OLDEST = "06:30"
+        const val LATEST = "10:00"
     }
 
     private fun assertFigure(ms: Int?) {
