@@ -118,5 +118,6 @@
     <string name="rv_a11y_no_change">无变化</string>
     <string name="rv_a11y_download">下载 %1$s</string>
     <string name="rv_a11y_upload">上传 %1$s</string>
+    <string name="rv_a11y_stat_row">%1$s，%2$s</string>
     <string name="rv_a11y_busy">进行中</string>
 </resources>

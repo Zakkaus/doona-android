@@ -125,5 +125,6 @@
     <string name="rv_a11y_no_change">No change</string>
     <string name="rv_a11y_download">Download %1$s</string>
     <string name="rv_a11y_upload">Upload %1$s</string>
+    <string name="rv_a11y_stat_row">%1$s, %2$s</string>
     <string name="rv_a11y_busy">In progress</string>
 </resources>

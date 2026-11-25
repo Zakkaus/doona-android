@@ -1,5 +1,6 @@
 package dev.doona.android.feature.traffic
 
+import androidx.annotation.StringRes
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.layout.Column
@@ -76,7 +77,7 @@ internal fun RvTrafficScreen(state: RvTrafficState, onRange: (Int) -> Unit, onBa
         // The rate, its chart and the ranges are one block of the page's column, as 活動's pager is.
         Column(Modifier.testTag(RvPart.BLOCK)) {
             Column(Modifier.padding(horizontal = RvSpace.gutter)) {
-                val shown = scrub?.takeIf { it in values.indices && !values[it].isNaN() }
+                val shown = scrub?.takeIf { it in values.indices }
                 // A scrubbed point shows its rate and when it ended; lifting the finger brings back the live rate.
                 val at = if (chart != null && shown != null) format.clock(chart.endEpochMs - (values.lastIndex - shown) * chart.stepMs) else null
                 Hero(format.rate((shown?.let { values[it] } ?: live.toFloat()).toDouble()), at, upload)
@@ -130,16 +131,22 @@ private fun Ranges(selected: Int, onSelect: (Int) -> Unit) {
 @Composable
 private fun ConnectionCard(session: RvTrafficSession?, upload: Boolean, format: RvFormat) {
     RvCard {
-        val peak = session?.let { format.rate(if (upload) it.peakUp else it.peakDown).toString() }
-        val average = session?.let { format.rate(if (upload) it.averageUp else it.averageDown).toString() }
         // The shown direction is picked in the header; a screen reader hears it with each of its figures (q-a11y-wording).
-        RvStatRow(stringResource(R.string.rv_stat_peak), peak ?: RV_NO_VALUE, spokenValue = peak?.let { stringResource(direction(upload), it) })
-        RvStatRow(stringResource(R.string.rv_stat_average), average ?: RV_NO_VALUE, spokenValue = average?.let { stringResource(direction(upload), it) })
+        DirectedRow(R.string.rv_stat_peak, session?.let { format.rate(if (upload) it.peakUp else it.peakDown).toString() }, upload)
+        DirectedRow(R.string.rv_stat_average, session?.let { format.rate(if (upload) it.averageUp else it.averageDown).toString() }, upload)
         RvStatRow(stringResource(R.string.rv_downloaded), session?.let { format.bytes(it.downTotal).toString() } ?: RV_NO_VALUE)
         RvStatRow(stringResource(R.string.rv_uploaded), session?.let { format.bytes(it.upTotal).toString() } ?: RV_NO_VALUE)
         val duration = session?.let { format.duration(it.seconds) }
         RvStatRow(stringResource(R.string.rv_connected_for), duration?.let { stringResource(R.string.rv_duration, it.hours, it.minutes) } ?: RV_NO_VALUE)
     }
+}
+
+/** A Key stats row for one direction's [value] (a dash without one), read as 峰值，下載 7.84 MB/s. */
+@Composable
+private fun DirectedRow(@StringRes label: Int, value: String?, upload: Boolean) {
+    val name = stringResource(label)
+    val spoken = value?.let { stringResource(R.string.rv_a11y_stat_row, name, stringResource(direction(upload), it)) }
+    RvStatRow(name, value ?: RV_NO_VALUE, spoken = spoken)
 }
 
 /** How a screen reader names a figure's direction: 下載 512 KB/s or 上傳 512 KB/s. */

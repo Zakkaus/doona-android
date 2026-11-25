@@ -1,8 +1,11 @@
 package dev.doona.android.feature.traffic
 
+import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -49,7 +52,15 @@ class TrafficPageTest {
     private val session = RvTrafficSession(9_100_000.0, 870_000.0, 2_000.0, 200.0, 7_200_000, 720_000, 3_660)
     private val state = RvTrafficState(downRate = 4_000, upRate = 300, chart = chart, session = session)
 
-    private fun hears(spoken: String) = compose.onAllNodes(hasContentDescription(spoken), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+    /** What TalkBack is given for the node [matcher] finds: its node info's spoken text, and that it reads as one stop. */
+    private fun talkBack(view: View, matcher: SemanticsMatcher): String? {
+        val info = view.accessibilityNodeProvider.createAccessibilityNodeInfo(compose.onNode(matcher).fetchSemanticsNode().id)!!
+        assertEquals("one stop, no parts read after it", 0, info.childCount)
+        return info.contentDescription?.toString()
+    }
+
+    /** A peak or an average row, which is read as one spoken line. */
+    private fun reads(figure: String) = compose.onAllNodes(hasContentDescription(figure, substring = true), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
 
     private fun shows(text: String) = compose.onAllNodesWithText(text, substring = true, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
 
@@ -72,21 +83,25 @@ class TrafficPageTest {
     @Test
     fun uploadShowsUploadsFigures() {
         compose.rvContent(dark = false) { RvTrafficScreen(state, onRange = {}, onBack = {}) }
-        assertTrue("download's peak first", shows(format.rate(9_100_000.0).toString()))
+        assertTrue("download's peak first", reads(format.rate(9_100_000.0).toString()))
         compose.onNodeWithText(rvText(R.string.ui_upload)).performClick()
-        assertTrue("upload's peak", shows(format.rate(870_000.0).toString()))
-        assertTrue("upload's average", shows(format.rate(200.0).toString()))
+        assertTrue("upload's peak", reads(format.rate(870_000.0).toString()))
+        assertTrue("upload's average", reads(format.rate(200.0).toString()))
         assertTrue("upload's rate now", shows(format.rate(300.0).number))
     }
 
     @Test
-    fun aScreenReaderHearsEachFiguresDirection() {
-        compose.rvContent(dark = false) { RvTrafficScreen(state, onRange = {}, onBack = {}) }
+    fun talkBackReadsEachFigureWithItsDirection() {
+        lateinit var view: View
+        compose.rvContent(dark = false) {
+            view = LocalView.current
+            RvTrafficScreen(state, onRange = {}, onBack = {})
+        }
         val now = format.rate(4_000.0)
-        assertTrue("the hero", hears("下載 ${now.number} ${now.unit}"))
-        assertTrue("the peak", hears("下載 ${format.rate(9_100_000.0)}"))
+        assertEquals("the hero", "下載 ${now.number} ${now.unit}", talkBack(view, hasContentDescription("下載 ${now.number}", substring = true)))
+        assertEquals("the peak row, its name kept", "峰值，下載 ${format.rate(9_100_000.0)}", talkBack(view, hasContentDescription(rvText(R.string.rv_stat_peak), substring = true)))
         compose.onNodeWithText(rvText(R.string.ui_upload)).performClick()
-        assertTrue("upload's average", hears("上傳 ${format.rate(200.0)}"))
+        assertEquals("the average row", "平均，上傳 ${format.rate(200.0)}", talkBack(view, hasContentDescription(rvText(R.string.rv_stat_average), substring = true)))
     }
 
     @Test
@@ -130,7 +145,7 @@ class TrafficPageTest {
         restore.emulateSavedInstanceStateRestore()
         compose.waitForIdle()
         assertEquals("the first range, the chosen one, and the chosen one again once restored", listOf(0, 2, 2), reported)
-        assertTrue("upload kept", shows(format.rate(870_000.0).toString()))
+        assertTrue("upload kept", reads(format.rate(870_000.0).toString()))
     }
 
     private companion object {

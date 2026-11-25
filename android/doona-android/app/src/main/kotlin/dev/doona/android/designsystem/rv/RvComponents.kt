@@ -448,26 +448,24 @@ internal fun RvSeeAll(text: String, onClick: () -> Unit) {
  * 58 dp row. A fact is read whole: when the two do not fit one line with [RvSpace.trailingGap] between them (a host:port,
  * a group and its node at a large font size), the value goes under the label on its edge and wraps, and the row grows as
  * a two-line row does. Nothing of either is cut. [valueKeepWords] false for a value that is a name or an identifier
- * ([RvText]'s `keepWords`: a host, a node's or a subscription's name). [spokenValue] is what a screen reader says for the
- * value when the row does not show all of it, such as the direction a figure is for (q-a11y-wording).
+ * ([RvText]'s `keepWords`: a host, a node's or a subscription's name). [spoken] is what a screen reader says for the
+ * whole row, label included, when the row does not show all of it, such as the direction a figure is for
+ * (q-a11y-wording); without it the label and the value are read. A row merged with a description of its own would
+ * still be read part by part, so a spoken row stands in for its parts.
  */
 @Composable
-internal fun RvStatRow(label: String, value: String, valueKeepWords: Boolean = true, spokenValue: String? = null) {
+internal fun RvStatRow(label: String, value: String, valueKeepWords: Boolean = true, spoken: String? = null) {
     // Laid out once more when the value moves under the label, as RvText's cut is: its lines then start on the edge.
     var stacked by remember(label, value) { mutableStateOf(false) }
     Layout(
         {
             RvText(label, Rv.type.statLabel, color = Rv.colors.textSecondary, maxLines = RV_ROW_TITLE_LINES)
-            RvText(
-                value,
-                Rv.type.stat,
-                spokenValue?.let { Modifier.semantics { contentDescription = it } } ?: Modifier,
-                align = if (stacked) TextAlign.Start else TextAlign.End,
-                maxLines = Int.MAX_VALUE,
-                keepWords = valueKeepWords,
-            )
+            RvText(value, Rv.type.stat, align = if (stacked) TextAlign.Start else TextAlign.End, maxLines = Int.MAX_VALUE, keepWords = valueKeepWords)
         },
-        Modifier.semantics(mergeDescendants = true) {}.fillMaxWidth().padding(horizontal = RvSpace.rowPadding),
+        // One stop either way: the label and the value, or what [spoken] says in their place.
+        (if (spoken == null) Modifier.semantics(mergeDescendants = true) {} else Modifier.clearAndSetSemantics { contentDescription = spoken })
+            .fillMaxWidth()
+            .padding(horizontal = RvSpace.rowPadding),
     ) { (labelPart, valuePart), constraints ->
         val width = constraints.maxWidth
         val oneLine = labelPart.maxIntrinsicWidth(Constraints.Infinity) + RvSpace.trailingGap.roundToPx() + valuePart.maxIntrinsicWidth(Constraints.Infinity) <= width
