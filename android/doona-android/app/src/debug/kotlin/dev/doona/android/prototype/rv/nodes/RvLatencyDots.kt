@@ -29,11 +29,11 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.components.latencyTone
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvChartSize
+import dev.doona.android.designsystem.rv.RvLatencyDotsSize
 import dev.doona.android.designsystem.rv.RvPillInk
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.rvChartMarker
@@ -234,14 +234,3 @@ internal const val RV_LATENCY_DOTS = "rv-latency-dots"
 
 /** A dash this short with round caps draws as a dot. */
 private const val DOT_LENGTH = 0.01f
-
-internal object RvLatencyDotsSize {
-    /** The plot, room above for the top label, and the gap from the plot to the label strip. */
-    val plot = 140.dp
-    val head = 10.dp
-    val plotGap = 8.dp
-
-    /** The dots (§10.2: Revolut's EPS dots are 8 dp, N04) and a timed-out test's ring. */
-    val dot = 8.dp
-    val ring = 1.5.dp
-}
