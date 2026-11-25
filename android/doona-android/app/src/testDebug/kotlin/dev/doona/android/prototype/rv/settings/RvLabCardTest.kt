@@ -48,13 +48,13 @@ class RvLabCardTest {
     val compose = createComposeRule()
 
     @Test
-    fun labLight() = compose.rvShot("lab", dark = false, before = { assertWhole(); assertNothingCut() }) { RvLabScreen(performance = false) }
+    fun labLight() = compose.rvShot("lab", dark = false, before = { assertWholeAndUncut() }) { RvLabScreen(performance = false) }
 
     @Test
-    fun labDark() = compose.rvShot("lab", dark = true, before = { assertWhole(); assertNothingCut() }) { RvLabScreen(performance = true) }
+    fun labDark() = compose.rvShot("lab", dark = true, before = { assertWholeAndUncut() }) { RvLabScreen(performance = true) }
 
     @Test
-    fun labFs200() = compose.rvShot("lab", dark = false, before = { assertWhole(); assertNothingCut() }, fontScale = RV_FS200) { RvLabScreen(performance = false) }
+    fun labFs200() = compose.rvShot("lab", dark = false, before = { assertWholeAndUncut() }, fontScale = RV_FS200) { RvLabScreen(performance = false) }
 
     /** q-l4-labcut asks for the English and Simplified Chinese copy too: at 200% neither is cut. */
     @Test
@@ -96,6 +96,11 @@ class RvLabCardTest {
         compose.waitForIdle()
         assertEquals("the subtitle in this locale", 1, compose.rvRowNodes().count { it.text == subtitle })
         compose.assertNothingCut()
+    }
+
+    private fun ComposeContentTestRule.assertWholeAndUncut() {
+        assertWhole()
+        assertNothingCut()
     }
 
     /**
