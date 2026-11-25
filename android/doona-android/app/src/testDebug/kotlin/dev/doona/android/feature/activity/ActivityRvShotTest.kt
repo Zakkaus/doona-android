@@ -14,11 +14,15 @@ import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS200
+import dev.doona.android.prototype.rv.RvActivityScreenSample
 import dev.doona.android.prototype.rv.Utc
+import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.rvAnimatorScale
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvRowRules
+import dev.doona.android.prototype.rv.rvSampleActivity
+import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.testing.drawFully
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,6 +64,29 @@ class ActivityRvShotTest {
     @Config(qualifiers = RV_EN)
     fun activityEn() = shot("activity-en")
 
+    @Test
+    @Config(qualifiers = FULL_PAGE)
+    fun activityFullLight() = shot("activity-full", whole = true)
+
+    @Test
+    @Config(qualifiers = FULL_PAGE)
+    fun activityFullDark() = shot("activity-full", dark = true, whole = true)
+
+    @Test
+    @Config(qualifiers = FULL_PAGE_FS200)
+    fun activityFullFs200() = shot("activity-full", fontScale = RV_FS200, whole = true)
+
+    @Test
+    @Config(qualifiers = FULL_PAGE_EN)
+    fun activityFullEn() = shot("activity-full-en", whole = true)
+
+    /** The prototype's whole page in English, which `proto-rv-activity-full-*` lacks: the approved side of the en panel. */
+    @Test
+    @Config(qualifiers = FULL_PAGE_EN)
+    fun prototypeFullEn() = compose.rvShot("activity-full-en", dark = false, before = { assertWhole() }) {
+        RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {})
+    }
+
     @Test fun startingLight() = shot("activity-starting") { stop(Status.Starting) }
 
     @Test fun stoppingLight() = shot("activity-stopping") { stop(Status.Stopping) }
@@ -98,13 +125,14 @@ class ActivityRvShotTest {
         traffic.value = Traffic()
     }
 
-    private fun shot(screen: String, dark: Boolean = false, fontScale: Float = 1f, crash: Boolean = false, change: FakeEngine.() -> Unit = {}) {
+    private fun shot(screen: String, dark: Boolean = false, fontScale: Float = 1f, crash: Boolean = false, whole: Boolean = false, change: FakeEngine.() -> Unit = {}) {
         val engine = rvSampleEngine().apply(change)
         // The busy bar rests half full at animator scale 0, as in the prototype's starting and stopping goldens.
         if (engine.status.value == Status.Starting || engine.status.value == Status.Stopping) rvAnimatorScale(0f)
         val model = ActivityViewModel(engine, MutableStateFlow(crash), Dispatchers.Unconfined, { RvData.nowEpochMs }, { ZoneOffset.UTC }, { RvPlace.Other })
         compose.rvContent(dark, fontScale) { ActivityPage(model, crashOffer = null, onConnect = {}, routes = activityTestRoutes()) }
         compose.drawFully()
+        if (whole) compose.assertWhole()
         val variant = when {
             fontScale != 1f -> "fs${(fontScale * PERCENT).toInt()}"
             dark -> "dark"
@@ -117,6 +145,13 @@ class ActivityRvShotTest {
 
     private companion object {
         const val PERCENT = 100
+
+        /** Screens as tall as the whole 活動 page, as the prototype's `activity-full` captures use. */
+        const val FULL_PAGE = "+h1951dp"
+        const val FULL_PAGE_FS200 = "+h3118dp"
+
+        /** [RV_EN] as tall as the English page, whose longer words wrap to more lines than the Chinese ones. */
+        const val FULL_PAGE_EN = "en-w412dp-h2049dp-notnight-xhdpi"
         val SHOTS: String = System.getProperty("doona.shots") ?: "src/test/screenshots"
     }
 }
