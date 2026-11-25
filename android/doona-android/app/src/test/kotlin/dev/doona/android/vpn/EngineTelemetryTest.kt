@@ -17,6 +17,7 @@ import dev.doona.android.engine.LatencyTest
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.NetworkState
+import dev.doona.android.engine.NetworkTransport
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RecentFlow
@@ -159,7 +160,7 @@ class EngineTelemetryTest {
             nodes.replace("\"ms\": 33", "\"later\": 33") to { engine.nodes() },
             nodes.replace("\"port\": 443,", "") to { engine.nodes() },
         )
-        assertTrue(replies.none { it.first == series || it.first == nodes })
+        assertTrue("a fixture edit no longer matches its fixture", replies.none { it.first == series || it.first == nodes })
         for ((reply, read) in replies) {
             core.reply = reply
             assertEquals(reply, ErrorCode.Internal, (read().exceptionOrNull() as EngineException).code)
@@ -496,6 +497,31 @@ class EngineTelemetryTest {
         engine.setMode(Mode.Direct).getOrThrow()
         runCurrent()
         assertEquals(listOf("setBootstrapDns" to """{"servers":["192.0.2.54"]}"""), core.calls.filter { it.first == "setBootstrapDns" })
+    }
+
+    /** The engine the app creates reads the default network itself; its value is right before anyone collects it. */
+    @Test
+    fun aCreatedEngineReportsTheDefaultNetworkWithoutACollector() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val connectivity = app.getSystemService(ConnectivityManager::class.java)
+        val manager = shadowOf(connectivity)
+        val existing = manager.networkCallbacks.toSet()
+        val caps = ShadowNetworkCapabilities.newInstance()
+        shadowOf(caps).addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+        shadowOf(caps).addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        shadowOf(caps).addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+        manager.setNetworkCapabilities(checkNotNull(connectivity.activeNetwork), caps)
+
+        val engine = ServiceEngine.create(app, endDebugCapture = {}, expireDebugCapture = { null })
+        assertEquals(NetworkState(NetworkTransport.WiFi, metered = false, validated = false), engine.network.value)
+
+        // The engine lives as long as the process. Let its default-network callback, registered on another thread, land
+        // in this test rather than in a later one that counts callbacks; the bootstrap DNS callback is already there.
+        val deadline = System.nanoTime() + 5_000_000_000L
+        while ((manager.networkCallbacks - existing).size < 2) {
+            check(System.nanoTime() < deadline) { "the engine registered ${(manager.networkCallbacks - existing).size} network callbacks" }
+            Thread.sleep(10)
+        }
     }
 
     private fun TestScope.start(engine: ServiceEngine) {
