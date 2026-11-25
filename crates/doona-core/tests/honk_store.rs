@@ -30,7 +30,7 @@ fn stale_draft_cannot_overwrite_the_committed_revision() {
     let data = TempDir::new("honk-race");
     let mut store = HonkStore::open(data.path()).unwrap();
     let base = apply(&mut store, DIRECT);
-    let drafts = [DIRECT, BLOCK].map(|source| {
+    let drafts = [BLOCK, DIRECT].map(|source| {
         let id = store.draft(None).unwrap();
         store.edit(id, Path::new("config.dae"), source).unwrap();
         id
@@ -45,7 +45,7 @@ fn stale_draft_cannot_overwrite_the_committed_revision() {
     assert_eq!(store.current_draft().unwrap().id, stale);
     assert_eq!(
         &*store.read_revision(head).unwrap().sources()[0].content,
-        DIRECT
+        BLOCK
     );
     assert!(
         matches!(HonkStore::open(data.path()), Err(StoreError::Io(e)) if e.kind() == std::io::ErrorKind::WouldBlock)
@@ -58,7 +58,10 @@ fn stale_draft_cannot_overwrite_the_committed_revision() {
 fn twelve_applies_keep_latest_ten_including_head() {
     let data = TempDir::new("honk-history");
     let mut store = HonkStore::open(data.path()).unwrap();
-    let applied: Vec<_> = (0..12).map(|_| apply(&mut store, DIRECT)).collect();
+    // Each apply changes the bytes; head's exact bytes again would commit nothing.
+    let applied: Vec<_> = (0..12)
+        .map(|i| apply(&mut store, &format!("# {i}\n{DIRECT}")))
+        .collect();
     assert_eq!(store.head(), applied.last().copied());
     assert_eq!(store.revisions().collect::<Vec<_>>(), applied[2..]);
     assert_eq!(revision_dirs(&data), applied[2..]);
@@ -70,7 +73,9 @@ fn live_draft_pins_its_expired_base_until_discard() {
     let mut store = HonkStore::open(data.path()).unwrap();
     let base = apply(&mut store, DIRECT);
     let draft = store.draft(None).unwrap();
-    let revisions: Vec<_> = (0..11).map(|_| apply(&mut store, BLOCK)).collect();
+    let revisions: Vec<_> = (0..11)
+        .map(|i| apply(&mut store, &format!("# {i}\n{BLOCK}")))
+        .collect();
     drop(store);
     let mut store = HonkStore::open(data.path()).unwrap();
     assert_eq!(store.current_draft().unwrap().base, Some(base));

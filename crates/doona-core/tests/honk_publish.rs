@@ -18,6 +18,7 @@ use doonacore::honkconf::{Capabilities, HonkConfig, HonkStore, StoreError};
 const A: &str = "# a\nrouting { fallback: direct }";
 const B: &str = "# b\nrouting { fallback: block }";
 const C: &str = "# c needs:geo\nrouting { fallback: direct }";
+const D: &str = "# d\nrouting { fallback: direct }";
 const CRASH: &str = "# crash-on-drop\nrouting { fallback: block }";
 
 type Hook = Box<dyn FnOnce() + Send>;
@@ -238,8 +239,9 @@ fn changes_made_during_prepare_are_rechecked_before_the_rename() {
     assert_eq!(t.apply(b).unwrap().rev, 2);
     assert_eq!(t.head(), (2, B.to_owned()));
 
-    // The draft is discarded while it is being prepared.
-    let b = t.draft(B);
+    // The draft is discarded while it is being prepared. Head's exact bytes would be a no-op
+    // that prepares nothing, so each draft here differs from head.
+    let b = t.draft(D);
     let store = t.store.clone();
     t.inputs
         .during(move || store.lock().unwrap().discard(b).unwrap());
@@ -250,7 +252,7 @@ fn changes_made_during_prepare_are_rechecked_before_the_rename() {
     assert_eq!(t.head(), (2, B.to_owned()));
 
     // The same draft is edited while it is being prepared: the edit survives and commits next.
-    let b = t.draft(B);
+    let b = t.draft(D);
     let store = t.store.clone();
     let edited = "# edited\nrouting { fallback: block }";
     t.inputs.during(move || {

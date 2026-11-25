@@ -18,6 +18,7 @@ pub mod edit;
 pub mod feeds;
 pub mod groups;
 pub mod meters;
+pub mod prepare;
 pub mod publish;
 pub mod runtime;
 pub mod schedule;

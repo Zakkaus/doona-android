@@ -1,6 +1,6 @@
 //! The head rename publishes the revision, its entry name and the remaining draft pins together.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -113,6 +113,8 @@ pub(super) struct Manifest {
 /// A revision tree copied for preparation. Head does not reach it until [`HonkStore::commit`].
 pub(super) struct Staged {
     pub entry: PathBuf,
+    /// The draft holds head's exact files: commit drops the draft and adds no revision.
+    pub unchanged: bool,
     draft: u64,
     version: u64,
     base: Option<u64>,
@@ -279,11 +281,22 @@ impl HonkStore {
                 .map(|s| (s.path, s.content)),
         );
         tree.files = files;
-        let rev = head.unwrap_or(0) + 1;
-        let dir = self.root.join(REVISIONS).join(rev.to_string());
-        tree.copy_to(&dir)?;
+        let unchanged = match head {
+            Some(head) => self.holds(head, &draft.entry, &tree)?,
+            None => false,
+        };
+        let (rev, entry) = if unchanged {
+            let rev = head.unwrap();
+            (rev, self.revision_entry(rev)?)
+        } else {
+            let rev = head.unwrap_or(0) + 1;
+            let dir = self.root.join(REVISIONS).join(rev.to_string());
+            tree.copy_to(&dir)?;
+            (rev, dir.join(&draft.entry))
+        };
         let staged = Staged {
-            entry: dir.join(&draft.entry),
+            entry,
+            unchanged,
             draft: id,
             version: self.version(id),
             base: head,
@@ -312,11 +325,23 @@ impl HonkStore {
             });
         }
         let mut next = self.manifest.clone();
-        next.last_meter = staged.last_meter;
-        next.revisions.insert(staged.rev, staged.revision);
+        if !staged.unchanged {
+            next.last_meter = staged.last_meter;
+            next.revisions.insert(staged.rev, staged.revision);
+        }
         next.drafts.retain(|d| d.id != staged.draft);
         self.publish(next)?;
         Ok(staged.rev)
+    }
+
+    /// Whether revision `rev` holds exactly the files and links a copy of `tree` would write.
+    fn holds(&self, rev: u64, entry: &Path, tree: &Tree) -> Result<bool, StoreError> {
+        let revision = &self.manifest.revisions[&rev];
+        if revision.entry != entry {
+            return Ok(false);
+        }
+        let committed = Tree::read(&self.tree_entry(rev, revision))?;
+        Ok(contents(&committed, &committed.links)? == contents(tree, &tree.kept)?)
     }
 
     fn version(&self, draft: u64) -> u64 {
@@ -375,6 +400,23 @@ fn sweep(dir: &Path, keep: impl Fn(u64) -> bool) {
     if let Err(e) = result {
         log::warn!("honk store: cleanup deferred ({:?})", e.kind());
     }
+}
+
+type Contents<'a> = (BTreeMap<&'a Path, &'a str>, BTreeMap<&'a Path, PathBuf>);
+
+/// Entry-relative file texts and link targets of `tree`, with `links` as its links.
+fn contents<'a>(tree: &'a Tree, links: &'a HashSet<PathBuf>) -> io::Result<Contents<'a>> {
+    let root = tree.entry.parent().unwrap();
+    let relative = |path: &'a PathBuf| path.strip_prefix(root).unwrap();
+    let files = tree
+        .files
+        .iter()
+        .map(|(path, text)| (relative(path), &**text));
+    let links = links
+        .iter()
+        .map(|link| Ok((relative(link), fs::read_link(link)?)))
+        .collect::<io::Result<_>>()?;
+    Ok((files.collect(), links))
 }
 
 #[cfg(test)]

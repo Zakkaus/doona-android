@@ -126,7 +126,8 @@ impl<P: Preparer> Publisher<P> {
         drop(old);
     }
 
-    /// Commit `draft` and, while running, make its generation live.
+    /// Commit `draft` and, while running, make its generation live. A draft that holds head's
+    /// exact files commits no revision and keeps the live generation.
     pub fn apply(
         &self,
         store: &Mutex<HonkStore>,
@@ -135,6 +136,14 @@ impl<P: Preparer> Publisher<P> {
     ) -> Result<Applied, PublishError<P::Error>> {
         let _writer = self.writer.lock().unwrap();
         let staged = store.lock().unwrap().stage_revision(draft, caps)?;
+        if staged.unchanged {
+            let rev = store.lock().unwrap().commit(staged)?;
+            let live = self.live.read().unwrap();
+            return Ok(Applied {
+                rev,
+                generation: live.current.as_ref().map(|g| g.id),
+            });
+        }
         let epoch = self.preparer.epoch();
         let prepared = self.prepare_entry(&staged.entry);
         let mut locked = store.lock().unwrap();
