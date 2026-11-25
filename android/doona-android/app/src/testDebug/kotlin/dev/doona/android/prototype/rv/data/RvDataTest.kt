@@ -96,7 +96,7 @@ class RvDataTest {
         assertEquals(current.latencyMs, activity.node?.latencyMs)
         assertEquals(RvData.AUTO_GROUP, activity.outbound)
         assertEquals(session.startEpochMs, (activity.status as Status.Running).sinceEpochMs)
-        assertEquals(current.id, sampleNodesPage().currentId)
+        assertEquals(current.id, sampleNodesPage().current.single())
         assertEquals(current.id, rvStatsSample().selectedId)
         assertTrue(rvStatsSample().nodes.single { it.id == current.id } === current)
     }

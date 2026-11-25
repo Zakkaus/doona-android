@@ -133,7 +133,7 @@ internal fun activityTestRoutes(opened: MutableList<String> = mutableListOf()): 
         stats = to("stats"),
         search = to("search"),
         nodes = to("nodes"),
-        node = to("node"),
+        node = { opened += "node:$it" },
         tab = { opened += "tab" },
         mode = to("mode"),
         rule = { opened += "rule:$it" },

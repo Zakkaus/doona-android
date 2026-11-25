@@ -28,6 +28,7 @@ import dev.doona.android.engine.RebuildFailedException
 import dev.doona.android.engine.RecentFlow
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RulePage
+import dev.doona.android.engine.RuleTemplate
 import dev.doona.android.engine.ScoreState
 import dev.doona.android.engine.Settings
 import dev.doona.android.engine.ShareLink
@@ -279,6 +280,15 @@ class ServiceEngine internal constructor(
 
     override suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit> =
         command("setRuleSource", RuleSourceArgs.serializer(), RuleSourceArgs.template(template, options), Unit.serializer())
+
+    /** The bundled core lists no templates yet; it builds `cn-direct` alone. */
+    override suspend fun ruleTemplates(): Result<List<RuleTemplate>> = Result.failure(EngineException(ErrorCode.Internal))
+
+    /** The bundled core writes no ad statement, so ads are not blocked. */
+    override suspend fun adBlock(): Result<Boolean> = Result.success(false)
+
+    /** The bundled core cannot place the ad statement yet. */
+    override suspend fun setAdBlock(on: Boolean): Result<Unit> = Result.failure(EngineException(ErrorCode.Internal))
 
     override suspend fun setDnsUpstreams(servers: List<String>): Result<Unit> =
         command("setDnsUpstreams", DnsUpstreamsArgs.serializer(), DnsUpstreamsArgs(servers), Unit.serializer(), ordered = true)

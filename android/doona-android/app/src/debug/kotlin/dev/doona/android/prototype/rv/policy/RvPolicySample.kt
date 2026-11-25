@@ -1,13 +1,22 @@
 package dev.doona.android.prototype.rv.policy
 
 import androidx.compose.runtime.Composable
+import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvNotice
+import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRuleOutbound
+import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.model.RvTemplate
+import dev.doona.android.feature.policies.RvEffectiveConfig
+import dev.doona.android.feature.policies.RvEffectiveConfigPage
+import dev.doona.android.feature.policies.RvPolicyProfile
+import dev.doona.android.feature.policies.RvPolicyRoutes
+import dev.doona.android.feature.policies.RvPolicyScreen
+import dev.doona.android.feature.policies.RvTemplatePage
 import dev.doona.android.prototype.rv.data.RvData
 
 /** 策略's profile as [RvPolicyData] and [RvData] have it at 10:24. */
@@ -19,6 +28,7 @@ internal val rvSamplePolicyProfile = RvPolicyProfile(
     nodes = RvData.nodes,
     subscriptions = RvData.subscriptions,
     nowEpochMs = RvData.nowEpochMs,
+    source = RvRuleSource.Template(RvTemplateData.cnDirect),
 )
 
 /** 策略 on the sample: the page with [rvSamplePolicyProfile]. The page itself takes the profile as a parameter. */
@@ -36,16 +46,25 @@ internal fun RvPolicyScreenSample(
 /** Where the sample's quick rule and rule page can send: the main node's group, then every other group. */
 internal val rvSampleTargets: List<RvPolicyGroup> = listOf(RvPolicyData.main) + RvPolicyData.groups
 
-/** The effective configuration as the sample's profile has it: every rule, its template and both subscriptions. */
-internal val rvSampleEffectiveConfig = RvEffectiveConfig(
+/**
+ * The effective configuration as the sample's profile has it: every rule, its template and both subscriptions, with
+ * [settings]' DNS server, its queries through the main node, and the apps its 依 App lists.
+ */
+internal fun rvSampleEffectiveConfig(settings: RvSettingsState) = RvEffectiveConfig(
     main = RvPolicyData.main,
     groups = RvPolicyData.groups,
     rules = RvPolicyData.allRules,
-    template = RvTemplateData.cnDirect.name,
+    source = RvRuleSource.Template(RvTemplateData.cnDirect),
     subscriptions = RvData.subscriptions,
+    dns = listOf(settings.dns.address),
+    dnsVia = RvLabel.Res(R.string.rv_main_node),
+    proxiedApps = settings.proxiedApps,
 )
 
-/** 生效設定 on the sample: the page with [rvSampleEffectiveConfig]. The page itself takes it as a parameter. */
+/**
+ * 生效設定 on the sample: the page with [rvSampleEffectiveConfig], or with none under a [banner], which the samples show
+ * as the first read failing. The page itself takes it as a parameter.
+ */
 @Composable
 internal fun RvEffectiveConfigPageSample(
     policy: RvPolicyState,
@@ -56,7 +75,7 @@ internal fun RvEffectiveConfigPageSample(
     onExport: () -> Unit = {},
     truncated: Boolean = false,
     banner: RvNotice? = null,
-) = RvEffectiveConfigPage(policy, settings, onBack, onRules, onCopy, onExport, truncated, banner, rvSampleEffectiveConfig)
+) = RvEffectiveConfigPage(policy, onBack, onRules, onCopy, onExport, truncated, banner, rvSampleEffectiveConfig(settings).takeIf { banner == null })
 
 /** 範本 on the sample: the page with every template [RvTemplateData] has. The page itself takes the list as a parameter. */
 @Composable
@@ -81,10 +100,10 @@ internal object RvNetworkSample {
     val asked: RvNode = group.byLatency.first { !apart.chosen(it.id) }
 
     val rules: List<RvRuleOutbound> = rulesWithUdp(UDP_NODE)
-    val rulesOneRegion: List<RvRuleOutbound> = rulesWithUdp(group.members.first { it.place == group.selected.place && it.id != group.selectedId }.id)
+    val rulesOneRegion: List<RvRuleOutbound> = rulesWithUdp(group.members.first { it.place == group.selected!!.place && it.id != group.selectedId }.id)
 
     private fun rulesWithUdp(udp: String) = RvData.ruleOutbounds.map {
-        if (it.group == group.name) RvRuleOutbound(it.group, it.nodeId, it.bytes, udp) else it
+        if (RvLabel.Res(it.group) == group.name) RvRuleOutbound(it.group, it.nodeId, it.bytes, udp) else it
     }
 }
 

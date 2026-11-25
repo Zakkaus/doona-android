@@ -53,15 +53,17 @@ internal enum class RvSkeletonEnd(val first: RvSkeletonText?, val second: RvSkel
 }
 
 /**
- * [RvRow]'s skeleton, row [index] of its card: the disc, the title's bar over the subtitle's of [subtitle]'s kind (or the
- * title's alone), the [end]'s bars and the room of the row's chevron when it has one ([chevron]), laid out as [RvRow] lays
- * out its row, in its heights, insets and gaps. Words the page knows before its data ([title], [subtitleText], the
- * [endText] of a line-wise end's first line: 出站模式 over the mode, a node's name, a group's node) take their own lines
- * ([RvSkeletonLabel]), so the row is as tall as the row they wrap in, and where they do not read well beside the end, the
- * end goes under them as the row's does. A figure is a bar on its text's line ([RvSkeletonLine]). Beside an end of two
- * lines a title's bar keeps to the room a title keeps beside its end ([besideEnd]), so it does not reach under a long end
- * (a group's `Hong Kong 02 IPLC`) as the content fades in. Past [LocalRvContentFloor] the row keeps its place undrawn.
- * [titleKeepWords] and [subtitleKeepWords] are the row's ([RvRow]'s), false for a name.
+ * [RvRow]'s skeleton, row [index] of its card: the disc, the title's bar over the subtitle's of [subtitle]'s kind (or
+ * the title's alone), the [end]'s bars and the room of the row's chevron when it has one ([chevron]) or of the info
+ * mark a line-wise end ends in ([infoMark], [RvRowEnd]'s glyph: its ink [RvSpace.trailingGap] after the end, as
+ * [RvEndMark] lays it out), laid out as [RvRow] lays out its row, in its heights, insets and gaps. Words the page knows
+ * before its data ([title], [subtitleText], the [endText] of a line-wise end's first line: 出站模式 over the mode, a node's
+ * name, a group's node) take their own lines ([RvSkeletonLabel]), so the row is as tall as the row they wrap in, and
+ * where they do not read well beside the end, the end goes under them as the row's does. A figure is a bar on its
+ * text's line ([RvSkeletonLine]). Beside an end of two lines a title's bar keeps to the room a title keeps beside its
+ * end ([besideEnd]), so it does not reach under a long end (a group's `Hong Kong 02 IPLC`) as the content fades in.
+ * Past [LocalRvContentFloor] the row keeps its place undrawn. [titleKeepWords] and [subtitleKeepWords] are the row's
+ * ([RvRow]'s), false for a name.
  */
 @Composable
 internal fun RvSkeletonRow(
@@ -74,6 +76,7 @@ internal fun RvSkeletonRow(
     endText: String? = null,
     titleKeepWords: Boolean = true,
     subtitleKeepWords: Boolean = true,
+    infoMark: Boolean = false,
 ) {
     val minHeight = if (subtitle != null) RvSize.rowTwoLine else RvSize.rowOneLine
     val room = rememberEndRoom()
@@ -94,6 +97,7 @@ internal fun RvSkeletonRow(
             end.lineWise -> {
                 LineWise(words, end, endText, room, Modifier.weight(1f))
                 if (chevron) ChevronRoom()
+                if (infoMark) Spacer(Modifier.width(RvSpace.trailingGap + RvSize.rowGlyph))
             }
 
             end != RvSkeletonEnd.None || chevron -> BesideEnd(words, minHeight, Modifier.weight(1f)) {

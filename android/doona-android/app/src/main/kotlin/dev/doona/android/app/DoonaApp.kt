@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
 import dev.doona.android.data.settings.AppSettings
@@ -22,8 +23,10 @@ import dev.doona.android.data.settings.UpdateCheck
 import dev.doona.android.designsystem.components.DoonaHubShell
 import dev.doona.android.designsystem.components.DoonaHubTab
 import dev.doona.android.designsystem.rv.RvFloatingNav
+import dev.doona.android.designsystem.rv.RvPullMotion
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rememberRvGlass
+import dev.doona.android.designsystem.rv.rememberRvPullState
 import dev.doona.android.designsystem.rv.rvGlassSource
 import dev.doona.android.designsystem.rv.rvNavClearance
 import dev.doona.android.designsystem.rv.rvSystemScheme
@@ -35,10 +38,22 @@ import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.activity.ActivityRoute
 import dev.doona.android.feature.activity.ActivityRoutes
 import dev.doona.android.feature.activity.ConnectRefusals
+import dev.doona.android.feature.nodes.MainNodeRoute
+import dev.doona.android.feature.nodes.NodeRoute
+import dev.doona.android.feature.nodes.NodeSearchRoute
+import dev.doona.android.feature.nodes.NodesPull
+import dev.doona.android.feature.nodes.NodesRoute
+import dev.doona.android.feature.nodes.NodesViewModel
 import dev.doona.android.feature.onboarding.FirstRunGate
 import dev.doona.android.feature.perapp.PerAppRoute
+import dev.doona.android.feature.policies.EffectiveConfigRoute
 import dev.doona.android.feature.policies.GroupRoute
 import dev.doona.android.feature.policies.PoliciesRoute
+import dev.doona.android.feature.policies.RulesRoute
+import dev.doona.android.feature.policies.RvPolicyRoutes
+import dev.doona.android.feature.policies.RvRulesRoutes
+import dev.doona.android.feature.policies.TemplateImpactRoute
+import dev.doona.android.feature.policies.TemplateRoute
 import dev.doona.android.feature.settings.SettingsRoute
 import dev.doona.android.feature.stats.StatsRoute
 import dev.doona.android.feature.subscriptions.SubAddRoute
@@ -94,31 +109,54 @@ fun DoonaApp(
     val backStack = rememberNavBackStack(*start.toTypedArray())
     val onTab: (Int) -> Unit = { backStack.selectTab(it) }
     val onReselect: () -> Boolean = { backStack.reselectTab() }
+    // Held beside the root 活動 rather than in an entry: the pull-down and every 節點 page read one catalog, mapped once.
+    val nodes: NodesViewModel = viewModel(factory = NodesViewModel.factory(engine))
     RvOverDoona {
         RvNavHost(backStack, Modifier.fillMaxSize()) {
             entry<ActivityKey> {
                 // The RV page draws its own floating nav; the gate's welcome page takes the old tab frame.
                 val routes = remember(backStack, onSystemSettings) { activityRoutes(backStack, onSystemSettings) }
                 FirstRunGate(engine, onAdd = { backStack.push(SubAddKey) }, frame = { OldTabFrame(Tab.Activity, onTab, onReselect, it) }) {
-                    ActivityRoute(engine, crashOffer, network, refusals, onConnect, routes)
+                    NodesPull(nodes, RvPullMotion.Sheet, rememberRvPullState(), onDetail = { backStack.push(NodeKey(it)) }, onAdd = { backStack.push(SubAddKey) }) { look ->
+                        ActivityRoute(engine, crashOffer, network, refusals, onConnect, routes, look)
+                    }
                 }
             }
             entry<PoliciesKey> {
-                OldTabFrame(Tab.Policies, onTab, onReselect) {
-                    PoliciesRoute(engine, onOpenGroup = { backStack.push(GroupKey(it)) }, onOpenSubscriptions = { backStack.push(SubscriptionsKey) })
-                }
+                PoliciesRoute(
+                    engine,
+                    onOpenGroup = { backStack.push(GroupKey(it)) },
+                    onOpenSubscriptions = { backStack.push(SubscriptionsKey) },
+                    routes = RvPolicyRoutes(
+                        mainNode = { backStack.push(MainNodeChoiceKey) },
+                        rules = { backStack.push(RulesKey) },
+                        template = { backStack.push(TemplateKey) },
+                        tab = onTab,
+                        search = { backStack.push(NodeSearchKey) },
+                    ),
+                )
             }
-            entry<GroupKey> { key ->
-                GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }, onOpenGroup = { backStack.push(GroupKey(it)) })
+            entry<GroupKey> { key -> GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }) }
+            entry<RulesKey> { key ->
+                RulesRoute(
+                    engine,
+                    onBack = { backStack.pop(key) },
+                    onTemplate = { backStack.push(TemplateKey) },
+                    routes = RvRulesRoutes(effective = { backStack.push(EffectiveConfigKey) }),
+                )
             }
+            entry<TemplateKey> { key -> TemplateRoute(engine, onBack = { backStack.pop(key) }, onReview = { backStack.push(TemplateImpactKey(it)) }) }
+            entry<TemplateImpactKey> { key ->
+                TemplateImpactRoute(engine, key.templateId, onBack = { backStack.pop(key) }, onApplied = { backStack.push(PoliciesKey) })
+            }
+            entry<EffectiveConfigKey> { key -> EffectiveConfigRoute(engine, onBack = { backStack.pop(key) }, onRules = { backStack.push(RulesKey) }) }
             entry<SubscriptionsKey> { key ->
                 SubscriptionsRoute(
                     engine,
                     onBack = { backStack.pop(key) },
                     onOpen = { backStack.push(SubDetailKey(it)) },
                     onAdd = { backStack.push(SubAddKey) },
-                    // The node's page (p3c) has no entry yet, so a 組態內 node's row is not wired.
-                    onOpenNode = {},
+                    onOpenNode = { backStack.push(NodeKey(it)) },
                     onViewGroups = { backStack.selectTab(Tab.Policies) },
                 )
             }
@@ -149,6 +187,22 @@ fun DoonaApp(
                 )
             }
             entry<TrafficKey> { key -> TrafficRoute(engine, onBack = { backStack.pop(key) }) }
+            entry<NodesKey> { key ->
+                NodesRoute(
+                    nodes,
+                    onBack = { backStack.pop(key) },
+                    onOpen = { backStack.push(NodeKey(it)) },
+                    onAllNodes = { backStack.push(MainNodeChoiceKey) },
+                    onAdd = { backStack.push(SubAddKey) },
+                )
+            }
+            entry<NodeKey> { key -> NodeRoute(nodes, key.nodeId, onBack = { backStack.pop(key) }) }
+            entry<NodeSearchKey> { key ->
+                NodeSearchRoute(nodes, onClose = { backStack.pop(key) }, onDetail = { backStack.push(NodeKey(it)) }, onAdd = { backStack.push(SubAddKey) })
+            }
+            entry<MainNodeChoiceKey> { key ->
+                MainNodeRoute(nodes, onBack = { backStack.pop(key) }, onSearch = { backStack.push(NodeSearchKey) }, onAdd = { backStack.push(SubAddKey) })
+            }
         }
     }
 }
@@ -158,19 +212,18 @@ enum class SystemSettings { Vpn, Network, Notifications }
 
 /**
  * Where 活動 leads: the pages with an entry here, the 策略 tab for the mode, 設定 for 更多 and 檢查更新 (q-actmore), and
- * the system's settings for the notices that need them. The pages without an entry yet (the node search and list, the
- * main node choice, the rules and the report) are not wired.
+ * the system's settings for the notices that need them. The report has no entry yet, so it is not wired.
  */
 private fun activityRoutes(backStack: MutableList<NavKey>, onSystemSettings: (SystemSettings) -> Unit) = ActivityRoutes(
     traffic = { backStack.push(TrafficKey) },
     stats = { backStack.push(StatsKey) },
-    search = NOT_WIRED,
-    nodes = NOT_WIRED,
-    node = NOT_WIRED,
+    search = { backStack.push(NodeSearchKey) },
+    nodes = { backStack.push(NodesKey) },
+    node = { backStack.push(NodeKey(it)) },
     tab = { backStack.selectTab(it) },
     mode = { backStack.selectTab(Tab.Policies) },
     rule = { backStack.push(GroupKey(it)) },
-    rules = NOT_WIRED,
+    rules = { backStack.push(RulesKey) },
     subscriptions = { backStack.push(SubscriptionsKey) },
     more = { backStack.selectTab(Tab.Settings) },
     addSubscription = { backStack.push(SubAddKey) },

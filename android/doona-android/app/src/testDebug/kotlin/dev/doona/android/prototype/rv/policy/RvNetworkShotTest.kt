@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvMenuPanel
 import dev.doona.android.designsystem.rv.RvMenuSize
+import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.RvActivityScreenSample
@@ -246,7 +247,7 @@ class RvNetworkShotTest {
     @Test
     @Config(qualifiers = ACTIVITY)
     fun activityOneRegionNamesBoth() {
-        val udp = RvNetworkSample.rulesOneRegion.first { it.group == RvNetworkSample.group.name }.udpNodeId
+        val udp = RvNetworkSample.rulesOneRegion.first { RvLabel.Res(it.group) == RvNetworkSample.group.name }.udpNodeId
         compose.rvContent(dark = false) { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}, rules = RvNetworkSample.rulesOneRegion) }
         val name = RvNetworkSample.group.members.first { it.id == udp }.name
         assertTrue(lines().toString(), "TCP Taipei 04\nUDP $name" in lines())
@@ -329,10 +330,10 @@ class RvNetworkShotTest {
         const val APART_FS115 = "+h1356dp"
         const val APART_FS200 = "+h2298dp"
 
-        /** The picker whole (measured: 2842, 3083, 5832.5). */
-        const val PICKER = "+h2842dp"
-        const val PICKER_FS115 = "+h3083dp"
-        const val PICKER_FS200 = "+h5833dp"
+        /** The picker whole (measured: 2842, 3083, 5903.5). */
+        const val PICKER = "+h2905dp"
+        const val PICKER_FS115 = "+h3144dp"
+        const val PICKER_FS200 = "+h5904dp"
 
         /** 活動 whole (measured: 1970.5, 2015, 3212). */
         const val ACTIVITY = "+h1971dp"

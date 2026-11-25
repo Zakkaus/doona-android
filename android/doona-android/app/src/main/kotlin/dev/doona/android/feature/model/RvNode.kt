@@ -13,6 +13,9 @@ import kotlin.math.sqrt
  * page pairs the history with the list of test times from its end, so a history that skipped a test would show every
  * earlier figure under the wrong time. [name] is the one name every
  * page shows (`Hong Kong 02 IPLC`); [short] is the same node's country code and number for the narrow tiles (`HK 02`).
+ * [subscription] is its subscription's name, as a node's page shows it; [subscriptionId] is the subscription itself, which
+ * the lists group and filter by: two subscriptions may share a name (one host, two tokens). [shareable]: the core keeps
+ * the node's original share link, which it does only for a share-link subscription's node (`Engine.nodeShareLink`).
  */
 @Immutable
 internal data class RvNode(
@@ -27,8 +30,16 @@ internal data class RvNode(
     val transport: String,
     val tls: Boolean,
     val subscription: String,
+    val subscriptionId: String,
     val history: List<Int?>,
+    val shareable: Boolean,
 ) {
+    /** A node the profile lists itself, of no subscription (組態內): its [subscriptionId] is [RV_INLINE]. */
+    val inline: Boolean get() = subscriptionId == RV_INLINE
+
+    /** Whether the core sent the node's details (its server); a node read before them shows none, and no share link. */
+    val described: Boolean get() = host.isNotEmpty()
+
     /** Where the maps mark the node: its city when its name gives one, else its country's centroid; none for 其他. */
     val spot: RvSpot? get() = if (place.mapped) city?.spot ?: place.spot else null
 
@@ -82,3 +93,6 @@ internal fun rvMedian(values: List<Int>): Int? = values.sorted().takeIf { it.isN
 
 /** How many latency tests each node keeps. */
 internal const val RV_TESTS = 8
+
+/** The [RvNode.subscriptionId] of a node of no subscription (組態內), and the 訂閱 chip's pick of those nodes. */
+internal const val RV_INLINE = ""

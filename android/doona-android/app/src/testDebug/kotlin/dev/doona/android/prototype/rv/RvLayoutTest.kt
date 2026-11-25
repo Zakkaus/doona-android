@@ -17,35 +17,32 @@ import dev.doona.android.feature.model.RvDnsUpstream
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.nodes.RvNodeDetail
+import dev.doona.android.feature.nodes.RvNodePicker
+import dev.doona.android.feature.nodes.RvNodePickerPage
+import dev.doona.android.feature.nodes.RvNodesPage
 import dev.doona.android.feature.perapp.RvPerAppScreen
+import dev.doona.android.feature.policies.RvRulesPage
+import dev.doona.android.feature.policies.RvTemplateImpactPage
 import dev.doona.android.prototype.rv.config.RvConfigHistoryData
 import dev.doona.android.prototype.rv.config.RvConfigImportPage
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
 import dev.doona.android.prototype.rv.connections.RvConnectionsPage
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RV_NODES_DETAIL
-import dev.doona.android.prototype.rv.nodes.RvNodeDetail
-import dev.doona.android.prototype.rv.nodes.RvNodePicker
-import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
 import dev.doona.android.prototype.rv.nodes.RvNodePickerPageSample
 import dev.doona.android.prototype.rv.nodes.RvNodePickerSample
-import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
-import dev.doona.android.prototype.rv.policy.RvEffectiveConfigPage
 import dev.doona.android.prototype.rv.policy.RvEffectiveConfigPageSample
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyGroupPage
 import dev.doona.android.prototype.rv.policy.RvPolicyRulePage
-import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.policy.RvQuickRule
 import dev.doona.android.prototype.rv.policy.RvRuleDraft
 import dev.doona.android.prototype.rv.policy.RvRuleEditPage
-import dev.doona.android.prototype.rv.policy.RvRulesPage
 import dev.doona.android.prototype.rv.policy.RvServiceRulesPage
 import dev.doona.android.prototype.rv.policy.RvTemplateData
-import dev.doona.android.prototype.rv.policy.RvTemplateImpactPage
-import dev.doona.android.prototype.rv.policy.RvTemplatePage
 import dev.doona.android.prototype.rv.policy.RvTemplatePageSample
 import dev.doona.android.prototype.rv.settings.RvAboutScreen
 import dev.doona.android.prototype.rv.settings.RvDnsScreen
@@ -56,7 +53,6 @@ import dev.doona.android.prototype.rv.settings.RvLogLevelScreen
 import dev.doona.android.prototype.rv.settings.RvRedaction
 import dev.doona.android.prototype.rv.settings.RvReportBuild
 import dev.doona.android.prototype.rv.settings.RvReportScreen
-import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
 import dev.doona.android.prototype.rv.settings.RvUpdate
@@ -167,13 +163,13 @@ class RvLayoutTest {
     fun nodePicker() = measure("node-picker", Top.Title) { RvNodePickerSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {}) }
 
     @Test
-    fun nodesPage() = measure("nodes-page", Top.Title) { RvNodesPage(sampleNodesPage(), onBack = {}, onFilter = {}, onOpen = {}, onAllNodes = {}) }
+    fun nodesPage() = measure("nodes-page", Top.Title) { RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {}) }
 
     @Test
     fun nodeDetail() = measure("node-detail", Top.Title) {
         val page = sampleNodesPage()
         val node = page.nodes.first { it.id == RV_NODES_DETAIL }
-        RvNodeDetail(node, current = node.id == page.currentId, page.testedAtEpochMs, onBack = {}, onUse = {}, onTest = {})
+        RvNodeDetail(node, current = node.id in page.current, RvData.testTimes, onBack = {}, onUse = {}, onTest = {})
     }
 
     @Test

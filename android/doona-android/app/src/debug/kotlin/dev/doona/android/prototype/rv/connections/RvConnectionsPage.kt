@@ -46,10 +46,10 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.policies.targetName
 import dev.doona.android.prototype.rv.data.RV_NOW
 import dev.doona.android.prototype.rv.policy.RvConnection
 import dev.doona.android.prototype.rv.policy.RvPolicyData
-import dev.doona.android.prototype.rv.policy.targetName
 
 /** Where the 連線 tab leads: a connection's page, the two filters, the search ([query] null ends it), and the other tabs. */
 internal class RvConnectionsRoutes(

@@ -3,9 +3,12 @@ package dev.doona.android.app
 import android.content.Context
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -16,9 +19,11 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.R
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
+import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeInstalledApps
+import dev.doona.android.engine.fake.FakeRuleMode
 import dev.doona.android.testing.SeedTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -29,6 +34,14 @@ import org.junit.runner.RunWith
 class NavigationTest {
     @get:Rule
     val compose = createComposeRule()
+
+    /** Waits for [text]: the pages read the engine off the main thread, which waitForIdle does not wait for. */
+    private fun appears(text: String) = compose.waitUntil(READ_MS) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
+
+    /** The search page is up once its field holds the focus, which the page gives it a frame after it is placed. */
+    private fun searchOpens() = compose.waitUntil(READ_MS) { compose.onAllNodes(hasSetTextAction() and isFocused()).fetchSemanticsNodes().isNotEmpty() }
+
+    private fun string(id: Int) = ApplicationProvider.getApplicationContext<Context>().getString(id)
 
     @Test
     fun `switching tabs keeps 活動 at the bottom`() {
@@ -55,15 +68,14 @@ class NavigationTest {
     fun `the back stack survives saving and restoring`() {
         val restoration = StateRestorationTester(compose)
         val engine = FakeEngine(FakeEngine.SAMPLE_GROUPS)
-        restoration.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}) } }
-        compose.onNodeWithText("Policies").performClick()
-        compose.onNodeWithText("Proxy").performClick()
+        restoration.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, PoliciesKey, GroupKey("g-Auto"))) } }
+        appears(TEST_GROUP)
 
         restoration.emulateSavedInstanceStateRestore()
 
-        compose.onNodeWithText("Proxy").assertExists()
+        appears(TEST_GROUP)
         compose.onNodeWithContentDescription("Back").performClick()
-        compose.onNodeWithText("Manual 1").assertExists()
+        appears(POLICIES)
     }
 
     @Test
@@ -87,6 +99,20 @@ class NavigationTest {
         compose.onNodeWithContentDescription("Back").performClick()
         compose.onNodeWithText(res.getString(R.string.rv_stats_title)).assertDoesNotExist()
         compose.onNodeWithContentDescription(res.getString(R.string.rv_stats)).assertExists()
+    }
+
+    @Test
+    fun `全部規則 on 活動 opens the rules page and back returns to 活動`() {
+        val res = ApplicationProvider.getApplicationContext<Context>().resources
+        val seeAll = res.getQuantityString(R.plurals.rv_see_all_rules, FakeRuleMode.SOURCE.rules, FakeRuleMode.SOURCE.rules)
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS, mode = Mode.Rule), FakeInstalledApps(), onConnect = {}) } }
+        appears(seeAll)
+        compose.onNode(hasClickAction() and hasText(seeAll)).performSemanticsAction(SemanticsActions.OnClick)
+        appears(res.getString(R.string.rv_policy_rules))
+
+        compose.onNodeWithContentDescription("Back").performClick()
+        appears(seeAll)
+        compose.onNodeWithText(res.getString(R.string.rv_policy_rules)).assertDoesNotExist()
     }
 
     @Test
@@ -116,6 +142,45 @@ class NavigationTest {
     }
 
     @Test
+    fun `搜尋節點 on 活動 opens the node search`() {
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS), FakeInstalledApps(), onConnect = {}) } }
+        compose.onNode(hasClickAction() and hasText(string(R.string.rv_search_nodes))).performSemanticsAction(SemanticsActions.OnClick)
+        searchOpens()
+    }
+
+    @Test
+    fun `最快節點 on 活動 opens 節點`() {
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS), FakeInstalledApps(), onConnect = {}) } }
+        compose.onNode(hasClickAction() and hasText(string(R.string.rv_fastest_nodes))).performSemanticsAction(SemanticsActions.OnClick)
+        appears(string(R.string.rv_nodes_spread))
+    }
+
+    @Test
+    fun `the main node on 活動 opens the node's page`() {
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS, mode = Mode.Rule), FakeInstalledApps(), onConnect = {}) } }
+        appears(string(R.string.rv_main_node))
+        compose.onNode(hasClickAction() and hasText(string(R.string.rv_main_node))).performSemanticsAction(SemanticsActions.OnClick)
+        appears(string(R.string.rv_nodes_details))
+    }
+
+    @Test
+    fun `主節點 on 策略 opens the main node's picker`() {
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS, mode = Mode.Rule), FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, PoliciesKey)) } }
+        appears(string(R.string.rv_main_node))
+        compose.onNode(hasClickAction() and hasText(string(R.string.rv_main_node))).performSemanticsAction(SemanticsActions.OnClick)
+        appears(string(R.string.rv_main_node_hint))
+        compose.onNodeWithContentDescription("Back").assertExists()
+    }
+
+    @Test
+    fun `搜尋節點 on 策略 opens the node search`() {
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS), FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, PoliciesKey)) } }
+        appears(POLICIES)
+        compose.onNode(hasClickAction() and hasText(string(R.string.rv_search_nodes))).performSemanticsAction(SemanticsActions.OnClick)
+        searchOpens()
+    }
+
+    @Test
     fun `a second back while the page leaves does not pop the tab underneath`() {
         compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS), FakeInstalledApps(), onConnect = {}, start = GROUP) } }
         compose.mainClock.autoAdvance = false
@@ -123,19 +188,19 @@ class NavigationTest {
         compose.onNodeWithContentDescription("Back").performClick()
         compose.mainClock.autoAdvance = true
 
-        compose.onNodeWithText("Manual 1").assertExists()
+        appears(POLICIES)
     }
 
     @Test
     fun `a group page leaves when its group is removed`() {
         val engine = FakeEngine(FakeEngine.SAMPLE_GROUPS)
-        compose.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}, start = GROUP) } }
-        compose.onNodeWithText("Proxy").assertExists()
+        compose.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, PoliciesKey, GroupKey("g-Auto"))) } }
+        appears(TEST_GROUP)
 
-        engine.groups.value = engine.groups.value.filter { it.id != "g-Proxy" }
+        engine.groups.value = engine.groups.value.filter { it.id != "g-Auto" }
 
         compose.onNodeWithContentDescription("Back").assertDoesNotExist()
-        compose.onNodeWithText("Manual 0").assertExists()
+        appears(POLICIES)
     }
 
     @Test
@@ -147,9 +212,17 @@ class NavigationTest {
         engine.groups.value = FakeEngine.SAMPLE_GROUPS
         engine.ready.value = true
 
-        compose.onNodeWithText("Proxy").assertExists()
+        appears(TEST_GROUP)
         compose.onNodeWithContentDescription("Back").assertExists()
     }
 }
 
 private val GROUP = listOf<NavKey>(ActivityKey, PoliciesKey, GroupKey("g-Proxy"))
+
+/** The group page's button, there once the group is read. */
+private const val TEST_GROUP = "Test this group"
+
+/** 策略's line under its mode switch, in the fixture's mode (全域), there once the profile is read. */
+private const val POLICIES = "All traffic goes through the main node"
+
+private const val READ_MS = 5_000L

@@ -1,5 +1,6 @@
 package dev.doona.android.designsystem.rv
 
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -19,8 +20,12 @@ internal fun RvNameDisc(mark: RvNameMark?, flag: String?, current: Boolean = fal
 
 /** What a name with nothing left but its emoji reads: the flag's country ([place]), or the brand or group. */
 @Composable
-internal fun rvMarkName(mark: RvNameMark?, place: String): String = when (mark) {
-    is RvNameMark.Flag -> RvPlace.entries.firstOrNull { it.flag.equals(mark.code, ignoreCase = true) }?.let { stringResource(it.label) } ?: place
-    is RvNameMark.Icon -> stringResource(mark.name)
-    null -> place
+internal fun rvMarkName(mark: RvNameMark?, place: String): String = rvMarkLabel(mark)?.let { stringResource(it) } ?: place
+
+/** The string [rvMarkName] reads for [mark]: the flag's country, or the brand or group; null for no mark or an unknown flag. */
+@StringRes
+internal fun rvMarkLabel(mark: RvNameMark?): Int? = when (mark) {
+    is RvNameMark.Flag -> RvPlace.entries.firstOrNull { it.flag.equals(mark.code, ignoreCase = true) }?.label
+    is RvNameMark.Icon -> mark.name
+    null -> null
 }

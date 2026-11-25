@@ -1,5 +1,7 @@
 package dev.doona.android.prototype.rv.samples
 
+import dev.doona.android.feature.nodes.ui.RvApplyTo
+import dev.doona.android.feature.policies.RvApplyChoice
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

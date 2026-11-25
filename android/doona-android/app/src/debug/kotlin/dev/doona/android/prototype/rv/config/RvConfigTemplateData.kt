@@ -5,6 +5,7 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import dev.doona.android.R
 import dev.doona.android.feature.model.RvChange
+import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvTemplate
 import dev.doona.android.prototype.rv.RvDiffFile
 import dev.doona.android.prototype.rv.RvDiffKind.Added
@@ -82,16 +83,16 @@ internal object RvConfigTemplateData {
     private val media = service("media", R.string.rv_template_group_media)
     private val apple = service("apple", R.string.rv_template_group_apple)
 
-    val bypass = RvConfigTemplate(RvTemplate("bypass", R.string.rv_policy_template_value, R.string.rv_template_cn_direct_line, R.drawable.rv_sym_arrow_right_alt), emptyList())
-    private val gfw = RvConfigTemplate(RvTemplate("gfw", R.string.rv_template_gfw, R.string.rv_template_gfw_line, R.drawable.rv_sym_block), emptyList())
-    private val global = RvConfigTemplate(RvTemplate("global", R.string.rv_template_global, R.string.rv_template_global_line, R.drawable.rv_settings_ic_language), emptyList())
-    private val single = RvConfigTemplate(RvTemplate("single", R.string.rv_template_single, R.string.rv_template_single_line, R.drawable.rv_sym_vpn_lock), listOf(proxy, auto))
+    val bypass = RvConfigTemplate(RvTemplate("bypass", RvLabel.Res(R.string.rv_policy_template_value), R.string.rv_template_cn_direct_line, R.drawable.rv_sym_arrow_right_alt), emptyList())
+    private val gfw = RvConfigTemplate(RvTemplate("gfw", RvLabel.Res(R.string.rv_template_gfw), R.string.rv_template_gfw_line, R.drawable.rv_sym_block), emptyList())
+    private val global = RvConfigTemplate(RvTemplate("global", RvLabel.Res(R.string.rv_template_global), R.string.rv_template_global_line, R.drawable.rv_settings_ic_language), emptyList())
+    private val single = RvConfigTemplate(RvTemplate("single", RvLabel.Res(R.string.rv_template_single), R.string.rv_template_single_line, R.drawable.rv_sym_vpn_lock), listOf(proxy, auto))
     val services = RvConfigTemplate(
-        RvTemplate("services", R.string.rv_template_services, R.string.rv_template_by_service_line, R.drawable.rv_sym_apps),
+        RvTemplate("services", RvLabel.Res(R.string.rv_template_services), R.string.rv_template_by_service_line, R.drawable.rv_sym_apps),
         listOf(proxy, auto, telegram, media, apple),
     )
     val regions = RvConfigTemplate(
-        RvTemplate("regions", R.string.rv_template_regions, R.string.rv_template_regions_line, R.drawable.rv_sym_account_tree),
+        RvTemplate("regions", RvLabel.Res(R.string.rv_template_regions), R.string.rv_template_regions_line, R.drawable.rv_sym_account_tree),
         listOf(proxy, auto) + regionGroups + listOf(
             telegram,
             service("ai", R.string.rv_template_group_openai),
@@ -102,7 +103,7 @@ internal object RvConfigTemplateData {
         ),
     )
     private val homebound = RvConfigTemplate(
-        RvTemplate("homebound", R.string.rv_template_homebound, R.string.rv_template_homebound_line, R.drawable.rv_sym_directions),
+        RvTemplate("homebound", RvLabel.Res(R.string.rv_template_homebound), R.string.rv_template_homebound_line, R.drawable.rv_sym_directions),
         listOf(RvTemplateGroup("cn", R.string.rv_template_group_cn, RvTemplatePolicy.Score, "cn")),
     )
 

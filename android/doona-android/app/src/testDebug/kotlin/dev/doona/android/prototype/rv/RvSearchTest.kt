@@ -14,8 +14,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvMotion
+import dev.doona.android.feature.nodes.RV_PICKER
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.nodes.RV_PICKER
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

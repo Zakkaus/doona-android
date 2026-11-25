@@ -34,8 +34,8 @@ internal object RvData {
     fun node(id: String): RvNode? = nodes.firstOrNull { it.id == id } ?: worldNodes.firstOrNull { it.id == id }
 
     val subscriptions = listOf(
-        RvSubscription("s1", RV_HARBOR, nodes.count { it.subscription == RV_HARBOR }, UPDATED, 61_700_000_000, 200_000_000_000, 1_805_112_000_000, "sub.harbor-cloud.example", RvSubFormat.Clash),
-        RvSubscription("s2", RV_LANTERN, nodes.count { it.subscription == RV_LANTERN }, UPDATED, 36_400_000_000, 100_000_000_000, 1_798_718_400_000, "lantern-net.example", RvSubFormat.Links),
+        RvSubscription(RV_HARBOR_ID, RV_HARBOR, nodes.count { it.subscription == RV_HARBOR }, UPDATED, 61_700_000_000, 200_000_000_000, 1_805_112_000_000, "sub.harbor-cloud.example", RvSubFormat.Clash),
+        RvSubscription(RV_LANTERN_ID, RV_LANTERN, nodes.count { it.subscription == RV_LANTERN }, UPDATED, 36_400_000_000, 100_000_000_000, 1_798_718_400_000, "lantern-net.example", RvSubFormat.Links),
     )
 
     val session = RvSession(SESSION_START, RV_NOW, SESSION_DOWN, SESSION_UP, PEAK_DOWN, PEAK_UP, RvMinute.down, RvMinute.up)
@@ -75,6 +75,10 @@ internal object RvData {
 
 internal const val RV_HARBOR = "Harbor Cloud"
 internal const val RV_LANTERN = "Lantern Net"
+
+/** The sample subscriptions' ids, which the nodes name their subscription by. */
+internal const val RV_HARBOR_ID = "s1"
+internal const val RV_LANTERN_ID = "s2"
 
 /** 2026-11-22 10:24:00 UTC. */
 internal const val RV_NOW = 1_795_343_040_000L

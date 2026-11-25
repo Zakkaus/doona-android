@@ -4,6 +4,7 @@ import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.feature.model.RV_TESTS
 import dev.doona.android.feature.model.RvCity
 import dev.doona.android.feature.model.RvNode
+import java.net.URLEncoder
 import java.util.Random
 import kotlin.math.roundToInt
 
@@ -32,7 +33,9 @@ internal fun rvNodes(): List<RvNode> {
             transport = spec.protocol.transport,
             tls = spec.protocol.tls,
             subscription = if (i % 3 == 2) RV_LANTERN else RV_HARBOR,
+            subscriptionId = if (i % 3 == 2) RV_LANTERN_ID else RV_HARBOR_ID,
             history = SLOWING.takeIf { code == "SG" && n == 3 } ?: history(i, spec),
+            shareable = true,
         )
     }
 }
@@ -131,3 +134,15 @@ private const val TIMEOUT_CHANCE = 0.03f
 /** The last round ran at 2026-11-22 10:00 UTC, 24 minutes before [RV_NOW], every half hour before it. */
 private const val LAST_TEST = 1_795_341_600_000L
 private const val TEST_EVERY = 1_800_000L
+
+/**
+ * The sample node as a share link in the common URI form, `scheme://host:port?type=…&security=…#name`, which the running
+ * sample copies (the app copies the core's own link). The sample holds no credentials, so the link carries the server's
+ * address and transport only.
+ */
+internal fun RvNode.shareLink(): String {
+    val scheme = if (protocol == "Shadowsocks") "ss" else protocol.lowercase()
+    val type = if (transport == "WebSocket") "ws" else transport.lowercase()
+    val security = if (tls) "tls" else "none"
+    return "$scheme://$host:$port?type=$type&security=$security#" + URLEncoder.encode(name, "UTF-8").replace("+", "%20")
+}

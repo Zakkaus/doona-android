@@ -12,6 +12,9 @@
     <plurals name="rv_policy_node_count">
         <item quantity="other">%1$d 個節點</item>
     </plurals>
+    <plurals name="rv_policy_group_count">
+        <item quantity="other">%1$d 個群組</item>
+    </plurals>
     <string name="rv_template_cn_direct_line">中國大陸網站直接連線</string>
     <string name="rv_policy_rules">分流規則</string>
     <string name="rv_policy_rules_order">由上而下比對，第一條符合的規則生效</string>
@@ -156,4 +159,17 @@
     <string name="rv_network_both">TCP/UDP</string>
     <string name="rv_score_udp_unsupported">%1$s 不支援 UDP</string>
     <string name="rv_score_udp_failed">UDP 測試失敗</string>
+    <string name="rv_template_apply_failed">無法套用範本</string>
+    <string name="rv_template_read_failed">無法讀取範本</string>
+    <string name="rv_policy_failed_quic">無法變更「封鎖 QUIC」</string>
+    <string name="rv_policy_failed_update">無法更新訂閱</string>
+    <string name="rv_policy_failed_ads">無法變更「封鎖廣告」</string>
+    <string name="rv_group_no_match">找不到符合的節點</string>
+    <string name="rv_group_empty">這個群組沒有節點</string>
+    <string name="rv_group_empty_line">請在設定檔中為這個群組新增節點。</string>
+    <string name="rv_group_apart">分開選擇 TCP/UDP</string>
+    <string name="rv_policy_reject">拒絕</string>
+    <string name="rv_policy_target_missing">找不到群組</string>
+    <string name="rv_policy_read_failed">無法讀取策略</string>
+    <string name="rv_group_read_failed">無法讀取群組</string>
 </resources>

@@ -11,6 +11,7 @@
     <string name="rv_welcome_fast">高性能</string>
     <string name="rv_welcome_fast_sub">内核单连接实测超过 20 Gbps（桌面测试）</string>
     <string name="rv_no_node">没有可用的节点</string>
+    <string name="rv_latency_all_failed">延迟测试全部失败</string>
     <string name="rv_no_node_reason">所有节点的延迟测试都失败。请确认网络连接，或更新订阅。</string>
     <string name="rv_retest">重新测试</string>
     <string name="rv_core_stopped">连接已断开</string>
@@ -21,6 +22,10 @@
     <string name="rv_failed_switch_mode">无法切换模式</string>
     <string name="rv_failed_switch_node">无法切换节点</string>
     <string name="rv_failed_test_latency">无法测试延迟</string>
+    <string name="rv_failed_read_nodes">无法读取节点</string>
+    <string name="rv_failed_copy_link">无法复制分享链接</string>
+    <string name="rv_failed_remove_subscription">无法删除订阅</string>
+    <string name="rv_nodes_no_match">没有匹配的节点</string>
     <string name="rv_lan_ask_title">允许访问局域网</string>
     <string name="rv_lan_ask_body">访问局域网中的订阅和节点需要此权限。</string>
     <string name="rv_lan_ask_continue">继续</string>

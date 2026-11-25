@@ -25,23 +25,20 @@ import dev.doona.android.feature.activity.rvActivityBanner
 import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.nodes.RvNodeDetail
+import dev.doona.android.feature.nodes.RvNodesPage
 import dev.doona.android.feature.perapp.RvPerAppScreen
-import dev.doona.android.feature.subscriptions.RvSubDetail
+import dev.doona.android.feature.policies.RvRulesPage
 import dev.doona.android.feature.subscriptions.RvSubDetailState
 import dev.doona.android.feature.subscriptions.RvSubsActions
 import dev.doona.android.feature.subscriptions.RvSubsPage
-import dev.doona.android.feature.subscriptions.RvSubsState
 import dev.doona.android.prototype.rv.connections.RvConnectionsPage
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.rvTestTimes
-import dev.doona.android.prototype.rv.nodes.RvNodeDetail
-import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyGroupPage
-import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
-import dev.doona.android.prototype.rv.policy.RvRulesPage
 import dev.doona.android.prototype.rv.policy.RvServiceRulesPage
 import dev.doona.android.prototype.rv.settings.RvAboutScreen
 import dev.doona.android.prototype.rv.settings.RvLanguageScreen
@@ -50,7 +47,6 @@ import dev.doona.android.prototype.rv.settings.RvLogLevelScreen
 import dev.doona.android.prototype.rv.settings.RvRedaction
 import dev.doona.android.prototype.rv.settings.RvReportBuild
 import dev.doona.android.prototype.rv.settings.RvReportScreen
-import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
 import dev.doona.android.prototype.rv.settings.rvPerAppActions
 import dev.doona.android.prototype.rv.settings.rvPerAppLookSample
@@ -123,7 +119,7 @@ class RvPageEndTest {
     @Test
     fun pushedPagesEndAboveTheNavigationBar() = endsClear(
         listOf(
-            Page("節點") { RvNodesPage(sampleNodesPage(), onBack = {}, onFilter = {}, onOpen = {}, onAllNodes = {}) },
+            Page("節點") { RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {}) },
             Page("統計") { RvStatsScreenSample(rvStatsSample()) },
             Page("流量") { RvTrafficSample(rvSampleActivity(), RvData.session, onBack = {}) },
             Page("關於") { RvAboutScreen(rvSampleVersions, onBack = {}) },

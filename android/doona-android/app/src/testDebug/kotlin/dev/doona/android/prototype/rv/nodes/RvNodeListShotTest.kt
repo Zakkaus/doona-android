@@ -4,8 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -97,14 +95,14 @@ class RvNodeListShotTest {
     @Test
     fun edgesNameDark() = compose.rvShot("policy-picker-edges-name", dark = true) { Edges(RvNodeSort.Name) }
 
-    /** The order's chips sit one search gap under the page's search, as every list sits under its search (item 4). */
+    /** The 訂閱 and 排序 chips (ruling q-p3c-mainchips) sit one search gap under the page's search, as every list sits under its search (item 4). */
     @Test
     fun theOrderSitsASearchGapUnderTheSearch() {
         compose.rvContent(dark = false) { Picker(RvNodeSort.Latency) }
         val search = compose.onNodeWithText(rvText(R.string.rv_search_nodes)).fetchSemanticsNode()
-        val chip = compose.onNode(hasText(rvText(R.string.rv_nodes_sort_latency)) and isSelectable()).fetchSemanticsNode()
+        val chip = compose.onNodeWithText(rvText(R.string.rv_nodes_all_subscriptions)).fetchSemanticsNode()
         val gap = (chip.boundsInRoot.top - search.boundsInRoot.bottom) / search.layoutInfo.density.density
-        assertEquals("search → order chips, dp", RvSpace.searchGap.value, gap, DP)
+        assertEquals("search → 訂閱 and 排序 chips, dp", RvSpace.searchGap.value, gap, DP)
     }
 
     /** The pill opens the search page over the picker; a node picked there becomes the main node and the page closes. */
@@ -135,7 +133,7 @@ class RvNodeListShotTest {
                 UNTESTED -> node.untested()
                 RvData.CURRENT_ID -> node.copy(name = LONG_NAME)
                 else -> node
-            }.copy(subscription = sub.name)
+            }.copy(subscription = sub.name, subscriptionId = sub.id)
         }
         RvNodePickerPageSample(nodes, listOf(sub), RvData.CURRENT_ID, sort, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
     }

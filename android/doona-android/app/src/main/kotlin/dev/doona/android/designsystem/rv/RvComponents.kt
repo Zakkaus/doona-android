@@ -337,7 +337,7 @@ internal object RvPart {
     const val SKELETON_BLOCK = "rv-skeleton-block"
     const val SKELETON_DISC = "rv-skeleton-disc"
 
-    /** What a skeleton's block stands for: a chart's frame, a progress track, a range chip. */
+    /** What a skeleton's block stands for: a chart's frame, a progress track, a range chip, the world map. */
     const val FRAME = "rv-frame"
 
     /** A line of text set with a glyph before it ([RvInline]), measured as one line. */

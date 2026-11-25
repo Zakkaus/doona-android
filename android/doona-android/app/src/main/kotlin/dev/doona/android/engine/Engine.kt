@@ -112,6 +112,15 @@ interface Engine {
      */
     suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit>
 
+    /** The templates the core builds, in the order it lists them; [setRuleSource] takes their ids. */
+    suspend fun ruleTemplates(): Result<List<RuleTemplate>>
+
+    /** Whether 封鎖廣告 is on: the entry file rejects the DNS names of `geosite:category-ads-all` before any other rule. */
+    suspend fun adBlock(): Result<Boolean>
+
+    /** Turns 封鎖廣告 on or off; new flows follow it at once. */
+    suspend fun setAdBlock(on: Boolean): Result<Unit>
+
     /** Saves 1 to 4 IP literals, optionally with a port (default 53). New UDP queries and TCP DNS connections use them immediately. */
     suspend fun setDnsUpstreams(servers: List<String>): Result<Unit>
 

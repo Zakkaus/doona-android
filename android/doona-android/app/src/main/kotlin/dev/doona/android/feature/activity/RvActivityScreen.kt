@@ -132,16 +132,16 @@ internal fun RvActivityScreen(
 }
 
 /**
- * Where 活動 leads: a traffic tile, 統計, the search page (the search pill), 節點 (最快節點's header), the node row, the
- * nav's tabs, the mode picker, a rule row (by its group), the full list of rules, the latency test, 訂閱 (the top bar's
- * disc and the card's header) and the round 更多 action.
+ * Where 活動 leads: a traffic tile, 統計, the search page (the search pill), 節點 (最快節點's header), the node row's node
+ * page (by its node; with no node the row opens nothing), the nav's tabs, the mode picker, a rule row (by its group), the
+ * full list of rules, the latency test, 訂閱 (the top bar's disc and the card's header) and the round 更多 action.
  */
 internal class RvActivityRoutes(
     val traffic: () -> Unit,
     val stats: () -> Unit,
     val search: () -> Unit,
     val nodes: () -> Unit,
-    val node: () -> Unit,
+    val node: (String) -> Unit,
     val tab: (Int) -> Unit,
     val mode: () -> Unit,
     val rule: (String) -> Unit,

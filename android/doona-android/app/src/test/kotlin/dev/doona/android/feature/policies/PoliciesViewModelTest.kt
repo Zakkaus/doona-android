@@ -1,14 +1,27 @@
 package dev.doona.android.feature.policies
 
+import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.Group
-import dev.doona.android.engine.GroupKind
-import dev.doona.android.engine.Member
+import dev.doona.android.engine.Mode
+import dev.doona.android.engine.Network
+import dev.doona.android.engine.RuleOptions
+import dev.doona.android.engine.RulePage
 import dev.doona.android.engine.fake.FakeEngine
+import dev.doona.android.engine.fake.rvSampleEngine
+import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.model.RvRuleSource
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -18,6 +31,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -31,112 +45,249 @@ class PoliciesViewModelTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    /** `WhileSubscribed` only follows the engine while someone collects, as the screen does. */
-    private fun TestScope.collected(engine: Engine) = PoliciesViewModel(engine).also { vm ->
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
-    }
+    /** `WhileSubscribed` only follows the engine while someone collects, as the screen does; reads run in the test. */
+    private fun TestScope.collected(engine: Engine) =
+        PoliciesViewModel(engine, clock = { NOW }, reads = UnconfinedTestDispatcher(testScheduler)).also { vm ->
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        }
 
-    /** An engine whose probe answers with [result] and records which group it was asked about. */
-    private class Probing(var result: Result<Unit>, base: Engine = FakeEngine()) : Engine by base {
-        val asked = mutableListOf<String?>()
+    /**
+     * The sample engine, recording the calls 策略 makes and answering them with [result]. [revision] overrides the catalog's
+     * rules revision; [pageRevisions] are the revisions the next rule pages report, for a page read while the source changed.
+     */
+    private class Recording(val base: FakeEngine = rvSampleEngine()) : Engine by base {
+        var result: Result<Unit> = Result.success(Unit)
+        val calls = mutableListOf<String>()
+        val revision = MutableStateFlow<Long?>(null)
+        val pageRevisions = ArrayDeque<Long>()
+        var ruleReads = 0
+        var failRules = false
 
-        override suspend fun testLatency(groupId: String?): Result<Unit> {
-            asked += groupId
-            return result
+        override val catalog: StateFlow<Catalog?> = combine(base.catalog, revision) { catalog, revision ->
+            if (catalog == null || revision == null) catalog else catalog.copy(ruleSource = catalog.ruleSource.copy(rulesRevision = revision))
+        }.stateIn(CoroutineScope(Dispatchers.Unconfined), SharingStarted.Eagerly, null)
+
+        override suspend fun setMode(mode: Mode): Result<Unit> = answer("setMode $mode") { base.setMode(mode) }
+
+        override suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit> =
+            answer("setRuleSource $template ${options.blockQuic}") { base.setRuleSource(template, options) }
+
+        override suspend fun select(groupId: String, memberId: String?, network: Network?): Result<Unit> =
+            answer("select $groupId $memberId $network") { base.select(groupId, memberId, network) }
+
+        override suspend fun testLatency(groupId: String?): Result<Unit> = answer("test $groupId") { Result.success(Unit) }
+
+        override suspend fun setAdBlock(on: Boolean): Result<Unit> = answer("setAdBlock $on") { base.setAdBlock(on) }
+
+        override suspend fun rules(offset: Int, limit: Int): Result<RulePage> {
+            ruleReads++
+            if (failRules) return Result.failure(IllegalStateException("rules"))
+            val page = base.rules(offset, limit).getOrThrow()
+            return Result.success(page.copy(rulesRevision = pageRevisions.removeFirstOrNull() ?: catalog.value!!.ruleSource.rulesRevision))
+        }
+
+        private suspend fun answer(call: String, apply: suspend () -> Result<Unit>): Result<Unit> {
+            calls += call
+            return if (result.isSuccess) apply() else result
         }
     }
 
     @Test
-    fun `shows each group with its current member and the node under it`() = runTest {
-        val vm = collected(FakeEngine(FakeEngine.SAMPLE_GROUPS))
-        val items = vm.uiState.value.items
-        assertEquals(listOf("g-Proxy", "g-Auto", "g-HK"), items.map { it.group.id })
-        assertEquals("g-Auto", items[0].current?.id)
-        assertEquals("n-369a8a63c1d2e3f4", items[0].node?.id)
-        assertEquals(42, items[0].node?.latencyMs)
-        assertEquals("n-369a8a63c1d2e3f4", items[1].current?.id)
-    }
-
-    @Test
-    fun `follows the engine while a group is being probed`() = runTest {
-        val engine = FakeEngine()
+    fun `a tap on the selected segment calls nothing`() = runTest {
+        val engine = Recording()
         val vm = collected(engine)
-        assertFalse(vm.uiState.value.items.any { it.group.testing })
-        engine.groups.value = engine.groups.value.map { it.copy(testing = it.id == "g-Auto") }
-        assertEquals(listOf("g-Auto"), vm.uiState.value.items.filter { it.group.testing }.map { it.group.id })
+        val state = vm.uiState.value.state
+        assertEquals(RvRouteMode.Rule, state.mode)
+        vm.onChange(state.copy(mode = RvRouteMode.Rule))
+        assertEquals(emptyList<String>(), engine.calls)
     }
 
     @Test
-    fun `a group whose selection leads nowhere has no node`() = runTest {
-        val dangling = Group("g-A", "A", GroupKind.Selector, listOf(Member("g-Gone", "Gone", isGroup = true)), selectedId = "g-Gone")
-        val none = Group("g-B", "B", GroupKind.Selector, emptyList(), selectedId = null)
-        val vm = collected(FakeEngine(groups = listOf(dangling, none)))
-        val items = vm.uiState.value.items
-        assertEquals("g-Gone", items[0].current?.id)
-        assertNull(items[0].node)
-        assertNull(items[1].current)
-    }
-
-    @Test
-    fun `groups that select each other do not hang the list`() = runTest {
-        val a = Group("g-A", "A", GroupKind.Selector, listOf(Member("g-B", "B", isGroup = true)), selectedId = "g-B")
-        val b = Group("g-B", "B", GroupKind.Selector, listOf(Member("g-A", "A", isGroup = true)), selectedId = "g-A")
-        val vm = collected(FakeEngine(groups = listOf(a, b)))
-        assertEquals(listOf(null, null), vm.uiState.value.items.map { it.node })
-    }
-
-    @Test
-    fun `is not ready until the engine has loaded`() = runTest {
-        val engine = FakeEngine().apply { ready.value = false }
+    fun `a mode switch calls setMode once and shows the engine's mode`() = runTest {
+        val engine = Recording()
         val vm = collected(engine)
-        assertFalse(vm.uiState.value.ready)
-        engine.ready.value = true
-        assertTrue(vm.uiState.value.ready)
+        vm.onChange(vm.uiState.value.state.copy(mode = RvRouteMode.Global))
+        assertEquals(listOf("setMode Global"), engine.calls)
+        assertEquals(RvRouteMode.Global, vm.uiState.value.state.mode)
     }
 
     @Test
-    fun `the filter narrows the list to selectors or to automatic groups`() = runTest {
-        val vm = collected(FakeEngine(FakeEngine.SAMPLE_GROUPS))
-        vm.onAction(PoliciesAction.SetFilter(GroupFilter.Manual))
-        assertEquals(listOf("g-Proxy"), vm.uiState.value.visible.map { it.group.id })
-        vm.onAction(PoliciesAction.SetFilter(GroupFilter.Auto))
-        assertEquals(listOf("g-Auto", "g-HK"), vm.uiState.value.visible.map { it.group.id })
-        assertEquals(1, vm.uiState.value.manual)
-    }
-
-    @Test
-    fun `test all probes every group`() = runTest {
-        val engine = Probing(Result.success(Unit))
+    fun `blocking QUIC keeps the template and sets the option`() = runTest {
+        val engine = Recording()
         val vm = collected(engine)
-        vm.onAction(PoliciesAction.TestAll)
-        assertEquals(listOf<String?>(null), engine.asked)
-        assertNull(vm.uiState.value.error)
+        vm.onChange(vm.uiState.value.state.copy(blockQuic = true))
+        assertEquals(listOf("setRuleSource cn-direct true"), engine.calls)
+        assertTrue(vm.uiState.value.state.blockQuic)
     }
 
     @Test
-    fun `a failed test shows its code until dismissed`() = runTest {
-        val vm = collected(Probing(Result.failure(EngineException(ErrorCode.Busy))))
-        vm.onAction(PoliciesAction.TestAll)
-        assertEquals(ErrorCode.Busy, vm.uiState.value.error)
-        vm.onAction(PoliciesAction.DismissError)
-        assertNull(vm.uiState.value.error)
-    }
-
-    @Test
-    fun `a later success clears the error`() = runTest {
-        val engine = Probing(Result.failure(EngineException(ErrorCode.Busy)))
+    fun `封鎖廣告 shows the engine's switch, and a tap sets it once the engine has it`() = runTest {
+        val engine = Recording()
         val vm = collected(engine)
-        vm.onAction(PoliciesAction.TestAll)
-        assertEquals(ErrorCode.Busy, vm.uiState.value.error)
+        assertTrue(vm.uiState.value.state.blockAds)
+        engine.result = Result.failure(EngineException(ErrorCode.Internal))
+        vm.onChange(vm.uiState.value.state.copy(blockAds = false))
+        assertTrue("a failed set keeps the switch", vm.uiState.value.state.blockAds)
+        assertEquals(PolicyFailure(PolicyAction.Ads, ErrorCode.Internal), vm.uiState.value.failure)
         engine.result = Result.success(Unit)
-        vm.onAction(PoliciesAction.TestAll)
-        assertNull(vm.uiState.value.error)
+        vm.onChange(vm.uiState.value.state.copy(blockAds = false))
+        assertEquals(listOf("setAdBlock false", "setAdBlock false"), engine.calls)
+        assertFalse(vm.uiState.value.state.blockAds)
+        assertNull(vm.uiState.value.failure)
     }
 
     @Test
-    fun `an error that is not an engine error is shown as internal`() = runTest {
-        val vm = collected(Probing(Result.failure(IllegalStateException("boom"))))
-        vm.onAction(PoliciesAction.TestAll)
-        assertEquals(ErrorCode.Internal, vm.uiState.value.error)
+    fun `the order stays on the page`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine)
+        val state = vm.uiState.value.state
+        vm.onChange(state.copy(nodeSort = RvNodeSort.Name))
+        assertEquals(emptyList<String>(), engine.calls)
+        assertEquals(RvNodeSort.Name, vm.uiState.value.state.nodeSort)
+    }
+
+    @Test
+    fun `choosing the main node selects it in the main group on both networks`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine)
+        val main = vm.uiState.value.profile!!.main!!
+        val other = main.members.first { it.id != main.selectedId }.id
+        vm.onChange(vm.uiState.value.state.choose(main.id, main.selectedId))
+        assertEquals(emptyList<String>(), engine.calls)
+        vm.onChange(vm.uiState.value.state.choose(main.id, other))
+        assertEquals(listOf("select g-Proxy $other null"), engine.calls)
+        assertEquals(other, vm.uiState.value.profile!!.main!!.selectedId)
+    }
+
+    @Test
+    fun `a failure shows in the banner until the next action succeeds`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine)
+        engine.result = Result.failure(EngineException(ErrorCode.Busy))
+        vm.testAll()
+        assertEquals(PolicyFailure(PolicyAction.TestAll, ErrorCode.Busy), vm.uiState.value.failure)
+        engine.result = Result.success(Unit)
+        vm.onChange(vm.uiState.value.state.copy(mode = RvRouteMode.Direct))
+        assertNull(vm.uiState.value.failure)
+        assertEquals(listOf("test null", "setMode Direct"), engine.calls)
+    }
+
+    @Test
+    fun `retry makes the failed call again, and nothing once an attempt succeeds`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine)
+        engine.result = Result.failure(EngineException(ErrorCode.Busy))
+        vm.onChange(vm.uiState.value.state.copy(mode = RvRouteMode.Global))
+        assertEquals(PolicyFailure(PolicyAction.Mode, ErrorCode.Busy), vm.uiState.value.failure)
+        engine.result = Result.success(Unit)
+        vm.retry()
+        assertNull(vm.uiState.value.failure)
+        assertEquals(RvRouteMode.Global, vm.uiState.value.state.mode)
+        vm.retry()
+        assertEquals(listOf("setMode Global", "setMode Global"), engine.calls)
+    }
+
+    @Test
+    fun `rules from a subscription name it as their source, and 阻擋 QUIC calls nothing`() = runTest {
+        val base = rvSampleEngine()
+        val sub = base.catalog.value!!.subscriptions.first()
+        val engine = object : Engine by base {
+            val calls = mutableListOf<String>()
+            override val catalog: StateFlow<Catalog?> = base.catalog.map { it?.copy(ruleSource = it.ruleSource.copy(template = null, subscriptionId = sub.id)) }
+                .stateIn(CoroutineScope(Dispatchers.Unconfined), SharingStarted.Eagerly, null)
+
+            override suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit> {
+                calls += template
+                return base.setRuleSource(template, options)
+            }
+        }
+        val vm = collected(engine)
+        assertEquals(RvRuleSource.Subscription(sub.name), vm.uiState.value.profile?.source)
+        vm.onChange(vm.uiState.value.state.copy(blockQuic = true))
+        assertEquals(emptyList<String>(), engine.calls)
+        assertNull(vm.uiState.value.failure)
+    }
+
+    @Test
+    fun `loading until the engine is ready and the profile is read`() = runTest {
+        val engine = Recording()
+        engine.base.ready.value = false
+        val vm = collected(engine)
+        assertTrue(vm.uiState.value.loading)
+        engine.base.ready.value = true
+        assertFalse(vm.uiState.value.loading)
+        assertNotNull(vm.uiState.value.profile)
+    }
+
+    @Test
+    fun `a failed first read shows its failure, and 重試 reads again`() = runTest {
+        val engine = Recording()
+        engine.failRules = true
+        val vm = collected(engine)
+        val failed = vm.uiState.value
+        assertFalse("no endless skeleton", failed.loading)
+        assertNull(failed.profile)
+        assertEquals(PolicyFailure(PolicyAction.Read, ErrorCode.Internal), failed.failure)
+        engine.failRules = false
+        vm.retry()
+        assertNotNull(vm.uiState.value.profile)
+        assertNull(vm.uiState.value.failure)
+    }
+
+    @Test
+    fun `a failed read keeps the profile shown and says so, and 重試 reads again`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine)
+        val shown = vm.uiState.value.profile
+        engine.failRules = true
+        engine.revision.value = 2L
+        assertEquals(shown, vm.uiState.value.profile)
+        assertEquals(PolicyAction.Read, vm.uiState.value.failure?.action)
+        engine.failRules = false
+        vm.retry()
+        assertNull(vm.uiState.value.failure)
+    }
+
+    @Test
+    fun `no subscription when the catalog has none`() = runTest {
+        val vm = collected(Recording(FakeEngine(subscriptions = emptyList())))
+        assertTrue(vm.uiState.value.noSubscription)
+        assertFalse(collected(Recording()).uiState.value.noSubscription)
+    }
+
+    @Test
+    fun `the rules are read again only when their revision changes`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine)
+        assertEquals(1, engine.ruleReads)
+        val main = vm.uiState.value.profile!!.main!!
+        vm.onChange(vm.uiState.value.state.choose(main.id, main.members.first { it.id != main.selectedId }.id))
+        assertEquals(1, engine.ruleReads)
+        engine.revision.value = 2L
+        assertEquals(2, engine.ruleReads)
+        assertNotNull(vm.uiState.value.profile)
+    }
+
+    @Test
+    fun `a stale page of rules is read again`() = runTest {
+        val engine = Recording()
+        engine.pageRevisions += 99L
+        val vm = collected(engine)
+        assertEquals(2, engine.ruleReads)
+        assertEquals(RV_POLICY_CARD_RULES, vm.uiState.value.profile!!.rules.size)
+    }
+
+    @Test
+    fun `updating refreshes every subscription in order`() = runTest {
+        val updated = mutableListOf<String>()
+        val engine = object : Engine by rvSampleEngine() {
+            override suspend fun updateSubscription(id: String) = Result.success(catalog.value!!.subscriptions.first { it.id == id }).also { updated += id }
+        }
+        collected(engine).updateSubscriptions()
+        assertEquals(listOf("s1", "s2"), updated)
+    }
+
+    private companion object {
+        const val NOW = 1_764_000_000_000L
     }
 }

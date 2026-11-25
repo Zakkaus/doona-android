@@ -31,31 +31,38 @@ import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvConfirmSheet
 import dev.doona.android.designsystem.rv.RvEndMark
-import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvFoldRow
+import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvLatencyChange
 import dev.doona.android.designsystem.rv.RvMenuAnchor
 import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.designsystem.rv.RvNodesSize
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvRowEnd
+import dev.doona.android.designsystem.rv.RvSkeletonCard
+import dev.doona.android.designsystem.rv.RvSkeletonEnd
+import dev.doona.android.designsystem.rv.RvSkeletonRow
+import dev.doona.android.designsystem.rv.RvSkeletonText
 import dev.doona.android.designsystem.rv.RvSpace
-import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvSharedFlag
+import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
+import dev.doona.android.feature.model.RV_INLINE
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSubscription
 import kotlinx.coroutines.flow.first
 
 /**
- * One subscription: its 訂閱 row, then its nodes. The row opens and closes the group (always open while searching); the
+ * One subscription, or with no [sub] the nodes added by hand (組態內): its 訂閱 row, then its nodes. The row opens and closes the group (always open while searching); the
  * group folds away when none of its nodes match. The pieces of the node picker and of a policy group's page, which lists
  * its nodes the same way: the group starts open unless [initiallyOpen] is false. A page that marks its rows its own way
  * (a name's emoji drawn as our icons, the network a node is chosen on) draws them with [row] in place of [RvNodePickRow].
+ * A null [sub] is the section of the nodes of no subscription, 組態內, headed by [RvInlineFold]. Besides [currentId], the
+ * nodes in [alsoCurrent] are checked too (the main group's UDP node while its networks are apart).
  */
 @Composable
 internal fun RvNodeSection(
-    sub: RvSubscription,
+    sub: RvSubscription?,
     members: List<RvNode>,
     matching: Set<String>,
     labels: Map<String, String>,
@@ -68,18 +75,23 @@ internal fun RvNodeSection(
     modifier: Modifier,
     initiallyOpen: Boolean = true,
     row: (@Composable (node: RvNode, label: String, current: Boolean, order: Int) -> Unit)? = null,
+    alsoCurrent: Set<String> = emptySet(),
 ) {
     // Read here, so that as more rows are composed this group composes again, not the picker.
     val limit = rows.composed() - rows.first
     if (limit <= 0) return
     val motion = Rv.motion
-    var open by rememberSaveable(sub.id) { mutableStateOf(initiallyOpen) }
+    var open by rememberSaveable(sub?.id ?: RV_INLINE) { mutableStateOf(initiallyOpen) }
     val fold = motion.tween<Float>(RvMotion.MOVE_MS)
     val size = motion.tween<IntSize>(RvMotion.MOVE_MS)
     AnimatedVisibility(members.any { it.id in matching }, modifier, enter = fadeIn(fold) + expandVertically(size), exit = fadeOut(fold) + shrinkVertically(size)) {
         Column(Modifier.padding(horizontal = RvSpace.gutter)) {
             RvCard {
-                RvSubscriptionFold(sub, open || searching, enabled = !searching, nowEpochMs) { open = !open }
+                if (sub != null) {
+                    RvSubscriptionFold(sub, open || searching, enabled = !searching, nowEpochMs) { open = !open }
+                } else {
+                    RvInlineFold(members.size, open || searching, enabled = !searching) { open = !open }
+                }
                 AnimatedVisibility(open || searching, enter = expandVertically(size), exit = shrinkVertically(size)) {
                     Column {
                         members.forEachIndexed { order, node ->
@@ -88,7 +100,8 @@ internal fun RvNodeSection(
                             key(node.id) {
                                 AnimatedVisibility(node.id in matching, enter = fadeIn(fold) + expandVertically(size), exit = fadeOut(fold) + shrinkVertically(size)) {
                                     val label = labels.getValue(node.id)
-                                    if (row != null) row(node, label, node.id == currentId, order) else RvNodePickRow(node, label, node.id == currentId, order, onPick, onDetail)
+                                    val current = node.id == currentId || node.id in alsoCurrent
+                                    if (row != null) row(node, label, current, order) else RvNodePickRow(node, label, current, order, onPick, onDetail)
                                 }
                             }
                         }
@@ -98,6 +111,15 @@ internal fun RvNodeSection(
             Spacer(Modifier.height(RvSpace.cardGap))
         }
     }
+}
+
+/**
+ * The 組態內 section's head row: the link disc, 組態內 over how many nodes it holds, and the chevron; no menu, as there is
+ * no feed to update or delete.
+ */
+@Composable
+internal fun RvInlineFold(count: Int, open: Boolean, enabled: Boolean, onToggle: () -> Unit) {
+    RvFoldRow(R.drawable.rv_sym_link, stringResource(R.string.rv_nodes_inline), pluralStringResource(R.plurals.rv_nodes_nodes, count, count), "", open, enabled, onToggle)
 }
 
 /**
@@ -142,6 +164,21 @@ internal fun RvSubscriptionFold(sub: RvSubscription, open: Boolean, enabled: Boo
 }
 
 /**
+ * The node lists before the catalog is read (the pickers' and the main node's page's `loading`), as after process death:
+ * a section's card, its 訂閱 row's skeleton over its nodes' rows' (latency over change, the info mark's room) to the
+ * window's foot, so the list's place shows that nodes are coming, never the empty state.
+ */
+@Composable
+internal fun RvNodeSectionSkeleton() {
+    RvGutter {
+        RvSkeletonCard {
+            RvSkeletonRow(0, RvSkeletonText.Mixed, RvSkeletonEnd.Value, chevron = true, titleKeepWords = false)
+            repeat(rvSkeletonRowsToFill()) { RvSkeletonRow(it + 1, RvSkeletonText.Mixed, RvSkeletonEnd.LatencyLines, titleKeepWords = false, infoMark = true) }
+        }
+    }
+}
+
+/**
  * 節點's row with an info mark at its end: a tap picks the node, the mark opens its page, and a long press opens its
  * menu (設為主節點, 測試延遲, 詳情, 複製分享連結), or its page where the sample offers no menus. A page may show the node
  * under another [title] (a name without its emoji), put [lead] before the line under it (the network a node is chosen on,
@@ -156,7 +193,7 @@ internal fun RvNodePickRow(
     order: Int,
     onPick: (String) -> Unit,
     onDetail: (String) -> Unit,
-    title: String = node.name,
+    title: String = rvNodeTitle(node),
     lead: String? = null,
     mark: (@Composable (current: Boolean) -> Unit)? = null,
     pickInMenu: Boolean = true,
@@ -166,9 +203,9 @@ internal fun RvNodePickRow(
     // Each row is a layer of its own: a row composed after the others records itself, not the whole card again.
     RvMenuAnchor(rvNodeMenu(node, current, onPick.takeIf { pickInMenu }, onDetail), Modifier.graphicsLayer {}) { menu, actions ->
         RvRow(
-            { if (mark != null) mark(current) else RvFlag(node.place.flag, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
+            { if (mark != null) mark(current) else RvNodeDisc(node, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
             title,
-            listOfNotNull(lead, node.protocol, label).joinToString(SEPARATOR),
+            rvNodeLine(lead, node.protocol, label),
             (if (current) Modifier.semantics { stateDescription = inUse } else Modifier).then(actions),
             onClick = { onPick(node.id) },
             onLongClick = menu ?: { onDetail(node.id) },

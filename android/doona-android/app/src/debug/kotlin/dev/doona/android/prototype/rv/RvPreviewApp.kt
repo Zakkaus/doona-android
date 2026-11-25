@@ -1,5 +1,6 @@
 package dev.doona.android.prototype.rv
 
+import android.content.ClipData
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -20,6 +21,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.FrameRateCategory
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.preferredFrameRate
 import dev.doona.android.data.settings.LanguageSettings
@@ -50,6 +53,10 @@ import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.model.fastest
+import dev.doona.android.feature.nodes.RvNodeDetail
+import dev.doona.android.feature.nodes.RvNodePicker
+import dev.doona.android.feature.nodes.RvNodesPage
+import dev.doona.android.feature.nodes.RvNodesPageState
 import dev.doona.android.feature.nodes.ui.LocalRvRowActions
 import dev.doona.android.feature.nodes.ui.RvRowActions
 import dev.doona.android.feature.onboarding.RvWelcome
@@ -59,12 +66,9 @@ import dev.doona.android.prototype.rv.connections.RvConnectionDetail
 import dev.doona.android.prototype.rv.connections.RvConnectionsPage
 import dev.doona.android.prototype.rv.connections.RvConnectionsRoutes
 import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.data.shareLink
 import dev.doona.android.prototype.rv.gallery.RvGalleryScreen
-import dev.doona.android.prototype.rv.nodes.RvNodeDetail
-import dev.doona.android.prototype.rv.nodes.RvNodePicker
 import dev.doona.android.prototype.rv.nodes.RvNodePickerSample
-import dev.doona.android.prototype.rv.nodes.RvNodesPage
-import dev.doona.android.prototype.rv.nodes.RvNodesPageState
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyPreview
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewRoutes
@@ -184,7 +188,16 @@ private fun RvSample(options: RvMotionOptions, start: RvSampleStart, settings: R
         if (start.launch == RvLaunch.Disconnect) run.disconnect()
     }
     val pages = RvSamplePages(push = { stack = stack + it }, pop = { stack = stack.dropLast(1) }, tab = { i -> TABS[i]?.let { stack = listOf(it) } })
-    val actions = remember(run) { RvRowActions(useNode = { run.currentId = it }, testNode = run::testNode, updateSubscription = run::update, deleteSubscription = run::delete) }
+    val clipboard = LocalClipboard.current
+    val actions = remember(run) {
+        RvRowActions(
+            useNode = { run.currentId = it },
+            testNode = run::testNode,
+            updateSubscription = run::update,
+            deleteSubscription = run::delete,
+            copyLink = { node -> scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(node.name, node.shareLink()))) } },
+        )
+    }
     CompositionLocalProvider(
         LocalRvTesting provides run.testing,
         LocalRvTestingNodes provides run.testingNodes,
@@ -229,7 +242,7 @@ private fun RvSamplePage(
             searchPage = true,
         )
 
-        NODES -> RvNodesPage(RvNodesPageState(run.nodes, run.currentId, RvData.testTimes), onBack = pages.pop, onFilter = {}, onOpen = { pages.push("$NODE:$it") }, onAllNodes = {})
+        NODES -> RvNodesPage(RvNodesPageState(run.nodes, setOf(run.currentId)), onBack = pages.pop, onOpen = { pages.push("$NODE:$it") }, onAllNodes = {})
 
         NODE -> {
             val node = run.nodes.first { it.id == route.substringAfter(':') }
@@ -356,7 +369,7 @@ private fun ActivityPage(route: String, run: RvSampleRun, options: RvMotionOptio
         stats = { pages.push(STATS) },
         search = { pages.push(SEARCH) },
         nodes = { pages.push(NODES) },
-        node = { pages.push("$NODE:${run.currentId}") },
+        node = { pages.push("$NODE:$it") },
         tab = pages.tab,
         mode = toPolicy,
         rule = { id -> RvPolicyData.groups.firstOrNull { it.id == id }?.let { pages.push("${RvPolicyPreviewRoutes.GROUP}:${it.id}") } ?: toPolicy() },

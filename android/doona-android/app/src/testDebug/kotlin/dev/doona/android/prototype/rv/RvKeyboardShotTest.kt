@@ -27,11 +27,11 @@ import androidx.core.view.WindowInsetsCompat
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.feature.nodes.RvNodePicker
 import dev.doona.android.feature.subscriptions.RvAddState
 import dev.doona.android.feature.subscriptions.RvSubAdd
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.gallery.RV_SAMPLE_LINK
-import dev.doona.android.prototype.rv.nodes.RvNodePicker
 import dev.doona.android.prototype.rv.nodes.RvNodePickerSample
 import dev.doona.android.prototype.rv.subs.RvSubAddSample
 import org.junit.After

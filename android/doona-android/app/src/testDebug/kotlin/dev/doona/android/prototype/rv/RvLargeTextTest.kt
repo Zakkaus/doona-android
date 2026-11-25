@@ -38,18 +38,19 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rvReadsWell
 import dev.doona.android.engine.Mode
+import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.nodes.RvNodePicker
+import dev.doona.android.feature.nodes.RvNodePickerPage
+import dev.doona.android.feature.policies.RvPolicyScreen
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.nodes.RvNodePicker
-import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
 import dev.doona.android.prototype.rv.nodes.RvNodePickerPageSample
 import dev.doona.android.prototype.rv.nodes.RvNodePickerSample
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyGroupPage
 import dev.doona.android.prototype.rv.policy.RvPolicyRulePage
-import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.policy.RvQuickRule
 import org.junit.After
@@ -87,7 +88,7 @@ class RvLargeTextTest {
         val group = connection.rule.group ?: RvPolicyData.main
         large { RvPolicyRulePage(connection, RvQuickRule(), onChange = {}, onBack = {}, onApply = {}) }
         val labels = listOf(R.string.rv_policy_target, R.string.rv_policy_app, R.string.rv_policy_matched, R.string.rv_policy_via).map(::rvText)
-        val values = listOf(connection.host + ":" + connection.port, connection.app, rvText(group.name) + SEPARATOR + group.selected.name)
+        val values = listOf(connection.host + ":" + connection.port, connection.app, rvText((group.name as RvLabel.Res).id) + SEPARATOR + group.selected?.name)
         (labels + values).forEach(::assertWhole)
     }
 
@@ -102,7 +103,7 @@ class RvLargeTextTest {
     @Test
     fun policyMainNodeIsWhole() {
         large { RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }
-        assertWhole(RvPolicyData.main.selected.name)
+        assertWhole(RvPolicyData.main.selected!!.name)
     }
 
     /** The pull-down picker (X3): each node it shows has its whole name beside its latency and info mark. */
@@ -164,11 +165,11 @@ class RvLargeTextTest {
         assertOneWholeSize(listOf(R.string.rv_range_1m, R.string.rv_range_5m, R.string.rv_range_15m, R.string.rv_range_1h).map(::rvText))
     }
 
-    /** The node list's order chips (B3, X7): the same. */
+    /** The main node's page's 訂閱 and 排序 chips (B3, X7; ruling q-p3c-mainchips): the same. */
     @Test
     fun orderChipsFitTheirRow() {
         large { RvNodePickerPageSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Region, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {}) }
-        assertOneWholeSize(RvNodeSort.entries.map { rvText(it.label) })
+        listOf(rvText(R.string.rv_nodes_all_subscriptions), rvText(R.string.rv_nodes_by_region)).forEach(::assertWhole)
     }
 
     /**

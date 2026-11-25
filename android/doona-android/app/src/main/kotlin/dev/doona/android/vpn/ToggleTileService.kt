@@ -14,7 +14,7 @@ import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
-import dev.doona.android.feature.leafOf
+import dev.doona.android.feature.model.leafOf
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel

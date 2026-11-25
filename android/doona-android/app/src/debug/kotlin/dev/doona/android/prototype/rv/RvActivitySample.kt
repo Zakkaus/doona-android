@@ -22,6 +22,7 @@ import dev.doona.android.feature.activity.RvActivityRule
 import dev.doona.android.feature.activity.RvActivityScreen
 import dev.doona.android.feature.activity.RvActivityState
 import dev.doona.android.feature.activity.RvMainNode
+import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvRuleOutbound
@@ -96,7 +97,7 @@ internal val rvSampleActivityCards = RvActivityCards(
 )
 
 /** The id of the sample's rule group named [name]: [RvPolicyData]'s group of that name, or one made from the name. */
-internal fun rvSampleRuleGroupId(name: Int): String = RvPolicyData.groups.firstOrNull { it.name == name }?.id ?: "rule-$name"
+internal fun rvSampleRuleGroupId(name: Int): String = RvPolicyData.groups.firstOrNull { it.name == RvLabel.Res(name) }?.id ?: "rule-$name"
 
 /** [state] as the page reads it, in the [mode] the page shows. */
 private fun pageState(state: RvActivitySampleState, mode: RvRouteMode) = RvActivityState(

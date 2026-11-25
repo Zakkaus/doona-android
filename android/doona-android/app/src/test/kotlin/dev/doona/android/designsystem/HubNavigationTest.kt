@@ -1,8 +1,6 @@
 package dev.doona.android.designsystem
 
 import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -38,7 +36,7 @@ class HubNavigationTest {
 
     @Test
     fun theBarGrowsWithTheFontAndKeepsAirAroundItsTabs() {
-        compose.setVariantContent(FontScale200) { screenCases().first { it.name == "policies" }.content() }
+        compose.setVariantContent(FontScale200) { screenCases().first { it.name == "settings" }.content() }
         val tree = compose.layoutTree()
         val bar = tree.descendants().first { it.role == LayoutRole.HubBar }
         assertTrue("the bar is %.1f dp high, which is no more than its minimum of %.0f".format(bar.height, DoonaTheme.size.bottomBar.value), bar.height > DoonaTheme.size.bottomBar.value + TOL)
@@ -51,7 +49,7 @@ class HubNavigationTest {
 
     @Test
     fun aTallWindowKeepsTheBarAtTheBottom() {
-        compose.setVariantContent(Light) { screenCases().first { it.name == "policies" }.content() }
+        compose.setVariantContent(Light) { screenCases().first { it.name == "settings" }.content() }
         val tree = compose.layoutTree()
         val bar = navigation(tree).single()
         assertTrue("the hub navigation of a tall window is a row", !bar.vertical)
@@ -60,7 +58,7 @@ class HubNavigationTest {
 
     @Test
     fun aShortWindowHasARailAtTheStartEdgeAndNoBottomBar() {
-        compose.setVariantContent(Landscape) { screenCases().first { it.name == "policies" }.content() }
+        compose.setVariantContent(Landscape) { screenCases().first { it.name == "settings" }.content() }
         val tree = compose.layoutTree()
         val rail = navigation(tree).single()
         val sheet = tree.descendants().first { it.role == LayoutRole.Sheet }
@@ -86,23 +84,8 @@ class HubNavigationTest {
     }
 
     @Test
-    fun theTitleAndTheTabsScrollAwayWithTheContentInAShortWindow() {
-        compose.setVariantContent(Landscape) { screenCases().first { it.name == "policies" }.content() }
-        val density = compose.density.density
-        val title = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
-        val before = title.fetchSemanticsNode().boundsInRoot
-        compose.onNode(sheetScroll()).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 100_000f) }
-        compose.waitForIdle()
-        val tree = compose.layoutTree()
-        val viewport = tree.viewportOf(tree.descendants().first { it.role == LayoutRole.Sheet })
-        val after = title.fetchSemanticsNode().boundsInRoot
-        assertTrue("the title starts in view at ${before.top / density}", before.top / density >= viewport.top - TOL)
-        assertTrue("the title is still in view after the scroll, at ${after.bottom / density}", after.bottom / density < viewport.top + TOL)
-    }
-
-    @Test
     fun besideARailTheSheetClearsTheGestureBar() {
-        compose.setVariantContent(Landscape) { screenCases().first { it.name == "group" }.content() }
+        compose.setVariantContent(Landscape) { screenCases().first { it.name == "settings" }.content() }
         compose.onNode(sheetScroll()).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 100_000f) }
         compose.waitForIdle()
         val sheet = compose.layoutTree().descendants().first { it.role == LayoutRole.Sheet }

@@ -17,7 +17,6 @@ import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.engine.Traffic
 import dev.doona.android.engine.Usage
-import dev.doona.android.feature.leafOf
 import dev.doona.android.feature.model.RV_TESTS
 import dev.doona.android.feature.model.RvDay
 import dev.doona.android.feature.model.RvGroupKind
@@ -25,6 +24,9 @@ import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvSubFormat
 import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.model.leafOf
+import dev.doona.android.feature.model.protocolName
+import dev.doona.android.feature.model.rvLeafMembers
 import java.net.URI
 
 /**
@@ -73,7 +75,7 @@ internal class ActivityNodes(val nodes: List<RvNode>, val allFailed: Boolean) {
  */
 internal fun activityNodes(catalog: Catalog?, nodeInfo: Map<String, NodeInfo>): ActivityNodes {
     val subscriptionNames = catalog?.subscriptions.orEmpty().associate { it.id to it.name }
-    val members = catalog?.groups.orEmpty().flatMap { it.members }.filterNot { it.isGroup }.distinctBy { it.id }
+    val members = catalog?.let(::rvLeafMembers).orEmpty()
     return ActivityNodes(members.map { rvNode(it, nodeInfo[it.id], subscriptionNames) }, allFailed = members.isNotEmpty() && members.all { it.failed })
 }
 
@@ -249,13 +251,15 @@ private fun rvNode(member: Member, info: NodeInfo?, subscriptions: Map<String, S
         short = member.name,
         place = member.region?.let(::placeOfRegion) ?: RvPlace.Other,
         city = null,
-        protocol = protocolLabel(info?.protocol.orEmpty()),
+        protocol = protocolName(info?.protocol.orEmpty()),
         host = info?.server.orEmpty(),
         port = info?.port ?: 0,
         transport = info?.transport.orEmpty(),
         tls = info?.tls ?: false,
         subscription = member.subscriptionId?.let(subscriptions::get).orEmpty(),
+        subscriptionId = member.subscriptionId.orEmpty(),
         history = history,
+        shareable = false,
     )
 }
 
@@ -314,26 +318,7 @@ private fun GroupKind.rvKind(): RvGroupKind = when (this) {
  */
 internal fun ruleIds(usage: Usage?): List<String> = usage?.today?.byRule.orEmpty().map { it.id }.filterNot { it == UNMATCHED || it == OTHER }
 
-/** The ids of every leaf member of the catalog's groups, once each: what `Engine.nodes` is asked for. */
-internal fun leafIds(catalog: Catalog): List<String> = catalog.groups.flatMap { it.members }.filterNot { it.isGroup }.map { it.id }.distinct()
-
 private const val UNMATCHED = "unmatched"
 private const val OTHER = "other"
-
-/**
- * A protocol as the pages name it (VLESS, Hysteria2), from the core's lower-case id; an id this list does not know is
- * shown as the core sends it.
- */
-internal fun protocolLabel(id: String): String = PROTOCOL_LABELS[id] ?: id
-
-private val PROTOCOL_LABELS = mapOf(
-    "vless" to "VLESS",
-    "vmess" to "VMess",
-    "trojan" to "Trojan",
-    "ss" to "Shadowsocks",
-    "shadowsocks" to "Shadowsocks",
-    "hysteria2" to "Hysteria2",
-    "tuic" to "TUIC",
-)
 
 private const val HOURS = 24

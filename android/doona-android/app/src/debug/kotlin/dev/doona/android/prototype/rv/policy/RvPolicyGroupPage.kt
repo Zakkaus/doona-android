@@ -54,6 +54,8 @@ import dev.doona.android.engine.ScoreGroup
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
+import dev.doona.android.feature.model.rvScorePick
+import dev.doona.android.feature.model.text
 import dev.doona.android.feature.nodes.ui.RvScoreCard
 
 /**
@@ -89,14 +91,14 @@ internal fun RvPolicyGroupPage(
     onSelectFor: (String, RvNetwork?) -> Unit = { id, _ -> onSelect(id) },
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    val name = stringResource(group.name)
+    val name = group.name.text()
     RvScrollPage(
         name,
         insets,
         onBack = onBack,
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_test_group), onTest) },
     ) { titleBlock ->
-        val node = group.selected
+        val node = group.selected!!
         RvPageHeader(
             name,
             titleBlock,
@@ -112,8 +114,8 @@ internal fun RvPolicyGroupPage(
             if (score != null && joint != null) {
                 RvScoreJointCards(score, joint, group.members, onSeparate)
             } else if (score != null) {
-                RvScoreCard(stringResource(R.string.ui_tcp), score.tcp, group.members)
-                RvScoreCard(stringResource(R.string.ui_udp), score.udp, group.members)
+                RvScoreCard(stringResource(R.string.ui_tcp), rvScorePick(score.tcp), group.members)
+                RvScoreCard(stringResource(R.string.ui_udp), rvScorePick(score.udp), group.members)
             }
             if (networks != null) RvNetworkCard(group.members, networks, onOpenPicker, onApart)
             NodesCard(group, score, networks, onSelect, onSelectFor)

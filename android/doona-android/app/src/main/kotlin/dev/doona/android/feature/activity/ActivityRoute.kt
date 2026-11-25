@@ -27,7 +27,7 @@ internal class ActivityRoutes(
     val stats: () -> Unit,
     val search: () -> Unit,
     val nodes: () -> Unit,
-    val node: () -> Unit,
+    val node: (String) -> Unit,
     val tab: (Int) -> Unit,
     val mode: () -> Unit,
     val rule: (String) -> Unit,

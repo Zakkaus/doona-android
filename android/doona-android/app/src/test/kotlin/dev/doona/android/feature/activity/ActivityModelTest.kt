@@ -21,6 +21,7 @@ import dev.doona.android.engine.Usage
 import dev.doona.android.engine.fake.FakeRuleMode
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.model.protocolName
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -197,10 +198,10 @@ class ActivityModelTest {
 
     @Test
     fun `a protocol is named as the pages name it, an unknown one as the core sends it`() {
-        assertEquals("VLESS", protocolLabel("vless"))
-        assertEquals("Hysteria2", protocolLabel("hysteria2"))
-        assertEquals("Shadowsocks", protocolLabel("ss"))
-        assertEquals("wireguard", protocolLabel("wireguard"))
+        assertEquals("VLESS", protocolName("vless"))
+        assertEquals("Hysteria2", protocolName("hysteria2"))
+        assertEquals("Shadowsocks", protocolName("ss"))
+        assertEquals("wireguard", protocolName("wireguard"))
     }
 
     @Test

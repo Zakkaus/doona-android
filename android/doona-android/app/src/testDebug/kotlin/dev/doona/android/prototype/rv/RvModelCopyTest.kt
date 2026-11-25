@@ -1,12 +1,15 @@
 package dev.doona.android.prototype.rv
 
+import dev.doona.android.R
 import dev.doona.android.feature.model.RvDay
+import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.feature.model.RvSession
+import dev.doona.android.feature.policies.RvEffectiveConfig
+import dev.doona.android.feature.policies.RvPolicyProfile
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.policy.RvEffectiveConfig
 import dev.doona.android.prototype.rv.policy.RvPolicyData
-import dev.doona.android.prototype.rv.policy.RvPolicyProfile
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
@@ -50,7 +53,16 @@ class RvModelCopyTest {
     @Test
     fun anEffectiveConfigKeepsItsLists() {
         val rules = RvPolicyData.allRules.toMutableList()
-        val config = RvEffectiveConfig(RvPolicyData.main, RvPolicyData.groups, rules, RvPolicyData.main.name, RvData.subscriptions)
+        val config = RvEffectiveConfig(
+            RvPolicyData.main,
+            RvPolicyData.groups,
+            rules,
+            RvRuleSource.File,
+            RvData.subscriptions,
+            listOf("1.1.1.1"),
+            RvLabel.Res(R.string.rv_main_node),
+            0,
+        )
         val size = rules.size
         rules.clear()
         assertEquals(size, config.rules.size)
@@ -64,5 +76,6 @@ class RvModelCopyTest {
         nodes = nodes,
         subscriptions = RvData.subscriptions,
         nowEpochMs = RvData.nowEpochMs,
+        source = RvRuleSource.File,
     )
 }

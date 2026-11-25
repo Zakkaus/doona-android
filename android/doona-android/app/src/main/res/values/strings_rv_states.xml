@@ -11,6 +11,7 @@
     <string name="rv_welcome_fast">Fast</string>
     <string name="rv_welcome_fast_sub">Over 20 Gbps measured on a single connection (desktop test)</string>
     <string name="rv_no_node">No node available</string>
+    <string name="rv_latency_all_failed">All latency tests failed</string>
     <string name="rv_no_node_reason">Every node failed its latency test. Check the network connection, or update the subscription.</string>
     <string name="rv_retest">Test again</string>
     <string name="rv_core_stopped">Disconnected</string>
@@ -21,6 +22,10 @@
     <string name="rv_failed_switch_mode">Could not switch the mode</string>
     <string name="rv_failed_switch_node">Could not switch the node</string>
     <string name="rv_failed_test_latency">Could not test latency</string>
+    <string name="rv_failed_read_nodes">Could not read the nodes</string>
+    <string name="rv_failed_copy_link">Could not copy the share link</string>
+    <string name="rv_failed_remove_subscription">Could not delete the subscription</string>
+    <string name="rv_nodes_no_match">No matching nodes</string>
     <string name="rv_lan_ask_title">Allow local network access</string>
     <string name="rv_lan_ask_body">doona needs this permission to reach subscriptions and nodes on your local network.</string>
     <string name="rv_lan_ask_continue">Continue</string>
