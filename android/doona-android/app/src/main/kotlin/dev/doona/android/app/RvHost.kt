@@ -7,6 +7,7 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,6 +24,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import dev.doona.android.designsystem.rv.LocalRvNav
 import dev.doona.android.designsystem.rv.LocalRvShared
 import dev.doona.android.designsystem.rv.LocalRvTabEntry
@@ -67,16 +69,20 @@ internal fun RvNavHost(backStack: MutableList<NavKey>, modifier: Modifier = Modi
     }
     val moves = remember(backStack) { RvTabMoves(backStack.toList()) }
     moves.see(backStack.toList())
+    val back = remember(backStack) { RvBackCommit() }
+    val states = LocalNavigationEventDispatcherOwner.current?.navigationEventDispatcher?.transitionState
+    LaunchedEffect(back, states) { back.follow(states) }
+    SideEffect { back.see(backStack.toList()) }
     CompositionLocalProvider(LocalRvNav provides APP_NAV) {
         SharedTransitionLayout(modifier) {
             val rv = remember(this) { rvEntryDecorator(this, moves) }
             NavDisplay(
                 backStack = backStack,
-                onBack = { backStack.popShown(moves) },
+                onBack = { back.back({ backStack.toList() }) { backStack.popShown(moves) } },
                 entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator(), rv),
                 sharedTransitionScope = this,
                 transitionSpec = { rvSceneMove(motion, shift, forward = true) },
-                popTransitionSpec = { rvSceneMove(motion, shift, forward = false) },
+                popTransitionSpec = { back.edge(backStack.toList())?.let { rvSceneBack(motion, shift, margin, it) } ?: rvSceneMove(motion, shift, forward = false) },
                 predictivePopTransitionSpec = { edge -> rvSceneBack(motion, shift, margin, edge) },
                 entryProvider = { key -> rvKeyed(key, provider(key)) },
             )

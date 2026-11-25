@@ -102,7 +102,7 @@ internal fun RvNodeGroups(
 ) {
     val current = setOf(currentId) + alsoCurrent
     RvGutter {
-        RvItems(groups, { it.key }) { GroupCard(it, current, sort, nowEpochMs, onPick) }
+        RvItems(groups, { it.key }, RvSpace.cardGap) { GroupCard(it, current, sort, nowEpochMs, onPick) }
     }
 }
 
@@ -119,7 +119,7 @@ private fun GroupCard(group: RvNodeGroup, current: Set<String>, sort: RvNodeSort
             is RvNodeGroup.Inline -> InlineRow(count)
         }
         RvItems(shown, { it.id }) { NodeRow(it, it.id in current, sort, onPick) }
-        if (shown.size < count) RvSeeAll(pluralStringResource(R.plurals.rv_nodes_see_all, count, count)) { all = true }
+        RvSeeAll(pluralStringResource(R.plurals.rv_nodes_see_all, count, count), shown = shown.size < count) { all = true }
     }
 }
 

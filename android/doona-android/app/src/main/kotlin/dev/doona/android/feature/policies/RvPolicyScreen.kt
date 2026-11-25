@@ -408,7 +408,7 @@ private fun RulesCard(profile: RvPolicyProfile, onAll: () -> Unit) {
         RvCardHeader(stringResource(R.string.rv_policy_rules))
         RvText(stringResource(R.string.rv_policy_rules_order), Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.rowPadding), color = Rv.colors.textSecondary)
         profile.rules.forEach { RvRuleRow(it) }
-        RvSeeAll(pluralStringResource(R.plurals.rv_policy_see_all_rules, profile.ruleCount, profile.ruleCount), onAll)
+        RvSeeAll(pluralStringResource(R.plurals.rv_policy_see_all_rules, profile.ruleCount, profile.ruleCount), onClick = onAll)
     }
 }
 

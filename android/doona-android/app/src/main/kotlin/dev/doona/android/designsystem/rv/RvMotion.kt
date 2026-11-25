@@ -139,13 +139,14 @@ internal object RvMotion {
 
     /**
      * Predictive back (Material 3's full-screen preview): while the finger moves, the page on top shrinks toward
-     * [BACK_SCALE] and moves away from the edge the swipe started at by a twentieth of its width less [backMargin], the
+     * [BACK_SCALE] and moves away from the edge the swipe started at by 1/[BACK_SHIFT_PARTS] of its width less [backMargin], the
      * page under it already in place; it fades only in the last [BACK_FADE] of the gesture's travel. [BACK_MS] is the
      * whole move's length, which the finger seeks; once the system commits, the rest runs on, and a cancel runs it back.
      */
     const val BACK_MS = 300
     const val BACK_SCALE = 0.9f
     const val BACK_FADE = 0.35f
+    const val BACK_SHIFT_PARTS = 20
     val backMargin = 8.dp
 
     /**

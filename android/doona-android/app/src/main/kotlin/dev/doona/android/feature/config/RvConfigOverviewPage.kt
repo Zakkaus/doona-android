@@ -181,7 +181,7 @@ private fun ContentsCard(summary: RvConfigSummary, onEffective: () -> Unit) {
         RvStatRow(stringResource(R.string.rv_config_dns_servers), summary.dnsUpstreams.toString())
         RvStatRow(stringResource(R.string.rv_config_dns_queries), summary.dnsRequestRules.toString())
         RvStatRow(stringResource(R.string.rv_config_dns_answers), summary.dnsResponseRules.toString())
-        RvSeeAll(stringResource(R.string.rv_effective_open), onEffective)
+        RvSeeAll(stringResource(R.string.rv_effective_open), onClick = onEffective)
     }
 }
 
@@ -192,7 +192,7 @@ private fun CompatCard(state: RvConfigState, onSkipped: () -> Unit) {
     RvCard {
         RvStatRow(stringResource(R.string.rv_rules_skipped), pluralStringResource(R.plurals.rv_config_items, skipped, skipped))
         RvStatRow(stringResource(R.string.rv_config_constrained), pluralStringResource(R.plurals.rv_config_items, state.constrained, state.constrained))
-        RvSeeAll(pluralStringResource(R.plurals.rv_config_see_all_items, skipped, skipped), onSkipped)
+        RvSeeAll(pluralStringResource(R.plurals.rv_config_see_all_items, skipped, skipped), onClick = onSkipped)
     }
 }
 

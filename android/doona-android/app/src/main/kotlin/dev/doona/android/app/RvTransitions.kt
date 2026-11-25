@@ -18,8 +18,10 @@ import androidx.compose.animation.togetherWith
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.scene.Scene
+import androidx.navigationevent.NavigationEventTransitionState
 import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.designsystem.rv.RvMotionScale
+import kotlinx.coroutines.flow.Flow
 import kotlin.math.roundToInt
 
 // RV's page transitions (rv-gestures T1/T2, S1/S2, G7), shared by the app's NavDisplay ([RvNavHost]) and the design
@@ -75,7 +77,7 @@ internal fun rvAxisMove(motion: RvMotionScale, shift: Int, forward: Boolean): Co
 
 /**
  * A predictive back's preview ([RvMotion.BACK_MS]): the page on top shrinks to [RvMotion.BACK_SCALE] and moves away from
- * the swipe's [edge] by a twentieth of its width less [margin] px, fading out only at the end, over the page under it,
+ * the swipe's [edge] by 1/[RvMotion.BACK_SHIFT_PARTS] of its width less [margin] px, fading out only at the end, over the page under it,
  * which stands in place. The gesture's progress seeks the move: the shrink and the shift decelerate ([RvMotion.Decelerate]),
  * so most of them show within the first part of a swipe, as the system's own preview does, and the fade runs linearly.
  */
@@ -84,12 +86,10 @@ internal fun rvBackPreview(motion: RvMotionScale, margin: Int, edge: Int): Conte
     val fade = (ms * RvMotion.BACK_FADE).roundToInt()
     val away = if (edge == BackEventCompat.EDGE_RIGHT) -1 else 1
     val exit = scaleOut(motion.tween(ms, RvMotion.Decelerate), targetScale = RvMotion.BACK_SCALE) +
-        slideOutHorizontally(motion.tween(ms, RvMotion.Decelerate)) { away * (it / BACK_SHIFT_PARTS - margin) } +
+        slideOutHorizontally(motion.tween(ms, RvMotion.Decelerate)) { away * (it / RvMotion.BACK_SHIFT_PARTS - margin) } +
         fadeOut(motion.tween(fade, LinearEasing, delay = ms - fade))
     return ContentTransform(EnterTransition.None, exit, targetContentZIndex = -1f)
 }
-
-private const val BACK_SHIFT_PARTS = 20
 
 /** The metadata entry [RvNavHost] puts on every entry: its back stack key, which [Scene]s otherwise do not show. */
 internal const val RV_NAV_KEY = "dev.doona.android.app.key"
@@ -122,4 +122,35 @@ internal fun AnimatedContentTransitionScope<Scene<NavKey>>.rvSceneMove(motion: R
 internal fun AnimatedContentTransitionScope<Scene<NavKey>>.rvSceneBack(motion: RvMotionScale, shift: Int, margin: Int, edge: Int): ContentTransform = when {
     motion.instant || initialState.rvTop() == NodeSearchKey -> rvSceneMove(motion, shift, forward = false)
     else -> rvBackPreview(motion, margin, edge)
+}
+
+/**
+ * Tells [RvNavHost] which pop is a predictive back the system committed. NavDisplay asks its predictive spec only while
+ * the gesture is under way; at the commit the gesture is over and it asks the pop spec, which must then go on with the
+ * preview's move ([rvSceneBack]) from where the finger left it rather than switch to a plain pop's ([rvSceneMove]).
+ */
+internal class RvBackCommit {
+    // The swipe edge of the back gesture under way, and the edge and resulting stack of the last committed one.
+    private var gesture: Int? = null
+    private var commit: Pair<Int, List<NavKey>>? = null
+
+    /** Follows the back gestures in [states] (the window's navigation events), while it runs. */
+    suspend fun follow(states: Flow<NavigationEventTransitionState>?) {
+        states?.collect { gesture = (it as? NavigationEventTransitionState.InProgress)?.latestEvent?.swipeEdge }
+    }
+
+    /** Sees the back stack after each change: a commit holds only for the pop it made. */
+    fun see(stack: List<NavKey>) {
+        if (stack != commit?.second) commit = null
+    }
+
+    /** Runs [pop], the back NavDisplay asked for: a commit if a back gesture was under way, else a plain back. */
+    fun back(stack: () -> List<NavKey>, pop: () -> Unit) {
+        val edge = gesture
+        pop()
+        commit = edge?.let { it to stack() }
+    }
+
+    /** The swipe edge of the committed gesture a pop to [stack] goes on from, or null for a plain pop. */
+    fun edge(stack: List<NavKey>): Int? = commit?.takeIf { it.second == stack }?.first
 }

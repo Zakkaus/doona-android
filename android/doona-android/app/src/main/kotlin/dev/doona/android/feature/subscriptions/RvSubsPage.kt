@@ -132,23 +132,32 @@ internal fun RvSubsPage(
     RvScrollPage(title, insets, onBack = actions.back, actions = updateAll, bottomAction = add) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         RvGutter(banner = rvFirstNotice(failed, banner.takeUnless { loading })) {
-            if (empty) {
-                RvEmptyState(
-                    stringResource(R.string.rv_empty_subscription),
-                    stringResource(R.string.rv_empty_subscription_line),
-                    stringResource(R.string.rv_add_subscription),
-                    actions.add,
-                    second = addNode?.let { RvAddEntry(stringResource(R.string.rv_addnode), it) },
-                )
-            } else {
-                RvSkeletonCards(loading, { SubsSkeleton(state.subscriptions) }) {
-                    RvItems(state.subscriptions, { it.id }) { sub ->
-                        SubscriptionCard(sub, actions, state.nowEpochMs, if (removable) RvRowRemove { actions.delete(sub.id) } else null)
+            RvSkeletonCards(loading, { SubsSkeleton(state.subscriptions) }) {
+                // The empty state is the list's last row gone (and its first one coming), so either moves as one.
+                val emptyState: (@Composable () -> Unit)? = if (extraKeepsPage) {
+                    null
+                } else {
+                    {
+                        RvEmptyState(
+                            stringResource(R.string.rv_empty_subscription),
+                            stringResource(R.string.rv_empty_subscription_line),
+                            stringResource(R.string.rv_add_subscription),
+                            actions.add,
+                            second = addNode?.let { RvAddEntry(stringResource(R.string.rv_addnode), it) },
+                        )
                     }
-                    if (removable) RvCard { RvAddRow(stringResource(R.string.rv_add_subscription), actions.add) }
                 }
-                if (!loading) extra?.invoke()
+                // 新增訂閱's row closes the list as one more card, leaving with the last subscription.
+                val rows: List<Any> = if (removable && state.subscriptions.isNotEmpty()) state.subscriptions + ADD_ROW else state.subscriptions
+                RvItems(rows, { (it as? RvSubscription)?.id ?: ADD_ROW }, RvSpace.cardGap, emptyState) { row ->
+                    if (row is RvSubscription) {
+                        SubscriptionCard(row, actions, state.nowEpochMs, if (removable) RvRowRemove { actions.delete(row.id) } else null)
+                    } else {
+                        RvCard { RvAddRow(stringResource(R.string.rv_add_subscription), actions.add) }
+                    }
+                }
             }
+            if (!loading && !empty) extra?.invoke()
         }
     }
     val deleting = state.subscriptions.firstOrNull { it.id == state.deletingId }
@@ -248,6 +257,9 @@ private fun SubsSkeleton(subscriptions: List<RvSubscription>) {
 
 /** The subscription cards the skeleton shows: two, as Revolut's list skeleton shows two rows (revolut-UX §11). */
 private const val SKELETON_CARDS = 2
+
+/** The key (and row) of 新增訂閱 closing a removable list: no subscription id takes this form. */
+private const val ADD_ROW = "\u0000add"
 
 /**
  * Used of total at the start and the end date as of [nowEpochMs] at the end, over the quota's bar (Revolut's goal card,

@@ -1,7 +1,6 @@
 package dev.doona.android.prototype.rv
 
 import android.os.Trace
-import androidx.activity.BackEventCompat
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
@@ -21,7 +20,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
@@ -82,8 +80,8 @@ internal fun RvStackHost(stack: List<String>, onBack: () -> Unit, options: RvMot
     val transition = rememberTransition(state, label = "stack")
     // Whether a back gesture is under way; its progress is not state: each event seeks the transition directly, so the host composes nothing for it.
     var seeking by remember { mutableStateOf(false) }
-    // The edge the gesture started at, which side the page moves away to.
-    var edge by remember { mutableIntStateOf(BackEventCompat.EDGE_LEFT) }
+    // The edge of the back gesture being previewed or committed, which side the page moves away to; null on any other move.
+    var backEdge by remember { mutableStateOf<Int?>(null) }
     // Every route drawn so far, and the tab homes among them: a pushed page off the stack starts afresh next time.
     val seen = remember { mutableSetOf<String>() }
     val homes = remember { mutableSetOf<String>() }
@@ -91,9 +89,10 @@ internal fun RvStackHost(stack: List<String>, onBack: () -> Unit, options: RvMot
         try {
             seeking = true
             events.collect {
-                edge = it.swipeEdge
+                backEdge = it.swipeEdge
                 state.seekTo(it.progress, stack.dropLast(1))
             }
+            // The pop runs on with the preview's move until it lands ([backEdge] is cleared there).
             seeking = false
             onBack()
         } catch (e: CancellationException) {
@@ -110,6 +109,7 @@ internal fun RvStackHost(stack: List<String>, onBack: () -> Unit, options: RvMot
                     state.animateTo(stack)
                 } finally {
                     RvFrames.end(gesture)
+                    backEdge = null
                 }
             } else if (state.targetState != stack) {
                 // A cancelled back gesture: the pop runs back from where the finger left it, then the page is at rest.
@@ -118,6 +118,7 @@ internal fun RvStackHost(stack: List<String>, onBack: () -> Unit, options: RvMot
                     Animatable(state.fraction).animateTo(0f, tween(ms, easing = LinearEasing)) { launch { state.seekTo(value) } }
                 }
                 state.snapTo(stack)
+                backEdge = null
             }
             homes += stack.first()
             (seen - stack.toSet() - homes).forEach {
@@ -129,7 +130,7 @@ internal fun RvStackHost(stack: List<String>, onBack: () -> Unit, options: RvMot
     val shift = with(LocalDensity.current) { RvMotion.axisShift.roundToPx() }
     val margin = with(LocalDensity.current) { RvMotion.backMargin.roundToPx() }
     SharedTransitionLayout(modifier) {
-        transition.AnimatedContent(transitionSpec = { if (seeking) back(motion, shift, margin, edge) else move(options, motion, shift) }, contentKey = { it.last() }) { shown ->
+        transition.AnimatedContent(transitionSpec = { backEdge?.let { back(options, motion, shift, margin, it) } ?: move(options, motion, shift) }, contentKey = { it.last() }) { shown ->
             seen += shown.last()
             val entering = options.tab == RvTabMotion.Cut && shown == transition.targetState && transition.currentState.first() != shown.first()
             holder.SaveableStateProvider(shown.last()) {
@@ -157,10 +158,14 @@ private fun AnimatedContentTransitionScope<List<String>>.move(options: RvMotionO
     }
 }
 
-/** A predictive back from [edge]: the search page sinks as on a plain back; every other page shows [rvBackPreview]. */
-private fun AnimatedContentTransitionScope<List<String>>.back(motion: RvMotionScale, shift: Int, margin: Int, edge: Int): ContentTransform = when {
+/**
+ * A predictive back from [edge]: the search page sinks as on a plain back; under [RvPushMotion.Axis] the pop is the
+ * shared axis seeked; every other page shows [rvBackPreview].
+ */
+private fun AnimatedContentTransitionScope<List<String>>.back(options: RvMotionOptions, motion: RvMotionScale, shift: Int, margin: Int, edge: Int): ContentTransform = when {
     motion.instant -> EnterTransition.None togetherWith ExitTransition.None
     initialState.last() == SEARCH -> rvSearchMove(motion, shift, forward = false)
+    options.push == RvPushMotion.Axis -> rvAxisMove(motion, shift, forward = false)
     else -> rvBackPreview(motion, margin, edge)
 }
 

@@ -262,7 +262,7 @@ private fun RegionCard(region: RvRegion, nodes: List<RvNode>, current: Set<Strin
         RvCardHeader(stringResource(region.label))
         val shown = if (all) nodes else nodes.take(REGION_ROWS)
         RvItems(shown, { it.id }) { node -> RegionRow(node, node.id in current, shown.indexOf(node), onOpen, score) }
-        if (!all && nodes.size > REGION_ROWS) RvSeeAll(pluralStringResource(R.plurals.rv_nodes_see_all, nodes.size, nodes.size)) { all = true }
+        RvSeeAll(pluralStringResource(R.plurals.rv_nodes_see_all, nodes.size, nodes.size), shown = !all && nodes.size > REGION_ROWS) { all = true }
     }
 }
 

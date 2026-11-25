@@ -137,8 +137,12 @@ internal fun RvSheetLayout(progress: () -> Float, onDismiss: () -> Unit, label: 
                     drags,
                     Orientation.Vertical,
                     onDragStopped = { velocity ->
-                        val away = velocity > fling || (drag > height * RvMotion.SHEET_DISMISS_SHARE && velocity > -fling)
-                        if (away) onDismiss() else animate(drag, 0f, velocity, motion.spatial(RvSpring.Default, RvMotion.REST_PX)) { value, _ -> drag = value }
+                        if (rvSheetAway(drag, height, velocity, fling)) {
+                            onDismiss()
+                        } else {
+                            // The card goes no higher than its place: a flick up lands it there, never past.
+                            animate(drag, 0f, rvSheetReturn(drag, velocity), motion.spatial(RvSpring.Default, RvMotion.REST_PX)) { value, _ -> drag = value.coerceAtLeast(0f) }
+                        }
                     },
                 )
                 .semantics { paneTitle = label },
@@ -146,6 +150,16 @@ internal fun RvSheetLayout(progress: () -> Float, onDismiss: () -> Unit, label: 
         )
     }
 }
+
+/**
+ * Whether a sheet let go [drag] px below its place, [height] px tall, at [velocity] px a second (down positive), is
+ * dismissed: flung down faster than [fling], or past [RvMotion.SHEET_DISMISS_SHARE] of its height unless flung back up.
+ */
+internal fun rvSheetAway(drag: Float, height: Float, velocity: Float, fling: Float): Boolean =
+    velocity > fling || (drag > height * RvMotion.SHEET_DISMISS_SHARE && velocity > -fling)
+
+/** The speed a sheet let go [drag] px below its place springs back with: the finger's, unless it is at its place already. */
+internal fun rvSheetReturn(drag: Float, velocity: Float): Float = if (drag > 0f) velocity else 0f
 
 /** The sheet's card: the card's fill, its rim in dark, the handle, and [content] on the page's edge line. */
 @Composable

@@ -76,7 +76,7 @@ private fun TrafficTile(
     val format = rememberRvFormat()
     val note = if (quiet) stringResource(R.string.rv_no_traffic) else stringResource(R.string.rv_peak, format.rate(peak.toDouble()).unbroken())
     val widest = remember(format) { format.widestRates().map { it.figure() } }
-    RvSparkTile(stringResource(caption), icon, format.rate(rate.toDouble()).figure(), note, history, series, quiet, onClick, modifier, ghost, widest)
+    RvSparkTile(stringResource(caption), icon, format.rate(rate.toDouble()).figure(), rate.toDouble(), note, history, series, quiet, onClick, modifier, ghost, widest)
 }
 
 /** The fastest second of a minute's samples; a missing sample (NaN, a gap in the line) is not a rate. */

@@ -547,7 +547,7 @@ internal fun DrawScope.rvValuePill(text: TextLayoutResult, topLeft: Offset, ink:
  * Revolut's switch (§13.4, Addendum A): a 34 dp track, a 19 dp thumb, in its 50 × 27 dp node less the room left of the
  * track, so the text stands 12 dp from the track that shows (owner, q-s1125c-switchgap; that room made it 20). On, the
  * accent thumb over its tint (outlined where needed); off, a light thumb on [RvColors.control]. A change slides the thumb
- * ([RvSpring.Fast], spatial) while the track and thumb colours turn ([RvSpring.Fast], effects). The row owns the toggle.
+ * ([RvSpring.Fast], spatial) while the track, its rim and the thumb colours turn ([RvSpring.Fast], effects). The row owns the toggle.
  */
 @Composable
 internal fun RvSwitch(checked: Boolean, modifier: Modifier = Modifier) {
@@ -559,6 +559,8 @@ internal fun RvSwitch(checked: Boolean, modifier: Modifier = Modifier) {
     val x by animateDpAsState(if (checked) off + size.switchTrackWidth - size.switchTrackHeight else off, motion.spatial(RvSpring.Fast), label = "thumb")
     val track by animateColorAsState(if (checked) colors.switchOnTrack else colors.control, motion.effects(RvSpring.Fast), label = "track")
     val thumb by animateColorAsState(if (checked) colors.switchOnThumb else colors.switchOffThumb, motion.effects(RvSpring.Fast), label = "thumb colour")
+    // The on rim of a low-contrast theme fades with the track rather than appearing at once.
+    val rim = colors.switchOnRim?.let { on -> animateColorAsState(if (checked) on else on.copy(alpha = 0f), motion.effects(RvSpring.Fast), label = "rim").value }
     Box(modifier.size(size.switchWidth - room, size.switchHeight).clearAndSetSemantics { testTag = RvRowPart.SWITCH }) {
         Box(
             Modifier
@@ -566,7 +568,7 @@ internal fun RvSwitch(checked: Boolean, modifier: Modifier = Modifier) {
                 .size(size.switchTrackWidth, size.switchTrackHeight)
                 .clip(CircleShape)
                 .background(track)
-                .then(colors.switchOnRim?.takeIf { checked }?.let { Modifier.border(size.switchTrackRim, it, CircleShape) } ?: Modifier),
+                .then(rim?.let { Modifier.border(size.switchTrackRim, it, CircleShape) } ?: Modifier),
         )
         Box(
             Modifier

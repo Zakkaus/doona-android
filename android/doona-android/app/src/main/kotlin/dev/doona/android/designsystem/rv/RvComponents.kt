@@ -426,18 +426,24 @@ private const val CHECK_DISC = 816f / 960f
 /**
  * Revolut's 'See all' row at a list card's foot (measured §7): [text] centred, 19 sp bold in ink, in 56 dp. Ink, as
  * Revolut sets its 'see all' (revolut-ux3 §1): no action in a card is a coloured text link (the owner, 2026-11-23).
+ * Not [shown], it shrinks and fades out over [RvMotion.ITEM_MS].
  */
 @Composable
-internal fun RvSeeAll(text: String, onClick: () -> Unit) {
+internal fun RvSeeAll(text: String, shown: Boolean = true, onClick: () -> Unit) {
     val radius = Rv.cardRadius
     val shape = remember(radius) { RoundedCornerShape(bottomStart = radius, bottomEnd = radius) }
-    Box(
-        Modifier.fillMaxWidth().height(RvSize.seeAll).rvPress(shape, Role.Button, onClick).padding(horizontal = RvSpace.rowPadding),
-        contentAlignment = Alignment.Center,
-    ) {
-        RvText(text, Rv.type.seeAll, color = Rv.colors.text, align = TextAlign.Center)
+    // Tapped, it gives way as the rows it opens come in ([RvItems]), so the card's height moves as one.
+    RvItems(if (shown) SEE_ALL else emptyList(), { it }) {
+        Box(
+            Modifier.fillMaxWidth().height(RvSize.seeAll).rvPress(shape, Role.Button, onClick).padding(horizontal = RvSpace.rowPadding),
+            contentAlignment = Alignment.Center,
+        ) {
+            RvText(text, Rv.type.seeAll, color = Rv.colors.text, align = TextAlign.Center)
+        }
     }
 }
+
+private val SEE_ALL = listOf(Unit)
 
 /**
  * A row of Revolut's Key stats card (measured §11): [label] 19 sp medium in secondary ink, [value] 19 sp at the end, in a

@@ -100,7 +100,7 @@ internal fun RvTileRow(modifier: Modifier = Modifier, content: @Composable RowSc
 
 /**
  * One of Revolut's crypto home tiles, square as they are: [caption] at the top start, [icon] in the series' tinted 20 dp
- * disc at the top end, the [figure] in bold, a secondary [note] under it, and the sparkline of [values] at the bottom
+ * disc at the top end, the [figure] in bold (rolling up or down as [value], the amount it shows, rose or fell), a secondary [note] under it, and the sparkline of [values] at the bottom
  * (measured §10.2: 148 x 60 dp). With [quiet] (no
  * connection, or no traffic) the tile takes Revolut's empty chart card instead: a larger figure over ghost bars, and
  * [note] says why there is no line. The whole tile is one button.
@@ -114,6 +114,7 @@ internal fun RvSparkTile(
     caption: String,
     @DrawableRes icon: Int,
     figure: RvFigure,
+    value: Double,
     note: String,
     values: List<Float>,
     series: RvSeries,
@@ -135,7 +136,7 @@ internal fun RvSparkTile(
             }
             Spacer(Modifier.height(RvSpace.tight))
             // Each second's rate rolls in instead of jumping.
-            RvRoll(figure.whole to figure.unit, values.lastOrNull()?.toDouble() ?: 0.0) { (whole, unit) ->
+            RvRoll(figure.whole to figure.unit, value) { (whole, unit) ->
                 RvFigureText(RvFigure(whole, unit), type.tileValue, type.tileUnit, widest = widest)
             }
             RvText(note, type.tileCaption, color = Rv.colors.textSecondary, maxLines = Int.MAX_VALUE)
