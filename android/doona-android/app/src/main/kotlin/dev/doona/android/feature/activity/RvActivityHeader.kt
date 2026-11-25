@@ -251,6 +251,11 @@ internal fun rvPulse(on: Boolean, resting: () -> Boolean): () -> Float {
 /** H1's hero: 全部流量, then 主節點. */
 private const val HERO_VIEWS = 2
 
+/**
+ * The header's status: a short word, never a reason sentence (owner decision q-actcaption, 2026-11-26), which the
+ * notice below gives. A VPN another app or the system turned off reads 未連線, as the approved vpn-taken sample does; a
+ * VPN Android did not establish is a failed start; another app's lockdown is VPN 已鎖定.
+ */
 private val Status.label: Int
     get() = when (this) {
         is Status.Running -> R.string.backend_connected
@@ -266,8 +271,8 @@ private val Status.label: Int
             FailureReason.StartFailed -> R.string.status_failed_start
             FailureReason.CoreStopped -> R.string.status_failed_core_stopped
             FailureReason.IncompatibleCore -> R.string.status_failed_incompatible_core
-            FailureReason.Revoked -> R.string.vpn_drop_revoked
-            FailureReason.LockdownEnabled -> R.string.vpn_failure_lockdown_enabled
-            FailureReason.VpnNotEstablished -> R.string.vpn_failure_not_established
+            FailureReason.Revoked -> R.string.status_stopped
+            FailureReason.LockdownEnabled -> R.string.status_vpn_locked
+            FailureReason.VpnNotEstablished -> R.string.status_failed_start
         }
     }

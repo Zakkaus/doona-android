@@ -100,6 +100,7 @@
     <string name="status_failed_start">The VPN did not start</string>
     <string name="status_failed_core_stopped">The core stopped</string>
     <string name="status_failed_incompatible_core">The bundled core is incompatible</string>
+    <string name="status_vpn_locked">VPN locked</string>
     <string name="error_invalid_argument">Invalid value</string>
     <string name="error_not_found">Not found</string>
     <string name="error_fetch_failed">Could not download the subscription</string>

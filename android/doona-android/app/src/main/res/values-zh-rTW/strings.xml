@@ -92,6 +92,7 @@
     <string name="status_failed_start">VPN 未能啟動</string>
     <string name="status_failed_core_stopped">核心已停止</string>
     <string name="status_failed_incompatible_core">內建核心的版本不相容</string>
+    <string name="status_vpn_locked">VPN 已鎖定</string>
     <string name="error_invalid_argument">值無效</string>
     <string name="error_not_found">找不到項目</string>
     <string name="error_fetch_failed">無法下載訂閱</string>
