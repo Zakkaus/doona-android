@@ -19,6 +19,7 @@ pub mod feeds;
 pub mod groups;
 pub mod meters;
 pub mod publish;
+pub mod runtime;
 pub mod schedule;
 mod staged;
 mod store;
