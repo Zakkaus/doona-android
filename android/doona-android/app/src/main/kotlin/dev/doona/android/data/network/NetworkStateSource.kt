@@ -73,13 +73,20 @@ private fun LinkProperties.bootstrapServers(): List<String> {
     }
 }
 
+/**
+ * [NetworkStateSource.state] runs for the life of [scope] and starts from the current default network, so its value is
+ * right without a collector. The captive-portal flag registers its callback only while observed.
+ */
 internal fun networkState(context: Context, scope: CoroutineScope): NetworkStateSource {
     val connectivity = context.getSystemService(ConnectivityManager::class.java)
     return NetworkStateSource(
-        defaultNetwork(connectivity).stateIn(scope, whileObserved, offline),
+        defaultNetwork(connectivity).stateIn(scope, SharingStarted.Eagerly, connectivity.defaultState()),
         captivePortals(connectivity).stateIn(scope, whileObserved, false),
     )
 }
+
+private fun ConnectivityManager.defaultState(): NetworkState =
+    activeNetwork?.let(::getNetworkCapabilities)?.toState() ?: offline
 
 private fun defaultNetwork(connectivity: ConnectivityManager) = callbackFlow {
     val callback = object : ConnectivityManager.NetworkCallback() {

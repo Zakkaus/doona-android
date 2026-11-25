@@ -38,7 +38,7 @@ interface Engine {
 
     /**
      * The default network with internet capability as Android reports it to doona, which stays outside its own tunnel;
-     * offline when there is none. It does not depend on the tunnel's status.
+     * offline when there is none. It does not depend on the tunnel's status, and its value is current without a collector.
      */
     val network: StateFlow<NetworkState>
 

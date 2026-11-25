@@ -170,29 +170,48 @@ class NetworkStateSourceTest {
     }
 
     @Test
-    fun observersShareOneCallbackUntilUnsubscribedOrOwnerCancelled() = runTest {
+    fun stateKeepsOneCallbackForTheOwnersLifetimeAndPortalsOnlyWhileObserved() = runTest {
         val state = networkState(app, backgroundScope)
         testScheduler.runCurrent()
-        assertEquals(existing, manager.networkCallbacks)
+        val callback = (manager.networkCallbacks - existing).single()
         val first = backgroundScope.launch { state.state.collect {} }
         val second = backgroundScope.launch { state.state.collect {} }
         testScheduler.runCurrent()
-        val callback = (manager.networkCallbacks - existing).single()
+        assertEquals(setOf(callback), manager.networkCallbacks - existing)
         first.cancel()
+        second.cancel()
+        testScheduler.advanceTimeBy(10_000)
+        assertEquals(setOf(callback), manager.networkCallbacks - existing)
+
+        val portal = backgroundScope.launch { state.captivePortal.collect {} }
+        testScheduler.runCurrent()
+        assertEquals(2, (manager.networkCallbacks - existing).size)
+        portal.cancel()
         testScheduler.advanceTimeBy(5_001)
         assertEquals(setOf(callback), manager.networkCallbacks - existing)
-        second.cancel()
-        testScheduler.advanceTimeBy(4_999)
-        assertEquals(setOf(callback), manager.networkCallbacks - existing)
-        testScheduler.advanceTimeBy(2)
-        assertEquals(existing, manager.networkCallbacks)
-
-        backgroundScope.launch { state.captivePortal.collect {} }
-        testScheduler.runCurrent()
-        assertEquals(1, (manager.networkCallbacks - existing).size)
         backgroundScope.cancel()
         testScheduler.runCurrent()
         assertEquals(existing, manager.networkCallbacks)
+    }
+
+    @Test
+    fun valueIsCurrentWithoutACollector() = runTest {
+        manager.setNetworkCapabilities(
+            checkNotNull(connectivity.activeNetwork),
+            capabilities(NetworkCapabilities.TRANSPORT_WIFI, NetworkCapabilities.NET_CAPABILITY_NOT_METERED, NetworkCapabilities.NET_CAPABILITY_VALIDATED),
+        )
+        val state = networkState(app, backgroundScope).state
+        // Seeded from the current default network before anything is delivered.
+        assertEquals(NetworkState(NetworkTransport.WiFi, metered = false, validated = true), state.value)
+
+        testScheduler.runCurrent()
+        val callback = (manager.networkCallbacks - existing).single()
+        callback.onCapabilitiesChanged(ShadowNetwork.newInstance(101), capabilities(NetworkCapabilities.TRANSPORT_CELLULAR))
+        testScheduler.runCurrent()
+        assertEquals(NetworkState(NetworkTransport.Cellular, metered = true, validated = false), state.value)
+        callback.onLost(ShadowNetwork.newInstance(101))
+        testScheduler.runCurrent()
+        assertEquals(NetworkState(), state.value)
     }
 
     private fun TestScope.observeNetwork(): StateFlow<NetworkState> {
