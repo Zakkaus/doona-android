@@ -25,7 +25,7 @@ Icon alignment: **C** = centred on the row; **T** = top on the title's top (the 
 | Notice, `RvBanner` | T | 40 disc (24 glyph), x 32 | 88 | 2 (q-s1125c-titlegap) | none; the button stands under the text, 16 below, at x 88 | text + 32 | 16 / 16 | 16 below the card |
 | Menu item, `RvLongPressMenu` | C | 24 bare glyph, x 16 in the item | 56 | – | none | 50 | centred | 0 / – |
 | Section header | – | – | 16 (page gutter) | – | – | 24 box | 24 above, 12 below to the card | – |
-| Footnote | – | – | the card's text column on both sides: `footnoteStart` in from the card's start, `footnoteEnd` in from its end, 32 to 380 (owner, q-s1125c-footgap, 19:05 「右邊也內縮到 32 dp」; was 32 to 396; R20) | – | – | text | 12 above (to the card; was 8), 24 below | – |
+| Footnote | – | – | the card's text column on both sides: `footnoteStart` in from the card's start, `footnoteEnd` in from its end, 32 to 380 (DECISIONS 2026-11-25 19:05, q-s1125c-footgap 「右邊也內縮到 32 dp」; was 32 to 396; R20) | – | – | text | 12 above (to the card, DECISIONS 2026-11-25 18:55, q-s1125c-footgap; was 8), 24 below | – |
 | Card | – | – | – | – | – | – | 16 gutter, 20 radius | 16 |
 | Primary button | – | – | – | – | – | 52 | – | 12 to a secondary below |
 | Secondary button, chip, segmented control | – | – | – | – | – | 40; a segmented control's parts take their labels' widths where a label does not fit an equal part (s1125c) | 12 each side in a chip | 8 between buttons |
@@ -56,8 +56,8 @@ Component code uses only these through tokens (`RvSpace`, `RvSettingsSpace`, a c
 | Card padding, row start and end | `RvSpace.rowPadding` | S4 |
 | Gap between cards | `RvSpace.cardGap` | S4 |
 | Section header above / below | `sectionAbove` / `sectionBelow` | S5 / S3 |
-| Footnote above | `footnoteAbove` | S3 (owner, q-s1125c-footgap: 12; was S2, 8) |
-| Footnote start and end, in from the card's edges | `footnoteStart`, `footnoteEnd` | S4 and S4, the card's text column (R20; the end was S0) |
+| Footnote above | `footnoteAbove` | S3, 12 (DECISIONS 2026-11-25 18:55, q-s1125c-footgap; was S2, 8) |
+| Footnote start and end, in from the card's edges | `footnoteStart`, `footnoteEnd` | S4 and S4, the card's text column (R20, DECISIONS 2026-11-25 19:05; the end was S0) |
 | Row text above and below | `rowTextInset` | S4 |
 | Icon to text | `rowGap` | S4 |
 | Text to trailing part | `trailingGap` | S3 |
