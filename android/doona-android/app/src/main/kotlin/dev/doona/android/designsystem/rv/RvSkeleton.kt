@@ -78,7 +78,6 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.constrainWidth
-import androidx.compose.ui.unit.dp
 
 // The skeleton: grey bars, discs and blocks in the places of the parts they stand for, while a page waits for its data.
 
@@ -252,10 +251,9 @@ internal fun RvSkeletonChips(labels: List<String>, modifier: Modifier = Modifier
     val measurer = rememberTextMeasurer()
     val widths = remember(labels, fit.style, measurer) { labels.map { measurer.measure(scripted(it), fit.style, maxLines = 1).size.width } }
     val height = maxOf(RvChartSize.range, with(density) { fit.style.lineHeight.toDp() } + RvChartSize.rangeInset * 2)
-    val room = if (fit.check) rvCheckReserve else 0.dp // literal: no check, no room
     Box(modifier.fillMaxWidth().onSizeChanged { width = it.width }) {
         Row(Modifier.rvShimmer(), horizontalArrangement = Arrangement.spacedBy(RvChartSize.rangeGap)) {
-            widths.forEach { RvSkeletonBlock(height, Modifier.width(with(density) { it.toDp() } + room + RvChartSize.rangePad * 2), CircleShape) }
+            widths.forEach { RvSkeletonBlock(height, Modifier.width(with(density) { it.toDp() } + fit.room + RvChartSize.rangePad * 2), CircleShape) }
         }
     }
 }

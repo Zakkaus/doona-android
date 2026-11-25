@@ -72,11 +72,9 @@ import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
@@ -178,22 +176,6 @@ internal fun RvRangeRow(labels: List<String>, selected: Int, onSelect: (Int) -> 
     }
 }
 
-/** How a row of range chips is set: the one label [style] (bold, the weight of the chosen chip) and whether each chip keeps room for a check. */
-internal class RvRangeFit(val style: TextStyle, val check: Boolean)
-
-/**
- * The size of a row of range chips in [width]: every label bold, as the chosen one is, and after a check, the widest a
- * chip gets, so choosing never moves a pill. Where the check's room would make the labels smaller than the row needs
- * without it (large text, a long label), the chips go without the check and keep the bold: a label is never cut.
- */
-@Composable
-internal fun rvRangeFit(labels: List<String>, width: Dp): RvRangeFit {
-    val bold = Rv.type.action.rvChosen()
-    val plain = rvChipRowFit(labels, bold, RvChartSize.rangePad, RvChartSize.rangeGap, width)
-    val checked = rvChipRowFit(labels, bold, RvChartSize.rangePad + rvCheckReserve / 2, RvChartSize.rangeGap, width)
-    return if (checked.fontSize >= plain.fontSize) RvRangeFit(checked, check = true) else RvRangeFit(plain, check = false)
-}
-
 /**
  * One of a few choices in a row, Revolut's range chip: only the selected one has a fill, raised off the page; no track.
  * The pill ([height], 36 dp at the default size) is its layout box, so a row of them measures from its visible edge; its
@@ -212,7 +194,7 @@ private fun RvRangePill(label: String, selected: Boolean, fit: RvRangeFit, heigh
             .padding(horizontal = RvChartSize.rangePad),
         contentAlignment = Alignment.Center,
     ) {
-        RvChoiceLabel(label, selected, fit.style, Rv.type.action, if (selected) colors.text else colors.textSecondary, Modifier.widthIn(min = bold + if (fit.check) rvCheckReserve else 0.dp), check = fit.check)
+        RvChoiceLabel(label, selected, fit.style, Rv.type.action, if (selected) colors.text else colors.textSecondary, Modifier.widthIn(min = bold + fit.room), check = fit.check)
     }
 }
 
@@ -303,49 +285,6 @@ internal fun rvSegmentHeight(style: TextStyle): Dp {
 @Composable
 private fun RvSegmentLabel(text: String, @DrawableRes glyph: Int?, chosen: Boolean, style: TextStyle, color: Color) {
     RvChoiceLabel(text, chosen, style, Rv.type.segment, color, glyph = glyph)
-}
-
-/** What a chosen label adds before it: the check and its gap. Every choice of a row keeps it free, so choosing moves nothing. */
-internal val rvCheckReserve = RvChartSize.segmentCheck + RvChartSize.segmentGlyphGap
-
-/** [this] in the weight of the chosen label: bold, the one cue beside the raised pill's colour (q-a11y-selected). */
-internal fun TextStyle.rvChosen(): TextStyle = copy(fontWeight = FontWeight.Bold)
-
-/** How wide [text] is in [bold], so a chip's label box can hold it whichever weight the label has. */
-@Composable
-private fun rvBoldWidth(text: String, bold: TextStyle): Dp {
-    val measurer = rememberTextMeasurer()
-    val px = remember(text, bold, measurer) { measurer.measure(scripted(text), bold, maxLines = 1).size.width }
-    return with(LocalDensity.current) { px.toDp() }
-}
-
-/**
- * The label of one choice of a segmented control or a range row, centred in [modifier]: when [chosen], in [bold] (the
- * size the whole row was fitted at) after a check; else in the same size at [plain]'s weight. The semantics are the
- * choice's own (selected, role tab), so the check and the weight add nothing for a screen reader to read.
- */
-@Composable
-private fun RvChoiceLabel(
-    text: String,
-    chosen: Boolean,
-    bold: TextStyle,
-    plain: TextStyle,
-    color: Color,
-    modifier: Modifier = Modifier,
-    @DrawableRes glyph: Int? = null,
-    check: Boolean = true,
-) {
-    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-        if (chosen && check) {
-            RvGlyph(R.drawable.rv_sym_check, RvChartSize.segmentCheck, color)
-            Spacer(Modifier.width(RvChartSize.segmentGlyphGap))
-        }
-        if (glyph != null) {
-            RvGlyph(glyph, RvChartSize.segmentGlyph, color)
-            Spacer(Modifier.width(RvChartSize.segmentGlyphGap))
-        }
-        RvText(text, if (chosen) bold else bold.copy(fontWeight = plain.fontWeight), color = color)
-    }
 }
 
 /** Exactly [width] by [height] pixels, so a part placed from another's measured bounds matches it to the pixel. */
