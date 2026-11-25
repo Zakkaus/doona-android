@@ -1,6 +1,6 @@
 //! The head rename publishes the revision, its entry name and the remaining draft pins together.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use super::draft::Draft;
 use super::meters::RevisionMeters;
+use super::publish::Notice;
 use super::staged::Tree;
 use super::{Capabilities, HonkConfig, HonkConfigError, Support};
 use crate::state::{sync_dir, write_synced};
@@ -32,6 +33,11 @@ pub enum StoreError {
         base: Option<u64>,
         head: Option<u64>,
     },
+    /// The draft was edited after the apply staged it. Nothing is committed and the draft keeps
+    /// the edit.
+    DraftChanged { prepared: u64, current: u64 },
+    /// Another apply is preparing a staged revision.
+    ApplyPending,
     /// A refused include leaves some declarations unknown.
     Incomplete,
     /// The report against the supplied facts holds a blocked rule or an unassessed input.
@@ -54,6 +60,8 @@ impl std::fmt::Display for StoreError {
             Self::Io(_) => "configuration storage I/O failed",
             Self::Config(e) => return e.fmt(f),
             Self::Conflict { .. } => "draft base is not the current revision",
+            Self::DraftChanged { .. } => "draft changed while it was being applied",
+            Self::ApplyPending => "another apply is in progress",
             Self::Incomplete => "configuration has a refused include",
             Self::NotRunnable(_) => "configuration has a blocked rule or an unassessed input",
             Self::InvalidEditPath => "invalid draft file path",
@@ -99,6 +107,18 @@ pub(super) struct Manifest {
     pub drafts: Vec<Draft>,
     pub last_draft: u64,
     last_meter: u64,
+    notice: Option<Notice>,
+}
+
+/// A revision tree copied for preparation. Head does not reach it until [`HonkStore::commit`].
+pub(super) struct Staged {
+    pub entry: PathBuf,
+    draft: u64,
+    version: u64,
+    base: Option<u64>,
+    rev: u64,
+    revision: Revision,
+    last_meter: u64,
 }
 
 /// One writer owns the app-private config directory. Share this handle between editors.
@@ -107,6 +127,9 @@ pub(super) struct Manifest {
 pub struct HonkStore {
     pub(super) root: PathBuf,
     pub(super) manifest: Manifest,
+    staged: Option<u64>,
+    /// Edits per draft in this process; an apply commits only the version it prepared.
+    pub(super) versions: HashMap<u64, u64>,
     _lock: File,
     #[cfg(test)]
     before_head_rename: fn(&Path) -> io::Result<()>,
@@ -131,6 +154,8 @@ impl HonkStore {
         let mut store = Self {
             root,
             manifest,
+            staged: None,
+            versions: HashMap::new(),
             _lock: lock,
             #[cfg(test)]
             before_head_rename: |_| Ok(()),
@@ -161,11 +186,22 @@ impl HonkStore {
             .revisions
             .get(&rev)
             .ok_or(StoreError::UnknownRevision)?;
-        Ok(self
-            .root
+        Ok(self.tree_entry(rev, revision))
+    }
+
+    /// Every retained revision with its entry, newest first.
+    pub(super) fn revision_entries(&self) -> Vec<(u64, PathBuf)> {
+        let revisions = self.manifest.revisions.iter().rev();
+        revisions
+            .map(|(&rev, revision)| (rev, self.tree_entry(rev, revision)))
+            .collect()
+    }
+
+    fn tree_entry(&self, rev: u64, revision: &Revision) -> PathBuf {
+        self.root
             .join(REVISIONS)
             .join(rev.to_string())
-            .join(&revision.entry))
+            .join(&revision.entry)
     }
 
     /// Each traffic row's meter in `rev`, by entry-relative file and row ID.
@@ -184,6 +220,32 @@ impl HonkStore {
     /// The rename commits the revision. If the following directory sync fails, power loss
     /// can still roll it back; the old tree is retained until the new head is durable.
     pub fn apply(&mut self, id: u64, caps: &Capabilities<'_>) -> Result<u64, StoreError> {
+        let staged = self.stage_revision(id, caps)?;
+        self.commit(staged)
+    }
+
+    /// The refused start recorded by the publisher, until a start succeeds.
+    pub fn notice(&self) -> Option<&Notice> {
+        self.manifest.notice.as_ref()
+    }
+
+    pub(super) fn record_notice(&mut self, notice: Option<Notice>) -> io::Result<()> {
+        let mut next = self.manifest.clone();
+        next.notice = notice;
+        self.publish(next)
+    }
+
+    /// Validate the draft and copy its bytes into the next revision slot, which cleanup keeps
+    /// until [`Self::commit`] or [`Self::abandon`]. One slot is staged at a time, so head moves
+    /// only through the staged commit.
+    pub(super) fn stage_revision(
+        &mut self,
+        id: u64,
+        caps: &Capabilities<'_>,
+    ) -> Result<Staged, StoreError> {
+        if self.staged.is_some() {
+            return Err(StoreError::ApplyPending);
+        }
         let draft = self.find(id)?;
         let head = self.head();
         if draft.base != head {
@@ -220,18 +282,50 @@ impl HonkStore {
         let rev = head.unwrap_or(0) + 1;
         let dir = self.root.join(REVISIONS).join(rev.to_string());
         tree.copy_to(&dir)?;
-        let mut next = self.manifest.clone();
-        next.last_meter = last_meter;
-        next.revisions.insert(
+        let staged = Staged {
+            entry: dir.join(&draft.entry),
+            draft: id,
+            version: self.version(id),
+            base: head,
             rev,
-            Revision {
+            revision: Revision {
                 entry: draft.entry.clone(),
                 meters,
             },
-        );
-        next.drafts.retain(|d| d.id != id);
+            last_meter,
+        };
+        self.staged = Some(rev);
+        Ok(staged)
+    }
+
+    /// Compare and swap: publish `staged` only if its draft still exists at the version that was
+    /// staged. Staging is exclusive, so head is still the staged base.
+    pub(super) fn commit(&mut self, staged: Staged) -> Result<u64, StoreError> {
+        self.staged = None;
+        debug_assert_eq!(self.head(), staged.base);
+        self.find(staged.draft)?;
+        let current = self.version(staged.draft);
+        if current != staged.version {
+            return Err(StoreError::DraftChanged {
+                prepared: staged.version,
+                current,
+            });
+        }
+        let mut next = self.manifest.clone();
+        next.last_meter = staged.last_meter;
+        next.revisions.insert(staged.rev, staged.revision);
+        next.drafts.retain(|d| d.id != staged.draft);
         self.publish(next)?;
-        Ok(rev)
+        Ok(staged.rev)
+    }
+
+    fn version(&self, draft: u64) -> u64 {
+        self.versions.get(&draft).copied().unwrap_or(0)
+    }
+
+    /// Release a staged slot that will not be committed; the next cleanup removes it.
+    pub(super) fn abandon(&mut self) {
+        self.staged = None;
     }
 
     pub(super) fn publish(&mut self, mut next: Manifest) -> io::Result<()> {
@@ -259,7 +353,7 @@ impl HonkStore {
             self.manifest.drafts.iter().any(|d| d.id == id)
         });
         sweep(&self.root.join(REVISIONS), |id| {
-            self.manifest.revisions.contains_key(&id)
+            self.manifest.revisions.contains_key(&id) || self.staged == Some(id)
         });
     }
 }
