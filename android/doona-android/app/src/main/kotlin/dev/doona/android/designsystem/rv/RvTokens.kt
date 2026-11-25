@@ -439,6 +439,9 @@ internal object RvChrome {
      */
     val barTop = 6.dp
 
+    /** A focused clickable's outline, in the primary colour, inside its shape (keyboard and switch focus; owner, 2026-11-25, q-a11y-focus). */
+    val focusRing = 2.dp
+
     /**
      * A tab home's bar (活動, 策略, 連線: the duck, the search capsule, the tab's discs) sits higher: Revolut's tab bars
      * put their 44 dp controls 4 dp under the status bar (rv-fix-4e, 36 Android screens with the search bar).

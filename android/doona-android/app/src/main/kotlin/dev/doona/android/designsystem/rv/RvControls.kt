@@ -187,7 +187,7 @@ private fun RvRangePill(label: String, selected: Boolean, style: TextStyle, heig
             .height(height)
             .testTag(RvPart.FRAME)
             .then(if (selected) Modifier.rvRaised(CircleShape) else Modifier.clip(CircleShape))
-            .selectable(selected, interactionSource = null, indication = rvPressIndication(), role = Role.Tab, onClick = onClick)
+            .selectable(selected, interactionSource = null, indication = rvPressIndication(CircleShape), role = Role.Tab, onClick = onClick)
             .padding(horizontal = RvChartSize.rangePad),
         contentAlignment = Alignment.Center,
     ) { RvText(label, style, color = if (selected) colors.text else colors.textSecondary) }
@@ -241,7 +241,7 @@ internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -
                         .padding(RvChartSize.segmentInset)
                         .onPlaced { placed -> placed.boundsInParent().roundToIntRect().let { if (slots[i] != it) slots[i] = it } }
                         .clip(CircleShape)
-                        .indication(source, rvPressIndication()),
+                        .indication(source, rvPressIndication(CircleShape)),
                     contentAlignment = Alignment.Center,
                 ) { RvSegmentLabel(label, glyphs.getOrNull(i), style, ink) }
             }
@@ -360,6 +360,7 @@ internal fun RvPrimaryButton(
             .clip(CircleShape)
             .background(shown)
             .clickable(interactionSource = source, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
+            .indication(source, rvFocusIndication(CircleShape))
             .padding(horizontal = RvSpace.gutter, vertical = RvSpace.tight),
         contentAlignment = Alignment.Center,
     ) { RvText(label, Rv.type.button, color = colors.page, align = TextAlign.Center) }

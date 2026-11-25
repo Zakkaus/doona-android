@@ -22,10 +22,12 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.IndicationNodeFactory
+import androidx.compose.foundation.interaction.FocusInteraction
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -46,17 +48,29 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.node.CompositionLocalConsumerModifierNode
 import androidx.compose.ui.node.DelegatableNode
 import androidx.compose.ui.node.DrawModifierNode
+import androidx.compose.ui.node.currentValueOf
 import androidx.compose.ui.node.invalidateDraw
 import androidx.compose.ui.platform.InfiniteAnimationPolicy
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.preferredFrameRate
@@ -228,48 +242,107 @@ internal fun rememberRvMotion(): RvMotionScale {
     return remember(resolver) { RvMotionScale(Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f) }
 }
 
-/** The one press feedback: the content colour's state layer over the visible shape, up in [RvMotion.PRESS_MS]. */
+/**
+ * The one press feedback: the content colour's state layer over the visible shape, up in [RvMotion.PRESS_MS]. [shape] is
+ * the visible shape the focus outline follows (a rounded rectangle of [Rv.highlightRadius] where the caller has none).
+ */
 @Composable
-internal fun rvPressIndication(): IndicationNodeFactory = RvPressIndication(Rv.colors.stateLayer, Rv.motion.instant, inset = null, radius = Rv.highlightRadius)
+internal fun rvPressIndication(shape: Shape? = null): IndicationNodeFactory =
+    RvPressIndication(Rv.colors.stateLayer, Rv.colors.positive, Rv.motion.instant, inset = null, radius = Rv.highlightRadius, shape = shape, layer = true)
 
 /**
  * A row's press, the same layer as Revolut highlights a row (revolut-ux3 §1, §2): inset [RvSpace.tight] in the row, its
- * corners [Rv.highlightRadius], so inside a card it follows the card's corners.
+ * corners [Rv.highlightRadius], so inside a card it follows the card's corners. Its focus outline follows the same shape.
  */
 @Composable
-internal fun rvRowIndication(): IndicationNodeFactory = RvPressIndication(Rv.colors.stateLayer, Rv.motion.instant, inset = RvSpace.tight, radius = Rv.highlightRadius)
+internal fun rvRowIndication(): IndicationNodeFactory =
+    RvPressIndication(Rv.colors.stateLayer, Rv.colors.positive, Rv.motion.instant, inset = RvSpace.tight, radius = Rv.highlightRadius, shape = null, layer = true)
 
-private data class RvPressIndication(val color: Color, val instant: Boolean, val inset: Dp?, val radius: Dp) : IndicationNodeFactory {
-    override fun create(interactionSource: InteractionSource): DelegatableNode = PressNode(interactionSource, color, instant, inset, radius)
+/**
+ * Only the focus outline of [rvPressIndication], for a control that draws its own press (the primary button, a disc):
+ * every clickable of the library shows focus the same way (q-a11y-focus).
+ */
+@Composable
+internal fun rvFocusIndication(shape: Shape): IndicationNodeFactory =
+    RvPressIndication(Rv.colors.stateLayer, Rv.colors.positive, Rv.motion.instant, inset = null, radius = Rv.highlightRadius, shape = shape, layer = false)
+
+private data class RvPressIndication(
+    val color: Color,
+    val focus: Color,
+    val instant: Boolean,
+    val inset: Dp?,
+    val radius: Dp,
+    val shape: Shape?,
+    val layer: Boolean,
+) : IndicationNodeFactory {
+    override fun create(interactionSource: InteractionSource): DelegatableNode = PressNode(interactionSource, this)
 }
 
-/** Shows the layer while any press lasts; a short tap still shows it fully before it goes. */
-private class PressNode(private val source: InteractionSource, private val color: Color, private val instant: Boolean, private val inset: Dp?, private val radius: Dp) :
+/**
+ * Shows the layer while any press lasts (a short tap still shows it fully before it goes), and, over it, a
+ * [RvChrome.focusRing] outline in [RvPressIndication.focus] while the clickable has focus from a keyboard or a switch.
+ * Compose gives a clickable focus only outside touch mode, so a tap never draws it; the input mode is checked as well.
+ */
+private class PressNode(private val source: InteractionSource, private val spec: RvPressIndication) :
     Modifier.Node(),
-    DrawModifierNode {
+    DrawModifierNode,
+    CompositionLocalConsumerModifierNode {
     private val shown = Animatable(0f)
+    private var focused = false
 
     override fun onAttach() {
-        coroutineScope.launch { source.rvFollowPress(::to) }
+        if (spec.layer) coroutineScope.launch { source.rvFollowPress(::to) }
+        coroutineScope.launch {
+            source.interactions.collect { interaction ->
+                val now = when (interaction) {
+                    is FocusInteraction.Focus -> true
+                    is FocusInteraction.Unfocus -> false
+                    else -> focused
+                }
+                if (now != focused) {
+                    focused = now
+                    invalidateDraw()
+                }
+            }
+        }
     }
 
     private suspend fun to(target: Float) {
-        if (instant) shown.snapTo(target) else shown.animateTo(target, tween(RvMotion.PRESS_MS, easing = LinearEasing)) { invalidateDraw() }
+        if (spec.instant) shown.snapTo(target) else shown.animateTo(target, tween(RvMotion.PRESS_MS, easing = LinearEasing)) { invalidateDraw() }
         invalidateDraw()
     }
 
     override fun ContentDrawScope.draw() {
         drawContent()
         val a = shown.value
-        if (a <= 0f) return
-        if (inset == null) {
-            drawRect(color, alpha = RvAlpha.PRESSED * a)
-        } else {
-            val i = inset.toPx()
-            val box = Size((size.width - 2 * i).coerceAtLeast(0f), (size.height - 2 * i).coerceAtLeast(0f))
-            drawRoundRect(color, Offset(i, i), box, CornerRadius(radius.toPx()), alpha = RvAlpha.PRESSED * a)
+        if (a > 0f) {
+            if (spec.inset == null) {
+                drawRect(spec.color, alpha = RvAlpha.PRESSED * a)
+            } else {
+                val i = spec.inset.toPx()
+                val box = Size((size.width - 2 * i).coerceAtLeast(0f), (size.height - 2 * i).coerceAtLeast(0f))
+                drawRoundRect(spec.color, Offset(i, i), box, CornerRadius(spec.radius.toPx()), alpha = RvAlpha.PRESSED * a)
+            }
+        }
+        if (focused && currentValueOf(LocalInputModeManager).inputMode == InputMode.Keyboard) drawFocusRing()
+    }
+
+    /** The outline lies inside the visible shape, [RvChrome.focusRing] wide, so a clip round the clickable never trims it. */
+    private fun DrawScope.drawFocusRing() {
+        val i = spec.inset?.toPx() ?: 0f
+        val box = Size((size.width - 2 * i).coerceAtLeast(0f), (size.height - 2 * i).coerceAtLeast(0f))
+        val shape = spec.shape ?: RoundedCornerShape(spec.radius)
+        val outline = shape.createOutline(box, layoutDirection, this)
+        translate(i, i) {
+            clipPath(outline.rvPath()) { drawOutline(outline, spec.focus, style = Stroke(RvChrome.focusRing.toPx() * 2)) }
         }
     }
+}
+
+private fun Outline.rvPath(): Path = when (this) {
+    is Outline.Generic -> path
+    is Outline.Rectangle -> Path().apply { addRect(rect) }
+    is Outline.Rounded -> Path().apply { addRoundRect(roundRect) }
 }
 
 /**

@@ -131,7 +131,7 @@ private fun NavItem(item: RvNavItem, selected: Boolean, shrink: Float, labelStyl
             .fillMaxHeight()
             .clip(CircleShape)
             .then(pill)
-            .selectable(selected, interactionSource = null, indication = rvPressIndication(), role = Role.Tab, onClick = onClick),
+            .selectable(selected, interactionSource = null, indication = rvPressIndication(CircleShape), role = Role.Tab, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

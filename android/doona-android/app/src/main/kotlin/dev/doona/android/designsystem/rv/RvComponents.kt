@@ -10,6 +10,7 @@ import androidx.compose.foundation.Indication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -91,7 +92,7 @@ import kotlin.math.roundToInt
  */
 @Composable
 internal fun Modifier.rvPress(shape: Shape, role: Role, onClick: () -> Unit, onLongClick: (() -> Unit)? = null): Modifier =
-    clip(shape).rvClick(rvPressIndication(), role, onClick, onLongClick)
+    clip(shape).rvClick(rvPressIndication(shape), role, onClick, onLongClick)
 
 /** A row's press: [rvPress] with Revolut's row highlight ([rvRowIndication]) instead of the whole row's layer. */
 @Composable
@@ -111,11 +112,11 @@ internal fun Modifier.rvRowToggle(value: Boolean, onValueChange: (Boolean) -> Un
 /** A choice drawn as a tile or disc: clipped to [shape], it selects with [rvPress]'s layer; while not [enabled] it takes no press. */
 @Composable
 internal fun Modifier.rvPressSelect(shape: Shape, selected: Boolean, onClick: () -> Unit, enabled: Boolean = true): Modifier =
-    clip(shape).selectable(selected, interactionSource = null, indication = rvPressIndication(), enabled = enabled, role = Role.RadioButton, onClick = onClick)
+    clip(shape).selectable(selected, interactionSource = null, indication = rvPressIndication(shape), enabled = enabled, role = Role.RadioButton, onClick = onClick)
 
-/** One of a set of page dots or tabs that picks its page, with no press layer of its own. */
-internal fun Modifier.rvTabSelect(selected: Boolean, onClick: () -> Unit): Modifier =
-    selectable(selected, interactionSource = null, indication = null, role = Role.Tab, onClick = onClick)
+/** One of a set of page dots or tabs that picks its page, with no press layer of its own, only the focus outline. */
+@Composable
+internal fun Modifier.rvTabSelect(selected: Boolean, onClick: () -> Unit): Modifier = selectable(selected, interactionSource = null, indication = rvFocusIndication(CircleShape), role = Role.Tab, onClick = onClick)
 
 private fun Modifier.rvClick(indication: Indication, role: Role, onClick: () -> Unit, onLongClick: (() -> Unit)?): Modifier =
     if (onLongClick == null) {
@@ -146,6 +147,7 @@ internal fun Modifier.rvDiscPress(fill: Modifier, onClick: () -> Unit, enabled: 
         .drawBehind { if (press.value > 0f) drawCircle(lit, alpha = press.value) }
         .clip(CircleShape)
         .clickable(source, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
+        .indication(source, rvFocusIndication(CircleShape))
 }
 
 @Composable
