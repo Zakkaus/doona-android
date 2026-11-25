@@ -11,11 +11,11 @@ internal data class GroupDto(
     val id: String,
     val name: String,
     val kind: GroupKind,
-    /** On the wire for the round-trip test; the app reads the per-network fields. */
+    /** The wire fields the app does not read (selectedId, networksDiffer, pinned) stay, so the round-trip test sees the whole contract. */
     val selectedId: String?,
     val tcpSelectedId: String?,
     val udpSelectedId: String?,
-    val networksDiffer: Boolean = false,
+    val networksDiffer: Boolean,
     val pinned: Boolean,
     val tcpPinned: Boolean,
     val udpPinned: Boolean,

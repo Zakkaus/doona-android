@@ -1,8 +1,10 @@
 package dev.doona.android.engine.fake
 
 import dev.doona.android.engine.AppPolicy
+import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.LogLevel
+import dev.doona.android.engine.Member
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RuleKind
@@ -16,13 +18,21 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RvSampleEngineTest {
+    /** The datasets hold no LoadBalance group and no group inside a group, so this engine adds both for the test alone. */
     @Test
-    fun theLoadBalanceGroupHoldsNodesTheEngineKnows() = runTest {
-        val engine = rvSampleEngine()
-        val balance = engine.groups.value.single { it.kind == GroupKind.LoadBalance }
-        val ids = balance.members.map { it.id }
-        assertTrue(balance.members.none { it.isGroup })
-        assertEquals(ids, engine.nodes(ids).getOrThrow().map { it.id })
+    fun anEngineResolvesALoadBalanceGroupAndAGroupInsideAGroup() = runTest {
+        val jp = RvSampleNodes.groups.first { it.id == "g-JP" }
+        val us = RvSampleNodes.groups.first { it.id == "g-US" }
+        val balance = Group("g-Balance", "Balance", GroupKind.LoadBalance, jp.members + us.members, jp.members.first().id)
+        val outer = Group("g-Outer", "Outer", GroupKind.Fallback, listOf(Member(jp.id, jp.name, isGroup = true)) + us.members.take(1), jp.id)
+        val engine = FakeEngine(RvSampleNodes.groups + balance + outer)
+        val groups = engine.groups.value.associateBy { it.id }
+
+        assertFalse(groups.getValue(balance.id).kind.manual)
+        val nested = outer.members.filter { it.isGroup }
+        assertEquals(listOf(jp.id), nested.map { groups.getValue(it.id).id })
+        val nodeIds = (balance.members + outer.members).filterNot { it.isGroup }.map { it.id }
+        assertEquals(nodeIds, engine.nodes(nodeIds).getOrThrow().map { it.id })
     }
 
     @Test

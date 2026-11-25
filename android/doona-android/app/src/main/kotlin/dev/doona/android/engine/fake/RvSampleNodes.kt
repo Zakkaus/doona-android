@@ -78,8 +78,7 @@ internal object RvSampleNodes {
             automatic("Auto", members),
             Group("g-Streaming", "Streaming", GroupKind.Selector, regions("HK", "TW", "JP", "SG", "US"), id("tw4")),
             Group("g-AI", "AI", GroupKind.Selector, regions("TW", "JP", "SG", "US"), id("jp2")),
-        ) + listOf("HK", "TW", "JP", "US").map { automatic(it, byRegion.getValue(it)) } +
-            Group("g-Balance", "Balance", GroupKind.LoadBalance, regions("JP", "US"), id("jp2"))
+        ) + listOf("HK", "TW", "JP", "US").map { automatic(it, byRegion.getValue(it)) }
     }
 
     private fun automatic(name: String, members: List<Member>) =
