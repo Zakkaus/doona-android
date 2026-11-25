@@ -28,13 +28,13 @@ The VPN stops unexpectedly and you have to open doona to reconnect.
 2. On Pixel, open **Settings > Network & internet > VPN**. Tap the gear next to **doona** and turn on **Always-on VPN**. See [Android Help][vpn-help].
 3. Check **Activity** in doona for **Connected**. The app accepts starts from Android and retries if the VPN engine stops during a session started by Android. A manually started session does not retry after an engine stop.
 
-## Internet stops when the VPN disconnects
+## VPN cannot start with “Block connections without VPN” on
 
-Apps cannot reach the internet when the VPN is down, or an app outside the VPN cannot connect even while it is up.
+doona supports **Always-on VPN**, but it cannot start while [**Block connections without VPN**][lockdown] is on.
 
 1. On Pixel, open **Settings > Network & internet > VPN** and tap the gear next to **doona**.
-2. To prevent apps from connecting outside the VPN, turn on **Always-on VPN**, then turn on **Block connections without VPN**. Confirm Android's warning if prompted. The app does not reject VPN starts because this setting is on. Android blocks traffic outside the VPN, including from other apps you excluded with per-app routing. See [Android's blocked-connections guide][lockdown].
-3. If an app needs internet access, include it in the VPN and check **Activity** in doona for **Connected**. Turn off **Block connections without VPN** only if you're willing to let apps connect outside the VPN. You can leave **Always-on VPN** on.
+2. If your network policy requires blocked connections, use a VPN that supports them. Otherwise, turn off **Block connections without VPN**. You can leave **Always-on VPN** on.
+3. If the VPN is still off, open **Activity** in doona and connect.
 
 ## VPN is off after a reboot
 
