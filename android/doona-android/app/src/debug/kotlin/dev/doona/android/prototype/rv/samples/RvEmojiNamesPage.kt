@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvCard
@@ -65,8 +66,8 @@ private fun NodeNameRow(node: RvNode, proposed: Boolean) {
     val shown = if (proposed) rvShownName(node.name) else RvShownName(null, node.name)
     val place = stringResource(node.place.label)
     RvRow(
-        { Mark(shown.mark) { RvFlag(node.place.flag, RvSize.rowDisc) } },
-        shown.text.ifEmpty { markName(shown.mark, place) },
+        { RvNameDisc(shown.mark, node.place.flag) },
+        shown.text.ifEmpty { rvMarkName(shown.mark, place) },
         listOf(node.protocol, place).joinToString(SEPARATOR),
         titleEnd = { RvLatencyText(node.latencyMs, node.timedOut) },
         titleKeepWords = false,
@@ -78,26 +79,29 @@ private fun GroupNameRow(name: String, kind: RvGroupKind, proposed: Boolean) {
     val shown = if (proposed) rvShownName(name) else RvShownName(null, name)
     val count = pluralStringResource(R.plurals.rv_policy_node_count, GROUP_NODES, GROUP_NODES)
     RvRow(
-        { Mark(shown.mark) { RvIconDisc(kind.glyph) } },
-        shown.text.ifEmpty { markName(shown.mark, "") },
+        { if (shown.mark == null) RvIconDisc(kind.glyph) else RvNameDisc(shown.mark, null) },
+        shown.text.ifEmpty { rvMarkName(shown.mark, "") },
         stringResource(kind.label) + SEPARATOR + count,
         titleKeepWords = false,
     )
 }
 
-/** The row's leading disc: the name's recognised mark as our flag or glyph, else what the row leads with today. */
+/**
+ * The row's leading disc: the name's recognised mark as our flag or glyph ([current] badges a flag as the chosen node's),
+ * else what the row leads with today ([flag], the node's place).
+ */
 @Composable
-private fun Mark(mark: RvNameMark?, today: @Composable () -> Unit) {
+internal fun RvNameDisc(mark: RvNameMark?, flag: String?, current: Boolean = false, size: Dp = RvSize.rowDisc) {
     when (mark) {
-        is RvNameMark.Flag -> RvFlag(mark.code, RvSize.rowDisc)
-        is RvNameMark.Icon -> RvIconDisc(mark.glyph)
-        null -> today()
+        is RvNameMark.Flag -> RvFlag(mark.code, size, current = current)
+        is RvNameMark.Icon -> RvIconDisc(mark.glyph, size = size, current = current)
+        null -> RvFlag(flag, size, current = current)
     }
 }
 
 /** What a name with nothing left but its emoji reads: the flag's country ([place]), or the brand or group. */
 @Composable
-private fun markName(mark: RvNameMark?, place: String): String = when (mark) {
+internal fun rvMarkName(mark: RvNameMark?, place: String): String = when (mark) {
     is RvNameMark.Flag -> RvPlace.entries.firstOrNull { it.flag.equals(mark.code, ignoreCase = true) }?.let { stringResource(it.label) } ?: place
     is RvNameMark.Icon -> sampleText(mark.zh, mark.en)
     null -> place

@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -337,13 +338,16 @@ internal object RvPart {
 }
 
 /**
- * A row's leading disc: a glyph on the raised fill. A detail page's header takes it at [RvSize.headerDisc]; the glyph
- * keeps the row's proportion to its disc unless [glyph] says otherwise (a notice's, [RvSize.noticeGlyph]).
+ * A row's leading disc: a glyph on the raised fill (a header takes [RvSize.headerDisc]; [glyph] keeps the row's proportion
+ * unless it says otherwise, a notice's [RvSize.noticeGlyph]); the [current] node's carries the flag's check badge.
  */
 @Composable
-internal fun RvIconDisc(@DrawableRes icon: Int, color: Color = Rv.colors.text, size: Dp = RvSize.rowDisc, glyph: Dp = RvSize.rowGlyph * (size / RvSize.rowDisc)) {
-    Box(Modifier.size(size).clip(CircleShape).background(Rv.colors.discOnCard), contentAlignment = Alignment.Center) {
-        RvGlyph(icon, glyph, color)
+internal fun RvIconDisc(@DrawableRes icon: Int, color: Color = Rv.colors.text, size: Dp = RvSize.rowDisc, glyph: Dp = RvSize.rowGlyph * (size / RvSize.rowDisc), current: Boolean = false) {
+    Box(Modifier.size(size)) {
+        Box(Modifier.matchParentSize().clip(CircleShape).background(Rv.colors.discOnCard), contentAlignment = Alignment.Center) {
+            RvGlyph(icon, glyph, color)
+        }
+        if (current) RvCurrentBadge(Rv.colors.card, Modifier.align(Alignment.BottomEnd).offset(RvSize.badgeOverhang, RvSize.badgeOverhang))
     }
 }
 

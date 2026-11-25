@@ -77,6 +77,7 @@ import dev.doona.android.designsystem.rv.RvChevron
 import dev.doona.android.designsystem.rv.RvChrome
 import dev.doona.android.designsystem.rv.RvConfirmSheet
 import dev.doona.android.designsystem.rv.RvFlag
+import dev.doona.android.designsystem.rv.RvFoldRow
 import dev.doona.android.designsystem.rv.RvFrames
 import dev.doona.android.designsystem.rv.RvGlyph
 import dev.doona.android.designsystem.rv.RvIconDisc
@@ -113,7 +114,8 @@ import kotlinx.coroutines.flow.first
 /**
  * One subscription: its 訂閱 row, then its nodes. The row opens and closes the group (always open while searching); the
  * group folds away when none of its nodes match. The pieces of the node picker and of a policy group's page, which lists
- * its nodes the same way: the group starts open unless [initiallyOpen] is false.
+ * its nodes the same way: the group starts open unless [initiallyOpen] is false. A page that marks its rows its own way
+ * (a name's emoji drawn as our icons, the network a node is chosen on) draws them with [row] in place of [RvNodePickRow].
  */
 @Composable
 internal fun RvNodeSection(
@@ -128,6 +130,7 @@ internal fun RvNodeSection(
     rows: RvRowsComposed,
     modifier: Modifier,
     initiallyOpen: Boolean = true,
+    row: (@Composable (node: RvNode, label: String, current: Boolean, order: Int) -> Unit)? = null,
 ) {
     // Read here, so that as more rows are composed this group composes again, not the picker.
     val limit = rows.composed() - rows.first
@@ -147,7 +150,8 @@ internal fun RvNodeSection(
                             if (1 + order >= limit) return@forEachIndexed
                             key(node.id) {
                                 AnimatedVisibility(node.id in matching, enter = fadeIn(fold) + expandVertically(size), exit = fadeOut(fold) + shrinkVertically(size)) {
-                                    RvNodePickRow(node, labels.getValue(node.id), node.id == currentId, order, onPick, onDetail)
+                                    val label = labels.getValue(node.id)
+                                    if (row != null) row(node, label, node.id == currentId, order) else RvNodePickRow(node, label, node.id == currentId, order, onPick, onDetail)
                                 }
                             }
                         }
@@ -168,41 +172,21 @@ internal fun RvNodeSection(
 internal fun RvSubscriptionFold(sub: RvSubscription, open: Boolean, enabled: Boolean, onToggle: () -> Unit) {
     val format = rememberRvFormat()
     val total = format.bytes(sub.totalBytes)
-    val turn by animateFloatAsState(if (open) QUARTER_TURN else 0f, Rv.motion.tween(RvMotion.MOVE_MS), label = "chevron")
-    val toggle = Modifier.semantics {
-        if (!enabled) return@semantics
-        if (open) {
-            collapse {
-                onToggle()
-                true
-            }
-        } else {
-            expand {
-                onToggle()
-                true
-            }
-        }
-    }
     val updating = sub.id in LocalRvUpdating.current
     var deleting by remember { mutableStateOf(false) }
     RvMenuAnchor(rvSubscriptionMenu(sub) { deleting = true }) { menu, actions ->
-        RvRow(
-            { RvIconDisc(R.drawable.rv_sym_rss_feed) },
+        RvFoldRow(
+            R.drawable.rv_sym_rss_feed,
             sub.name,
             stringResource(R.string.rv_subscription_usage, format.bytesIn(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, RvData.nowEpochMs) } ?: RV_NO_VALUE),
-            toggle.then(actions),
-            onClick = onToggle.takeIf { enabled },
-            onLongClick = menu,
-            titleKeepWords = false,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Crossfade(updating, animationSpec = Rv.motion.tween(RvMotion.FADE_MS), label = "update") { busy ->
-                    if (busy) RvBusy(Modifier.width(RvSize.busy)) else RvText(format.bytes(sub.leftBytes).toString(), Rv.type.rowValue, align = TextAlign.End)
-                }
-                Spacer(Modifier.width(RvSpace.trailingGap))
-                RvChevron(Modifier.rotate(turn))
-            }
-        }
+            format.bytes(sub.leftBytes).toString(),
+            open,
+            enabled,
+            onToggle,
+            actions,
+            menu,
+            busy = updating,
+        )
     }
     val delete = LocalRvRowActions.current.deleteSubscription
     RvConfirmSheet(
@@ -222,18 +206,30 @@ internal fun RvSubscriptionFold(sub: RvSubscription, open: Boolean, enabled: Boo
 
 /**
  * 節點's row with an info mark at its end: a tap picks the node, the mark opens its page, and a long press opens its
- * menu (設為主節點, 測試延遲, 詳情, 複製分享連結), or its page where the sample offers no menus.
+ * menu (設為主節點, 測試延遲, 詳情, 複製分享連結), or its page where the sample offers no menus. A page may show the node
+ * under another [title] (a name without its emoji), put [lead] before the line under it (the network a node is chosen on,
+ * its Score mark) and draw its leading disc itself with [mark], told whether the node is chosen.
  */
 @Composable
-internal fun RvNodePickRow(node: RvNode, label: String, current: Boolean, order: Int, onPick: (String) -> Unit, onDetail: (String) -> Unit) {
+internal fun RvNodePickRow(
+    node: RvNode,
+    label: String,
+    current: Boolean,
+    order: Int,
+    onPick: (String) -> Unit,
+    onDetail: (String) -> Unit,
+    title: String = node.name,
+    lead: String? = null,
+    mark: (@Composable (current: Boolean) -> Unit)? = null,
+) {
     val inUse = stringResource(R.string.rv_nodes_in_use)
     val details = stringResource(R.string.rv_nodes_details)
     // Each row is a layer of its own: a row composed after the others records itself, not the whole card again.
     RvMenuAnchor(rvNodeMenu(node, current, onPick, onDetail), Modifier.graphicsLayer {}) { menu, actions ->
         RvRow(
-            { RvFlag(node.place.flag, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
-            node.name,
-            node.protocol + SEPARATOR + label,
+            { if (mark != null) mark(current) else RvFlag(node.place.flag, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
+            title,
+            listOfNotNull(lead, node.protocol, label).joinToString(SEPARATOR),
             (if (current) Modifier.semantics { stateDescription = inUse } else Modifier).then(actions),
             onClick = { onPick(node.id) },
             onLongClick = menu ?: { onDetail(node.id) },
@@ -264,5 +260,3 @@ internal fun RvNode.matches(query: String, label: String): Boolean =
 
 /** The picker's rows a group starts at ([first], its 訂閱 row) and how many of them are [composed] so far. */
 internal class RvRowsComposed(val first: Int, val composed: () -> Int)
-
-private const val QUARTER_TURN = 90f

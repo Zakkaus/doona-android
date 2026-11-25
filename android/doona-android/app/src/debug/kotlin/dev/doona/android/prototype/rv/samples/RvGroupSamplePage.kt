@@ -102,7 +102,7 @@ internal fun RvGroupChip(node: RvNode) {
 
 /** 目前使用中: the switch 分開選擇 TCP 與 UDP, then a row for each network, its line beginning with the network. */
 @Composable
-private fun NetworkCard(group: RvPolicyGroup, choice: RvApplyChoice, onApart: (RvApplyChoice) -> Unit) {
+internal fun NetworkCard(group: RvPolicyGroup, choice: RvApplyChoice, onApart: (RvApplyChoice) -> Unit) {
     RvCard {
         RvCardHeader(stringResource(R.string.rv_nodes_in_use))
         RvSwitchRow(R.drawable.rv_sym_account_tree, sampleText("分開選擇 TCP/UDP", "分开选择 TCP/UDP", "Choose TCP/UDP apart"), choice.apart, onChange = { onApart(choice) })
@@ -117,11 +117,14 @@ private fun NetworkCard(group: RvPolicyGroup, choice: RvApplyChoice, onApart: (R
 
 @Composable
 private fun NetworkRow(node: RvNode, network: String?) {
+    val place = stringResource(node.place.label)
+    val shown = rvShownName(node.name)
     RvRow(
-        { RvFlag(node.place.flag, RvSize.rowDisc, current = true) },
-        node.name,
-        listOfNotNull(network, node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR),
+        { RvNameDisc(shown.mark, node.place.flag, current = true) },
+        shown.text.ifEmpty { rvMarkName(shown.mark, place) },
+        listOfNotNull(network, node.protocol, place).joinToString(SEPARATOR),
         onClick = {},
+        titleKeepWords = false,
     ) { RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut) }
 }
 
@@ -130,7 +133,7 @@ private fun NetworkRow(node: RvNode, network: String?) {
  * 'Top movers' holds its own ([RvNodesSize.topRowGap] and the card's foot as there). 'TCP 與 UDP' first (nborder).
  */
 @Composable
-private fun ApplyCard(selected: RvApplyTo, onSelect: (RvApplyTo) -> Unit) {
+internal fun ApplyCard(selected: RvApplyTo, onSelect: (RvApplyTo) -> Unit) {
     val options = RvApplyTo.entries
     val labels = listOf("TCP/UDP", stringResource(R.string.ui_tcp), stringResource(R.string.ui_udp))
     RvCard {
