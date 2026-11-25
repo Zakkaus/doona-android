@@ -556,12 +556,12 @@ internal fun RvSectionTitle(title: String, modifier: Modifier = Modifier, onClic
     }
 }
 
-/** A small glyph before a label in the same colour: the header's sub line. */
+/** A small glyph before a label in the same colour: the header's sub line, which wraps within the row when [maxLines] allows it. */
 @Composable
-internal fun RvInline(@DrawableRes icon: Int, text: String, color: Color, style: TextStyle, modifier: Modifier = Modifier) {
+internal fun RvInline(@DrawableRes icon: Int, text: String, color: Color, style: TextStyle, modifier: Modifier = Modifier, maxLines: Int = 1) {
     Row(modifier.testTag(RvPart.TEXT_LINE), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(RvSpace.tight)) {
         RvGlyph(icon, RvSize.inlineGlyph, color)
-        RvText(text, style, color = color)
+        RvText(text, style, Modifier.weight(1f, fill = false), color = color, maxLines = maxLines)
     }
 }
 

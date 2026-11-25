@@ -288,9 +288,13 @@ internal fun RvSearchSlot(field: @Composable (Modifier) -> Unit) {
 @Composable
 internal fun RvLargeTitle(text: String, titleBlock: Modifier, insets: WindowInsets) = RvPageHeader(text, titleBlock, insets)
 
-/** One line of a page header's caption, in secondary text, after an optional 16 dp [icon] in the same colour. */
+/**
+ * A page header's caption, in secondary text, after an optional 16 dp [icon] in the same colour. It wraps to every line
+ * it needs and the header grows with it, so a long caption (a revision's base, a translation) is never cut at one line
+ * (owner, 2026-11-25, q-a11y-caption).
+ */
 @Composable
 internal fun RvCaption(text: String, @DrawableRes icon: Int? = null) {
     val color = Rv.colors.textSecondary
-    if (icon == null) RvText(text, Rv.type.rowSub, color = color) else RvInline(icon, text, color, Rv.type.rowSub)
+    if (icon == null) RvText(text, Rv.type.rowSub, color = color, maxLines = Int.MAX_VALUE) else RvInline(icon, text, color, Rv.type.rowSub, maxLines = Int.MAX_VALUE)
 }
