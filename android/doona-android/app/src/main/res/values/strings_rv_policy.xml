@@ -17,8 +17,8 @@
     <string name="rv_policy_rules">Routing rules</string>
     <string name="rv_policy_rules_order">Rules are checked from the top; the first match applies</string>
     <plurals name="rv_policy_see_all_rules">
-        <item quantity="one">See all %1$d rule</item>
-        <item quantity="other">See all %1$d rules</item>
+        <item quantity="one">View all %1$d rule</item>
+        <item quantity="other">View all %1$d rules</item>
     </plurals>
     <plurals name="rv_policy_domains">
         <item quantity="one">%1$s, %2$d domain</item>
@@ -42,8 +42,8 @@
     <string name="rv_policy_test_group">Test this group</string>
     <string name="rv_policy_nodes">Nodes</string>
     <plurals name="rv_policy_see_all_nodes">
-        <item quantity="one">See all %1$d</item>
-        <item quantity="other">See all %1$d</item>
+        <item quantity="one">View all %1$d</item>
+        <item quantity="other">View all %1$d</item>
     </plurals>
     <string name="rv_policy_target">Destination</string>
     <string name="rv_policy_app">App</string>
@@ -111,7 +111,7 @@
     <string name="rv_policy_change_remove">Removed</string>
     <string name="rv_effective_title">Effective config</string>
     <string name="rv_effective_open">View effective config</string>
-    <string name="rv_effective_mode">Mode</string>
+    <string name="rv_effective_mode">Outbound mode</string>
     <string name="rv_effective_members_more">%1$s and others, %2$d in all</string>
     <string name="rv_effective_list_separator">",\u0020"</string>
     <string name="rv_effective_dns_via">Through</string>

@@ -46,8 +46,8 @@
     <string name="rv_rule_domestic">Domestic and LAN</string>
     <string name="rv_rule_ai">AI</string>
     <plurals name="rv_see_all_rules">
-        <item quantity="one">See the %1$d rule</item>
-        <item quantity="other">See all %1$d rules</item>
+        <item quantity="one">View the %1$d rule</item>
+        <item quantity="other">View all %1$d rules</item>
     </plurals>
     <!-- Long-press menus (G3). -->
     <string name="rv_menu_set_main">Set as main node</string>

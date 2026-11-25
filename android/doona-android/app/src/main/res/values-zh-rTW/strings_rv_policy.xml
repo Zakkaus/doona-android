@@ -34,7 +34,7 @@
     <string name="rv_policy_selected">已選 %1$s · %2$s</string>
     <string name="rv_policy_auto">自動</string>
     <string name="rv_policy_auto_note">自動選擇延遲最低的節點（容差 50 毫秒）</string>
-    <string name="rv_policy_test_group">測試此組</string>
+    <string name="rv_policy_test_group">測試此群組</string>
     <string name="rv_policy_nodes">節點</string>
     <plurals name="rv_policy_see_all_nodes">
         <item quantity="other">檢視全部 %1$d 個</item>
@@ -58,7 +58,7 @@
     <string name="rv_policy_position">位置</string>
     <string name="rv_policy_position_value">「%1$s」之前</string>
     <string name="rv_policy_apply">套用</string>
-    <string name="rv_policy_match_cidr">IP 段</string>
+    <string name="rv_policy_match_cidr">IP 範圍</string>
     <string name="rv_policy_rule_off">已停用</string>
     <string name="rv_policy_rule_skipped">已略過</string>
     <string name="rv_rules_reorder">調整順序</string>
@@ -99,7 +99,7 @@
     <string name="rv_policy_change_remove">移除</string>
     <string name="rv_effective_title">生效組態</string>
     <string name="rv_effective_open">檢視生效組態</string>
-    <string name="rv_effective_mode">模式</string>
+    <string name="rv_effective_mode">出站模式</string>
     <string name="rv_effective_members_more">%1$s 等 %2$d 個</string>
     <string name="rv_effective_list_separator">、</string>
     <string name="rv_effective_dns_via">經由</string>
@@ -117,9 +117,9 @@
     <string name="rv_rule_edit_title">編輯規則</string>
     <string name="rv_rule_edit_domain">網域</string>
     <string name="rv_rule_edit_need_domain">請輸入網域</string>
-    <string name="rv_rule_edit_need_cidr">請輸入 IP 段</string>
+    <string name="rv_rule_edit_need_cidr">請輸入 IP 範圍</string>
     <string name="rv_rule_edit_bad_domain">只能使用英文字母、數字、連字號與句點</string>
-    <string name="rv_rule_edit_bad_cidr">IP 段的格式為 91.108.56.0/22</string>
+    <string name="rv_rule_edit_bad_cidr">IP 範圍的格式為 91.108.56.0/22</string>
     <string name="rv_rule_edit_cidr_line">%1$s 內的位址</string>
     <string name="rv_rule_edit_geoip_line">GeoIP 資料中屬於中國大陸的位址</string>
     <string name="rv_rule_edit_private_line">私有位址不經通道，這條規則比對不到連線</string>

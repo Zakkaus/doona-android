@@ -32,8 +32,8 @@
         <item quantity="other">%1$d skipped</item>
     </plurals>
     <plurals name="rv_config_see_all_items">
-        <item quantity="one">See %1$d item</item>
-        <item quantity="other">See all %1$d</item>
+        <item quantity="one">View %1$d item</item>
+        <item quantity="other">View all %1$d</item>
     </plurals>
     <string name="rv_config_history">History</string>
     <string name="rv_config_import">Import configuration</string>

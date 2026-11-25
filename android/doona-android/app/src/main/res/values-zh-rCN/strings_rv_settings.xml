@@ -55,7 +55,7 @@
 
     <string name="rv_report_title">报告问题</string>
     <string name="rv_report_failed">无法导出诊断报告</string>
-    <string name="rv_report_failed_reason">doona 的核心没有响应。</string>
+    <string name="rv_report_failed_reason">doona 的内核没有响应。</string>
     <string name="rv_log_error">错误</string>
     <string name="rv_log_warn">警告</string>
     <string name="rv_log_info">信息</string>

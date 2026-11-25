@@ -69,6 +69,6 @@
     <string name="rv_template_group_media">國外媒體</string>
     <string name="rv_template_group_bahamut">巴哈姆特</string>
     <string name="rv_template_group_cn">回國節點</string>
-    <string name="rv_config_create">建立設定檔</string>
+    <string name="rv_config_create">新增設定檔</string>
     <string name="rv_config_kind_note">%1$s：%2$s</string>
 </resources>

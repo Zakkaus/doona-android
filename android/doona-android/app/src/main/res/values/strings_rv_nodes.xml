@@ -18,8 +18,8 @@
     </plurals>
     <string name="rv_nodes_all">All nodes</string>
     <plurals name="rv_nodes_see_all">
-        <item quantity="one">See all %1$d</item>
-        <item quantity="other">See all %1$d</item>
+        <item quantity="one">View all %1$d</item>
+        <item quantity="other">View all %1$d</item>
     </plurals>
     <string name="rv_nodes_region_asia">Asia</string>
     <string name="rv_nodes_region_oceania">Oceania</string>

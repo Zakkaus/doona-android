@@ -38,7 +38,7 @@ import org.robolectric.annotation.GraphicsMode
  * configuration, with its region and service groups (`proto-rv-config-template-new-*`), and 依服務分流 applied over
  * 繞過中國大陸 through the diff (`proto-rv-config-template-diff-*`). Light and dark hold the whole page; fs115 and fs200
  * the first screen, and the new configuration's page scrolled to its end (`proto-rv-config-template-new-end-*`), where
- * the last row stands clear of the floating 建立設定檔.
+ * the last row stands clear of the floating 新增設定檔.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -114,7 +114,7 @@ class RvConfigTemplateShotTest {
         compose.setContent { Themed { Chooser(null, RvConfigTemplateData.regions) } }
         compose.onNodeWithText("封鎖廣告").performScrollTo().assertIsOff()
         compose.onNodeWithText("封鎖 QUIC").performScrollTo().assertIsOn()
-        // A semantics click: scrolled into view, the row's foot sits under the floating 建立設定檔.
+        // A semantics click: scrolled into view, the row's foot sits under the floating 新增設定檔.
         compose.onNodeWithText("封鎖 QUIC").performScrollTo().assertIsOn().performSemanticsAction(SemanticsActions.OnClick).assertIsOff()
     }
 
@@ -152,7 +152,7 @@ class RvConfigTemplateShotTest {
 
         /** A title the page holds together with word joiners; its node reads the plain words. */
         const val SERVICES = "依服務分流"
-        const val CREATE = "建立設定檔"
+        const val CREATE = "新增設定檔"
         const val REVIEW = "檢視變更"
     }
 }

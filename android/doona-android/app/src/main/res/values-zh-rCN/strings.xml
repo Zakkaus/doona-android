@@ -102,8 +102,8 @@
     <string name="status_stopping">断开连接中</string>
     <string name="status_failed_no_allowed_apps">已安装的应用均未设置为使用 VPN</string>
     <string name="status_failed_start">VPN 未能启动</string>
-    <string name="status_failed_core_stopped">核心已停止</string>
-    <string name="status_failed_incompatible_core">内置核心版本不兼容</string>
+    <string name="status_failed_core_stopped">内核已停止</string>
+    <string name="status_failed_incompatible_core">内置内核版本不兼容</string>
     <string name="error_invalid_argument">值无效</string>
     <string name="error_not_found">找不到项目</string>
     <string name="error_fetch_failed">无法下载订阅</string>

@@ -21,7 +21,7 @@ import org.robolectric.annotation.GraphicsMode
  * The node rows of a policy group's page (`proto-rv-policy-group-testing-*`, the whole page as `-policy-group-select-*`)
  * and of the main node's picker (`-policy-picker-testing-*`) while a latency test of every node runs
  * ([LocalRvTesting]): the pull-down picker's form, a busy bar in place of the latency and its change. Each light, dark,
- * fs115 and fs200, at animator scale 0, so the bars rest half full. 測試此組 and 測試延遲 have no busy form and keep
+ * fs115 and fs200, at animator scale 0, so the bars rest half full. 測試此群組 and 測試延遲 have no busy form and keep
  * their look.
  */
 @RunWith(RobolectricTestRunner::class)

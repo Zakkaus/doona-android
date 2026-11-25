@@ -84,7 +84,7 @@ private val DOMAIN = Regex("""[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*""")
 
 /**
  * A rule's page (全部規則 → a rule), in the quick rule's grammar: the large title; 比對方式 as the quick rule's slider
- * over the three kinds of the rule's own set (a domain's: 完整網域, 網域後綴, 關鍵字; an address's: IP 段, GEOIP CN, 私有
+ * over the three kinds of the rule's own set (a domain's: 完整網域, 網域後綴, 關鍵字; an address's: IP 範圍, GEOIP CN, 私有
  * IP 位址), then the value in the library's text field (none for GEOIP CN and private ranges), and one line on
  * what the rule covers, or what is wrong with the value; 送往, the quick rule's list; a card with 啟用 and 刪除規則,
  * which asks first; and 套用 floating at the bottom, off while the value is wrong.

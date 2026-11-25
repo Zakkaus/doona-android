@@ -46,7 +46,7 @@
     <string name="rv_policy_match_by">依据</string>
     <string name="rv_policy_match_full">完整域名</string>
     <string name="rv_policy_match_suffix">域名后缀</string>
-    <string name="rv_policy_match_keyword">关键词</string>
+    <string name="rv_policy_match_keyword">关键字</string>
     <string name="rv_policy_match_full_line">只匹配 %1$s</string>
     <string name="rv_policy_match_suffix_line">%1$s 及其所有子域名</string>
     <string name="rv_policy_match_keyword_line">域名包含 %1$s</string>
@@ -99,7 +99,7 @@
     <string name="rv_policy_change_remove">移除</string>
     <string name="rv_effective_title">生效配置</string>
     <string name="rv_effective_open">查看生效配置</string>
-    <string name="rv_effective_mode">模式</string>
+    <string name="rv_effective_mode">出站模式</string>
     <string name="rv_effective_members_more">%1$s 等 %2$d 个</string>
     <string name="rv_effective_list_separator">、</string>
     <string name="rv_effective_dns_via">经由</string>
@@ -138,7 +138,7 @@
     <string name="rv_service_has_rule">已有规则：%1$s</string>
     <string name="rv_service_games">游戏</string>
     <string name="rv_service_media">影音</string>
-    <string name="rv_service_social">社群和通讯</string>
+    <string name="rv_service_social">社交和通信</string>
     <string name="rv_service_developer">开发和平台</string>
     <string name="rv_service_all_games">全部游戏</string>
     <!-- A Score group: the node it chose on a network, its state, and how each challenger compares. -->

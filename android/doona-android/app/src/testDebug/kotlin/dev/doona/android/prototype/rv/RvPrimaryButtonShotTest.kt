@@ -81,7 +81,7 @@ class RvPrimaryButtonShotTest {
     }
 
     private companion object {
-        const val ON = "測試此組"
+        const val ON = "測試此群組"
         const val PRESSED = "套用"
         const val OFF = "新增規則"
         val TOP = 72.dp
