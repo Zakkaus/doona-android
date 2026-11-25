@@ -116,7 +116,7 @@ class RvShotTest {
     private fun Global() = RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}, mode = RvRouteMode.Global)
 
     private fun traffic(screen: String, dark: Boolean, scrub: Int? = null, fontScale: Float = 1f) =
-        compose.rvShot(screen, dark, fontScale = fontScale) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}, initialScrub = scrub) }
+        compose.rvShot(screen, dark, fontScale = fontScale) { RvTrafficSample(rvSampleActivity(), RvData.session, onBack = {}, initialScrub = scrub) }
 
     private companion object {
         /** The node of the `activity-melbourne` sample. */

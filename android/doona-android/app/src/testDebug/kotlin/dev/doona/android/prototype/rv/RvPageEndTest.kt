@@ -125,7 +125,7 @@ class RvPageEndTest {
         listOf(
             Page("節點") { RvNodesPage(sampleNodesPage(), onBack = {}, onFilter = {}, onOpen = {}, onAllNodes = {}) },
             Page("統計") { RvStatsScreen(rvStatsSample(), onBack = {}) },
-            Page("流量") { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}) },
+            Page("流量") { RvTrafficSample(rvSampleActivity(), RvData.session, onBack = {}) },
             Page("關於") { RvAboutScreen(rvSampleVersions, onBack = {}) },
             Page("日誌等級") { RvLogLevelScreen(RvLogLevel.Info, onSelect = {}, onBack = {}) },
             Page("語言") { RvLanguageScreen(RvLanguage.TraditionalChinese, RvLanguage.TraditionalChinese, onSelect = {}, onBack = {}) },

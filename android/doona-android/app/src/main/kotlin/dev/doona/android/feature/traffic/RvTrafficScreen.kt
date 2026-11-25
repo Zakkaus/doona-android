@@ -1,31 +1,28 @@
-package dev.doona.android.prototype.rv
+package dev.doona.android.feature.traffic
 
-import android.content.res.Configuration
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.snap
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvAmount
 import dev.doona.android.designsystem.rv.RvCard
@@ -44,39 +41,32 @@ import dev.doona.android.designsystem.rv.RvSegmented
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvText
-import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rememberRvFormat
-import dev.doona.android.designsystem.rv.rvSystemScheme
-import dev.doona.android.feature.model.RvSession
-import dev.doona.android.prototype.rv.data.RV_RANGE_POINTS
-import dev.doona.android.prototype.rv.data.RV_RANGE_SECONDS
-import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvSessionSeconds
 
 /**
  * The page a traffic tile opens, 流量詳情 as the large title, in the language of Revolut's stock page: 下載 or 上傳
  * picked in the header's control row, each on its own scale; the rate as the hero with small decimals and when it was; the
- * range's chart full-bleed; the range chips and two round buttons; and the connection's figures in a Key stats card. A
- * finger on the chart shows that point in the hero until it lifts. 1 分 is the live minute; 5 分, 15 分 and 1 小時 are
- * [RvSessionSeconds]' windows ending now, derived from [session], and a new range cross-fades the chart (G5).
- * [initialScrub] starts the page scrubbed to that second, as the scrubbed golden shows it.
+ * range's chart full-bleed; the range chips (no chart tools: the owner removed them for v0.1, 2026-11-23 21:35); and the
+ * connection's figures in a Key stats card. A finger on the chart shows that point in the hero until it lifts. The
+ * direction and the range are kept across a rotation; the page reports the range with [onRange] and draws [state]'s
+ * chart, which keeps the last one until the range's read arrives, and a new range cross-fades the chart (G5). With no
+ * chart read the chart shows its grid only; with no session the card shows no figures. [initialScrub] starts the page
+ * scrubbed to that point, as the scrubbed golden shows it.
  */
 @Composable
-internal fun RvTrafficScreen(state: RvActivitySampleState, session: RvSession, onBack: () -> Unit, initialScrub: Int? = null) {
+internal fun RvTrafficScreen(state: RvTrafficState, onRange: (Int) -> Unit, onBack: () -> Unit, initialScrub: Int? = null) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val format = rememberRvFormat()
     val rate: (Float) -> String = { format.rate(it.toDouble()).toString() }
     var upload by rememberSaveable { mutableStateOf(false) }
-    var range by rememberSaveable { mutableIntStateOf(0) }
+    var range by rememberSaveable { mutableIntStateOf(RV_TRAFFIC_LIVE) }
+    // A finger's point is not kept across a rotation: the finger has lifted by then.
     var scrub by remember { mutableStateOf(initialScrub) }
-    val seconds = remember(session) { RvSessionSeconds(session) }
-    val values = when {
-        range > 0 -> seconds.chart(range, upload)
-        upload -> state.upHistory
-        else -> state.downHistory
-    }
-    // How long one point of the chart spans: a second over 1 分, a minute over 1 小時.
-    val step = RV_RANGE_SECONDS[range] / RV_RANGE_POINTS * MS_PER_SECOND
+    val report by rememberUpdatedState(onRange)
+    LaunchedEffect(range) { report(range) }
+    val chart = state.chart
+    // No chart, or one with no points: a minute of missing samples, which the chart draws as its grid alone.
+    val values = chart?.values(upload)?.ifEmpty { null } ?: NO_CHART
     val live = if (upload) state.upRate else state.downRate
     val title = stringResource(R.string.rv_traffic_title)
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
@@ -87,24 +77,24 @@ internal fun RvTrafficScreen(state: RvActivitySampleState, session: RvSession, o
             Column(Modifier.padding(horizontal = RvSpace.gutter)) {
                 val shown = scrub?.takeIf { it in values.indices && !values[it].isNaN() }
                 // A scrubbed point shows its rate and when it ended; lifting the finger brings back the live rate.
-                val at = shown?.let { format.clock(session.nowEpochMs - (values.lastIndex - it) * step) }
+                val at = if (chart != null && shown != null) format.clock(chart.endEpochMs - (values.lastIndex - shown) * chart.stepMs) else null
                 Hero(format.rate((shown?.let { values[it] } ?: live.toFloat()).toDouble()), at)
             }
             Spacer(Modifier.height(RvSpace.chartGap))
-            RvDetailChart(values, if (upload) Rv.colors.up else Rv.colors.down, rate, scrub, onScrub = { scrub = it }, range = range)
+            RvDetailChart(values, if (upload) Rv.colors.up else Rv.colors.down, rate, scrub, onScrub = { scrub = it }, range = chart?.range ?: range)
             Spacer(Modifier.height(RvChartSize.pillClear))
             Ranges(range) { range = it }
         }
         Column(Modifier.padding(horizontal = RvSpace.gutter)) {
             RvSectionTitle(stringResource(R.string.rv_this_connection))
-            ConnectionCard(session, upload, format)
+            ConnectionCard(state.session, upload, format)
         }
     }
 }
 
 /**
  * The rate as a chart card's figure (Revolut's Analytics figure, measured §10.2), then when it was: now, or the scrubbed
- * second's time [at].
+ * point's time [at].
  */
 @Composable
 private fun Hero(rate: RvAmount, at: String?) {
@@ -115,7 +105,7 @@ private fun Hero(rate: RvAmount, at: String?) {
     RvText(at ?: stringResource(R.string.rv_now), Rv.type.sub, color = Rv.colors.textSecondary)
 }
 
-/** The range chips, the [selected] one raised, with no track behind them, on the gutter. The chart's two tool discs are not drawn (the owner, 2026-11-23, L141). */
+/** The range chips, the [selected] one raised, with no track behind them, on the gutter. */
 @Composable
 private fun Ranges(selected: Int, onSelect: (Int) -> Unit) {
     RvRangeRow(RANGES.map { stringResource(it) }, selected, onSelect, Modifier.padding(horizontal = RvSpace.gutter))
@@ -123,29 +113,22 @@ private fun Ranges(selected: Int, onSelect: (Int) -> Unit) {
 
 /**
  * Revolut's Key stats card for this connection: the shown direction's fastest second and its average over the whole
- * session (its bytes over its seconds), the totals each way and how long it has run.
+ * session (its bytes over its seconds), the totals each way and how long it has run; a dash for each without a [session].
  */
 @Composable
-private fun ConnectionCard(session: RvSession, upload: Boolean, format: RvFormat) {
-    val duration = format.duration(session.seconds)
+private fun ConnectionCard(session: RvTrafficSession?, upload: Boolean, format: RvFormat) {
     RvCard {
-        RvStatRow(stringResource(R.string.rv_stat_peak), format.rate((if (upload) session.peakUp else session.peakDown).toDouble()).toString())
-        RvStatRow(stringResource(R.string.rv_stat_average), format.rate(if (upload) session.averageUp else session.averageDown).toString())
-        RvStatRow(stringResource(R.string.rv_downloaded), format.bytes(session.downTotal).toString())
-        RvStatRow(stringResource(R.string.rv_uploaded), format.bytes(session.upTotal).toString())
-        RvStatRow(stringResource(R.string.rv_connected_for), stringResource(R.string.rv_duration, duration.hours, duration.minutes))
+        RvStatRow(stringResource(R.string.rv_stat_peak), session?.let { format.rate(if (upload) it.peakUp else it.peakDown).toString() } ?: RV_NO_VALUE)
+        RvStatRow(stringResource(R.string.rv_stat_average), session?.let { format.rate(if (upload) it.averageUp else it.averageDown).toString() } ?: RV_NO_VALUE)
+        RvStatRow(stringResource(R.string.rv_downloaded), session?.let { format.bytes(it.downTotal).toString() } ?: RV_NO_VALUE)
+        RvStatRow(stringResource(R.string.rv_uploaded), session?.let { format.bytes(it.upTotal).toString() } ?: RV_NO_VALUE)
+        val duration = session?.let { format.duration(it.seconds) }
+        RvStatRow(stringResource(R.string.rv_connected_for), duration?.let { stringResource(R.string.rv_duration, it.hours, it.minutes) } ?: RV_NO_VALUE)
     }
 }
 
-/** The ranges under the chart, in the order of [RV_RANGE_SECONDS]. */
+/** A chart with no sample known: never an empty list, which the chart's glide cannot start from. */
+private val NO_CHART: List<Float> = List(RV_TRAFFIC_POINTS) { Float.NaN }
+
+/** The ranges under the chart, in the order of [RV_TRAFFIC_RANGE_SECONDS]. */
 private val RANGES: List<Int> = listOf(R.string.rv_range_1m, R.string.rv_range_5m, R.string.rv_range_15m, R.string.rv_range_1h)
-
-private const val MS_PER_SECOND = 1000L
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvTrafficScreenPreview() {
-    val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}) }
-}

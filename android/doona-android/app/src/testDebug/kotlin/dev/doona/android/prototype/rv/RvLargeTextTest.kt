@@ -160,7 +160,7 @@ class RvLargeTextTest {
     /** 流量's range chips (B3, X7): one label size for the row, each label whole and inside its pill. */
     @Test
     fun rangeChipsFitTheirRow() {
-        large { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}) }
+        large { RvTrafficSample(rvSampleActivity(), RvData.session, onBack = {}) }
         assertOneWholeSize(listOf(R.string.rv_range_1m, R.string.rv_range_5m, R.string.rv_range_15m, R.string.rv_range_1h).map(::rvText))
     }
 

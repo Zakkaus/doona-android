@@ -102,7 +102,7 @@ class RvLayoutTest {
     fun activity() = measure("activity", Top.Hero) { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}) }
 
     @Test
-    fun traffic() = measure("traffic", Top.Title) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}) }
+    fun traffic() = measure("traffic", Top.Title) { RvTrafficSample(rvSampleActivity(), RvData.session, onBack = {}) }
 
     @Test
     fun policyRule() = measure("policy", Top.Tab) { RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }

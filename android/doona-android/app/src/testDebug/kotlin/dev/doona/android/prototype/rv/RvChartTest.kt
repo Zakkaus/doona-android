@@ -81,7 +81,7 @@ class RvChartTest {
 
     private fun traffic() = compose.setContent {
         CompositionLocalProvider(LocalHapticFeedback provides taps) {
-            RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}) }
+            RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { RvTrafficSample(rvSampleActivity(), RvData.session, onBack = {}) }
         }
     }
 
