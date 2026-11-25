@@ -8,13 +8,18 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import dev.doona.android.data.settings.AppSettings
+import dev.doona.android.data.settings.MemoryPreferences
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.permissions.Permission
 import dev.doona.android.feature.permissions.PermissionViewModel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -31,8 +36,15 @@ class MainActivityTest {
     private val app = ApplicationProvider.getApplicationContext<DoonaApplication>()
     private val connect = MainActivity.connectIntent(app)
 
+    // The settings in memory: the activity reads and writes them on the main thread, so a looper idle settles each step.
+    private val prefs = MemoryPreferences()
+    private val settings = AppSettings(prefs)
+
     @Before
-    fun setUp() = shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+    fun setUp() {
+        shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        AppSettings.use(app, settings)
+    }
 
     @Test
     fun `resuming after deep sleep ends an expired capture`() {
@@ -172,15 +184,19 @@ class MainActivityTest {
         ShadowVpnService.setPrepareResult(null)
         ActivityScenario.launch<MainActivity>(connect).use { scenario ->
             assertEquals(Status.Running(sinceEpochMs = 0), app.container.engine.status.value)
-            var showing: Permission? = null
-            val deadline = System.currentTimeMillis() + 5_000
-            while (showing == null && System.currentTimeMillis() < deadline) {
-                shadowOf(Looper.getMainLooper()).idle()
-                scenario.onActivity { showing = it.asks().showing.value }
-                if (showing == null) Thread.sleep(10)
-            }
-            assertEquals(Permission.Notify, showing)
+            assertEquals(Permission.Notify, scenario.showing())
+            assertFalse("stored once answered", runBlocking { settings.notifyAsked.first() })
+            scenario.onActivity { it.asks().dismiss() }
+            assertTrue(runBlocking { settings.notifyAsked.first() })
         }
+    }
+
+    /** The explanation on screen once the main looper has run what the last step posted. */
+    private fun ActivityScenario<MainActivity>.showing(): Permission? {
+        shadowOf(Looper.getMainLooper()).idle()
+        var showing: Permission? = null
+        onActivity { showing = it.asks().showing.value }
+        return showing
     }
 
     private fun MainActivity.asks() = ViewModelProvider(this, PermissionViewModel.Factory)[PermissionViewModel::class.java].asks
