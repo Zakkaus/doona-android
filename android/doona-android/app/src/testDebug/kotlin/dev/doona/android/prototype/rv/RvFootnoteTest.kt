@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.unit.dp
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvFootnote
@@ -55,6 +56,7 @@ class RvFootnoteTest {
         val read = rvFootnotes(compose.rvRowNodes())
         assertEquals("both footnotes read", 2, read.size)
         read.forEach { assertTrue("${it.line("test")} keeps to the tokens", !it.off) }
+        read.forEach { assertEquals("${it.line("test")}: 12 dp under its card", 12f, it.above!!, 0.5f) }
     }
 
     @Test
@@ -93,6 +95,23 @@ class RvFootnoteTest {
     fun theTokensAreTheCardsTextColumnOnBothSides() {
         assertEquals("footnote start = the card's text inset", RvSpace.rowPadding, RvSpace.footnoteStart)
         assertEquals("footnote end = the card's text inset (q-s1125c-footgap 19:05)", RvSpace.rowPadding, RvSpace.footnoteEnd)
+    }
+
+    /** A footnote 28 dp under its card instead of R20's 12 is caught, though its sides keep to the column. */
+    @Test
+    fun aFootnoteTwentyEightDpUnderItsCardIsCaught() {
+        compose.setContent {
+            RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
+                Column {
+                    RvGutter { RvCard { RvText(CARD, Rv.type.rowTitle, Modifier.padding(RvSpace.rowPadding)) } }
+                    RvFootnote(NOTE, Modifier.padding(top = 16.dp))
+                }
+            }
+        }
+        compose.waitForIdle()
+        val read = rvFootnotes(compose.rvRowNodes()).single()
+        assertEquals("the gap above", 28f, read.above!!, 0.5f)
+        assertTrue("${read.line("test")} is caught", read.off)
     }
 
     /** A footnote that needs more than its three lines is cut, and the check says so; a [RvFootnote] `whole` is not. */
