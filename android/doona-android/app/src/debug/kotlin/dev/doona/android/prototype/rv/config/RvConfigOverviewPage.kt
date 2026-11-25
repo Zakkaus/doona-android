@@ -80,7 +80,7 @@ private fun FilesCard(state: RvConfigState, onFile: (String) -> Unit) {
                 pluralStringResource(R.plurals.rv_config_lines, file.lines, file.lines),
                 if (skipped > 0) pluralStringResource(R.plurals.rv_config_skipped_count, skipped, skipped) else null,
             )
-            RvSettingsNavRow(file.path, null, { onFile(file.path) }, subtitle = rvConfigLine(parts))
+            RvSettingsNavRow(file.path, null, { onFile(file.path) }, subtitle = rvConfigLine(parts), titleKeepWords = false)
         }
     }
 }

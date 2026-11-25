@@ -78,6 +78,7 @@ internal fun RvRuleRow(rule: RvPolicyRule, modifier: Modifier = Modifier, end: S
         modifier,
         titleEnd = { RvText(rule.targetName(), Rv.type.rowValue, align = TextAlign.End) },
         subtitleEnd = { RvText(end ?: bytes, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End) },
+        titleKeepWords = false,
     )
 }
 
@@ -114,6 +115,8 @@ private fun Target(group: RvPolicyGroup?, selected: Boolean, onSelect: () -> Uni
         group?.let { stringResource(it.name) } ?: stringResource(R.string.mode_direct),
         group?.selected?.name ?: stringResource(R.string.rv_policy_no_proxy),
         pick,
+        titleKeepWords = false,
+        subtitleKeepWords = false,
     ) { RvRadio(selected) }
 }
 

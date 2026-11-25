@@ -127,7 +127,7 @@ internal fun RvSourceField(
         // The message of the mark the cursor stands on, as an editor shows it where the pointer rests.
         val cursor = value.selection.takeIf { it.collapsed }?.start
         val here = cursor?.let { c -> ranges.indexOfFirst { c in it.start..it.end } } ?: -1
-        if (here >= 0) RvFieldMessage(stringResource(R.string.rv_source_line, lineOf(lines, ranges[here].start) + 1, marks[here].message))
+        if (here >= 0) RvFieldMessage(stringResource(R.string.rv_source_line, lineOf(lines, ranges[here].start) + 1, marks[here].message), keepWords = false)
     }
 }
 

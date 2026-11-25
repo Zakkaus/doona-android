@@ -124,6 +124,7 @@ internal fun RvRuleEditPage(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit,
             onDelete()
         },
         onDismiss = { confirming = false },
+        bodyKeepWords = false,
     )
 }
 

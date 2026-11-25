@@ -491,12 +491,12 @@ internal fun RvTextField(
  * The message under a field or a form's card: [text] in the row's 17 sp, on the card's content inset, [RvSpace.subGap]
  * under what it describes, in the error hue when it is an [error] (else in secondary ink), wrapping to two lines.
  * [RvTextField] sets its supporting and error text with it; a form whose choice cannot be saved says why with it under
- * that choice's card (依 App's 至少要勾選一個 App).
+ * that choice's card (依 App's 至少要勾選一個 App). [keepWords] false for a message that quotes a name ([RvText]'s).
  */
 @Composable
-internal fun RvFieldMessage(text: String, modifier: Modifier = Modifier, error: Boolean = true) {
+internal fun RvFieldMessage(text: String, modifier: Modifier = Modifier, error: Boolean = true, keepWords: Boolean = true) {
     val pad = Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, top = RvSpace.subGap)
-    RvText(text, Rv.type.rowSub, modifier.then(pad), color = if (error) Rv.colors.error else Rv.colors.textSecondary, maxLines = MESSAGE_LINES)
+    RvText(text, Rv.type.rowSub, modifier.then(pad), color = if (error) Rv.colors.error else Rv.colors.textSecondary, maxLines = MESSAGE_LINES, keepWords = keepWords)
 }
 
 /** What the user types, with every run of CJK set in Noto as [RvText] sets it; the text itself is unchanged. */

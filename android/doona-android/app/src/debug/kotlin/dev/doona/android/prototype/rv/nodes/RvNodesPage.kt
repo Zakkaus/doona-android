@@ -196,6 +196,7 @@ private fun RegionCard(region: RvRegion, nodes: List<RvNode>, currentId: String,
                         (if (current) Modifier.semantics { stateDescription = inUse } else Modifier).then(actions),
                         onClick = { onOpen(node.id) },
                         onLongClick = menu,
+                        titleKeepWords = false,
                     ) { RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut, order, node.id) }
                 }
             }

@@ -72,7 +72,7 @@ internal fun RvEffectiveConfigPage(
             Section(R.string.rv_policy_rules) { RulesCard(onRules) }
             Section(R.string.rv_settings_dns) {
                 RvCard {
-                    RvStatRow(stringResource(R.string.rv_settings_dns_server), stringResource(settings.dns.label) + SEPARATOR + settings.dns.address)
+                    RvStatRow(stringResource(R.string.rv_settings_dns_server), stringResource(settings.dns.label) + SEPARATOR + settings.dns.address, valueKeepWords = false)
                     RvStatRow(stringResource(R.string.rv_effective_dns_via), stringResource(R.string.rv_main_node))
                     RvStatRow(stringResource(R.string.rv_policy_lan), stringResource(R.string.rv_effective_lan_value))
                 }
@@ -109,7 +109,7 @@ private fun ModeCard(policy: RvPolicyState) {
     }
     RvCard {
         RvStatRow(stringResource(R.string.rv_effective_mode), stringResource(mode))
-        RvStatRow(stringResource(R.string.rv_main_node), policy.group(RvPolicyData.main).selected.name)
+        RvStatRow(stringResource(R.string.rv_main_node), policy.group(RvPolicyData.main).selected.name, valueKeepWords = false)
     }
 }
 
@@ -126,6 +126,8 @@ private fun GroupsCard(policy: RvPolicyState) {
                 stringResource(group.name),
                 members,
                 titleEnd = { RvText(group.selected.name, Rv.type.rowValue, align = TextAlign.End) },
+                titleKeepWords = false,
+                subtitleKeepWords = false,
             )
         }
     }

@@ -272,6 +272,7 @@ private fun SubscriptionRow(sub: RvSubscription, open: Boolean, enabled: Boolean
             toggle.then(actions),
             onClick = onToggle.takeIf { enabled },
             onLongClick = menu,
+            titleKeepWords = false,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Crossfade(updating, animationSpec = Rv.motion.tween(RvMotion.FADE_MS), label = "update") { busy ->
@@ -294,6 +295,7 @@ private fun SubscriptionRow(sub: RvSubscription, open: Boolean, enabled: Boolean
             delete?.invoke(sub.id)
         },
         onDismiss = { deleting = false },
+        titleKeepWords = false,
     )
 }
 
@@ -314,6 +316,7 @@ private fun NodeRow(node: RvNode, label: String, current: Boolean, order: Int, o
             (if (current) Modifier.semantics { stateDescription = inUse } else Modifier).then(actions),
             onClick = { onPick(node.id) },
             onLongClick = menu ?: { onDetail(node.id) },
+            titleKeepWords = false,
         ) { NodeTrailing(node, order, details, onDetail) }
     }
 }

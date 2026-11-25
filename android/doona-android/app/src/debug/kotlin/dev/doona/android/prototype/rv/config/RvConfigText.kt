@@ -1,9 +1,9 @@
 package dev.doona.android.prototype.rv.config
 
+import dev.doona.android.designsystem.rv.rvKeepWords
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.rvKeepRuns
 import dev.doona.android.prototype.rv.rvKeepTail
-import dev.doona.android.prototype.rv.rvKeepWords
 
 /**
  * A row's second line from its [parts]: each part's words whole, and the end of the line kept together, so a line that

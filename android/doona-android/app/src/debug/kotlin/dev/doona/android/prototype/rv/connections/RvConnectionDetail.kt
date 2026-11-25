@@ -99,7 +99,7 @@ private fun Header(connection: RvConnection, titleBlock: Modifier, insets: Windo
         Spacer(Modifier.height(RvSpace.discToLabel))
         RvText(connection.app, Rv.type.rowTitle, titleBlock.semantics { heading() }, align = TextAlign.Center)
         RvHero(format.bytes(connection.downBytes + connection.upBytes))
-        RvText(host + PORT + connection.port, Rv.type.rowSub, color = secondary, align = TextAlign.Center, maxLines = Int.MAX_VALUE)
+        RvText(host + PORT + connection.port, Rv.type.rowSub, color = secondary, align = TextAlign.Center, maxLines = Int.MAX_VALUE, keepWords = false)
         if (!connection.hasDomain) RvText(stringResource(R.string.rv_conn_no_domain), Rv.type.rowSub, color = secondary, align = TextAlign.Center)
     }
     Spacer(Modifier.height(RvSpace.headerGap))
@@ -128,15 +128,15 @@ private fun PathCard(connection: RvConnection) {
     val index = RvPolicyData.allRules.indexOf(rule) + 1
     val ruleLine = stringResource(R.string.rv_conn_rule_index, index) + SEPARATOR + rule.match.kind()
     RvCard {
-        RvRow({ RvAppDisc(connection.packageName) }, connection.app, connection.packageName)
-        RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, rule.match.title(), ruleLine)
+        RvRow({ RvAppDisc(connection.packageName) }, connection.app, connection.packageName, titleKeepWords = false, subtitleKeepWords = false)
+        RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, rule.match.title(), ruleLine, titleKeepWords = false)
         val group = connection.group
         val node = connection.node
         if (group == null || node == null) {
             RvRow({ RvIconDisc(R.drawable.rv_sym_arrow_right_alt) }, stringResource(R.string.mode_direct), stringResource(R.string.rv_policy_no_proxy))
         } else {
-            RvRow({ RvIconDisc(group.kind.glyph) }, stringResource(group.name), stringResource(group.kind.label))
-            RvRow({ RvFlag(node.place.flag, RvSize.rowDisc) }, node.name, listOf(node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR))
+            RvRow({ RvIconDisc(group.kind.glyph) }, stringResource(group.name), stringResource(group.kind.label), titleKeepWords = false)
+            RvRow({ RvFlag(node.place.flag, RvSize.rowDisc) }, node.name, listOf(node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR), titleKeepWords = false)
         }
     }
 }

@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
@@ -43,6 +44,8 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.toSize
+import java.lang.Character.UnicodeScript
+import java.util.Locale
 import kotlin.math.ceil
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -58,7 +61,10 @@ import kotlin.math.roundToInt
  * letters (「當機」, not 「機」; 「不經代理」, not 「代理」). A row's title and subtitle ([RvRow], the settings rows) take
  * their role's Latin [lineBox] ([RvLineBox]), so the row's height and the disc and ends centred on it do not depend on
  * the script of its text, as does an end on a row's line ([LocalRvRowLine]); any other text keeps the line boxes its
- * fonts give it.
+ * fonts give it. A text that may wrap breaks between its words, not inside one (「網路|後」, not 「網|路後」: [rvKeepWords]),
+ * unless [keepWords] is false: a name the user or a server gave (a node's, a group's, a subscription's, an app's) or an
+ * identifier (an address, a path, an ID) keeps the platform's breaks. Its node, read by a screen reader and by tests,
+ * is the plain [text], without the word joiners those steps put in.
  */
 @Composable
 internal fun RvText(
@@ -71,24 +77,27 @@ internal fun RvText(
     overflow: TextOverflow = TextOverflow.Ellipsis,
     autoSize: TextAutoSize? = null,
     lineBox: Boolean = LocalRvRowLine.current,
+    keepWords: Boolean = true,
 ) {
     val density = LocalDensity.current
+    // ICU's dictionary runs once for the text, not on each measure.
+    val words = remember(text, maxLines, keepWords) { rvWords(text, maxLines, keepWords) }
     var cut by remember(text) { mutableStateOf<RvCut?>(null) }
     // The steps hold for the text, its style and font scale, and the width they were taken in ([RvWrap.width]).
-    var wrap by remember(text, style, density) { mutableStateOf(RvWrap()) }
+    var wrap by remember(words, style, density) { mutableStateOf(RvWrap()) }
     // The width the text is given before a narrower step takes its share, in px, as its last measure saw it.
     val given = remember { IntArray(1) }
     val box = if (lineBox && autoSize == null) rvLineBox(style) else null
-    val shown = if (maxLines == 1) modifier else modifier.rvNarrower({ wrap.narrower }, given)
+    val shown = if (maxLines == 1) modifier else modifier.rvPlainNode(text).rvNarrower({ wrap.narrower }, given)
     BasicText(
-        scripted(cut?.text ?: wrap.text(text)),
+        scripted(cut?.text ?: wrap.text(words)),
         box?.let { shown.rvLineBoxes(it) } ?: shown,
         style.copy(color = color, textAlign = align),
         onTextLayout = { layout ->
             // The cut at a word is for one line ending in an ellipsis; any other line is the platform's.
             val kept = cut
             when {
-                maxLines != 1 -> wrap.after(text, layout, given[0])?.let { wrap = it }
+                maxLines != 1 -> wrap.after(words, layout, given[0])?.let { wrap = it }
                 overflow != TextOverflow.Ellipsis || autoSize != null -> Unit
                 kept == null -> cut = rvCut(text, layout)
                 layout.layoutInput.constraints.maxWidth > kept.width -> cut = null
@@ -114,6 +123,15 @@ internal fun RvSpanText(
 ) {
     BasicText(text, modifier, style, overflow = overflow, maxLines = maxLines)
 }
+
+/**
+ * [text] as a wrapped [RvText] takes it before its [RvWrap] steps: its words held together ([rvKeepWords]) where it may
+ * take more than one line and [keepWords]; else as it is.
+ */
+internal fun rvWords(text: String, maxLines: Int, keepWords: Boolean): String = if (maxLines > 1 && keepWords) rvKeepWords(text) else text
+
+/** The text's node reads [text] without word joiners, whatever its layout joined ([rvKeepWords], [RvWrap]). */
+private fun Modifier.rvPlainNode(text: String) = semantics { this.text = AnnotatedString(text.replace(WORD_JOINER, "")) }
 
 /** A line cut at a word for [width] px. */
 private class RvCut(val width: Int, val text: String)
@@ -284,7 +302,10 @@ private data class RvWrap(
     }
 }
 
-/** [text] in [style] laid out [width] px wide in at most [maxLines] lines as [RvText] lays it out, its [RvWrap] steps taken. */
+/**
+ * [text] in [style] laid out [width] px wide in at most [maxLines] lines as [RvText] lays it out, its [RvWrap] steps taken;
+ * [text] is as [rvWords] gives it, taken once for the text rather than on each measure.
+ */
 internal fun TextMeasurer.rvLayout(text: String, style: TextStyle, maxLines: Int, width: Int): TextLayoutResult {
     var wrap = RvWrap()
     var layout = rvMeasure(wrap, text, style, maxLines, width)
@@ -382,6 +403,35 @@ private fun rvLastLineWidth(layout: TextLayoutResult): Int {
 private fun rvJoinLast(text: String): String {
     val last = text.indexOfLast(Char::isLetterOrDigit)
     return if (last > 0) text.substring(0, last) + WORD_JOINER + text.substring(last) else text
+}
+
+/**
+ * [text] with the letters of each word held together by word joiners, the words as ICU's dictionary finds them in Han,
+ * kana or Hangul text (中國|大陸|網站|直接|連線): a line then breaks between two words, where the platform breaks Chinese
+ * between any two characters. Latin words already break only at spaces, so Latin text comes back as it is. A word
+ * longer than its line still breaks inside, as the platform breaks any word that does not fit. ICU's word rules for
+ * Chinese are its root rules with one dictionary for Han in both scripts, so [locale] does not change the words.
+ */
+internal fun rvKeepWords(text: String, locale: Locale = Locale.CHINESE): String = buildString(text.length * 2) {
+    val words = BreakIterator.getWordInstance(locale).apply { setText(text) }
+    var start = words.first()
+    var end = words.next()
+    while (end != BreakIterator.DONE) {
+        var before = -1
+        text.substring(start, end).codePoints().forEach { point ->
+            if (rvCjkLetter(before) && rvCjkLetter(point)) append(WORD_JOINER_CHAR)
+            appendCodePoint(point)
+            before = point
+        }
+        start = end
+        end = words.next()
+    }
+}
+
+/** Whether [point] is a Han, kana or Hangul letter: one the platform breaks a line after, word or not. */
+internal fun rvCjkLetter(point: Int): Boolean = point >= 0 && when (UnicodeScript.of(point)) {
+    UnicodeScript.HAN, UnicodeScript.HIRAGANA, UnicodeScript.KATAKANA, UnicodeScript.HANGUL -> true
+    else -> false
 }
 
 private const val ZERO_WIDTH_SPACE = '\u200B'

@@ -94,7 +94,7 @@ internal fun RvLicensesScreen(onOpen: (Int) -> Unit, onBack: () -> Unit) {
         RvLargeTitle(title, titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
             val entries = rvLicenseEntries()
-            RvSettingsCard { entries.forEachIndexed { i, it -> RvSettingsNavRow(it.name, null, { onOpen(i) }, it.license) } }
+            RvSettingsCard { entries.forEachIndexed { i, it -> RvSettingsNavRow(it.name, null, { onOpen(i) }, it.license, titleKeepWords = false, subtitleKeepWords = false) } }
         }
     }
 }

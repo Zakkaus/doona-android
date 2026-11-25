@@ -32,9 +32,21 @@ internal enum class RvNoticeKind(@DrawableRes val glyph: Int) {
     Info(R.drawable.rv_sym_info),
 }
 
-/** One banner: its [kind], the [title] over its [reason], and the one [action] that [onAction] runs. */
+/**
+ * One banner: its [kind], the [title] over its [reason], and the one [action] that [onAction] runs. [titleKeepWords] and
+ * [reasonKeepWords] false for a title or reason that names something (a subscription, a file's path: [RvText]'s
+ * `keepWords`).
+ */
 @Immutable
-internal class RvNotice(val kind: RvNoticeKind, val title: String, val reason: String, val action: String, val onAction: () -> Unit)
+internal class RvNotice(
+    val kind: RvNoticeKind,
+    val title: String,
+    val reason: String,
+    val action: String,
+    val onAction: () -> Unit,
+    val titleKeepWords: Boolean = true,
+    val reasonKeepWords: Boolean = true,
+)
 
 /**
  * The one banner of the RV pages, as Revolut's notice card with a button (revolut-ux3 §3): 16 dp padding on every side;
@@ -52,8 +64,8 @@ internal fun RvBanner(notice: RvNotice, modifier: Modifier = Modifier) {
                 RvIconDisc(notice.kind.glyph, glyph = RvSize.noticeGlyph)
                 Spacer(Modifier.width(RvSpace.rowGap))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
-                    RvText(notice.title, Rv.type.rowTitle, maxLines = BANNER_TITLE_LINES)
-                    RvText(notice.reason, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BANNER_REASON_LINES)
+                    RvText(notice.title, Rv.type.rowTitle, maxLines = BANNER_TITLE_LINES, keepWords = notice.titleKeepWords)
+                    RvText(notice.reason, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BANNER_REASON_LINES, keepWords = notice.reasonKeepWords)
                 }
             }
             RvSecondaryButton(notice.action, notice.onAction)

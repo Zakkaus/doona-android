@@ -1,14 +1,13 @@
 package dev.doona.android.prototype.rv
 
-import android.icu.text.BreakIterator
-import java.lang.Character.UnicodeScript
-import java.util.Locale
+import dev.doona.android.designsystem.rv.rvCjkLetter
 
 /**
  * Line-break control for the text of a row or a banner that wraps in a column of a few characters (a large font size),
  * where the platform breaks between any two CJK characters: it splits a word (「目」 over 「前」) and leaves two characters
- * alone on the last line. [RvText] already keeps one letter off the last line; these two keep what the caller names
- * together, with a word joiner (U+2060, no break before or after it), which no script draws and a screen reader skips.
+ * alone on the last line. [RvText] already keeps one letter off the last line and a wrapped text's words whole
+ * ([dev.doona.android.designsystem.rv.rvKeepWords]); these two keep what the caller names together, a whole run or a
+ * tail, with a word joiner (U+2060, no break before or after it), which no script draws and a screen reader skips.
  */
 private const val WORD_JOINER = '⁠'
 
@@ -28,34 +27,12 @@ internal fun rvKeepRuns(text: String): String = buildString(text.length + text.l
         val point = text.codePointAt(i)
         val next = if (i + 1 < text.length) text.codePointAt(i + 1) else -1
         when {
-            isCjk(before) && isCjk(point) -> append(WORD_JOINER).appendCodePoint(point)
+            rvCjkLetter(before) && rvCjkLetter(point) -> append(WORD_JOINER).appendCodePoint(point)
             point == SPACE && joinsAcrossSpace(before, next) -> append(NO_BREAK_SPACE)
             else -> appendCodePoint(point)
         }
         before = point
         i += Character.charCount(point)
-    }
-}
-
-/**
- * [text] with the letters of each word held together, the words as ICU's dictionary finds them in Han, kana or Hangul
- * text (中國|大陸|網站|直接|連線): a line then breaks between two words. [rvKeepRuns] holds a whole run instead, which
- * is better while the run fits the line; a run as long as a sentence ("中國大陸網站直接連線" at a large font size) no
- * longer fits, and the platform then breaks it at any character. Latin words already break only at spaces.
- */
-internal fun rvKeepWords(text: String, locale: Locale = Locale.CHINESE): String = buildString(text.length * 2) {
-    val words = BreakIterator.getWordInstance(locale).apply { setText(text) }
-    var start = words.first()
-    var end = words.next()
-    while (end != BreakIterator.DONE) {
-        var before = -1
-        text.substring(start, end).codePoints().forEach { point ->
-            if (isCjk(before) && isCjk(point)) append(WORD_JOINER)
-            appendCodePoint(point)
-            before = point
-        }
-        start = end
-        end = words.next()
     }
 }
 
@@ -97,12 +74,7 @@ private const val NO_BREAK_SPACE = '\u00a0'
 
 /** Whether the space between [before] and [next] is inside a count: a number and its unit, or 第 and its number. */
 private fun joinsAcrossSpace(before: Int, next: Int): Boolean {
-    val unit = Character.isDigit(before) && isCjk(next)
+    val unit = Character.isDigit(before) && rvCjkLetter(next)
     val ordinal = before == ORDINAL && Character.isDigit(next)
     return unit || ordinal
-}
-
-private fun isCjk(point: Int): Boolean = point >= 0 && when (UnicodeScript.of(point)) {
-    UnicodeScript.HAN, UnicodeScript.HIRAGANA, UnicodeScript.KATAKANA, UnicodeScript.HANGUL -> true
-    else -> false
 }

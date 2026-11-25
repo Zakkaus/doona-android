@@ -88,6 +88,7 @@ internal fun RvSettingsSection(title: String, modifier: Modifier = Modifier, fir
  * ([dev.doona.android.designsystem.rv.RvFieldMessage]). An [action] (an in-card button, 40 dp, taller than a line) takes
  * the trailing place instead and centres on the whole row, title and subtitle together, so it neither rises above the
  * row's text inset nor sits on one line of the two; its end is the row's inset, where a chevron's box ends.
+ * [titleKeepWords] and [subtitleKeepWords] are [RvRow]'s: false for a name or an identifier.
  */
 @Composable
 internal fun RvSettingsRow(
@@ -99,6 +100,8 @@ internal fun RvSettingsRow(
     titleLines: Int = RV_ROW_TITLE_LINES,
     error: Boolean = false,
     action: (@Composable () -> Unit)? = null,
+    titleKeepWords: Boolean = true,
+    subtitleKeepWords: Boolean = true,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     Box(
@@ -109,7 +112,7 @@ internal fun RvSettingsRow(
             .padding(horizontal = RvSettingsSpace.rowInset),
         contentAlignment = Alignment.CenterStart,
     ) {
-        val text = rowText(title, subtitle, code, titleLines, error, icon, trailing)
+        val text = rowText(RowWords(title, subtitle, titleKeepWords, subtitleKeepWords), code, titleLines, error, icon, trailing)
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Row(Modifier.weight(1f).padding(vertical = RvSpace.rowTextInset), verticalAlignment = Alignment.Top, content = text)
             action?.let {
@@ -120,11 +123,13 @@ internal fun RvSettingsRow(
     }
 }
 
+/** A settings row's title and subtitle, and whether each holds its words ([RvSettingsRow]'s keepWords). */
+private class RowWords(val title: String, val subtitle: String?, val titleKeepWords: Boolean, val subtitleKeepWords: Boolean)
+
 /** [RvSettingsRow]'s disc, title over subtitle, and trailing control, the disc and the control on the title's first line. */
 @Composable
 private fun rowText(
-    title: String,
-    subtitle: String?,
+    words: RowWords,
     code: Boolean,
     titleLines: Int,
     error: Boolean,
@@ -132,6 +137,7 @@ private fun rowText(
     trailing: (@Composable () -> Unit)?,
 ): @Composable RowScope.() -> Unit {
     // A title of honk code keeps its own line boxes, as it is a code view; any other takes its role's Latin one.
+    val title = words.title
     val line = maxOf(RvSize.rowOneLine - RvSpace.rowTextInset * 2, rvOneLine(title, Rv.type.rowTitle, lineBox = !code))
     return {
         icon?.let {
@@ -140,9 +146,13 @@ private fun rowText(
             Spacer(Modifier.width(RvSpace.rowGap))
         }
         Column(Modifier.weight(1f)) {
-            if (code) RvCodeText(title, Rv.type.rowTitle, maxLines = titleLines) else RvText(title, Rv.type.rowTitle, maxLines = titleLines, lineBox = true)
+            if (code) {
+                RvCodeText(title, Rv.type.rowTitle, maxLines = titleLines)
+            } else {
+                RvText(title, Rv.type.rowTitle, maxLines = titleLines, lineBox = true, keepWords = words.titleKeepWords)
+            }
             val hue = if (error) Rv.colors.error else Rv.colors.textSecondary
-            subtitle?.let { RvText(it, Rv.type.rowSub, color = hue, maxLines = RV_ROW_SUBTITLE_LINES, lineBox = true) }
+            words.subtitle?.let { RvText(it, Rv.type.rowSub, color = hue, maxLines = RV_ROW_SUBTITLE_LINES, lineBox = true, keepWords = words.subtitleKeepWords) }
         }
         trailing?.let {
             Spacer(Modifier.width(RvSettingsSpace.trailingGap))
@@ -163,7 +173,8 @@ private fun FirstLine(line: Dp, content: @Composable () -> Unit) {
  * leads to. A row of a plain list (the licences) has no [icon], so its text starts on the card's padding, as DNS's 自訂.
  * A title that is honk text (a skipped declaration) is [code], highlighted as all honk text is ([RvCodeText]), and takes
  * [titleLines] as many lines as it needs: what the user looks for in the file is the text, so it is never cut. A [mark]
- * (a status chip, 使用中) stands before the chevron.
+ * (a status chip, 使用中) stands before the chevron. [titleKeepWords] and [subtitleKeepWords] false for a name or an
+ * identifier (a file's path: [RvText]'s `keepWords`).
  */
 @Composable
 internal fun RvSettingsNavRow(
@@ -174,8 +185,11 @@ internal fun RvSettingsNavRow(
     code: Boolean = false,
     titleLines: Int = RV_ROW_TITLE_LINES,
     mark: (@Composable () -> Unit)? = null,
+    titleKeepWords: Boolean = true,
+    subtitleKeepWords: Boolean = true,
 ) {
-    RvSettingsRow(title, Modifier.rvRowPress(Role.Button, onClick), icon, subtitle = subtitle, code = code, titleLines = titleLines) {
+    val press = Modifier.rvRowPress(Role.Button, onClick)
+    RvSettingsRow(title, press, icon, subtitle, code, titleLines, titleKeepWords = titleKeepWords, subtitleKeepWords = subtitleKeepWords) {
         RvNavEnd(mark)
     }
 }
@@ -209,9 +223,12 @@ internal fun RvSettingsSwitchRow(title: String, @DrawableRes icon: Int, checked:
 @Composable
 internal fun RvSettingsRadioCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) = RvSettingsCard(modifier.selectableGroup(), content)
 
-/** A row of a radio list (in an [RvSettingsRadioCard]): the title over an optional [subtitle], and the radio at the end. */
+/**
+ * A row of a radio list (in an [RvSettingsRadioCard]): the title over an optional [subtitle], and the radio at the end;
+ * [subtitleKeepWords] false for a subtitle that is an address (a DNS server's).
+ */
 @Composable
-internal fun RvSettingsRadioRow(title: String, selected: Boolean, onSelect: () -> Unit, subtitle: String? = null) {
+internal fun RvSettingsRadioRow(title: String, selected: Boolean, onSelect: () -> Unit, subtitle: String? = null, subtitleKeepWords: Boolean = true) {
     val choose = Modifier.rvRowSelect(selected, onSelect)
-    RvSettingsRow(title, choose, subtitle = subtitle) { RvRadio(selected) }
+    RvSettingsRow(title, choose, subtitle = subtitle, subtitleKeepWords = subtitleKeepWords) { RvRadio(selected) }
 }

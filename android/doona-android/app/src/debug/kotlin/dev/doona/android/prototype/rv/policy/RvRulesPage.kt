@@ -148,6 +148,7 @@ private fun RulesCard(rules: List<RvPolicyRule>, editing: Boolean, routes: RvRul
             deleting = null
         },
         onDismiss = { deleting = null },
+        bodyKeepWords = false,
     )
 }
 

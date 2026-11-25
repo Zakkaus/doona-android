@@ -410,6 +410,7 @@ private fun OutboundCard(state: ActivityUiState, mode: RvRouteMode, routes: RvAc
                 node?.name ?: RV_NO_VALUE,
                 stringResource(if (mode == RvRouteMode.Rule) R.string.rv_main_node else R.string.nav_nodes),
                 onClick = routes.node,
+                titleKeepWords = false,
                 // Its latency over the change since the test before, as 節點 and the 最快節點 rows show it (L-12).
             ) { RvLatencyChange(node?.latencyMs?.takeUnless { node.failed }, listed?.changeMs?.takeUnless { node.failed }) }
         }
@@ -432,6 +433,8 @@ private fun RuleRow(rule: RvRuleOutbound, onOpen: (Int) -> Unit) {
         stringResource(rule.group),
         node?.name ?: stringResource(R.string.mode_direct),
         onClick = { onOpen(rule.group) },
+        titleKeepWords = false,
+        subtitleKeepWords = false,
     ) { RvText(format.bytes(rule.bytes).toString(), Rv.type.rowValue, align = TextAlign.End) }
 }
 
@@ -446,7 +449,7 @@ private fun ActivitySkeleton(mode: RvRouteMode, node: String) {
     RvSkeletonCard {
         RvSkeletonRow(0, chevron = true, title = stringResource(R.string.act_mode), subtitleText = stringResource(mode.label))
         val role = stringResource(if (mode == RvRouteMode.Rule) R.string.rv_main_node else R.string.nav_nodes)
-        RvSkeletonRow(1, end = RvSkeletonEnd.Latency, title = node, subtitleText = role)
+        RvSkeletonRow(1, end = RvSkeletonEnd.Latency, title = node, subtitleText = role, titleKeepWords = false)
         repeat(RULE_ROWS) { RvSkeletonRow(it + 2, end = RvSkeletonEnd.Value) }
         RvSkeletonSeeAll()
     }

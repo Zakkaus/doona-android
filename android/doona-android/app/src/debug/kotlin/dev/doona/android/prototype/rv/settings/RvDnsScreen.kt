@@ -44,7 +44,7 @@ internal fun RvDnsScreen(selected: RvDnsUpstream, onSelect: (RvDnsUpstream) -> U
             // The first section sits on the header's gap, as 主題's does.
             RvSettingsSection(stringResource(R.string.rv_settings_dns_server), first = true)
             RvSettingsCard {
-                RvDnsUpstream.entries.forEach { RvSettingsRadioRow(stringResource(it.label), it == selected, { onSelect(it) }, subtitle = it.address) }
+                RvDnsUpstream.entries.forEach { RvSettingsRadioRow(stringResource(it.label), it == selected, { onSelect(it) }, subtitle = it.address, subtitleKeepWords = false) }
                 // No glyph, so its text lines up with the servers above it.
                 RvSettingsRow(stringResource(R.string.rv_settings_dns_custom), Modifier.rvRowPress(Role.Button, onCustom), subtitle = stringResource(R.string.rv_settings_dns_custom_sub)) {
                     RvChevron()

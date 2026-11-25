@@ -87,10 +87,10 @@ internal fun RvPolicyRulePage(
 private fun ConnectionCard(connection: RvConnection) {
     val group = connection.rule.group ?: RvPolicyData.main
     RvCard {
-        RvStatRow(stringResource(R.string.rv_policy_target), connection.host + PORT + connection.port)
-        RvStatRow(stringResource(R.string.rv_policy_app), connection.app)
-        RvStatRow(stringResource(R.string.rv_policy_matched), connection.rule.match.title())
-        RvStatRow(stringResource(R.string.rv_policy_via), stringResource(group.name) + SEPARATOR + group.selected.name)
+        RvStatRow(stringResource(R.string.rv_policy_target), connection.host + PORT + connection.port, valueKeepWords = false)
+        RvStatRow(stringResource(R.string.rv_policy_app), connection.app, valueKeepWords = false)
+        RvStatRow(stringResource(R.string.rv_policy_matched), connection.rule.match.title(), valueKeepWords = false)
+        RvStatRow(stringResource(R.string.rv_policy_via), stringResource(group.name) + SEPARATOR + group.selected.name, valueKeepWords = false)
     }
 }
 

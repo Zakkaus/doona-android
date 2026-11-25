@@ -67,6 +67,7 @@ internal fun RvConfigRevisionPage(
                     stringResource(R.string.rv_sub_name),
                     revision.name ?: stringResource(R.string.rv_config_unnamed),
                     onClick = { onRename(RvRevisionRename(revision.rev, revision.name.orEmpty())) },
+                    subtitleKeepWords = false,
                 ) { RvChevron() }
             }
         }

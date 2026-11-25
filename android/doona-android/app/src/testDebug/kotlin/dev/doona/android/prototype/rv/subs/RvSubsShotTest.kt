@@ -200,6 +200,7 @@ class RvSubsShotTest {
                 stringResource(R.string.rv_sub_delete_title, HARBOR.name),
                 pluralStringResource(R.plurals.rv_sub_delete_body, HARBOR.nodes, HARBOR.nodes),
                 stringResource(R.string.rv_menu_delete),
+                titleKeepWords = false,
             )
         }
     }
@@ -229,14 +230,24 @@ class RvSubsShotTest {
     private fun Import() {
         Box(Modifier.fillMaxSize()) {
             RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {})
-            Sheet(stringResource(R.string.rv_import_title, HARBOR.name), stringResource(R.string.rv_import_body, HARBOR.host), stringResource(R.string.rv_import_add))
+            Sheet(stringResource(R.string.rv_import_title, HARBOR.name), stringResource(R.string.rv_import_body, HARBOR.host), stringResource(R.string.rv_import_add), titleKeepWords = false, bodyKeepWords = false)
         }
     }
 
     @Composable
-    private fun Sheet(title: String, body: String?, confirm: String, extra: (@Composable () -> Unit)? = null) {
+    private fun Sheet(title: String, body: String?, confirm: String, titleKeepWords: Boolean = true, bodyKeepWords: Boolean = true, extra: (@Composable () -> Unit)? = null) {
         RvSheetLayout({ 1f }, {}, title) {
-            RvConfirmContent(title, body, confirm, stringResource(R.string.rv_cancel), onConfirm = {}, onDismiss = {}, extra = extra?.let { { it() } })
+            RvConfirmContent(
+                title,
+                body,
+                confirm,
+                stringResource(R.string.rv_cancel),
+                onConfirm = {},
+                onDismiss = {},
+                titleKeepWords = titleKeepWords,
+                bodyKeepWords = bodyKeepWords,
+                extra = extra?.let { { it() } },
+            )
         }
     }
 

@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.Constraints
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.rvLayout
+import dev.doona.android.designsystem.rv.rvWords
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -64,7 +65,7 @@ class RvTextWrapTest {
         assertTrue("a step taken at $narrow px", before.isNarrower(narrow) || before.layoutInput.text.text != plain(TEXTS[index]))
         width = requireNotNull(wide) { "no room up to $ROOM_PX px lays ${TEXTS[index]} out without a step" }
         compose.waitForIdle()
-        val fresh = measurer.rvLayout(TEXTS[index], style, LINES, wide)
+        val fresh = measurer.rvLayout(rvWords(TEXTS[index], LINES, true), style, LINES, wide)
         val shown = layout()
         assertEquals("at $wide px after $narrow px, the text", fresh.layoutInput.text.text, shown.layoutInput.text.text)
         assertEquals("at $wide px after $narrow px, the room it is laid out in", fresh.layoutInput.constraints.maxWidth, shown.layoutInput.constraints.maxWidth)
@@ -74,18 +75,18 @@ class RvTextWrapTest {
     /** The first text and width, in px, where a first layout takes a step; narrower ones first, as the review found. */
     private fun stepped(): Pair<Int, Int>? {
         val widths = MIN_PX..NARROW_PX step STEP_PX
-        val narrower = TEXTS.indices.firstNotNullOfOrNull { i -> widths.firstOrNull { measurer.rvLayout(TEXTS[i], style, LINES, it).isNarrower(it) }?.let { i to it } }
+        val narrower = TEXTS.indices.firstNotNullOfOrNull { i -> widths.firstOrNull { measurer.rvLayout(rvWords(TEXTS[i], LINES, true), style, LINES, it).isNarrower(it) }?.let { i to it } }
         return narrower ?: TEXTS.indices.firstNotNullOfOrNull { i -> widths.firstOrNull { stepped(TEXTS[i], it) }?.let { i to it } }
     }
 
     /** Whether a first layout of [text] [room] px wide takes a step: lays it out narrower, or shows it otherwise than as is. */
     private fun stepped(text: String, room: Int): Boolean {
-        val layout = measurer.rvLayout(text, style, LINES, room)
+        val layout = measurer.rvLayout(rvWords(text, LINES, true), style, LINES, room)
         return layout.isNarrower(room) || layout.layoutInput.text.text != plain(text)
     }
 
     /** [text] as RvText shows it with no step: the text as a measure in a room too wide to wrap it gives it back. */
-    private fun plain(text: String) = measurer.rvLayout(text, style, LINES, Constraints.Infinity).layoutInput.text.text
+    private fun plain(text: String) = measurer.rvLayout(rvWords(text, LINES, true), style, LINES, Constraints.Infinity).layoutInput.text.text
 
     private fun TextLayoutResult.isNarrower(room: Int) = layoutInput.constraints.maxWidth < room
 

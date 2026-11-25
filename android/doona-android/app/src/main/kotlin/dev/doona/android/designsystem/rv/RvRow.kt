@@ -19,6 +19,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.AlignmentLine
 import androidx.compose.ui.layout.HorizontalAlignmentLine
 import androidx.compose.ui.layout.Layout
@@ -52,7 +53,8 @@ import kotlin.math.min
  * The text follows the one row rule ([RV_ROW_TITLE_LINES], [RV_ROW_SUBTITLE_LINES], no gap between the lines, each
  * line its role's Latin line box whatever its script: [RvLineBox]);
  * [titleLines] and [titleOverflow] can keep a title to one line cut in the middle, which keeps both ends of a host:port
- * in view. Otherwise no end cuts the text it sits beside, nor is cut itself, nor makes it read badly: an end sits beside
+ * in view. [titleKeepWords] and [subtitleKeepWords] false keep a name's or an identifier's breaks the platform's
+ * ([RvText]'s `keepWords`: a node's name, an app's label and package). Otherwise no end cuts the text it sits beside, nor is cut itself, nor makes it read badly: an end sits beside
  * its text where the text reads well there ([rvReadsWell]); else the text takes the whole line and the end goes under
  * it, on the line's end (a node's name beside its latency at a large font size; [TextBesideEnd], [RowLine]), never
  * beside a part of the text. A line-wise end, on its own line, also may not make that line wrap where the whole line
@@ -74,6 +76,8 @@ internal fun RvRow(
     subtitleEnd: (@Composable () -> Unit)? = null,
     titleLines: Int = RV_ROW_TITLE_LINES,
     titleOverflow: TextOverflow = TextOverflow.Ellipsis,
+    titleKeepWords: Boolean = true,
+    subtitleKeepWords: Boolean = true,
     endBusy: Boolean = false,
     trailing: (@Composable () -> Unit)? = null,
 ) {
@@ -82,6 +86,8 @@ internal fun RvRow(
     val lineWise = titleEnd != null || subtitleEnd != null
     val beside = trailing != null && !lineWise && titleOverflow == TextOverflow.Ellipsis
     val minHeight = if (subtitle == null) RvSize.rowOneLine else RvSize.rowTwoLine
+    val titleText = rememberRowText(title, Rv.type.rowTitle, titleLines, titleKeepWords)
+    val subtitleText = subtitle?.let { rememberRowText(it, Rv.type.rowSub, RV_ROW_SUBTITLE_LINES, subtitleKeepWords) }
     Row(
         modifier
             .fillMaxWidth()
@@ -94,17 +100,17 @@ internal fun RvRow(
         leading()
         Spacer(Modifier.width(RvSpace.rowGap))
         if (beside) {
-            TextBesideEnd(title, subtitle, titleLines, minHeight, trailing, Modifier.weight(1f))
+            TextBesideEnd(titleText, subtitleText, minHeight, trailing, Modifier.weight(1f))
         } else if (lineWise && endBusy) {
             BusyAtEnd(Modifier.weight(1f)) {
-                LineWiseText(title, subtitle, titleLines, titleOverflow, titleEnd?.let(::hidden), subtitleEnd?.let(::hidden), Modifier)
+                LineWiseText(titleText, subtitleText, titleOverflow, titleEnd?.let(::hidden), subtitleEnd?.let(::hidden), Modifier)
             }
         } else if (lineWise) {
-            LineWiseText(title, subtitle, titleLines, titleOverflow, titleEnd, subtitleEnd, Modifier.weight(1f))
+            LineWiseText(titleText, subtitleText, titleOverflow, titleEnd, subtitleEnd, Modifier.weight(1f))
         } else {
             Column(Modifier.weight(1f).padding(vertical = RvSpace.rowTextInset)) {
-                RvText(title, Rv.type.rowTitle, maxLines = titleLines, overflow = titleOverflow, lineBox = true)
-                subtitle?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES, lineBox = true) }
+                titleText.Shown(overflow = titleOverflow)
+                subtitleText?.Shown(Rv.colors.textSecondary)
             }
         }
         if (!beside) {
@@ -123,22 +129,19 @@ internal fun RvRow(
  */
 @Composable
 private fun LineWiseText(
-    title: String,
-    subtitle: String?,
-    titleLines: Int,
+    title: RowText,
+    subtitle: RowText?,
     titleOverflow: TextOverflow,
     titleEnd: (@Composable () -> Unit)?,
     subtitleEnd: (@Composable () -> Unit)?,
     modifier: Modifier,
 ) {
     Column(modifier.padding(vertical = RvSpace.rowTextInset)) {
-        RowLine(titleEnd?.let(::onLine), RowText(title, Rv.type.rowTitle, titleLines).takeIf { titleOverflow == TextOverflow.Ellipsis }, figure = true) {
-            RvText(title, Rv.type.rowTitle, maxLines = titleLines, overflow = titleOverflow, lineBox = true)
+        RowLine(titleEnd?.let(::onLine), title.takeIf { titleOverflow == TextOverflow.Ellipsis }, figure = true) {
+            title.Shown(overflow = titleOverflow)
         }
         subtitle?.let {
-            RowLine(subtitleEnd?.let(::onLine), RowText(it, Rv.type.rowSub, RV_ROW_SUBTITLE_LINES)) {
-                RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES, lineBox = true)
-            }
+            RowLine(subtitleEnd?.let(::onLine), it) { it.Shown(Rv.colors.textSecondary) }
         }
     }
 }
@@ -183,15 +186,13 @@ private fun BusyAtEnd(modifier: Modifier, text: @Composable () -> Unit) {
  * `IPLC`), unless only part of the end shows ([besideShown]).
  */
 @Composable
-private fun TextBesideEnd(title: String, subtitle: String?, titleLines: Int, minHeight: Dp, trailing: @Composable () -> Unit, modifier: Modifier) {
+private fun TextBesideEnd(titleText: RowText, subtitleText: RowText?, minHeight: Dp, trailing: @Composable () -> Unit, modifier: Modifier) {
     val measurer = rememberTextMeasurer()
     val side = remember { RvEndSide() }
-    val titleText = RowText(title, Rv.type.rowTitle, titleLines)
-    val subtitleText = subtitle?.let { RowText(it, Rv.type.rowSub, RV_ROW_SUBTITLE_LINES) }
     Layout(
         {
-            RvText(title, titleText.style, maxLines = titleLines, lineBox = true)
-            subtitleText?.let { RvText(it.text, it.style, color = Rv.colors.textSecondary, maxLines = it.lines, lineBox = true) }
+            titleText.Shown()
+            subtitleText?.Shown(Rv.colors.textSecondary)
             Box { CompositionLocalProvider(LocalRvEndSide provides side, trailing) }
         },
         modifier,
@@ -207,7 +208,7 @@ private fun TextBesideEnd(title: String, subtitle: String?, titleLines: Int, min
         if (Snapshot.withoutReadObservation { side.under } == fits) side.under = !fits
         val textWidth = if (fits) measurer.besideShown(titleText, subtitleText, beside, width - gap - end.shownWidth()) else width
         val titleLine = parts[0].measure(Constraints(maxWidth = textWidth))
-        val subtitleLine = if (subtitle != null) parts[1].measure(Constraints(maxWidth = textWidth)) else null
+        val subtitleLine = if (subtitleText != null) parts[1].measure(Constraints(maxWidth = textWidth)) else null
         if (fits) {
             val text = titleLine.height + (subtitleLine?.height ?: 0) + inset * 2
             val height = maxOf(text, end.height, least)
@@ -350,11 +351,24 @@ private fun RowLine(end: (@Composable () -> Unit)?, text: RowText?, figure: Bool
     }
 }
 
-/** A row's text as it is laid out: its words, its role and how many lines it may take. */
-private class RowText(val text: String, val style: TextStyle, val lines: Int)
+/**
+ * A row's text as it is laid out: its words, its role, how many lines it may take and whether its words are held
+ * ([RvText]'s `keepWords`); [words] is the text as its [RvText] takes it ([rvWords]), taken once for the text.
+ */
+private class RowText(val text: String, val style: TextStyle, val lines: Int, val keepWords: Boolean) {
+    val words = rvWords(text, lines, keepWords)
+
+    /** The text in its role's Latin line box, as the row shows it. */
+    @Composable
+    fun Shown(color: Color = Rv.colors.text, overflow: TextOverflow = TextOverflow.Ellipsis) =
+        RvText(text, style, color = color, maxLines = lines, overflow = overflow, lineBox = true, keepWords = keepWords)
+}
+
+@Composable
+private fun rememberRowText(text: String, style: TextStyle, lines: Int, keepWords: Boolean) = remember(text, style, lines, keepWords) { RowText(text, style, lines, keepWords) }
 
 /** [text] laid out [width] px wide as its [RvText] lays it out. */
-private fun TextMeasurer.layout(text: RowText, width: Int) = rvLayout(text.text, text.style, text.lines, width)
+private fun TextMeasurer.layout(text: RowText, width: Int) = rvLayout(text.words, text.style, text.lines, width)
 
 /**
  * Whether [text] reads well [width] px wide ([rvReadsWell]) on no more lines than it takes [wide] px wide: an end beside a

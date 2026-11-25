@@ -79,7 +79,7 @@ internal fun RvSourceDiff(file: RvDiffFile, onOpen: (RvDiffAt) -> Unit, modifier
     val sign = with(LocalDensity.current) { signPx.toDp() }
     val first = file.hunks.first().first { it.kind != RvDiffKind.Same }.at
     RvCard(modifier) {
-        RvCardHeader(file.source, onClick = { onOpen(first) }, tag = stringResource(R.string.rv_diff_counts, file.added, file.removed), titleLines = Int.MAX_VALUE)
+        RvCardHeader(file.source, onClick = { onOpen(first) }, tag = stringResource(R.string.rv_diff_counts, file.added, file.removed), titleLines = Int.MAX_VALUE, keepWords = false)
         file.hunks.forEachIndexed { i, run ->
             if (i > 0) Spacer(Modifier.height(RvSpace.subGap))
             run.forEach { DiffLine(it, DiffColumns(gutter, sign, numbers), onOpen) }

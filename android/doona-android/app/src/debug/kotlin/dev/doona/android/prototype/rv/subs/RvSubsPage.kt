@@ -113,6 +113,7 @@ internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions, loading: Boo
         dismiss = stringResource(R.string.rv_cancel),
         onConfirm = { deleting?.let { actions.confirmDelete(it.id) } },
         onDismiss = { actions.delete(null) },
+        titleKeepWords = false,
     )
 }
 
@@ -124,6 +125,7 @@ internal fun rvFailedBanner(sub: RvSubscription, onRetry: () -> Unit) = RvNotice
     pluralStringResource(R.plurals.rv_sub_failed_reason, sub.nodes, sub.nodes),
     stringResource(R.string.rv_retry),
     onRetry,
+    titleKeepWords = false,
 )
 
 /** A subscription: its row, with a busy bar before the chevron while it updates ([LocalRvUpdating], as the node picker's row), then its use. */
@@ -134,7 +136,7 @@ private fun SubscriptionCard(sub: RvSubscription, actions: RvSubsActions) {
     RvCard {
         RvLongPressMenu(menu, onClick = { actions.open(sub.id) }) { press ->
             Column(press) {
-                RvRow({ RvIconDisc(R.drawable.rv_sym_rss_feed) }, sub.name, rvNodesUpdated(sub)) {
+                RvRow({ RvIconDisc(R.drawable.rv_sym_rss_feed) }, sub.name, rvNodesUpdated(sub), titleKeepWords = false) {
                     if (updating) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             RvBusy(Modifier.width(RvSize.busy))
@@ -160,7 +162,7 @@ private fun SubscriptionCard(sub: RvSubscription, actions: RvSubsActions) {
 private fun SubsSkeleton(subscriptions: List<RvSubscription>) {
     repeat(SKELETON_CARDS) {
         RvSkeletonCard {
-            RvSkeletonRow(it, RvSkeletonText.Mixed, chevron = true, title = subscriptions.getOrNull(it)?.name)
+            RvSkeletonRow(it, RvSkeletonText.Mixed, chevron = true, title = subscriptions.getOrNull(it)?.name, titleKeepWords = false)
             RvSkeletonGoal()
         }
     }

@@ -81,6 +81,7 @@ internal fun RvGalleryScreen(onBack: () -> Unit) {
         dismiss = stringResource(R.string.rv_cancel),
         onConfirm = { deleting = null },
         onDismiss = { deleting = null },
+        titleKeepWords = false,
     )
 }
 
@@ -108,7 +109,7 @@ internal fun RvGalleryMenuCard(onDelete: (RvSubscription) -> Unit = {}) {
     RvCard {
         RvData.subscriptions.forEach { sub ->
             RvLongPressMenu(rvSubscriptionMenu(onUpdate = {}, onEdit = {}, onDelete = { onDelete(sub) }), onClick = {}) { press ->
-                RvRow({ RvIconDisc(R.drawable.rv_sym_rss_feed) }, sub.name, pluralStringResource(R.plurals.rv_nodes_nodes, sub.nodes, sub.nodes), press)
+                RvRow({ RvIconDisc(R.drawable.rv_sym_rss_feed) }, sub.name, pluralStringResource(R.plurals.rv_nodes_nodes, sub.nodes, sub.nodes), press, titleKeepWords = false)
             }
         }
     }
@@ -122,7 +123,7 @@ internal fun RvGalleryChecks() {
     RvCard {
         apps.forEach { app ->
             val on = app.packageName in checked
-            RvCheckRow({ RvAppDisc(app.packageName) }, app.label, app.packageName, on, { checked = if (it) checked + app.packageName else checked - app.packageName })
+            RvCheckRow({ RvAppDisc(app.packageName) }, app.label, app.packageName, on, { checked = if (it) checked + app.packageName else checked - app.packageName }, titleKeepWords = false, subtitleKeepWords = false)
         }
     }
 }

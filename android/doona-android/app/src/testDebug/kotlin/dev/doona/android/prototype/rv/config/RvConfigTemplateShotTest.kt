@@ -150,8 +150,8 @@ class RvConfigTemplateShotTest {
         const val TO_THE_END_DP = 10_000f
         const val APPLE = "Apple"
 
-        /** The page keeps a title's words and last letters together with word joiners. */
-        val SERVICES = rvConfigPhrase(listOf("依服務分流"))
+        /** A title the page holds together with word joiners; its node reads the plain words. */
+        const val SERVICES = "依服務分流"
         const val CREATE = "建立設定檔"
         const val REVIEW = "檢視變更"
     }

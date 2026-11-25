@@ -168,6 +168,7 @@ internal fun RvConnectionRow(connection: RvConnection, nowEpochMs: Long, onClick
         onLongClick = onClick,
         titleLines = 1,
         titleOverflow = TextOverflow.MiddleEllipsis,
+        subtitleKeepWords = false,
     ) {
         Column(horizontalAlignment = Alignment.End) {
             RvText(bytes, Rv.type.rowValue, align = TextAlign.End)

@@ -143,7 +143,7 @@ internal fun RvServiceRulesPage(
 private fun OutboundCard(onOutbound: () -> Unit) {
     val main = RvPolicyData.main
     RvCard {
-        RvRow({ RvPolicyTarget(main) }, stringResource(R.string.rv_service_outbound), stringResource(main.name), onClick = onOutbound) { RvChevron() }
+        RvRow({ RvPolicyTarget(main) }, stringResource(R.string.rv_service_outbound), stringResource(main.name), onClick = onOutbound, subtitleKeepWords = false) { RvChevron() }
     }
 }
 
@@ -154,7 +154,7 @@ private fun ServiceRow(service: RvService, checked: Boolean, onToggle: (String) 
     val title = service.label?.let { stringResource(it) } ?: service.name
     val has = rule?.let { stringResource(R.string.rv_service_has_rule, it.targetName()) }
     val dim = if (rule == null) Modifier else Modifier.graphicsLayer { alpha = RvAlpha.DISABLED }
-    RvCheckRow({ RvIconDisc(service.glyph) }, title, has, checked && rule == null, { onToggle(service.code) }, dim, enabled = rule == null)
+    RvCheckRow({ RvIconDisc(service.glyph) }, title, has, checked && rule == null, { onToggle(service.code) }, dim, enabled = rule == null, subtitleKeepWords = false)
 }
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)

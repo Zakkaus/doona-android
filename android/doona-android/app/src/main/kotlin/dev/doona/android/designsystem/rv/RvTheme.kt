@@ -348,19 +348,26 @@ internal fun RvMaterialPlumbing(scheme: ColorScheme, content: @Composable () -> 
     }
 }
 
-/** [text] with every run of CJK set in Noto Sans TC; the rest keeps the style's Inter. */
+/**
+ * [text] with every run of CJK set in Noto Sans TC; the rest keeps the style's Inter. A space stays in the run it falls
+ * in, and so does a word joiner between two CJK letters ([rvKeepWords]): set in Inter, it would make the line a mixed
+ * one, its line box Noto's ascent over Inter's descent, 1 px taller than the Han alone.
+ */
 internal fun scripted(text: String): AnnotatedString = buildAnnotatedString {
     var start = 0
     while (start < text.length) {
         val cjk = text[start].rvCjk()
         var end = start + 1
-        while (end < text.length && (text[end].rvCjk() == cjk || text[end] == ' ')) end++
+        while (end < text.length && (text[end].rvCjk() == cjk || text[end] == ' ' || (cjk && text.joinsHan(end)))) end++
         if (cjk) withStyle(SpanStyle(fontFamily = RvNoto)) { append(text, start, end) } else append(text, start, end)
         start = end
     }
 }
 
 internal fun Char.rvCjk() = code >= CJK_START
+
+/** Whether the char at [at] is a word joiner between two CJK letters. */
+private fun String.joinsHan(at: Int) = this[at] == '\u2060' && getOrNull(at + 1)?.rvCjk() == true
 
 /** CJK Radicals Supplement: everything from here up is set in Noto. */
 private const val CJK_START = 0x2E80

@@ -86,6 +86,7 @@ private fun RevisionRow(revision: RvRevision, head: Boolean, onRevision: (Int) -
             press,
             subtitle = rvConfigLine(if (name == null) listOf(time, origin) else listOf(time, origin, number)),
             titleLines = if (name == null) RV_ROW_TITLE_LINES else Int.MAX_VALUE,
+            titleKeepWords = false,
         ) { RvNavEnd(inUse) }
     }
 }
@@ -131,6 +132,7 @@ internal fun RvConfigImportPage(
                     stringResource(R.string.rv_source_line, state.escapeLine, state.escapePath),
                     stringResource(R.string.rv_config_edit_source),
                     onEditSource,
+                    reasonKeepWords = false,
                 ),
                 gapBelow = RvSpace.none,
             )
@@ -139,7 +141,7 @@ internal fun RvConfigImportPage(
                     state.files.forEach { file ->
                         val origin = file.parent?.let { stringResource(R.string.rv_config_included_by, it) } ?: stringResource(R.string.rv_config_entry)
                         val lines = pluralStringResource(R.plurals.rv_config_lines, file.lines, file.lines)
-                        RvSettingsNavRow(file.path, null, { onFile(file.path) }, subtitle = rvConfigLine(listOf(origin, lines)))
+                        RvSettingsNavRow(file.path, null, { onFile(file.path) }, subtitle = rvConfigLine(listOf(origin, lines)), titleKeepWords = false)
                     }
                 }
             }

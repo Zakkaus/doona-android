@@ -141,6 +141,7 @@ private fun NodeRow(node: RvNode, current: Boolean, sort: RvNodeSort, onPick: (S
         titleEnd = { RvLatencyText(node.latencyMs, node.timedOut) },
         subtitleEnd = second,
         endBusy = testing,
+        titleKeepWords = false,
     )
 }
 

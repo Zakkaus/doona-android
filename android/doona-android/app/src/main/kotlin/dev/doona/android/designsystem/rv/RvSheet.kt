@@ -159,7 +159,8 @@ internal fun RvSheetPanel(modifier: Modifier = Modifier, content: @Composable Co
  * A question before something that cannot be taken back or needs the user's yes: [title], an optional [body], an
  * optional [extra] (stat rows, a field), then [confirm] as the primary button and [dismiss] as the neutral secondary
  * pill under it, as a card's notice sets its action: no action of the sheet is a coloured text link (the owner,
- * 2026-11-23).
+ * 2026-11-23). [titleKeepWords] and [bodyKeepWords] false for a title or body that quotes a name or an address
+ * ([RvText]'s `keepWords`: 刪除「香港 01」?).
  */
 @Composable
 internal fun RvConfirmSheet(
@@ -171,9 +172,13 @@ internal fun RvConfirmSheet(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     confirmEnabled: Boolean = true,
+    titleKeepWords: Boolean = true,
+    bodyKeepWords: Boolean = true,
     extra: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    RvSheet(visible, onDismiss, title) { RvConfirmContent(title, body, confirm, dismiss, onConfirm, onDismiss, confirmEnabled, extra) }
+    RvSheet(visible, onDismiss, title) {
+        RvConfirmContent(title, body, confirm, dismiss, onConfirm, onDismiss, confirmEnabled, titleKeepWords, bodyKeepWords, extra)
+    }
 }
 
 /** What [RvConfirmSheet] shows in its card. */
@@ -186,9 +191,11 @@ internal fun ColumnScope.RvConfirmContent(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     confirmEnabled: Boolean = true,
+    titleKeepWords: Boolean = true,
+    bodyKeepWords: Boolean = true,
     extra: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    SheetWords(title, body)
+    SheetWords(title, body, titleKeepWords, bodyKeepWords)
     extra?.let {
         Spacer(Modifier.height(RvSpace.gutter))
         it()
@@ -216,16 +223,19 @@ internal fun ColumnScope.RvInfoContent(title: String, body: String, done: String
     RvPrimaryButton(done, onDone)
 }
 
-/** The title [RvSheetSize.titleTop] under the handle and the optional [body] under it, on the card-content line. */
+/**
+ * The title [RvSheetSize.titleTop] under the handle and the optional [body] under it, on the card-content line, each
+ * holding its words unless it names something ([titleKeepWords], [bodyKeepWords]).
+ */
 @Composable
-private fun SheetWords(title: String, body: String?) {
+private fun SheetWords(title: String, body: String?, titleKeepWords: Boolean = true, bodyKeepWords: Boolean = true) {
     Spacer(Modifier.height(RvSheetSize.titleTop))
     // The words on the card-content line, as a card's rows set theirs.
     val text = Modifier.padding(horizontal = RvSpace.rowPadding)
-    RvText(title, Rv.type.section, text, maxLines = TITLE_LINES)
+    RvText(title, Rv.type.section, text, maxLines = TITLE_LINES, keepWords = titleKeepWords)
     body?.let {
         Spacer(Modifier.height(RvSheetSize.titleToBody))
-        RvText(it, Rv.type.rowSub, text, color = Rv.colors.textSecondary, maxLines = BODY_LINES)
+        RvText(it, Rv.type.rowSub, text, color = Rv.colors.textSecondary, maxLines = BODY_LINES, keepWords = bodyKeepWords)
     }
 }
 

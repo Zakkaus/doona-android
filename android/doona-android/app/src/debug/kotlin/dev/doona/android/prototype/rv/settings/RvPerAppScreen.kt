@@ -159,9 +159,9 @@ private fun Apps(state: RvPerAppState, actions: RvPerAppActions, look: RvPerAppL
  */
 @Composable
 private fun AppRow(app: RvApp, checked: Boolean, look: RvPerAppLook, onToggle: (Boolean) -> Unit) {
-    if (look != RvPerAppLook.Today) return RvCheckRow({ RvAppDisc(app.packageName) }, app.label, app.packageName, checked, onToggle)
+    if (look != RvPerAppLook.Today) return RvCheckRow({ RvAppDisc(app.packageName) }, app.label, app.packageName, checked, onToggle, titleKeepWords = false, subtitleKeepWords = false)
     val toggle = Modifier.rvRowToggle(checked, onToggle)
-    RvRow({ RvAppDisc(app.packageName) }, app.label, app.packageName, toggle) { RvSwitch(checked) }
+    RvRow({ RvAppDisc(app.packageName) }, app.label, app.packageName, toggle, titleKeepWords = false, subtitleKeepWords = false) { RvSwitch(checked) }
 }
 
 /** Something under way: the sync glyph's disc and the busy bar where a row's end stands, as an export under way. */

@@ -152,12 +152,12 @@ private fun Figure(text: String) {
 @Composable
 private fun StatsCard(node: RvNode, lastTest: String) {
     RvCard {
-        RvStatRow(stringResource(R.string.rv_nodes_protocol), node.protocol)
-        RvStatRow(stringResource(R.string.rv_nodes_server), node.host)
+        RvStatRow(stringResource(R.string.rv_nodes_protocol), node.protocol, valueKeepWords = false)
+        RvStatRow(stringResource(R.string.rv_nodes_server), node.host, valueKeepWords = false)
         RvStatRow(stringResource(R.string.rv_nodes_port), node.port.toString())
-        RvStatRow(stringResource(R.string.rv_nodes_transport), node.transport)
+        RvStatRow(stringResource(R.string.rv_nodes_transport), node.transport, valueKeepWords = false)
         RvStatRow(TLS, stringResource(if (node.tls) R.string.ui_on else R.string.ui_off))
-        RvStatRow(stringResource(R.string.rv_nodes_subscription), node.subscription)
+        RvStatRow(stringResource(R.string.rv_nodes_subscription), node.subscription, valueKeepWords = false)
         RvStatRow(stringResource(R.string.rv_nodes_last_test), lastTest)
     }
 }

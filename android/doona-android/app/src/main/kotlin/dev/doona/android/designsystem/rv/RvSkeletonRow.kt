@@ -60,6 +60,7 @@ internal enum class RvSkeletonEnd(val first: RvSkeletonText?, val second: RvSkel
  * end goes under them as the row's does. A figure is a bar on its text's line ([RvSkeletonLine]). Beside an end of two
  * lines a title's bar keeps to the room a title keeps beside its end ([besideEnd]), so it does not reach under a long end
  * (a group's `Hong Kong 02 IPLC`) as the content fades in. Past [LocalRvContentFloor] the row keeps its place undrawn.
+ * [titleKeepWords] and [subtitleKeepWords] are the row's ([RvRow]'s), false for a name.
  */
 @Composable
 internal fun RvSkeletonRow(
@@ -70,10 +71,13 @@ internal fun RvSkeletonRow(
     title: String? = null,
     subtitleText: String? = null,
     endText: String? = null,
+    titleKeepWords: Boolean = true,
+    subtitleKeepWords: Boolean = true,
 ) {
     val minHeight = if (subtitle != null) RvSize.rowTwoLine else RvSize.rowOneLine
     val room = rememberEndRoom()
-    val words = SkeletonWords(index, title, subtitle, subtitleText, if (title == null && end.second != null) Modifier.besideEnd(room.figure) else Modifier)
+    val titleRoom = if (title == null && end.second != null) Modifier.besideEnd(room.figure) else Modifier
+    val words = SkeletonWords(index, title, subtitle, subtitleText, titleRoom, titleKeepWords, subtitleKeepWords)
     Row(
         Modifier
             .fillMaxWidth()
@@ -107,12 +111,29 @@ internal fun RvSkeletonRow(
     }
 }
 
-/** A skeleton row's title and subtitle: their words where the page knows them, else bars of row [index]'s widths, in the row text's line boxes. */
-private class SkeletonWords(val index: Int, val title: String?, val subtitle: RvSkeletonText?, val subtitleText: String?, val titleRoom: Modifier) {
+/**
+ * A skeleton row's title and subtitle: their words where the page knows them, else bars of row [index]'s widths, in the
+ * row text's line boxes; [titleWords] and [subtitleWords] are those words as the row lays them out ([rvWords]).
+ */
+private class SkeletonWords(
+    val index: Int,
+    val title: String?,
+    val subtitle: RvSkeletonText?,
+    val subtitleText: String?,
+    val titleRoom: Modifier,
+    private val titleKeepWords: Boolean,
+    private val subtitleKeepWords: Boolean,
+) {
+    @Composable
+    fun titleWords(): RowWords? = title?.let { RowWords(remember(it) { rvWords(it, RV_ROW_TITLE_LINES, titleKeepWords) }, Rv.type.rowTitle, RV_ROW_TITLE_LINES) }
+
+    @Composable
+    fun subtitleWords(): RowWords? = subtitleText?.let { RowWords(remember(it) { rvWords(it, RV_ROW_SUBTITLE_LINES, subtitleKeepWords) }, Rv.type.rowSub, RV_ROW_SUBTITLE_LINES) }
+
     @Composable
     fun Title() {
         if (title != null) {
-            RvSkeletonLabel(title, Rv.type.rowTitle, maxLines = RV_ROW_TITLE_LINES, lineBox = true)
+            RvSkeletonLabel(title, Rv.type.rowTitle, maxLines = RV_ROW_TITLE_LINES, lineBox = true, keepWords = titleKeepWords)
         } else {
             RvSkeletonLine(Rv.type.rowTitle, RvSkeletonSize.titles[index % RvSkeletonSize.titles.size], titleRoom, lineBox = true)
         }
@@ -122,7 +143,7 @@ private class SkeletonWords(val index: Int, val title: String?, val subtitle: Rv
     fun Subtitle() {
         val kind = subtitle ?: return
         if (subtitleText != null) {
-            RvSkeletonLabel(subtitleText, Rv.type.rowSub, maxLines = RV_ROW_SUBTITLE_LINES, lineBox = true)
+            RvSkeletonLabel(subtitleText, Rv.type.rowSub, maxLines = RV_ROW_SUBTITLE_LINES, lineBox = true, keepWords = subtitleKeepWords)
         } else {
             RvSkeletonLine(Rv.type.rowSub, RvSkeletonSize.subtitles[index % RvSkeletonSize.subtitles.size], kind = kind, lineBox = true)
         }
@@ -137,8 +158,8 @@ private class SkeletonWords(val index: Int, val title: String?, val subtitle: Rv
 @Composable
 private fun BesideEnd(words: SkeletonWords, minHeight: Dp, modifier: Modifier, end: @Composable () -> Unit) {
     val measurer = rememberTextMeasurer()
-    val title = words.title?.let { RowWords(it, Rv.type.rowTitle, RV_ROW_TITLE_LINES) }
-    val subtitle = words.subtitleText?.takeIf { words.subtitle != null }?.let { RowWords(it, Rv.type.rowSub, RV_ROW_SUBTITLE_LINES) }
+    val title = words.titleWords()
+    val subtitle = words.subtitleWords()?.takeIf { words.subtitle != null }
     Layout(
         {
             words.Title()
@@ -212,7 +233,7 @@ private fun rememberEndRoom(): EndRoom {
 @Composable
 private fun LineWise(words: SkeletonWords, end: RvSkeletonEnd, endText: String?, room: EndRoom, modifier: Modifier) {
     Column(modifier.padding(vertical = RvSpace.rowTextInset)) {
-        WithEnd(words.title?.let { RowWords(it, Rv.type.rowTitle, RV_ROW_TITLE_LINES) }, { words.Title() }) {
+        WithEnd(words.titleWords(), { words.Title() }) {
             val first = end.first ?: RvSkeletonText.Figures
             if (endText != null) {
                 RvSkeletonLabel(endText, Rv.type.rowValue.copy(textAlign = TextAlign.End), maxLines = RV_ROW_TITLE_LINES, lineBox = true)
@@ -222,7 +243,7 @@ private fun LineWise(words: SkeletonWords, end: RvSkeletonEnd, endText: String?,
         }
         val second = end.second
         if (words.subtitle != null) {
-            WithEnd(words.subtitleText?.let { RowWords(it, Rv.type.rowSub, RV_ROW_SUBTITLE_LINES) }, { words.Subtitle() }) {
+            WithEnd(words.subtitleWords(), { words.Subtitle() }) {
                 val wide = if (end == RvSkeletonEnd.Node) room.small else room.change
                 if (second != null) RvSkeletonLine(Rv.type.rowSub, 1f, Modifier.width(wide), second, lineBox = true)
             }
@@ -274,7 +295,7 @@ private fun ChevronRoom() {
     Spacer(Modifier.size(RvChevronSize.box))
 }
 
-/** Words a skeleton row knows, as its [RvRow] lays them out: the words, their role and how many lines they may take. */
+/** Words a skeleton row knows, as its [RvRow] lays them out: the words ([rvWords]), their role and how many lines they may take. */
 private class RowWords(val text: String, val style: TextStyle, val lines: Int)
 
 private fun TextMeasurer.readsWell(words: RowWords?, width: Int) = words == null || rvReadsWell(rvLayout(words.text, words.style, words.lines, width))

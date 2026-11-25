@@ -138,8 +138,8 @@ private fun Contents(preview: RvReportPreview) {
     )
     RvSettingsCard {
         // The app's version alone: the core ships in the same APK, so its version is the app's.
-        RvSettingsRow(stringResource(R.string.rv_settings_version), subtitle = preview.app)
-        RvSettingsRow(stringResource(R.string.rv_report_device), subtitle = preview.device)
+        RvSettingsRow(stringResource(R.string.rv_settings_version), subtitle = preview.app, subtitleKeepWords = false)
+        RvSettingsRow(stringResource(R.string.rv_report_device), subtitle = preview.device, subtitleKeepWords = false)
         RvSettingsRow(stringResource(R.string.rv_report_settings), subtitle = settings.joinToString(SEPARATOR))
         RvSettingsRow(stringResource(R.string.rv_report_log), subtitle = log.joinToString(SEPARATOR))
     }

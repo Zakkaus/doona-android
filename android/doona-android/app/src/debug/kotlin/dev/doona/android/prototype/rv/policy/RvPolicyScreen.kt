@@ -203,7 +203,7 @@ private fun PolicySkeleton(state: RvPolicyState) {
             val main = state.group(RvPolicyData.main)
             RvSkeletonCard {
                 RvSkeletonHeader(stringResource(R.string.rv_main_node))
-                RvSkeletonRow(0, RvSkeletonText.Mixed, RvSkeletonEnd.Latency, title = main.selected.name, subtitleText = mainLine(main))
+                RvSkeletonRow(0, RvSkeletonText.Mixed, RvSkeletonEnd.Latency, title = main.selected.name, subtitleText = mainLine(main), titleKeepWords = false)
             }
             RvSkeletonCard {
                 RvSkeletonHeader(stringResource(R.string.rv_policy_groups))
@@ -217,6 +217,7 @@ private fun PolicySkeleton(state: RvPolicyState) {
                         title = group?.let { stringResource(it.name) },
                         subtitleText = group?.let { groupLine(it) },
                         endText = group?.selected?.name,
+                        titleKeepWords = false,
                     )
                 }
             }
@@ -228,7 +229,7 @@ private fun PolicySkeleton(state: RvPolicyState) {
             RvSkeletonCard {
                 // The first card is the first subscription's, but under 地區 the country of the fastest node's.
                 val sub = RvData.subscriptions.firstOrNull()?.name?.takeIf { state.nodeSort != RvNodeSort.Region }
-                RvSkeletonRow(0, RvSkeletonText.Mixed, RvSkeletonEnd.Value, title = sub)
+                RvSkeletonRow(0, RvSkeletonText.Mixed, RvSkeletonEnd.Value, title = sub, titleKeepWords = false)
                 repeat(rows) { RvSkeletonRow(it + 1, RvSkeletonText.Mixed, RvSkeletonEnd.LatencyLines) }
             }
         }
@@ -246,6 +247,7 @@ private fun MainCard(main: RvPolicyGroup, onOpen: () -> Unit) {
             node.name,
             mainLine(main),
             onClick = onOpen,
+            titleKeepWords = false,
         ) { RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut) }
     }
 }
@@ -284,9 +286,10 @@ private fun GroupRow(group: RvPolicyGroup, onOpen: (String) -> Unit) {
         stringResource(group.name),
         groupLine(group),
         Modifier.rvRowPress(Role.Button, { onOpen(group.id) }),
-        titleEnd = { RvText(node.name, Rv.type.rowValue, align = TextAlign.End, maxLines = RV_ROW_TITLE_LINES) },
+        titleEnd = { RvText(node.name, Rv.type.rowValue, align = TextAlign.End, maxLines = RV_ROW_TITLE_LINES, keepWords = false) },
         subtitleEnd = { RvText(latencyText(node.latencyMs), Rv.type.rowSub, color = latencyColor(node.latencyMs), align = TextAlign.End) },
         trailing = { RvChevron() },
+        titleKeepWords = false,
     )
 }
 

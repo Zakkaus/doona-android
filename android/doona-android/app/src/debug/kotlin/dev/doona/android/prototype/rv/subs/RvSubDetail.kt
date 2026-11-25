@@ -69,8 +69,8 @@ internal fun RvSubDetail(
         RvSectionTitle(stringResource(R.string.rv_sub_section), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {
             RvCard {
-                RvRow({ RvIconDisc(R.drawable.rv_sym_edit) }, stringResource(R.string.rv_sub_name), sub.name, onClick = { onChange(state.copy(sheet = RvSubSheet.Rename, name = sub.name)) }) { RvChevron() }
-                RvRow({ RvIconDisc(R.drawable.rv_sym_link) }, stringResource(R.string.rv_sub_link), sub.host)
+                RvRow({ RvIconDisc(R.drawable.rv_sym_edit) }, stringResource(R.string.rv_sub_name), sub.name, onClick = { onChange(state.copy(sheet = RvSubSheet.Rename, name = sub.name)) }, subtitleKeepWords = false) { RvChevron() }
+                RvRow({ RvIconDisc(R.drawable.rv_sym_link) }, stringResource(R.string.rv_sub_link), sub.host, subtitleKeepWords = false)
             }
             RvCard {
                 RvRow({ RvIconDisc(R.drawable.rv_sym_delete, Rv.colors.error) }, stringResource(R.string.rv_sub_delete), null, onClick = { onChange(state.copy(sheet = RvSubSheet.Delete)) })
@@ -109,6 +109,7 @@ internal fun RvSubDetail(
         dismiss = stringResource(R.string.rv_cancel),
         onConfirm = close,
         onDismiss = close,
+        titleKeepWords = false,
     )
 }
 
@@ -169,6 +170,7 @@ private fun UpdatesCard(userAgent: String?, onUserAgent: () -> Unit) {
             stringResource(R.string.rv_sub_user_agent),
             userAgent ?: stringResource(R.string.rv_sub_user_agent_default),
             onClick = onUserAgent,
+            subtitleKeepWords = false,
         ) { RvChevron() }
     }
 }

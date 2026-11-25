@@ -208,6 +208,7 @@ class RvLibraryShotTest {
                     stringResource(R.string.rv_cancel),
                     onConfirm = {},
                     onDismiss = {},
+                    titleKeepWords = false,
                 )
             }
         }

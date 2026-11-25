@@ -45,7 +45,7 @@ internal class RvAboutRoutes(
 internal fun RvAboutEntry(version: String, onOpen: () -> Unit) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_about))
     RvSettingsCard {
-        RvSettingsNavRow(stringResource(R.string.rv_about_title), R.drawable.rv_settings_ic_info, onOpen, version)
+        RvSettingsNavRow(stringResource(R.string.rv_about_title), R.drawable.rv_settings_ic_info, onOpen, version, subtitleKeepWords = false)
     }
 }
 
@@ -63,7 +63,7 @@ internal fun RvAboutScreen(versions: RvAboutVersions, onBack: () -> Unit, routes
         RvLargeTitle(title, titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin), verticalArrangement = Arrangement.spacedBy(RvSettingsSpace.cardGap)) {
             RvSettingsCard {
-                RvSettingsRow(stringResource(R.string.app_name), icon = R.drawable.rv_settings_ic_info, subtitle = versions.app)
+                RvSettingsRow(stringResource(R.string.app_name), icon = R.drawable.rv_settings_ic_info, subtitle = versions.app, subtitleKeepWords = false)
                 RvSettingsRow(stringResource(R.string.rv_about_honk), icon = R.drawable.rv_sym_memory, subtitle = stringResource(R.string.rv_about_honk_sub, versions.honk))
             }
             RvSettingsCard {

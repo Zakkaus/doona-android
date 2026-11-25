@@ -286,11 +286,12 @@ internal fun RvControlLine(text: String, modifier: Modifier = Modifier) = RvChoi
 
 /**
  * A line saying what a choice does (a mode, what a rule's match covers), in secondary text. It wraps as long as it needs
- * rather than cut the reason or the domain it names (`依規則分流，其餘流量經主節點`, `只比對 gemini.google.com`).
+ * rather than cut the reason or the domain it names (`依規則分流，其餘流量經主節點`, `只比對 gemini.google.com`);
+ * [keepWords] false for a line that names one ([RvText]'s).
  */
 @Composable
-internal fun RvChoiceLine(text: String, modifier: Modifier = Modifier) {
-    RvText(text, Rv.type.rowSub, modifier, color = Rv.colors.textSecondary, maxLines = Int.MAX_VALUE)
+internal fun RvChoiceLine(text: String, modifier: Modifier = Modifier, keepWords: Boolean = true) {
+    RvText(text, Rv.type.rowSub, modifier, color = Rv.colors.textSecondary, maxLines = Int.MAX_VALUE, keepWords = keepWords)
 }
 
 /** Test tags of the library's layout parts, which `RvLayoutTest` measures on every page against these tokens. */
@@ -364,7 +365,8 @@ internal fun RvAppDisc(packageName: String, label: String? = null, size: Dp = Rv
 /**
  * A row of a list where several can be checked (依 App's apps): [RvRow] with its [leading] disc, [title] and [subtitle],
  * and a check at its end that the whole row toggles, as a switch row of 設定 toggles its switch. Not [enabled], the row
- * takes no press: no layer, no toggle, and a screen reader hears it disabled.
+ * takes no press: no layer, no toggle, and a screen reader hears it disabled. [titleKeepWords] and [subtitleKeepWords]
+ * are [RvRow]'s (false for an app's label and package).
  */
 @Composable
 internal fun RvCheckRow(
@@ -375,9 +377,11 @@ internal fun RvCheckRow(
     onChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    titleKeepWords: Boolean = true,
+    subtitleKeepWords: Boolean = true,
 ) {
     val toggle = Modifier.toggleable(value = checked, enabled = enabled, interactionSource = null, indication = rvRowIndication(), role = Role.Checkbox, onValueChange = onChange)
-    RvRow(leading, title, subtitle, modifier.then(toggle)) { Check(checked) }
+    RvRow(leading, title, subtitle, modifier.then(toggle), titleKeepWords = titleKeepWords, subtitleKeepWords = subtitleKeepWords) { Check(checked) }
 }
 
 /**
@@ -448,16 +452,17 @@ private fun Modifier.rvFillWidth(fraction: () -> Float): Modifier = layout { mea
  * A row of Revolut's Key stats card (measured §11): [label] 19 sp medium in secondary ink, [value] 19 sp at the end, in a
  * 58 dp row. A fact is read whole: when the two do not fit one line with [RvSpace.trailingGap] between them (a host:port,
  * a group and its node at a large font size), the value goes under the label on its edge and wraps, and the row grows as
- * a two-line row does. Nothing of either is cut.
+ * a two-line row does. Nothing of either is cut. [valueKeepWords] false for a value that is a name or an identifier
+ * ([RvText]'s `keepWords`: a host, a node's or a subscription's name).
  */
 @Composable
-internal fun RvStatRow(label: String, value: String) {
+internal fun RvStatRow(label: String, value: String, valueKeepWords: Boolean = true) {
     // Laid out once more when the value moves under the label, as RvText's cut is: its lines then start on the edge.
     var stacked by remember(label, value) { mutableStateOf(false) }
     Layout(
         {
             RvText(label, Rv.type.statLabel, color = Rv.colors.textSecondary, maxLines = RV_ROW_TITLE_LINES)
-            RvText(value, Rv.type.stat, align = if (stacked) TextAlign.Start else TextAlign.End, maxLines = Int.MAX_VALUE)
+            RvText(value, Rv.type.stat, align = if (stacked) TextAlign.Start else TextAlign.End, maxLines = Int.MAX_VALUE, keepWords = valueKeepWords)
         },
         Modifier.fillMaxWidth().padding(horizontal = RvSpace.rowPadding),
     ) { (labelPart, valuePart), constraints ->
@@ -509,10 +514,11 @@ internal fun RvChevron(modifier: Modifier = Modifier, color: Color = Rv.colors.c
  * A card's in-card header (measured §7 `listSubheader`), for a card that is a widget on a home or overview page: 19 sp
  * medium secondary text in a 48 dp row, then an optional [tag] chip, and, only when it opens something, a
  * chevron in the header's colour; then the whole row is the button. The title keeps one line, [titleLines] lets one that
- * is a name to find (a file's path) wrap, and the row then grows past 48 dp.
+ * is a name to find (a file's path) wrap, and the row then grows past 48 dp; [keepWords] false keeps such a name's
+ * breaks the platform's ([RvText]'s).
  */
 @Composable
-internal fun RvCardHeader(title: String, onClick: (() -> Unit)? = null, tag: String? = null, titleLines: Int = 1) {
+internal fun RvCardHeader(title: String, onClick: (() -> Unit)? = null, tag: String? = null, titleLines: Int = 1, keepWords: Boolean = true) {
     val press = onClick?.let { Modifier.rvPress(RoundedCornerShape(Rv.highlightRadius), Role.Button, it) } ?: Modifier
     Row(
         Modifier
@@ -523,7 +529,7 @@ internal fun RvCardHeader(title: String, onClick: (() -> Unit)? = null, tag: Str
             .padding(horizontal = RvSpace.rowPadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RvText(title, Rv.type.cardTitle, Modifier.weight(1f, fill = false).semantics { heading() }, color = Rv.colors.textSecondary, maxLines = titleLines)
+        RvText(title, Rv.type.cardTitle, Modifier.weight(1f, fill = false).semantics { heading() }, color = Rv.colors.textSecondary, maxLines = titleLines, keepWords = keepWords)
         tag?.let { RvTag(it, Modifier.padding(start = RvSpace.subGap)) }
         if (onClick != null) RvChevron(color = Rv.colors.textSecondary)
     }

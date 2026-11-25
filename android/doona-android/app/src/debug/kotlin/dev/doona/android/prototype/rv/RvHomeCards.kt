@@ -246,6 +246,7 @@ internal fun RvSubscriptionRow(sub: RvSubscription) {
         { RvIconDisc(R.drawable.rv_sym_rss_feed) },
         sub.name,
         stringResource(R.string.rv_subscription_usage, format.bytesIn(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, RvData.nowEpochMs) } ?: RV_NO_VALUE),
+        titleKeepWords = false,
     ) { RvText(format.bytes(sub.leftBytes).toString(), Rv.type.rowValue, align = TextAlign.End) }
 }
 
@@ -260,7 +261,7 @@ internal fun RvFastestCard(nodes: List<RvNode>, currentId: String, onOpen: () ->
         // A new test re-sorts the rows: each moves to its new place, keyed by its node.
         nodes.forEachIndexed { order, node ->
             key(node.id) {
-                RvRow({ RvFlag(node.place.flag, RvSize.rowDisc, current = node.id == currentId) }, node.name, node.protocol + " · " + stringResource(node.place.label), Modifier.rvMoves()) {
+                RvRow({ RvFlag(node.place.flag, RvSize.rowDisc, current = node.id == currentId) }, node.name, node.protocol + " · " + stringResource(node.place.label), Modifier.rvMoves(), titleKeepWords = false) {
                     RvLatencyChange(node.latencyMs, node.changeMs, order = order)
                 }
             }

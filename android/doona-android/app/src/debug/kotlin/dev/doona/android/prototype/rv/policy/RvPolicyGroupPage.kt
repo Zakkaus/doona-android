@@ -126,6 +126,7 @@ private fun NodeRow(group: RvPolicyGroup, node: RvNode, onSelect: (String) -> Un
         titleEnd = { RvLatencyText(node.latencyMs, node.timedOut) },
         subtitleEnd = node.changeMs?.let { { RvDelta(it) } },
         endBusy = testing,
+        titleKeepWords = false,
     )
 }
 

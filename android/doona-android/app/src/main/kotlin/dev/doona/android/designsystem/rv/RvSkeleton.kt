@@ -327,14 +327,15 @@ internal fun RvSkeletonLine(style: TextStyle, width: Float, modifier: Modifier =
  * laid out as [RvText] lays out [text] in [style], up to [maxLines] ([rvLayout]: its wrap steps too), each line's bar
  * ([RvSkeletonSize.BAR] of the text's size) as wide as that line's words and centred on it, so the skeleton takes the
  * text's own box at any font size; a row's title or subtitle ([lineBox]) its role's Latin line boxes ([RvLineBox]), as
- * the row's. Silent to a screen reader.
+ * the row's; its words held as the text's are ([keepWords], [RvText]'s). Silent to a screen reader.
  */
 @Composable
-internal fun RvSkeletonLabel(text: String, style: TextStyle, modifier: Modifier = Modifier, maxLines: Int = Int.MAX_VALUE, lineBox: Boolean = false) {
+internal fun RvSkeletonLabel(text: String, style: TextStyle, modifier: Modifier = Modifier, maxLines: Int = Int.MAX_VALUE, lineBox: Boolean = false, keepWords: Boolean = true) {
     val measurer = rememberTextMeasurer()
     val lines = remember { mutableStateOf<TextLayoutResult?>(null) }
     val box = if (lineBox) rvLineBox(style) else null
-    val policy = remember(text, style, maxLines, measurer, box) { LabelLayout(text, style, maxLines, measurer, lines, box) }
+    val words = remember(text, maxLines, keepWords) { rvWords(text, maxLines, keepWords) }
+    val policy = remember(words, style, maxLines, measurer, box) { LabelLayout(words, style, maxLines, measurer, lines, box) }
     val track = Rv.colors.track
     val tall = with(LocalDensity.current) { style.fontSize.toPx() } * RvSkeletonSize.BAR
     Layout(
@@ -351,7 +352,7 @@ internal fun RvSkeletonLabel(text: String, style: TextStyle, modifier: Modifier 
 }
 
 /**
- * [RvSkeletonLabel]'s measure: [text] laid out by [rvLayout] in the width given, the layout kept in [laid] for the bars;
+ * [RvSkeletonLabel]'s measure: [text] ([rvWords]) laid out by [rvLayout] in the width given, the layout kept in [laid] for the bars;
  * its intrinsic width that of its one line, as a text's.
  */
 private class LabelLayout(
