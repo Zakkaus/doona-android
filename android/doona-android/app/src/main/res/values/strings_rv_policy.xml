@@ -146,6 +146,13 @@
     <string name="rv_rule_edit_private_line">Private addresses stay outside the tunnel, so this rule matches nothing</string>
     <string name="rv_rule_edit_enabled">On</string>
     <string name="rv_rule_edit_delete">Delete rule</string>
+    <string name="rv_policy_block_line">Refuse the connection</string>
+    <string name="rv_rule_edit_must">In every mode</string>
+    <string name="rv_rule_edit_position">Position</string>
+    <string name="rv_rule_edit_move_up">Move up</string>
+    <string name="rv_rule_edit_move_down">Move down</string>
+    <string name="rv_rule_edit_position_line">Rule %1$d of %2$d</string>
+    <string name="rv_rule_edit_match_in_source">This match can only be changed in the source. Tap a line to open it there.</string>
     <string name="rv_rule_delete_title">Delete this rule?</string>
     <string name="rv_rule_delete_body">“%1$s” will be removed from the list.</string>
     <string name="rv_rule_delete_confirm">Delete</string>

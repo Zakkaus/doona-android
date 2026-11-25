@@ -106,3 +106,6 @@ internal data class RvPolicyState(
 
 /** The id a rule targets to send its traffic out directly, as a group's id names the group. */
 internal const val RV_DIRECT = "direct"
+
+/** A native honk rule's `block` target, as [RV_DIRECT] is its `direct`. */
+internal const val RV_BLOCK = "block"

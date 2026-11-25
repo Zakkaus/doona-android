@@ -29,6 +29,10 @@ internal object RvNativeSample {
     private val japanGroup = group("g-日本", JAPAN, RvGroupKind.Auto, RvPlace.JP)
     private val usGroup = group("g-美國", US, RvGroupKind.Auto, RvPlace.US)
     private val streamingGroup = group("g-影音", STREAMING, RvGroupKind.Score, RvPlace.HK)
+    private val tokyoGroup = group("g-東京", TOKYO, RvGroupKind.Select, RvPlace.JP)
+
+    /** Every group of the config a rule can send to, in file order: 海外, 日本 and the 東京 it nests, 美國, 影音. */
+    val targets: List<RvPolicyGroup> = listOf(overseasGroup, japanGroup, tokyoGroup, usGroup, streamingGroup)
 
     /** 海外, a Fallback group: two nodes, the nested 日本 (which nests 東京) and 美國, then `direct` last. */
     val overseas = RvGroupDraft(
@@ -64,4 +68,5 @@ internal object RvNativeSample {
     const val JAPAN = "日本"
     const val US = "美國"
     const val STREAMING = "影音"
+    const val TOKYO = "東京"
 }

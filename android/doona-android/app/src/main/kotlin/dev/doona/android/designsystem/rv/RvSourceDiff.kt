@@ -61,14 +61,29 @@ internal class RvDiffFile(val source: String, val hunks: List<List<RvDiffLine>>)
  */
 @Composable
 internal fun RvSourceDiff(file: RvDiffFile, onOpen: (RvDiffAt) -> Unit, modifier: Modifier = Modifier) {
+    val first = file.hunks.first().first { it.kind != RvDiffKind.Same }.at
+    SourceCard(file, stringResource(R.string.rv_diff_counts, file.added, file.removed), first, onOpen, modifier)
+}
+
+/**
+ * Lines of one file as they stand, drawn as [RvSourceDiff] draws its kept lines, under the same header without a tag:
+ * a form shows this way the statement it cannot represent (config plan: such a form opens its exact source). The
+ * header and each line open the file there ([onOpen]).
+ */
+@Composable
+internal fun RvSourceExcerpt(source: String, lines: List<RvDiffLine>, onOpen: (RvDiffAt) -> Unit, modifier: Modifier = Modifier) {
+    SourceCard(RvDiffFile(source, listOf(lines)), tag = null, first = lines.first().at, onOpen, modifier)
+}
+
+@Composable
+private fun SourceCard(file: RvDiffFile, tag: String?, first: RvDiffAt, onOpen: (RvDiffAt) -> Unit, modifier: Modifier) {
     val numbers = rvLineNumberStyle()
     val measurer = rememberTextMeasurer()
     val gutter = rvLineNumberWidth(measurer, file.hunks.maxOf { run -> run.maxOf { it.line } }, numbers)
     val signPx = remember(numbers, measurer) { measurer.measure(RvDiffKind.Removed.sign, numbers).size.width }
     val sign = with(LocalDensity.current) { signPx.toDp() }
-    val first = file.hunks.first().first { it.kind != RvDiffKind.Same }.at
     RvCard(modifier) {
-        RvCardHeader(file.source, onClick = { onOpen(first) }, tag = stringResource(R.string.rv_diff_counts, file.added, file.removed), titleLines = Int.MAX_VALUE, keepWords = false)
+        RvCardHeader(file.source, onClick = { onOpen(first) }, tag = tag, titleLines = Int.MAX_VALUE, keepWords = false)
         file.hunks.forEachIndexed { i, run ->
             if (i > 0) Spacer(Modifier.height(RvSpace.subGap))
             run.forEach { DiffLine(it, DiffColumns(gutter, sign, numbers), onOpen) }

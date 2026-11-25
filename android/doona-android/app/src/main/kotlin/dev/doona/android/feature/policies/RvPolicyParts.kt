@@ -30,6 +30,7 @@ import dev.doona.android.designsystem.rv.latencyText
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvRemoveTrailing
 import dev.doona.android.designsystem.rv.rvRowSelect
+import dev.doona.android.feature.model.RV_BLOCK
 import dev.doona.android.feature.model.RV_DIRECT
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
@@ -133,17 +134,18 @@ internal fun RvPolicyRule.targetName(): String = group?.name?.text() ?: stringRe
 )
 
 /**
- * The 送往 list of the quick rule and the rule page: the [groups] a rule can send to, then 直連: the first [TARGETS]
- * groups, then the rest in place. A group is drawn by
+ * The 送往 list of the quick rule and the rule page: the [groups] a rule can send to, then 直連, and with [block] 拒絕
+ * (a native honk rule's `block`): the first [TARGETS] groups, then the rest in place. A group is drawn by
  * where its traffic ends, as on 活動 and in the rules card.
  */
 @Composable
-internal fun RvTargetCard(groups: List<RvPolicyGroup>, targetId: String, onTarget: (String) -> Unit) {
+internal fun RvTargetCard(groups: List<RvPolicyGroup>, targetId: String, block: Boolean = false, onTarget: (String) -> Unit) {
     var all by rememberSaveable { mutableStateOf(false) }
     val shown = if (all) groups else groups.take(TARGETS)
     RvCard {
         shown.forEach { Target(it, targetId == it.id) { onTarget(it.id) } }
         Target(null, targetId == RV_DIRECT) { onTarget(RV_DIRECT) }
+        if (block) Block(targetId == RV_BLOCK) { onTarget(RV_BLOCK) }
         if (!all) {
             val more = groups.size - shown.size
             RvSeeAll(pluralStringResource(R.plurals.rv_policy_other_groups, more, more)) { all = true }
@@ -160,6 +162,20 @@ private fun Target(group: RvPolicyGroup?, selected: Boolean, onSelect: () -> Uni
         group?.name?.text() ?: stringResource(R.string.mode_direct),
         if (group == null) stringResource(R.string.rv_policy_no_proxy) else group.selected?.name ?: stringResource(group.kind.label),
         pick,
+        titleKeepWords = false,
+        subtitleKeepWords = false,
+        endFirstLine = true,
+    ) { RvRadio(selected) }
+}
+
+/** 拒絕: the flow is refused, as the rules card draws a rule that ends there. */
+@Composable
+private fun Block(selected: Boolean, onSelect: () -> Unit) {
+    RvRow(
+        { RvIconDisc(R.drawable.rv_sym_block) },
+        stringResource(R.string.rv_policy_reject),
+        stringResource(R.string.rv_policy_block_line),
+        Modifier.rvRowSelect(selected, onSelect),
         titleKeepWords = false,
         subtitleKeepWords = false,
         endFirstLine = true,

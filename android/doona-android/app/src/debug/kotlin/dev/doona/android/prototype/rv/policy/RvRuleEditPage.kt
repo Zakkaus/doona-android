@@ -24,6 +24,9 @@ import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvChoiceLine
 import dev.doona.android.designsystem.rv.RvConfirmSheet
+import dev.doona.android.designsystem.rv.RvDiffAt
+import dev.doona.android.designsystem.rv.RvDiffFile
+import dev.doona.android.designsystem.rv.RvFootnote
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLargeTitle
@@ -32,6 +35,7 @@ import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSectionTitle
 import dev.doona.android.designsystem.rv.RvSegmented
+import dev.doona.android.designsystem.rv.RvSourceExcerpt
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSwitch
 import dev.doona.android.designsystem.rv.RvTextField
@@ -41,6 +45,7 @@ import dev.doona.android.designsystem.rv.rvRowToggle
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RV_DIRECT
 import dev.doona.android.feature.model.RvMatchKind
+import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvRuleMatch
 import dev.doona.android.feature.model.RvRuleState
@@ -48,7 +53,7 @@ import dev.doona.android.feature.policies.RvTargetCard
 
 /** A rule being edited: how it matches, the value it matches (none for GEOIP CN and private ranges), where, if on. */
 @Immutable
-internal data class RvRuleDraft(val kind: RvMatchKind, val value: String, val targetId: String, val enabled: Boolean = true) {
+internal data class RvRuleDraft(val kind: RvMatchKind, val value: String, val targetId: String, val enabled: Boolean = true, val must: Boolean = false) {
     val needsValue: Boolean get() = kind !in NO_VALUE
 
     /** Why the value cannot be applied, or null: missing, or not a domain or IP range of the kind's form. */
@@ -80,6 +85,13 @@ internal data class RvRuleDraft(val kind: RvMatchKind, val value: String, val ta
     }
 }
 
+/**
+ * A native honk statement on its page: its place, [index] of [count] in its list, and with [statement] the lines as
+ * written, for a match the form cannot represent (config plan: such a form opens its exact source instead).
+ */
+@Immutable
+internal data class RvNativeRuleAt(val index: Int, val count: Int, val statement: RvDiffFile? = null)
+
 private val NO_VALUE = setOf(RvMatchKind.GeoIpCn, RvMatchKind.Private)
 
 /** The slider's two sets of kinds: a domain's three, as the quick rule offers them, and an address's three. */
@@ -93,10 +105,23 @@ private val DOMAIN = Regex("""[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*""")
  * over the three kinds of the rule's own set (a domain's: 完整網域, 網域後綴, 關鍵字; an address's: IP 範圍, GEOIP CN, 私有
  * IP 位址), then the value in the library's text field (none for GEOIP CN and private ranges), and one line on
  * what the rule covers, or what is wrong with the value; 送往, the quick rule's list; a card with 啟用 and 刪除規則,
- * which asks first; and 套用 floating at the bottom, off while the value is wrong.
+ * which asks first; and 套用 floating at the bottom, off while the value is wrong. A [native] honk statement adds 拒絕
+ * to 送往, 所有模式都生效 (`must`) under 啟用 (which pauses and resumes it) and 位置 with 上移 and 下移 ([onMove] gets the
+ * new place); a match the form cannot represent is shown as its source lines instead of the slider, and a line opens
+ * the editor there ([onOpenSource]).
  */
 @Composable
-internal fun RvRuleEditPage(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit, onBack: () -> Unit, onApply: () -> Unit, onDelete: () -> Unit) {
+internal fun RvRuleEditPage(
+    draft: RvRuleDraft,
+    onChange: (RvRuleDraft) -> Unit,
+    onBack: () -> Unit,
+    onApply: () -> Unit,
+    onDelete: () -> Unit,
+    targets: List<RvPolicyGroup> = rvSampleTargets,
+    native: RvNativeRuleAt? = null,
+    onMove: (Int) -> Unit = {},
+    onOpenSource: (RvDiffAt) -> Unit = {},
+) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     var confirming by rememberSaveable { mutableStateOf(false) }
     val title = stringResource(R.string.rv_rule_edit_title)
@@ -104,20 +129,32 @@ internal fun RvRuleEditPage(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit,
         title,
         insets,
         onBack = onBack,
-        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply, enabled = draft.problem == null) },
+        // A statement the form shows as source keeps its match, so only the form's own value can hold 套用 back.
+        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply, enabled = native?.statement != null || draft.problem == null) },
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         RvSectionTitle(stringResource(R.string.rv_policy_match_by), Modifier.padding(horizontal = RvSpace.gutter), first = true)
-        MatchFields(draft, onChange)
+        val statement = native?.statement
+        if (statement == null) {
+            MatchFields(draft, onChange)
+        } else {
+            RvGutter { RvSourceExcerpt(statement.source, statement.hunks.first(), onOpenSource) }
+            RvFootnote(stringResource(R.string.rv_rule_edit_match_in_source))
+        }
         RvSectionTitle(stringResource(R.string.rv_policy_send_to), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {
-            RvTargetCard(rvSampleTargets, draft.targetId) { onChange(draft.copy(targetId = it)) }
+            RvTargetCard(targets, draft.targetId, block = native != null) { onChange(draft.copy(targetId = it)) }
             RvCard {
                 val toggle = Modifier.rvRowToggle(draft.enabled) { onChange(draft.copy(enabled = it)) }
                 RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, stringResource(R.string.rv_rule_edit_enabled), null, toggle) { RvSwitch(draft.enabled) }
+                if (native != null) {
+                    val must = Modifier.rvRowToggle(draft.must) { onChange(draft.copy(must = it)) }
+                    RvRow({ RvIconDisc(R.drawable.rv_sym_vpn_lock) }, stringResource(R.string.rv_rule_edit_must), null, must) { RvSwitch(draft.must) }
+                }
                 RvRow({ RvIconDisc(R.drawable.rv_sym_delete) }, stringResource(R.string.rv_rule_edit_delete), null, onClick = { confirming = true })
             }
         }
+        if (native != null) Position(native, onMove)
     }
     RvConfirmSheet(
         visible = confirming,
@@ -132,6 +169,19 @@ internal fun RvRuleEditPage(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit,
         onDismiss = { confirming = false },
         bodyKeepWords = false,
     )
+}
+
+/** 位置: 上移 and 下移 where the statement can go, and its place under the card. */
+@Composable
+private fun Position(at: RvNativeRuleAt, onMove: (Int) -> Unit) {
+    RvSectionTitle(stringResource(R.string.rv_rule_edit_position), Modifier.padding(horizontal = RvSpace.gutter))
+    RvGutter {
+        RvCard {
+            if (at.index > 1) RvRow({ RvIconDisc(R.drawable.rv_sym_arrow_upward) }, stringResource(R.string.rv_rule_edit_move_up), null, onClick = { onMove(at.index - 1) })
+            if (at.index < at.count) RvRow({ RvIconDisc(R.drawable.rv_sym_arrow_downward) }, stringResource(R.string.rv_rule_edit_move_down), null, onClick = { onMove(at.index + 1) })
+        }
+    }
+    RvFootnote(stringResource(R.string.rv_rule_edit_position_line, at.index, at.count))
 }
 
 /**
