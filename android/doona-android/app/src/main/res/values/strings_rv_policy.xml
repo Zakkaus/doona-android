@@ -13,6 +13,10 @@
         <item quantity="one">%1$d node</item>
         <item quantity="other">%1$d nodes</item>
     </plurals>
+    <plurals name="rv_policy_group_count">
+        <item quantity="one">%1$d group</item>
+        <item quantity="other">%1$d groups</item>
+    </plurals>
     <string name="rv_template_cn_direct_line">Mainland China sites connect directly</string>
     <string name="rv_policy_rules">Routing rules</string>
     <string name="rv_policy_rules_order">Rules are checked from the top; the first match applies</string>
@@ -29,6 +33,8 @@
     <string name="rv_policy_lan_kind">Private IP addresses</string>
     <string name="rv_policy_rest">Everything else</string>
     <string name="rv_policy_rest_kind">Matched no rule above</string>
+    <string name="rv_rule_geoip" translatable="false">GEOIP</string>
+    <string name="rv_rule_geosite" translatable="false">GEOSITE</string>
     <string name="rv_policy_template">Template</string>
     <string name="rv_policy_template_value">Bypass mainland China</string>
     <string name="rv_policy_new_rule">Create rule</string>
@@ -173,4 +179,21 @@
     <string name="rv_network_both">TCP/UDP</string>
     <string name="rv_score_udp_unsupported">%1$s does not support UDP</string>
     <string name="rv_score_udp_failed">UDP test failed</string>
+    <string name="rv_template_apply_failed">Could not apply the template</string>
+    <string name="rv_template_read_failed">Could not read the templates</string>
+    <string name="rv_policy_failed_quic">Could not change Block QUIC</string>
+    <string name="rv_policy_failed_update">Could not update the subscriptions</string>
+    <string name="rv_policy_failed_ads">Could not change Block ads</string>
+    <string name="rv_network_apply_to">Apply to</string>
+    <string name="rv_group_by_stability">By stability</string>
+    <string name="rv_group_by_name">By name</string>
+    <string name="rv_group_by_region">By region</string>
+    <string name="rv_group_no_match">No matching nodes</string>
+    <string name="rv_group_empty">This group has no nodes</string>
+    <string name="rv_group_empty_line">Add nodes to this group in the configuration.</string>
+    <string name="rv_group_apart">Choose TCP/UDP apart</string>
+    <string name="rv_policy_reject">Reject</string>
+    <string name="rv_policy_target_missing">Group not found</string>
+    <string name="rv_policy_read_failed">Could not read the policies</string>
+    <string name="rv_group_read_failed">Could not read the group</string>
 </resources>

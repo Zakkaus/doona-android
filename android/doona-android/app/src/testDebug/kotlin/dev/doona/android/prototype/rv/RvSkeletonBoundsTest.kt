@@ -25,10 +25,9 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.perapp.RvPerAppScreen
+import dev.doona.android.feature.policies.RvPolicyScreen
 import dev.doona.android.feature.subscriptions.RvSubsActions
 import dev.doona.android.feature.subscriptions.RvSubsPage
-import dev.doona.android.feature.subscriptions.RvSubsState
-import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.settings.RvPerAppLook
 import dev.doona.android.prototype.rv.settings.RvPerAppLookScreen

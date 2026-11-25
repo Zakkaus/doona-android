@@ -24,17 +24,12 @@ import dev.doona.android.designsystem.rv.RvSearchSlot
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.model.text
 import dev.doona.android.feature.nodes.ui.RvNodeSection
 import dev.doona.android.feature.nodes.ui.RvRowsComposed
 import dev.doona.android.feature.nodes.ui.matches
+import dev.doona.android.feature.policies.RV_SECTIONS_OPEN_UP_TO
 import dev.doona.android.prototype.rv.data.RvData
-
-/**
- * A group with this many subscriptions or fewer lists every one open; with more, only the section that holds the chosen
- * node starts open. Two sections are about a screenful, so the nodes are in reach by scrolling; from three on a page of
- * open sections is several screens, and the 訂閱 rows are the index to find a section by.
- */
-internal const val RV_SECTIONS_OPEN_UP_TO = 2
 
 /**
  * nbmany v2, the selector group's page built like the node picker (節點): the page's title and caption, the chosen node's
@@ -46,7 +41,7 @@ internal const val RV_SECTIONS_OPEN_UP_TO = 2
 @Composable
 internal fun RvGroupSectionsPage(group: RvPolicyGroup, subscriptions: List<RvSubscription>, modifier: Modifier = Modifier, query: String = "") {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    val name = stringResource(group.name)
+    val name = group.name.text()
     var typed by remember { mutableStateOf(query) }
     var chosen by remember { mutableStateOf(group.selectedId) }
     val labels = group.members.associate { it.id to stringResource(it.place.label) }

@@ -14,6 +14,7 @@ import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RuleRow
 import dev.doona.android.engine.RuleSource
 import dev.doona.android.engine.RuleTarget
+import dev.doona.android.engine.RuleTemplate
 import dev.doona.android.engine.Usage
 
 /**
@@ -23,6 +24,15 @@ import dev.doona.android.engine.Usage
  */
 object FakeRuleMode {
     const val TEMPLATE = "cn-direct"
+
+    /** doona web's five routing modes, as the approved 範本 page lists them; the installed data lacks GFW's GeoSite list. */
+    val TEMPLATES = listOf(
+        RuleTemplate(TEMPLATE),
+        RuleTemplate("services"),
+        RuleTemplate("regions"),
+        RuleTemplate("homebound"),
+        RuleTemplate("gfw", needsGeosite = true),
+    )
     const val MAIN_GROUP_ID = "g-Proxy"
     private const val STREAMING = "g-Streaming"
     private const val AI = "g-AI"

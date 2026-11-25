@@ -44,9 +44,7 @@ fun sampleEngine() = FakeEngine(groups = FakeEngine.SAMPLE_GROUPS, status = Stat
  * Every screen of the app. A screen lane adds its screens here and so gets the spacing check and the goldens; it also
  * states the screen's [PageLayout], which the check holds the rendered page to.
  */
-internal fun screenCases(): List<ScreenCase> = appScreenCases() + policyScreenCases()
-
-private fun appScreenCases(): List<ScreenCase> {
+internal fun screenCases(): List<ScreenCase> {
     val engine = sampleEngine()
     val apps = FakeInstalledApps()
     val space = DoonaTheme.spacing

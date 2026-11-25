@@ -43,19 +43,20 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvSharedFlag
+import dev.doona.android.feature.model.RV_INLINE_KEY
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSubscription
 import kotlinx.coroutines.flow.first
 
 /**
- * One subscription: its 訂閱 row, then its nodes. The row opens and closes the group (always open while searching); the
+ * One subscription, or with no [sub] the nodes added by hand (組態內): its 訂閱 row, then its nodes. The row opens and closes the group (always open while searching); the
  * group folds away when none of its nodes match. The pieces of the node picker and of a policy group's page, which lists
  * its nodes the same way: the group starts open unless [initiallyOpen] is false. A page that marks its rows its own way
  * (a name's emoji drawn as our icons, the network a node is chosen on) draws them with [row] in place of [RvNodePickRow].
  */
 @Composable
 internal fun RvNodeSection(
-    sub: RvSubscription,
+    sub: RvSubscription?,
     members: List<RvNode>,
     matching: Set<String>,
     labels: Map<String, String>,
@@ -73,13 +74,17 @@ internal fun RvNodeSection(
     val limit = rows.composed() - rows.first
     if (limit <= 0) return
     val motion = Rv.motion
-    var open by rememberSaveable(sub.id) { mutableStateOf(initiallyOpen) }
+    var open by rememberSaveable(sub?.id ?: RV_INLINE_KEY) { mutableStateOf(initiallyOpen) }
     val fold = motion.tween<Float>(RvMotion.MOVE_MS)
     val size = motion.tween<IntSize>(RvMotion.MOVE_MS)
     AnimatedVisibility(members.any { it.id in matching }, modifier, enter = fadeIn(fold) + expandVertically(size), exit = fadeOut(fold) + shrinkVertically(size)) {
         Column(Modifier.padding(horizontal = RvSpace.gutter)) {
             RvCard {
-                RvSubscriptionFold(sub, open || searching, enabled = !searching, nowEpochMs) { open = !open }
+                if (sub != null) {
+                    RvSubscriptionFold(sub, open || searching, enabled = !searching, nowEpochMs) { open = !open }
+                } else {
+                    RvInlineFold(members.size, open || searching, enabled = !searching) { open = !open }
+                }
                 AnimatedVisibility(open || searching, enter = expandVertically(size), exit = shrinkVertically(size)) {
                     Column {
                         members.forEachIndexed { order, node ->
@@ -98,6 +103,23 @@ internal fun RvNodeSection(
             Spacer(Modifier.height(RvSpace.cardGap))
         }
     }
+}
+
+/**
+ * The 組態內 section's row: the nodes added by hand, which no subscription holds, and how many there are, with the
+ * chevron of a subscription's row; it has no use, quota or menu.
+ */
+@Composable
+internal fun RvInlineFold(count: Int, open: Boolean, enabled: Boolean, onToggle: () -> Unit) {
+    RvFoldRow(
+        R.drawable.rv_sym_link,
+        stringResource(R.string.rv_nodes_inline),
+        pluralStringResource(R.plurals.rv_nodes_nodes, count, count),
+        "",
+        open,
+        enabled,
+        onToggle,
+    )
 }
 
 /**

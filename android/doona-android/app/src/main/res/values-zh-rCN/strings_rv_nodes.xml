@@ -96,4 +96,5 @@
     <string name="rv_nodes_sort_region">地区</string>
     <string name="rv_nodes_stability">稳定 %1$d/%2$d</string>
     <string name="rv_nodes_timed_out">超时</string>
+    <string name="rv_nodes_inline">配置内</string>
 </resources>

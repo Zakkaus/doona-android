@@ -4,16 +4,35 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import dev.doona.android.R
 
-/** A policy group: its id, its name as the profile gives it, how it picks, its nodes and the one it uses now. */
+/**
+ * A policy group: its id, its name as the profile gives it, how it picks, its node members, the groups among its members
+ * ([groups]) and the member it uses now ([selectedId], a node or a group). honk lets a group list nodes and groups in any
+ * mix, or nothing at all, so [selected] is the node its traffic goes through: the chosen node, the node the chosen group
+ * ends on, or null when the choice leads to no node.
+ */
 @Immutable
-internal class RvPolicyGroup(val id: String, @StringRes val name: Int, val kind: RvGroupKind, val members: List<RvNode>, val selectedId: String) {
-    val selected: RvNode = members.first { it.id == selectedId }
+internal class RvPolicyGroup(
+    val id: String,
+    val name: RvLabel,
+    val kind: RvGroupKind,
+    val members: List<RvNode>,
+    val selectedId: String,
+    val groups: List<RvMemberGroup> = emptyList(),
+) {
+    val selected: RvNode? = members.firstOrNull { it.id == selectedId } ?: groups.firstOrNull { it.id == selectedId }?.node
 
-    /** The members fastest first by their last test; a node whose last test timed out comes last. */
+    /** The node members fastest first by their last test; a node whose last test timed out comes last. */
     val byLatency: List<RvNode> = members.sortedWith(compareBy(nullsLast()) { it.latencyMs })
 
-    fun choosing(nodeId: String) = RvPolicyGroup(id, name, kind, members, nodeId)
+    /** The node [memberId] stands for: a node member itself, or the node a member group ends on. */
+    fun nodeOf(memberId: String): RvNode? = members.firstOrNull { it.id == memberId } ?: groups.firstOrNull { it.id == memberId }?.node
+
+    fun choosing(memberId: String) = RvPolicyGroup(id, name, kind, members, memberId, groups)
 }
+
+/** A group listed as another group's member: its id, its name, how it picks, and the node its own choice ends on (null for none). */
+@Immutable
+internal data class RvMemberGroup(val id: String, val name: RvLabel, val kind: RvGroupKind, val node: RvNode?)
 
 /** What a rule matches. */
 internal sealed interface RvRuleMatch {
@@ -49,9 +68,24 @@ internal enum class RvMatchKind(@StringRes val label: Int) {
 /** Whether a rule routes: in use, turned off by the user, or skipped because the core cannot match it yet (D34). */
 internal enum class RvRuleState { On, Off, Skipped }
 
-/** A rule as the 策略 page lists it: what it matches, the group it sends to (null is 直連), and its bytes today. */
+/**
+ * Where a rule's flows end when it names no group of the profile: sent out directly (直連), refused (拒絕, honk's REJECT),
+ * or sent to a group the profile does not have, which the page names as missing rather than as 直連.
+ */
+internal enum class RvRuleEnd { Direct, Reject, Missing }
+
+/**
+ * A rule as the 策略 page lists it: what it matches, the group it sends to, and its bytes today. With no [group], [end]
+ * says where its flows end.
+ */
 @Immutable
-internal class RvPolicyRule(val match: RvRuleMatch, val group: RvPolicyGroup?, val bytes: Long, val state: RvRuleState = RvRuleState.On)
+internal class RvPolicyRule(
+    val match: RvRuleMatch,
+    val group: RvPolicyGroup?,
+    val bytes: Long,
+    val state: RvRuleState = RvRuleState.On,
+    val end: RvRuleEnd = RvRuleEnd.Direct,
+)
 
 /**
  * The page's own state: the mode, the two switches, each selector's choice where the user changed it, and the order of

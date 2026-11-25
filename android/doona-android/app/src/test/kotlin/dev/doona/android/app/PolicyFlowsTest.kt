@@ -1,11 +1,10 @@
 package dev.doona.android.app
 
 import android.content.Context
-import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
-import androidx.compose.ui.test.hasProgressBarRangeInfo
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isEnabled
@@ -14,6 +13,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.navigation3.runtime.NavKey
 import androidx.test.core.app.ApplicationProvider
@@ -53,6 +53,8 @@ class PolicyFlowsTest {
     /** Whether the welcome page is drawn; its title is both the large title and the bar's. */
     private fun welcomeShown() = compose.onAllNodesWithText(welcome).fetchSemanticsNodes().isNotEmpty()
 
+    private fun shows(text: String) = compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+
     private val url = "https://example.invalid/x"
 
     private fun string(id: Int, vararg args: Any): String = ApplicationProvider.getApplicationContext<Context>().getString(id, *args)
@@ -80,46 +82,33 @@ class PolicyFlowsTest {
     }
 
     @Test
-    fun `a chip for a group inside opens that group's page, and back returns to the parent`() {
-        show(FakeEngine(), ActivityKey, PoliciesKey, GroupKey("g-Proxy"))
-        compose.onNodeWithText("Groups inside").assertExists()
-
-        compose.onAllNodes(hasText("Auto") and hasClickAction())[0].performClick()
-        compose.onNodeWithText("Groups inside").assertDoesNotExist()
-        compose.onNodeWithText("Auto").assertExists()
-        compose.onNodeWithText("Test this group").assertExists()
-
-        compose.onNodeWithContentDescription("Back").performClick()
-        compose.onNodeWithText("Groups inside").assertExists()
-        compose.onNodeWithText("Proxy").assertExists()
-    }
-
-    @Test
-    fun `a tapped member is pinned in its group`() {
+    fun `a tapped node is chosen in its group`() {
         val engine = FakeEngine()
         show(engine, ActivityKey, PoliciesKey, GroupKey("g-Auto"))
-        compose.onNodeWithText("jp-01").performClick()
+        // The row's own click, not a tap at its centre, which a scroll can leave under the floating 測試群組.
+        compose.waitUntil(READ_MS) { shows("jp-01") }
+        compose.onNodeWithText("jp-01").performSemanticsAction(SemanticsActions.OnClick)
         compose.runOnIdle {
             val auto = engine.groups.value.single { it.id == "g-Auto" }
             assertEquals("n-85d011c7e5f60718", auto.selectedId)
             assertTrue(auto.pinned)
         }
-        compose.onNodeWithText("Return to automatic").assertExists()
     }
 
     @Test
-    fun `a group page waits with progress and a way back until the engine has loaded`() {
+    fun `a group page shows its name and a way back until the engine has loaded`() {
         // As the real engine is before it has loaded: no groups yet, so the one the page names is not known to exist.
         val engine = FakeEngine(groups = emptyList()).apply { ready.value = false }
         show(engine, ActivityKey, PoliciesKey, GroupKey("g-Proxy"))
         compose.onNodeWithContentDescription("Back").assertExists()
-        compose.onNode(hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate)).assertExists()
+        compose.onNodeWithText("Test this group").assertDoesNotExist()
 
         compose.runOnIdle {
             engine.groups.value = FakeEngine.SAMPLE_GROUPS
             engine.ready.value = true
         }
-        compose.onNodeWithText("Groups inside").assertExists()
+        // The page reads the engine off the main thread, which waitForIdle does not wait for.
+        compose.waitUntil(READ_MS) { shows("Test this group") }
     }
 
     @Test
@@ -173,3 +162,5 @@ class PolicyFlowsTest {
         const val DISCONNECT = "Disconnect"
     }
 }
+
+private const val READ_MS = 5_000L

@@ -16,6 +16,7 @@ import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.model.text
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
 
 /** One of a group's two networks, as the engine's `select(group, member, network)` takes it; null there is both. */
@@ -124,7 +125,7 @@ internal fun RvNetworkPicker(
         onPick = onPick,
         onDetail = {},
         onClose = {},
-        title = stringResource(group.name),
+        title = group.name.text(),
         caption = network?.let { stringResource(it.label) + SEPARATOR + caption } ?: caption,
     )
 }

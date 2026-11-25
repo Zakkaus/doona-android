@@ -1,7 +1,5 @@
 package dev.doona.android.feature.policies
 
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.ViewModelStore
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
@@ -9,14 +7,22 @@ import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Network
+import dev.doona.android.engine.NodeInfo
+import dev.doona.android.engine.ScoreCounters
+import dev.doona.android.engine.ScoreCoverage
+import dev.doona.android.engine.ScoreGroup
+import dev.doona.android.engine.ScoreNetwork
+import dev.doona.android.engine.ScoreState
 import dev.doona.android.engine.fake.FakeEngine
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -36,225 +42,306 @@ class GroupViewModelTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    /** `WhileSubscribed` only follows the engine while someone collects, as the screen does. */
-    private fun TestScope.collected(engine: Engine, groupId: String) = GroupViewModel(engine, groupId).also { vm ->
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
-    }
+    /** `WhileSubscribed` only follows the engine while someone collects, as the screen does; reads run in the test. */
+    private fun TestScope.collected(engine: Engine, groupId: String = SELECTOR) =
+        GroupViewModel(engine, groupId, clock = { NOW }, reads = UnconfinedTestDispatcher(testScheduler)).also { vm ->
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        }
 
-    /** An engine whose select and probe answer with [result], recording what they were asked. */
-    private class Answering(var result: Result<Unit>, val base: FakeEngine = FakeEngine()) : Engine by base {
-        val selected = mutableListOf<Pair<String, String?>>()
-        val probed = mutableListOf<String?>()
+    /** A selector and a Score group over three nodes, recording the selects and probes and answering them with [result]. */
+    private class Recording(udpId: String = "n1", private val base: FakeEngine = FakeEngine(groups(udpId))) : Engine by base {
+        var result: Result<Unit> = Result.success(Unit)
+        val calls = mutableListOf<String>()
+        var failNodes = false
+        var score: Result<ScoreState> = Result.success(ScoreState(0, listOf(evidence(2))))
+        var scoreReads = 0
+
+        override suspend fun scoreState(): Result<ScoreState> {
+            scoreReads++
+            return score
+        }
+
+        override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> =
+            if (failNodes) Result.failure(IllegalStateException("nodes")) else base.nodes(ids)
 
         override suspend fun select(groupId: String, memberId: String?, network: Network?): Result<Unit> {
-            selected += groupId to memberId
+            calls += "select $groupId $memberId $network"
             return if (result.isSuccess) base.select(groupId, memberId, network) else result
         }
 
         override suspend fun testLatency(groupId: String?): Result<Unit> {
-            probed += groupId
+            calls += "test $groupId"
             return result
         }
-    }
 
-    private fun failure(code: ErrorCode = ErrorCode.Busy) = Result.failure<Unit>(EngineException(code))
+        companion object {
+            private val members = listOf("n1", "n2", "n3").map { Member(it, "Node $it", latencyMs = 40, subscriptionId = "s1") }
 
-    @Test
-    fun `shows the group, what it uses now and the node under it`() = runTest {
-        val detail = collected(FakeEngine(), "g-Proxy").uiState.value.detail
-        assertNotNull(detail)
-        assertEquals("Proxy", detail!!.group.name)
-        assertEquals("g-Auto", detail.current?.id)
-        assertEquals("n-369a8a63c1d2e3f4", detail.currentNode?.id)
-    }
-
-    @Test
-    fun `lists the groups inside first and the nodes fastest first, untested and failed last`() = runTest {
-        val members = listOf(
-            Member("n-slow", "slow", latencyMs = 80),
-            Member("n-untested", "untested"),
-            Member("g-Inner", "Inner", isGroup = true),
-            Member("n-fast", "fast", latencyMs = 20),
-            Member("n-failed", "failed", failed = true),
-        )
-        val outer = Group("g-Outer", "Outer", GroupKind.Selector, members, selectedId = "n-fast")
-        val inner = Group("g-Inner", "Inner", GroupKind.UrlTest, members.take(1), selectedId = "n-slow")
-        val detail = collected(FakeEngine(groups = listOf(outer, inner)), "g-Outer").uiState.value.detail!!
-        assertEquals(listOf("g-Inner", "n-fast", "n-slow", "n-untested", "n-failed"), detail.members.map { it.member.id })
-        assertEquals(listOf("g-Inner"), detail.subGroups.map { it.id })
-        assertEquals("n-slow", detail.members.first().node?.id)
+            fun groups(udpId: String) = listOf(
+                Group(SELECTOR, "Streaming", GroupKind.Selector, members, Group.Selection("n1", true), Group.Selection(udpId, true)),
+                Group(SCORE, "Score", GroupKind.Score, members, Group.Selection("n1", false), Group.Selection("n2", false)),
+            )
+        }
     }
 
     @Test
-    fun `an unknown group has no page once the engine is ready`() = runTest {
-        val state = collected(FakeEngine(), "g-Gone").uiState.value
-        assertNull(state.detail)
-        assertTrue(state.ready)
+    fun `shows the group, its subscription and each network's node`() = runTest {
+        val state = collected(Recording(udpId = "n3")).uiState.value
+        assertFalse(state.loading)
+        assertEquals(listOf("n1", "n2", "n3"), state.group!!.members.map { it.id })
+        assertEquals(listOf("s1"), state.subscriptions.map { it.id })
+        val choice = state.choice!!
+        assertEquals("n1" to "n3", choice.tcpId to choice.udpId)
+        assertTrue(choice.apart)
+        assertFalse(state.isScore)
+        assertEquals(NOW, state.nowEpochMs)
     }
 
     @Test
-    fun `a group that disappears leaves the page empty`() = runTest {
-        val engine = FakeEngine()
-        val vm = collected(engine, "g-HK")
-        assertNotNull(vm.uiState.value.detail)
-        engine.groups.value = engine.groups.value.filterNot { it.id == "g-HK" }
-        assertNull(vm.uiState.value.detail)
+    fun `a tap with the switch off selects the node on both networks`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine)
+        assertFalse(vm.uiState.value.choice!!.apart)
+        vm.onTap("n2")
+        assertEquals(listOf("select $SELECTOR n2 null"), engine.calls)
+        assertEquals("n2" to "n2", vm.uiState.value.choice!!.let { it.tcpId to it.udpId })
     }
 
     @Test
-    fun `selecting a member pins it`() = runTest {
-        val engine = Answering(Result.success(Unit))
-        val vm = collected(engine, "g-Proxy")
-        vm.onAction(GroupAction.Select("n-c2f5a8e1b3c4d5e6"))
-        assertEquals(listOf("g-Proxy" to "n-c2f5a8e1b3c4d5e6"), engine.selected)
-        val group = vm.uiState.value.detail!!.group
-        assertEquals("n-c2f5a8e1b3c4d5e6", group.selectedId)
-        assertTrue(group.pinned)
-        assertNull(vm.uiState.value.error)
+    fun `a tap with the switch on selects for the network 套用到 names`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine)
+        vm.onApart(true)
+        vm.onApply(RvApplyTo.Both)
+        vm.onTap("n2")
+        vm.onApply(RvApplyTo.Tcp)
+        vm.onTap("n3")
+        vm.onApply(RvApplyTo.Udp)
+        vm.onTap("n1")
+        val expected = listOf("select $SELECTOR n2 null", "select $SELECTOR n3 Tcp", "select $SELECTOR n1 Udp")
+        assertEquals(expected, engine.calls)
+        assertEquals("n3" to "n1", vm.uiState.value.choice!!.let { it.tcpId to it.udpId })
+        assertTrue(vm.uiState.value.choice!!.apart)
     }
 
     @Test
-    fun `a failed select shows its code and leaves the choice`() = runTest {
-        val vm = collected(Answering(failure(ErrorCode.NotFound)), "g-Proxy")
-        vm.onAction(GroupAction.Select("n-c2f5a8e1b3c4d5e6"))
-        assertEquals(ErrorCode.NotFound, vm.uiState.value.error)
-        assertEquals("g-Auto", vm.uiState.value.detail!!.group.selectedId)
-        vm.onAction(GroupAction.DismissError)
-        assertNull(vm.uiState.value.error)
+    fun `a tap in a Score group chooses nothing`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine, SCORE)
+        assertTrue(vm.uiState.value.isScore)
+        vm.onTap("n3")
+        assertEquals(emptyList<String>(), engine.calls)
     }
 
     @Test
-    fun `an automatic group offers the way back only while pinned`() = runTest {
-        val vm = collected(FakeEngine(), "g-Auto")
-        assertFalse(vm.uiState.value.detail!!.canReturnToAutomatic)
-        vm.onAction(GroupAction.Select("n-85d011c7e5f60718"))
-        assertTrue(vm.uiState.value.detail!!.canReturnToAutomatic)
+    fun `a failed first read shows its failure, and 重試 reads again`() = runTest {
+        val engine = Recording().apply { failNodes = true }
+        val vm = collected(engine)
+        assertFalse("no endless skeleton", vm.uiState.value.loading)
+        assertEquals(GroupFailure(GroupAction.Read, ErrorCode.Internal), vm.uiState.value.failure)
+        engine.failNodes = false
+        vm.retry()
+        assertNotNull(vm.uiState.value.group)
+        assertNull(vm.uiState.value.failure)
     }
 
     @Test
-    fun `a selector never offers a way back to automatic`() = runTest {
-        val vm = collected(FakeEngine(), "g-Proxy")
-        vm.onAction(GroupAction.Select("n-85d011c7e5f60718"))
-        assertFalse(vm.uiState.value.detail!!.canReturnToAutomatic)
+    fun `a failed read keeps the group shown and says so, and 重試 reads again`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine)
+        engine.failNodes = true
+        engine.select(SELECTOR, "n2", null)
+        assertNotNull(vm.uiState.value.group)
+        assertEquals(GroupFailure(GroupAction.Read, ErrorCode.Internal), vm.uiState.value.failure)
+        engine.failNodes = false
+        vm.retry()
+        assertNull(vm.uiState.value.failure)
     }
 
     @Test
-    fun `return to automatic hands the group back to its own choice`() = runTest {
-        val engine = Answering(Result.success(Unit))
-        val vm = collected(engine, "g-Auto")
-        vm.onAction(GroupAction.Select("n-85d011c7e5f60718"))
-        vm.onAction(GroupAction.ReturnToAutomatic)
-        assertEquals("g-Auto" to null, engine.selected.last())
-        assertFalse(vm.uiState.value.detail!!.group.pinned)
-        assertNull(vm.uiState.value.error)
+    fun `turning a Score group's switch off pins TCP's node on both networks, and on hands them back to Score`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine, SCORE)
+        assertTrue(vm.uiState.value.choice!!.apart)
+        vm.onApart(false)
+        assertEquals(listOf("select $SCORE n1 null"), engine.calls)
+        val off = vm.uiState.value.choice!!
+        assertFalse("the tap visibly turns the switch off", off.apart)
+        assertEquals("n1" to "n1", off.tcpId to off.udpId)
+        vm.onApart(true)
+        assertEquals(listOf("select $SCORE n1 null", "select $SCORE null null"), engine.calls)
+        assertTrue(vm.uiState.value.choice!!.apart)
     }
 
     @Test
-    fun `a failed return to automatic keeps the pin and shows its code`() = runTest {
-        val engine = Answering(Result.success(Unit))
-        val vm = collected(engine, "g-Auto")
-        vm.onAction(GroupAction.Select("n-85d011c7e5f60718"))
-        engine.result = failure(ErrorCode.Internal)
-        vm.onAction(GroupAction.ReturnToAutomatic)
-        assertEquals(ErrorCode.Internal, vm.uiState.value.error)
-        assertTrue(vm.uiState.value.detail!!.group.pinned)
+    fun `turning on the switch of a Score group with no pin calls nothing`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine, SCORE)
+        vm.onApart(true)
+        assertEquals(emptyList<String>(), engine.calls)
     }
 
     @Test
-    fun `test probes this group only`() = runTest {
-        val engine = Answering(Result.success(Unit))
-        val vm = collected(engine, "g-HK")
-        vm.onAction(GroupAction.Test)
-        assertEquals(listOf<String?>("g-HK"), engine.probed)
-        assertNull(vm.uiState.value.error)
+    fun `turning the switch off sends UDP back to TCP's node`() = runTest {
+        val engine = Recording(udpId = "n3")
+        val vm = collected(engine)
+        vm.onApart(false)
+        assertEquals(listOf("select $SELECTOR n1 Udp"), engine.calls)
+        val choice = vm.uiState.value.choice!!
+        assertEquals("n1" to "n1", choice.tcpId to choice.udpId)
+        assertFalse(choice.apart)
     }
 
     @Test
-    fun `a failed test shows its code and a later success clears it`() = runTest {
-        val engine = Answering(failure(ErrorCode.Busy))
-        val vm = collected(engine, "g-HK")
-        vm.onAction(GroupAction.Test)
-        assertEquals(ErrorCode.Busy, vm.uiState.value.error)
+    fun `turning the switch off with one node on both networks calls nothing`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine)
+        vm.onApart(true)
+        vm.onApart(false)
+        assertEquals(emptyList<String>(), engine.calls)
+    }
+
+    @Test
+    fun `testing probes this group`() = runTest {
+        val engine = Recording()
+        collected(engine).onTest()
+        assertEquals(listOf("test $SELECTOR"), engine.calls)
+    }
+
+    @Test
+    fun `a failure shows until the next action succeeds`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine)
+        engine.result = Result.failure(EngineException(ErrorCode.NotFound))
+        vm.onTap("n2")
+        assertEquals(GroupFailure(GroupAction.Select, ErrorCode.NotFound), vm.uiState.value.failure)
+        assertEquals("n1", vm.uiState.value.choice!!.tcpId)
         engine.result = Result.success(Unit)
-        vm.onAction(GroupAction.Test)
-        assertNull(vm.uiState.value.error)
+        vm.onTest()
+        assertNull(vm.uiState.value.failure)
     }
 
     @Test
-    fun `follows the probe while it runs`() = runTest {
-        val engine = FakeEngine()
-        val vm = collected(engine, "g-Auto")
-        assertFalse(vm.uiState.value.detail!!.group.testing)
-        engine.groups.value = engine.groups.value.map { it.copy(testing = it.id == "g-Auto") }
-        assertTrue(vm.uiState.value.detail!!.group.testing)
-    }
-
-    /** An engine whose first select waits for [gate]; every call is logged as start and end. */
-    private class SlowFirstSelect(val gate: CompletableDeferred<Unit>, val base: FakeEngine = FakeEngine()) : Engine by base {
-        val log = mutableListOf<String>()
-        private var calls = 0
-
-        override suspend fun select(groupId: String, memberId: String?, network: Network?): Result<Unit> {
-            log += "start $memberId"
-            if (calls++ == 0) gate.await()
-            return base.select(groupId, memberId, network).also { log += "end $memberId" }
-        }
-
-        override suspend fun testLatency(groupId: String?): Result<Unit> {
-            log += "test $groupId"
-            return Result.success(Unit)
-        }
+    fun `retry hands the failed call over again, as it was made`() = runTest {
+        val engine = Recording("n2")
+        val vm = collected(engine)
+        vm.onApply(RvApplyTo.Udp)
+        engine.result = Result.failure(EngineException(ErrorCode.Busy))
+        vm.onTap("n3")
+        engine.result = Result.success(Unit)
+        vm.retry()
+        assertEquals(listOf("select $SELECTOR n3 Udp", "select $SELECTOR n3 Udp"), engine.calls)
+        assertNull(vm.uiState.value.failure)
+        assertEquals("n3", vm.uiState.value.choice!!.udpId)
     }
 
     @Test
-    fun `taps are handed to the engine at once and in tap order`() = runTest {
-        val gate = CompletableDeferred<Unit>()
-        val engine = SlowFirstSelect(gate)
-        val vm = collected(engine, "g-Proxy")
-        vm.onAction(GroupAction.Select("n-369a8a63c1d2e3f4"))
-        vm.onAction(GroupAction.Select("n-c2f5a8e1b3c4d5e6"))
-        assertEquals(listOf("start n-369a8a63c1d2e3f4", "start n-c2f5a8e1b3c4d5e6"), engine.log.filter { it.startsWith("start") })
-        gate.complete(Unit)
+    fun `retry with nothing failed calls nothing`() = runTest {
+        val engine = Recording()
+        collected(engine).retry()
+        assertTrue(engine.calls.isEmpty())
     }
 
     @Test
-    fun `a select, a return to automatic and a test are handed over in tap order`() = runTest {
-        val gate = CompletableDeferred<Unit>()
-        val engine = SlowFirstSelect(gate)
-        val vm = collected(engine, "g-Auto")
-        vm.onAction(GroupAction.Select("n-85d011c7e5f60718"))
-        vm.onAction(GroupAction.ReturnToAutomatic)
-        vm.onAction(GroupAction.Test)
-        assertEquals(listOf("start n-85d011c7e5f60718", "start null", "test g-Auto"), engine.log.filter { !it.startsWith("end") })
-        gate.complete(Unit)
+    fun `the page knows while its group is being tested`() = runTest {
+        val base = FakeEngine(Recording.groups("n1"))
+        val vm = collected(base)
+        assertFalse(vm.uiState.value.testing)
+        base.groups.value = base.groups.value.map { if (it.id == SELECTOR) it.copy(testing = true) else it }
+        assertTrue(vm.uiState.value.testing)
     }
 
     @Test
-    fun `leaving the screen with a tap waiting does not lose it`() = runTest {
-        val gate = CompletableDeferred<Unit>()
-        val engine = SlowFirstSelect(gate)
-        val store = ViewModelStore()
-        val vm = ViewModelProvider(store, GroupViewModel.factory(engine, "g-Proxy"))[GroupViewModel::class.java]
-        vm.onAction(GroupAction.Select("n-369a8a63c1d2e3f4"))
-        vm.onAction(GroupAction.Select("n-c2f5a8e1b3c4d5e6"))
-        store.clear()
-        // The engine has both, in order, whether or not the screen is still there to see the answers.
-        assertEquals(listOf("start n-369a8a63c1d2e3f4", "start n-c2f5a8e1b3c4d5e6"), engine.log.filter { it.startsWith("start") })
-        gate.complete(Unit)
+    fun `an unknown group has no page once read`() = runTest {
+        val state = collected(Recording(), "g-Gone").uiState.value
+        assertFalse(state.loading)
+        assertNull(state.group)
+        assertNull(state.choice)
     }
 
     @Test
-    fun `a failed tap does not stop the taps behind it`() = runTest {
-        var calls = 0
-        val fake = FakeEngine()
-        val engine = object : Engine by fake {
-            override suspend fun select(groupId: String, memberId: String?, network: Network?): Result<Unit> =
-                if (calls++ == 0) failure(ErrorCode.Busy) else fake.select(groupId, memberId, network)
-        }
-        val vm = collected(engine, "g-Proxy")
-        vm.onAction(GroupAction.Select("n-369a8a63c1d2e3f4"))
-        vm.onAction(GroupAction.Select("n-c2f5a8e1b3c4d5e6"))
-        assertEquals("n-c2f5a8e1b3c4d5e6", vm.uiState.value.detail!!.group.selectedId)
-        assertNull(vm.uiState.value.error)
+    fun `a group among the members is listed as one, and a tap chooses it`() = runTest {
+        val nodes = listOf("n1", "n2").map { Member(it, "Node $it", latencyMs = 40, subscriptionId = "s1") }
+        val fast = Group("g-快", "快", GroupKind.UrlTest, nodes, selectedId = "n2")
+        val exit = Group("g-出口", "出口", GroupKind.Selector, listOf(Member("g-快", "快", isGroup = true), nodes[0]), selectedId = "n1")
+        val engine = Recording(base = FakeEngine(listOf(exit, fast)))
+        val vm = collected(engine, "g-出口")
+        val group = vm.uiState.value.group!!
+        assertEquals(listOf("n1"), group.members.map { it.id })
+        assertEquals(listOf("g-快"), group.groups.map { it.id })
+        assertEquals("n2", group.groups.single().node?.id)
+        vm.onTap("g-快")
+        assertEquals(listOf("select g-出口 g-快 null"), engine.calls)
+        assertEquals("g-快", vm.uiState.value.choice!!.tcpId)
+        assertEquals("n2", vm.uiState.value.group!!.selected?.id)
+    }
+
+    @Test
+    fun `a group with no member still has a page`() = runTest {
+        val engine = Recording(base = FakeEngine(listOf(Group("g-空", "空", GroupKind.Selector, emptyList(), selectedId = null))))
+        val state = collected(engine, "g-空").uiState.value
+        assertFalse(state.loading)
+        assertEquals("g-空", state.group?.id)
+        assertNull(state.group?.selected)
+    }
+
+    @Test
+    fun `a Score group shows what honk compared, and only a Score group reads it`() = runTest {
+        val engine = Recording()
+        assertNull(collected(engine).uiState.value.score)
+        assertEquals(0, engine.scoreReads)
+        val state = collected(engine, SCORE).uiState.value
+        assertEquals(evidence(2), state.score)
+    }
+
+    @Test
+    fun `a Score group's evidence is read again while its page is shown`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine, SCORE)
+        engine.score = Result.success(ScoreState(0, listOf(evidence(3))))
+        advanceTimeBy(GroupViewModel.SCORE_EVERY_MS + 1)
+        assertEquals(evidence(3), vm.uiState.value.score)
+    }
+
+    @Test
+    fun `a failed evidence read keeps what was compared and says so, and 重試 reads again`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine, SCORE)
+        engine.score = Result.failure(EngineException(ErrorCode.Busy))
+        advanceTimeBy(GroupViewModel.SCORE_EVERY_MS + 1)
+        assertEquals(evidence(2), vm.uiState.value.score)
+        assertEquals(GroupFailure(GroupAction.Read, ErrorCode.Busy), vm.uiState.value.failure)
+        engine.score = Result.success(ScoreState(0, listOf(evidence(4))))
+        vm.retry()
+        assertEquals(evidence(4), vm.uiState.value.score)
+        assertNull(vm.uiState.value.failure)
+    }
+
+    @Test
+    fun `a page restored before the engine loaded waits for the group's read, not only for ready`() = runTest {
+        val base = FakeEngine(emptyList()).apply { ready.value = false }
+        val reads = StandardTestDispatcher(testScheduler)
+        val vm = GroupViewModel(base, SELECTOR, clock = { NOW }, reads = reads)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        runCurrent()
+        base.groups.value = Recording.groups("n1")
+        base.ready.value = true
+        // The read of the catalog that has the group has not run yet: the one before found no such group.
+        assertTrue("a page still loading, not one whose group is gone", vm.uiState.value.loading)
+        runCurrent()
+        assertFalse(vm.uiState.value.loading)
+        assertEquals(SELECTOR, vm.uiState.value.group?.id)
+    }
+
+    private companion object {
+        const val SELECTOR = "g-Streaming"
+        const val SCORE = "g-Score"
+        const val NOW = 1_764_000_000_000L
+
+        /** What honk compared in [SCORE]: TCP on n1 against n3, UDP on n2, [evaluated] of three compared on each. */
+        fun evidence(evaluated: Int) = ScoreGroup(SCORE, listOf("n1", "n2", "n3"), network("n1", evaluated), network("n2", evaluated))
+
+        private fun network(id: String, evaluated: Int) =
+            ScoreNetwork("Node $id", id, "observedUsable", "none", ScoreCoverage(3, evaluated, 0), emptyList(), ScoreCounters(0, 0, 0, 0))
     }
 }

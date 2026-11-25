@@ -48,6 +48,9 @@ import dev.doona.android.designsystem.rv.rvInkStart
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.model.RvPolicyRule
+import dev.doona.android.feature.model.text
+import dev.doona.android.feature.policies.RvTargetCard
+import dev.doona.android.feature.policies.title
 
 /**
  * The quick rule, opened from a connection (doona web's one rule dialog, Karing's 選擇分流類型), in node detail's
@@ -91,7 +94,7 @@ private fun ConnectionCard(connection: RvConnection) {
         RvStatRow(stringResource(R.string.rv_policy_target), connection.host + PORT + connection.port, valueKeepWords = false)
         RvStatRow(stringResource(R.string.rv_policy_app), connection.app, valueKeepWords = false)
         RvStatRow(stringResource(R.string.rv_policy_matched), connection.rule.match.title(), valueKeepWords = false)
-        RvStatRow(stringResource(R.string.rv_policy_via), stringResource(group.name) + SEPARATOR + group.selected.name, valueKeepWords = false)
+        RvStatRow(stringResource(R.string.rv_policy_via), group.name.text() + SEPARATOR + group.selected!!.name, valueKeepWords = false)
     }
 }
 

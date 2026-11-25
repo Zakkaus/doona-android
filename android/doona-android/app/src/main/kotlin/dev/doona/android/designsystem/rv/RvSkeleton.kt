@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -107,6 +108,9 @@ internal object RvSkeletonSize {
     const val HEADER = 0.3f
     const val SEE_ALL = 0.4f
     const val CAPTION = 0.72f
+
+    /** A stat row's value, as a share of the room beside its label. */
+    const val STAT = 0.6f
 
     /** A goal's used amount at the start and its end date at the end of the line over its bar. */
     const val GOAL_USED = 0.42f
@@ -223,6 +227,24 @@ internal fun RvSkeletonHeader(title: String? = null) {
 internal fun RvSkeletonSeeAll() {
     Box(Modifier.fillMaxWidth().height(RvSize.seeAll).padding(horizontal = RvSpace.rowPadding), contentAlignment = Alignment.Center) {
         RvSkeletonLine(Rv.type.seeAll, RvSkeletonSize.SEE_ALL, kind = RvSkeletonText.Mixed)
+    }
+}
+
+/**
+ * [RvStatRow]'s skeleton: its [label] (the page knows it before its data) on the row's start, its value's bar at the end,
+ * in the row's one-line height and inset.
+ */
+@Composable
+internal fun RvSkeletonStatRow(label: String) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = RvSize.rowOneLine).padding(horizontal = RvSpace.rowPadding),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RvSkeletonLabel(label, Rv.type.statLabel, maxLines = RV_ROW_TITLE_LINES)
+        Spacer(Modifier.width(RvSpace.trailingGap))
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+            RvSkeletonLine(Rv.type.stat, RvSkeletonSize.STAT, kind = RvSkeletonText.Mixed)
+        }
     }
 }
 

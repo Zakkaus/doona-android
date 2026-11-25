@@ -13,6 +13,8 @@ import kotlin.math.sqrt
  * page pairs the history with the list of test times from its end, so a history that skipped a test would show every
  * earlier figure under the wrong time. [name] is the one name every
  * page shows (`Hong Kong 02 IPLC`); [short] is the same node's country code and number for the narrow tiles (`HK 02`).
+ * [subscription] is its subscription's name and [subscriptionId] the subscription's id, which the lists group by, since
+ * two subscriptions may share a name. A node added by hand (組態內) has neither: an empty name and a null id.
  */
 @Immutable
 internal data class RvNode(
@@ -27,6 +29,7 @@ internal data class RvNode(
     val transport: String,
     val tls: Boolean,
     val subscription: String,
+    val subscriptionId: String?,
     val history: List<Int?>,
 ) {
     /** Where the maps mark the node: its city when its name gives one, else its country's centroid; none for 其他. */
@@ -69,6 +72,9 @@ internal data class RvNode(
 
     /** This node after one more test, [ms] being null when it timed out: the history keeps the newest [RV_TESTS] tests. */
     fun withTest(ms: Int?): RvNode = copy(history = (history + ms).takeLast(RV_TESTS))
+
+    /** Added by hand (組態內): no subscription holds it. */
+    val inline: Boolean get() = subscriptionId == null
 }
 
 /** The [count] fastest nodes by their last test, ties in list order; every page's 最快 list is this one. */

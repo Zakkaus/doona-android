@@ -54,6 +54,7 @@ import dev.doona.android.engine.ScoreGroup
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
+import dev.doona.android.feature.model.text
 import dev.doona.android.feature.nodes.ui.RvScoreCard
 
 /**
@@ -89,14 +90,14 @@ internal fun RvPolicyGroupPage(
     onSelectFor: (String, RvNetwork?) -> Unit = { id, _ -> onSelect(id) },
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    val name = stringResource(group.name)
+    val name = group.name.text()
     RvScrollPage(
         name,
         insets,
         onBack = onBack,
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_test_group), onTest) },
     ) { titleBlock ->
-        val node = group.selected
+        val node = group.selected!!
         RvPageHeader(
             name,
             titleBlock,

@@ -22,6 +22,7 @@ import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RecentFlow
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RulePage
+import dev.doona.android.engine.RuleTemplate
 import dev.doona.android.engine.ScoreState
 import dev.doona.android.engine.Settings
 import dev.doona.android.engine.ShareLink
@@ -76,6 +77,7 @@ class FakeEngine internal constructor(
     override val settings: StateFlow<Settings> get() = settingsFlow
     private val settingsFlow = MutableStateFlow(Settings(mode = mode))
     private val ruleSource = MutableStateFlow(data.source)
+    private var adBlock = true
     private var assets = ConfigAssets("builtin", null, "idle", null, false)
     private var dnsUpstreams = FakeRuleMode.DNS_UPSTREAMS
 
@@ -202,6 +204,15 @@ class FakeEngine internal constructor(
     override suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit> {
         if (template != FakeRuleMode.TEMPLATE) return Result.failure(EngineException(ErrorCode.NotFound))
         ruleSource.update { it.copy(options = options) }
+        return Result.success(Unit)
+    }
+
+    override suspend fun ruleTemplates(): Result<List<RuleTemplate>> = Result.success(FakeRuleMode.TEMPLATES)
+
+    override suspend fun adBlock(): Result<Boolean> = Result.success(adBlock)
+
+    override suspend fun setAdBlock(on: Boolean): Result<Unit> {
+        adBlock = on
         return Result.success(Unit)
     }
 

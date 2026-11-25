@@ -255,6 +255,7 @@ private fun rvNode(member: Member, info: NodeInfo?, subscriptions: Map<String, S
         transport = info?.transport.orEmpty(),
         tls = info?.tls ?: false,
         subscription = member.subscriptionId?.let(subscriptions::get).orEmpty(),
+        subscriptionId = member.subscriptionId,
         history = history,
     )
 }

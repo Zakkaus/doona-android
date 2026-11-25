@@ -1,8 +1,10 @@
 package dev.doona.android.prototype.rv.data
 
 import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.feature.model.RV_INLINE_KEY
 import dev.doona.android.feature.model.RvNodeGroup
 import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.model.rvByName
 import dev.doona.android.feature.model.rvNodeGroups
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -22,6 +24,22 @@ class RvNodeOrderTest {
                 if (failed >= 0) assertTrue("$sort ${group.key}", group.nodes.drop(failed).all { it.latencyMs == null })
             }
         }
+    }
+
+    @Test
+    fun nodesAddedByHandCloseTheListUnderTheirOwnCard() {
+        val byHand = nodes.first().copy(id = "static-1", subscription = "", subscriptionId = null)
+        val groups = rvNodeGroups(nodes + byHand, RvData.subscriptions, RvNodeSort.Latency)
+        assertEquals(RvData.subscriptions.map { it.id } + RV_INLINE_KEY, groups.map { it.key })
+        assertEquals(listOf("static-1"), (groups.last() as RvNodeGroup.Inline).nodes.map { it.id })
+    }
+
+    @Test
+    fun nameOrderLeavesTheEmojiOut() {
+        val plain = nodes.first { it.latencyMs != null }
+        val apple = plain.copy(id = "a", name = "\uD83C\uDF4E Apple")
+        val banana = plain.copy(id = "b", name = "Banana")
+        assertEquals("🍎 Apple sorts under A", listOf("a", "b"), listOf(banana, apple).sortedWith(rvByName).map { it.id })
     }
 
     @Test

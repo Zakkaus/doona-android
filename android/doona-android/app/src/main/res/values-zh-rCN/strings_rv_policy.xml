@@ -12,6 +12,9 @@
     <plurals name="rv_policy_node_count">
         <item quantity="other">%1$d 个节点</item>
     </plurals>
+    <plurals name="rv_policy_group_count">
+        <item quantity="other">%1$d 个策略组</item>
+    </plurals>
     <string name="rv_template_cn_direct_line">中国大陆网站直接连接</string>
     <string name="rv_policy_rules">分流规则</string>
     <string name="rv_policy_rules_order">由上而下匹配，第一条匹配的规则生效</string>
@@ -156,4 +159,21 @@
     <string name="rv_network_both">TCP/UDP</string>
     <string name="rv_score_udp_unsupported">%1$s 不支持 UDP</string>
     <string name="rv_score_udp_failed">UDP 测试失败</string>
+    <string name="rv_template_apply_failed">无法应用模板</string>
+    <string name="rv_template_read_failed">无法读取模板</string>
+    <string name="rv_policy_failed_quic">无法更改“屏蔽 QUIC”</string>
+    <string name="rv_policy_failed_update">无法更新订阅</string>
+    <string name="rv_policy_failed_ads">无法更改“屏蔽广告”</string>
+    <string name="rv_network_apply_to">应用到</string>
+    <string name="rv_group_by_stability">按稳定</string>
+    <string name="rv_group_by_name">按名称</string>
+    <string name="rv_group_by_region">按地区</string>
+    <string name="rv_group_no_match">找不到符合的节点</string>
+    <string name="rv_group_empty">这个群组没有节点</string>
+    <string name="rv_group_empty_line">请在配置文件中为这个群组添加节点。</string>
+    <string name="rv_group_apart">分开选择 TCP/UDP</string>
+    <string name="rv_policy_reject">拒绝</string>
+    <string name="rv_policy_target_missing">找不到策略组</string>
+    <string name="rv_policy_read_failed">无法读取策略</string>
+    <string name="rv_group_read_failed">无法读取策略组</string>
 </resources>

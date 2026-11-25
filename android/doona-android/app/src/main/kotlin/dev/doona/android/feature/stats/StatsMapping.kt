@@ -153,6 +153,7 @@ private fun rvNode(member: Member, placeOf: (String) -> RvPlace) = RvNode(
     transport = "",
     tls = false,
     subscription = member.subscriptionId.orEmpty(),
+    subscriptionId = member.subscriptionId,
     history = when {
         member.latencyMs != null -> listOf(member.latencyMs)
         member.failed -> listOf(null)

@@ -38,7 +38,7 @@ class HubNavigationTest {
 
     @Test
     fun theBarGrowsWithTheFontAndKeepsAirAroundItsTabs() {
-        compose.setVariantContent(FontScale200) { screenCases().first { it.name == "policies" }.content() }
+        compose.setVariantContent(FontScale200) { screenCases().first { it.name == "settings" }.content() }
         val tree = compose.layoutTree()
         val bar = tree.descendants().first { it.role == LayoutRole.HubBar }
         assertTrue("the bar is %.1f dp high, which is no more than its minimum of %.0f".format(bar.height, DoonaTheme.size.bottomBar.value), bar.height > DoonaTheme.size.bottomBar.value + TOL)
@@ -51,7 +51,7 @@ class HubNavigationTest {
 
     @Test
     fun aTallWindowKeepsTheBarAtTheBottom() {
-        compose.setVariantContent(Light) { screenCases().first { it.name == "policies" }.content() }
+        compose.setVariantContent(Light) { screenCases().first { it.name == "settings" }.content() }
         val tree = compose.layoutTree()
         val bar = navigation(tree).single()
         assertTrue("the hub navigation of a tall window is a row", !bar.vertical)
@@ -60,7 +60,7 @@ class HubNavigationTest {
 
     @Test
     fun aShortWindowHasARailAtTheStartEdgeAndNoBottomBar() {
-        compose.setVariantContent(Landscape) { screenCases().first { it.name == "policies" }.content() }
+        compose.setVariantContent(Landscape) { screenCases().first { it.name == "settings" }.content() }
         val tree = compose.layoutTree()
         val rail = navigation(tree).single()
         val sheet = tree.descendants().first { it.role == LayoutRole.Sheet }
@@ -87,7 +87,7 @@ class HubNavigationTest {
 
     @Test
     fun theTitleAndTheTabsScrollAwayWithTheContentInAShortWindow() {
-        compose.setVariantContent(Landscape) { screenCases().first { it.name == "policies" }.content() }
+        compose.setVariantContent(Landscape) { screenCases().first { it.name == "settings" }.content() }
         val density = compose.density.density
         val title = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
         val before = title.fetchSemanticsNode().boundsInRoot
@@ -102,7 +102,7 @@ class HubNavigationTest {
 
     @Test
     fun besideARailTheSheetClearsTheGestureBar() {
-        compose.setVariantContent(Landscape) { screenCases().first { it.name == "group" }.content() }
+        compose.setVariantContent(Landscape) { screenCases().first { it.name == "settings" }.content() }
         compose.onNode(sheetScroll()).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 100_000f) }
         compose.waitForIdle()
         val sheet = compose.layoutTree().descendants().first { it.role == LayoutRole.Sheet }

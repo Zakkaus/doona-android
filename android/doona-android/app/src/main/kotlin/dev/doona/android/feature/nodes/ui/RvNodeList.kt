@@ -89,6 +89,7 @@ private fun GroupCard(group: RvNodeGroup, currentId: String, sort: RvNodeSort, n
     RvCard {
         when (group) {
             is RvNodeGroup.Subscription -> RvSubscriptionRow(group.subscription, nowEpochMs)
+            is RvNodeGroup.Inline -> RvInlineRow(count)
             is RvNodeGroup.Place -> PlaceRow(group.place, count)
         }
         shown.forEach { key(it.id) { NodeRow(it, it.id == currentId, sort, onPick) } }

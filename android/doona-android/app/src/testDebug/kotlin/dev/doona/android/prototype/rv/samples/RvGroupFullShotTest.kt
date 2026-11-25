@@ -112,19 +112,19 @@ class RvGroupFullShotTest {
 
     @Test
     @Config(qualifiers = "zh-rTW-w412dp-h1659dp-notnight-xhdpi")
-    fun fSampleLight() = compose.rvShot("samples-gfull-f-sample", dark = false, before = { assertWhole() }) { RvGroupFullPage(RvGroupFullSample.five, apart = true, subscription = PICKED, order = RvNodeSort.Name) }
+    fun fSampleLight() = compose.rvShot("samples-gfull-f-sample", dark = false, before = { assertWhole() }) { RvGroupFullPage(RvGroupFullSample.five, apart = true, source = PICKED, order = RvNodeSort.Name) }
 
     @Test
     @Config(qualifiers = "zh-rTW-w412dp-h1659dp-notnight-xhdpi")
-    fun fSampleDark() = compose.rvShot("samples-gfull-f-sample", dark = true, before = { assertWhole() }) { RvGroupFullPage(RvGroupFullSample.five, apart = true, subscription = PICKED, order = RvNodeSort.Name) }
+    fun fSampleDark() = compose.rvShot("samples-gfull-f-sample", dark = true, before = { assertWhole() }) { RvGroupFullPage(RvGroupFullSample.five, apart = true, source = PICKED, order = RvNodeSort.Name) }
 
     @Test
     @Config(qualifiers = "zh-rTW-w412dp-h2715dp-notnight-xhdpi")
-    fun fSampleFs200() = compose.rvShot("samples-gfull-f-sample", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { RvGroupFullPage(RvGroupFullSample.five, apart = true, subscription = PICKED, order = RvNodeSort.Name) }
+    fun fSampleFs200() = compose.rvShot("samples-gfull-f-sample", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { RvGroupFullPage(RvGroupFullSample.five, apart = true, source = PICKED, order = RvNodeSort.Name) }
 
     @Test
     @Config(qualifiers = "en-w412dp-h1739dp-notnight-xhdpi")
-    fun fSampleEnLight() = compose.rvShot("samples-gfull-f-sample-en", dark = false, before = { assertWhole() }) { RvGroupFullPage(RvGroupFullSample.five, apart = true, subscription = PICKED, order = RvNodeSort.Name) }
+    fun fSampleEnLight() = compose.rvShot("samples-gfull-f-sample-en", dark = false, before = { assertWhole() }) { RvGroupFullPage(RvGroupFullSample.five, apart = true, source = PICKED, order = RvNodeSort.Name) }
 
     @Test
     @Config(qualifiers = "zh-rTW-w412dp-h923dp-notnight-xhdpi")
@@ -168,6 +168,6 @@ class RvGroupFullShotTest {
         const val NO_MATCH = "Nowhere"
 
         /** A subscription of [RvGroupFullSample.five] that holds neither the TCP node nor the UDP node. */
-        const val PICKED = "Meridian"
+        const val PICKED = "s4"
     }
 }
