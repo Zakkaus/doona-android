@@ -31,6 +31,7 @@ import dev.doona.android.engine.TodayTraffic
 import dev.doona.android.engine.TrafficSeries
 import dev.doona.android.engine.Usage
 import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -336,6 +337,7 @@ private val RULE_SKIPS = mapOf(
     "app_rule" to RuleSkip.AppRule,
 )
 
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 internal data class MemberDto(
     val id: String,
@@ -346,10 +348,12 @@ internal data class MemberDto(
     val error: String? = null,
     val isGroup: Boolean,
     val subscriptionId: String? = null,
-    /** The ISO code the core reads from the name (`regions::locate`), the region's centroid, and a city the name names. */
+    /**
+     * The ISO code the core reads from the name (`regions::locate`). Doona only decodes members, so a null is never
+     * written: the schema 3 fixtures leave the key out, and the core's other location hints are not read.
+     */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
     val region: String? = null,
-    val regionCentroid: CoordinatesDto? = null,
-    val city: CityDto? = null,
 ) {
     fun toMember() = Member(id, name, latencyMs, failed, isGroup, subscriptionId, error?.let(::errorCodeOf), region)
 }
