@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.Tone
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.icons.R as IconsR
 

@@ -20,20 +20,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.Tone
+import dev.doona.android.designsystem.rv.latencyTone
 import dev.doona.android.designsystem.theme.DoonaColors
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.designsystem.theme.DoonaToneInk
 import dev.doona.android.designsystem.theme.scripted
-
-enum class Tone { Ok, Warn, Err, Neutral }
-
-/** Latency colours (`src/ui/Tile.tsx:79`): under 100 ms ok, under 300 ms warn, otherwise err. */
-fun latencyTone(ms: Int?): Tone = when {
-    ms == null -> Tone.Neutral
-    ms < 100 -> Tone.Ok
-    ms < 300 -> Tone.Warn
-    else -> Tone.Err
-}
 
 fun toneColor(c: DoonaColors, tone: Tone): Color = when (tone) {
     Tone.Ok -> c.good
