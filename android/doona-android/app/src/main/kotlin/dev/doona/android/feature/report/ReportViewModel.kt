@@ -32,7 +32,8 @@ internal interface ReportFacts {
  * 回報問題: writes the report with the redaction the switches show as the page opens, again on each turn of a switch
  * and on 重試, and holds the written report ([ReportUiState.share]) for 在 GitHub 回報 and 分享檔案. A report written
  * for switches that no longer stand is not offered (the page shows it being written again); a newer write replaces it,
- * and the one it replaces goes, nothing having been shared ([ReportShare.notOpened]).
+ * and the one it replaces goes: after the share grace once a share sheet returned for it ([ReportShare.returned]), at
+ * once when none did ([ReportShare.notOpened]). A share sheet's return keeps the report ready to share again.
  */
 internal class ReportViewModel(
     private val engine: Engine,
@@ -41,6 +42,9 @@ internal class ReportViewModel(
 ) : ViewModel() {
     private val state = MutableStateFlow(ReportUiState(preview = emptyPreview(facts)))
     private var building: Job? = null
+
+    /** The ready report a share sheet returned for: released as shared, not dropped, when it goes. */
+    private var returned: ReportShare? = null
 
     val uiState: StateFlow<ReportUiState> = state.asStateFlow()
 
@@ -57,11 +61,17 @@ internal class ReportViewModel(
 
     fun retry() = build()
 
-    /** The share sheet for [share] returned, whatever the user did there: its zip goes after the export's grace. */
+    /** 在 GitHub 回報 could not open its link (no app on the phone opens it): the page says so and offers 分享檔案. */
+    fun linkFailed() = state.update { it.copy(linkFailed = true) }
+
+    /**
+     * The share sheet for [share] returned, whatever the user did there. The report stays ready, to be shared again; its
+     * zip goes after the export's grace once a newer report replaces it or the page goes. A report no longer offered
+     * goes now.
+     */
     fun shareReturned(share: ReportShare) {
-        share.returned()
-        if (state.value.share === share) state.update { it.copy(share = null) }
-        build()
+        if (state.value.share === share) returned = share else share.returned()
+        state.update { it.copy(linkFailed = false) }
     }
 
     /** The share sheet for [share] could not open. */
@@ -73,8 +83,8 @@ internal class ReportViewModel(
     private fun build() {
         building?.cancel()
         val redaction = state.value.redaction
-        state.value.share?.notOpened()
-        state.update { it.copy(build = RvReportBuild.Building, share = null) }
+        release()
+        state.update { it.copy(build = RvReportBuild.Building, share = null, linkFailed = false) }
         building = viewModelScope.launch {
             val share = try {
                 reports.export(redaction.options())
@@ -89,8 +99,13 @@ internal class ReportViewModel(
         }
     }
 
-    override fun onCleared() {
-        state.value.share?.notOpened()
+    override fun onCleared() = release()
+
+    /** Lets the offered report go: shared, its zip after the grace; never shared, at once. */
+    private fun release() {
+        val share = state.value.share ?: return
+        if (share === returned) share.returned() else share.notOpened()
+        returned = null
     }
 
     companion object {
@@ -100,12 +115,16 @@ internal class ReportViewModel(
     }
 }
 
-/** The page's state: where the report stands, what the switches hide, the preview, and the written report. */
+/**
+ * The page's state: where the report stands, what the switches hide, the preview, the written report, and whether
+ * 在 GitHub 回報 could not open its link ([linkFailed], until the report is shared or written again).
+ */
 internal data class ReportUiState(
     val build: RvReportBuild = RvReportBuild.Building,
     val redaction: RvRedaction = RvRedaction(),
     val preview: RvReportPreview,
     val share: ReportShare? = null,
+    val linkFailed: Boolean = false,
 )
 
 /** The export's options for what the switches hide: each switch on hides its part. */

@@ -55,7 +55,8 @@ import org.robolectric.annotation.GraphicsMode
  * its own goldens and `-config-entry-*` are, so a diff against `proto-rv-settings-*` shows only the row's state. Each
  * light, dark, fs115 and fs200: the shipped data with 更新 (`proto-rv-settings-geodata-idle-*`), updating
  * (`-updating-*`, at animator scale 0, so the busy bar rests half full), updated to newer data (`-updated-*`), nothing
- * newer (`-latest-*`), failed (`-failed-*`), and waiting for the VPN (`-waiting-*`). Then each state's second line and
+ * newer (`-latest-*`), failed (`-failed-*`), waiting for the VPN (`-waiting-*`), and failed while the VPN is down
+ * (`-failed-waiting-*`, light and fs200 only). Then each state's second line and
  * action, the failure kept on the row with no dialog, and 更新 disabled until the VPN is up.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -152,6 +153,14 @@ class RvGeoDataShotTest {
     fun failedFs200() = shot("failed", FAILED, fontScale = RV_FS200)
 
     @Test
+    @Config(qualifiers = FAILED_WAITING_WHOLE)
+    fun failedWaitingLight() = shot("failed-waiting", FAILED_WAITING, dark = false)
+
+    @Test
+    @Config(qualifiers = FAILED_WAITING_FS200)
+    fun failedWaitingFs200() = shot("failed-waiting", FAILED_WAITING, fontScale = RV_FS200)
+
+    @Test
     @Config(qualifiers = WHOLE)
     fun waitingLight() = shot("waiting", WAITING, dark = false)
 
@@ -185,6 +194,24 @@ class RvGeoDataShotTest {
         expect(after(shipped, R.string.rv_geodata_failed), R.string.rv_retry, enabled = true)
         compose.runOnIdle { data = WAITING }
         expect(after(shipped, R.string.status_stopped), R.string.rv_menu_update, enabled = false)
+        compose.runOnIdle { data = FAILED_WAITING }
+        expect(after(after(shipped, R.string.rv_geodata_failed), R.string.status_stopped), R.string.rv_retry, enabled = false)
+    }
+
+    /** Whenever 重試 is disabled, the line says why: a failure before the VPN is up keeps 未連線 after 無法更新. */
+    @Test
+    @Config(qualifiers = WHOLE)
+    fun aDisabledRetrySaysTheVpnIsDown() {
+        var updates = 0
+        var data by mutableStateOf(FAILED_WAITING)
+        compose.setContent { Themed { Page(data) { updates++ } } }
+        compose.onNode(line(after(after(date(RV_SAMPLE_GEO_SHIPPED_MS), R.string.rv_geodata_failed), R.string.status_stopped))).assertExists()
+        compose.onNodeWithText(rvText(R.string.rv_retry)).assertIsNotEnabled().performClick()
+        assertEquals(0, updates)
+        compose.runOnIdle { data = FAILED }
+        compose.onNode(line(after(date(RV_SAMPLE_GEO_SHIPPED_MS), R.string.rv_geodata_failed))).assertExists()
+        compose.onNodeWithText(rvText(R.string.rv_retry)).assertIsEnabled().performClick()
+        assertEquals(1, updates)
     }
 
     /** M8: a failed update stays on its row, no dialog and no banner, and 重試 updates again. */
@@ -296,6 +323,10 @@ class RvGeoDataShotTest {
         const val FS200_UPDATING = "+h2355dp"
         const val FS200_WRAPPED = "+h2399dp"
 
+        /** 無法更新 · 未連線 takes a second line beside 重試 at fs1, a third at fs200. */
+        const val FAILED_WAITING_WHOLE = "+h1840dp"
+        const val FAILED_WAITING_FS200 = "+h2433dp"
+
         const val HALF_DP = 0.5f
 
         /** The row's 更新 button, enabled or not; the 更新 group's title is a heading. */
@@ -311,5 +342,6 @@ class RvGeoDataShotTest {
         val LATEST = IDLE.copy(update = RvGeoUpdate.Latest)
         val FAILED = IDLE.copy(update = RvGeoUpdate.Failed)
         val WAITING = IDLE.copy(connected = false)
+        val FAILED_WAITING = FAILED.copy(connected = false)
     }
 }

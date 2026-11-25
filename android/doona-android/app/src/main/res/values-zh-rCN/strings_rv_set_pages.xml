@@ -24,8 +24,6 @@
     <plurals name="rv_log_debug_footer">
         <item quantity="other">调试会在 %1$d 小时后改回信息。</item>
     </plurals>
-    <string name="rv_log_failed">无法更改日志级别</string>
-    <string name="rv_log_failed_reason">doona 的内核没有接受新的级别。</string>
 
     <string name="rv_report_shared">分享的内容</string>
     <string name="rv_report_device">设备</string>

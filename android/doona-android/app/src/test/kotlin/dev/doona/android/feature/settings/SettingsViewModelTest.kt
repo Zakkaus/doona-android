@@ -14,9 +14,12 @@ import dev.doona.android.feature.model.RvDnsUpstream
 import dev.doona.android.feature.model.RvGeoUpdate
 import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.model.RvPerApp
+import dev.doona.android.feature.model.RvSettingsState
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -49,21 +52,85 @@ class SettingsViewModelTest {
         return vm
     }
 
+    /** The page's state once the store has answered. */
+    private val SettingsViewModel.settings: RvSettingsState get() = checkNotNull(uiState.value.settings) { "the store has not answered" }
+
+    @Test
+    fun `the page has no settings until the store answers, then the store's`() = runTest {
+        val answered = MutableSharedFlow<Boolean>()
+        val fake = FakeSettingsStore(notifyOnDrop = false, updateHours = 6)
+        val store = object : SettingsStore by fake {
+            override val notifyOnDrop: Flow<Boolean> = answered
+        }
+        val vm = collected(SettingsViewModel(FakeEngine(), store))
+        assertNull("no switch or interval before the store answers", vm.uiState.value.settings)
+        answered.emit(false)
+        assertFalse(vm.settings.notifyOnDrop)
+        assertEquals(6, vm.settings.updateHours)
+    }
+
+    @Test
+    fun `a second tap on the same switch from the same drawing writes the same value`() = runTest {
+        val store = FakeSettingsStore()
+        val vm = collected(SettingsViewModel(FakeEngine(), store))
+        val drawn = vm.settings
+        // Two taps on 中斷連線時通知 before the page shows the first: both say off, so it stays off.
+        vm.onChange(drawn, drawn.copy(notifyOnDrop = false))
+        vm.onChange(drawn, drawn.copy(notifyOnDrop = false))
+        assertFalse(store.notifyOnDrop.value)
+        assertFalse(vm.settings.notifyOnDrop)
+        // A tap on the page that shows it off turns it on again.
+        val next = vm.settings
+        vm.onChange(next, next.copy(notifyOnDrop = true))
+        assertTrue(store.notifyOnDrop.value)
+        assertTrue("the other switch was left as it was", store.autoUpdate.value)
+    }
+
+    @Test
+    fun `a page opened before the core runs reads the DNS servers and the geo data once it does`() = runTest {
+        val fake = FakeEngine(status = Status.Stopped)
+        var geoReads = 0
+        val engine = object : Engine by fake {
+            override suspend fun effectiveConfig(): Result<EffectiveConfig> =
+                if (fake.status.value is Status.Running) fake.effectiveConfig() else Result.failure(EngineException(ErrorCode.Internal))
+
+            override suspend fun configAssets(): Result<ConfigAssets> {
+                geoReads++
+                return Result.success(assets("up_to_date"))
+            }
+        }
+        val vm = collected(SettingsViewModel(engine, FakeSettingsStore()))
+        assertFalse(vm.uiState.value.dnsLoaded)
+        assertEquals(1, geoReads)
+
+        fake.status.value = Status.Running(sinceEpochMs = 0)
+        assertTrue(vm.uiState.value.dnsLoaded)
+        assertEquals(RvDnsUpstream.Cloudflare, vm.settings.dns)
+        assertEquals(2, geoReads)
+        assertEquals(RvGeoUpdate.Latest, vm.uiState.value.geoData.update)
+
+        // Stopping reads nothing; the next start reads again.
+        fake.status.value = Status.Stopped
+        assertEquals(2, geoReads)
+        fake.status.value = Status.Running(sinceEpochMs = 0)
+        assertEquals(3, geoReads)
+    }
+
     @Test
     fun `the switches go to the store and the page shows the store's values`() = runTest {
         val store = FakeSettingsStore(updateHours = 6, tileAdded = false)
         val vm = collected(SettingsViewModel(FakeEngine(), store))
-        val shown = vm.uiState.value.settings
+        val shown = vm.settings
         assertEquals(6, shown.updateHours)
         assertFalse(shown.tileAdded)
 
         vm.onChange(shown, shown.copy(notifyOnDrop = false))
         assertFalse(store.notifyOnDrop.value)
-        val next = vm.uiState.value.settings
+        val next = vm.settings
         vm.onChange(next, next.copy(autoUpdate = false))
         assertFalse(store.autoUpdate.value)
-        assertFalse(vm.uiState.value.settings.notifyOnDrop)
-        assertFalse(vm.uiState.value.settings.autoUpdate)
+        assertFalse(vm.settings.notifyOnDrop)
+        assertFalse(vm.settings.autoUpdate)
         assertEquals("the interval was left as it was", 6, store.updateHours.value)
     }
 
@@ -71,9 +138,9 @@ class SettingsViewModelTest {
     fun `two quick turns write only the switch each turned`() = runTest {
         val store = FakeSettingsStore()
         val vm = collected(SettingsViewModel(FakeEngine(), store))
-        val drawn = vm.uiState.value.settings
+        val drawn = vm.settings
         vm.onChange(drawn, drawn.copy(notifyOnDrop = false))
-        assertFalse(vm.uiState.value.settings.notifyOnDrop)
+        assertFalse(vm.settings.notifyOnDrop)
         // The second turn comes from the same drawing, before the page showed the first one.
         vm.onChange(drawn, drawn.copy(autoUpdate = false))
         assertFalse("the first turn stands", store.notifyOnDrop.value)
@@ -85,16 +152,16 @@ class SettingsViewModelTest {
         val engine = FakeEngine()
         val vm = collected(SettingsViewModel(engine, FakeSettingsStore()))
         assertTrue(vm.uiState.value.dnsLoaded)
-        assertEquals("the core's default, 1.1.1.1:53 then 8.8.8.8:53", RvDnsUpstream.Cloudflare, vm.uiState.value.settings.dns)
+        assertEquals("the core's default, 1.1.1.1:53 then 8.8.8.8:53", RvDnsUpstream.Cloudflare, vm.settings.dns)
 
         engine.setDnsUpstreams(listOf("9.9.9.9:53"))
-        assertEquals(RvDnsUpstream.Cloudflare, vm.uiState.value.settings.dns)
+        assertEquals(RvDnsUpstream.Cloudflare, vm.settings.dns)
         vm.onResume()
-        assertEquals(RvDnsUpstream.Quad9, vm.uiState.value.settings.dns)
+        assertEquals(RvDnsUpstream.Quad9, vm.settings.dns)
 
         engine.setDnsUpstreams(listOf("10.0.0.1:53"))
         vm.onResume()
-        assertNull("servers no preset names are 自訂", vm.uiState.value.settings.dns)
+        assertNull("servers no preset names are 自訂", vm.settings.dns)
         assertTrue(vm.uiState.value.dnsLoaded)
     }
 
@@ -121,13 +188,13 @@ class SettingsViewModelTest {
     fun `依 App's row carries the engine's policy, and none before the policy is read`() = runTest {
         val engine = FakeEngine()
         val vm = collected(SettingsViewModel(engine, FakeSettingsStore()))
-        assertEquals(RvPerApp(RvAppPolicy.All, emptySet()), vm.uiState.value.settings.perApp)
+        assertEquals(RvPerApp(RvAppPolicy.All, emptySet()), vm.settings.perApp)
         assertTrue(vm.uiState.value.perAppLoaded)
 
         engine.setPerApp(PerApp(AppPolicy.OnlyListed, setOf("a", "b", "c")))
-        assertEquals(RvPerApp(RvAppPolicy.Only, setOf("a", "b", "c")), vm.uiState.value.settings.perApp)
+        assertEquals(RvPerApp(RvAppPolicy.Only, setOf("a", "b", "c")), vm.settings.perApp)
         engine.setPerApp(PerApp(AppPolicy.ExceptListed, setOf("a")))
-        assertEquals(RvPerApp(RvAppPolicy.Except, setOf("a")), vm.uiState.value.settings.perApp)
+        assertEquals(RvPerApp(RvAppPolicy.Except, setOf("a")), vm.settings.perApp)
 
         engine.perAppLoaded.value = false
         assertFalse(vm.uiState.value.perAppLoaded)
@@ -260,23 +327,23 @@ class SettingsViewModelTest {
     fun `a failed tile request opens the sheet, which the page closes`() = runTest {
         val vm = collected(SettingsViewModel(FakeEngine(), FakeSettingsStore(tileAdded = false)))
         vm.tileAnswer(TileAnswer.Kept)
-        assertFalse(vm.uiState.value.settings.tileSheet)
+        assertFalse(vm.settings.tileSheet)
         vm.tileAnswer(TileAnswer.Failed)
-        assertTrue(vm.uiState.value.settings.tileSheet)
-        val drawn = vm.uiState.value.settings
+        assertTrue(vm.settings.tileSheet)
+        val drawn = vm.settings
         vm.onChange(drawn, drawn.copy(tileSheet = false))
-        assertFalse(vm.uiState.value.settings.tileSheet)
+        assertFalse(vm.settings.tileSheet)
     }
 
     @Test
     fun `the language is read again when the page shows again`() = runTest {
         val store = FakeSettingsStore(languages = "")
         val vm = collected(SettingsViewModel(FakeEngine(), store))
-        assertEquals(RvLanguage.System, vm.uiState.value.settings.language)
+        assertEquals(RvLanguage.System, vm.settings.language)
         store.languages = "en-AU"
-        assertEquals(RvLanguage.System, vm.uiState.value.settings.language)
+        assertEquals(RvLanguage.System, vm.settings.language)
         vm.onResume()
-        assertEquals(RvLanguage.English, vm.uiState.value.settings.language)
+        assertEquals(RvLanguage.English, vm.settings.language)
     }
 
     @Test

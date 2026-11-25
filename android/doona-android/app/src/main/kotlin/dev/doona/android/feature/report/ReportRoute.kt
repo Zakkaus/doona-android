@@ -26,7 +26,8 @@ internal fun ReportRoute(engine: Engine, reports: ReportExporter, facts: ReportF
 
 /**
  * The page on [viewModel]'s state. 分享檔案 opens the share sheet on the written report and tells the ViewModel when
- * it returns, or that it could not open; 在 GitHub 回報 opens the report's new-issue link in the browser.
+ * it returns, or that it could not open; 在 GitHub 回報 opens the report's new-issue link in the browser, and when no
+ * app opens it the page's banner says so.
  */
 @Composable
 internal fun ReportPage(viewModel: ReportViewModel, onBack: () -> Unit) {
@@ -44,7 +45,8 @@ internal fun ReportPage(viewModel: ReportViewModel, onBack: () -> Unit) {
                     try {
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)))
                     } catch (_: ActivityNotFoundException) {
-                        // No browser: the share sheet still hands the report on.
+                        // No app opens the link: the page says so, and its banner offers the share sheet instead.
+                        viewModel.linkFailed()
                     }
                 }
             },
@@ -62,5 +64,5 @@ internal fun ReportPage(viewModel: ReportViewModel, onBack: () -> Unit) {
             retry = viewModel::retry,
         )
     }
-    RvReportScreen(state.build, state.preview, state.redaction, viewModel::setRedaction, onBack, actions)
+    RvReportScreen(state.build, state.preview, state.redaction, viewModel::setRedaction, onBack, actions, linkFailed = state.linkFailed)
 }

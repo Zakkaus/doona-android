@@ -41,7 +41,8 @@ internal class RvReportActions(
 
 /**
  * 回報問題, the one report page (設定's hero and 進階 row, 關於, and 活動's crash notice open it): the large title; after
- * a failed build the library's banner with 重試; while the report is written, a busy row on top, as 依 App shows 正在儲存;
+ * a failed build the library's banner with 重試, and when 在 GitHub 回報 could not open its link ([linkFailed]) the same
+ * banner with 分享檔案; while the report is written, a busy row on top, as 依 App shows 正在儲存;
  * either stands a section's gap above 分享的內容, the preview, a plain list of values as the licences are; then 遮蔽, a switch for each of the four
  * things it can hide with one line of what that is, and under them two footnotes: the more is hidden, the less likely
  * the problem can be answered; and subscription links and tokens always go. The two actions stand at the foot as the
@@ -58,6 +59,7 @@ internal fun RvReportScreen(
     onRedaction: (RvRedaction) -> Unit,
     onBack: () -> Unit,
     actions: RvReportActions,
+    linkFailed: Boolean = false,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_report_title)
@@ -65,7 +67,7 @@ internal fun RvReportScreen(
     val building = build == RvReportBuild.Building || (build is RvReportBuild.Ready && !ready)
     RvScrollPage(title, insets, onBack = onBack, bottomAction = { Actions(ready, actions) }) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
-        val banner = failure(build, actions.retry)
+        val banner = failure(build, actions.retry) ?: linkFailure(linkFailed && ready, actions.share)
         // The banner stands where the first section title stood, which then keeps its own gap above it.
         banner?.let { RvBanner(it, Modifier.padding(horizontal = RvSpace.gutter)) }
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
@@ -137,6 +139,14 @@ private fun Redaction(redaction: RvRedaction, onChange: (RvRedaction) -> Unit) {
 @Composable
 private fun Actions(ready: Boolean, actions: RvReportActions) {
     RvButtonPair(stringResource(R.string.rv_report_github), actions.github, stringResource(R.string.rv_report_share), actions.share, enabled = ready, over = Rv.colors.page)
+}
+
+/** 在 GitHub 回報 could not open its link: the library's error banner, whose action hands the report to the share sheet. */
+@Composable
+private fun linkFailure(shown: Boolean, onShare: () -> Unit): RvNotice? = if (shown) {
+    RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_report_link_failed), stringResource(R.string.rv_report_link_failed_reason), stringResource(R.string.rv_report_share), onShare)
+} else {
+    null
 }
 
 /** The banner of a build that failed: the export's own words, and 重試. */

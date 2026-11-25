@@ -60,6 +60,10 @@
     <string name="rv_report_title">报告问题</string>
     <string name="rv_report_failed">无法导出诊断报告</string>
     <string name="rv_report_failed_reason">doona 的内核没有响应。</string>
+    <string name="rv_report_link_failed">无法打开 GitHub</string>
+    <string name="rv_report_link_failed_reason">这台手机上没有应用能打开链接，请改用分享文件。</string>
+    <string name="rv_log_failed">无法更改日志级别</string>
+    <string name="rv_log_failed_reason">doona 的内核没有接受新的级别。</string>
     <string name="rv_log_error">错误</string>
     <string name="rv_log_warn">警告</string>
     <string name="rv_log_info">信息</string>

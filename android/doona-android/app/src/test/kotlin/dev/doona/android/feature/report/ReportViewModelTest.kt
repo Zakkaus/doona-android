@@ -27,8 +27,8 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -128,21 +128,62 @@ class ReportViewModelTest : ExportFixture() {
     }
 
     @Test
-    fun `a share sheet that returned keeps its zip for the grace, and a new report is written`() = runTest {
+    fun `a share sheet's return keeps the ready report, to share again`() = runTest {
         val (vm, reports) = page()
         advanceUntilIdle()
         val share = checkNotNull(vm.uiState.value.share)
         val first = zips().single()
 
         vm.shareReturned(share)
+        advanceTimeBy(ReportExport.SHARE_GRACE_MS + 1)
         runCurrent()
-        assertTrue("kept while the picked app reads it", first.exists())
+        assertEquals("not written again", 1, reports.options.size)
+        assertSame(share, vm.uiState.value.share)
+        assertEquals(RvReportBuild.Ready(RvRedaction()), vm.uiState.value.build)
+        assertTrue("kept to share again", first.exists())
+        vm.shareReturned(share)
+        assertTrue(first.exists())
+    }
+
+    @Test
+    fun `a shared report a switch replaces keeps its zip for the grace`() = runTest {
+        val (vm, reports) = page()
+        advanceUntilIdle()
+        val share = checkNotNull(vm.uiState.value.share)
+        val first = zips().single()
+        vm.shareReturned(share)
+
+        vm.setRedaction(vm.uiState.value.redaction.copy(apps = true))
+        runCurrent()
         assertEquals(2, reports.options.size)
-        assertNotSame(share, vm.uiState.value.share)
+        assertTrue("kept while the picked app reads it", first.exists())
         advanceTimeBy(ReportExport.SHARE_GRACE_MS + 1)
         runCurrent()
         assertFalse(first.exists())
-        assertEquals(RvReportBuild.Ready(RvRedaction()), vm.uiState.value.build)
+    }
+
+    @Test
+    fun `a link no app opens shows on the page until the report is shared or written again`() = runTest {
+        val (vm, _) = page()
+        advanceUntilIdle()
+        val share = checkNotNull(vm.uiState.value.share)
+        vm.linkFailed()
+        assertTrue(vm.uiState.value.linkFailed)
+        vm.shareReturned(share)
+        assertFalse("shared instead", vm.uiState.value.linkFailed)
+
+        vm.linkFailed()
+        vm.setRedaction(vm.uiState.value.redaction.copy(apps = true))
+        assertFalse("a new report has its own link", vm.uiState.value.linkFailed)
+    }
+
+    @Test
+    fun `every report links to GitHub's new-issue form with the app and the phone`() = runTest {
+        val (vm, _) = page()
+        advanceUntilIdle()
+        val link = checkNotNull(vm.uiState.value.share).issueLink
+        assertTrue(link, link.startsWith("https://github.com/Zakkaus/doona-android/issues/new?template=bug_report.yml&version="))
+        assertTrue(link, "&device=" in link)
     }
 
     @Test

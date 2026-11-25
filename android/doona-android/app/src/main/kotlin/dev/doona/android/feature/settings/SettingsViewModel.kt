@@ -15,13 +15,18 @@ import dev.doona.android.feature.model.RvGeoData
 import dev.doona.android.feature.model.RvGeoUpdate
 import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.model.RvSettingsState
-import dev.doona.android.feature.model.RvThemeMode
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -31,17 +36,19 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * What 設定 shows: the page's state, whether the per-app policy and the DNS servers have been read ([perAppLoaded],
+ * What 設定 shows: the page's state ([settings], null until the store has answered, so the page never shows a switch or
+ * an interval the user may not have set), whether the per-app policy and the DNS servers have been read ([perAppLoaded],
  * [dnsLoaded]; until then each row has no second line rather than a value the user may not have), and the
  * GeoIP/GeoSite row.
  */
-internal data class SettingsUiState(val settings: RvSettingsState, val perAppLoaded: Boolean, val dnsLoaded: Boolean, val geoData: RvGeoData)
+internal data class SettingsUiState(val settings: RvSettingsState?, val perAppLoaded: Boolean, val dnsLoaded: Boolean, val geoData: RvGeoData)
 
 /**
  * 設定 over the app's [store] and the [engine]: the switches set the store, 依 App's row reads the engine's policy, the
  * DNS row the servers the core reports in its effective config, and the GeoIP/GeoSite row reads the core's data and
  * runs its update, asking the core where it stands every [poll] until it ends or [followFor] has passed, which the row
- * then shows as a failure (重試 follows it again).
+ * then shows as a failure (重試 follows it again). The DNS servers and the geo data are read at the start, when the page
+ * shows again, and when the core comes up: a page opened before the core runs fills in once it does.
  */
 internal class SettingsViewModel(
     private val engine: Engine,
@@ -77,6 +84,11 @@ internal class SettingsViewModel(
     init {
         viewModelScope.launch { readGeo() }
         viewModelScope.launch { readDns() }
+        // The first value is the status at the start, which the reads above cover; each later turn to Running reads again.
+        engine.status.map { it is Status.Running }.distinctUntilChanged().drop(1).filter { it }.onEach {
+            readDns()
+            readGeo()
+        }.launchIn(viewModelScope)
     }
 
     /**
@@ -155,15 +167,7 @@ internal class SettingsViewModel(
     }
 
     private fun initialState() = SettingsUiState(
-        RvSettingsState(
-            notifyOnDrop = true,
-            perApp = rvPerApp(engine.settings.value.perApp),
-            autoUpdate = true,
-            updateHours = IntervalViewModel.DEFAULT_HOURS,
-            appearance = RvAppearance(RvThemeMode.System, followWallpaper = false, accent = 0),
-            dns = null,
-            language = local.value.language,
-        ),
+        settings = null,
         perAppLoaded = engine.perAppLoaded.value,
         dnsLoaded = false,
         geoData = geoData(local.value, engine.status.value is Status.Running),

@@ -1,16 +1,21 @@
 package dev.doona.android.feature.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
+import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.engine.Engine
 import dev.doona.android.feature.model.RvLanguage
 
@@ -48,8 +53,9 @@ internal fun SettingsPage(viewModel: SettingsViewModel, system: SettingsSystem, 
             lab = nav.lab,
         )
     }
+    // Until the store answers the page stays bare, never a switch or an interval the user may not have set.
+    val drawn = state.settings ?: return RvSettingsLoading()
     // The page's switches send the state they were drawn from, so the ViewModel writes only the field turned.
-    val drawn = state.settings
     RvSettingsScreen(
         drawn,
         // A shell that could not read its version shows a dash, as every row with no value does.
@@ -63,6 +69,13 @@ internal fun SettingsPage(viewModel: SettingsViewModel, system: SettingsSystem, 
         dnsLoaded = state.dnsLoaded,
     )
 }
+
+/**
+ * 設定 while the store has not answered (a read of the app's own preferences file, a frame or two): the page's
+ * background alone. A skeleton would only flash, and no approved 設定 skeleton exists (STATE q-p6a-settingsloading).
+ */
+@Composable
+private fun RvSettingsLoading() = Box(Modifier.fillMaxSize().background(Rv.colors.page))
 
 /** 更新間隔: the store's interval, a choice stored at once. Its 自訂 has no page yet (plan 8: built, not hidden). */
 @Composable

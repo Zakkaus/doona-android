@@ -155,6 +155,18 @@ class SettingsAppShotTest {
     @Config(qualifiers = FAILED_FS200)
     fun reportFailedFs200() = compose.app("report-failed", fontScale = RV_FS200, whole = true, content = reportPage(Built.Failed, tmp))
 
+    @Test
+    @Config(qualifiers = LINK_FAILED)
+    fun reportLinkFailedLight() = compose.app("report-link-failed", dark = false, whole = true, content = reportPage(Built.Ready, tmp, linkFailed = true))
+
+    @Test
+    @Config(qualifiers = LINK_FAILED)
+    fun reportLinkFailedDark() = compose.app("report-link-failed", dark = true, whole = true, content = reportPage(Built.Ready, tmp, linkFailed = true))
+
+    @Test
+    @Config(qualifiers = LINK_FAILED_FS200)
+    fun reportLinkFailedFs200() = compose.app("report-link-failed", fontScale = RV_FS200, whole = true, content = reportPage(Built.Ready, tmp, linkFailed = true))
+
     @Test fun intervalLight() = compose.app("settings-interval", dark = false) { Interval() }
 
     @Test fun intervalDark() = compose.app("settings-interval", dark = true) { Interval() }
@@ -299,9 +311,13 @@ private fun settingsPage(): @Composable () -> Unit {
     return { SettingsPage(vm, NoSystem, noNav(), rvSampleVersions.app, onTab = {}) }
 }
 
-/** 回報問題 on its ViewModel, with the report [built] as it stands, the ViewModel made before the page is composed. */
-private fun reportPage(built: Built, tmp: TemporaryFolder): @Composable () -> Unit {
+/**
+ * 回報問題 on its ViewModel, with the report [built] as it stands, the ViewModel made before the page is composed;
+ * [linkFailed]: 在 GitHub 回報 could not open its link.
+ */
+private fun reportPage(built: Built, tmp: TemporaryFolder, linkFailed: Boolean = false): @Composable () -> Unit {
     val vm = ReportViewModel(reportEngine(), ShotReports(built, tmp), SampleFacts)
+    if (linkFailed) vm.linkFailed()
     return { ReportPage(vm, onBack = {}) }
 }
 
@@ -431,3 +447,5 @@ private const val BUILDING_FS200 = "+h1959dp"
 private const val FAILED = "+h1335dp"
 private const val FAILED_FS115 = "+h1371dp"
 private const val FAILED_FS200 = "+h2053dp"
+private const val LINK_FAILED = "+h1352dp"
+private const val LINK_FAILED_FS200 = "+h2053dp"

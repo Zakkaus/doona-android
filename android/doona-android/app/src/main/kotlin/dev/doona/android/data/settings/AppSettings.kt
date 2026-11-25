@@ -72,9 +72,7 @@ data class ThemeAppearance(val mode: ThemeMode, val followWallpaper: Boolean, va
 class AppSettings internal constructor(private val store: DataStore<Preferences>) : DropNoticeSettings, SubscriptionUpdateSettings {
     override val notifyOnDrop = preference { it[NOTIFY_ON_DROP] ?: true }
     override val subscriptionUpdate = preference { prefs ->
-        // 48 hours, which earlier builds offered, reads as the longest interval offered now (owner, 2026-11-25).
-        val duration = prefs[UPDATE_HOURS]?.let { if (it == RETIRED_HOURS) UpdateInterval.TwentyFour.hours else it }?.hours
-        val interval = UpdateInterval.entries.firstOrNull { it.duration == duration } ?: UpdateInterval.Twelve
+        val interval = UpdateInterval.entries.firstOrNull { it.hours == prefs[UPDATE_HOURS] } ?: UpdateInterval.Twelve
         SubscriptionUpdate(prefs[AUTO_UPDATE] ?: true, interval)
     }
     internal val geoUpdateSchedule = preference { prefs ->
@@ -116,7 +114,6 @@ class AppSettings internal constructor(private val store: DataStore<Preferences>
         private val NOTIFY_ON_DROP = booleanPreferencesKey("notify_on_drop")
         private val AUTO_UPDATE = booleanPreferencesKey("auto_update")
         private val UPDATE_HOURS = intPreferencesKey("update_hours")
-        private const val RETIRED_HOURS = 48
         private val GEO_UPDATE_INTERVAL = stringPreferencesKey("geo_update_interval")
         private val GEO_LAST_SUCCESS = longPreferencesKey("geo_last_success_epoch_ms")
         private val THEME_MODE = stringPreferencesKey("theme_mode")

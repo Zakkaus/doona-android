@@ -36,10 +36,7 @@ object GitHubIssueLink {
 
             Recent actions:
         """.trimIndent() + "\n\n"
-        val device = "${scrubber.metadata(app.manufacturer)} ${scrubber.metadata(app.model)}"
-        val prefix = "$ISSUE_URL?template=bug_report.yml&title=${encode("bug: $name ($code)")}" +
-            "&version=${encode("doona ${app.version}")}&android=${encode("${scrubber.metadata(app.android)} (SDK ${app.sdk})")}" +
-            "&device=${encode(device)}&what=${encode(what)}"
+        val prefix = "${plain(app, scrubber)}&title=${encode("bug: $name ($code)")}&what=${encode(what)}"
         val recent = ArrayDeque<String>()
         var length = prefix.length
         for (event in events.asReversed()) {
@@ -54,6 +51,16 @@ object GitHubIssueLink {
             append(prefix)
             recent.forEach { append(it) }
         }
+    }
+
+    /**
+     * The new-issue form with the app, Android and phone filled in and nothing about a failure: 回報問題's link, where the
+     * user says what went wrong and attaches the report.
+     */
+    internal fun plain(app: AppInfo, scrubber: ReportScrubber): String {
+        val device = "${scrubber.metadata(app.manufacturer)} ${scrubber.metadata(app.model)}"
+        return "$ISSUE_URL?template=bug_report.yml&version=${encode("doona ${app.version}")}" +
+            "&android=${encode("${scrubber.metadata(app.android)} (SDK ${app.sdk})")}&device=${encode(device)}"
     }
 
     private fun eventLine(event: AppEvent, action: String, scrubber: ReportScrubber) = buildString {

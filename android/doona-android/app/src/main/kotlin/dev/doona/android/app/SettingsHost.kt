@@ -5,16 +5,21 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.data.settings.LanguageSettings
 import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.data.settings.ThemeMode
 import dev.doona.android.data.settings.UpdateCheck
 import dev.doona.android.data.settings.UpdateInterval
+import dev.doona.android.engine.Engine
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.feature.model.RvAppearance
 import dev.doona.android.feature.model.RvThemeMode
 import dev.doona.android.feature.settings.LogLevels
+import dev.doona.android.feature.settings.SettingsNav
 import dev.doona.android.feature.settings.SettingsStore
 import dev.doona.android.feature.settings.SettingsSystem
 import dev.doona.android.feature.settings.TileAnswer
@@ -97,4 +102,22 @@ internal class AppLogLevels(private val controller: LogLevelController) : LogLev
     override val level: StateFlow<LogLevel> get() = controller.level
 
     override suspend fun set(level: LogLevel): Result<Unit> = controller.set(level)
+}
+
+/**
+ * The 設定 tab as DoonaApp calls it until the orchestrator wires the new routing
+ * (`/scratch/ssd/honk-android/dt/p6a-handoff-doonaapp.patch`, which deletes this): the new page over the app's store,
+ * with 依 App open and the sub-pages not yet routed. [onOpenSubscriptions] is the old page's and goes unused; the old
+ * tab frame keeps its tabs, so the page's floating nav does nothing here.
+ */
+@Composable
+internal fun SettingsRoute(engine: Engine, version: String, onOpenPerApp: () -> Unit, @Suppress("UNUSED_PARAMETER") onOpenSubscriptions: () -> Unit) {
+    val context = LocalContext.current
+    val container = (context.applicationContext as DoonaApplication).container
+    val store = remember(container) { AppSettingsStore(container.application, AppSettings.get(container.application), container.quickTile) }
+    val system = remember(context, container) { ActivitySettingsSystem(context as Activity, container.quickTile) }
+    val nav = remember(onOpenPerApp) {
+        SettingsNav(perApp = onOpenPerApp, dns = {}, effectiveConfig = {}, report = {}, about = {}, theme = {}, language = {}, interval = {}, lab = {})
+    }
+    dev.doona.android.feature.settings.SettingsRoute(engine, store, system, nav, version, onTab = {})
 }
