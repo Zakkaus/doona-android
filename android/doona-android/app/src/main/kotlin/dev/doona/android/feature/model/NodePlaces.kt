@@ -1,8 +1,7 @@
-package dev.doona.android.feature.nodes
+package dev.doona.android.feature.model
 
 import androidx.compose.runtime.Immutable
 import dev.doona.android.designsystem.rv.RvPlace
-import dev.doona.android.feature.model.RvCity
 
 /**
  * Where a node's name places it: its country or region, its city when the name gives one, and the short name the narrow

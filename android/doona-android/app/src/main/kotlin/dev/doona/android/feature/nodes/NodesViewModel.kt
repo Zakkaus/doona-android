@@ -11,7 +11,8 @@ import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.Network
 import dev.doona.android.engine.NodeInfo
-import dev.doona.android.engine.ScoreGroup
+import dev.doona.android.feature.model.CoreNodePlaces
+import dev.doona.android.feature.model.NodePlaces
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,8 +35,9 @@ import kotlinx.coroutines.launch
  * The D30 picker's, 節點's, a node's page's and search's state, one instance scoped to 活動's entry and shared by the four
  * (plan 2.2). Each catalog revision reads the nodes' details (`nodes(ids)`) and maps every node once, on [work], into
  * immutable values, so nothing a page reads changes between revisions and 活動 under the picker is not composed again on
- * a tick. A pick switches the main group ([pick]); a test asks the core to test every group ([test]); a failure stays
- * until the same action next succeeds, and [retry] runs it again. [clock] is now, for the subscriptions' end dates.
+ * a tick. A pick switches the main group ([pick]); a test asks the core to test every group ([test]); a failure (of
+ * those, or of reading the nodes' details) stays until the same action next succeeds, and [retry] runs it again. [clock]
+ * is now, for the subscriptions' end dates.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class NodesViewModel internal constructor(
@@ -47,29 +49,33 @@ class NodesViewModel internal constructor(
     private val failure = MutableStateFlow<NodesFailure?>(null)
     private val running = MutableStateFlow(false)
 
+    /** Bumped by [retry] after a failed read of the nodes' details, to read them again. */
+    private val reread = MutableStateFlow(0)
+
     /** The last pick that has not succeeded yet, with what to do once it does; [retry] makes it again after it failed. */
     private var lastPick: Pick? = null
 
     private class Pick(val nodeId: String, val network: Network?, val onPicked: () -> Unit)
 
     /**
-     * Each catalog mapped once, with every node's details read again (`nodes()`, the core's every node, grouped or not);
-     * when the read fails the nodes keep the last details read.
+     * Each catalog mapped once, with every node's details read again (`nodes()`, the core's every node, grouped or not).
+     * A failed read is reported (the pages show it with 重試) and the nodes keep the last details read; a node never
+     * described shows none ([dev.doona.android.feature.model.RvNode.described]).
      */
     private val mapped: Flow<NodesState?> = flow {
         var info = emptyMap<String, NodeInfo>()
         emitAll(
-            engine.catalog.mapLatest { catalog ->
+            combine(engine.catalog, reread) { catalog, _ -> catalog }.mapLatest { catalog ->
                 catalog ?: return@mapLatest null
-                engine.nodes(null).getOrNull()?.let { read -> info = read.associateBy { it.id } }
+                engine.nodes(null).also { it.report(NodesAction.Read) }.getOrNull()?.let { read -> info = read.associateBy { it.id } }
                 nodesState(catalog, info, places)
             },
         )
     }.flowOn(work)
 
     /** Score's choices, read again with each catalog revision while the catalog has a Score group. */
-    private val score: Flow<List<ScoreGroup>> = engine.catalog.mapLatest { catalog ->
-        if (catalog?.groups?.any { it.kind == GroupKind.Score } == true) engine.scoreState().getOrNull()?.groups.orEmpty() else emptyList()
+    private val score: Flow<RvScoreMarks?> = engine.catalog.mapLatest { catalog ->
+        if (catalog?.groups?.any { it.kind == GroupKind.Score } == true) rvScoreMarks(engine.scoreState().getOrNull()?.groups.orEmpty()) else null
     }.distinctUntilChanged().flowOn(work)
 
     private val testing: Flow<Boolean> = combine(running, engine.groups.map { all -> all.any { it.testing } }) { mine, core -> mine || core }
@@ -92,9 +98,10 @@ class NodesViewModel internal constructor(
         viewModelScope.launch {
             val result = engine.select(main, nodeId, network)
             result.report(NodesAction.Select)
-            if (result.isFailure) return@launch
+            // A pick a later one superseded does not close the page while the later one is still switching.
+            if (result.isFailure || lastPick !== pick) return@launch
             // Done: the page's callback is not kept past its pick.
-            if (lastPick === pick) lastPick = null
+            lastPick = null
             onPicked()
         }
     }
@@ -112,17 +119,18 @@ class NodesViewModel internal constructor(
         }
     }
 
-    /** Runs the failed action again: the last pick, or the test. */
+    /** Runs the failed action again: the last pick, the test, or the read of the nodes' details. */
     fun retry() {
         when (failure.value?.action) {
             NodesAction.Select -> lastPick?.let { pick(it.nodeId, it.network, it.onPicked) }
             NodesAction.Test -> test()
+            NodesAction.Read -> reread.update { it + 1 }
             null -> Unit
         }
     }
 
     /** A failure stands for [action] until it next succeeds; a success clears only its own action's failure. */
-    private fun Result<Unit>.report(action: NodesAction) {
+    private fun Result<*>.report(action: NodesAction) {
         val error = exceptionOrNull()
         failure.update { last ->
             when {

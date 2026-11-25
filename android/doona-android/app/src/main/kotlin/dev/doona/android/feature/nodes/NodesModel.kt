@@ -3,18 +3,19 @@ package dev.doona.android.feature.nodes
 import androidx.compose.runtime.Immutable
 import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.Group
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Network
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.ScoreGroup
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.SubscriptionFormat
+import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RV_TESTS
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSubFormat
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.rvLeafMembers
+import dev.doona.android.feature.model.rvSelectedLeaf
 import java.net.URI
 
 /**
@@ -22,7 +23,7 @@ import java.net.URI
  * catalog's order ([nodes]), the subscriptions in theirs, the node the main group uses for TCP ([currentId], empty with
  * none) and for UDP ([udpId], the same node unless the choices differ), when each node's kept tests ran ([testedAt],
  * oldest first, as long as its history), and whether the main group's TCP and UDP choices differ ([split]). A static node
- * has no subscription: its [RvNode.subscription] is empty, and the lists show it under 組態內.
+ * has no subscription: its [RvNode.subscriptionId] is empty, and the lists show it under 組態內.
  */
 @Immutable
 internal data class NodesState(
@@ -45,22 +46,29 @@ internal data class NodesState(
     }
 }
 
-/** What the pages read from the ViewModel: the mapped [state], a latency test running, the last failed action, Score's choices, and now. */
+/** What the pages read from the ViewModel: the mapped [state], a latency test running, the last failed action, Score's marks (null with no Score group), and now. */
 @Immutable
 internal data class NodesUi(
     val state: NodesState = NodesState.Empty,
     val loaded: Boolean = false,
     val testing: Boolean = false,
     val failure: NodesFailure? = null,
-    val score: List<ScoreGroup> = emptyList(),
+    val score: RvScoreMarks? = null,
     val nowEpochMs: Long = 0L,
 )
 
-/** An action that failed: a node switch or a latency test, with the engine's reason. */
+/** An action that failed: a node switch, a latency test or the read of the nodes' details, with the engine's reason. */
 @Immutable
 internal data class NodesFailure(val action: NodesAction, val code: ErrorCode)
 
-internal enum class NodesAction { Select, Test }
+internal enum class NodesAction { Select, Test, Read }
+
+/** The nodes the Score groups in [groups] chose, per network; null with no Score group. */
+internal fun rvScoreMarks(groups: List<ScoreGroup>): RvScoreMarks? = if (groups.isEmpty()) {
+    null
+} else {
+    RvScoreMarks(groups.mapNotNullTo(HashSet()) { it.tcp.selectedId }, groups.mapNotNullTo(HashSet()) { it.udp.selectedId })
+}
 
 /**
  * [catalog] as the pages show it, with each node's details from [infos] and its place from [places]. The nodes are every
@@ -68,8 +76,7 @@ internal enum class NodesAction { Select, Test }
  * edited by hand may leave a node out of every group. The core names a node only as a group's member, so such a node is
  * named by its server. With no main group (a hand-edited profile may have none) no node is the current one.
  */
-internal fun nodesState(catalog: Catalog?, infos: Map<String, NodeInfo>, places: NodePlaces): NodesState {
-    catalog ?: return NodesState.Empty
+internal fun nodesState(catalog: Catalog, infos: Map<String, NodeInfo>, places: NodePlaces): NodesState {
     val names = catalog.subscriptions.associate { it.id to it.name }
     val grouped = rvLeafMembers(catalog)
     val listed = grouped.mapTo(HashSet()) { it.id }
@@ -77,22 +84,26 @@ internal fun nodesState(catalog: Catalog?, infos: Map<String, NodeInfo>, places:
     val groups = catalog.groups.associateBy { it.id }
     val main = groups[catalog.mainGroupId]
     return NodesState(
-        nodes = members.map { rvNode(it, infos[it.id], it.subscriptionId?.let(names::get).orEmpty(), places) },
+        nodes = members.map { m -> rvNode(m, infos[m.id], m.subscriptionId?.let { id -> RvSource(id, names[id].orEmpty()) }, places) },
         subscriptions = catalog.subscriptions.map(::rvSubscription),
-        currentId = main?.let { leafOf(it.tcp.selectedId, groups, Network.Tcp) }.orEmpty(),
+        currentId = main?.let { rvSelectedLeaf(it, Network.Tcp, groups) }.orEmpty(),
         mainGroupId = main?.id,
         testedAt = members.associate { m -> m.id to infos[m.id]?.tests?.takeLast(RV_TESTS)?.map { it.atEpochMs }.orEmpty() },
         split = main?.networksDiffer == true,
-        udpId = main?.let { leafOf(it.udp.selectedId, groups, Network.Udp) }.orEmpty(),
+        udpId = main?.let { rvSelectedLeaf(it, Network.Udp, groups) }.orEmpty(),
     )
 }
+
+/** The subscription a node came from: its id and its name. */
+internal class RvSource(val id: String, val name: String)
 
 /**
  * A node as the pages show it. The history is the core's last tests, oldest first; a node the core has no details for
  * shows the catalog's last probe alone (a real probe, never one made up), so a probed node never reads as untested.
- * The name stays the subscription's: only the rows draw its emoji as marks (q-emoji1).
+ * The name stays the subscription's: only the rows draw its emoji as marks (q-emoji1). [source] is null for a node of no
+ * subscription (組態內).
  */
-internal fun rvNode(member: Member, info: NodeInfo?, subscription: String, places: NodePlaces): RvNode {
+internal fun rvNode(member: Member, info: NodeInfo?, source: RvSource?, places: NodePlaces): RvNode {
     val placed = places.of(member.name)
     val history = when {
         info != null -> info.tests.map { it.ms }.takeLast(RV_TESTS)
@@ -110,17 +121,10 @@ internal fun rvNode(member: Member, info: NodeInfo?, subscription: String, place
         port = info?.port ?: 0,
         transport = info?.transport?.let(::transportName).orEmpty(),
         tls = info?.tls ?: false,
-        subscription = subscription,
+        subscription = source?.name.orEmpty(),
+        subscriptionId = source?.id.orEmpty(),
         history = history,
     )
-}
-
-/** The node a selection [id] on [network] ends on: a node as itself, a nested group as its own choice on that network. */
-private fun leafOf(id: String?, groups: Map<String, Group>, network: Network, depth: Int = 0): String? {
-    id ?: return null
-    val group = groups[id] ?: return id
-    val next = if (network == Network.Udp) group.udp.selectedId else group.tcp.selectedId
-    return if (depth < MAX_DEPTH) leafOf(next, groups, network, depth + 1) else null
 }
 
 internal fun rvSubscription(subscription: Subscription): RvSubscription = RvSubscription(
@@ -167,6 +171,3 @@ private val TRANSPORTS = mapOf(
     "httpupgrade" to "HTTPUpgrade",
     "xhttp" to "XHTTP",
 )
-
-/** Nested groups deeper than this are a cycle the core should never send; the selection then names no node. */
-private const val MAX_DEPTH = 8

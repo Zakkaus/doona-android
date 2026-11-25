@@ -6,6 +6,7 @@ import dev.doona.android.feature.nodes.RvNodeDetail
 import dev.doona.android.feature.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
+import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.rvShot
 import org.junit.Rule
 import org.junit.Test
@@ -53,7 +54,7 @@ class RvNodesShotTest {
     private fun Detail() {
         val page = sampleNodesPage()
         val node = page.nodes.first { it.id == RV_NODES_DETAIL }
-        RvNodeDetail(node, current = node.id == page.currentId, page.testedAtEpochMs, onBack = {}, onUse = {}, onTest = {})
+        RvNodeDetail(node, current = node.id in page.current, RvData.testTimes, onBack = {}, onUse = {}, onTest = {})
     }
 
     private companion object {

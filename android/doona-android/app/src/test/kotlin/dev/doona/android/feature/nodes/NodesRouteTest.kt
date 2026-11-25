@@ -7,6 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
@@ -36,6 +37,7 @@ import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeRuleMode
+import dev.doona.android.feature.model.CoreNodePlaces
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -60,6 +62,8 @@ class NodesRouteTest {
     private val busyPicks = AtomicInteger()
     private var testsFail = false
 
+    @Volatile private var readsFail = false
+
     private fun engine(extra: List<Member> = emptyList(), udp: String? = null): Engine {
         val sub = Subscription("s-1", "Harbor", "https://sub.example.net/token", nodes = 3, updatedAtEpochMs = 1L)
         val members = listOf(
@@ -81,7 +85,8 @@ class NodesRouteTest {
                 if (testsFail) Result.failure(EngineException(ErrorCode.Internal)) else fake.testLatency(groupId)
 
             // A node the profile lists itself whose details the core has not sent yet.
-            override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> = fake.nodes(ids).map { all -> all.filter { it.id != "n-mine" } }
+            override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> =
+                if (readsFail) Result.failure(EngineException(ErrorCode.Busy)) else fake.nodes(ids).map { all -> all.filter { it.id != "n-mine" } }
         }
     }
 
@@ -266,6 +271,70 @@ class NodesRouteTest {
         node = true
         compose.waitForIdle()
         compose.onNodeWithText("Set as main node").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `節點 checks both the TCP and the UDP node while the main group's networks are apart`() {
+        val vm = viewModel(engine(udp = "n-odd"))
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {}) } }
+        compose.waitForIdle()
+        val inUse = SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "In use")
+        val checked = compose.onAllNodes(inUse).fetchSemanticsNodes().map { it.config[SemanticsProperties.Text].joinToString("") { t -> t.text } }
+        assertEquals(2, checked.size)
+        assertTrue(checked.toString(), checked.any { "Tokyo 01" in it } && checked.any { "Osaka 02" in it })
+    }
+
+    @Test
+    fun `a failed read of the nodes' details shows on 節點 and the node's page with dashes, and 重試 reads them again`() {
+        readsFail = true
+        val vm = viewModel(engine())
+        var node by mutableStateOf(false)
+        compose.setContent {
+            RvTheme(rvSystemScheme(false), false) {
+                if (node) NodeRoute(vm, "n-jp", onBack = {}) else NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {})
+            }
+        }
+        compose.waitForIdle()
+        compose.onNodeWithText("Could not read the nodes").assertExists()
+        node = true
+        compose.waitForIdle()
+        compose.onNodeWithText("Could not read the nodes").assertExists()
+        // Protocol, server, port, transport and TLS read as dashes, never a port 0 or TLS Off the core did not send.
+        val dashes = compose.onAllNodesWithText("—", useUnmergedTree = true).fetchSemanticsNodes().size
+        readsFail = false
+        compose.onNodeWithText("Try again").performClick()
+        compose.waitUntil(5_000) { vm.ui.value.failure == null }
+        compose.waitForIdle()
+        compose.onNodeWithText("Could not read the nodes").assertDoesNotExist()
+        assertTrue(vm.ui.value.state.node("n-jp")!!.described)
+        assertEquals(dashes - 5, compose.onAllNodesWithText("—", useUnmergedTree = true).fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun `two subscriptions of one name stay apart in the 訂閱 menu, and one that gave no node is not offered`() {
+        val first = Subscription("s-1", "Harbor", "https://sub.example.net/a", nodes = 1, updatedAtEpochMs = 1L)
+        val second = Subscription("s-2", "Harbor", "https://sub.example.net/b", nodes = 1, updatedAtEpochMs = 1L)
+        val failed = Subscription("s-3", "Lantern", "https://lantern.example.net/c", nodes = 0, updatedAtEpochMs = 1L)
+        val members = listOf(Member("n-jp", "Tokyo 01", 20, subscriptionId = "s-1"), Member("n-os", "Osaka 01", 30, subscriptionId = "s-2"))
+        val main = Group(MAIN, "Proxy", GroupKind.Selector, members, Group.Selection("n-jp", pinned = true))
+        val vm = viewModel(FakeEngine(groups = listOf(main), subscriptions = listOf(first, second, failed)))
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {}) } }
+        compose.waitForIdle()
+        compose.onNodeWithText("All subscriptions").performClick()
+        compose.waitForIdle()
+        compose.onAllNodesWithText("Harbor").assertCountEquals(2)
+        compose.onNodeWithText("Lantern").assertDoesNotExist()
+        compose.onAllNodesWithText("Harbor").onLast().performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("Osaka 01"), rowNames())
+    }
+
+    @Test
+    fun `a node of no subscription names 組態內 as its source on its page`() {
+        val vm = viewModel(engine(extra = listOf(Member("n-mine", "Home 01"))))
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeRoute(vm, "n-mine", onBack = {}) } }
+        compose.waitForIdle()
+        compose.onNodeWithText("In configuration", useUnmergedTree = true).assertExists()
     }
 
     private companion object {

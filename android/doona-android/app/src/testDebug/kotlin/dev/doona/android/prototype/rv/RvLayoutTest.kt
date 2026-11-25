@@ -173,7 +173,7 @@ class RvLayoutTest {
     fun nodeDetail() = measure("node-detail", Top.Title) {
         val page = sampleNodesPage()
         val node = page.nodes.first { it.id == RV_NODES_DETAIL }
-        RvNodeDetail(node, current = node.id == page.currentId, page.testedAtEpochMs, onBack = {}, onUse = {}, onTest = {})
+        RvNodeDetail(node, current = node.id in page.current, RvData.testTimes, onBack = {}, onUse = {}, onTest = {})
     }
 
     @Test

@@ -6,8 +6,8 @@ import org.junit.Test
 
 /** The lists' orders over the names as the rows draw them, and over the nodes of no subscription (組態內). */
 class RvNodeOrderShownTest {
-    private fun node(id: String, name: String, ms: Int?, subscription: String = "Harbor", place: RvPlace = RvPlace.HK) =
-        RvNode(id, name, "", place, null, "VLESS", "$id.example.net", 443, "TCP", true, subscription, listOf(ms))
+    private fun node(id: String, name: String, ms: Int?, subscriptionId: String = "s-1", place: RvPlace = RvPlace.HK) =
+        RvNode(id, name, "", place, null, "VLESS", "$id.example.net", 443, "TCP", true, if (subscriptionId.isEmpty()) "" else "Harbor", subscriptionId, listOf(ms))
 
     private val harbor = RvSubscription("s-1", "Harbor", 3, 0L, 0L, 0L, null)
 
@@ -25,11 +25,22 @@ class RvNodeOrderShownTest {
 
     @Test
     fun everyOrderListsTheNodesOfNoSubscriptionUnder組態內() {
-        val nodes = listOf(node("hk", "HK 01", 30), node("mine", "Home 01", 20, subscription = "", place = RvPlace.JP))
+        val nodes = listOf(node("hk", "HK 01", 30), node("mine", "Home 01", 20, subscriptionId = "", place = RvPlace.JP))
         for (sort in RvNodeSort.entries) {
             val groups = rvNodeGroups(nodes, listOf(harbor), sort)
             assertEquals("$sort", setOf("hk", "mine"), groups.flatMap { it.nodes }.map { it.id }.toSet())
             if (sort != RvNodeSort.Region) assertEquals("$sort", listOf("mine"), groups.filterIsInstance<RvNodeGroup.Inline>().single().nodes.map { it.id })
+        }
+    }
+
+    /** Two subscriptions of one name (one host, two tokens: the name defaults to the host) keep their own nodes. */
+    @Test
+    fun subscriptionsOfOneNameKeepTheirOwnNodes() {
+        val other = harbor.copy(id = "s-2")
+        val nodes = listOf(node("a", "HK 01", 30), node("b", "HK 02", 20, subscriptionId = "s-2"))
+        for (sort in RvNodeSort.entries.filter { it != RvNodeSort.Region }) {
+            val groups = rvNodeGroups(nodes, listOf(harbor, other), sort).filterIsInstance<RvNodeGroup.Subscription>()
+            assertEquals("$sort", listOf(listOf("a"), listOf("b")), groups.map { g -> g.nodes.map { it.id } })
         }
     }
 }

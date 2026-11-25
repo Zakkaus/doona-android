@@ -10,11 +10,15 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.designsystem.rv.RvPullMotion
 import dev.doona.android.designsystem.rv.rememberRvPullState
 import dev.doona.android.engine.Engine
+import dev.doona.android.engine.EngineException
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.Member
+import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.fake.FakeRuleMode
 import dev.doona.android.engine.fake.RvSampleNodes
 import dev.doona.android.engine.fake.rvSampleEngine
+import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
@@ -38,7 +42,8 @@ import org.robolectric.annotation.GraphicsMode
  * then the routes (goldens `app-rv-nodes-page-*`, `app-rv-node-detail-*`, `app-rv-node-picker-*`), each in zh light,
  * dark and fs200 and en light, to set beside `proto-rv-nodes-page-*`, `proto-rv-node-detail-*` and `proto-rv-node-picker-*`.
  * The page and the node's page are whole; the picker is its first screen, as its prototype golden. RvData's now is the
- * ViewModel's clock. The `-nomain` goldens are a profile with no main group (no Proxy).
+ * ViewModel's clock. The `-nomain` goldens are a profile with no main group (no Proxy); `-split` the main group's TCP and
+ * UDP on two nodes; `-noread` a failed read of the nodes' details; `-inline` a node the profile lists itself.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -107,6 +112,21 @@ class AppRvNodesShotTest {
     @Config(qualifiers = WHOLE_PICKER)
     fun pickerInlineLight() = shot("node-picker-inline", dark = false, whole = true, engine = ::inlineEngine) { Picker(it) }
 
+    /** 節點 with the main group's networks apart: its TCP and its UDP node both carry the check. */
+    @Test
+    @Config(qualifiers = WHOLE_PAGE)
+    fun pageSplitLight() = shot("nodes-page-split", dark = false, whole = true, engine = ::splitEngine) { Page(it) }
+
+    /** The nodes' details could not be read: the banner with 重試, and dashes for the facts the core did not send. */
+    @Test
+    @Config(qualifiers = WHOLE_DETAIL_BANNER)
+    fun detailNoReadLight() = shot("node-detail-noread", dark = false, whole = true, engine = ::noReadEngine) { Detail(it) }
+
+    /** A node the profile lists itself: its page names 組態內 as its source. */
+    @Test
+    @Config(qualifiers = WHOLE_DETAIL)
+    fun detailInlineLight() = shot("node-detail-inline", dark = false, whole = true, engine = ::inlineEngine) { NodeRoute(it, INLINE_ID, onBack = {}) }
+
     @Test fun pickerLight() = shot("node-picker", dark = false) { Picker(it) }
 
     @Test fun pickerDark() = shot("node-picker", dark = true) { Picker(it) }
@@ -157,8 +177,15 @@ class AppRvNodesShotTest {
 
     /** The sample with a node of no subscription added to Proxy, as a profile lists one inline. */
     private fun inlineEngine(): Engine = rvSampleEngine(
-        RvSampleNodes.groups.map { g -> if (g.id != FakeRuleMode.MAIN_GROUP_ID) g else g.copy(members = g.members + Member("inline-home-01", "Home 01")) },
+        RvSampleNodes.groups.map { g -> if (g.id != FakeRuleMode.MAIN_GROUP_ID) g else g.copy(members = g.members + Member(INLINE_ID, "Home 01")) },
     )
+
+    /** The sample whose nodes' details cannot be read. */
+    private fun noReadEngine(): Engine = rvSampleEngine().let { sample ->
+        object : Engine by sample {
+            override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> = Result.failure(EngineException(ErrorCode.Busy))
+        }
+    }
 
     /** A hand-edited profile without Proxy: the sample's other groups, so the catalog's main group is missing. */
     private fun noMainEngine(): Engine = rvSampleEngine(RvSampleNodes.groups.filterNot { it.id == FakeRuleMode.MAIN_GROUP_ID })
@@ -175,6 +202,8 @@ class AppRvNodesShotTest {
         const val WHOLE_PAGE_FS200 = "+h4925dp"
         const val WHOLE_PAGE_EN = "en-w412dp-h2950dp-notnight-xhdpi"
         const val WHOLE_DETAIL = "+h1220dp"
+        const val WHOLE_DETAIL_BANNER = "+h1360dp"
+        const val INLINE_ID = "inline-home-01"
         const val WHOLE_PICKER = "+h4850dp"
         const val WHOLE_DETAIL_FS200 = "+h1900dp"
         const val WHOLE_DETAIL_EN = "en-w412dp-h1220dp-notnight-xhdpi"

@@ -74,6 +74,7 @@ import dev.doona.android.feature.nodes.ui.RvRowsComposed
 import dev.doona.android.feature.nodes.ui.inPicked
 import dev.doona.android.feature.nodes.ui.matches
 import dev.doona.android.feature.nodes.ui.rvNodeChips
+import dev.doona.android.feature.nodes.ui.rvPicked
 import kotlinx.coroutines.flow.first
 
 /** The picker's root, for tests. */
@@ -135,22 +136,22 @@ internal fun RvNodePicker(
     val scroll = rememberScrollState()
     val glass = rememberRvGlass()
     var query by rememberSaveable { mutableStateOf("") }
-    var picked by rememberSaveable { mutableStateOf<String?>(null) }
+    var chosen by rememberSaveable { mutableStateOf<String?>(null) }
+    val picked = rvPicked(chosen, nodes)
     var order by rememberSaveable { mutableStateOf(RvNodeSort.Latency) }
     val labels = nodes.associate { it.id to stringResource(it.place.label) }
     val scoped = nodes.filter { inPicked(it, picked) }
     val matching = scoped.filter { it.matches(query.trim(), labels.getValue(it.id)) }.mapTo(mutableSetOf()) { it.id }
-    val inline = nodes.any { it.inline }
     // The sections shown: the picked subscription's, or all, then 組態內 (a null subscription) when it has nodes.
-    val ours = inline && (picked == null || picked == RV_INLINE)
-    val sections: List<RvSubscription?> = subscriptions.filter { picked == null || it.name == picked } + if (ours) listOf(null) else emptyList()
+    val ours = nodes.any { it.inline } && (picked == null || picked == RV_INLINE)
+    val sections: List<RvSubscription?> = subscriptions.filter { picked == null || it.id == picked } + if (ours) listOf(null) else emptyList()
     val composed = rememberRowsComposed(sections.size + scoped.size)
     RvLongPressTiming {
         Box(Modifier.fillMaxSize().testTag(RV_PICKER)) {
             // A pull down at the top, which closes the picker, moves the list under the bar with the finger.
             Column(Modifier.fillMaxSize().rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll).graphicsLayer { translationY = stretch() }) {
                 Column(section(1)) {
-                    val (subChip, orderChip) = rvNodeChips(subscriptions, inline, picked, order, { picked = it }, { order = it })
+                    val (subChip, orderChip) = rvNodeChips(subscriptions, nodes, picked, order, { chosen = it }, { order = it })
                     RvPageHeader(title, Modifier, insets, caption = caption?.let { line -> { RvCaption(line) } }, control = { RvFilterChipRow(subChip, orderChip) })
                     RvBannerSlot(banner)
                     if (apply != null) {
@@ -160,7 +161,7 @@ internal fun RvNodePicker(
                 }
                 var first = 0
                 sections.forEachIndexed { i, sub ->
-                    val members = rvSectionOrder(scoped.filter { it.subscription == (sub?.name ?: RV_INLINE) }, order)
+                    val members = rvSectionOrder(scoped.filter { it.subscriptionId == (sub?.id ?: RV_INLINE) }, order)
                     val rows = RvRowsComposed(first, composed)
                     // Keyed by section, so each keeps its open state while the 訂閱 chip changes which are listed.
                     key(sub?.id ?: RV_INLINE) {

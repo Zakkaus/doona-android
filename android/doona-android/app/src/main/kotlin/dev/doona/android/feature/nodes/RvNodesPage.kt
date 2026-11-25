@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
@@ -38,6 +39,7 @@ import dev.doona.android.designsystem.rv.RvLatencyChange
 import dev.doona.android.designsystem.rv.RvMenuAnchor
 import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.designsystem.rv.RvNodesSize
+import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvRegion
 import dev.doona.android.designsystem.rv.RvRow
@@ -62,6 +64,7 @@ import dev.doona.android.feature.nodes.ui.rvNodeChips
 import dev.doona.android.feature.nodes.ui.rvNodeLine
 import dev.doona.android.feature.nodes.ui.rvNodeMenu
 import dev.doona.android.feature.nodes.ui.rvNodeTitle
+import dev.doona.android.feature.nodes.ui.rvPicked
 
 /**
  * The 節點 page, pushed from 活動, in the language of Revolut's Analytics and Crypto pages: the back disc and the large
@@ -73,7 +76,8 @@ import dev.doona.android.feature.nodes.ui.rvNodeTitle
  * 24); with no main group there is none (q-p3a-nomain), and no node carries the check. The chips (decision 2026-11-25 19:25, shared with the pickers and a group's page)
  * are the page's own: 訂閱 shows one subscription's nodes, or 組態內's, across the page; 排序 orders the rows of each
  * part of the world. With no node (no subscription) the chips and the cards give way to the empty state, whose 新增訂閱
- * runs [onAdd].
+ * runs [onAdd]. A failed action ([banner]: a switch, a test, the read of the nodes' details) stands under the header with
+ * its 重試, as on the pickers. While the main group's TCP and UDP choices differ, both its nodes carry the check.
  */
 @Composable
 internal fun RvNodesPage(
@@ -84,10 +88,12 @@ internal fun RvNodesPage(
     onAdd: () -> Unit = {},
     score: RvScoreMarks? = null,
     caption: String? = stringResource(R.string.rv_main_node_hint),
+    banner: RvNotice? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     var steadiest by rememberSaveable { mutableStateOf(false) }
-    var picked by rememberSaveable { mutableStateOf<String?>(null) }
+    var chosen by rememberSaveable { mutableStateOf<String?>(null) }
+    val picked = rvPicked(chosen, state.nodes)
     var order by rememberSaveable { mutableStateOf(RvNodeSort.Latency) }
     val title = stringResource(R.string.rv_nodes_title)
     val shown = remember(state, picked) { state.scoped(picked) }
@@ -98,11 +104,12 @@ internal fun RvNodesPage(
             null
         } else {
             {
-                val (subChip, orderChip) = rvNodeChips(state.subscriptions, state.nodes.any { it.inline }, picked, order, { picked = it }, { order = it })
+                val (subChip, orderChip) = rvNodeChips(state.subscriptions, state.nodes, picked, order, { chosen = it }, { order = it })
                 RvFilterChipRow(subChip, orderChip)
             }
         }
         RvPageHeader(title, titleBlock, insets, caption = caption?.let { line -> { RvCaption(line) } }, control = chips)
+        RvBannerSlot(banner)
         if (empty) {
             RvGutter {
                 RvEmptyState(
@@ -114,12 +121,12 @@ internal fun RvNodesPage(
             }
         } else {
             RvGutter {
-                TopCard(shown.top(steadiest), shown.currentId, steadiest, { steadiest = it }, onOpen, onAllNodes)
+                TopCard(shown.top(steadiest), shown.current, steadiest, { steadiest = it }, onOpen, onAllNodes)
                 MapCard(shown)
             }
             RvSectionTitle(stringResource(R.string.rv_nodes_all), Modifier.padding(horizontal = RvSpace.gutter), onAllNodes)
             RvGutter {
-                for ((region, nodes) in shown.byRegion(order)) RegionCard(region, nodes, shown.currentId, onOpen, score)
+                for ((region, nodes) in shown.byRegion(order)) RegionCard(region, nodes, shown.current, onOpen, score)
             }
         }
     }
@@ -127,7 +134,7 @@ internal fun RvNodesPage(
 
 /** 'Top movers': the card's header (it opens the list, as on 活動), 最快 | 最穩, then the eight nodes in two rows of four. */
 @Composable
-private fun TopCard(top: List<RvNode>, currentId: String, steadiest: Boolean, onSteadiest: (Boolean) -> Unit, onOpen: (String) -> Unit, onAll: () -> Unit) {
+private fun TopCard(top: List<RvNode>, current: Set<String>, steadiest: Boolean, onSteadiest: (Boolean) -> Unit, onOpen: (String) -> Unit, onAll: () -> Unit) {
     RvCard {
         RvCardHeader(stringResource(R.string.rv_nodes_fastest_card), onAll)
         RvSegmented(
@@ -139,7 +146,7 @@ private fun TopCard(top: List<RvNode>, currentId: String, steadiest: Boolean, on
         Spacer(Modifier.height(RvNodesSize.topRowGap))
         for (line in top.chunked(TOP_COLUMNS)) {
             Row(Modifier.fillMaxWidth().padding(horizontal = RvSpace.rowPadding - RvSpace.tight)) {
-                line.forEach { TopNode(it, it.id == currentId, onOpen, Modifier.weight(1f)) }
+                line.forEach { TopNode(it, it.id in current, onOpen, Modifier.weight(1f)) }
                 repeat(TOP_COLUMNS - line.size) { Spacer(Modifier.weight(1f)) }
             }
         }
@@ -185,7 +192,7 @@ private fun MapCard(state: RvNodesPageState) {
  * Revolut's 56 dp 'See all' row (S7-12), which opens the rest in place.
  */
 @Composable
-private fun RegionCard(region: RvRegion, nodes: List<RvNode>, currentId: String, onOpen: (String) -> Unit, score: RvScoreMarks?) {
+private fun RegionCard(region: RvRegion, nodes: List<RvNode>, current: Set<String>, onOpen: (String) -> Unit, score: RvScoreMarks?) {
     var all by rememberSaveable(region) { mutableStateOf(false) }
     // 查看全部 opens the card in place, its height growing over the move's time; a new test re-sorts the rows, each
     // moving to its new place.
@@ -193,7 +200,7 @@ private fun RegionCard(region: RvRegion, nodes: List<RvNode>, currentId: String,
         RvCardHeader(stringResource(region.label))
         (if (all) nodes else nodes.take(REGION_ROWS)).forEachIndexed { order, node ->
             key(node.id) {
-                RegionRow(node, node.id == currentId, order, onOpen, score)
+                RegionRow(node, node.id in current, order, onOpen, score)
             }
         }
         if (!all && nodes.size > REGION_ROWS) RvSeeAll(pluralStringResource(R.plurals.rv_nodes_see_all, nodes.size, nodes.size)) { all = true }

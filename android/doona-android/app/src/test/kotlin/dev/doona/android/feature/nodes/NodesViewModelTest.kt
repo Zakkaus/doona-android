@@ -11,9 +11,16 @@ import dev.doona.android.engine.LatencyTest
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Network
 import dev.doona.android.engine.NodeInfo
+import dev.doona.android.engine.ScoreCounters
+import dev.doona.android.engine.ScoreCoverage
+import dev.doona.android.engine.ScoreGroup
+import dev.doona.android.engine.ScoreNetwork
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeRuleMode
+import dev.doona.android.feature.model.CoreNodePlaces
+import dev.doona.android.feature.model.NodePlace
+import dev.doona.android.feature.model.NodePlaces
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -51,12 +58,17 @@ class NodesViewModelTest {
         val selected = mutableListOf<Triple<String, String?, Network?>>()
         val tested = mutableListOf<String?>()
         var gate: CompletableDeferred<Unit>? = null
+        var readFails = false
+        val selectGates = mutableMapOf<String, CompletableDeferred<Unit>>()
 
-        override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> =
-            infos?.let { all -> Result.success(ids?.mapNotNull(all::get) ?: all.values.toList()) } ?: base.nodes(ids)
+        override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> = when {
+            readFails -> Result.failure(EngineException(ErrorCode.Busy))
+            else -> infos?.let { all -> Result.success(ids?.mapNotNull(all::get) ?: all.values.toList()) } ?: base.nodes(ids)
+        }
 
         override suspend fun select(groupId: String, memberId: String?, network: Network?): Result<Unit> {
             selected += Triple(groupId, memberId, network)
+            memberId?.let(selectGates::get)?.await()
             return if (result.isSuccess) base.select(groupId, memberId, network) else result
         }
 
@@ -100,8 +112,10 @@ class NodesViewModelTest {
         assertEquals("gRPC", hk.transport)
         assertEquals("🇭🇰 Hong Kong 02", hk.name)
         assertEquals("Harbor", hk.subscription)
+        assertEquals("s-1", hk.subscriptionId)
         // A static node belongs to no subscription, so no 訂閱 section lists it.
-        assertEquals("", ui.state.node("n-static")!!.subscription)
+        assertEquals("", ui.state.node("n-static")!!.subscriptionId)
+        assertTrue(ui.state.node("n-static")!!.inline)
         assertEquals("n-hk", ui.state.currentId)
         assertEquals(MAIN, ui.state.mainGroupId)
         assertEquals(listOf("Harbor"), ui.state.subscriptions.map { it.name })
@@ -264,6 +278,48 @@ class NodesViewModelTest {
         assertEquals("n-x", ui.state.currentId)
         assertEquals(listOf("n-y", "n-x"), ui.state.nodes.map { it.id })
     }
+
+    /** A failed read of the details shows with 重試; the nodes still list, with no details the core never sent. */
+    @Test
+    fun aFailedReadOfTheDetailsShowsAndRetryReadsThemAgain() = runTest {
+        val info = mapOf("n-a" to NodeInfo("n-a", "vless", "a.example.net", 443, "tcp", true, emptyList()))
+        val probe = Probe(engine(listOf(Member("n-a", "A 01", subscriptionId = "s-1"))), info).apply { readFails = true }
+        val vm = collected(probe)
+        assertEquals(NodesFailure(NodesAction.Read, ErrorCode.Busy), vm.ui.value.failure)
+        val bare = vm.ui.value.state.node("n-a")!!
+        assertFalse(bare.described)
+        assertEquals("", bare.host)
+        probe.readFails = false
+        vm.retry()
+        assertNull(vm.ui.value.failure)
+        assertEquals("a.example.net", vm.ui.value.state.node("n-a")!!.host)
+        assertTrue(vm.ui.value.state.node("n-a")!!.described)
+    }
+
+    /** Two quick picks: the first one's answer does not close the page while the second is still switching. */
+    @Test
+    fun aPickALaterOneSupersededDoesNotClose() = runTest {
+        val probe = Probe(engine(listOf(Member("n-a", "A 01"), Member("n-b", "B 02"), Member("n-c", "C 03")), selected = "n-c"))
+        val vm = collected(probe)
+        val first = CompletableDeferred<Unit>().also { probe.selectGates["n-a"] = it }
+        val second = CompletableDeferred<Unit>().also { probe.selectGates["n-b"] = it }
+        val closed = mutableListOf<String>()
+        vm.pick("n-a") { closed += "n-a" }
+        vm.pick("n-b") { closed += "n-b" }
+        first.complete(Unit)
+        assertEquals(emptyList<String>(), closed)
+        second.complete(Unit)
+        assertEquals(listOf("n-b"), closed)
+    }
+
+    @Test
+    fun scoreMarksAreTheNodesTheScoreGroupsChosePerNetwork() {
+        assertNull(rvScoreMarks(emptyList()))
+        val marks = rvScoreMarks(listOf(ScoreGroup("g-s", emptyList(), chose("n-a"), chose("n-b")), ScoreGroup("g-t", emptyList(), chose(null), chose("n-a"))))
+        assertEquals(RvScoreMarks(setOf("n-a"), setOf("n-b", "n-a")), marks)
+    }
+
+    private fun chose(id: String?) = ScoreNetwork(id, id, "", "", ScoreCoverage(0, 0, 0), emptyList(), ScoreCounters(0, 0, 0, 0))
 
     private companion object {
         const val NODES = 300

@@ -54,6 +54,7 @@ import dev.doona.android.engine.ScoreGroup
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
+import dev.doona.android.feature.model.rvScorePick
 import dev.doona.android.feature.nodes.ui.RvScoreCard
 
 /**
@@ -112,8 +113,8 @@ internal fun RvPolicyGroupPage(
             if (score != null && joint != null) {
                 RvScoreJointCards(score, joint, group.members, onSeparate)
             } else if (score != null) {
-                RvScoreCard(stringResource(R.string.ui_tcp), score.tcp, group.members)
-                RvScoreCard(stringResource(R.string.ui_udp), score.udp, group.members)
+                RvScoreCard(stringResource(R.string.ui_tcp), rvScorePick(score.tcp), group.members)
+                RvScoreCard(stringResource(R.string.ui_udp), rvScorePick(score.udp), group.members)
             }
             if (networks != null) RvNetworkCard(group.members, networks, onOpenPicker, onApart)
             NodesCard(group, score, networks, onSelect, onSelectFor)

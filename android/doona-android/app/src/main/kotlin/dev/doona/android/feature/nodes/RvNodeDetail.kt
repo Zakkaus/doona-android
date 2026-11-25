@@ -151,16 +151,22 @@ private fun Figure(text: String) {
     RvFigureText(RvFigure(text.substring(0, cut), text.substring(cut)), Rv.type.cardValue, Rv.type.cardUnit)
 }
 
-/** Key stats: what the share link says, the subscription it came from and when it was last tested. */
+/**
+ * Key stats: what the share link says, the subscription it came from (組態內 for a node the profile lists itself, decision
+ * q-s5-inline-name) and when it was last tested. A node whose details the core has not sent ([RvNode.described]) shows a
+ * dash for each of the link's facts, never a port 0 or TLS off it was not told.
+ */
 @Composable
 private fun StatsCard(node: RvNode, lastTest: String) {
+    val told = node.described
     RvCard {
         RvStatRow(stringResource(R.string.rv_nodes_protocol), node.protocol.ifEmpty { RV_NO_VALUE }, valueKeepWords = false)
-        RvStatRow(stringResource(R.string.rv_nodes_server), node.host, valueKeepWords = false)
-        RvStatRow(stringResource(R.string.rv_nodes_port), node.port.toString())
-        RvStatRow(stringResource(R.string.rv_nodes_transport), node.transport, valueKeepWords = false)
-        RvStatRow(TLS, stringResource(if (node.tls) R.string.ui_on else R.string.ui_off))
-        RvStatRow(stringResource(R.string.rv_nodes_subscription), node.subscription, valueKeepWords = false)
+        RvStatRow(stringResource(R.string.rv_nodes_server), node.host.ifEmpty { RV_NO_VALUE }, valueKeepWords = false)
+        RvStatRow(stringResource(R.string.rv_nodes_port), if (told) node.port.toString() else RV_NO_VALUE)
+        RvStatRow(stringResource(R.string.rv_nodes_transport), node.transport.ifEmpty { RV_NO_VALUE }, valueKeepWords = false)
+        RvStatRow(TLS, if (told) stringResource(if (node.tls) R.string.ui_on else R.string.ui_off) else RV_NO_VALUE)
+        val source = if (node.inline) stringResource(R.string.rv_nodes_inline) else node.subscription
+        RvStatRow(stringResource(R.string.rv_nodes_subscription), source, valueKeepWords = false)
         RvStatRow(stringResource(R.string.rv_nodes_last_test), lastTest)
     }
 }

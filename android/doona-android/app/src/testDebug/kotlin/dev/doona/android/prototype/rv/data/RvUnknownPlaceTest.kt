@@ -38,7 +38,7 @@ class RvUnknownPlaceTest {
 
     @Test
     fun theMapAndTheCountryCountLeaveOtherOut() {
-        val page = RvNodesPageState(nodes, "tw-01", emptyList())
+        val page = RvNodesPageState(nodes, setOf("tw-01"))
         assertEquals(setOf(RvPlace.TW), page.places)
         assertEquals(listOf(RvRegion.Asia, RvRegion.Other), page.byRegion().map { it.first })
     }

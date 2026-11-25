@@ -63,8 +63,16 @@ internal fun rvSectionOrder(nodes: List<RvNode>, order: RvNodeSort): List<RvNode
     RvNodeSort.Latency -> nodes.sortedWith(rvByLatency)
     RvNodeSort.Stability -> nodes.sortedWith(rvSteadiness)
     RvNodeSort.Name -> nodes.sortedWith(rvByName)
-    RvNodeSort.Region -> nodes.sortedWith(rvByLatency).groupBy { it.place }.entries.sortedBy { it.key == RvPlace.Other }.flatMap { it.value }
+    RvNodeSort.Region -> byPlace(nodes).flatMap { it.second }
 }
+
+/**
+ * [nodes] by country, the country with the fastest node first and its nodes fastest first; 其他 closes the list, whatever
+ * its nodes' latency. groupBy keeps the order in which each country first appears, and the sort keeps every other country
+ * where it was.
+ */
+private fun byPlace(nodes: List<RvNode>): List<Pair<RvPlace, List<RvNode>>> =
+    nodes.sortedWith(rvByLatency).groupBy { it.place }.toList().sortedBy { it.first == RvPlace.Other }
 
 /**
  * One card of a node list: a subscription's nodes, a country's, or the nodes the profile lists itself ([Inline], 組態內,
@@ -80,14 +88,12 @@ internal sealed class RvNodeGroup(val key: String, val nodes: List<RvNode>) {
 }
 
 /**
- * [nodes] as a list shows them under [sort]: by subscription in [subscriptions]' order, then the nodes of no subscription
- * ([RvNode.inline]) in one 組態內 card, or by country for 地區. Every order shows every node.
+ * [nodes] as a list shows them under [sort]: by subscription in [subscriptions]' order (by [RvNode.subscriptionId], so two
+ * subscriptions of one name stay apart), then the nodes of no subscription ([RvNode.inline]) in one 組態內 card, or by
+ * country for 地區. Every order shows every node.
  */
 internal fun rvNodeGroups(nodes: List<RvNode>, subscriptions: List<RvSubscription>, sort: RvNodeSort): List<RvNodeGroup> = when (sort) {
-    // groupBy keeps the order in which each country first appears, so the country with the fastest node leads.
-    // 其他 closes the list, whatever its nodes' latency; the sort keeps every other card where it was.
-    RvNodeSort.Region -> nodes.sortedWith(rvByLatency).groupBy { it.place }.map { (place, members) -> RvNodeGroup.Place(place, members) }
-        .sortedBy { it.place == RvPlace.Other }
+    RvNodeSort.Region -> byPlace(nodes).map { (place, members) -> RvNodeGroup.Place(place, members) }
 
     else -> {
         val order = when (sort) {
@@ -96,10 +102,10 @@ internal fun rvNodeGroups(nodes: List<RvNode>, subscriptions: List<RvSubscriptio
             else -> rvByLatency
         }
         val inline = nodes.filter { it.inline }.sortedWith(order)
-        subscriptions.map { sub -> RvNodeGroup.Subscription(sub, nodes.filter { it.subscription == sub.name }.sortedWith(order)) } +
+        subscriptions.map { sub -> RvNodeGroup.Subscription(sub, nodes.filter { it.subscriptionId == sub.id }.sortedWith(order)) } +
             listOfNotNull(inline.takeIf { it.isNotEmpty() }?.let { RvNodeGroup.Inline(it) })
     }
 }
 
-/** An [RvNodeGroup.Inline] card's key: no subscription id is empty. */
+/** An [RvNodeGroup.Inline] card's key: the [RvNode.subscriptionId] of a node of no subscription. */
 private const val INLINE_KEY = ""

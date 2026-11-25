@@ -25,7 +25,7 @@ import dev.doona.android.feature.nodes.RvNodesPageState
 import dev.doona.android.prototype.rv.data.RvData
 
 /** The page as [RvData] has it. */
-internal fun sampleNodesPage() = RvNodesPageState(RvData.nodes, RvData.CURRENT_ID, RvData.testTimes)
+internal fun sampleNodesPage() = RvNodesPageState(RvData.nodes, setOf(RvData.CURRENT_ID))
 
 /** The node the detail page's golden shows: sg-03, whose last tests slow down steadily. */
 internal const val RV_NODES_DETAIL = "sg-03"
@@ -69,7 +69,7 @@ private fun RvNodeDetailPreview() {
     val dark = isSystemInDarkTheme()
     val page = sampleNodesPage()
     RvTheme(rvSystemScheme(dark), dark) {
-        RvNodeDetail(page.nodes.first { it.id == RV_NODES_DETAIL }, current = false, page.testedAtEpochMs, onBack = {}, onUse = {}, onTest = {})
+        RvNodeDetail(page.nodes.first { it.id == RV_NODES_DETAIL }, current = false, RvData.testTimes, onBack = {}, onUse = {}, onTest = {})
     }
 }
 

@@ -19,6 +19,7 @@ import dev.doona.android.engine.ScoreNetwork
 import dev.doona.android.engine.ScoreState
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
+import dev.doona.android.feature.model.rvScorePick
 import dev.doona.android.feature.nodes.ui.RvScoreChoiceRow
 import dev.doona.android.feature.nodes.ui.stateText
 import java.text.NumberFormat
@@ -71,7 +72,8 @@ internal fun RvScoreStatsCard(score: RvStatsScore) {
 /** `TCP · 已選定` (`香港 · TCP · 已選定` with the [group]'s name) under the node the group chose on that network. */
 @Composable
 private fun Choice(group: String?, label: String, network: ScoreNetwork, members: List<RvNode>) {
-    RvScoreChoiceRow(network, members, listOfNotNull(group, label, network.stateText()).joinToString(SEPARATOR))
+    val pick = rvScorePick(network)
+    RvScoreChoiceRow(pick, members, listOfNotNull(group, label, pick.stateText()).joinToString(SEPARATOR))
 }
 
 private const val TCP = "TCP"

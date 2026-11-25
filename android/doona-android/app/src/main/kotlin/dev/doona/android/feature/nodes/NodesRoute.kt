@@ -45,10 +45,18 @@ import dev.doona.android.feature.nodes.ui.RvApplyTo
 internal fun NodesRoute(viewModel: NodesViewModel, onBack: () -> Unit, onOpen: (String) -> Unit, onAllNodes: () -> Unit, onAdd: () -> Unit) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     if (!ui.loaded) return NodesSkeleton(onBack)
-    val page = remember(ui.state) { RvNodesPageState(ui.state.nodes, ui.state.currentId, emptyList(), ui.state.subscriptions) }
-    val score = remember(ui.score) { ui.score.takeIf { it.isNotEmpty() }?.let(::RvScoreMarks) }
+    val page = remember(ui.state) { RvNodesPageState(ui.state.nodes, ui.state.current, ui.state.subscriptions) }
     CompositionLocalProvider(LocalRvTesting provides ui.testing) {
-        RvNodesPage(page, onBack, onOpen = onOpen, onAllNodes = onAllNodes, onAdd = onAdd, score = score, caption = mainCaption(ui))
+        RvNodesPage(
+            page,
+            onBack,
+            onOpen = onOpen,
+            onAllNodes = onAllNodes,
+            onAdd = onAdd,
+            score = ui.score,
+            caption = mainCaption(ui),
+            banner = ui.failure?.let { nodesBanner(it, viewModel::retry) },
+        )
     }
 }
 
@@ -58,7 +66,6 @@ internal fun NodeRoute(viewModel: NodesViewModel, nodeId: String, onBack: () -> 
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     if (!ui.loaded) return NodesSkeleton(onBack)
     val node = ui.state.nodes.firstOrNull { it.id == nodeId } ?: return LaunchedEffect(Unit) { onBack() }
-    val score = remember(ui.score) { ui.score.takeIf { it.isNotEmpty() }?.let(::RvScoreMarks) }
     CompositionLocalProvider(LocalRvTesting provides ui.testing) {
         RvNodeDetail(
             node,
@@ -68,7 +75,7 @@ internal fun NodeRoute(viewModel: NodesViewModel, nodeId: String, onBack: () -> 
             onUse = { viewModel.pick(node.id) },
             onTest = viewModel::test,
             banner = ui.failure?.let { nodesBanner(it, viewModel::retry) },
-            score = score,
+            score = ui.score,
             canUse = ui.state.mainGroupId != null,
         )
     }
@@ -213,6 +220,7 @@ private val NodesAction.title: Int
     get() = when (this) {
         NodesAction.Select -> R.string.rv_failed_switch_node
         NodesAction.Test -> R.string.rv_failed_test_latency
+        NodesAction.Read -> R.string.rv_failed_read_nodes
     }
 
 private const val SKELETON_ROWS = 6

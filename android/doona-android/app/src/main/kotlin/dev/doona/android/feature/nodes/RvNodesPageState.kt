@@ -7,23 +7,25 @@ import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.fastest
+import dev.doona.android.feature.model.rvByLatency
 import dev.doona.android.feature.model.rvSectionOrder
 import dev.doona.android.feature.model.steadiest
+import dev.doona.android.feature.nodes.ui.RV_INLINE
+import dev.doona.android.feature.nodes.ui.inPicked
 
 /**
- * The 節點 page: every node, the one in use, when the rounds of tests ran (oldest first), and the subscriptions its 訂閱
- * chip offers.
+ * The 節點 page: every node, the ones in use ([current]: the main group's node, or its TCP and its UDP node while their
+ * choices differ; none with no main group), and the subscriptions its 訂閱 chip offers.
  */
 @Immutable
 internal class RvNodesPageState(
     val nodes: List<RvNode>,
-    val currentId: String,
-    val testedAtEpochMs: List<Long>,
+    val current: Set<String>,
     val subscriptions: List<RvSubscription> = emptyList(),
 ) {
-    /** The page for the 訂閱 chip's [subscription]: its nodes only, or every node for null. */
+    /** The page for the 訂閱 chip's [subscription] (an id, [RV_INLINE] for 組態內): its nodes only, or every node for null. */
     fun scoped(subscription: String?): RvNodesPageState =
-        if (subscription == null) this else RvNodesPageState(nodes.filter { it.subscription == subscription }, currentId, testedAtEpochMs, subscriptions)
+        if (subscription == null) this else RvNodesPageState(nodes.filter { inPicked(it, subscription) }, current, subscriptions)
 
     /** The countries the map marks and the count counts: those with a spot on the map. */
     val places: Set<RvPlace> get() = nodes.mapTo(mutableSetOf()) { it.place }.filterTo(mutableSetOf()) { it.mapped }
@@ -36,7 +38,7 @@ internal class RvNodesPageState(
      * first by default).
      */
     fun byRegion(order: RvNodeSort = RvNodeSort.Latency): List<Pair<RvRegion, List<RvNode>>> = nodes
-        .sortedWith(compareBy(nullsLast()) { it.latencyMs })
+        .sortedWith(rvByLatency)
         .groupBy { it.place.region }
         .toList()
         .sortedBy { it.first == RvRegion.Other }
