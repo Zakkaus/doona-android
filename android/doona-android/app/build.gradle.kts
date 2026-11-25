@@ -197,6 +197,11 @@ android {
             abiFilters += "arm64-v8a"
         }
     }
+    // Ship strings only in the app's own locales (res/xml/locales_config.xml). The libraries carry about 80 more, which
+    // would only put a translated system string next to an English screen.
+    androidResources {
+        localeFilters += listOf("en", "zh-rCN", "zh-rTW")
+    }
     // The fake engine and its sample data (src/fake) serve the previews, the debug samples and the unit tests (debug
     // only), so no release build compiles them. The profile build gets them with the debug sources (androidComponents).
     sourceSets {
