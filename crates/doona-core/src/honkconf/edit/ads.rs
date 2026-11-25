@@ -108,6 +108,22 @@ pub(super) fn loaded(tree: &Tree, raw: &impl Fn() -> EditError) -> Result<Loaded
     Ok(loaded)
 }
 
+/// The entry's directory: `Tree::read` joins the entry to the directory it read.
+pub(super) fn root(tree: &Tree) -> &Path {
+    tree.entry
+        .parent()
+        .expect("Tree::read joins the entry to its directory")
+}
+
+/// A source of `tree` relative to the entry's directory. `Tree::read` reads only files under
+/// it, and `form_sources` refuses a source that escapes it.
+pub(super) fn relative(tree: &Tree, path: &Path) -> PathBuf {
+    let relative = path.strip_prefix(root(tree));
+    relative
+        .expect("form_sources loads no source outside the entry's directory")
+        .into()
+}
+
 fn scan(tree: &Tree, raw: &impl Fn() -> EditError) -> Result<Scan, EditError> {
     let loaded = loaded(tree, raw)?;
     let (_, index) = source_indices(&loaded.sources).map_err(|_| raw())?;
@@ -122,11 +138,10 @@ fn scan(tree: &Tree, raw: &impl Fn() -> EditError) -> Result<Scan, EditError> {
             paused: false,
         })
         .collect();
-    let root = tree.entry.parent().unwrap();
     for (source, snapshot) in loaded.sources.iter().enumerate() {
         // honk loads a file with no block; the cursor that places marker runs does not.
         let runs = paused(snapshot).ok_or_else(|| EditError::OpenSource {
-            path: snapshot.path.strip_prefix(root).unwrap().into(),
+            path: relative(tree, &snapshot.path),
             bytes: None,
         })?;
         copies.extend(runs.into_iter().map(|bytes| Copy {
@@ -145,7 +160,7 @@ fn scan(tree: &Tree, raw: &impl Fn() -> EditError) -> Result<Scan, EditError> {
 
 impl Scan {
     /// The state, and the copy it refers to.
-    fn state(&self, root: &Path) -> (AdBlock, Option<&Copy>) {
+    fn state(&self, tree: &Tree) -> (AdBlock, Option<&Copy>) {
         let in_place = |c: &Copy| {
             c.source == 0
                 && if c.paused {
@@ -165,20 +180,21 @@ impl Scan {
                 };
                 (state, Some(only))
             }
-            copies => {
-                // A paused copy can sit right before an active first one: both are in place.
-                let stray = copies
-                    .iter()
-                    .find(|c| !in_place(c))
-                    .unwrap_or_else(|| &copies[1]);
-                let path = &self.loaded.sources[stray.source].path;
-                let elsewhere = AdBlock::Elsewhere {
-                    path: path.strip_prefix(root).unwrap().into(),
-                    bytes: stray.bytes.clone(),
-                };
-                (elsewhere, Some(stray))
+            [only] => self.elsewhere(tree, only),
+            // A paused copy can sit right before an active first one: both are in place.
+            [_, second, ..] => {
+                let stray = self.copies.iter().find(|c| !in_place(c));
+                self.elsewhere(tree, stray.unwrap_or(second))
             }
         }
+    }
+
+    fn elsewhere<'s>(&self, tree: &Tree, stray: &'s Copy) -> (AdBlock, Option<&'s Copy>) {
+        let elsewhere = AdBlock::Elsewhere {
+            path: relative(tree, &self.loaded.sources[stray.source].path),
+            bytes: stray.bytes.clone(),
+        };
+        (elsewhere, Some(stray))
     }
 }
 
@@ -256,20 +272,19 @@ impl File {
 }
 
 impl HonkStore {
-    fn ad_scan(&self, draft: u64) -> Result<(Tree, PathBuf, Scan), EditError> {
+    fn ad_scan(&self, draft: u64) -> Result<(Tree, Scan), EditError> {
         let tree = Tree::read(&self.draft_entry(self.find(draft)?)).map_err(StoreError::from)?;
-        let root = tree.entry.parent().unwrap().to_owned();
-        let entry = tree.entry.strip_prefix(&root).unwrap().to_owned();
+        let entry = relative(&tree, &tree.entry);
         let scan = scan(&tree, &|| EditError::OpenSource {
             path: entry.clone(),
             bytes: None,
         })?;
-        Ok((tree, root, scan))
+        Ok((tree, scan))
     }
 
     pub fn ad_block(&self, draft: u64) -> Result<AdBlock, EditError> {
-        let (_, root, scan) = self.ad_scan(draft)?;
-        Ok(scan.state(&root).0)
+        let (tree, scan) = self.ad_scan(draft)?;
+        Ok(scan.state(&tree).0)
     }
 
     /// Turning it on needs the category in `geo`, the data the next activation checks against.
@@ -279,9 +294,9 @@ impl HonkStore {
         on: bool,
         geo: &dyn GeoCatalog,
     ) -> Result<(), AdBlockError> {
-        let (tree, root, scan) = self.ad_scan(draft)?;
-        let entry = tree.entry.strip_prefix(&root).unwrap().to_owned();
-        let (state, copy) = scan.state(&root);
+        let (tree, scan) = self.ad_scan(draft)?;
+        let entry = relative(&tree, &tree.entry);
+        let (state, copy) = scan.state(&tree);
         if on && matches!(state, AdBlock::Off | AdBlock::Absent) {
             let label = geo.geosite(LABEL);
             if label != Label::Present {
@@ -318,7 +333,7 @@ impl HonkStore {
         old: &Scan,
         file: File,
     ) -> Result<(), EditError> {
-        let root = tree.entry.parent().unwrap().to_owned();
+        let root = root(&tree).to_owned();
         let first = (file.rows.iter())
             .filter(|r| r.list == List::DnsRequest)
             .min_by_key(|r| r.bytes.start);
@@ -343,7 +358,7 @@ impl HonkStore {
             &old.loaded.config.dns.routing.request,
             &after.loaded.config.dns.routing.request,
         );
-        if after.state(&root).0 != AdBlock::On
+        if after.state(&tree).0 != AdBlock::On
             || new.rules[1..] != old.rules[..]
             || new.fallback != old.fallback
         {
