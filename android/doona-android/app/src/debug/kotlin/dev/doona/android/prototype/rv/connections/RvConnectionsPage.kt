@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -120,12 +121,14 @@ private fun Disconnected() {
 /** The card of the [shown] connections, or the empty state when none match; a row opens its place in [connections]. */
 @Composable
 private fun Connections(shown: List<RvConnection>, connections: List<RvConnection>, routes: RvConnectionsRoutes, nowEpochMs: Long) {
+    // Each connection's place in the whole list, found once, not by a search from every row.
+    val place = remember(connections) { connections.withIndex().associate { (i, c) -> c to i } }
     RvGutter {
         if (shown.isEmpty()) {
             RvEmptyCaption(stringResource(R.string.rv_conn_none_title), stringResource(R.string.rv_conn_none_line))
         } else {
             // A long press opens the page as a tap does, at the menus' 500 ms (the owner, N6).
-            RvLongPressTiming { RvCard { shown.forEach { c -> RvConnectionRow(c, nowEpochMs) { routes.open(connections.indexOf(c)) } } } }
+            RvLongPressTiming { RvCard { shown.forEach { c -> key(c) { RvConnectionRow(c, nowEpochMs) { routes.open(place.getValue(c)) } } } } }
         }
     }
 }

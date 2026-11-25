@@ -4,10 +4,8 @@ import android.content.res.Configuration
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -36,6 +34,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
@@ -123,6 +122,7 @@ import dev.doona.android.prototype.rv.data.RvRuleOutbound
 import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.data.fastest
 import dev.doona.android.prototype.rv.stats.RvStatsDots
+import kotlinx.coroutines.flow.collectLatest
 
 /**
  * The 活動 screen in Revolut's home structure (#11, #15): a header with the connection state, the download rate as the
@@ -391,9 +391,20 @@ private fun ConnectionTicks(status: Status) {
  * motion, or while [resting] (read where it is drawn, so resting redraws nothing but the ring, once).
  */
 @Composable
-private fun rvPulse(on: Boolean, resting: () -> Boolean): () -> Float {
+internal fun rvPulse(on: Boolean, resting: () -> Boolean): () -> Float {
     if (!on || Rv.motion.instant) return { 0f }
-    val phase = rememberInfiniteTransition(label = "pulse").animateFloat(0f, 1f, infiniteRepeatable(tween(RvMotion.PULSE_MS, easing = RvMotion.Decelerate), RepeatMode.Restart), label = "ring")
+    val phase = remember { Animatable(0f) }
+    // The loop runs only while the ring is not resting: a resting pulse runs no animation, so it wakes no frame (it used
+    // to keep an infinite transition going and only stop reading it). It starts again from the ring's first frame.
+    LaunchedEffect(resting) {
+        snapshotFlow { resting() }.collectLatest { paused ->
+            phase.snapTo(0f)
+            while (!paused) {
+                phase.snapTo(0f)
+                phase.animateTo(1f, tween(RvMotion.PULSE_MS, easing = RvMotion.Decelerate))
+            }
+        }
+    }
     return { if (resting()) 0f else phase.value }
 }
 
