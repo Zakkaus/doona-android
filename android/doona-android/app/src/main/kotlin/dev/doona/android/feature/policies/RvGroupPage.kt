@@ -122,7 +122,7 @@ internal fun RvGroupPage(
     RvScrollPage(name, insets, modifier, onBack = actions.back, bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_test_group), actions.test) }) { titleBlock ->
         RvPageHeader(name, titleBlock, insets, caption = { Caption(group, content.score) })
         RvGutter(banner = banner) {
-            NetworkCard(group, choice) { actions.apart(!it.apart) }
+            NetworkCard(group, choice, actions.detail) { actions.apart(!it.apart) }
             if (choice.apart && !content.score) ApplyCard(content.apply, actions.apply)
             if (group.groups.isNotEmpty()) MemberGroupsCard(group, choice, content.score, actions.tap)
         }
@@ -213,8 +213,8 @@ private fun SectionRow(node: RvNode, label: String, order: Int, choice: RvApplyC
 
 /**
  * What a row chosen on a network says before its line: with the switch off nothing (one node serves both; in a Score group
- * Score's mark); on, the networks that chose it (TCP, UDP, or TCP/UDP for both, q-groupboth), and in a Score group Score's
- * mark: Score for both networks, Score TCP or Score UDP for one (sc3).
+ * Score's mark); on, the networks that chose it (TCP, UDP, or TCP/UDP for both, q-groupboth), after Score's mark in a Score
+ * group: Score TCP, Score UDP, or Score TCP/UDP for both (q-scoreboth).
  */
 @Composable
 private fun lead(choice: RvApplyChoice, id: String, score: Boolean): String? {
@@ -225,36 +225,39 @@ private fun lead(choice: RvApplyChoice, id: String, score: Boolean): String? {
     val networks = listOfNotNull(stringResource(R.string.ui_tcp).takeIf { tcp }, stringResource(R.string.ui_udp).takeIf { udp }).joinToString("/")
     return when {
         networks.isEmpty() -> null
-        score -> if (tcp && udp) mark else "$mark $networks"
+        score -> "$mark $networks"
         else -> networks
     }
 }
 
-/** 目前使用中: the switch 分開選擇 TCP/UDP, then a row for each network, its line beginning with the network. */
+/**
+ * 目前使用中: the switch 分開選擇 TCP/UDP, then a row for each network, its line beginning with the network; a tap on a row
+ * opens its node's detail ([onDetail], with the node's id).
+ */
 @Composable
-internal fun NetworkCard(group: RvPolicyGroup, choice: RvApplyChoice, onApart: (RvApplyChoice) -> Unit) {
+internal fun NetworkCard(group: RvPolicyGroup, choice: RvApplyChoice, onDetail: (String) -> Unit, onApart: (RvApplyChoice) -> Unit) {
     val node = group::nodeOf
     RvCard {
         RvCardHeader(stringResource(R.string.rv_nodes_in_use))
         RvSwitchRow(R.drawable.rv_sym_call_split, stringResource(R.string.rv_group_apart), choice.apart, onChange = { onApart(choice) })
         if (choice.apart) {
-            node(choice.tcpId)?.let { NetworkRow(it, stringResource(R.string.ui_tcp)) }
-            node(choice.udpId)?.let { NetworkRow(it, stringResource(R.string.ui_udp)) }
+            node(choice.tcpId)?.let { NetworkRow(it, stringResource(R.string.ui_tcp), onDetail) }
+            node(choice.udpId)?.let { NetworkRow(it, stringResource(R.string.ui_udp), onDetail) }
         } else {
-            node(choice.tcpId)?.let { NetworkRow(it, null) }
+            node(choice.tcpId)?.let { NetworkRow(it, null, onDetail) }
         }
     }
 }
 
 @Composable
-private fun NetworkRow(node: RvNode, network: String?) {
+private fun NetworkRow(node: RvNode, network: String?, onDetail: (String) -> Unit) {
     val place = stringResource(node.place.label)
     val shown = rvShownName(node.name)
     RvRow(
         { RvNameDisc(shown.mark, node.place.flag, current = true) },
         shown.text.ifEmpty { rvMarkName(shown.mark, place) },
         listOfNotNull(network, node.protocol, place).joinToString(SEPARATOR),
-        onClick = {},
+        onClick = { onDetail(node.id) },
         titleKeepWords = false,
     ) { RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut) }
 }

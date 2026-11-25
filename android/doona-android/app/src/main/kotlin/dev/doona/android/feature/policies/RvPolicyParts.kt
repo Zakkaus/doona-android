@@ -65,7 +65,7 @@ internal fun RvRuleMatch.title(): String = when (this) {
 /** Where the rules come from, as 策略 and the template review name it: the template, the subscription, or 主設定檔. */
 @Composable
 internal fun RvRuleSource.text(): String = when (this) {
-    is RvRuleSource.Template -> stringResource(template.name)
+    is RvRuleSource.Template -> template.name.text()
     is RvRuleSource.Subscription -> name
     RvRuleSource.File -> stringResource(R.string.rv_config_entry)
 }

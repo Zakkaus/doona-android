@@ -180,8 +180,10 @@
     <string name="rv_score_udp_unsupported">%1$s does not support UDP</string>
     <string name="rv_score_udp_failed">UDP test failed</string>
     <string name="rv_template_apply_failed">Could not apply the template</string>
+    <string name="rv_template_read_failed">Could not read the templates</string>
     <string name="rv_policy_failed_quic">Could not change Block QUIC</string>
     <string name="rv_policy_failed_update">Could not update the subscriptions</string>
+    <string name="rv_policy_failed_ads">Could not change Block ads</string>
     <string name="rv_network_apply_to">Apply to</string>
     <string name="rv_group_by_stability">By stability</string>
     <string name="rv_group_by_name">By name</string>

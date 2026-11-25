@@ -82,7 +82,7 @@ class PolicyMappingTest {
         val info = NodeInfo("n1", "vless", "hk.example.net", 443, "ws", true, tests)
         val mapped = rvNode(node("n1", subscriptionId = "s1"), info, "Harbor", RV_UNKNOWN_PLACES)
         assertEquals(listOf(30, 40, 50, 60, 70, 80, null, 100), mapped.history)
-        assertEquals(listOf("vless", "hk.example.net", "ws"), listOf(mapped.protocol, mapped.host, mapped.transport))
+        assertEquals(listOf("VLESS", "hk.example.net", "ws"), listOf(mapped.protocol, mapped.host, mapped.transport))
         assertEquals(443, mapped.port)
         assertTrue(mapped.tls)
         assertEquals("Harbor", mapped.subscription)

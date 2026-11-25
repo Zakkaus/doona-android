@@ -182,9 +182,9 @@ class AppRvGroupShotTest {
         const val STREAMING = "g-Streaming"
 
         /** Windows as tall as each page whole; measured by assertWhole. */
-        const val WHOLE = "+h3206dp"
-        const val WHOLE_FS200 = "+h6234dp"
-        const val WHOLE_EN = "en-w412dp-h3205dp-notnight-xhdpi"
-        const val WHOLE_APART = "+h3412dp"
+        const val WHOLE = "+h3289dp"
+        const val WHOLE_FS200 = "+h6309dp"
+        const val WHOLE_EN = "en-w412dp-h3240dp-notnight-xhdpi"
+        const val WHOLE_APART = "+h3495dp"
     }
 }

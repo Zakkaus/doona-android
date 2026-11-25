@@ -87,7 +87,7 @@ internal fun RvGroupSamplePage(
         )
         RvGutter {
             if (current != null) {
-                NetworkCard(group, current) { state = it.apart(!it.apart) }
+                NetworkCard(group, current, {}) { state = it.apart(!it.apart) }
                 if (current.apart) apply?.let { selected -> ApplyCard(selected) { apply = it } }
             }
             NodesCard(group, current, apply ?: RvApplyTo.Both, rows) { id, to -> state = state?.tapped(id, to) }

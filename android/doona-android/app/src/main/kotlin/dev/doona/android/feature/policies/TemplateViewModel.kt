@@ -1,5 +1,6 @@
 package dev.doona.android.feature.policies
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -9,22 +10,56 @@ import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.errorCode
-import dev.doona.android.feature.model.RV_TEMPLATES
 import dev.doona.android.feature.model.RvImpact
 import dev.doona.android.feature.model.RvRuleSource
+import dev.doona.android.feature.model.RvTemplate
+import dev.doona.android.feature.model.rvTemplate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** 範本: where the rules come from now, null until the engine's first catalog. */
-internal class TemplateViewModel(engine: Engine) : ViewModel() {
-    val source: StateFlow<RvRuleSource?> = engine.catalog
-        .map { it?.let(::sourceOf) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), engine.catalog.value?.let(::sourceOf))
+/**
+ * What 範本 shows: where the rules come from now ([source], null until the engine's first catalog), the templates the core
+ * lists ([templates], null until read), and the reason the list could not be read ([failure]).
+ */
+@Immutable
+internal data class TemplateUiState(
+    val source: RvRuleSource? = null,
+    val templates: List<RvTemplate>? = null,
+    val failure: ErrorCode? = null,
+)
+
+/**
+ * 範本: the rule source of each catalog, and the core's templates, read again with each catalog (installing GeoSite data
+ * makes one buildable). A failed read keeps the list shown and says so with 重試, which reads again.
+ */
+internal class TemplateViewModel(private val engine: Engine) : ViewModel() {
+    private val read = MutableStateFlow(TemplateUiState())
+    private val again = MutableStateFlow(0)
+
+    val uiState: StateFlow<TemplateUiState> = channelFlow {
+        launch {
+            combine(engine.catalog.filterNotNull(), again) { catalog, _ -> catalog }.collectLatest { catalog ->
+                val source = sourceOf(catalog)
+                engine.ruleTemplates()
+                    .onSuccess { list -> read.value = TemplateUiState(source, list.map { rvTemplate(it.id, it.needsGeosite) }) }
+                    .onFailure { error -> read.update { it.copy(source = source, failure = error.errorCode()) } }
+            }
+        }
+        read.collect { send(it) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TemplateUiState(engine.catalog.value?.let(::sourceOf)))
+
+    /** The banner's 重試: reads the templates again. */
+    fun retry() {
+        again.update { it + 1 }
+    }
 
     companion object {
         fun factory(engine: Engine): ViewModelProvider.Factory = viewModelFactory {
@@ -75,7 +110,7 @@ private fun sourceOf(catalog: Catalog): RvRuleSource = rvRuleSource(catalog.rule
 /** The review of moving [from] to the template [templateId]: the core tells no counts, rules or groups, so none are listed. */
 internal fun rvTemplateImpact(from: RvRuleSource, templateId: String): RvImpact = RvImpact(
     from = from,
-    to = RV_TEMPLATES.first { it.id == templateId },
+    to = rvTemplate(templateId),
     added = null,
     changed = null,
     removed = null,

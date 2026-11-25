@@ -14,7 +14,10 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.R
 import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.Engine
+import dev.doona.android.engine.EngineException
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.RuleOptions
+import dev.doona.android.engine.RuleTemplate
 import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
@@ -37,8 +40,8 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * 範本, its review and 生效設定 as the app draws them from an engine (goldens `app-rv-template-*`,
- * `app-rv-template-impact-*`, `app-rv-effective-config-*`). The core builds one template, so 範本 lists it in use; the
- * review is reached only from rules that come from no template, as [handWritten]'s do.
+ * `app-rv-template-impact-*`, `app-rv-effective-config-*`). 範本 lists the sample engine's five templates, 繞過中國大陸 in
+ * use and GFW waiting for GeoSite data; the review opens from rules that come from no template, as [handWritten]'s do.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -57,6 +60,9 @@ class AppRvTemplateShotTest {
     fun templateHandWrittenLight() = shot("template-hand", dark = false) { TemplateRoute(handWritten(), onBack = {}, onReview = {}) }
 
     @Test
+    fun templateReadFailedLight() = shot("template-read-failed", dark = false) { TemplateRoute(Unlisted(), onBack = {}, onReview = {}) }
+
+    @Test
     fun impactLight() = shot("template-impact", dark = false) { TemplateImpactRoute(handWritten(), "cn-direct", onBack = {}, onApplied = {}) }
 
     @Test
@@ -70,7 +76,7 @@ class AppRvTemplateShotTest {
     @Config(qualifiers = WHOLE_EFFECTIVE)
     fun effectiveDark() = shot("effective-config", dark = true, whole = true) { Effective() }
 
-    /** With the template in use 檢視變更 stays off; from a hand-written file it opens the review of the one template. */
+    /** With the template in use 檢視變更 stays off; from a hand-written file it opens the review of the first template. */
     @Test
     fun theReviewOpensOnlyForAnotherTemplate() {
         val opened = mutableListOf<String>()
@@ -124,6 +130,11 @@ class AppRvTemplateShotTest {
     }
 
     private fun handWritten() = HandWritten()
+
+    /** The sample engine, its template list unreadable. */
+    private class Unlisted(private val base: Engine = rvSampleEngine()) : Engine by base {
+        override suspend fun ruleTemplates(): Result<List<RuleTemplate>> = Result.failure(EngineException(ErrorCode.Internal))
+    }
 
     private companion object {
         val SHOTS: String = System.getProperty("doona.shots") ?: "src/test/screenshots"

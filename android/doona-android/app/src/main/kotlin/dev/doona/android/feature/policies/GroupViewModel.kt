@@ -30,8 +30,7 @@ import kotlinx.coroutines.launch
 /**
  * A group's page: the group [groupId] with its nodes, the node each network uses, and the taps that choose them, as the
  * approved 套用到 sample has them ([RvApplyChoice]). Each new catalog is read on [reads] with the members' details; a
- * read that fails keeps what is shown. [clock] is now, for the subscriptions' end
- * dates; [places] places the nodes by name until 節點's mapper is wired. The 分開選擇 switch and 套用到 live here:
+ * read that fails keeps what is shown and says so with 重試. [clock] is now, for the subscriptions' end dates; [places] places the nodes by name until 節點's mapper is wired. The 分開選擇 switch and 套用到 live here:
  * the engine only knows each network's node.
  */
 internal class GroupViewModel(
@@ -118,9 +117,8 @@ internal class GroupViewModel(
         failure.update { it?.takeIf { failed -> failed.action != GroupAction.Read } }
     }
 
-    /** A read failed: with the group shown, nothing changes; with nothing shown yet, the failure shows with 重試. */
+    /** A read failed: it shows with 重試, over the group last read if there is one. */
     private fun unread(error: Throwable) {
-        if (read.value != null) return
         retry = { again.update { it + 1 } }
         failure.value = GroupFailure(GroupAction.Read, error.errorCode())
     }

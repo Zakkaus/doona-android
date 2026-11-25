@@ -21,6 +21,12 @@ data class RuleSource(
     val error: ErrorCode? = null,
 )
 
+/**
+ * A rule template the core builds, by its [id], as [RuleSource.template] names it. [needsGeosite] is true while the
+ * installed GeoSite data lacks a category the template names: the core lists it but cannot build it.
+ */
+data class RuleTemplate(val id: String, val needsGeosite: Boolean = false)
+
 /** A page of rule rows: [total] rows in the source, read at [rulesRevision]. */
 data class RulePage(val rulesRevision: Long, val total: Int, val rows: List<RuleRow>)
 

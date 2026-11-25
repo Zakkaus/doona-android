@@ -37,17 +37,18 @@ import dev.doona.android.feature.model.text
  * 範本 (the 策略 options row), doona web's routing modes on a phone: one card of templates, each its glyph, its name over
  * one line on what it does, and a radio; the one in use says so after its line, and one the core cannot build yet is
  * listed, dimmed, with the reason after its line, and cannot be chosen. 檢視變更 opens the impact review, and only once a
- * template other than [current] is [selected]; [current] is null when the rules come from no template. The card lists
- * [templates].
+ * template other than [current] is [selected]; [current] is null when the rules come from no template, and [selected]
+ * when nothing is chosen yet. The card lists [templates]; a failed read shows as [banner] above it.
  */
 @Composable
 internal fun RvTemplatePage(
     current: RvTemplate?,
-    selected: RvTemplate,
+    selected: RvTemplate?,
     onSelect: (RvTemplate) -> Unit,
     onBack: () -> Unit,
     onReview: () -> Unit,
     templates: List<RvTemplate>,
+    banner: RvNotice? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_policy_template)
@@ -55,11 +56,11 @@ internal fun RvTemplatePage(
         title,
         insets,
         onBack = onBack,
-        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_template_review), onReview, enabled = selected.id != current?.id) },
+        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_template_review), onReview, enabled = selected != null && selected.id != current?.id) },
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
-        RvGutter {
-            RvCard { templates.forEach { RvTemplateRow(it, it.id == selected.id, it.id == current?.id) { onSelect(it) } } }
+        RvGutter(banner = banner) {
+            if (templates.isNotEmpty()) RvCard { templates.forEach { RvTemplateRow(it, it.id == selected?.id, it.id == current?.id) { onSelect(it) } } }
         }
     }
 }
@@ -72,9 +73,9 @@ internal fun RvTemplatePage(
 internal fun RvTemplateRow(template: RvTemplate, selected: Boolean, inUse: Boolean, kept: Boolean = false, onSelect: () -> Unit) {
     val reason = template.unsupported
     val state = reason?.let { stringResource(it) } ?: stringResource(R.string.rv_template_in_use).takeIf { inUse }
-    val parts = listOfNotNull(stringResource(template.line), state)
+    val parts = listOfNotNull(template.line?.let { stringResource(it) }, state)
     val line = if (kept) rvConfigPhrase(parts) else parts.joinToString(SEPARATOR)
-    val title = stringResource(template.name).let { if (kept) rvConfigPhrase(listOf(it)) else it }
+    val title = template.name.text().let { if (kept) rvConfigPhrase(listOf(it)) else it }
     val pick = Modifier
         .graphicsLayer { alpha = if (reason == null) 1f else RvAlpha.DISABLED }
         .rvRowSelect(selected, onSelect, enabled = reason == null)
@@ -115,7 +116,7 @@ internal fun RvTemplateImpactPage(impact: RvImpact, onBack: () -> Unit, onApply:
 @Composable
 private fun SummaryCard(impact: RvImpact) {
     RvCard {
-        RvStatRow(stringResource(R.string.rv_policy_template), stringResource(R.string.rv_template_from_to, impact.from.text(), stringResource(impact.to.name)))
+        RvStatRow(stringResource(R.string.rv_policy_template), stringResource(R.string.rv_template_from_to, impact.from.text(), impact.to.name.text()))
         impact.added?.let { RvStatRow(stringResource(R.string.rv_template_added), rules(it)) }
         impact.changed?.let { RvStatRow(stringResource(R.string.rv_template_changed), rules(it)) }
         impact.removed?.let { RvStatRow(stringResource(R.string.rv_template_removed), rules(it)) }

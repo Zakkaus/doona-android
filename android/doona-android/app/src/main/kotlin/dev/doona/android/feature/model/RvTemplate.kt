@@ -6,23 +6,39 @@ import androidx.compose.runtime.Immutable
 import dev.doona.android.R
 
 /**
- * A rule template, as doona web's routing modes offer them: its name, one line on what it does, its glyph, and, when
- * the core cannot build it yet, why ([unsupported]); such a template is listed but cannot be chosen.
+ * A rule template, as doona web's routing modes offer them: its name, one line on what it does (none for a template the
+ * app has no words for), its glyph, and, when the core cannot build it yet, why ([unsupported]); such a template is listed
+ * but cannot be chosen.
  */
 @Immutable
-internal class RvTemplate(
+internal data class RvTemplate(
     val id: String,
-    @StringRes val name: Int,
-    @StringRes val line: Int,
+    val name: RvLabel,
+    @StringRes val line: Int?,
     @DrawableRes val glyph: Int,
     @StringRes val unsupported: Int? = null,
 )
 
-/** doona's templates: the core builds 繞過中國大陸 (`cn-direct`) alone, so it is the one listed. */
-internal val RV_CN_DIRECT = RvTemplate("cn-direct", R.string.rv_policy_template_value, R.string.rv_template_cn_direct_line, R.drawable.rv_sym_arrow_right_alt)
+/**
+ * The template the core names [id]: its words and glyph where the app has them, else the id itself with the generic
+ * glyph. [needsGeosite] lists it as the core cannot build it, for want of GeoSite data.
+ */
+internal fun rvTemplate(id: String, needsGeosite: Boolean = false): RvTemplate {
+    val unsupported = R.string.rv_template_needs_geosite.takeIf { needsGeosite }
+    val known = TEMPLATE_TEXTS[id] ?: return RvTemplate(id, RvLabel.Text(id), null, R.drawable.rv_sym_rule, unsupported)
+    return RvTemplate(id, RvLabel.Res(known.name), known.line, known.glyph, unsupported)
+}
 
-/** The templates 範本 lists, as the core builds them. */
-internal val RV_TEMPLATES: List<RvTemplate> = listOf(RV_CN_DIRECT)
+private class TemplateText(@StringRes val name: Int, @StringRes val line: Int, @DrawableRes val glyph: Int)
+
+/** The words and glyph of each template doona web offers, by the id the core gives it. */
+private val TEMPLATE_TEXTS = mapOf(
+    "cn-direct" to TemplateText(R.string.rv_policy_template_value, R.string.rv_template_cn_direct_line, R.drawable.rv_sym_arrow_right_alt),
+    "services" to TemplateText(R.string.rv_template_services, R.string.rv_template_services_line, R.drawable.rv_sym_apps),
+    "regions" to TemplateText(R.string.rv_template_regions, R.string.rv_template_regions_line, R.drawable.rv_sym_account_tree),
+    "homebound" to TemplateText(R.string.rv_template_homebound, R.string.rv_template_homebound_line, R.drawable.rv_sym_directions),
+    "gfw" to TemplateText(R.string.rv_template_gfw, R.string.rv_template_gfw_line, R.drawable.rv_sym_block),
+)
 
 /**
  * Where 規則's rules come from: a [Template], a subscription by its [Subscription.name], or the configuration [File] the

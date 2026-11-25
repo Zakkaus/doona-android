@@ -14,7 +14,6 @@ import dev.doona.android.engine.RuleTarget
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.feature.leafOf
-import dev.doona.android.feature.model.RV_TEMPLATES
 import dev.doona.android.feature.model.RV_TESTS
 import dev.doona.android.feature.model.RvCity
 import dev.doona.android.feature.model.RvGroupKind
@@ -31,6 +30,8 @@ import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.feature.model.RvRuleState
 import dev.doona.android.feature.model.RvSubFormat
 import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.model.protocolName
+import dev.doona.android.feature.model.rvTemplate
 import java.net.URI
 
 /** Where a node's name places it: its country or region, its city when the name gives one, and its short tile name. */
@@ -68,7 +69,7 @@ internal fun rvNode(member: Member, info: NodeInfo?, subscription: String, place
         short = placed.short,
         place = placed.place,
         city = placed.city,
-        protocol = info?.protocol.orEmpty(),
+        protocol = protocolName(info?.protocol.orEmpty()),
         host = info?.server.orEmpty(),
         port = info?.port ?: 0,
         transport = info?.transport.orEmpty(),
@@ -233,11 +234,11 @@ internal fun rvPolicyProfile(
 }
 
 /**
- * Where [source]'s rules come from: its template (the core and the app ship together, so the core names only a template
- * [RV_TEMPLATES] lists), the subscription of its id from [subscriptions] by name, or else the configuration file.
+ * Where [source]'s rules come from: its template, the subscription of its id from [subscriptions] by name, or else the
+ * configuration file.
  */
 internal fun rvRuleSource(source: RuleSource, subscriptions: List<Subscription>): RvRuleSource {
-    source.template?.let { id -> return RvRuleSource.Template(RV_TEMPLATES.first { it.id == id }) }
+    source.template?.let { id -> return RvRuleSource.Template(rvTemplate(id)) }
     val subscription = source.subscriptionId ?: return RvRuleSource.File
     return RvRuleSource.Subscription(subscriptions.firstOrNull { it.id == subscription }?.name ?: subscription)
 }

@@ -77,6 +77,8 @@ class PoliciesViewModelTest {
 
         override suspend fun testLatency(groupId: String?): Result<Unit> = answer("test $groupId") { Result.success(Unit) }
 
+        override suspend fun setAdBlock(on: Boolean): Result<Unit> = answer("setAdBlock $on") { base.setAdBlock(on) }
+
         override suspend fun rules(offset: Int, limit: Int): Result<RulePage> {
             ruleReads++
             if (failRules) return Result.failure(IllegalStateException("rules"))
@@ -119,11 +121,26 @@ class PoliciesViewModelTest {
     }
 
     @Test
-    fun `the order stays on the page, and nothing can block ads, so there is no ad switch`() = runTest {
+    fun `封鎖廣告 shows the engine's switch, and a tap sets it once the engine has it`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine)
+        assertTrue(vm.uiState.value.state.blockAds)
+        engine.result = Result.failure(EngineException(ErrorCode.Internal))
+        vm.onChange(vm.uiState.value.state.copy(blockAds = false))
+        assertTrue("a failed set keeps the switch", vm.uiState.value.state.blockAds)
+        assertEquals(PolicyFailure(PolicyAction.Ads, ErrorCode.Internal), vm.uiState.value.failure)
+        engine.result = Result.success(Unit)
+        vm.onChange(vm.uiState.value.state.copy(blockAds = false))
+        assertEquals(listOf("setAdBlock false", "setAdBlock false"), engine.calls)
+        assertFalse(vm.uiState.value.state.blockAds)
+        assertNull(vm.uiState.value.failure)
+    }
+
+    @Test
+    fun `the order stays on the page`() = runTest {
         val engine = Recording()
         val vm = collected(engine)
         val state = vm.uiState.value.state
-        assertNull(state.blockAds)
         vm.onChange(state.copy(nodeSort = RvNodeSort.Name))
         assertEquals(emptyList<String>(), engine.calls)
         assertEquals(RvNodeSort.Name, vm.uiState.value.state.nodeSort)
@@ -218,13 +235,16 @@ class PoliciesViewModelTest {
     }
 
     @Test
-    fun `a failed read keeps the profile shown and says nothing`() = runTest {
+    fun `a failed read keeps the profile shown and says so, and 重試 reads again`() = runTest {
         val engine = Recording()
         val vm = collected(engine)
         val shown = vm.uiState.value.profile
         engine.failRules = true
         engine.revision.value = 2L
         assertEquals(shown, vm.uiState.value.profile)
+        assertEquals(PolicyAction.Read, vm.uiState.value.failure?.action)
+        engine.failRules = false
+        vm.retry()
         assertNull(vm.uiState.value.failure)
     }
 

@@ -89,13 +89,12 @@ internal class RvPolicyRule(
 
 /**
  * The page's own state: the mode, the two switches, each selector's choice where the user changed it, and the order of
- * 全域's node list, kept here so the tab shows its last choice when the user comes back. [blockAds] is null where nothing
- * can block ads (the engine has no such option), and the page then has no 封鎖廣告 switch.
+ * 全域's node list, kept here so the tab shows its last choice when the user comes back.
  */
 @Immutable
 internal data class RvPolicyState(
     val mode: RvRouteMode = RvRouteMode.Rule,
-    val blockAds: Boolean? = true,
+    val blockAds: Boolean = true,
     val blockQuic: Boolean = false,
     val choices: Map<String, String> = emptyMap(),
     val nodeSort: RvNodeSort = RvNodeSort.Latency,

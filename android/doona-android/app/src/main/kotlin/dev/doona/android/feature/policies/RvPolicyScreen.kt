@@ -360,8 +360,8 @@ private fun RulesCard(profile: RvPolicyProfile, onAll: () -> Unit) {
 
 /**
  * What shapes the rules: where they come from ([source]: a template, a subscription or the configuration file), the
- * configuration file's applied revision when [configRev] is set, a new rule, and the two switches doona web offers with
- * a template: 封鎖廣告 where something can block ads, and 阻擋 QUIC, a template's option.
+ * configuration file's applied revision when [configRev] is set, a new rule, and the two switches doona web offers:
+ * 封鎖廣告, and 阻擋 QUIC, an option of a template that shows only when the rules come from one.
  */
 @Composable
 private fun OptionsCard(state: RvPolicyState, onChange: (RvPolicyState) -> Unit, routes: RvPolicyRoutes, configRev: Int?, source: RvRuleSource) {
@@ -371,7 +371,7 @@ private fun OptionsCard(state: RvPolicyState, onChange: (RvPolicyState) -> Unit,
             ValueRow(R.drawable.rv_sym_edit, stringResource(R.string.rv_config_title), stringResource(R.string.rv_config_revision, configRev), routes.config)
         }
         RvRow({ RvIconDisc(R.drawable.rv_sym_add) }, stringResource(R.string.rv_policy_new_rule), null, onClick = routes.newRule) { RvChevron() }
-        state.blockAds?.let { on -> RvSwitchRow(R.drawable.rv_sym_ad_off, stringResource(R.string.rv_policy_block_ads), on) { onChange(state.copy(blockAds = it)) } }
+        RvSwitchRow(R.drawable.rv_sym_ad_off, stringResource(R.string.rv_policy_block_ads), state.blockAds) { onChange(state.copy(blockAds = it)) }
         if (source is RvRuleSource.Template) {
             RvSwitchRow(R.drawable.rv_sym_block, stringResource(R.string.rv_policy_block_quic), state.blockQuic) { onChange(state.copy(blockQuic = it)) }
         }

@@ -132,6 +132,19 @@ class GroupViewModelTest {
     }
 
     @Test
+    fun `a failed read keeps the group shown and says so, and 重試 reads again`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine)
+        engine.failNodes = true
+        engine.select(SELECTOR, "n2", null)
+        assertNotNull(vm.uiState.value.group)
+        assertEquals(GroupFailure(GroupAction.Read, ErrorCode.Internal), vm.uiState.value.failure)
+        engine.failNodes = false
+        vm.retry()
+        assertNull(vm.uiState.value.failure)
+    }
+
+    @Test
     fun `a Score group whose networks use two nodes keeps the switch on`() = runTest {
         val vm = collected(Recording(), SCORE)
         assertTrue(vm.uiState.value.choice!!.apart)

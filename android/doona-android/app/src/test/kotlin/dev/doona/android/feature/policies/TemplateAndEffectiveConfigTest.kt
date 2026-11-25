@@ -11,12 +11,13 @@ import dev.doona.android.engine.RuleKind
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RuleRow
 import dev.doona.android.engine.RuleTarget
+import dev.doona.android.engine.RuleTemplate
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.rvSampleEngine
-import dev.doona.android.feature.model.RV_CN_DIRECT
 import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvRuleEnd
 import dev.doona.android.feature.model.RvRuleSource
+import dev.doona.android.feature.model.rvTemplate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -43,16 +44,44 @@ class TemplateAndEffectiveConfigTest {
 
     @Test
     fun `the rules come from a template, a subscription by its name, or the configuration file`() {
-        assertEquals(RvRuleSource.Template(RV_CN_DIRECT), rvRuleSource(source.copy(template = "cn-direct"), subs))
+        assertEquals(RvRuleSource.Template(rvTemplate("cn-direct")), rvRuleSource(source.copy(template = "cn-direct"), subs))
         assertEquals(RvRuleSource.Subscription(subs.first().name), rvRuleSource(source.copy(template = null, subscriptionId = subs.first().id), subs))
         assertEquals(RvRuleSource.File, rvRuleSource(source.copy(template = null, subscriptionId = null), subs))
+    }
+
+    @Test
+    fun `a template the app has no words for shows its id, and one that needs GeoSite says so`() {
+        val unknown = rvTemplate("future")
+        assertEquals(RvLabel.Text("future"), unknown.name)
+        assertNull(unknown.line)
+        assertNull(unknown.unsupported)
+        assertEquals(R.string.rv_template_needs_geosite, rvTemplate("gfw", needsGeosite = true).unsupported)
+        assertEquals(RvRuleSource.Template(unknown), rvRuleSource(source.copy(template = "future"), subs))
+    }
+
+    @Test
+    fun `範本 lists the core's templates in its order, and a failed read says so until 重試 reads them`() = runTest {
+        val engine = object : Engine by rvSampleEngine() {
+            var failing = true
+
+            override suspend fun ruleTemplates(): Result<List<RuleTemplate>> =
+                if (failing) Result.failure(EngineException(ErrorCode.Busy)) else Result.success(listOf(RuleTemplate("gfw", true), RuleTemplate("cn-direct")))
+        }
+        val vm = TemplateViewModel(engine).also { vm -> backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} } }
+        assertEquals(ErrorCode.Busy, vm.uiState.value.failure)
+        assertNull(vm.uiState.value.templates)
+        assertEquals(RvRuleSource.Template(rvTemplate("cn-direct")), vm.uiState.value.source)
+        engine.failing = false
+        vm.retry()
+        assertNull(vm.uiState.value.failure)
+        assertEquals(listOf(rvTemplate("gfw", needsGeosite = true), rvTemplate("cn-direct")), vm.uiState.value.templates)
     }
 
     @Test
     fun `the review names the source and the template and leaves out what the core does not tell`() {
         val impact = rvTemplateImpact(RvRuleSource.File, "cn-direct")
         assertEquals(RvRuleSource.File, impact.from)
-        assertEquals(RV_CN_DIRECT, impact.to)
+        assertEquals(rvTemplate("cn-direct"), impact.to)
         assertEquals(listOf(null, null, null, null), listOf(impact.added, impact.changed, impact.removed, impact.kept))
         assertEquals(0, impact.groups.size + impact.rules.size)
     }
@@ -101,7 +130,7 @@ class TemplateAndEffectiveConfigTest {
         assertEquals(listOf(RvRuleEnd.Direct, RvRuleEnd.Reject), config.rules.map { it.end })
         assertEquals(listOf("1.1.1.1", "9.9.9.10"), config.dns)
         assertEquals(3, config.proxiedApps)
-        assertEquals(RvRuleSource.Template(RV_CN_DIRECT), config.source)
+        assertEquals(RvRuleSource.Template(rvTemplate("cn-direct")), config.source)
         assertEquals(RvLabel.Res(R.string.mode_direct), rvEffectiveConfig(effective(RuleTarget.Direct), catalog, rows, 0, RV_UNKNOWN_PLACES).dnsVia)
         assertNull(rvEffectiveConfig(effective(RuleTarget.Direct, main = "absent"), catalog, rows, 0, RV_UNKNOWN_PLACES).main)
     }

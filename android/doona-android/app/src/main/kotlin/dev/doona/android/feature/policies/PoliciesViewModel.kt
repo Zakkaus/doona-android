@@ -29,9 +29,8 @@ import kotlinx.coroutines.launch
 
 /**
  * 策略: the engine's catalog as the page's profile, and the page's changes as engine calls. Each new catalog is read into
- * a profile on [reads], off the main thread, with the nodes' details, the card's rules and today's bytes per rule. A read
- * that fails keeps the profile shown, since no tap caused it; with no profile yet it shows its failure with 重試, which
- * reads again. [places] places the nodes by name until 節點's mapper is wired; [clock] is now, for the subscriptions' end
+ * a profile on [reads], off the main thread, with the nodes' details, the card's rules, today's bytes per rule and
+ * 封鎖廣告. A read that fails keeps the profile shown and shows its failure with 重試, which reads again. [places] places the nodes by name until 節點's mapper is wired; [clock] is now, for the subscriptions' end
  * dates.
  */
 internal class PoliciesViewModel(
@@ -40,7 +39,7 @@ internal class PoliciesViewModel(
     private val places: RvNodePlaces = RV_UNKNOWN_PLACES,
     private val reads: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
-    /** The node order: the engine has none, so it lives here. */
+    /** The node order, which the engine does not have, and 封鎖廣告 as last read or set. */
     private val local = MutableStateFlow(RvPolicyState())
     private val failure = MutableStateFlow<PolicyFailure?>(null)
 
@@ -59,15 +58,18 @@ internal class PoliciesViewModel(
     val uiState: StateFlow<PoliciesUiState> = channelFlow {
         launch(reads) {
             combine(engine.catalog.filterNotNull().distinctUntilChanged(), again) { catalog, _ -> catalog }.collectLatest { catalog ->
-                read(catalog).onSuccess(::shown).onFailure(::unread)
+                read(catalog).onSuccess { (read, ads) ->
+                    local.update { it.copy(blockAds = ads) }
+                    shown(read)
+                }.onFailure(::unread)
             }
         }
         combine(engine.ready, engine.catalog, profile, local, failure, ::policiesUiState).collect { send(it) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), current())
 
     /**
-     * The page changed its state to [next]. What differs from the state shown goes to the engine: the mode, 阻擋 QUIC and
-     * the main group's node. A tap on the mode already shown changes nothing, so it calls nothing (16c22b3). The order
+     * The page changed its state to [next]. What differs from the state shown goes to the engine: the mode, the two
+     * switches and the main group's node. A tap on the mode already shown changes nothing, so it calls nothing (16c22b3). The order
      * stays here.
      */
     fun onChange(next: RvPolicyState) {
@@ -75,6 +77,7 @@ internal class PoliciesViewModel(
         local.update { it.copy(nodeSort = next.nodeSort) }
         val catalog = engine.catalog.value ?: return
         if (next.mode != shown.state.mode) perform(PolicyAction.Mode) { engine.setMode(engineMode(next.mode)) }
+        if (next.blockAds != shown.state.blockAds) setAdBlock(next.blockAds)
         if (next.blockQuic != shown.state.blockQuic) setBlockQuic(catalog, next.blockQuic)
         val main = shown.profile?.main ?: return
         val picked = next.choices[main.id]
@@ -94,6 +97,11 @@ internal class PoliciesViewModel(
         perform(PolicyAction.Update) {
             ids.map { engine.updateSubscription(it) }.firstOrNull { it.isFailure } ?: Result.success(Unit)
         }
+    }
+
+    /** Turns 封鎖廣告 [on]; the switch follows once the engine has it. */
+    private fun setAdBlock(on: Boolean) = perform(PolicyAction.Ads) {
+        engine.setAdBlock(on).onSuccess { local.update { it.copy(blockAds = on) } }
     }
 
     /** Keeps the template and changes its option. Only a template has the option, so the page shows no switch for another source. */
@@ -125,20 +133,20 @@ internal class PoliciesViewModel(
         failure.update { it?.takeIf { failed -> failed.action != PolicyAction.Read } }
     }
 
-    /** A read failed: with a profile shown, nothing changes; with none, the failure shows with 重試. */
+    /** A read failed: it shows with 重試, over the profile last read if there is one. */
     private fun unread(error: Throwable) {
-        if (profile.value != null) return
         retry = { again.update { it + 1 } }
         failure.value = PolicyFailure(PolicyAction.Read, error.errorCode())
     }
 
-    /** The profile of [catalog]; a newer catalog cancels the read, which is no failure. */
-    private suspend fun read(catalog: Catalog): Result<RvPolicyProfile> = try {
+    /** The profile of [catalog] and whether 封鎖廣告 is on; a newer catalog cancels the read, which is no failure. */
+    private suspend fun read(catalog: Catalog): Result<Pair<RvPolicyProfile, Boolean>> = try {
         val ids = catalog.groups.flatMap { it.members }.filterNot { it.isGroup }.map { it.id }.distinct()
         val infos = engine.nodes(ids).getOrThrow().associateBy { it.id }
         val page = rules(catalog.ruleSource.rulesRevision)
         val byRule = engine.usage().getOrThrow().today.byRule.associate { it.id to it.up + it.down }
-        Result.success(rvPolicyProfile(catalog, infos, page.rows, page.total, byRule, clock(), places))
+        val ads = engine.adBlock().getOrThrow()
+        Result.success(rvPolicyProfile(catalog, infos, page.rows, page.total, byRule, clock(), places) to ads)
     } catch (cancelled: CancellationException) {
         throw cancelled
     } catch (error: Exception) {
@@ -170,8 +178,8 @@ internal class PoliciesViewModel(
 }
 
 /**
- * The page's state from the engine's: the mode and 阻擋 QUIC from [catalog], the order from [local]. The engine cannot
- * block ads, so there is no ad switch. The choices stay empty: the profile carries each group's real selection.
+ * The page's state from the engine's: the mode and 阻擋 QUIC from [catalog], 封鎖廣告 and the order from [local]. The
+ * choices stay empty: the profile carries each group's real selection.
  */
 private fun policiesUiState(
     ready: Boolean,
@@ -182,7 +190,7 @@ private fun policiesUiState(
 ): PoliciesUiState {
     val state = RvPolicyState(
         mode = catalog?.mode?.let(::rvRouteMode) ?: local.mode,
-        blockAds = null,
+        blockAds = local.blockAds,
         blockQuic = catalog?.ruleSource?.options?.blockQuic ?: false,
         nodeSort = local.nodeSort,
     )

@@ -68,6 +68,7 @@ private val PolicyAction.title: Int
         PolicyAction.Mode -> R.string.rv_failed_switch_mode
         PolicyAction.MainNode -> R.string.rv_failed_switch_node
         PolicyAction.TestAll -> R.string.rv_failed_test_latency
+        PolicyAction.Ads -> R.string.rv_policy_failed_ads
         PolicyAction.Quic -> R.string.rv_policy_failed_quic
         PolicyAction.Update -> R.string.rv_policy_failed_update
     }

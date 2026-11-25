@@ -37,6 +37,7 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvConfigLine
 import dev.doona.android.designsystem.rv.rvConfigPhrase
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.model.text
 import dev.doona.android.feature.policies.RvTemplateRow
 import dev.doona.android.prototype.rv.RvDiffAt
 import dev.doona.android.prototype.rv.RvSourceDiff
@@ -103,7 +104,7 @@ internal fun RvConfigTemplateApplyPage(apply: RvTemplateApply, onBack: () -> Uni
         RvPageHeader(title, titleBlock, insets, caption = { RvCaption(stringResource(R.string.rv_config_based_on, apply.baseRev)) })
         RvGutter {
             RvCard {
-                val change = stringResource(R.string.rv_template_from_to, stringResource(apply.from.name), stringResource(apply.to.name))
+                val change = stringResource(R.string.rv_template_from_to, apply.from.name.text(), apply.to.name.text())
                 RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, stringResource(R.string.rv_policy_template), rvConfigLine(listOf(change)))
                 RvStatRow(stringResource(R.string.rv_template_added), pluralStringResource(R.plurals.rv_rules_count, apply.added, apply.added))
                 RvStatRow(stringResource(R.string.rv_template_removed), pluralStringResource(R.plurals.rv_rules_count, apply.removed, apply.removed))
