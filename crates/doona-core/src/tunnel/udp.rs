@@ -22,7 +22,7 @@ use super::flow::{DEPTH, Event, Events, Key, Waker};
 use super::route::Route;
 use crate::dns;
 use crate::dns::names::Learned;
-use crate::rules::Network;
+use crate::honkconf::runtime::Runtime;
 use crate::stats::meter::{Meter, Tally};
 use bytes::Bytes;
 use honk_outbound::proxy::PacketTransport;
@@ -333,18 +333,18 @@ fn receive(socket: &UdpSocket, budget: &Arc<Budget>) -> io::Result<Option<Datagr
     })
 }
 
-/// Answers one DNS datagram from `client` to `server`, through `route`. What the answer the client
-/// gets maps is read here, off the driver, which puts it in the generation's names once the tun
-/// takes the answer.
+/// Answers one DNS datagram the client of `ends` sent to `server`, from which the answer comes
+/// back. What the answer the client gets maps is read here, off the driver, which puts it in the
+/// generation's names once the tun takes the answer.
 pub(crate) async fn answer_dns(
     query: Vec<u8>,
-    (client, server): (SocketAddr, SocketAddr),
-    route: Route,
-    upstreams: Arc<[SocketAddr]>,
+    server: SocketAddr,
+    (honk, ends): (Option<Arc<Runtime>>, dns::Ends),
     events: Events,
     slot: OwnedSemaphorePermit,
 ) {
-    if let Some(payload) = dns::answer(&upstreams, &route, &query, Network::Udp).await {
+    let client = ends.0;
+    if let Some(payload) = dns::answer(honk.as_deref(), &query, dns::Network::Udp, ends).await {
         let learned = Learned::read(&query, &payload);
         let _ = events.send(Event::DnsAnswer {
             from: server,

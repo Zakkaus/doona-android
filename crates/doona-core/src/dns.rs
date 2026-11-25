@@ -1,89 +1,38 @@
-//! DNS the core answers itself (core-api.md, "DNS and UDP"): a query that reaches the virtual
-//! resolver, or any UDP/53, is forwarded as DNS over TCP through the flow's route, to the first
-//! upstream that answers. TCP works through any outbound, including those without UDP.
-//! Score selects for each resolver's TCP socket. Retries of one query share one business start.
+//! DNS the core answers itself (core-api.md, "DNS and UDP"): every query an app sends to port 53,
+//! over UDP or TCP, to the virtual resolver or to any other address. honk's DNS pipeline answers
+//! it under the generation's committed configuration ([`Engine::resolve_dns`]): its request and
+//! response rules, upstreams, cache and reply policy, with the geodata its traffic rules read.
+//! `asis` forwards to the server the app addressed; a query to the virtual resolver has no such
+//! server, so `asis` fails closed there and never dials the virtual address. With no committed
+//! configuration the core answers no DNS.
 //!
-//! An answer too large for the client's UDP buffer goes back truncated (TC set, question only),
-//! so the client retries over TCP/53, which the core also serves. A query that no upstream
-//! answers, or whose route refuses it, gets SERVFAIL at once instead of a client timeout. What an
-//! answer maps ([`Learned`]) goes to the generation's [`Names`] as the driver hands the answer on,
-//! before the client can have all of it: over TCP as the driver takes the answer's last chunk (see
-//! [`ToClient`]), over UDP as the tun takes the datagram (see the driver). A flow the client opens
-//! to an address it got finds its name, however late the task that made the answer runs again; an
-//! answer the driver drops, or never takes, maps nothing.
+//! What an answer maps ([`Learned`]) goes to the generation's [`Names`] as the driver hands the
+//! answer on, before the client can have all of it: over TCP as the driver takes the answer's last
+//! chunk (see [`ToClient`]), over UDP as the tun takes the datagram (see the driver). A flow the
+//! client opens to an address it got finds its name, however late the task that made the answer
+//! runs again; an answer the driver drops, or never takes, maps nothing.
+//!
+//! [`Engine::resolve_dns`]: honk_core::embedded::Engine::resolve_dns
 
 pub(crate) mod names;
 
-use crate::rules::Network;
-use crate::tunnel::route::Route;
-use honk_outbound::group::{ScoreContinuation, ScoreOutcome};
+pub(crate) use crate::honkconf::runtime::Network;
+use crate::honkconf::runtime::Runtime;
 use names::{Learned, Mapping, Names};
 use std::io::{self, ErrorKind};
-use std::net::{Ipv4Addr, SocketAddr};
+use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-use tokio::time::{Instant, timeout_at};
 
-/// The upstream resolvers, in order.
-pub const UPSTREAMS: [SocketAddr; 2] = [
-    SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(1, 1, 1, 1)), 53),
-    SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8)), 53),
-];
-
-/// Shared by the command and state loader. Never resolve a hostname or accept a scope.
-pub(crate) fn parse_upstreams(servers: &[String]) -> Option<Vec<SocketAddr>> {
-    if !(1..=4).contains(&servers.len()) {
-        return None;
-    }
-    let mut parsed = Vec::with_capacity(servers.len());
-    for text in servers {
-        if text.contains('%') {
-            return None;
-        }
-        let addr = text
-            .parse()
-            .map(|ip| SocketAddr::new(ip, 53))
-            .or_else(|_| text.parse::<SocketAddr>())
-            .ok()?;
-        let ip = addr.ip().to_canonical();
-        let usable = match ip {
-            std::net::IpAddr::V4(ip) => !ip.is_broadcast() && !ip.is_link_local(),
-            std::net::IpAddr::V6(ip) => !ip.is_unicast_link_local(),
-        };
-        let endpoint = SocketAddr::new(ip, addr.port());
-        if !usable
-            || ip.is_multicast()
-            || ip.is_unspecified()
-            || addr.port() == 0
-            || parsed.contains(&endpoint)
-        {
-            return None;
-        }
-        parsed.push(endpoint);
-    }
-    Some(parsed)
-}
-
-/// One upstream's share of a query, from dial to answer.
-const EXCHANGE: Duration = Duration::from_secs(5);
+/// How long one query may take, as honk's daemon bounds its TCP DNS I/O.
+pub(crate) const RESOLVE_BOUND: Duration = Duration::from_secs(30);
 const HEADER: usize = 12;
-/// RFC 1035's UDP limit without EDNS.
-const UDP_PLAIN: usize = 512;
-/// The largest UDP payload an IPv4 packet carries.
-const UDP_MAX: usize = 65_507;
-const TYPE_OPT: u16 = 41;
-
 fn u16_at(m: &[u8], at: usize) -> Option<u16> {
     Some(u16::from_be_bytes([*m.get(at)?, *m.get(at + 1)?]))
 }
 
 fn count(m: &[u8], at: usize) -> usize {
     u16_at(m, at).map_or(0, usize::from)
-}
-
-/// A message is a query when it has a header with QR clear.
-pub fn is_query(m: &[u8]) -> bool {
-    m.len() >= HEADER && m[2] & 0x80 == 0
 }
 
 /// The offset just past the (possibly compressed) name at `at`.
@@ -110,118 +59,6 @@ fn question_end(m: &[u8]) -> Option<usize> {
     (at <= m.len()).then_some(at)
 }
 
-/// The offset just past the resource record at `at`, and its type and class.
-fn skip_record(m: &[u8], at: usize) -> Option<(usize, u16, u16)> {
-    let at = skip_name(m, at)?;
-    let (kind, class, rdlen) = (u16_at(m, at)?, u16_at(m, at + 2)?, u16_at(m, at + 8)?);
-    let end = at + 10 + usize::from(rdlen);
-    (end <= m.len()).then_some((end, kind, class))
-}
-
-/// The largest UDP answer the client takes: its EDNS buffer size, else 512; never more than an
-/// IPv4 datagram holds.
-pub fn udp_limit(query: &[u8]) -> usize {
-    let Some(mut at) = question_end(query) else {
-        return UDP_PLAIN;
-    };
-    let records = count(query, 6) + count(query, 8) + count(query, 10);
-    for i in 0..records {
-        let Some((end, kind, class)) = skip_record(query, at) else {
-            break;
-        };
-        if kind == TYPE_OPT && i >= count(query, 6) + count(query, 8) {
-            return usize::from(class).clamp(UDP_PLAIN, UDP_MAX);
-        }
-        at = end;
-    }
-    UDP_PLAIN
-}
-
-/// A reply that keeps the header and question of `m`, with no records.
-fn bare_reply(m: &[u8]) -> Vec<u8> {
-    let end = question_end(m).unwrap_or(HEADER);
-    let mut r = m[..end].to_vec();
-    if end == HEADER {
-        r[4..6].fill(0);
-    }
-    r[2] |= 0x80;
-    r[6..12].fill(0);
-    r
-}
-
-/// SERVFAIL for `query`: same id, opcode, RD and question; RA set.
-pub fn servfail(query: &[u8]) -> Vec<u8> {
-    let mut r = bare_reply(query);
-    r[2] &= 0xf9; // AA and TC clear
-    r[3] = 0x80 | 2;
-    r
-}
-
-/// `answer` as it may go back over UDP to the sender of `query`: whole, else truncated (TC set)
-/// to its question, else to its header when even the question does not fit.
-pub fn fit_udp(answer: Vec<u8>, query: &[u8]) -> Vec<u8> {
-    let limit = udp_limit(query);
-    if answer.len() <= limit {
-        return answer;
-    }
-    let mut r = bare_reply(&answer);
-    if r.len() > limit {
-        r.truncate(HEADER);
-        r[4..6].fill(0);
-    }
-    r[2] |= 0x02;
-    r
-}
-
-/// Sends `query` to each upstream in turn through `route`; the first answer with the query's
-/// id wins.
-async fn exchange(upstreams: &[SocketAddr], route: &Route, query: &[u8]) -> Option<Vec<u8>> {
-    let mut original = None;
-    for &server in upstreams {
-        if let Ok(answer) = exchange_one(server, route, query, &mut original).await {
-            return Some(answer);
-        }
-    }
-    None
-}
-
-async fn exchange_one(
-    server: SocketAddr,
-    route: &Route,
-    query: &[u8],
-    original: &mut Option<ScoreContinuation>,
-) -> io::Result<Vec<u8>> {
-    let deadline = Instant::now() + EXCHANGE;
-    let (mut stream, reporter) = route.connect_until(server, deadline, original).await?;
-    let exchange = async {
-        let timed = reporter.as_ref().map(|r| (r, std::time::Instant::now()));
-        write_framed(&mut stream, query).await?;
-        if let Some((r, started)) = timed {
-            r.tx_completed(query.len() as u64 + 2, started);
-        }
-        let answer = read_framed(&mut stream).await?;
-        if answer.len() < HEADER || answer[..2] != query[..2] {
-            return Err(ErrorKind::InvalidData.into());
-        }
-        if let Some(r) = &reporter {
-            r.first_response();
-            r.rx(answer.len() as u64 + 2);
-        }
-        Ok(answer)
-    };
-    let result = timeout_at(deadline, exchange)
-        .await
-        .map_err(io::Error::from)
-        .and_then(|r| r);
-    if let Some(r) = reporter {
-        r.finish(match &result {
-            Ok(_) => ScoreOutcome::Success,
-            Err(e) => ScoreOutcome::from_io_error(e),
-        });
-    }
-    result
-}
-
 async fn write_framed<S: AsyncWrite + Unpin>(s: &mut S, m: &[u8]) -> io::Result<()> {
     let len = u16::try_from(m.len()).map_err(|_| io::Error::from(ErrorKind::InvalidInput))?;
     let mut framed = Vec::with_capacity(m.len() + 2);
@@ -237,31 +74,23 @@ async fn read_framed<S: AsyncRead + Unpin>(s: &mut S) -> io::Result<Vec<u8>> {
     Ok(m)
 }
 
-/// The answer to `query`, or SERVFAIL, as the client gets it over `network`: over UDP, held to the
-/// client's buffer (see [`fit_udp`]). None when `query` is not a query. What it maps is the
-/// caller's to read and put once the answer is on its way; a truncated answer maps nothing, and the
-/// client's retry over TCP maps the addresses.
+/// The ends of a query: the app that sent it, and the server it addressed (`None` for the virtual
+/// resolver).
+pub(crate) type Ends = (SocketAddr, Option<SocketAddr>);
+
+/// The reply `runtime` gives `query`, held to the client's UDP buffer when it came over UDP; none
+/// when no configuration is committed, or when a UDP payload is not exactly one query.
 pub(crate) async fn answer(
-    upstreams: &[SocketAddr],
-    route: &Route,
+    runtime: Option<&Runtime>,
     query: &[u8],
     network: Network,
+    (client, server): Ends,
 ) -> Option<Vec<u8>> {
-    if !is_query(query) {
-        return None;
-    }
-    let answer = if route.refused() {
-        None
-    } else {
-        exchange(upstreams, route, query).await
-    };
-    let Some(mut answer) = answer else {
-        return Some(servfail(query));
-    };
-    if network == Network::Udp {
-        answer = fit_udp(answer, query);
-    }
-    Some(answer)
+    let answer = runtime?
+        .engine()
+        .resolve_dns(query, network, client, server)
+        .await?;
+    Some(answer.reply().to_vec())
 }
 
 /// The stream DNS over TCP answers a client on: the task's end of the flow.
@@ -280,36 +109,33 @@ pub(crate) trait ToClient: AsyncRead + AsyncWrite + Unpin {
 /// or after the client's FIN, and drops what it still holds for the client (see `tunnel/gate.rs`),
 /// so a client that sends neither a query nor its FIN, or never reads, cannot hold the connection
 /// or its buffers. Each byte of a query read or of an answer written counts as progress there, and
-/// before the client's FIN the wait for the resolver is not idle up to the resolver's own bound,
-/// [`EXCHANGE`] an upstream: the driver cuts a resolver that never returns, as one whose outbound
-/// holds its thread, without it. What an answer maps goes to `names` with the answer's last chunk.
+/// before the client's FIN the wait for honk is not idle up to [`RESOLVE_BOUND`]. A query with no
+/// reply (no configuration committed) ends the connection. What an answer maps goes to `names`
+/// with the answer's last chunk.
 pub(crate) async fn serve_tcp<S: ToClient>(
     io: &mut S,
-    upstreams: &[SocketAddr],
-    (route, names): (&Route, &Names),
+    (runtime, names): (Option<&Runtime>, &Names),
+    ends: Ends,
 ) -> io::Result<()> {
-    let tries = u32::try_from(upstreams.len()).unwrap_or(u32::MAX);
-    let bound = EXCHANGE.saturating_mul(tries);
     loop {
         let query = match read_framed(io).await {
             Ok(q) => q,
             Err(e) if e.kind() == ErrorKind::UnexpectedEof => break,
             Err(e) => return Err(e),
         };
-        io.resolving(Some(bound));
+        io.resolving(Some(RESOLVE_BOUND));
         #[cfg(test)]
         crate::tunnel::pause::at(crate::tunnel::pause::Point::Resolving).await;
-        let reply = answer(upstreams, route, &query, Network::Tcp).await;
+        let reply = answer(runtime, &query, Network::Tcp, ends).await;
         io.resolving(None);
-        if let Some(a) = reply {
-            #[cfg(test)]
-            crate::tunnel::pause::at(crate::tunnel::pause::Point::Answered).await;
-            if let Some(learned) = Learned::read(&query, &a) {
-                // The frame is one write, so its last chunk ends the answer.
-                io.map_with_last_chunk(names.bind(learned));
-            }
-            write_framed(io, &a).await?;
+        let Some(a) = reply else { break };
+        #[cfg(test)]
+        crate::tunnel::pause::at(crate::tunnel::pause::Point::Answered).await;
+        if let Some(learned) = Learned::read(&query, &a) {
+            // The frame is one write, so its last chunk ends the answer.
+            io.map_with_last_chunk(names.bind(learned));
         }
+        write_framed(io, &a).await?;
     }
     io.shutdown().await
 }
@@ -317,6 +143,11 @@ pub(crate) async fn serve_tcp<S: ToClient>(
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+    use crate::honkconf::runtime::Runtime;
+    use crate::honkconf::{Capabilities, Geo, GeoCatalog, HonkStore, Label};
+    use crate::testutil::TempDir;
+    use std::path::Path;
+    use std::sync::Arc;
 
     /// A query for `name` A, with an EDNS OPT record of `edns` bytes when given.
     pub fn query(id: u16, name: &str, edns: Option<u16>) -> Vec<u8> {
@@ -350,86 +181,8 @@ pub(crate) mod tests {
         a
     }
 
-    #[test]
-    fn servfail_keeps_id_and_question() {
-        let q = query(0xbeef, "example.org", Some(1232));
-        let r = servfail(&q);
-        assert_eq!(&r[..2], &[0xbe, 0xef]);
-        assert_eq!(r[2], 0x81, "QR and RD");
-        assert_eq!(r[3] & 0x0f, 2, "SERVFAIL");
-        assert_eq!(count(&r, 4), 1);
-        assert_eq!(count(&r, 10), 0, "the OPT record is gone");
-        assert_eq!(r.len(), question_end(&q).unwrap());
-        // A query whose question cannot be parsed still gets a header-only SERVFAIL.
-        let bad = [0x12, 0x34, 0x01, 0, 0, 1, 0, 0, 0, 0, 0, 0, 5, b'a'];
-        let r = servfail(&bad);
-        assert_eq!(r.len(), HEADER);
-        assert_eq!(count(&r, 4), 0);
-    }
-
-    #[test]
-    fn udp_limit_reads_edns() {
-        assert_eq!(udp_limit(&query(1, "a.example", None)), 512);
-        assert_eq!(udp_limit(&query(1, "a.example", Some(1232))), 1232);
-        assert_eq!(udp_limit(&query(1, "a.example", Some(100))), 512);
-        assert_eq!(udp_limit(&[0u8; 5]), 512);
-    }
-
-    #[test]
-    fn large_answers_are_truncated_for_udp() {
-        let q = query(7, "big.example", None);
-        let small = answer_to(&q, 2);
-        assert_eq!(fit_udp(small.clone(), &q), small);
-        let big = answer_to(&q, 40);
-        assert!(big.len() > 512);
-        let t = fit_udp(big, &q);
-        assert_eq!(t[2] & 0x02, 0x02, "TC");
-        assert_eq!(count(&t, 6), 0);
-        assert_eq!(t.len(), question_end(&q).unwrap());
-        let q = query(7, "big.example", Some(4096));
-        let big = answer_to(&q, 40);
-        assert_eq!(fit_udp(big.clone(), &q), big);
-    }
-
-    /// A query with one A question per name.
-    fn questions(id: u16, names: &[&str]) -> Vec<u8> {
-        let mut m = query(id, names[0], None);
-        m[5] = names.len() as u8;
-        for name in &names[1..] {
-            for label in name.split('.') {
-                m.push(label.len() as u8);
-                m.extend_from_slice(label.as_bytes());
-            }
-            m.extend_from_slice(&[0, 0, 1, 0, 1]);
-        }
-        m
-    }
-
-    #[test]
-    fn a_question_too_large_for_udp_is_dropped_from_the_truncated_reply() {
-        let long = ["a", "b", "c"].map(|c| [c.repeat(63), c.repeat(63), c.repeat(63)].join("."));
-        let q = questions(9, &long.each_ref().map(String::as_str));
-        assert!(question_end(&q).unwrap() > UDP_PLAIN);
-        let t = fit_udp(answer_to(&q, 1), &q);
-        assert_eq!(t.len(), HEADER);
-        assert_eq!(t[2] & 0x82, 0x82, "QR and TC");
-        assert_eq!(count(&t, 4), 0);
-        assert_eq!(&t[..2], &q[..2]);
-    }
-
-    #[test]
-    fn the_udp_limit_stops_at_the_largest_ipv4_payload() {
-        assert_eq!(udp_limit(&query(1, "a.example", Some(65535))), 65507);
-        assert_eq!(udp_limit(&query(1, "a.example", Some(65507))), 65507);
-    }
-
-    /// A DNS-over-TCP server on loopback that answers each query with two A records.
-    fn upstream() -> SocketAddr {
-        upstream_with(|q| answer_to(q, 2))
-    }
-
     /// A DNS-over-TCP server on loopback that answers each query `q` with `answer(q)`.
-    pub fn upstream_with(answer: fn(&[u8]) -> Vec<u8>) -> SocketAddr {
+    pub fn upstream_with(answer: impl Fn(&[u8]) -> Vec<u8> + Send + 'static) -> SocketAddr {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();
         std::thread::spawn(move || {
@@ -448,56 +201,185 @@ pub(crate) mod tests {
         addr
     }
 
-    #[test]
-    fn resolver_retry_counts_one_tcp_query_across_two_targets() {
-        use crate::dto::Mode;
-        use crate::tunnel::Session;
-        use crate::tunnel::route::{Inbound, tests::published_links};
-        use honk_outbound::group::SelectionNetwork;
-        use std::sync::Arc;
+    fn field(tag: u8, bytes: &[u8]) -> Vec<u8> {
+        let mut out = vec![tag, u8::try_from(bytes.len()).unwrap()];
+        out.extend(bytes);
+        out
+    }
 
-        let (proxy, connections) = crate::testutil::socks5();
-        let links = format!("socks5://{proxy}#dns");
-        let (outbounds, model) =
-            published_links(links.as_bytes(), Default::default(), Mode::Global);
-        let session = Arc::new(Session::new(0, Default::default()));
-        let route = Route::dns(Inbound::Tun, Mode::Global, &outbounds, &session);
-        let wrong_id = upstream_with(|q| {
-            let mut a = answer_to(q, 1);
-            a[0] ^= 1;
-            a
-        });
-        let q = query(71, "dns.example", None);
-        let servers = [wrong_id, upstream()];
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
+    /// A generation's geodata: `geosite.dat` with one category, `cn`, the domain `baidu.com`.
+    pub fn geo() -> TempDir {
+        let dir = TempDir::new("dns-geo");
+        let mut domain = vec![8, 2];
+        domain.extend(field(18, b"baidu.com"));
+        let mut site = field(10, b"CN");
+        site.extend(field(18, &domain));
+        std::fs::write(dir.path().join("geosite.dat"), field(10, &site)).unwrap();
+        dir
+    }
+
+    /// The labels [`geo`] holds: the geosite category `cn`, no GeoIP code.
+    struct Cn;
+
+    impl GeoCatalog for Cn {
+        fn geoip(&self, _: &str) -> Label {
+            Label::MissingCategory
+        }
+        fn geoip_nets(&self, _: &str) -> Option<Vec<(std::net::IpAddr, u8)>> {
+            None
+        }
+        fn geosite(&self, label: &str) -> Label {
+            match label {
+                "cn" => Label::Present,
+                _ => Label::MissingCategory,
+            }
+        }
+    }
+
+    /// Commits `source` as the head of the honk store in `dir`, checked against [`geo`]'s labels.
+    pub fn commit(dir: &Path, source: &str) -> HonkStore {
+        let mut store = HonkStore::open(dir).unwrap();
+        let id = store.draft(None).unwrap();
+        store.edit(id, Path::new("config.dae"), source).unwrap();
+        let geo = Geo::Installed {
+            generation: 1,
+            catalog: &Cn,
+        };
+        store
+            .apply(id, &Capabilities { ingress: None, geo })
             .unwrap();
-        let reply = runtime
-            .block_on(answer(&servers, &route, &q, Network::Udp))
+        store
+    }
+
+    /// The runtime of `source` committed as a store head, with `geo` as its geodata.
+    pub fn runtime(source: &str, geo: &Path) -> Arc<Runtime> {
+        let data = TempDir::new("dns-store");
+        Arc::new(Runtime::load(&commit(data.path(), source), geo).unwrap())
+    }
+
+    /// A configuration that sends every query to `upstream`.
+    pub fn to(upstream: SocketAddr) -> String {
+        format!(
+            "dns {{\n upstream {{\n  u: 'tcp://{upstream}' -> direct\n }}\n routing {{\n  request {{\n   fallback: u\n  }}\n }}\n}}\nrouting {{\n fallback: direct\n}}\n"
+        )
+    }
+
+    /// The runtime of a configuration that sends every query to `upstream`.
+    pub fn through(upstream: SocketAddr) -> Arc<Runtime> {
+        let geo = geo();
+        runtime(&to(upstream), geo.path())
+    }
+
+    /// The runtime of a configuration that rejects `example.com` and its subdomains, answered at
+    /// once without a dial.
+    pub fn rejecting() -> Arc<Runtime> {
+        let geo = geo();
+        let source = "dns {\n upstream {\n  u: 'tcp://127.0.0.1:9' -> direct\n }\n routing {\n  request {\n   qname(suffix: example.com) -> reject\n   fallback: u\n  }\n }\n}\nrouting {\n fallback: direct\n}\n";
+        runtime(source, geo.path())
+    }
+
+    /// `cn` names to `alidns`, others to `google`, a requery of `google`'s 10.0.0.0/8 answers at
+    /// `alidns`, `ads.test` rejected and `asis.test` sent where the app addressed it; the
+    /// traffic rules read the same `cn`.
+    pub fn split(alidns: SocketAddr, google: SocketAddr) -> String {
+        format!(
+            "dns {{\n upstream {{\n  alidns: 'tcp://{alidns}' -> direct\n  google: 'tcp://{google}' -> direct\n }}\n routing {{\n  request {{\n   qname(suffix: ads.test) -> reject\n   qname(suffix: asis.test) -> asis\n   qname(geosite: cn) -> alidns\n   fallback: google\n  }}\n  response {{\n   upstream(google) && ip(10.0.0.0/8) -> alidns\n   fallback: accept\n  }}\n }}\n}}\nrouting {{\n domain(geosite: cn) -> direct\n fallback: direct\n}}\n"
+        )
+    }
+
+    /// An upstream answering one A record, `address`.
+    pub fn answering(address: [u8; 4]) -> SocketAddr {
+        upstream_with(move |q| with_address(q, address))
+    }
+
+    fn with_address(q: &[u8], address: [u8; 4]) -> Vec<u8> {
+        let mut a = answer_to(q, 1);
+        let at = a.len() - 4;
+        a[at..].copy_from_slice(&address);
+        a
+    }
+
+    const CLIENT: SocketAddr = SocketAddr::new(
+        std::net::IpAddr::V4(std::net::Ipv4Addr::new(10, 0, 0, 2)),
+        40000,
+    );
+
+    fn first_address(reply: &[u8]) -> Option<[u8; 4]> {
+        (u16_at(reply, 6)? > 0).then(|| reply[reply.len() - 4..].try_into().unwrap())
+    }
+
+    async fn ask(
+        runtime: &Runtime,
+        name: &str,
+        network: Network,
+        server: Option<SocketAddr>,
+    ) -> Vec<u8> {
+        let q = query(9, name, Some(1232));
+        let reply = answer(Some(runtime), &q, network, (CLIENT, server))
+            .await
             .unwrap();
-        assert_eq!(reply, answer_to(&q, 2));
-        assert_eq!(connections.load(std::sync::atomic::Ordering::Relaxed), 2);
-        let manager = &model.score.manager;
-        assert_eq!(manager.score_cache_snapshot().exact_cells, 2);
-        assert_eq!(manager.score_state().root_business_starts(), 1);
+        assert_eq!(reply[..2], q[..2]);
+        reply
+    }
+
+    #[tokio::test]
+    async fn queries_follow_the_committed_dns_rules_with_the_generation_geodata() {
+        let geo = geo();
+        let (alidns, google) = (answering([192, 0, 2, 1]), answering([192, 0, 2, 2]));
+        let runtime = runtime(&split(alidns, google), geo.path());
+
+        let cn = ask(&runtime, "www.baidu.com", Network::Udp, None).await;
         assert_eq!(
-            manager
-                .score_budget_counters("g-Auto", SelectionNetwork::Tcp)
-                .business_starts,
-            1
+            first_address(&cn),
+            Some([192, 0, 2, 1]),
+            "cn goes to alidns"
+        );
+        let other = ask(&runtime, "example.org", Network::Tcp, None).await;
+        assert_eq!(
+            first_address(&other),
+            Some([192, 0, 2, 2]),
+            "the rest to google"
+        );
+        let ad = ask(&runtime, "x.ads.test", Network::Udp, None).await;
+        assert_eq!(
+            (ad[3] & 0x0f, first_address(&ad)),
+            (0, None),
+            "reject: empty NOERROR"
         );
     }
 
-    /// A refused route answers SERVFAIL, which maps nothing.
     #[tokio::test]
-    async fn a_refused_route_answers_servfail_which_maps_nothing() {
-        let q = query(3, "learn.example", Some(1232));
-        let a = answer(&[upstream()], &Route::Refuse, &q, Network::Tcp)
-            .await
-            .unwrap();
-        assert_eq!(a[3] & 0x0f, 2);
-        assert!(Learned::read(&q, &a).is_none());
+    async fn a_requeried_answer_comes_from_the_second_upstream() {
+        let geo = geo();
+        let (alidns, google) = (answering([192, 0, 2, 1]), answering([10, 0, 0, 7]));
+        let runtime = runtime(&split(alidns, google), geo.path());
+
+        let reply = ask(&runtime, "example.org", Network::Udp, None).await;
+
+        assert_eq!(first_address(&reply), Some([192, 0, 2, 1]));
+    }
+
+    #[tokio::test]
+    async fn asis_goes_to_the_addressed_server_and_fails_closed_without_one() {
+        let geo = geo();
+        let (alidns, google) = (answering([192, 0, 2, 1]), answering([192, 0, 2, 2]));
+        let runtime = runtime(&split(alidns, google), geo.path());
+        let addressed = answering([203, 0, 113, 9]);
+
+        let real = ask(&runtime, "www.asis.test", Network::Tcp, Some(addressed)).await;
+        assert_eq!(first_address(&real), Some([203, 0, 113, 9]));
+        let synthetic = ask(&runtime, "www.asis.test", Network::Tcp, None).await;
+        assert_eq!(
+            (synthetic[3] & 0x0f, first_address(&synthetic)),
+            (2, None),
+            "SERVFAIL"
+        );
+    }
+
+    #[tokio::test]
+    async fn no_committed_configuration_answers_nothing() {
+        let q = query(3, "example.org", None);
+        assert_eq!(answer(None, &q, Network::Udp, (CLIENT, None)).await, None);
     }
 
     #[test]
@@ -508,7 +390,5 @@ pub(crate) mod tests {
         assert_eq!(skip_name(&[0xc0], 0), None);
         assert_eq!(skip_name(&[0x40, 0], 0), None);
         assert_eq!(skip_name(&[3, b'a'], 0), None);
-        assert!(!is_query(&answer_to(&q, 1)));
-        assert!(is_query(&q));
     }
 }

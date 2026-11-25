@@ -32,17 +32,17 @@ struct Setup {
     _dir: TempDir,
 }
 
-/// A started core in `mode` whose DNS goes to `upstreams`.
-fn setup(mode: &str, upstreams: Vec<SocketAddr>) -> Setup {
-    let options = Options {
-        dns_upstreams: upstreams,
-        ..Options::default()
-    };
-    setup_with(mode, options)
+/// A started core in `mode`; with `dns`, a committed honk configuration sends the DNS it answers
+/// there, direct.
+fn setup(mode: &str, dns: Option<SocketAddr>) -> Setup {
+    setup_with(mode, Options::default(), dns)
 }
 
-fn setup_with(mode: &str, options: Options) -> Setup {
+fn setup_with(mode: &str, options: Options, dns: Option<SocketAddr>) -> Setup {
     let dir = TempDir::new("datapath");
+    if let Some(upstream) = dns {
+        common::commit_honk(dir.path(), &common::dns_to(upstream, "direct", ""));
+    }
     let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
     let reply = core.call("setMode", &format!(r#"{{"mode":"{mode}"}}"#));
     assert_eq!(reply, r#"{"ok":{}}"#);
@@ -68,7 +68,7 @@ fn pattern(len: usize) -> Vec<u8> {
 #[test]
 fn direct_tcp_reaches_the_original_destination_both_ways() {
     let (echo, seen) = servers::tcp_echo();
-    let mut s = setup("Direct", vec![]);
+    let mut s = setup("Direct", None);
     let data = pattern(3 << 20);
     let id = s.client.connect(echo);
     let got = s.client.exchange(id, &data).unwrap();
@@ -84,7 +84,7 @@ fn direct_tcp_reaches_the_original_destination_both_ways() {
 
 #[test]
 fn direct_tcp_to_a_closed_port_is_reset() {
-    let mut s = setup("Direct", vec![]);
+    let mut s = setup("Direct", None);
     let (dst, _socket) = servers::closed_port();
     let id = s.client.connect(dst);
     let reset = s.client.until(WAIT, |c| c.read_now(id).is_err());
@@ -98,7 +98,7 @@ fn direct_tcp_to_a_closed_port_is_reset() {
 #[test]
 fn direct_udp_gets_its_replies_from_the_destination() {
     let (udp, seen) = servers::udp_echo();
-    let mut s = setup("Direct", vec![]);
+    let mut s = setup("Direct", None);
     for i in 0..3u8 {
         s.client.send_udp(udp, &[i; 1200]);
         assert_eq!(s.client.recv_udp(udp, WAIT), Some(vec![i; 1200]));
@@ -117,9 +117,7 @@ fn dns_over_udp(c: &mut Client, to: SocketAddr, q: &[u8]) -> Vec<u8> {
 #[test]
 fn dns_is_answered_over_tcp_upstream_and_truncated_for_udp() {
     let (resolver, seen) = servers::dns_server();
-    // The first upstream refuses connections; the second answers.
-    let (closed, _socket) = servers::closed_port();
-    let mut s = setup("Direct", vec![closed, resolver]);
+    let mut s = setup("Direct", Some(resolver));
     let c = &mut s.client;
 
     let a = dns_over_udp(c, RESOLVER, &servers::query(1, "a.example", None));
@@ -130,8 +128,10 @@ fn dns_is_answered_over_tcp_upstream_and_truncated_for_udp() {
     assert_eq!(servers::answers_and_rcode(&a), (1, 0));
 
     let a = dns_over_udp(c, RESOLVER, &servers::query(3, "big.example", None));
+    // honk keeps what fits the client's 512 bytes and sets TC.
     assert!(servers::truncated(&a));
-    assert_eq!(servers::answers_and_rcode(&a), (0, 0));
+    let (kept, rcode) = servers::answers_and_rcode(&a);
+    assert!(kept < 60 && rcode == 0, "{kept} answers, rcode {rcode}");
     let a = dns_over_udp(c, RESOLVER, &servers::query(4, "big.example", Some(4096)));
     assert_eq!(servers::answers_and_rcode(&a), (60, 0));
 
@@ -157,7 +157,7 @@ fn recent_app_connections_keep_the_tun_tuple_and_never_enter_reports() {
     let dns = listener.local_addr().unwrap();
     let (udp, _) = servers::udp_echo();
     let (tcp, _) = servers::tcp_echo();
-    let mut s = setup("Direct", vec![dns]);
+    let mut s = setup("Direct", Some(dns));
     std::thread::spawn(move || {
         let (mut socket, _) = listener.accept().unwrap();
         let mut len = [0; 2];
@@ -216,7 +216,7 @@ fn recent_app_connections_keep_the_tun_tuple_and_never_enter_reports() {
 #[test]
 fn recent_tcp_name_survives_a_split_client_hello() {
     let (tcp, _) = servers::tcp_echo();
-    let mut s = setup("Direct", vec![]);
+    let mut s = setup("Direct", None);
     let id = s.client.connect(tcp);
     let mut prefix = vec![22, 3, 1, 0, 64, 1, 0, 0, 60, 3, 3];
     prefix.extend([0; 32]);
@@ -239,7 +239,7 @@ fn recent_tcp_name_survives_a_split_client_hello() {
 
 #[test]
 fn private_dns_to_the_virtual_resolver_is_reset_at_once() {
-    let mut s = setup("Direct", vec![]);
+    let mut s = setup("Direct", None);
     let begun = Instant::now();
     let id = s.client.connect(SocketAddr::new(RESOLVER.ip(), 853));
     assert!(s.client.until(WAIT, |c| c.read_now(id).is_err()));
@@ -250,7 +250,7 @@ fn private_dns_to_the_virtual_resolver_is_reset_at_once() {
 fn stop_promptly_closes_open_flows() {
     let (echo, seen) = servers::tcp_echo();
     let (udp, _) = servers::udp_echo();
-    let mut s = setup("Direct", vec![]);
+    let mut s = setup("Direct", None);
     let id = s.client.connect(echo);
     assert!(s.client.until(WAIT, |c| c.write_now(id, b"x") == 1));
     assert!(
@@ -271,7 +271,7 @@ fn stop_promptly_closes_open_flows() {
 #[test]
 fn an_upstream_fin_before_the_handshake_ends_still_lets_the_client_send() {
     let (server, received) = servers::half_closer();
-    let mut s = setup("Direct", vec![]);
+    let mut s = setup("Direct", None);
     let id = s.client.connect(server);
     // The client leaves the SYN-ACK unanswered while the upstream connects and half-closes.
     std::thread::sleep(Duration::from_millis(300));
@@ -292,7 +292,7 @@ fn an_upstream_fin_before_the_handshake_ends_still_lets_the_client_send() {
 #[test]
 fn dns_sessions_are_not_active_flows() {
     let (resolver, _) = servers::dns_server();
-    let mut s = setup("Direct", vec![resolver]);
+    let mut s = setup("Direct", Some(resolver));
     let id = s.client.connect(RESOLVER);
     let q = servers::query(1, "a.example", None);
     let mut framed = (q.len() as u16).to_be_bytes().to_vec();
@@ -320,7 +320,7 @@ fn a_client_that_stops_reading_after_its_fin_is_reset_after_the_drain_time() {
         tcp_drain: DRAIN,
         ..Options::default()
     };
-    let mut s = setup_with("Direct", options);
+    let mut s = setup_with("Direct", options, None);
     let id = s.client.connect(flood);
     assert!(s.client.until(WAIT, |c| c.write_now(id, b"GET") == 3));
     s.client.shutdown(id);
@@ -346,11 +346,10 @@ fn a_client_that_stops_reading_after_its_fin_is_reset_after_the_drain_time() {
 fn a_dns_client_that_never_reads_is_reset_after_the_drain_time() {
     let (resolver, _) = servers::dns_server();
     let options = Options {
-        dns_upstreams: vec![resolver],
         tcp_drain: DRAIN,
         ..Options::default()
     };
-    let mut s = setup_with("Direct", options);
+    let mut s = setup_with("Direct", options, Some(resolver));
     let id = s.client.connect(RESOLVER);
     // Answers of about 64 KB each: more than the client's window and the core's buffers hold.
     let mut queries = Vec::new();
@@ -380,7 +379,7 @@ fn a_dns_client_that_sends_nothing_is_reset_after_the_drain_time() {
         tcp_drain: DRAIN,
         ..Options::default()
     };
-    let mut s = setup_with("Direct", options);
+    let mut s = setup_with("Direct", options, None);
     let id = s.client.connect(RESOLVER);
     let reset = s
         .client
@@ -402,7 +401,7 @@ fn a_reply_the_client_never_takes_is_reset_after_the_drain_time() {
         tcp_drain: DRAIN,
         ..Options::default()
     };
-    let mut s = setup_with("Direct", options);
+    let mut s = setup_with("Direct", options, None);
     let id = s.client.connect(upstream);
     assert!(s.client.until(WAIT, |c| c.write_now(id, b"GET") == 3));
     s.client.shutdown(id);
@@ -426,11 +425,10 @@ fn a_reply_the_client_never_takes_is_reset_after_the_drain_time() {
 fn dns_answers_the_client_never_takes_are_reset_after_the_drain_time() {
     let (resolver, _) = servers::dns_server();
     let options = Options {
-        dns_upstreams: vec![resolver],
         tcp_drain: DRAIN,
         ..Options::default()
     };
-    let mut s = setup_with("Direct", options);
+    let mut s = setup_with("Direct", options, Some(resolver));
     let id = s.client.connect(RESOLVER);
     // Five answers of about 64 KB, 313 KiB in all: the replies of the TCP test above.
     let mut queries = Vec::new();
@@ -460,11 +458,10 @@ fn dns_answers_the_client_never_takes_are_reset_after_the_drain_time() {
 fn a_dns_session_whose_last_answer_is_slow_is_reset_a_drain_time_after_nothing_moved() {
     let (resolver, _) = servers::dns_server();
     let options = Options {
-        dns_upstreams: vec![resolver],
         tcp_drain: DRAIN,
         ..Options::default()
     };
-    let mut s = setup_with("Direct", options);
+    let mut s = setup_with("Direct", options, Some(resolver));
     let id = s.client.connect(RESOLVER);
     // Five answers of about 64 KB fill the client's window, the core's buffers and the queue (see
     // above); the sixth comes after servers::SLOW.

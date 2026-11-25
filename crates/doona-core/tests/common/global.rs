@@ -23,14 +23,10 @@ pub struct Global {
 }
 
 impl Global {
-    /// A stopped core in Global with one subscription of `links`, its DNS going to `upstreams`.
-    /// The `Proxy` group starts on `Auto`, which before any probe carries the first link.
-    pub fn new(links: &[String], upstreams: Vec<SocketAddr>) -> Global {
-        let options = Options {
-            dns_upstreams: upstreams,
-            ..Options::default()
-        };
-        Global::with_options(links, options)
+    /// A stopped core in Global with one subscription of `links`. The `Proxy` group starts on
+    /// `Auto`, which before any probe carries the first link.
+    pub fn new(links: &[String]) -> Global {
+        Global::with_options(links, Options::default())
     }
 
     /// [`Global::new`] with the core's `options`.
@@ -49,6 +45,11 @@ impl Global {
             subscription,
             _dir: dir,
         }
+    }
+
+    /// Commits `source` as the core's honk configuration, which the next generation's DNS follows.
+    pub fn commit_honk(&self, source: &str) {
+        super::commit_honk(self._dir.path(), source);
     }
 
     /// Starts a generation; the client plays the apps behind it.

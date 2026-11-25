@@ -235,15 +235,15 @@ async fn a_tail_handed_over_is_released_however_late_the_end_is_heard_of() {
 async fn a_flow_given_up_moves_nothing_more_though_its_io_is_ready() {
     let (_wire, _app, id) = Wire::connected();
     let session = Arc::new(Session::new(1, std::sync::Weak::new()));
+    let honk = crate::dns::tests::rejecting();
     let mut answered = 0;
     for _ in 0..32 {
         let (events, _) = mpsc::unbounded_channel();
         let waker = Waker::new(Key::Tcp(id), events.clone());
         let (mut ends, io) = flow::pair(waker, Tally::new(None), DRAIN_DEADLINE, Task::Dns);
         let gate = io.gate();
-        let via = (Route::Direct, Arc::clone(&session));
-        let none: Arc<[SocketAddr]> = Arc::from([]);
-        let task = tokio::spawn(serve_dns(io, id, via, none, events));
+        let via = (Some(Arc::clone(&honk)), Arc::clone(&session));
+        let task = tokio::spawn(serve_dns(io, id, via, (CLIENT, None), events));
         tokio::task::yield_now().await;
         let q = crate::dns::tests::query(7, "example.com", None);
         let mut framed = u16::try_from(q.len()).unwrap().to_be_bytes().to_vec();
@@ -297,13 +297,18 @@ fn framed(id: u16, name: &str) -> Vec<u8> {
     framed
 }
 
-/// The core's DNS for flow `id`, with the two upstreams through a route that refuses them: each
-/// query is answered SERVFAIL at once.
+/// The app that sends the DNS queries.
+const CLIENT: SocketAddr = SocketAddr::new(
+    std::net::IpAddr::V4(std::net::Ipv4Addr::new(10, 0, 0, 2)),
+    40_000,
+);
+
+/// The core's DNS for flow `id` under a configuration that rejects every query these tests send:
+/// each is answered at once, without a dial.
 fn serve(io: FlowIo, id: FlowId, events: Events) -> tokio::task::JoinHandle<()> {
     let session = Arc::new(Session::new(1, std::sync::Weak::new()));
-    let upstreams: Arc<[SocketAddr]> = Arc::from(dns::UPSTREAMS);
-    let via = (Route::Refuse, session);
-    tokio::spawn(serve_dns(io, id, via, upstreams, events))
+    let via = (Some(crate::dns::tests::rejecting()), session);
+    tokio::spawn(serve_dns(io, id, via, (CLIENT, None), events))
 }
 
 /// The client sends a query and its FIN; the core's DNS answers and ends cleanly, and the driver
@@ -484,8 +489,7 @@ async fn waiting_for_the_resolver_is_idle_from_the_clients_fin_on() {
     let up = ends.up.take().unwrap();
     up.try_send(Bytes::from(framed(7, "example.com"))).unwrap();
     resolving.reached().await;
-    let bound = Duration::from_secs(10);
-    let deadline = Some(Instant::now() + bound + drain);
+    let deadline = Some(Instant::now() + crate::dns::RESOLVE_BOUND + drain);
     assert_eq!(ends.gate.deadline(), deadline, "the wait counts as idle");
     tokio::time::advance(Duration::from_secs(4)).await;
     // What the driver does when it sees the client's FIN.
@@ -502,7 +506,7 @@ async fn waiting_for_the_resolver_is_idle_from_the_clients_fin_on() {
 
 /// The resolver never returns, its own timeout included (its write holds its thread in a lock of
 /// the outbound), and the client keeps its side open. The driver cuts the session on its own: the
-/// resolver's bound (5 s for each of the two upstreams), then a drain time, after the query.
+/// resolver's bound, then a drain time, after the query.
 #[tokio::test(start_paused = true)]
 async fn a_resolver_that_never_returns_is_cut_its_bound_and_a_drain_time_after_the_query() {
     let (_wire, _app, id) = Wire::connected();
@@ -515,7 +519,7 @@ async fn a_resolver_that_never_returns_is_cut_its_bound_and_a_drain_time_after_t
     let up = ends.up.take().unwrap();
     up.try_send(Bytes::from(framed(7, "example.com"))).unwrap();
     resolving.reached().await;
-    let cut = Instant::now() + Duration::from_secs(10) + drain;
+    let cut = Instant::now() + crate::dns::RESOLVE_BOUND + drain;
     assert_eq!(
         ends.gate.deadline(),
         Some(cut),

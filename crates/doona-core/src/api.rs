@@ -45,8 +45,6 @@ const MIN_MTU: u16 = 1280;
 /// What a host test may change; the app runs with the defaults.
 #[derive(Clone, Debug)]
 pub struct Options {
-    /// Where DNS the core answers is forwarded, in order.
-    pub dns_upstreams: Vec<SocketAddr>,
     /// What a latency probe fetches through each node.
     pub probe_url: String,
     /// How long `addSubscription` and `updateSubscription` may take up to their commit.
@@ -65,7 +63,6 @@ pub struct Options {
 impl Default for Options {
     fn default() -> Options {
         Options {
-            dns_upstreams: crate::dns::UPSTREAMS.to_vec(),
             probe_url: probe::DEFAULT_PROBE_URL.to_owned(),
             subscription_bound: subscriptions::SUBSCRIPTION_BOUND,
             bootstrap_port: 53,
@@ -89,7 +86,6 @@ pub struct Core {
     writer: Mutex<()>,
     /// The committed mode, shared with the running generation.
     mode: Arc<ModeCell>,
-    dns_upstreams: tokio::sync::watch::Sender<Arc<[SocketAddr]>>,
     /// Which generation runs, or that one is starting. Held only to read or swap it, never
     /// across a wait, so `stop` and `snapshot` never wait for a `start`. Taken before the catalog
     /// lock when both are held.
@@ -177,11 +173,6 @@ impl Core {
         let outbounds = Arc::new(Outbounds::new(Arc::clone(&panics), options.workers)?);
         let built = outbounds.build(&model.nodes);
         let mode = Arc::new(ModeCell::new(state.mode));
-        let upstreams = state
-            .dns_upstreams
-            .as_deref()
-            .unwrap_or(&options.dns_upstreams);
-        let dns_upstreams = tokio::sync::watch::Sender::new(Arc::from(upstreams));
         let catalog = CatalogState::new(state, model);
         let stats = Stats::with_diag(store.dir(), runtime.handle().clone(), &diag);
         let stats = Arc::new(stats);
@@ -201,7 +192,6 @@ impl Core {
             store,
             shared,
             mode,
-            dns_upstreams,
             writer: Mutex::new(()),
             life: Mutex::new(Life::Stopped),
             bootstrap_revision: AtomicU64::new(0),
@@ -369,7 +359,7 @@ impl Core {
         let settings = Settings {
             mtu: config.mtu,
             dns: config.dns,
-            dns_upstreams: self.dns_upstreams.subscribe(),
+            honk: self.honk()?,
             udp_idle: self.options.udp_idle,
             tcp_drain: self.options.tcp_drain,
             mode: Arc::clone(&self.mode),
@@ -379,6 +369,19 @@ impl Core {
             stats: Arc::clone(&self.stats),
         };
         Ok((settings, resolvers))
+    }
+
+    /// The committed honk configuration, with the active geodata generation; `None` before one is
+    /// committed. A head that does not load is `internal`.
+    fn honk(&self) -> Result<Option<Arc<crate::honkconf::runtime::Runtime>>, ErrorCode> {
+        use crate::honkconf::runtime::{Runtime, RuntimeError};
+        let store =
+            crate::honkconf::HonkStore::open(self.store.dir()).map_err(|_| ErrorCode::Internal)?;
+        match Runtime::load(&store, &self.assets.geo_dir()) {
+            Ok(runtime) => Ok(Some(Arc::new(runtime))),
+            Err(RuntimeError::NoRevision) => Ok(None),
+            Err(_) => Err(ErrorCode::Internal),
+        }
     }
 
     /// Ends the running generation, if any, within 1 s, and cancels a `start` under way. Every

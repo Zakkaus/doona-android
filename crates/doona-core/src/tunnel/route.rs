@@ -18,7 +18,7 @@ use super::Session;
 use super::udp::UdpUpstream;
 use crate::dto::Mode;
 use crate::localnet::{self, Trace};
-use crate::outbounds::{Dialer, Outbounds, View};
+use crate::outbounds::{Dialer, Outbounds};
 use crate::rules::policy::Choice;
 use crate::rules::{Flow, Network};
 use crate::stats::meter::{DIRECT, Meter};
@@ -94,8 +94,6 @@ pub(crate) enum Route {
     RuleDirect(Arc<str>),
     /// Through this node; what each dial showed on its way to the node goes to the session.
     Proxy(Arc<Dialer>, Arc<Session>),
-    /// The DNS session keeps its routing publication but selects for each upstream socket.
-    Resolver(View, Arc<Session>),
     /// A rule's reject; Global or a rule's group while it has no node. TCP is reset, datagrams
     /// are dropped.
     Refuse,
@@ -160,29 +158,6 @@ impl Route {
         )
     }
 
-    /// The route of DNS the core answers for `session`'s generation: straight out in Direct, else
-    /// through the main group, whatever server the query was sent to. `mode` is read as in
-    /// [`Route::of`].
-    pub fn dns(
-        inbound: Inbound,
-        mode: Mode,
-        outbounds: &Outbounds,
-        session: &Arc<Session>,
-    ) -> Route {
-        let Inbound::Tun = inbound;
-        if mode == Mode::Direct {
-            return Route::Direct;
-        }
-        let view = outbounds.view();
-        match view.mode().unwrap_or(mode) {
-            Mode::Direct => Route::Direct,
-            Mode::Global | Mode::Rule if view.has_main_node() => {
-                Route::Resolver(view, Arc::clone(session))
-            }
-            _ => Route::Refuse,
-        }
-    }
-
     /// Through the node `group` selects in `view`, chosen by `rule` in Rule mode; refused while
     /// the group has no node, never direct.
     fn through(dialer: Option<Dialer>, rule: Option<Arc<str>>, session: &Arc<Session>) -> Route {
@@ -203,7 +178,6 @@ impl Route {
         match self {
             Route::Direct => Some(meters.get(DIRECT)),
             Route::RuleDirect(rule) => Some(meters.get_ruled(DIRECT, rule)),
-            Route::Resolver(view, _) => Some(meters.get(view.policy().main())),
             Route::Proxy(d, _) => Some(match &d.rule {
                 Some(rule) => meters.get_ruled(&d.group, rule),
                 None => meters.get(&d.group),
@@ -218,7 +192,7 @@ impl Route {
         match self {
             Route::Direct | Route::RuleDirect(_) => true,
             Route::Proxy(d, _) => d.supports_udp(),
-            Route::Resolver(..) | Route::Refuse | Route::Blocked => false,
+            Route::Refuse | Route::Blocked => false,
         }
     }
 
@@ -262,18 +236,6 @@ impl Route {
             }
             Route::Proxy(d, session) => {
                 connect::connect(d, session, (dst, None), deadline, original).await
-            }
-            Route::Resolver(view, session) => {
-                let dialer = view
-                    .for_flow(
-                        view.policy().main(),
-                        dst,
-                        Network::Tcp,
-                        || None,
-                        original.as_ref(),
-                    )
-                    .ok_or(ErrorKind::PermissionDenied)?;
-                connect::connect(&dialer, session, (dst, None), deadline, original).await
             }
             Route::Refuse | Route::Blocked => Err(ErrorKind::PermissionDenied.into()),
         }
@@ -321,9 +283,7 @@ impl Route {
                     reporter,
                 ))
             }
-            Route::Resolver(..) | Route::Refuse | Route::Blocked => {
-                Err(ErrorKind::PermissionDenied.into())
-            }
+            Route::Refuse | Route::Blocked => Err(ErrorKind::PermissionDenied.into()),
         }
     }
 }

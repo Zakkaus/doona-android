@@ -96,7 +96,7 @@ fn traffic_counts_every_tun_byte_and_the_open_flows() {
     let (echo, _) = servers::tcp_echo();
     let (udp, _) = servers::udp_echo();
     let (proxy, _) = socks::socks5();
-    let g = Global::new(&[socks_link(proxy, "s5")], vec![]);
+    let g = Global::new(&[socks_link(proxy, "s5")]);
     let mut c = g.start();
     let ids: Vec<_> = (0..3).map(|_| c.connect(echo)).collect();
     for (i, id) in ids.iter().enumerate() {
@@ -131,7 +131,7 @@ fn stop_promptly_ends_100_proxied_flows_and_leaves_no_descriptor() {
     let (echo, echo_seen) = servers::tcp_echo();
     let (udp, _) = servers::udp_echo();
     let (proxy, proxy_seen) = socks::socks5();
-    let g = Global::new(&[socks_link(proxy, "s5")], vec![]);
+    let g = Global::new(&[socks_link(proxy, "s5")]);
     let before = open_fds();
     let mut c = g.start();
     let ids: Vec<_> = (0..100).map(|_| c.connect(echo)).collect();
@@ -170,7 +170,7 @@ fn stop_closes_every_carrier_before_it_returns() {
         socks_link(stall, "stall"),
         tuic::link(sink, "tq"),
     ];
-    let g = Global::new(&links, vec![]);
+    let g = Global::new(&links);
     let (dst, _socket) = servers::closed_port();
     let before = open_fds();
     let mut c = g.start();

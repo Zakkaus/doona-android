@@ -19,9 +19,9 @@ crate-type = ["cdylib", "rlib"]
 # userspace engine and none of the daemon, REST API or eBPF features. The netstack stays on
 # Glassyiris/honk (daeuniverse/honk#483). honk-outbound's flow observation reports which node
 # address each dial tried (ARCH D26).
-honk-config = { path = "/scratch/ssd/honk-up/c6-combine/crates/honk-config" }
-honk-outbound = { path = "/scratch/ssd/honk-up/c6-combine/crates/honk-outbound", features = ["rprx", "flow-observation"] }
-honk-core = { path = "/scratch/ssd/honk-up/c6-combine/crates/honk-core", default-features = false, features = ["embedded"] }
+honk-config = { path = "/scratch/ssd/honk-up/c9-combine/crates/honk-config" }
+honk-outbound = { path = "/scratch/ssd/honk-up/c9-combine/crates/honk-outbound", features = ["rprx", "flow-observation"] }
+honk-core = { path = "/scratch/ssd/honk-up/c9-combine/crates/honk-core", default-features = false, features = ["embedded"] }
 honk-netstack = { git = "https://github.com/Glassyiris/honk", rev = "92211429afea6abb6ee834350d6ff9a5d8d331d2" }
 jni = { version = "=0.22.4", default-features = false }
 libc = "0.2"

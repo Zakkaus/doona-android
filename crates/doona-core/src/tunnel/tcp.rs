@@ -7,6 +7,7 @@ use super::gate::Gate;
 use super::route::Route;
 use super::splice::score::relay;
 use crate::dns;
+use crate::honkconf::runtime::Runtime;
 use bytes::{Buf, Bytes};
 use honk_netstack::{FlowId, Refuse, Stack, StreamError, TcpState};
 use std::future::Future;
@@ -309,21 +310,21 @@ pub(crate) async fn dial(io: FlowIo, id: FlowId, dst: SocketAddr, route: Route, 
     until_given_up(&gate, work).await;
 }
 
-/// Answers the framed DNS queries of a TCP/53 connection to the virtual resolver; `session`'s
-/// names learn what the answers map. The driver bounds the session from accept: it is reset once
-/// it has moved nothing for its idle time (see `dns::serve_tcp`). The shutdown that passes the FIN
-/// on publishes the clean end in the gate, as the relay's does.
+/// Answers the framed DNS queries of a TCP/53 connection, to `ends`; `session`'s names learn what
+/// the answers map. The driver bounds the session from accept: it is reset once it has moved
+/// nothing for its idle time (see `dns::serve_tcp`). The shutdown that passes the FIN on publishes
+/// the clean end in the gate, as the relay's does.
 pub(crate) async fn serve_dns(
     mut io: FlowIo,
     id: FlowId,
-    (route, session): (Route, Arc<Session>),
-    upstreams: Arc<[SocketAddr]>,
+    (honk, session): (Option<Arc<Runtime>>, Arc<Session>),
+    ends: dns::Ends,
     events: Events,
 ) {
     let gate = io.gate();
     let work = async {
-        let via = (&route, session.names());
-        let failed = dns::serve_tcp(&mut io, &upstreams, via).await.is_err();
+        let via = (honk.as_deref(), session.names());
+        let failed = dns::serve_tcp(&mut io, via, ends).await.is_err();
         drop(io);
         #[cfg(test)]
         super::pause::at(super::pause::Point::Served).await;

@@ -82,7 +82,6 @@ fn target(route: &Route) -> &str {
     match route {
         Route::Direct | Route::RuleDirect(_) => "direct",
         Route::Proxy(d, _) => &d.group,
-        Route::Resolver(view, _) => view.policy().main(),
         Route::Refuse => "refused",
         Route::Blocked => "blocked",
     }
@@ -175,11 +174,6 @@ fn rule_flows_are_metered_under_the_row_that_routed_them() {
         ("g-Streaming".to_owned(), 30, 40),
     ];
     assert_eq!(taken.outbounds, targets);
-    flow(
-        Route::dns(Inbound::Tun, Mode::Rule, &outbounds, &session),
-        5,
-        6,
-    );
     // The published routing's mode decides, so Global is published before its flow.
     publish(&outbounds, &model, Mode::Global);
     flow(route(tcp(ABROAD, 443), Mode::Global), 1, 2);
@@ -278,8 +272,6 @@ fn without_a_node_rule_keeps_its_direct_rows_and_refuses_the_rest() {
     ] {
         assert!(route(dst, Mode::Rule).refused(), "{dst:?}");
     }
-    publish(&outbounds, &model, Mode::Rule);
-    assert!(Route::dns(Inbound::Tun, Mode::Rule, &outbounds, &session).refused());
 }
 
 /// A Direct flow is routed while a catalog swap holds the routing table's write lock, here
@@ -351,40 +343,6 @@ fn a_flow_paused_across_two_commits_routes_by_one_of_them() {
     let route = Route::of(Inbound::Tun, udp(ABROAD, 443), mode, &outbounds, &session);
     let to = target(&route);
     assert!(matches!(to, "blocked" | "direct"), "went {to}");
-}
-
-/// DNS the core answers goes through the main group in Rule as in Global (rule-mode.md
-/// decision 10), whatever server the query was sent to.
-#[test]
-fn dns_goes_through_the_main_group_unless_direct() {
-    use honk_outbound::alive::{IpVersion, ProbeDomain};
-    let (outbounds, model) = published(Options::default());
-    let session = session();
-    let dns = |mode| {
-        publish(&outbounds, &model, mode);
-        Route::dns(Inbound::Tun, mode, &outbounds, &session)
-    };
-    assert_eq!(target(&dns(Mode::Rule)), "g-Proxy");
-    assert_eq!(target(&dns(Mode::Global)), "g-Proxy");
-    assert_eq!(target(&dns(Mode::Direct)), "direct");
-    let empty = Outbounds::new(Arc::default(), 2).unwrap();
-    assert!(Route::dns(Inbound::Tun, Mode::Rule, &empty, &session).refused());
-    for family in [IpVersion::V4, IpVersion::V6] {
-        assert!(
-            !dns(Mode::Global).refused(),
-            "a resolver family is still usable"
-        );
-        for node in &model.nodes {
-            model
-                .score
-                .alive
-                .report_unavailable_forced(node.uuid, ProbeDomain::Tcp, family);
-        }
-    }
-    assert!(
-        dns(Mode::Global).refused(),
-        "main group has no usable TCP node"
-    );
 }
 
 #[tokio::test]

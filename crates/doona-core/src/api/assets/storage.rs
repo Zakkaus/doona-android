@@ -65,6 +65,10 @@ impl Disk {
     pub fn active(&self) -> Option<&Generation> {
         self.journal.active.as_ref()
     }
+    pub fn active_dir(&self) -> PathBuf {
+        self.active()
+            .map_or_else(|| self.root.clone(), |g| self.slot(g.slot))
+    }
     pub fn pending(&self) -> bool {
         self.journal.pending.is_some()
     }

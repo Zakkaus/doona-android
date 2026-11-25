@@ -71,19 +71,17 @@ impl Core {
         args: crate::dto::DnsUpstreamsArgs,
     ) -> Result<(), ErrorCode> {
         let servers =
-            crate::dns::parse_upstreams(&args.servers).ok_or(ErrorCode::InvalidArgument)?;
+            crate::state::parse_upstreams(&args.servers).ok_or(ErrorCode::InvalidArgument)?;
         let _writer = lock(&self.writer);
         if lock(&self.shared.catalog).state.dns_upstreams.as_ref() == Some(&servers) {
             return Ok(());
         }
-        let live = Arc::from(servers.as_slice());
         let mut next = lock(&self.shared.catalog).state.clone();
         next.dns_upstreams = Some(servers);
         self.write(&next, "setDnsUpstreams", None)?;
         {
             let mut c = lock(&self.shared.catalog);
             c.state = next;
-            self.dns_upstreams.send_replace(live);
         }
         self.store.sync();
         Ok(())
@@ -97,7 +95,7 @@ impl Core {
             (
                 c.model.catalog(&c.state),
                 Arc::clone(&c.model.policy),
-                Arc::clone(&self.dns_upstreams.borrow()),
+                c.state.dns_upstreams.clone().unwrap_or_default(),
             )
         };
         let config = effective(catalog, &policy, &upstreams, MAX_TEXT);

@@ -4,9 +4,8 @@
 use super::*;
 use crate::dns::names::{Learned, Names};
 use crate::dns::serve_tcp;
-use crate::dns::tests::{answer_to, query, upstream_with};
+use crate::dns::tests::{answer_to, query, through, upstream_with};
 use crate::tunnel::gate::Task;
-use crate::tunnel::route::Route;
 use std::net::IpAddr;
 use tokio::io::AsyncWriteExt;
 
@@ -100,9 +99,11 @@ async fn an_answer_over_tcp_is_mapped_before_the_driver_takes_its_last_byte() {
         frame,
         seen: None,
     };
-    let upstreams = [upstream_with(|q| answer_to(q, 2))];
-    let via = (&Route::Direct, &names);
-    serve_tcp(&mut driven, &upstreams, via).await.unwrap();
+    let honk = through(upstream_with(|q| answer_to(q, 2)));
+    let client = SocketAddr::from(([10, 0, 0, 2], 40_000));
+    serve_tcp(&mut driven, (Some(&honk), &names), (client, None))
+        .await
+        .unwrap();
     let seen = driven.seen.expect("the driver took the whole answer");
     assert_eq!(
         seen.as_deref(),

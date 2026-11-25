@@ -7,7 +7,7 @@
 use super::tests::echo;
 use super::tests_catalog::{Feeds, add, path};
 use super::{Core, Life, Options, lock};
-use crate::dns::tests::{answer_to, query};
+use crate::dns::tests::{answer_to, commit, query, to};
 use crate::groups::GroupDef;
 use crate::probe;
 use crate::rules::policy::Policy;
@@ -43,8 +43,12 @@ struct Rig {
 }
 
 impl Rig {
-    fn new(tag: &str, options: Options) -> Rig {
+    /// With `dns`, a committed honk configuration sends every query the core answers there.
+    fn new(tag: &str, dns: Option<SocketAddr>) -> Rig {
         let dir = TempDir::new(tag);
+        if let Some(upstream) = dns {
+            commit(Path::new(path(&dir)), &to(upstream));
+        }
         let (proxy, dials) = socks5();
         let feeds = Feeds::new();
         feeds.set("/sub", format!("socks5://{proxy}#s5\n").as_bytes());
@@ -53,7 +57,7 @@ impl Rig {
             crate::tunnel::drive as crate::tunnel::Launch,
             Duration::from_secs(10),
         );
-        let core = Core::build(store, options, launch, probe::urltest()).unwrap();
+        let core = Core::build(store, Options::default(), launch, probe::urltest()).unwrap();
         add(&core, &feeds, "/sub").unwrap();
         let (tun, peer) = tun_and_peer();
         core.start(tun, CONFIG).unwrap();
@@ -182,7 +186,7 @@ fn resolver(ip: [u8; 4]) -> SocketAddr {
 /// it reaches the node only in Global. Every flow opened before a switch keeps its route.
 #[test]
 fn every_mode_switch_applies_to_new_flows_and_keeps_the_tunnel() {
-    let mut r = Rig::new("rules-switch", Options::default());
+    let mut r = Rig::new("rules-switch", None);
     let echo = echo();
     let before = r.generation();
     let (mut flows, mut through_node) = (Vec::new(), 0);
@@ -213,81 +217,13 @@ fn every_mode_switch_applies_to_new_flows_and_keeps_the_tunnel() {
     assert_eq!(r.generation(), before, "no switch restarted the tunnel");
 }
 
-#[test]
-fn changing_dns_redirects_queries_in_the_running_generation() {
-    let initial = [192, 0, 2, 1];
-    let changed = [192, 0, 2, 2];
-    let options = Options {
-        dns_upstreams: vec![resolver(initial)],
-        ..Options::default()
-    };
-    let mut rig = Rig::new("dns-upstream-switch", options);
-    let generation = rig.generation();
-    for address in [initial, changed] {
-        if address == changed {
-            let args = serde_json::json!({"servers":[resolver(changed)]});
-            super::tests_catalog::call(&rig.core, "setDnsUpstreams", args).unwrap();
-        }
-        rig.client.send_udp(RESOLVER, &query(1, "dns.test", None));
-        let answer = rig
-            .client
-            .recv_udp(RESOLVER, Duration::from_secs(10))
-            .unwrap();
-        assert_eq!(answer[answer.len() - 4..], address);
-    }
-    assert_eq!(rig.generation(), generation);
-}
-
-#[test]
-fn established_tcp_dns_keeps_its_list_but_new_connections_switch() {
-    let first = [192, 0, 2, 1];
-    let second = [192, 0, 2, 2];
-    let options = Options {
-        dns_upstreams: vec![resolver(first)],
-        ..Options::default()
-    };
-    let mut rig = Rig::new("dns-tcp-switch", options);
-    let old = rig.client.connect(RESOLVER);
-    assert_eq!(tcp_dns_address(&mut rig.client, old), first);
-    let args = serde_json::json!({"servers":[resolver(second)]});
-    super::tests_catalog::call(&rig.core, "setDnsUpstreams", args).unwrap();
-    assert_eq!(
-        tcp_dns_address(&mut rig.client, old),
-        first,
-        "established connection"
-    );
-    let new = rig.client.connect(RESOLVER);
-    assert_eq!(
-        tcp_dns_address(&mut rig.client, new),
-        second,
-        "new connection"
-    );
-}
-
-fn tcp_dns_address(client: &mut Client, id: FlowId) -> [u8; 4] {
-    let query = query(13, "tcp.test", None);
-    let mut frame = (query.len() as u16).to_be_bytes().to_vec();
-    frame.extend(query);
-    let (mut sent, mut reply) = (0, Vec::new());
-    assert!(client.until(Duration::from_secs(10), |c| {
-        sent += c.write_now(id, &frame[sent..]);
-        reply.extend(c.read_now(id).unwrap());
-        reply.len() >= 2 && reply.len() == usize::from(u16::from_be_bytes([reply[0], reply[1]])) + 2
-    }));
-    reply[reply.len() - 4..].try_into().unwrap()
-}
-
 /// rule-mode.md, R2: an answer of the core's DNS names its address, a flow to it takes the domain
-/// rule, and the next generation starts without the name. In Rule, DNS goes through the main
-/// group.
+/// rule, and the next generation starts without the name. honk dials the configuration's
+/// upstream itself, through no node.
 #[test]
 fn a_name_from_the_generations_dns_routes_a_flow_by_a_domain_rule() {
     let (echo, accepted) = counted_echo([127, 0, 0, 3]);
-    let options = Options {
-        dns_upstreams: vec![resolver([127, 0, 0, 3])],
-        ..Options::default()
-    };
-    let mut r = Rig::new("rules-names", options);
+    let mut r = Rig::new("rules-names", Some(resolver([127, 0, 0, 3])));
     let rules = [
         rule("DOMAIN", &["echo.test"], "Streaming"),
         rule("GEOIP", &["private"], "DIRECT"),
@@ -299,19 +235,19 @@ fn a_name_from_the_generations_dns_routes_a_flow_by_a_domain_rule() {
     let id = r.client.connect(echo);
     assert_eq!(round_trip(&mut r.client, id, b"unnamed"), b"unnamed");
     assert_eq!((r.dials(), accepted.load(SeqCst)), (0, 1));
-    // The query goes to the node, the answer names the address.
+    // The answer names the address.
     r.client.send_udp(RESOLVER, &query(9, "Echo.Test", None));
     let answer = r
         .client
         .recv_udp(RESOLVER, Duration::from_secs(10))
         .unwrap();
     assert_eq!(answer[answer.len() - 4..], [127, 0, 0, 3]);
-    assert_eq!(r.dials(), 1, "DNS through the main group");
+    assert_eq!(r.dials(), 0, "DNS through no node");
     let id = r.client.connect(echo);
     assert_eq!(round_trip(&mut r.client, id, b"named"), b"named");
     assert_eq!(
         (r.dials(), accepted.load(SeqCst)),
-        (2, 2),
+        (1, 2),
         "through Streaming's node"
     );
     // A new generation has no names yet.
@@ -320,7 +256,7 @@ fn a_name_from_the_generations_dns_routes_a_flow_by_a_domain_rule() {
     let mut client = Client::new(peer);
     let id = client.connect(echo);
     assert_eq!(round_trip(&mut client, id, b"next"), b"next");
-    assert_eq!((r.dials(), accepted.load(SeqCst)), (2, 3), "direct again");
+    assert_eq!((r.dials(), accepted.load(SeqCst)), (1, 3), "direct again");
 }
 
 /// A rule's reject, and a rule's group with no node, reset a TCP flow and drop datagrams: nothing
@@ -330,7 +266,7 @@ fn a_rejected_flow_and_a_group_without_a_node_are_refused() {
     let (echo, accepted) = counted_echo([127, 0, 0, 1]);
     let (empty_echo, empty_accepted) = counted_echo([127, 0, 0, 4]);
     let udp = udp_echo();
-    let mut r = Rig::new("rules-reject", Options::default());
+    let mut r = Rig::new("rules-reject", None);
     let rules = [
         rule("IP-CIDR", &["127.0.0.1/32"], "REJECT"),
         rule("IP-CIDR", &["127.0.0.4/32"], "Empty"),
@@ -366,7 +302,7 @@ fn a_rejected_flow_and_a_group_without_a_node_are_refused() {
 #[test]
 fn rule_without_a_node_keeps_the_template_direct_rows() {
     let (echo, accepted) = counted_echo([127, 0, 0, 1]);
-    let mut r = Rig::new("rules-no-node", Options::default());
+    let mut r = Rig::new("rules-no-node", None);
     r.set_mode("Rule");
     let removed = r.core.call("removeSubscription", r#"{"id":"s1"}"#);
     assert_eq!(removed, r#"{"ok":{}}"#);
@@ -401,11 +337,7 @@ fn rule_without_a_node_keeps_the_template_direct_rows() {
 /// before it.
 #[test]
 fn a_five_tuple_block_quic_refused_stays_refused_until_a_name_mode_or_policy_changes() {
-    let options = Options {
-        dns_upstreams: vec![resolver([127, 0, 0, 5])],
-        ..Options::default()
-    };
-    let mut r = Rig::new("rules-quic", options);
+    let mut r = Rig::new("rules-quic", Some(resolver([127, 0, 0, 5])));
     let echo = udp_echo();
     let mut rules = vec![
         rule("IP-CIDR", &["127.0.0.1/32"], "DIRECT"),

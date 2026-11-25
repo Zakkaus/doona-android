@@ -53,6 +53,23 @@ pub fn seqpacket_pair() -> (std::os::fd::OwnedFd, std::os::fd::OwnedFd) {
     }
 }
 
+/// Commits `source` as the head of the honk store in `dir`, a core's data dir.
+pub fn commit_honk(dir: &Path, source: &str) {
+    use doonacore::honkconf::{Capabilities, HonkStore};
+    let mut store = HonkStore::open(dir).unwrap();
+    let id = store.draft(None).unwrap();
+    store.edit(id, Path::new("config.dae"), source).unwrap();
+    store.apply(id, &Capabilities::linked()).unwrap();
+}
+
+/// A honk configuration that sends every query the core answers to `upstream` over TCP, through
+/// `outbound`; `nodes` adds its `node` and `group` sections.
+pub fn dns_to(upstream: std::net::SocketAddr, outbound: &str, nodes: &str) -> String {
+    format!(
+        "{nodes}dns {{\n upstream {{\n  u: 'tcp://{upstream}' -> {outbound}\n }}\n routing {{\n  request {{\n   fallback: u\n  }}\n }}\n}}\nrouting {{\n fallback: direct\n}}\n"
+    )
+}
+
 /// Polls `cond` every 10 ms until it holds or `limit` passes.
 pub fn wait_for(limit: std::time::Duration, mut cond: impl FnMut() -> bool) -> bool {
     let end = std::time::Instant::now() + limit;

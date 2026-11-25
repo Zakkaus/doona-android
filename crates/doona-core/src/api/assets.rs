@@ -107,6 +107,11 @@ impl Assets {
             pins,
         }
     }
+    /// The active generation's directory, where the engine reads its geodata; the empty root
+    /// before one is installed.
+    pub(super) fn geo_dir(&self) -> PathBuf {
+        lock(&self.disk).active_dir()
+    }
     fn update<R: Read>(
         &self,
         mut open: impl FnMut(&str, RequestKind) -> io::Result<R>,

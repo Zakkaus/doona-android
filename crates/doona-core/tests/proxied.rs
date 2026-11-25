@@ -27,9 +27,13 @@ struct Setup {
     client: Client,
 }
 
-/// A started core in Global with one subscription of `links`; its DNS goes to `upstreams`.
-fn setup(links: &[String], upstreams: Vec<SocketAddr>) -> Setup {
-    let g = Global::new(links, upstreams);
+/// A started core in Global with one subscription of `links`; with `honk`, a committed honk
+/// configuration answers its DNS.
+fn setup(links: &[String], honk: Option<&str>) -> Setup {
+    let g = Global::new(links);
+    if let Some(source) = honk {
+        g.commit_honk(source);
+    }
     let client = g.start();
     Setup { g, client }
 }
@@ -42,7 +46,7 @@ fn connections(seen: &Seen) -> usize {
 fn tcp_goes_through_the_selected_socks5_node() {
     let (echo, echo_seen) = servers::tcp_echo();
     let (proxy, proxy_seen) = socks::socks5();
-    let mut s = setup(&[socks_link(proxy, "s5")], vec![]);
+    let mut s = setup(&[socks_link(proxy, "s5")], None);
     let data = pattern(1 << 20);
     let id = s.client.connect(echo);
     assert!(s.client.exchange(id, &data).unwrap() == data);
@@ -56,7 +60,7 @@ fn tcp_goes_through_a_shadowsocks_node() {
     let (proxy, proxy_seen) = socks::socks5();
     let (ss_addr, ss_seen) = ss::shadowsocks();
     let links = [ss::link(ss_addr, "ss"), socks_link(proxy, "s5")];
-    let mut s = setup(&links, vec![]);
+    let mut s = setup(&links, None);
     let data = pattern(1 << 20);
     let id = s.client.connect(echo);
     assert!(s.client.exchange(id, &data).unwrap() == data);
@@ -68,7 +72,7 @@ fn tcp_goes_through_a_shadowsocks_node() {
 fn direct_leaves_the_nodes_alone() {
     let (echo, echo_seen) = servers::tcp_echo();
     let (proxy, proxy_seen) = socks::socks5();
-    let mut s = setup(&[socks_link(proxy, "s5")], vec![]);
+    let mut s = setup(&[socks_link(proxy, "s5")], None);
     s.g.call_ok("setMode", r#"{"mode":"Direct"}"#);
     let id = s.client.connect(echo);
     assert_eq!(s.client.exchange(id, b"direct").unwrap(), b"direct");
@@ -80,7 +84,7 @@ fn direct_leaves_the_nodes_alone() {
 fn a_mode_change_applies_to_new_flows_only() {
     let (echo, echo_seen) = servers::tcp_echo();
     let (proxy, proxy_seen) = socks::socks5();
-    let mut s = setup(&[socks_link(proxy, "s5")], vec![]);
+    let mut s = setup(&[socks_link(proxy, "s5")], None);
     let proxied = s.client.connect(echo);
     assert!(ping(&mut s.client, proxied, b"one"));
     s.g.call_ok("setMode", r#"{"mode":"Direct"}"#);
@@ -104,7 +108,7 @@ fn a_selection_change_applies_to_new_flows_only() {
     let (proxy, proxy_seen) = socks::socks5();
     let (ss_addr, ss_seen) = ss::shadowsocks();
     let links = [socks_link(proxy, "s5"), ss::link(ss_addr, "ss")];
-    let mut s = setup(&links, vec![]);
+    let mut s = setup(&links, None);
     let first = s.client.connect(echo);
     assert!(ping(&mut s.client, first, b"one"));
     s.g.select("ss");
@@ -123,7 +127,7 @@ fn a_selection_change_applies_to_new_flows_only() {
 fn a_failed_dial_resets_the_flow_at_once() {
     let (echo, echo_seen) = servers::tcp_echo();
     let (gone, _socket) = servers::closed_port();
-    let mut s = setup(&[socks_link(gone, "gone")], vec![]);
+    let mut s = setup(&[socks_link(gone, "gone")], None);
     let begun = Instant::now();
     let id = s.client.connect(echo);
     assert!(s.client.until(WAIT, |c| c.read_now(id).is_err()));
@@ -146,13 +150,13 @@ fn a_failed_dial_resets_the_flow_at_once() {
 fn a_failed_dial_through_a_node_on_the_local_network_is_a_warning() {
     let (echo, echo_seen) = servers::tcp_echo();
     let (gone, _socket) = servers::closed_port();
-    let mut s = setup(&[socks_link(gone, "gone")], vec![]);
+    let mut s = setup(&[socks_link(gone, "gone")], None);
     let id = s.client.connect(echo);
     assert!(s.client.until(WAIT, |c| c.read_now(id).is_err()));
     assert_eq!(s.g.snapshot().warning, None);
 
     let local = SocketAddr::from((Ipv4Addr::new(224, 0, 0, 1), 1080));
-    let mut s = setup(&[socks_link(local, "lan")], vec![]);
+    let mut s = setup(&[socks_link(local, "lan")], None);
     assert_eq!(s.g.snapshot().warning, None);
     let id = s.client.connect(echo);
     assert!(
@@ -169,7 +173,7 @@ fn a_failed_dial_through_a_node_on_the_local_network_is_a_warning() {
 fn udp_goes_through_a_node_that_carries_it() {
     let (udp, udp_seen) = servers::udp_echo();
     let (proxy, proxy_seen) = socks::socks5();
-    let mut s = setup(&[socks_link(proxy, "s5")], vec![]);
+    let mut s = setup(&[socks_link(proxy, "s5")], None);
     for i in 0..3u8 {
         s.client.send_udp(udp, &[i; 1200]);
         assert_eq!(s.client.recv_udp(udp, WAIT), Some(vec![i; 1200]));
@@ -200,7 +204,7 @@ fn udp_echo_with_a_stray_peer() -> SocketAddr {
 fn udp_replies_from_another_peer_are_dropped() {
     let udp = udp_echo_with_a_stray_peer();
     let (proxy, _) = socks::socks5();
-    let mut s = setup(&[socks_link(proxy, "s5")], vec![]);
+    let mut s = setup(&[socks_link(proxy, "s5")], None);
     for i in 0..3u8 {
         s.client.send_udp(udp, &[i; 100]);
         assert_eq!(s.client.recv_udp(udp, WAIT), Some(vec![i; 100]));
@@ -241,7 +245,7 @@ fn a_udp_association_keeps_its_node_until_it_idles_out() {
 fn udp_is_dropped_through_a_node_without_it() {
     let (udp, udp_seen) = servers::udp_echo();
     let (stub, stub_seen) = servers::tcp_echo();
-    let mut s = setup(&[vmess_link(stub, "vm")], vec![]);
+    let mut s = setup(&[vmess_link(stub, "vm")], None);
     s.client.send_udp(udp, b"quic");
     assert!(s.client.recv_udp(udp, Duration::from_millis(300)).is_none());
     assert_eq!(udp_seen.datagrams.load(Relaxed), 0);
@@ -256,13 +260,19 @@ fn dns_over_udp(c: &mut Client, q: &[u8]) -> Vec<u8> {
     a
 }
 
-/// DNS to the virtual resolver, over UDP or TCP, is forwarded over TCP through the node, one
-/// connection per query; TCP/853 is reset at once and dials nothing.
+/// DNS to the virtual resolver, over UDP or TCP, goes where the committed honk configuration sends
+/// it: here over TCP through its own static node, not the subscription's. TCP/853 is reset at once
+/// and dials nothing.
 #[test]
-fn dns_goes_through_the_node_over_tcp() {
+fn dns_goes_through_the_configurations_node_over_tcp() {
     let (resolver, resolver_seen) = servers::dns_server();
     let (proxy, proxy_seen) = socks::socks5();
-    let mut s = setup(&[socks_link(proxy, "s5")], vec![resolver]);
+    let (feed_node, feed_seen) = socks::socks5();
+    let nodes = format!(
+        "node {{\n s5: 'socks5://{proxy}'\n}}\ngroup {{\n via {{\n  filter: name(s5)\n  policy: fixed(0)\n }}\n}}\n"
+    );
+    let honk = common::dns_to(resolver, "via", &nodes);
+    let mut s = setup(&[socks_link(feed_node, "feed")], Some(&honk));
     let a = dns_over_udp(&mut s.client, &servers::query(1, "a.example", None));
     assert_eq!(servers::answers_and_rcode(&a), (1, 0));
     assert_eq!(resolver_seen.datagrams.load(Relaxed), 1);
@@ -279,43 +289,33 @@ fn dns_goes_through_the_node_over_tcp() {
     assert_eq!(&reply[2..4], &q[..2], "answer id");
     assert_eq!(servers::answers_and_rcode(&reply[2..]), (1, 0));
     assert_eq!(resolver_seen.datagrams.load(Relaxed), 2);
-    assert_eq!(connections(&proxy_seen), 2, "so did the one over TCP");
+    assert_eq!(
+        connections(&proxy_seen),
+        1,
+        "the one over TCP took honk's open upstream connection"
+    );
     let begun = Instant::now();
     let id = s.client.connect(SocketAddr::new(RESOLVER.ip(), 853));
     assert!(s.client.until(WAIT, |c| c.read_now(id).is_err()));
     assert!(matches!(s.client.read_now(id), Err(StreamError::Reset)));
     assert!(begun.elapsed() < Duration::from_secs(3));
-    assert_eq!(connections(&proxy_seen), 2);
+    assert_eq!(connections(&proxy_seen), 1);
+    assert_eq!(connections(&feed_seen), 0, "the subscription's node");
 }
 
 #[test]
 fn a_global_flow_without_a_node_is_refused_never_sent_direct() {
     let (echo, echo_seen) = servers::tcp_echo();
     let (udp, udp_seen) = servers::udp_echo();
-    let (resolver, resolver_seen) = servers::dns_server();
     let (proxy, _) = socks::socks5();
-    let mut s = setup(&[socks_link(proxy, "s5")], vec![resolver]);
+    let mut s = setup(&[socks_link(proxy, "s5")], None);
     let args = format!(r#"{{"id":"{}"}}"#, s.g.subscription);
     s.g.call_ok("removeSubscription", &args);
     let id = s.client.connect(echo);
     assert!(s.client.until(WAIT, |c| c.read_now(id).is_err()));
     s.client.send_udp(udp, b"hello");
     assert!(s.client.recv_udp(udp, Duration::from_millis(300)).is_none());
-    let begun = Instant::now();
-    let a = dns_over_udp(&mut s.client, &servers::query(9, "a.example", None));
-    assert_eq!(servers::answers_and_rcode(&a), (0, 2), "SERVFAIL");
-    assert!(begun.elapsed() < Duration::from_secs(3));
-    // DNS over TCP is a new flow like any other: refused, where a datagram gets SERVFAIL.
-    let begun = Instant::now();
-    let tcp_dns = s.client.connect(RESOLVER);
-    assert!(s.client.until(WAIT, |c| c.read_now(tcp_dns).is_err()));
-    assert!(matches!(
-        s.client.read_now(tcp_dns),
-        Err(StreamError::Reset)
-    ));
-    assert!(begun.elapsed() < Duration::from_secs(3));
     assert_eq!(connections(&echo_seen), 0);
     assert_eq!(udp_seen.datagrams.load(Relaxed), 0);
-    assert_eq!(resolver_seen.datagrams.load(Relaxed), 0);
     assert!(s.g.snapshot().running, "the tunnel stays up");
 }

@@ -119,7 +119,7 @@ fn resolver_edits_validate_the_whole_list_and_survive_restart() {
     let core = Core::new(path(&dir)).unwrap();
     let effective =
         |core: &Core| call(core, "effectiveConfig", json!({})).unwrap()["dnsUpstreams"].clone();
-    assert_eq!(effective(&core), json!(["1.1.1.1:53", "8.8.8.8:53"]));
+    assert_eq!(effective(&core), json!([]), "none stored");
     let servers = json!(["9.9.9.9", "223.5.5.5:5353", "2001:db8::53", "[::1]:54"]);
     call(&core, "setDnsUpstreams", json!({"servers":servers})).unwrap();
     for invalid in [
@@ -222,30 +222,8 @@ fn invalid_stored_dns_sets_the_file_aside() {
         }));
         assert_eq!(
             call(&core, "effectiveConfig", json!({})).unwrap()["dnsUpstreams"],
-            json!(["1.1.1.1:53", "8.8.8.8:53"])
+            json!([])
         );
         assert!(dir.path().join("state.json.unreadable").exists());
     }
-}
-
-#[test]
-fn selecting_defaults_survives_a_change_of_builtin_defaults() {
-    let dir = TempDir::new("explicit-defaults");
-    let core = Core::new(path(&dir)).unwrap();
-    call(
-        &core,
-        "setDnsUpstreams",
-        json!({"servers":["1.1.1.1","8.8.8.8"]}),
-    )
-    .unwrap();
-    drop(core);
-    let options = super::Options {
-        dns_upstreams: vec!["9.9.9.9:53".parse().unwrap()],
-        ..super::Options::default()
-    };
-    let core = Core::with_options(path(&dir), options).unwrap();
-    assert_eq!(
-        call(&core, "effectiveConfig", json!({})).unwrap()["dnsUpstreams"],
-        json!(["1.1.1.1:53", "8.8.8.8:53"])
-    );
 }

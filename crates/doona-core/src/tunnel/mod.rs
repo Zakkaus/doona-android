@@ -35,7 +35,7 @@ use futures_util::future::BoxFuture;
 use route::ModeCell;
 use std::future::Future;
 use std::io::{self, ErrorKind};
-use std::net::{Ipv4Addr, SocketAddr};
+use std::net::Ipv4Addr;
 use std::panic::AssertUnwindSafe;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering::Relaxed};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, Weak};
@@ -54,13 +54,14 @@ pub(crate) const STOP_WAIT: Duration = Duration::from_millis(900);
 const WATCH: Duration = Duration::from_secs(1);
 
 /// What a generation runs with: `start`'s config and the core's own settings.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Settings {
     pub mtu: u16,
     /// The virtual resolver the tun advertises.
     pub dns: Ipv4Addr,
-    /// Where DNS the core answers is forwarded, in order.
-    pub dns_upstreams: tokio::sync::watch::Receiver<Arc<[SocketAddr]>>,
+    /// The committed honk configuration, which answers the DNS the core serves; `None` until one
+    /// is committed.
+    pub honk: Option<Arc<crate::honkconf::runtime::Runtime>>,
     /// A UDP association with no datagram either way for this long ends.
     pub udp_idle: Duration,
     /// How long a TCP flow may move no byte after either side's FIN, and a TCP/53 connection to the

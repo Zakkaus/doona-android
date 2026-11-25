@@ -1,6 +1,7 @@
 use super::*;
 use crate::dto::Mode;
 use crate::outbounds::Outbounds;
+use crate::rules::Network;
 use crate::testutil::socks;
 use crate::tunnel::route::{Inbound, tests::published_links};
 use futures_util::{FutureExt, poll};

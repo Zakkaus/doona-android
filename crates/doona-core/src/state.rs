@@ -76,7 +76,7 @@ fn dns_upstreams<'de, D: serde::Deserializer<'de>>(
     d: D,
 ) -> Result<Option<Vec<std::net::SocketAddr>>, D::Error> {
     let servers = Vec::<String>::deserialize(d)?;
-    crate::dns::parse_upstreams(&servers)
+    parse_upstreams(&servers)
         .map(Some)
         .ok_or_else(|| serde::de::Error::custom("dnsUpstreams is not a valid list"))
 }
@@ -224,6 +224,41 @@ pub(crate) fn write_synced(path: &Path, bytes: &[u8]) -> io::Result<()> {
         .open(path)?;
     f.write_all(bytes)?;
     f.sync_all()
+}
+
+/// `setDnsUpstreams`'s list, shared by the command and the loader. Never resolve a hostname or
+/// accept a scope.
+pub(crate) fn parse_upstreams(servers: &[String]) -> Option<Vec<std::net::SocketAddr>> {
+    if !(1..=4).contains(&servers.len()) {
+        return None;
+    }
+    let mut parsed = Vec::with_capacity(servers.len());
+    for text in servers {
+        if text.contains('%') {
+            return None;
+        }
+        let addr = text
+            .parse()
+            .map(|ip| std::net::SocketAddr::new(ip, 53))
+            .or_else(|_| text.parse::<std::net::SocketAddr>())
+            .ok()?;
+        let ip = addr.ip().to_canonical();
+        let usable = match ip {
+            std::net::IpAddr::V4(ip) => !ip.is_broadcast() && !ip.is_link_local(),
+            std::net::IpAddr::V6(ip) => !ip.is_unicast_link_local(),
+        };
+        let endpoint = std::net::SocketAddr::new(ip, addr.port());
+        if !usable
+            || ip.is_multicast()
+            || ip.is_unspecified()
+            || addr.port() == 0
+            || parsed.contains(&endpoint)
+        {
+            return None;
+        }
+        parsed.push(endpoint);
+    }
+    Some(parsed)
 }
 
 #[cfg(test)]

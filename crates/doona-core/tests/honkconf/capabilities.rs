@@ -89,10 +89,10 @@ fn cipher_availability_and_source_location() {
     // The method check is private upstream. Require a capability review on every
     // pin change, including additions our known positive/negative cases cannot name.
     // honk-config and honk-outbound come from one honk tree. Reviewed at the development
-    // combine (dev/c6-combine): no commit since 63de98ba touches proxy/shadowsocks/mod.rs.
+    // combine (dev/c9-combine): no commit since 63de98ba touches proxy/shadowsocks/mod.rs.
     assert_eq!(
         super::honk().id,
-        "path+/scratch/ssd/honk-up/c6-combine",
+        "path+/scratch/ssd/honk-up/c9-combine",
         "review CipherConf::for_method and is_2022_method before accepting this pin"
     );
     let dir = TempDir::new("honk-ciphers");

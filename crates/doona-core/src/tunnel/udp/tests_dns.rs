@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::dns::names::Names;
-use crate::dns::tests::{answer_to, query, upstream_with};
+use crate::dns::tests::{answer_to, query, through, upstream_with};
 use std::net::IpAddr;
 use tokio::sync::Semaphore;
 
@@ -15,16 +15,8 @@ async fn exchange(answer: fn(&[u8]) -> Vec<u8>, q: &[u8]) -> (Vec<u8>, Names) {
     let slot = Arc::new(Semaphore::new(1)).try_acquire_owned().unwrap();
     let client = SocketAddr::from(([10, 0, 0, 2], 40_000));
     let server = SocketAddr::from(([10, 0, 0, 1], 53));
-    let upstreams = Arc::from([upstream_with(answer)]);
-    answer_dns(
-        q.to_vec(),
-        (client, server),
-        Route::Direct,
-        upstreams,
-        events,
-        slot,
-    )
-    .await;
+    let honk = (Some(through(upstream_with(answer))), (client, Some(server)));
+    answer_dns(q.to_vec(), server, honk, events, slot).await;
     let Some(Event::DnsAnswer {
         payload, learned, ..
     }) = got.recv().await
@@ -59,8 +51,8 @@ async fn a_truncated_answer_maps_nothing() {
     assert_eq!(named(&names, 40), 40);
 }
 
-/// An answer with the query's id but another question maps nothing, though the client gets it;
-/// the question asked, in another case (DNS 0x20), maps.
+/// An upstream answer with the query's id but another question maps nothing: honk answers the
+/// client SERVFAIL. So does one that asks the question in another case (DNS 0x20).
 #[tokio::test]
 async fn an_answer_to_another_question_maps_nothing() {
     let q = query(7, "asked.example", Some(1232));
@@ -68,14 +60,14 @@ async fn an_answer_to_another_question_maps_nothing() {
         let id = u16::from_be_bytes([q[0], q[1]]);
         answer_to(&query(id, "other.example", None), 2)
     };
-    let (sent, names) = exchange(other, &q).await;
-    assert_eq!(sent[..2], q[..2]);
-    assert_eq!(named(&names, 2), 0);
     let shouted = |q: &[u8]| {
         let mut a = answer_to(q, 2);
         a[13..18].make_ascii_uppercase();
         a
     };
-    let (_, names) = exchange(shouted, &q).await;
-    assert_eq!(named(&names, 2), 2);
+    for upstream in [other as fn(&[u8]) -> Vec<u8>, shouted] {
+        let (sent, names) = exchange(upstream, &q).await;
+        assert_eq!((sent[..2] == q[..2], sent[3] & 0x0f), (true, 2), "SERVFAIL");
+        assert_eq!(named(&names, 2), 0);
+    }
 }

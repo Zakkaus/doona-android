@@ -13,7 +13,7 @@ use super::gate::Task;
 use super::route::{Inbound, Route};
 use super::tcp::{self, Step, Stop, TcpFlow};
 use super::udp::{self, Budget, Nat};
-use super::{Gen, Session, Settings, StartSignal, Tun};
+use super::{Gen, Settings, StartSignal, Tun};
 use crate::dns::names::Learned;
 use crate::dto::recent::Protocol;
 use crate::rules::Network;
@@ -303,35 +303,45 @@ impl Driver {
         Ok(())
     }
 
-    /// Answers each new SYN: anything to the virtual resolver but DNS is reset (TCP/853, so
-    /// Private DNS falls back at once), as is any flow its route refuses, DNS included; DNS to the
-    /// virtual resolver is served here, and other flows follow their route.
+    /// The ends of a DNS query from `client` to `dst`: the server the app addressed, unless that
+    /// is the virtual resolver, which honk must never dial.
+    fn dns_ends(&self, client: SocketAddr, dst: SocketAddr) -> crate::dns::Ends {
+        (
+            client,
+            (dst.ip() != IpAddr::V4(self.settings.dns)).then_some(dst),
+        )
+    }
+
+    /// Answers each new SYN: TCP/53 to any address is DNS the core serves; anything else to the
+    /// virtual resolver is reset (TCP/853, so Private DNS falls back at once), as is any flow its
+    /// route refuses; other flows follow their route.
     fn accept(&mut self) {
         while let Some(syn) = self.stack.poll_accept() {
             let dst = syn.original_dst;
             let to_resolver = dst.ip() == IpAddr::V4(self.settings.dns);
-            if to_resolver && dst.port() != 53 {
-                self.stack.tcp_refuse(syn.id, Refuse::Rst);
+            if dst.port() == 53 {
+                let ends = self.dns_ends(syn.client, dst);
+                self.open_tcp(syn.id, syn.client, Accepted::Dns(ends));
                 continue;
             }
             let (settings, session) = (&self.settings, &self.gen_.session);
-            let route = if to_resolver {
-                dns_route(settings, session)
-            } else {
-                let (to, mode) = ((dst, Network::Tcp), settings.mode.get());
-                Route::of(Inbound::Tun, to, mode, &settings.outbounds, session)
-            };
-            if route.refused() {
+            let (to, mode) = ((dst, Network::Tcp), settings.mode.get());
+            let route = Route::of(Inbound::Tun, to, mode, &settings.outbounds, session);
+            if to_resolver || route.refused() {
                 self.stack.tcp_refuse(syn.id, Refuse::Rst);
             } else {
-                self.open_tcp(syn.id, syn.client, route, (!to_resolver).then_some(dst));
+                self.open_tcp(syn.id, syn.client, Accepted::Relay(route, dst));
             }
         }
     }
 
-    /// Accepts `id` and spawns its task: a dial to `dst`, or with no `dst` the DNS server. A
-    /// dialed flow's SYN-ACK waits for the upstream, so a refused dial reaches the app as RST.
-    fn open_tcp(&mut self, id: FlowId, local: SocketAddr, route: Route, dst: Option<SocketAddr>) {
+    /// Accepts `id` and spawns its task: a dial, or the DNS server. A dialed flow's SYN-ACK waits
+    /// for the upstream, so a refused dial reaches the app as RST.
+    fn open_tcp(&mut self, id: FlowId, local: SocketAddr, accepted: Accepted) {
+        let dst = match &accepted {
+            Accepted::Relay(_, dst) => Some(*dst),
+            Accepted::Dns(_) => None,
+        };
         let when = match dst {
             Some(_) => AcceptWhen::Deferred {
                 deadline: DIAL_DEADLINE,
@@ -347,7 +357,10 @@ impl Driver {
         }
         let waker = Waker::new(Key::Tcp(id), self.events.clone());
         // The core's own DNS is not an app's flow, nor an outbound's bytes.
-        let meter = dst.and_then(|_| route.meter(&self.gen_.session));
+        let meter = match &accepted {
+            Accepted::Relay(route, _) => route.meter(&self.gen_.session),
+            Accepted::Dns(_) => None,
+        };
         let recent = dst.zip(meter.as_ref()).and_then(|(dst, m)| {
             self.gen_
                 .session
@@ -370,13 +383,11 @@ impl Driver {
         let events = self.events.clone();
         self.dns_flows += usize::from(flow.dns);
         self.tcp.insert(id, flow);
-        match dst {
-            Some(dst) => self.gen_.spawn(tcp::dial(io, id, dst, route, events)),
-            None => {
-                let upstreams = Arc::clone(&self.settings.dns_upstreams.borrow());
-                let via = (route, Arc::clone(&self.gen_.session));
-                let task = tcp::serve_dns(io, id, via, upstreams, events);
-                self.gen_.spawn(task);
+        match accepted {
+            Accepted::Relay(route, dst) => self.gen_.spawn(tcp::dial(io, id, dst, route, events)),
+            Accepted::Dns(ends) => {
+                let via = (self.settings.honk.clone(), Arc::clone(&self.gen_.session));
+                self.gen_.spawn(tcp::serve_dns(io, id, via, ends, events));
             }
         }
     }
@@ -458,11 +469,9 @@ impl Driver {
             let Ok(slot) = Arc::clone(&self.dns_slots).try_acquire_owned() else {
                 return;
             };
-            let upstreams = Arc::clone(&self.settings.dns_upstreams.borrow());
+            let honk = (self.settings.honk.clone(), self.dns_ends(src, dst));
             let events = self.events.clone();
-            let route = dns_route(&self.settings, &self.gen_.session);
-            let task =
-                udp::answer_dns(payload.to_vec(), (src, dst), route, upstreams, events, slot);
+            let task = udp::answer_dns(payload.to_vec(), dst, honk, events, slot);
             self.gen_.spawn(task);
         } else if dst.ip() != IpAddr::V4(self.settings.dns) {
             let (settings, session) = (&self.settings, &self.gen_.session);
@@ -560,6 +569,13 @@ impl Driver {
     }
 }
 
+/// What a new TCP flow is: a relay through its route to its destination, or DNS the core serves
+/// to its ends.
+enum Accepted {
+    Relay(Route, SocketAddr),
+    Dns(crate::dns::Ends),
+}
+
 /// What became of a packet written to the tun.
 enum Sent {
     Taken,
@@ -569,11 +585,6 @@ enum Sent {
 }
 
 /// The route of DNS the core answers for `session`'s generation.
-fn dns_route(settings: &Settings, session: &Arc<Session>) -> Route {
-    let mode = settings.mode.get();
-    Route::dns(Inbound::Tun, mode, &settings.outbounds, session)
-}
-
 /// A tun write that failed for lack of memory or room loses its packet, as hev does for
 /// ENOBUFS and ENOMEM (TCP retransmits); any other failure ends the data path.
 fn dropped_or_fatal(e: io::Error) -> io::Result<()> {

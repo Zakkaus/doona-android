@@ -162,7 +162,7 @@ impl Case<'_> {
             dst.set_ip([203, 0, 113, 10].into());
             (Some(p), link)
         };
-        let global = Global::new(&[link], vec![]);
+        let global = Global::new(&[link]);
         if peer.is_some() {
             global.select("bench");
         } else {

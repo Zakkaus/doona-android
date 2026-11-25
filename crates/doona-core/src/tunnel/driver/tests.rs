@@ -2,11 +2,13 @@
 //! only once the tun takes it. And a TCP/53 session's deadline, queued at accept.
 
 use super::*;
-use crate::dns::tests::{answer_to, query, upstream_with};
+use crate::dns::tests::{answer_to, query, through, upstream_with};
 use crate::dto::Mode;
+use crate::honkconf::runtime::Runtime;
 use crate::outbounds::Outbounds;
 use crate::stats::Stats;
 use crate::testutil::{TempDir, tun_and_peer};
+use crate::tunnel::Session;
 use crate::tunnel::pause;
 use crate::tunnel::route::ModeCell;
 use bytes::Bytes;
@@ -25,7 +27,7 @@ fn driver(dir: &TempDir) -> (Driver, Arc<Tun>, OwnedFd, mpsc::UnboundedReceiver<
     let settings = Settings {
         mtu: 1500,
         dns: Ipv4Addr::new(172, 19, 0, 2),
-        dns_upstreams: tokio::sync::watch::channel(Arc::from([])).1,
+        honk: None,
         udp_idle: udp::IDLE,
         tcp_drain: Duration::from_secs(30),
         mode: Arc::new(ModeCell::new(Mode::Direct)),
@@ -55,15 +57,13 @@ fn one_address(q: &[u8]) -> Vec<u8> {
 }
 
 /// What the core's DNS task gives the driver for the query numbered `id`, for `name`.
-async fn answered(id: u16, name: &str, upstreams: &Arc<[SocketAddr]>) -> Event {
+async fn answered(id: u16, name: &str, honk: &Arc<Runtime>) -> Event {
     let (events, mut got) = mpsc::unbounded_channel();
     let slot = Arc::new(Semaphore::new(1)).try_acquire_owned().unwrap();
-    let ends = (
-        SocketAddr::from(([10, 0, 0, 2], 40_000)),
-        SocketAddr::from(([172, 19, 0, 2], 53)),
-    );
+    let ends = (SocketAddr::from(([10, 0, 0, 2], 40_000)), None);
+    let resolver = SocketAddr::from(([172, 19, 0, 2], 53));
     let q = query(id, name, None);
-    udp::answer_dns(q, ends, Route::Direct, Arc::clone(upstreams), events, slot).await;
+    udp::answer_dns(q, resolver, (Some(Arc::clone(honk)), ends), events, slot).await;
     got.recv().await.unwrap()
 }
 
@@ -105,17 +105,17 @@ async fn a_dns_answer_maps_its_addresses_once_the_tun_takes_it() {
     let dir = TempDir::new("driver-dns");
     let (mut d, tun, peer, _) = driver(&dir);
     let session = Arc::clone(&d.gen_.session);
-    let upstreams: Arc<[SocketAddr]> = Arc::from([upstream_with(one_address)]);
+    let honk = through(upstream_with(one_address));
     let name = |host: u8| {
         let ip = IpAddr::from([10, 0, 0, host]);
         session.names().name(ip).map(|n| n.to_string())
     };
     fill(&tun).await;
-    let first = answered(1, "kept.example", &upstreams).await;
+    let first = answered(1, "kept.example", &honk).await;
     d.on_event(first, &tun).unwrap();
     assert!(d.pending_tx.is_some(), "the tun took the answer");
     assert_eq!(name(1), None, "mapped before the tun took it");
-    let second = answered(2, "dropped.example", &upstreams).await;
+    let second = answered(2, "dropped.example", &honk).await;
     d.on_event(second, &tun).unwrap();
     assert_eq!(name(2), None, "mapped an answer the tun dropped");
     drain(&peer);
@@ -149,6 +149,33 @@ async fn a_dns_session_is_queued_in_the_drain_timer_as_it_is_accepted() {
     let (at, id) = d.drains.peek().expect("no deadline queued at accept");
     assert!(d.tcp.contains_key(&id));
     assert!(at >= accepted + d.settings.tcp_drain, "{at:?}");
+}
+
+/// DNS over TCP to any address is the core's, as over UDP: the driver accepts a SYN to an app's
+/// own resolver as a DNS session, not a relay. Its query keeps that server, which `asis` dials; a
+/// query to the virtual resolver has none.
+#[tokio::test]
+async fn dns_to_any_address_is_served_with_the_server_the_app_addressed() {
+    let dir = TempDir::new("driver-dns-any");
+    let (mut d, _tun, _peer, _) = driver(&dir);
+    let (client, own) = (
+        SocketAddr::from(([172, 19, 0, 1], 40_000)),
+        SocketAddr::from(([9, 9, 9, 9], 53)),
+    );
+    let resolver = SocketAddr::from(([172, 19, 0, 2], 53));
+    assert_eq!(d.dns_ends(client, own), (client, Some(own)));
+    assert_eq!(d.dns_ends(client, resolver), (client, None));
+    let now = Instant::now();
+    let mut app = Config::new([7; 32]);
+    app.local_v4 = Some(Ipv4Addr::new(172, 19, 0, 1));
+    let mut app = Stack::new(app, now);
+    app.tcp_connect(now, own).unwrap();
+    let mut packet = vec![0; 2048];
+    while let Some(n) = app.poll_transmit(now, &mut packet) {
+        let _ = d.stack.receive(now, &packet[..n]);
+    }
+    d.accept();
+    assert_eq!(d.dns_flows, 1, "relayed, not served");
 }
 
 /// Moves packets between an app's stack and the driver's until neither has one to send.
