@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="rv_welcome_title">Welcome to doona</string>
-    <string name="rv_welcome_line">doona sends traffic through the nodes your subscriptions provide, and its rules decide what goes direct.</string>
+    <string name="rv_welcome_line">doona runs its own core, not another Clash client. TCP and UDP can each take their own node, at up to 10 Gbps.</string>
     <string name="rv_welcome_subs_sub">Clash, sing-box and share-link lists</string>
     <string name="rv_welcome_rules">Rules</string>
     <string name="rv_welcome_rules_sub">Each connection goes through a node or direct</string>
