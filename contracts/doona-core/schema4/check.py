@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Checks the schema 4 fixtures against the rules of plans/v1/honk/core-api-schema4.md.
 
 Usage: check.py [DIR]   (DIR defaults to this file's directory)
