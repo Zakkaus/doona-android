@@ -36,10 +36,10 @@ import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rememberRvFormat
-import dev.doona.android.feature.model.RvNode
-import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.localnetwork.LocalNetworkPrompt
 import dev.doona.android.feature.localnetwork.RvLanSheet
+import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvSubscription
 
 /** Why an import failed, as the core tells them apart: no answer, not a subscription, over the 8 MiB bound. */
 internal enum class RvAddFailure { Unreachable, NotSubscription, TooLarge }
