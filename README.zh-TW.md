@@ -58,6 +58,10 @@ MetaCubeX 會替換 `latest` 的附件，並強制推送 `release` 分支。版�
 
 執行測試需要 `adb`，以及開啟 USB 偵錯的手機。也可以拔掉傳輸線、改用無線 adb 執行，量測期間手機就不會被 USB 充電。安裝 APK、用 `run.sh` 執行測試計畫、用 `analyze.py` 把 Perfetto trace 換算成能耗和喚醒次數，都寫在 [`android/scripts/README.md`](android/scripts/README.md)。
 
+## 參與貢獻
+
+回報問題前請閱讀[支援指南](.github/SUPPORT.md)；提交 PR 前請閱讀[貢獻指南](CONTRIBUTING.md)。
+
 ## 相關專案
 
 - [honk](https://github.com/daeuniverse/honk)：代理引擎，honk-netstack 在這個倉庫。

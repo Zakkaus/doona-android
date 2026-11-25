@@ -28,25 +28,18 @@ object GitHubIssueLink {
     ): String {
         val code = failure.errorCode.name
         val name = scrubber.command(failure.command)
-        val body = """
-            ### What happened
+        val what = """
+            Error code: $code
+            Command: $name
+            Time (UTC): ${failure.at}
+            Core: ${scrubber.version(coreVersion)}
 
-                Error code: $code
-                Command: $name
-                Time (UTC): ${failure.at}
-
-            ### Environment
-
-                App: ${app.version}
-                Core: ${scrubber.version(coreVersion)}
-                Android: ${scrubber.metadata(app.android)} (SDK ${app.sdk})
-                Device: ${scrubber.metadata(app.model)}
-
-            Please attach the exported diagnostic ZIP.
-
-            ### Recent actions
+            Recent actions:
         """.trimIndent() + "\n\n"
-        val prefix = "$ISSUE_URL?title=${encode("Doona: $name ($code)")}&body=${encode(body)}"
+        val device = "${scrubber.metadata(app.manufacturer)} ${scrubber.metadata(app.model)}"
+        val prefix = "$ISSUE_URL?template=bug_report.yml&title=${encode("bug: $name ($code)")}" +
+            "&version=${encode("doona ${app.version}")}&android=${encode("${scrubber.metadata(app.android)} (SDK ${app.sdk})")}" +
+            "&device=${encode(device)}&what=${encode(what)}"
         val recent = ArrayDeque<String>()
         var length = prefix.length
         for (event in events.asReversed()) {

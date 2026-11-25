@@ -1,3 +1,4 @@
+# Pin TunBench's hev-socks5-tunnel baseline and update it by hand to keep benchmark results comparable.
 [submodule "android/tunbench/app/src/main/jni/hev-socks5-tunnel"]
 	path = android/tunbench/app/src/main/jni/hev-socks5-tunnel
 	url = https://github.com/heiher/hev-socks5-tunnel
