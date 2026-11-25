@@ -92,16 +92,22 @@ internal class GroupViewModel(
     }
 
     /**
-     * The 分開選擇 switch set to [on]. Turned off, UDP goes back to TCP's node (nboff): the networks then use one node, as
-     * the switch says. A Score group picks each network's node itself, so while its two networks use different nodes the
-     * switch stays on: one row would say one node serves both networks (q-nboff).
+     * The 分開選擇 switch set to [on]. Turned off while the networks use two nodes, UDP goes to TCP's node (q-nboff), so
+     * one node serves both, as the switch says. A Score group pins TCP's node on both networks instead: Score would
+     * otherwise move TCP on its own and split the networks again. Turned on, a Score group with a pin goes back to
+     * choosing each network's node itself; a tap there chooses nothing, so the switch is the only way back.
      */
     fun onApart(on: Boolean) {
         val group = engine.catalog.value?.groups?.firstOrNull { it.id == groupId }
-        if (!on && group != null && group.kind == GroupKind.Score && group.networksDiffer) return
         local.update { it.copy(apart = on) }
-        if (on || group == null || group.kind == GroupKind.Score || !group.networksDiffer) return
-        perform(GroupAction.Apart) { engine.select(groupId, group.tcp.selectedId, Network.Udp) }
+        group ?: return
+        val score = group.kind == GroupKind.Score
+        when {
+            on && score && (group.tcp.pinned || group.udp.pinned) -> perform(GroupAction.Apart) { engine.select(groupId, null) }
+            on || !group.networksDiffer -> Unit
+            score -> perform(GroupAction.Apart) { engine.select(groupId, group.tcp.selectedId) }
+            else -> perform(GroupAction.Apart) { engine.select(groupId, group.tcp.selectedId, Network.Udp) }
+        }
     }
 
     fun onApply(to: RvApplyTo) = local.update { it.copy(apply = to) }

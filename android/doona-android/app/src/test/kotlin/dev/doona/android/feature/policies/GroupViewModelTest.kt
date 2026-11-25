@@ -130,7 +130,6 @@ class GroupViewModelTest {
         val vm = collected(engine, SCORE)
         assertTrue(vm.uiState.value.isScore)
         vm.onTap("n3")
-        vm.onApart(false)
         assertEquals(emptyList<String>(), engine.calls)
     }
 
@@ -160,13 +159,26 @@ class GroupViewModelTest {
     }
 
     @Test
-    fun `a Score group whose networks use two nodes keeps the switch on`() = runTest {
-        val vm = collected(Recording(), SCORE)
+    fun `turning a Score group's switch off pins TCP's node on both networks, and on hands them back to Score`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine, SCORE)
         assertTrue(vm.uiState.value.choice!!.apart)
         vm.onApart(false)
-        val choice = vm.uiState.value.choice!!
-        assertTrue("one row would say n1 serves UDP too", choice.apart)
-        assertEquals("n1" to "n2", choice.tcpId to choice.udpId)
+        assertEquals(listOf("select $SCORE n1 null"), engine.calls)
+        val off = vm.uiState.value.choice!!
+        assertFalse("the tap visibly turns the switch off", off.apart)
+        assertEquals("n1" to "n1", off.tcpId to off.udpId)
+        vm.onApart(true)
+        assertEquals(listOf("select $SCORE n1 null", "select $SCORE null null"), engine.calls)
+        assertTrue(vm.uiState.value.choice!!.apart)
+    }
+
+    @Test
+    fun `turning on the switch of a Score group with no pin calls nothing`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine, SCORE)
+        vm.onApart(true)
+        assertEquals(emptyList<String>(), engine.calls)
     }
 
     @Test

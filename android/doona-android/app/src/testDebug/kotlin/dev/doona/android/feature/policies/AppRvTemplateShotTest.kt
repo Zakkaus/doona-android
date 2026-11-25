@@ -22,6 +22,7 @@ import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RuleTemplate
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.rvSampleEngine
+import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.rvContent
@@ -61,6 +62,19 @@ class AppRvTemplateShotTest {
     fun templateLight() = shot("template", dark = false) { TemplateRoute(rvSampleEngine(), onBack = {}, onReview = {}) }
 
     @Test
+    fun templateDark() = shot("template", dark = true, whole = true) { TemplateRoute(rvSampleEngine(), onBack = {}, onReview = {}) }
+
+    @Test
+    @Config(qualifiers = WHOLE_TEMPLATE_FS200)
+    fun templateFs200() = shot("template", dark = false, fontScale = RV_FS200, whole = true) {
+        TemplateRoute(rvSampleEngine(), onBack = {}, onReview = {})
+    }
+
+    @Test
+    @Config(qualifiers = WHOLE_TEMPLATE_EN)
+    fun templateEnLight() = shot("template-en", dark = false, whole = true) { TemplateRoute(rvSampleEngine(), onBack = {}, onReview = {}) }
+
+    @Test
     fun templateHandWrittenLight() = shot("template-hand", dark = false) { TemplateRoute(handWritten(), onBack = {}, onReview = {}) }
 
     @Test
@@ -73,12 +87,32 @@ class AppRvTemplateShotTest {
     fun impactDark() = shot("template-impact", dark = true) { TemplateImpactRoute(handWritten(), "cn-direct", onBack = {}, onApplied = {}) }
 
     @Test
+    @Config(qualifiers = WHOLE_IMPACT_FS200)
+    fun impactFs200() = shot("template-impact", dark = false, fontScale = RV_FS200, whole = true) {
+        TemplateImpactRoute(handWritten(), "cn-direct", onBack = {}, onApplied = {})
+    }
+
+    @Test
+    @Config(qualifiers = WHOLE_IMPACT_EN)
+    fun impactEnLight() = shot("template-impact-en", dark = false, whole = true) {
+        TemplateImpactRoute(handWritten(), "cn-direct", onBack = {}, onApplied = {})
+    }
+
+    @Test
     @Config(qualifiers = WHOLE_EFFECTIVE)
     fun effectiveLight() = shot("effective-config", dark = false, whole = true) { Effective() }
 
     @Test
     @Config(qualifiers = WHOLE_EFFECTIVE)
     fun effectiveDark() = shot("effective-config", dark = true, whole = true) { Effective() }
+
+    @Test
+    @Config(qualifiers = WHOLE_EFFECTIVE_FS200)
+    fun effectiveFs200() = shot("effective-config", dark = false, fontScale = RV_FS200, whole = true) { Effective() }
+
+    @Test
+    @Config(qualifiers = WHOLE_EFFECTIVE_EN)
+    fun effectiveEnLight() = shot("effective-config-en", dark = false, whole = true) { Effective() }
 
     /** A read after the first failed: the banner with 重試 over the configuration last read (DS 4). */
     @Test
@@ -120,13 +154,25 @@ class AppRvTemplateShotTest {
 
     private fun text(id: Int) = ApplicationProvider.getApplicationContext<Context>().getString(id)
 
-    private fun shot(screen: String, dark: Boolean, whole: Boolean = false, then: () -> Unit = {}, content: @Composable () -> Unit) {
-        compose.rvContent(dark, content = content)
+    private fun shot(
+        screen: String,
+        dark: Boolean,
+        fontScale: Float = 1f,
+        whole: Boolean = false,
+        then: () -> Unit = {},
+        content: @Composable () -> Unit,
+    ) {
+        compose.rvContent(dark, fontScale, content = content)
         then()
         compose.waitForIdle()
         if (whole) compose.assertWhole()
         compose.drawFully()
-        val name = "app-rv-$screen-${if (dark) "dark" else "light"}"
+        val variant = when {
+            fontScale != 1f -> "fs${(fontScale * PERCENT).toInt()}"
+            dark -> "dark"
+            else -> "light"
+        }
+        val name = "app-rv-$screen-$variant"
         compose.rvRowRules(name)
         compose.onRoot().captureToImage().asAndroidBitmap().captureRoboImage("$SHOTS/$name.png")
     }
@@ -166,5 +212,14 @@ class AppRvTemplateShotTest {
         /** Taller than 生效設定 whole, as `proto-rv-effective-config-*`'s window (+h2106dp) and the app's longer rules need. */
         const val WHOLE_EFFECTIVE = "+h2600dp"
         const val WHOLE_EFFECTIVE_REREAD = "+h2600dp"
+
+        /** The other pages' windows as tall as each page whole; measured by assertWhole. */
+        const val WHOLE_TEMPLATE_FS200 = "+h1099dp"
+        const val WHOLE_TEMPLATE_EN = "en-w412dp-h915dp-notnight-xhdpi"
+        const val WHOLE_IMPACT_FS200 = "+h915dp"
+        const val WHOLE_IMPACT_EN = "en-w412dp-h915dp-notnight-xhdpi"
+        const val WHOLE_EFFECTIVE_FS200 = "+h3310dp"
+        const val WHOLE_EFFECTIVE_EN = "en-w412dp-h2600dp-notnight-xhdpi"
+        const val PERCENT = 100
     }
 }
