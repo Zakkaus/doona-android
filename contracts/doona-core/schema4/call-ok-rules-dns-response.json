@@ -1,0 +1,60 @@
+{
+  "ok": {
+    "generation": 15,
+    "list": "dnsResponse",
+    "total": 3,
+    "rows": [
+      {
+        "id": "r-bd231c9e47116e3c",
+        "index": 0,
+        "source": {
+          "file": "f1",
+          "line": 15,
+          "bytes": [
+            351,
+            381
+          ]
+        },
+        "action": "accept",
+        "upstream": null,
+        "paused": false,
+        "fallback": false,
+        "reasons": []
+      },
+      {
+        "id": "r-01c6cce23f153d23",
+        "index": 1,
+        "source": {
+          "file": "f1",
+          "line": 16,
+          "bytes": [
+            394,
+            426
+          ]
+        },
+        "action": "upstream",
+        "upstream": "google_doh",
+        "paused": false,
+        "fallback": false,
+        "reasons": []
+      },
+      {
+        "id": "r-46a64a7d1a7b64a6",
+        "index": 2,
+        "source": {
+          "file": "f1",
+          "line": 17,
+          "bytes": [
+            439,
+            455
+          ]
+        },
+        "action": "accept",
+        "upstream": null,
+        "paused": false,
+        "fallback": true,
+        "reasons": []
+      }
+    ]
+  }
+}

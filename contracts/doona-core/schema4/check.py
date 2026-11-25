@@ -11,6 +11,19 @@ ROOT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().pare
 KINDS = {"Selector", "UrlTest", "LoadBalance", "Fallback", "Score"}
 BLOCK_ADS = {"on", "off", "absent", "elsewhere"}
 NEW_CODES = {"conflict", "source_limit", "non_native_source", "activation_failed"}
+# honk policy text (HC/parser/groups.rs:273-277) -> catalog kind
+POLICY_KIND = {
+    "select": "Selector", "selector": "Selector", "fixed": "Selector",
+    "urltest": "UrlTest", "min_moving_avg": "UrlTest", "min_avg10": "UrlTest", "min_last_delay": "UrlTest",
+    "roundrobin": "LoadBalance", "round_robin": "LoadBalance", "loadbalance": "LoadBalance",
+    "balance": "LoadBalance", "fallback": "Fallback", "score": "Score",
+}
+# rule list fixture -> (honk source, block path of its statements, honk action text -> row action)
+RULE_LISTS = {
+    "call-ok-rules": ("no-proxy", ["routing"], None),
+    "call-ok-rules-dns-request": ("dns-rules", ["dns", "routing", "request"], {"reject": "reject", "asis": "asIs"}),
+    "call-ok-rules-dns-response": ("dns-rules", ["dns", "routing", "response"], {"reject": "reject", "accept": "accept"}),
+}
 MAX_DEPTH = 8  # honk MAX_GROUP_DEPTH: a group is entered only while the depth is below it
 REMOVED = ("mainGroupId", "ruleSource", "unmatched", "rulesRevision", "dnsVia", "dnsUpstreams", "RuleOptions",
            "setDnsUpstreams")
@@ -43,29 +56,40 @@ def source_lines(src):
 
 
 def declarations(lines):
-    """Group declarations of a source: `name {` lines one level inside the top-level `group {` block."""
-    count, inside = 0, False
-    for line in lines:
+    """(line, name) of each group declared one level inside the top-level `group {` block."""
+    found, inside = [], False
+    for number, line in enumerate(lines, 1):
         if line.startswith("group {"):
             inside = True
         elif inside and line.startswith("}"):
             inside = False
         elif inside and line.startswith("    ") and not line.startswith("     ") and line.rstrip().endswith("{"):
-            count += 1
-    return count
+            found.append((number, line.strip()[:-1].strip()))
+    return found
 
 
-def routing_statements(raw):
-    """(start byte, text) of each statement inside the top-level `routing {` block."""
-    out, inside, pos = [], False, 0
-    for line in raw.split(b"\n"):
+def source_policy(lines, line):
+    """Policy text of the group declared at `line`; honk defaults to select."""
+    for text in lines[line:]:
+        text = text.strip()
+        if text == "}":
+            break
+        if text.startswith("policy:"):
+            return text.split(":", 1)[1].split("(")[0].strip().lower()
+    return "select"
+
+
+def statements(raw, path):
+    """(line, start byte, text) of each statement directly inside the block `path`, comments included."""
+    out, stack, pos = [], [], 0
+    for number, line in enumerate(raw.split(b"\n"), 1):
         text = line.strip().decode()
-        if line.startswith(b"routing {"):
-            inside = True
-        elif inside and line.startswith(b"}"):
-            inside = False
-        elif inside and text:
-            out.append((pos + len(line) - len(line.lstrip()), text))
+        if text.endswith("{"):
+            stack.append(text[:-1].strip())
+        elif text == "}":
+            stack.pop()
+        elif text and stack == path:
+            out.append((number, pos + len(line) - len(line.lstrip()), text))
         pos += len(line) + 1
     return out
 
@@ -135,10 +159,12 @@ def check_group(name, g, nodes, group_ids, lines):
     src = g["source"]
     if src["file"] != "f1" or not isinstance(src["line"], int) or src["line"] < 1:
         fail(name, f"{gid}: bad source {src}")
-    elif lines is not None:
-        text = lines[src["line"] - 1].strip() if src["line"] <= len(lines) else ""
-        if text != g["name"] + " {":
-            fail(name, f"{gid}: source line {src['line']} is {text!r}, not the declaration")
+    else:
+        winning = [n for n, declared in declarations(lines) if declared == g["name"]]
+        if not winning or src["line"] != winning[-1]:
+            fail(name, f"{gid}: source line {src['line']} is not the last declaration of {g['name']} ({winning})")
+        elif POLICY_KIND.get(source_policy(lines, src["line"])) != g["kind"]:
+            fail(name, f"{gid}: kind {g['kind']} does not match the policy {source_policy(lines, src['line'])!r}")
 
 
 def check_snapshot(path):
@@ -159,7 +185,10 @@ def check_snapshot(path):
             fail(name, f"{n['id']}: bad node entry")
         if (n["source"] == "static") != (n["subscriptionId"] is None):
             fail(name, f"{n['id']}: source and subscriptionId disagree")
-    lines = source_lines(SOURCE_OF[name]) if name in SOURCE_OF else None
+    if name not in SOURCE_OF:
+        fail(name, "no honk source is mapped to this snapshot")
+        return
+    lines = source_lines(SOURCE_OF[name])
     for g in groups:
         check_group(name, g, {n['id']: n for n in nodes}, group_ids, lines)
     depth_ok(name, groups)
@@ -173,33 +202,48 @@ def check_snapshot(path):
         fail(name, f"blockAds {cfg['blockAds']}")
     if cfg["summary"]["nodes"] != len(nodes):
         fail(name, "summary.nodes differs from nodes")
-    declared = declarations(lines) if lines is not None else len(groups)
+    declared = len(declarations(lines))
     if cfg["summary"]["groups"] != declared:
         fail(name, f"summary.groups {cfg['summary']['groups']} is not the {declared} declarations")
-    if any(s["id"] for s in cat["subscriptions"]) and {n["subscriptionId"] for n in nodes} - {None} - {
-            s["id"] for s in cat["subscriptions"]}:
+    if cfg["summary"]["subscriptions"] != len(cat["subscriptions"]):
+        fail(name, "summary.subscriptions differs from subscriptions")
+    if {n["subscriptionId"] for n in nodes} - {None} - {s["id"] for s in cat["subscriptions"]}:
         fail(name, "a node names a subscription the catalog lacks")
+    for sub in cat["subscriptions"]:
+        fed = sum(n["subscriptionId"] == sub["id"] for n in nodes)
+        if sub["nodes"] != fed:
+            fail(name, f"subscription {sub['id']} counts {sub['nodes']} nodes, the catalog lists {fed}")
 
 
-def check_rules():
-    rows = load(ROOT / "call-ok-rules.json")["ok"]["rows"]
-    raw = (ROOT / "sources" / "no-proxy.dae").read_bytes()
+def check_rules(stem, source, path, actions):
+    ok = load(ROOT / f"{stem}.json")["ok"]
+    rows = ok["rows"]
+    raw = (ROOT / "sources" / f"{source}.dae").read_bytes()
+    if ok["total"] != len(rows):
+        fail(stem, "total differs from the rows shown")
     if [r["index"] for r in rows] != list(range(len(rows))):
-        fail("call-ok-rules", "row indices are not 0..n")
+        fail(stem, "row indices are not 0..n")
     if [r["fallback"] for r in rows] != [False] * (len(rows) - 1) + [True]:
-        fail("call-ok-rules", "the fallback row is not last")
-    statements = routing_statements(raw)
-    if len(statements) != len(rows):
-        fail("call-ok-rules", f"{len(rows)} rows for {len(statements)} statements")
-    for r, (first, statement) in zip(rows, statements):
+        fail(stem, "the fallback row is not last")
+    found = statements(raw, path)
+    if len(found) != len(rows):
+        fail(stem, f"{len(rows)} rows for {len(found)} statements")
+    for r, (line, first, statement) in zip(rows, found):
         start, end = r["source"]["bytes"]
         text = raw[start:end].decode()
-        if (start, text) != (first, statement):
-            fail("call-ok-rules", f"{r['id']}: bytes {start}..{end} are {text!r}, not {statement!r}")
-        if raw[:start].count(b"\n") + 1 != r["source"]["line"]:
-            fail("call-ok-rules", f"{r['id']}: line does not match the byte offset")
-    if load(ROOT / "call-ok-rules.json")["ok"]["total"] != len(rows):
-        fail("call-ok-rules", "total differs from the rows shown")
+        if (r["source"]["line"], start, text) != (line, first, statement):
+            fail(stem, f"{r['id']}: line {r['source']['line']}, bytes {start}..{end} are {text!r}, not {statement!r}")
+        body = statement.removeprefix("#").strip()
+        if r["paused"] != statement.startswith("#"):
+            fail(stem, f"{r['id']}: paused differs from the comment marker")
+        if r["fallback"] != body.startswith("fallback:"):
+            fail(stem, f"{r['id']}: fallback differs from the statement")
+        if actions is not None:
+            tail = body.split("->")[-1] if "->" in body else body.split(":", 1)[1]
+            tail = tail.strip()
+            want = (actions[tail.lower()], None) if tail.lower() in actions else ("upstream", tail)
+            if (r["action"], r["upstream"]) != want:
+                fail(stem, f"{r['id']}: action {r['action']}/{r['upstream']} is not {want} for {tail!r}")
 
 
 def check_usage():
@@ -220,15 +264,22 @@ def check_usage():
 def check_small():
     if load(ROOT / "init.json") != {"schema": 4}:
         fail("init", "schema is not 4")
-    for code in NEW_CODES:
-        path = ROOT / f"call-error-{code.replace('_', '-')}.json"
+    codes = set()
+    for path in ROOT.glob("call-error-*.json"):
+        code = path.stem.removeprefix("call-error-").replace("-", "_")
+        codes.add(code)
         if load(path) != {"error": {"code": code}}:
-            fail(path.stem, "wrong error payload")
-    for ads in load(ROOT / "catalog" / "config-block-ads.json"):
-        if ads["blockAds"] not in BLOCK_ADS:
-            fail("config-block-ads", ads["blockAds"])
-    if {c["blockAds"] for c in load(ROOT / "catalog" / "config-block-ads.json")} != BLOCK_ADS:
+            fail(path.stem, "payload is not the code in the file name")
+    if not NEW_CODES <= codes:
+        fail("call-error", f"no fixture for {sorted(NEW_CODES - codes)}")
+    states = load(ROOT / "catalog" / "config-block-ads.json")
+    if {c["blockAds"] for c in states} != BLOCK_ADS:
         fail("config-block-ads", "does not show all four states")
+    for ads in states:
+        # a paused (commented-out) or absent statement is no effective DNS rule (§7.3)
+        want = 1 if ads["blockAds"] in ("on", "elsewhere") else 0
+        if ads["summary"]["dnsRequestRules"] != want:
+            fail("config-block-ads", f"{ads['blockAds']}: dnsRequestRules is {ads['summary']['dnsRequestRules']}")
     targets = load(ROOT / "catalog" / "config-fallback-targets.json")
     if {t["fallback"]["target"][:2] for t in targets} != {"g-", "di", "bl"}:
         fail("config-fallback-targets", "does not show a group, direct and block")
@@ -254,7 +305,8 @@ def main():
     snaps = sorted(ROOT.glob("snapshot-*.json"))
     for path in snaps:
         check_snapshot(path)
-    check_rules()
+    for stem, (source, path, actions) in RULE_LISTS.items():
+        check_rules(stem, source, path, actions)
     check_usage()
     check_small()
     check_kinds_covered()

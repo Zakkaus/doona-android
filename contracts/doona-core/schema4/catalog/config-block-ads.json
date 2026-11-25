@@ -6,7 +6,7 @@
       "subscriptions": 0,
       "nodes": 2,
       "groups": 1,
-      "trafficRules": 1,
+      "trafficRules": 0,
       "dnsRequestRules": 1,
       "dnsResponseRules": 0
     },
@@ -25,8 +25,8 @@
       "subscriptions": 0,
       "nodes": 2,
       "groups": 1,
-      "trafficRules": 1,
-      "dnsRequestRules": 1,
+      "trafficRules": 0,
+      "dnsRequestRules": 0,
       "dnsResponseRules": 0
     },
     "skipped": 0,
@@ -63,8 +63,8 @@
       "subscriptions": 0,
       "nodes": 2,
       "groups": 1,
-      "trafficRules": 1,
-      "dnsRequestRules": 2,
+      "trafficRules": 0,
+      "dnsRequestRules": 1,
       "dnsResponseRules": 0
     },
     "skipped": 0,

@@ -1,0 +1,24 @@
+dns {
+    upstream {
+        default: 'udp://223.5.5.5:53'
+        google_doh: 'https://dns.google/dns-query'
+    }
+
+    routing {
+        request {
+            # qname(geosite: category-ads-all) -> reject
+            qname(suffix: cn) -> default
+            qtype(https) -> asis
+            fallback: default
+        }
+        response {
+            upstream(google_doh) -> accept
+            ip(geoip: private) -> google_doh
+            fallback: accept
+        }
+    }
+}
+
+routing {
+    fallback: direct
+}

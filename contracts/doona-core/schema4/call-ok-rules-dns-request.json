@@ -1,0 +1,77 @@
+{
+  "ok": {
+    "generation": 15,
+    "list": "dnsRequest",
+    "total": 4,
+    "rows": [
+      {
+        "id": "r-55273a2bf0718e9a",
+        "index": 0,
+        "source": {
+          "file": "f1",
+          "line": 9,
+          "bytes": [
+            161,
+            205
+          ]
+        },
+        "action": "reject",
+        "upstream": null,
+        "paused": true,
+        "fallback": false,
+        "reasons": []
+      },
+      {
+        "id": "r-72f560d116416703",
+        "index": 1,
+        "source": {
+          "file": "f1",
+          "line": 10,
+          "bytes": [
+            218,
+            246
+          ]
+        },
+        "action": "upstream",
+        "upstream": "default",
+        "paused": false,
+        "fallback": false,
+        "reasons": []
+      },
+      {
+        "id": "r-2eb723df48e08a41",
+        "index": 2,
+        "source": {
+          "file": "f1",
+          "line": 11,
+          "bytes": [
+            259,
+            279
+          ]
+        },
+        "action": "asIs",
+        "upstream": null,
+        "paused": false,
+        "fallback": false,
+        "reasons": []
+      },
+      {
+        "id": "r-281ac5b258b09e38",
+        "index": 3,
+        "source": {
+          "file": "f1",
+          "line": 12,
+          "bytes": [
+            292,
+            309
+          ]
+        },
+        "action": "upstream",
+        "upstream": "default",
+        "paused": false,
+        "fallback": true,
+        "reasons": []
+      }
+    ]
+  }
+}
