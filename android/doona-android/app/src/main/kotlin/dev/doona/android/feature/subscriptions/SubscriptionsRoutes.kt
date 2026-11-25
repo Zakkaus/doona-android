@@ -14,7 +14,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.designsystem.rv.LocalRvUpdating
 import dev.doona.android.engine.Engine
-import dev.doona.android.feature.model.RvSubscription
 import kotlinx.coroutines.flow.Flow
 
 /**
