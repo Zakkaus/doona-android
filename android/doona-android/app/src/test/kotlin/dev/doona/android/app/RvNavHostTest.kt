@@ -6,7 +6,7 @@ import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -80,7 +80,7 @@ class RvNavHostTest {
         val id = rememberSaveable { ++serial }
         viewModel { Probe(name, cleared) }
         val entering = LocalRvTabEntry.current
-        remember { tabEntries += name to entering }
+        LaunchedEffect(Unit) { tabEntries += name to entering }
         BasicText("$name #$id")
     }
 
