@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvCard
+import dev.doona.android.designsystem.rv.RvControlSize
 import dev.doona.android.designsystem.rv.RvRowPart
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSwitchRow
@@ -34,8 +35,9 @@ import kotlin.math.abs
  * title's box ends where the text column does (the title wraps, so its box is the column's width) and the first pixel
  * of ink is read from the capture on the switch's middle line. On, the thumb is at the far end, so the track's start
  * shows: 12 dp, a measured figure, not the token. Off, the 19 dp thumb overhangs the 14 dp track's start by 2.5 dp, so
- * the nearest ink is 9.5 dp from the text: recorded as it is (the owner's rule is to the track; owner question
- * q-l4-thumb). Both the list row ([RvSwitchRow]) and the settings row ([RvSettingsSwitchRow]).
+ * the nearest ink is 9.5 dp from the text, the value the owner kept (q-l4-thumb, 2026-11-25 23:52: 12 dp to the track,
+ * the off thumb at 9.5 dp); the thumb hides the track's start, so off, the track is read from its far end, which shows,
+ * less its width: 12 dp as well (R17). Both the list row ([RvSwitchRow]) and the settings row ([RvSettingsSwitchRow]).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -70,7 +72,14 @@ class RvSwitchGapTest {
         val ink = image.firstInk(from = text.right.toInt() + 1, to = switch.right.toInt(), y = switch.center.y.toInt())
         assertTrue("no ink on the switch's middle line between the text and the switch's end", ink != null)
         assertEquals("R17: text end to the nearest ink of the switch", want, (ink!! - text.right) / density, HALF)
-        if (onTrack) assertEquals("the track starts where the switch's node does", switch.left / density, ink / density, HALF)
+        if (onTrack) {
+            assertEquals("the track starts where the switch's node does", switch.left / density, ink / density, HALF)
+        } else {
+            val end = image.lastInk(from = text.right.toInt() + 1, to = switch.right.toInt(), y = switch.center.y.toInt())
+            assertTrue("no track on the switch's middle line", end != null)
+            val track = end!! + 1 - RvControlSize.switchTrackWidth.value * density
+            assertEquals("R17 (q-l4-thumb): off, text end to the track (its far end less its width)", TO_TRACK, (track - text.right) / density, HALF)
+        }
     }
 
     /** The first x in [from, to) on line [y] whose pixel differs clearly from the card's colour at [from]. */
@@ -78,6 +87,16 @@ class RvSwitchGapTest {
         val pixels = toPixelMap()
         val card = pixels[from, y]
         return (from until to).firstOrNull { x ->
+            val c = pixels[x, y]
+            (abs(c.red - card.red) + abs(c.green - card.green) + abs(c.blue - card.blue)) / 3 > INK
+        }
+    }
+
+    /** The last x in [from, to) on line [y] whose pixel differs clearly from the card's colour at [from]. */
+    private fun ImageBitmap.lastInk(from: Int, to: Int, y: Int): Int? {
+        val pixels = toPixelMap()
+        val card = pixels[from, y]
+        return (from until to).lastOrNull { x ->
             val c = pixels[x, y]
             (abs(c.red - card.red) + abs(c.green - card.green) + abs(c.blue - card.blue)) / 3 > INK
         }
@@ -92,7 +111,7 @@ class RvSwitchGapTest {
         /** The owner's 12 dp (q-s1125c-switchgap), text to the drawn track. */
         const val TO_TRACK = 12f
 
-        /** Off: 12 dp to the track less the thumb's 2.5 dp overhang ((19 - 14) / 2). */
+        /** Off: 12 dp to the track less the thumb's 2.5 dp overhang ((19 - 14) / 2), as the owner kept it (q-l4-thumb). */
         const val TO_THUMB_OFF = 9.5f
     }
 }
