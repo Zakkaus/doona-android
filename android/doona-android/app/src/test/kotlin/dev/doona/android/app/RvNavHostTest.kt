@@ -341,6 +341,43 @@ class RvNavHostTest {
     }
 
     @Test
+    fun backPressedTwiceWhileAPageComesInPopsOnlyThatPage() {
+        start(ActivityKey, PoliciesKey, GroupKey("a"))
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { stack.push(GroupKey("b")) }
+        frames(PIPELINE_FRAMES + 1)
+        assertEquals("b still comes in", 1, shown("group b"))
+        compose.runOnIdle { back.onBackPressed() }
+        assertEquals("the first back pops the page coming in", listOf(ActivityKey, PoliciesKey, GroupKey("a")), stack.toList())
+
+        frames(1)
+        compose.runOnIdle { back.onBackPressed() }
+        frames(SETTLE_FRAMES)
+        assertEquals("a back while b leaves pops nothing", listOf(ActivityKey, PoliciesKey, GroupKey("a")), stack.toList())
+        assertEquals(1, shown("group a"))
+        assertEquals(listOf("group b"), cleared)
+
+        compose.runOnIdle { back.onBackPressed() }
+        frames(SETTLE_FRAMES)
+        assertEquals("once a is shown, back pops it", listOf(ActivityKey, PoliciesKey), stack.toList())
+    }
+
+    @Test
+    fun twoBacksInOneFrameWhileAPageComesInPopOnlyThatPage() {
+        start(ActivityKey, PoliciesKey, GroupKey("a"))
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { stack.push(GroupKey("b")) }
+        frames(PIPELINE_FRAMES + 1)
+        compose.runOnIdle {
+            back.onBackPressed()
+            back.onBackPressed()
+        }
+        frames(SETTLE_FRAMES)
+        assertEquals(listOf(ActivityKey, PoliciesKey, GroupKey("a")), stack.toList())
+        assertEquals(1, shown("group a"))
+    }
+
+    @Test
     fun thePickerClosesBeforeAnyPop() {
         start(ActivityKey, NodesKey)
         assertTrue(pull!!.open)
