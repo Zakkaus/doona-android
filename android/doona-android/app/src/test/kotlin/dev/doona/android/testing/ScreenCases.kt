@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.doona.android.app.ActivityKey
-import dev.doona.android.app.DoonaApp
 import dev.doona.android.app.DoonaAppShell
 import dev.doona.android.app.SettingsKey
 import dev.doona.android.app.Tab
@@ -58,7 +57,7 @@ private fun appScreenCases(): List<ScreenCase> {
     val activity = setOf(LayoutRole.Card, LayoutRole.Row, LayoutRole.Control, LayoutRole.Segmented, LayoutRole.Value, LayoutRole.Chevron)
     return listOf(
         ScreenCase("activity", PageLayout(withHub + activity, listOf(space.afterTitle, space.section, space.section))) {
-            DoonaApp(engine, apps, onConnect = {}, listOf(ActivityKey))
+            OldShellApp(engine, apps, listOf(ActivityKey))
         },
         ScreenCase("activity-error", PageLayout(withHub + activity, listOf(space.afterTitle, space.section, space.section))) {
             // The error state sits in the frame of every other screen: the hub bar under it and the gesture bar's inset.
@@ -67,7 +66,7 @@ private fun appScreenCases(): List<ScreenCase> {
         ScreenCase(
             "settings",
             PageLayout(withHub + setOf(LayoutRole.ListCard, LayoutRole.ListRow, LayoutRole.Mark), listOf(space.afterTitle)),
-        ) { DoonaApp(engine, apps, onConnect = {}, listOf(ActivityKey, SettingsKey)) },
+        ) { OldShellApp(engine, apps, listOf(ActivityKey, SettingsKey)) },
     ) + perAppCases()
 }
 

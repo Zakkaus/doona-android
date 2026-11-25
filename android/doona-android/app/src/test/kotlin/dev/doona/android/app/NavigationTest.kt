@@ -104,4 +104,4 @@ class NavigationTest {
     }
 }
 
-private val GROUP = listOf(ActivityKey, PoliciesKey, GroupKey("g-Proxy"))
+private val GROUP = listOf<NavKey>(ActivityKey, PoliciesKey, GroupKey("g-Proxy"))

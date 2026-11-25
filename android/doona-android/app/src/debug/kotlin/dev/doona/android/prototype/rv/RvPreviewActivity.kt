@@ -11,6 +11,8 @@ import androidx.compose.ui.text.font.createFontFamilyResolver
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import dev.doona.android.app.RvPushMotion
+import dev.doona.android.app.RvTabMotion
 import dev.doona.android.designsystem.rv.RvFrames
 import dev.doona.android.designsystem.rv.RvInter
 import dev.doona.android.designsystem.rv.RvInterDisplay

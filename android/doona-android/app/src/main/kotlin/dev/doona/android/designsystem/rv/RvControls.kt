@@ -82,7 +82,6 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.roundToIntRect
 import dev.doona.android.R
-import dev.doona.android.feature.NOT_WIRED
 
 // The sample's controls, one of each: range chip, segmented control, chart tool disc, value pill, primary button, text
 // field, switch and radio.

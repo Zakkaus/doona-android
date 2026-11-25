@@ -65,7 +65,6 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import dev.doona.android.R
-import dev.doona.android.feature.NOT_WIRED
 
 /**
  * The row of controls at the top of every page, over the content: [content] in a row of 48 dp targets whose 44 dp
@@ -168,7 +167,7 @@ internal fun RvTopBar(
     onStats: () -> Unit,
     modifier: Modifier = Modifier,
     pull: RvPullLook = RvPullLook.None,
-    onSubscriptions: () -> Unit = NOT_WIRED,
+    onSubscriptions: () -> Unit,
 ) {
     RvBar(glass, insets, shade, modifier, RvChrome.tabBarTop) {
         RvTabBarRow(glass, { RvSearchPill(onSearch, it, glass, pull) }) {
