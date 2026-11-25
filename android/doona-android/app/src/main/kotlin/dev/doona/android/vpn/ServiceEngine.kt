@@ -6,6 +6,7 @@ import android.os.Process
 import android.os.SystemClock
 import dev.doona.android.data.geo.GeoAssets
 import dev.doona.android.data.network.followBootstrapDns
+import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.data.settings.PerAppSettings
 import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.ConfigAssets
@@ -539,7 +540,8 @@ class ServiceEngine internal constructor(
             val core = DeferredCore { NativeCore }
             // noBackupFilesDir keeps state.json, which holds subscription URLs with tokens, out of every backup. Asking for
             // it makes it, which is disk work: the opener asks on IO.
-            val opener = CoreOpener(core, { app.noBackupFilesDir.path }, Dispatchers.IO)
+            val settings = AppSettings.get(app)
+            val opener = CoreOpener(core, { app.noBackupFilesDir.path }, Dispatchers.IO) { settings.performanceMode.first() }
             val perApp = PerAppSettings.create(app)
             val controller = TunnelController(
                 core = core,

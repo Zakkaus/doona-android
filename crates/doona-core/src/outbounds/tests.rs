@@ -64,7 +64,7 @@ fn published() -> (Outbounds, Vec<Arc<NodeEntry>>) {
     let mut nodes = entries("s-a", vec![first]);
     nodes.extend(entries("s-b", vec![second]));
     nodes.extend(entries("s-c", vec![clash("c2", "192.0.2.1", "")]));
-    let outbounds = Outbounds::new(Arc::default()).unwrap();
+    let outbounds = Outbounds::new(Arc::default(), 2).unwrap();
     let built = outbounds.build(&nodes);
     let selected = nodes
         .iter()

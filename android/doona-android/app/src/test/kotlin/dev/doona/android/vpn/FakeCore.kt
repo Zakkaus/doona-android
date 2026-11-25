@@ -24,6 +24,7 @@ internal class FakeCore : CoreBridge {
     val entered = CopyOnWriteArrayList<String>()
     val calls = CopyOnWriteArrayList<Pair<String, String>>()
     val configs = CopyOnWriteArrayList<String>()
+    val initOptions = CopyOnWriteArrayList<String>()
     val snapshots = AtomicInteger()
 
     /** Served first, in order, before the fixtures. */
@@ -39,7 +40,8 @@ internal class FakeCore : CoreBridge {
     /** Runs as the core starts a generation. */
     @Volatile var onStart: () -> Unit = {}
 
-    override fun init(dataDir: String): String {
+    override fun init(dataDir: String, optionsJson: String): String {
+        initOptions += optionsJson
         initError?.let { throw it }
         return """{"schema":$schema}"""
     }
