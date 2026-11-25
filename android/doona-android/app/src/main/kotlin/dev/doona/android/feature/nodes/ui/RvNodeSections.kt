@@ -39,6 +39,7 @@ import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvConfirmSheet
 import dev.doona.android.designsystem.rv.RvFoldRow
 import dev.doona.android.designsystem.rv.RvGlyph
+import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvLatencyChange
 import dev.doona.android.designsystem.rv.RvMenuAnchor
 import dev.doona.android.designsystem.rv.RvMotion
@@ -47,10 +48,15 @@ import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvRowEnd
 import dev.doona.android.designsystem.rv.RvRowPart
 import dev.doona.android.designsystem.rv.RvSize
+import dev.doona.android.designsystem.rv.RvSkeletonCard
+import dev.doona.android.designsystem.rv.RvSkeletonEnd
+import dev.doona.android.designsystem.rv.RvSkeletonRow
+import dev.doona.android.designsystem.rv.RvSkeletonText
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvPress
 import dev.doona.android.designsystem.rv.rvSharedFlag
+import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSubscription
 import kotlinx.coroutines.flow.first
@@ -164,6 +170,21 @@ internal fun RvSubscriptionFold(sub: RvSubscription, open: Boolean, enabled: Boo
         onDismiss = { deleting = false },
         titleKeepWords = false,
     )
+}
+
+/**
+ * The node lists before the catalog is read (the pickers' and the main node's page's `loading`), as after process death:
+ * a section's card, its 訂閱 row's skeleton over its nodes' rows' (latency over change, the info mark's room) to the
+ * window's foot, so the list's place shows that nodes are coming, never the empty state.
+ */
+@Composable
+internal fun RvNodeSectionSkeleton() {
+    RvGutter {
+        RvSkeletonCard {
+            RvSkeletonRow(0, RvSkeletonText.Mixed, RvSkeletonEnd.Value, chevron = true, titleKeepWords = false)
+            repeat(rvSkeletonRowsToFill()) { RvSkeletonRow(it + 1, RvSkeletonText.Mixed, RvSkeletonEnd.LatencyLines, chevron = true, titleKeepWords = false) }
+        }
+    }
 }
 
 /**

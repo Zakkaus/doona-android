@@ -244,6 +244,24 @@ internal fun RvPageHeader(
 }
 
 /**
+ * [RvPageHeader]'s skeleton for a page whose title is its data (a node's name): the bar's room, the [mark]'s disc where
+ * the header sets a mark, the title's bar ([title]'s kind) on the large title's line and, with a [caption] of that kind, the caption's bar
+ * under it, in the header's gaps, under one shimmer. A page whose header has a control row draws no skeleton for it: the
+ * row is there only for some of its data (a node's status chips).
+ */
+@Composable
+internal fun RvSkeletonPageHeader(insets: WindowInsets, mark: Dp? = null, title: RvSkeletonText = RvSkeletonText.Words, caption: RvSkeletonText? = RvSkeletonText.Words) {
+    RvBarSpacer(insets)
+    Spacer(Modifier.height(RvChrome.largeTitleTop))
+    Column(Modifier.rvShimmer()) {
+        mark?.let { Box(Modifier.padding(start = RvSpace.gutter, bottom = RvSpace.markToTitle)) { RvSkeletonDisc(it) } }
+        RvSkeletonLine(Rv.type.largeTitle, RvSkeletonSize.TITLE, Modifier.padding(horizontal = RvSpace.gutter), title)
+        caption?.let { RvSkeletonLine(Rv.type.rowSub, RvSkeletonSize.CAPTION, Modifier.padding(start = RvSpace.gutter, top = RvSpace.captionGap, end = RvSpace.gutter), it) }
+    }
+    Spacer(Modifier.height(RvSpace.headerGap))
+}
+
+/**
  * A control row on the page (filter chips, a status chip, a list's search and order), on the gutter with
  * [RvSpace.controlGap] above and below it wherever it stands, under a page's title or between two cards (策略 全域's
  * order between its mode card and its node list), as Revolut's Analytics sets its chips between its title and its

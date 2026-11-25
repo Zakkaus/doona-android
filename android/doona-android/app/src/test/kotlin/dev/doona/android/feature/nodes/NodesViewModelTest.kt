@@ -338,22 +338,25 @@ class NodesViewModelTest {
         assertEquals(emptyList<Int?>(), ui.state.node("n-b")!!.history)
     }
 
-    /** A row menu's 測試延遲 tests the groups that list the node; a failure retries that test, not every group's. */
+    /**
+     * A row menu's 測試延遲 runs one plan, on the main group when it lists the node and else on the first group that does
+     * (each plan starts a new probe round, so a second would drop the first's results); a failure retries that test.
+     */
     @Test
-    fun aOneNodeTestTestsTheGroupsThatListItAndRetriesItself() = runTest {
+    fun aOneNodeTestRunsOnePlanAndRetriesItself() = runTest {
         val other = Group("g-Other", "Other", GroupKind.UrlTest, listOf(Member("n-a", "A 01"), Member("n-c", "C 03")), Group.Selection("n-a", pinned = false))
         val main = Group(MAIN, "Proxy", GroupKind.Selector, listOf(Member("n-a", "A 01"), Member("n-b", "B 02")), Group.Selection("n-a", pinned = true))
-        val probe = Probe(FakeEngine(groups = listOf(main, other), subscriptions = listOf(sub)))
+        val probe = Probe(FakeEngine(groups = listOf(other, main), subscriptions = listOf(sub)))
         val vm = collected(probe)
-        vm.testNode("n-b")
+        vm.testNode("n-a")
         assertEquals(listOf<String?>(MAIN), probe.tested)
         probe.result = Result.failure(EngineException(ErrorCode.Internal))
-        vm.testNode("n-a")
-        assertEquals(listOf(MAIN, MAIN, "g-Other"), probe.tested)
+        vm.testNode("n-c")
+        assertEquals(listOf(MAIN, "g-Other"), probe.tested)
         assertEquals(NodesAction.Test, vm.ui.value.failure?.action)
         probe.result = Result.success(Unit)
         vm.retry()
-        assertEquals(listOf(MAIN, MAIN, "g-Other", MAIN, "g-Other"), probe.tested)
+        assertEquals(listOf(MAIN, "g-Other", "g-Other"), probe.tested)
         assertNull(vm.ui.value.failure)
     }
 

@@ -316,6 +316,15 @@ internal fun TextMeasurer.rvLayout(text: String, style: TextStyle, maxLines: Int
     return layout
 }
 
+/**
+ * One line of [text] in [width] as [RvText] shows it: where it does not fit, cut after its last whole word with an
+ * ellipsis ([rvCut]), so a skeleton of it takes the cut line's box (`88 毫秒` at a large font size reads `88…`).
+ */
+internal fun TextMeasurer.rvLayoutCut(text: String, style: TextStyle, width: Int): TextLayoutResult {
+    val layout = rvLayout(text, style, 1, width)
+    return rvCut(text, layout)?.let { rvLayout(it.text, style, 1, width) } ?: layout
+}
+
 private fun TextMeasurer.rvMeasure(wrap: RvWrap, text: String, style: TextStyle, maxLines: Int, width: Int) =
     measure(scripted(wrap.text(text)), style, TextOverflow.Ellipsis, maxLines = maxLines, constraints = Constraints(maxWidth = (width - wrap.narrower.coerceAtLeast(0)).coerceAtLeast(0)))
 

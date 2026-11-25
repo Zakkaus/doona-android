@@ -31,6 +31,7 @@ import dev.doona.android.feature.nodes.ui.RvApplyCard
 import dev.doona.android.feature.nodes.ui.RvApplyTo
 import dev.doona.android.feature.nodes.ui.RvNodeGroups
 import dev.doona.android.feature.nodes.ui.RvNodePickerControls
+import dev.doona.android.feature.nodes.ui.RvNodeSectionSkeleton
 import dev.doona.android.feature.nodes.ui.inPicked
 import dev.doona.android.feature.nodes.ui.rvNodeChips
 import dev.doona.android.feature.nodes.ui.rvPicked
@@ -64,6 +65,7 @@ internal fun RvNodePickerPage(
     alsoCurrent: Set<String> = emptySet(),
     apply: RvApplyTo? = null,
     onApply: (RvApplyTo) -> Unit = {},
+    loading: Boolean = false,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_main_node)
@@ -72,7 +74,9 @@ internal fun RvNodePickerPage(
     val picked = rvPicked(chosen, nodes)
     val groups = remember(nodes, subscriptions, sort, picked) { rvNodeGroups(nodes.filter { inPicked(it, picked) }, subscriptions, sort) }
     RvScrollPage(title, insets, onBack = onBack, actions = { glass -> RvGlassButton(glass, R.drawable.rv_sym_speed, test, onTest) }) { titleBlock ->
-        val controls: (@Composable () -> Unit)? = if (nodes.isEmpty()) {
+        // Before the catalog is read the controls stand (their labels are known) over the list's skeleton.
+        val empty = !loading && nodes.isEmpty()
+        val controls: (@Composable () -> Unit)? = if (empty) {
             null
         } else {
             {
@@ -82,7 +86,9 @@ internal fun RvNodePickerPage(
         }
         RvPageHeader(title, titleBlock, insets, caption = caption?.let { line -> { RvCaption(line) } }, control = controls)
         RvBannerSlot(banner)
-        if (nodes.isEmpty()) {
+        if (loading) {
+            RvNodeSectionSkeleton()
+        } else if (empty) {
             RvGutter { RvNoSubscription(onAdd) }
         } else {
             if (apply != null) {

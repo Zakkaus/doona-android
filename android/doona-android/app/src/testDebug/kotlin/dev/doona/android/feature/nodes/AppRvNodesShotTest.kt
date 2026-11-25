@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performTextInput
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.designsystem.rv.RvPullMotion
 import dev.doona.android.designsystem.rv.rememberRvPullState
+import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
@@ -33,6 +34,7 @@ import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvRowRules
 import dev.doona.android.testing.drawFully
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
@@ -145,6 +147,29 @@ class AppRvNodesShotTest {
     @Config(qualifiers = WHOLE_PAGE)
     fun mainNodeLight() = shot("main-node", dark = false, whole = true) { MainNodeRoute(it, onBack = {}, onSearch = {}, onAdd = {}) }
 
+    /** Before the catalog is first read (`-loading`, a cold start or a restore): each page's skeleton, never the empty state. */
+    @Test
+    @Config(qualifiers = WHOLE_PAGE)
+    fun pageLoadingLight() = shot("nodes-page-loading", dark = false, whole = true, engine = ::unreadEngine) { Page(it) }
+
+    @Test
+    @Config(qualifiers = WHOLE_PAGE)
+    fun pageLoadingDark() = shot("nodes-page-loading", dark = true, whole = true, engine = ::unreadEngine) { Page(it) }
+
+    @Test
+    @Config(qualifiers = WHOLE_PAGE_FS200)
+    fun pageLoadingFs200() = shot("nodes-page-loading", fontScale = RV_FS200, whole = true, engine = ::unreadEngine) { Page(it) }
+
+    @Test
+    @Config(qualifiers = WHOLE_DETAIL)
+    fun detailLoadingLight() = shot("node-detail-loading", dark = false, whole = true, engine = ::unreadEngine) { NodeRoute(it, "n-unread", onBack = {}) }
+
+    @Test fun pickerLoadingLight() = shot("node-picker-loading", dark = false, engine = ::unreadEngine) { Picker(it) }
+
+    /** The node lists' skeleton runs to the window's foot, so these two are their first screen. */
+    @Test
+    fun mainNodeLoadingLight() = shot("main-node-loading", dark = false, engine = ::unreadEngine) { MainNodeRoute(it, onBack = {}, onSearch = {}, onAdd = {}) }
+
     @Test fun pickerLight() = shot("node-picker", dark = false) { Picker(it) }
 
     @Test fun pickerDark() = shot("node-picker", dark = true) { Picker(it) }
@@ -211,6 +236,13 @@ class AppRvNodesShotTest {
     private fun noReadEngine(): Engine = rvSampleEngine().let { sample ->
         object : Engine by sample {
             override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> = Result.failure(EngineException(ErrorCode.Busy))
+        }
+    }
+
+    /** The sample before its catalog is read: no catalog yet. */
+    private fun unreadEngine(): Engine = rvSampleEngine().let { sample ->
+        object : Engine by sample {
+            override val catalog = MutableStateFlow<Catalog?>(null)
         }
     }
 

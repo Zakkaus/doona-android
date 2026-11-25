@@ -36,6 +36,14 @@ import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSectionTitle
 import dev.doona.android.designsystem.rv.RvSize
+import dev.doona.android.designsystem.rv.RvSkeletonBlock
+import dev.doona.android.designsystem.rv.RvSkeletonCard
+import dev.doona.android.designsystem.rv.RvSkeletonHeader
+import dev.doona.android.designsystem.rv.RvSkeletonLine
+import dev.doona.android.designsystem.rv.RvSkeletonPageHeader
+import dev.doona.android.designsystem.rv.RvSkeletonSize
+import dev.doona.android.designsystem.rv.RvSkeletonStatRow
+import dev.doona.android.designsystem.rv.RvSkeletonText
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvStatusChip
@@ -90,6 +98,44 @@ internal fun RvNodeDetail(
         }
         RvSectionTitle(stringResource(R.string.rv_nodes_details), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter { StatsCard(node, times.lastOrNull() ?: RV_NO_VALUE) }
+    }
+}
+
+/**
+ * A node's page before the catalog is read, as after process death (the page knows only the node's id): the head's
+ * flag, name and `協定 · 地區` as bars, 延遲紀錄's figure, time and chart, then 詳細資料's labels over their values' bars, each
+ * in the bounds of what replaces it (decision 2026-11-24 15:17). The status chips and the floating actions come with the
+ * node.
+ */
+@Composable
+internal fun RvNodeDetailSkeleton(onBack: () -> Unit) {
+    val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
+    val labels = listOf(
+        stringResource(R.string.rv_nodes_protocol),
+        stringResource(R.string.rv_nodes_server),
+        stringResource(R.string.rv_nodes_port),
+        stringResource(R.string.rv_nodes_transport),
+        TLS,
+        stringResource(R.string.rv_nodes_subscription),
+        stringResource(R.string.rv_nodes_last_test),
+    )
+    val time = rememberRvFormat().time(0L)
+    RvScrollPage("", insets, onBack = onBack, end = RvPageEnd.Inset(RvSpace.gutter + RvNodesSize.ctaCompanion + RvSpace.gutter)) {
+        RvSkeletonPageHeader(insets, mark = RvSize.headerDisc, title = RvSkeletonText.Figures, caption = RvSkeletonText.Mixed)
+        RvGutter {
+            RvSkeletonCard {
+                RvSkeletonHeader(stringResource(R.string.rv_nodes_history))
+                Column(Modifier.padding(horizontal = RvSpace.rowPadding)) {
+                    RvSkeletonLine(Rv.type.cardValue, RvSkeletonSize.TILE_FIGURE, kind = RvSkeletonText.Figures)
+                    RvSkeletonLine(Rv.type.tileCaption, RvSkeletonSize.CAPTION, kind = RvSkeletonText.Mixed)
+                    Spacer(Modifier.height(RvSpace.barGap))
+                    RvSkeletonBlock(rvLatencyDotsHeight(time))
+                }
+                Spacer(Modifier.height(RvSpace.rowPadding))
+            }
+        }
+        RvSectionTitle(stringResource(R.string.rv_nodes_details), Modifier.padding(horizontal = RvSpace.gutter))
+        RvGutter { RvSkeletonCard { labels.forEachIndexed { i, label -> RvSkeletonStatRow(label, i) } } }
     }
 }
 

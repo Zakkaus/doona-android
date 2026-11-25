@@ -20,10 +20,18 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.toSize
 import dev.doona.android.R
+import dev.doona.android.designsystem.components.Tone
+import dev.doona.android.designsystem.components.latencyTone
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.nodes.RvNodeDetail
+import dev.doona.android.feature.nodes.RvNodeDetailSkeleton
+import dev.doona.android.feature.nodes.RvNodesPage
+import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.data.rvTestTimes
+import dev.doona.android.prototype.rv.nodes.sampleNodesPage
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.settings.RvPerAppActions
@@ -59,6 +67,8 @@ internal object RvSkeletonPages {
     const val SUBS = "subs"
     const val PER_APP = "perapp"
     const val PER_APP_V1 = "perapp-v1"
+    const val NODES = "nodes"
+    const val NODE = "node"
 }
 
 /** [page] with its skeleton while [loading], else with its content, in the samples its goldens show. */
@@ -66,11 +76,22 @@ internal object RvSkeletonPages {
 internal fun RvSkeletonPage(page: String, loading: Boolean) {
     when (page) {
         RvSkeletonPages.ACTIVITY -> RvActivityScreenSample(rvIdleActivity(), onAction = {}, onConnect = {}, loading = loading)
+
         RvSkeletonPages.POLICY -> RvPolicyScreenSample(RvPolicyState(), onChange = {}, loading = loading)
+
         RvSkeletonPages.POLICY_GLOBAL -> RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Global), onChange = {}, loading = loading)
+
         RvSkeletonPages.POLICY_DIRECT -> RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Direct), onChange = {}, loading = loading)
+
         RvSkeletonPages.SUBS -> RvSubsPage(rvSubsStateSample(), RvSubsActions(), loading = loading)
+
+        RvSkeletonPages.NODES -> RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {}, loading = loading)
+
+        // A node with no status chip: the chips come with the node, so the skeleton has none.
+        RvSkeletonPages.NODE -> if (loading) RvNodeDetailSkeleton(onBack = {}) else RvNodeDetail(RvData.nodes.first { latencyTone(it.latencyMs) == Tone.Ok }, current = false, rvTestTimes(), onBack = {}, onUse = {}, onTest = {})
+
         RvSkeletonPages.PER_APP_V1 -> RvPerAppScreen(rvPerAppLookSample(if (loading) "loading" else ""), RvPerAppActions(), onBack = {}, look = RvPerAppLook.Checks)
+
         else -> RvPerAppScreen(rvPerAppSample(if (loading) "loading" else ""), RvPerAppActions(), onBack = {})
     }
 }
@@ -143,6 +164,18 @@ class RvSkeletonBoundsTest {
 
     @Test fun perAppV1Fs200() = bounds(RvSkeletonPages.PER_APP_V1, RV_FS200)
 
+    @Test fun nodes() = bounds(RvSkeletonPages.NODES, 1f)
+
+    @Test fun nodesFs115() = bounds(RvSkeletonPages.NODES, RV_FS115)
+
+    @Test fun nodesFs200() = bounds(RvSkeletonPages.NODES, RV_FS200)
+
+    @Test fun node() = bounds(RvSkeletonPages.NODE, 1f)
+
+    @Test fun nodeFs115() = bounds(RvSkeletonPages.NODE, RV_FS115)
+
+    @Test fun nodeFs200() = bounds(RvSkeletonPages.NODE, RV_FS200)
+
     /**
      * 依 App's skeleton rows stop above 儲存's room (the gap over the button and the button), as the loaded list's last
      * row clears it at the end of its scroll: a row ending past it keeps its place but draws nothing, so its disc's middle
@@ -192,7 +225,7 @@ class RvSkeletonBoundsTest {
         val wraps = rows.indices.filter { abs(rows[it].first.height - rows[it].second.height) > TOLERANCE }.toSet()
         assertEquals("$page at $fontScale: the rows whose data, not there yet, wraps past their skeleton", WRAPS[page to fontScale].orEmpty(), wraps)
         // Under the first such row the content stands lower than its skeleton: there only the rows' heights are compared.
-        val cut = wraps.minOrNull()?.let { rows[it].second.top } ?: Float.MAX_VALUE
+        val cut = min(wraps.minOrNull()?.let { rows[it].second.top } ?: Float.MAX_VALUE, STACKS[page to fontScale]?.let { loaded.of(RvPart.CARD)[it].top } ?: Float.MAX_VALUE)
         val drift = mutableListOf<String>()
         if (wraps.isEmpty()) {
             same(drift, "cards in the window", skeleton.of(RvPart.CARD).size.toFloat(), loaded.of(RvPart.CARD).size.toFloat())
@@ -303,6 +336,13 @@ class RvSkeletonBoundsTest {
             (RvSkeletonPages.PER_APP to RV_FS200) to setOf(3, 4, 5, 6),
             (RvSkeletonPages.PER_APP_V1 to RV_FS200) to setOf(3, 4, 5),
         )
+
+        /**
+         * The cards whose [dev.doona.android.designsystem.rv.RvStatRow]s set a value under its label where the two do not
+         * fit one line, by page and font size: the value is data, so its skeleton cannot know; from the card's top down only
+         * the cards' tops are compared. At 2.0 a node's 詳細資料, whose server and subscription are long.
+         */
+        val STACKS = mapOf((RvSkeletonPages.NODE to RV_FS200) to 1)
         const val TOLERANCE = 0.5f
     }
 }

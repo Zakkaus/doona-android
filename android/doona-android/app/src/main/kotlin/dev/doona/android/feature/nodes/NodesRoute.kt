@@ -2,8 +2,6 @@ package dev.doona.android.feature.nodes
 
 import android.content.ClipData
 import androidx.annotation.StringRes
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -18,23 +16,14 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.doona.android.R
-import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.LocalRvTesting
 import dev.doona.android.designsystem.rv.LocalRvUpdating
-import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
-import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvPullDown
 import dev.doona.android.designsystem.rv.RvPullLook
 import dev.doona.android.designsystem.rv.RvPullMotion
 import dev.doona.android.designsystem.rv.RvPullState
-import dev.doona.android.designsystem.rv.RvScrollPage
-import dev.doona.android.designsystem.rv.RvSkeletonCard
-import dev.doona.android.designsystem.rv.RvSkeletonEnd
-import dev.doona.android.designsystem.rv.RvSkeletonHeader
-import dev.doona.android.designsystem.rv.RvSkeletonRow
-import dev.doona.android.designsystem.rv.RvSkeletonText
 import dev.doona.android.engine.Network
 import dev.doona.android.feature.messageRes
 import dev.doona.android.feature.model.RvNodeSort
@@ -49,11 +38,10 @@ import kotlinx.coroutines.launch
  * node's picker, so each reads the catalog mapped once.
  */
 
-/** 節點: the map, the fastest nodes and every node by part of the world. Before the catalog is read, a skeleton. */
+/** 節點: the map, the fastest nodes and every node by part of the world. Before the catalog is read, the page's skeleton. */
 @Composable
 internal fun NodesRoute(viewModel: NodesViewModel, onBack: () -> Unit, onOpen: (String) -> Unit, onAllNodes: () -> Unit, onAdd: () -> Unit) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
-    if (!ui.loaded) return NodesSkeleton(onBack)
     val page = remember(ui.state) { RvNodesPageState(ui.state.nodes, ui.state.current, ui.state.subscriptions) }
     NodesLocals(viewModel, ui) {
         RvNodesPage(
@@ -65,6 +53,7 @@ internal fun NodesRoute(viewModel: NodesViewModel, onBack: () -> Unit, onOpen: (
             score = ui.score,
             caption = mainCaption(ui),
             banner = ui.failure?.let { nodesBanner(it, viewModel::retry) },
+            loading = !ui.loaded,
         )
     }
 }
@@ -73,7 +62,7 @@ internal fun NodesRoute(viewModel: NodesViewModel, onBack: () -> Unit, onOpen: (
 @Composable
 internal fun NodeRoute(viewModel: NodesViewModel, nodeId: String, onBack: () -> Unit) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
-    if (!ui.loaded) return NodesSkeleton(onBack)
+    if (!ui.loaded) return RvNodeDetailSkeleton(onBack)
     val node = ui.state.node(nodeId) ?: return LaunchedEffect(Unit) { onBack() }
     NodesLocals(viewModel, ui) {
         RvNodeDetail(
@@ -115,6 +104,7 @@ internal fun NodeSearchRoute(viewModel: NodesViewModel, onClose: () -> Unit, onD
             apply = apply,
             onApply = { applyTo = it },
             onAdd = onAdd,
+            loading = !ui.loaded,
         )
     }
 }
@@ -147,6 +137,7 @@ internal fun MainNodeRoute(viewModel: NodesViewModel, onBack: () -> Unit, onSear
             alsoCurrent = ui.state.current,
             apply = apply,
             onApply = { applyTo = it },
+            loading = !ui.loaded,
         )
     }
 }
@@ -187,6 +178,7 @@ internal fun NodesPull(
                 apply = apply,
                 onApply = { applyTo = it },
                 onAdd = onAdd,
+                loading = !ui.loaded,
             )
         }
     }
@@ -229,23 +221,6 @@ private fun NodesLocals(viewModel: NodesViewModel, ui: NodesUi, shown: Boolean =
 private fun mainCaption(ui: NodesUi): String? =
     if (ui.loaded && ui.state.mainGroupId == null) null else stringResource(R.string.rv_main_node_hint)
 
-/** 節點 before the catalog is read, as after process death: the title and rows of nodes. */
-@Composable
-private fun NodesSkeleton(onBack: () -> Unit) {
-    val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    val title = stringResource(R.string.rv_nodes_title)
-    RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
-        RvPageHeader(title, titleBlock, insets)
-        RvGutter {
-            RvSkeletonCard {
-                RvSkeletonHeader(stringResource(R.string.rv_nodes_in_use))
-                RvSkeletonRow(0, RvSkeletonText.Mixed, RvSkeletonEnd.Latency)
-            }
-            RvSkeletonCard { repeat(SKELETON_ROWS) { RvSkeletonRow(it + 1, RvSkeletonText.Mixed, RvSkeletonEnd.Latency) } }
-        }
-    }
-}
-
 /** The banner of a failed action: what failed over the engine's reason, and 重試 ([onRetry]), as the group page's (pv-d M8). */
 @Composable
 private fun nodesBanner(failure: NodesFailure, onRetry: () -> Unit) = RvNotice(
@@ -277,5 +252,3 @@ private fun RvApplyTo.network(): Network? = when (this) {
     RvApplyTo.Tcp -> Network.Tcp
     RvApplyTo.Udp -> Network.Udp
 }
-
-private const val SKELETON_ROWS = 6

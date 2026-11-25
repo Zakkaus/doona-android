@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,6 +47,19 @@ import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSectionTitle
 import dev.doona.android.designsystem.rv.RvSeeAll
 import dev.doona.android.designsystem.rv.RvSegmented
+import dev.doona.android.designsystem.rv.RvSkeletonBlock
+import dev.doona.android.designsystem.rv.RvSkeletonCard
+import dev.doona.android.designsystem.rv.RvSkeletonDisc
+import dev.doona.android.designsystem.rv.RvSkeletonEnd
+import dev.doona.android.designsystem.rv.RvSkeletonFade
+import dev.doona.android.designsystem.rv.RvSkeletonHeader
+import dev.doona.android.designsystem.rv.RvSkeletonLabel
+import dev.doona.android.designsystem.rv.RvSkeletonLine
+import dev.doona.android.designsystem.rv.RvSkeletonRow
+import dev.doona.android.designsystem.rv.RvSkeletonSeeAll
+import dev.doona.android.designsystem.rv.RvSkeletonSize
+import dev.doona.android.designsystem.rv.RvSkeletonText
+import dev.doona.android.designsystem.rv.RvSkeletonWorldMap
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvWorldMap
@@ -54,6 +68,7 @@ import dev.doona.android.designsystem.rv.latencyColor
 import dev.doona.android.designsystem.rv.latencyText
 import dev.doona.android.designsystem.rv.rvMoves
 import dev.doona.android.designsystem.rv.rvPress
+import dev.doona.android.designsystem.rv.rvSegmentHeight
 import dev.doona.android.designsystem.rv.rvSharedFlag
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvNodeSort
@@ -76,7 +91,9 @@ import dev.doona.android.feature.nodes.ui.rvPicked
  * are the page's own: 訂閱 shows one subscription's nodes, or 組態內's, across the page; 排序 orders the rows of each
  * part of the world. With no node (no subscription) the chips and the cards give way to the empty state, whose 新增訂閱
  * runs [onAdd]. A failed action ([banner]: a switch, a test, the read of the nodes' details) stands under the header with
- * its 重試, as on the pickers. While the main group's TCP and UDP choices differ, both its nodes carry the check.
+ * its 重試, as on the pickers. While the main group's TCP and UDP choices differ, both its nodes carry the check. Before the
+ * catalog is read ([loading]) the cards stand as their skeletons, in their bounds, and fade into them; the chips are there
+ * already, their labels known (the 訂閱 chip's menu lists its subscriptions once they are read).
  */
 @Composable
 internal fun RvNodesPage(
@@ -88,6 +105,7 @@ internal fun RvNodesPage(
     score: RvScoreMarks? = null,
     caption: String? = stringResource(R.string.rv_main_node_hint),
     banner: RvNotice? = null,
+    loading: Boolean = false,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     var steadiest by rememberSaveable { mutableStateOf(false) }
@@ -98,7 +116,7 @@ internal fun RvNodesPage(
     val shown = remember(state, picked) { state.scoped(picked) }
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         // The pull-down from 活動 picks the main node; groups with their own choice open from 活動's rule rows (item 24).
-        val empty = state.nodes.isEmpty()
+        val empty = !loading && state.nodes.isEmpty()
         val chips: (@Composable () -> Unit)? = if (empty) {
             null
         } else {
@@ -112,15 +130,68 @@ internal fun RvNodesPage(
         if (empty) {
             RvGutter { RvNoSubscription(onAdd) }
         } else {
-            RvGutter {
-                TopCard(shown.top(steadiest), shown.current, steadiest, { steadiest = it }, onOpen, onAllNodes)
-                MapCard(shown)
-            }
-            RvSectionTitle(stringResource(R.string.rv_nodes_all), Modifier.padding(horizontal = RvSpace.gutter), onAllNodes)
-            RvGutter {
-                for ((region, nodes) in shown.byRegion(order)) RegionCard(region, nodes, shown.current, onOpen, score)
+            RvSkeletonFade(loading, { Column { NodesSkeleton(onAllNodes) } }) {
+                Column {
+                    RvGutter {
+                        TopCard(shown.top(steadiest), shown.current, steadiest, { steadiest = it }, onOpen, onAllNodes)
+                        MapCard(shown)
+                    }
+                    RvSectionTitle(stringResource(R.string.rv_nodes_all), Modifier.padding(horizontal = RvSpace.gutter), onAllNodes)
+                    RvGutter {
+                        for ((region, nodes) in shown.byRegion(order)) RegionCard(region, nodes, shown.current, onOpen, score)
+                    }
+                }
             }
         }
+    }
+}
+
+/**
+ * 節點 before the catalog is read ([RvNodesPage]'s `loading`), as after process death: each card's skeleton in the card's
+ * bounds (decision 2026-11-24 15:17), 最快節點's header, its 最快 | 最穩 track and its eight flags, 節點分布's map and the line
+ * under it, then 全部節點 over a part of the world's rows and its 查看全部.
+ */
+@Composable
+private fun NodesSkeleton(onAllNodes: () -> Unit) {
+    RvGutter {
+        RvSkeletonCard {
+            RvSkeletonHeader(stringResource(R.string.rv_nodes_fastest_card))
+            RvSkeletonBlock(rvSegmentHeight(Rv.type.segment), Modifier.padding(horizontal = RvSpace.rowPadding), CircleShape)
+            Spacer(Modifier.height(RvNodesSize.topRowGap))
+            repeat(TOP_ROWS) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = RvSpace.rowPadding - RvSpace.tight)) {
+                    repeat(TOP_COLUMNS) { TopNodeSkeleton(Modifier.weight(1f)) }
+                }
+            }
+            Spacer(Modifier.height(RvSpace.rowPadding - RvSpace.tight))
+        }
+        RvSkeletonCard {
+            RvSkeletonHeader(stringResource(R.string.rv_nodes_spread))
+            RvSkeletonWorldMap(Modifier.padding(horizontal = RvSpace.rowPadding))
+            Spacer(Modifier.height(RvSpace.barGap))
+            RvSkeletonLine(Rv.type.rowTitle, RvSkeletonSize.CAPTION, Modifier.padding(horizontal = RvSpace.rowPadding), RvSkeletonText.Mixed)
+            Spacer(Modifier.height(RvSpace.rowPadding))
+        }
+    }
+    RvSectionTitle(stringResource(R.string.rv_nodes_all), Modifier.padding(horizontal = RvSpace.gutter), onAllNodes)
+    RvGutter {
+        RvSkeletonCard {
+            RvSkeletonHeader()
+            repeat(REGION_ROWS) { RvSkeletonRow(it, RvSkeletonText.Mixed, RvSkeletonEnd.LatencyLines, titleKeepWords = false) }
+            RvSkeletonSeeAll()
+        }
+    }
+}
+
+/** One of 'Top movers' before its node: the flag's disc over the short name's and a latency's bars, centred. */
+@Composable
+private fun TopNodeSkeleton(modifier: Modifier) {
+    Column(modifier.padding(vertical = RvSpace.tight), horizontalAlignment = Alignment.CenterHorizontally) {
+        RvSkeletonDisc(RvNodesSize.topFlag)
+        Spacer(Modifier.height(RvNodesSize.topLabelGap))
+        RvSkeletonLine(Rv.type.pill, RvSkeletonSize.FLAG_NAME, kind = RvSkeletonText.Figures)
+        // A latency's line as the tile sets one, cut where the tile is too narrow for it.
+        RvSkeletonLabel(latencyText(RvSkeletonSize.FIGURE), Rv.type.pill, maxLines = 1)
     }
 }
 
@@ -222,4 +293,5 @@ private fun RegionRow(node: RvNode, current: Boolean, order: Int, onOpen: (Strin
 }
 
 private const val TOP_COLUMNS = 4
+private const val TOP_ROWS = 2
 private const val REGION_ROWS = 5

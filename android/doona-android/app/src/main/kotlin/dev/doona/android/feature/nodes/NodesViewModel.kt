@@ -35,8 +35,8 @@ import kotlinx.coroutines.launch
  * The D30 picker's, 節點's, a node's page's and search's state, one instance scoped to 活動's entry and shared by the four
  * (plan 2.2). Each catalog revision reads the nodes' details (`nodes(ids)`) and maps every node once, on [work], into
  * immutable values, so nothing a page reads changes between revisions and 活動 under the picker is not composed again on
- * a tick. A pick switches the main group ([pick]); a test asks the core to test every group ([test]), or the groups that
- * list one node ([testNode]); the rows' menus copy a node's share link ([copyLink]) and update or delete a subscription
+ * a tick. A pick switches the main group ([pick]); a test asks the core to test every group ([test]), or one group that
+ * lists one node ([testNode]); the rows' menus copy a node's share link ([copyLink]) and update or delete a subscription
  * ([update], [remove]). A failure (of those, or of reading the nodes' details) stays until the same action next
  * succeeds, and [retry] runs it again. [clock] is now, for the subscriptions' end dates.
  */
@@ -130,16 +130,16 @@ class NodesViewModel internal constructor(
     }
 
     /**
-     * Tests [nodeId] from a row's menu: the core probes a group's members, so this tests each group that lists the node,
-     * or every group when none does.
+     * Tests [nodeId] from a row's menu with one plan: the core probes a group's members, and each plan starts a new probe
+     * round for every node it reaches (a result from an older round is dropped), so this tests one group that lists the
+     * node, the main group when it does, or every group when none does.
      */
     fun testNode(nodeId: String) {
-        val holding = engine.catalog.value?.groups.orEmpty().filter { group -> group.members.any { it.id == nodeId } }
-        if (holding.isEmpty()) return test()
+        val catalog = engine.catalog.value
+        val holding = catalog?.groups.orEmpty().filter { group -> group.members.any { it.id == nodeId } }
+        val group = holding.firstOrNull { it.id == catalog?.mainGroupId } ?: holding.firstOrNull() ?: return test()
         lastTest = nodeId
-        viewModelScope.launch {
-            holding.map { engine.testLatency(it.id) }.let { results -> results.firstOrNull { it.isFailure } ?: results.first() }.report(NodesAction.Test)
-        }
+        viewModelScope.launch { engine.testLatency(group.id).report(NodesAction.Test) }
     }
 
     /** Reads [nodeId]'s share link from the core and hands it to [onLink] (the page puts it on the clipboard); a node with none fails. */

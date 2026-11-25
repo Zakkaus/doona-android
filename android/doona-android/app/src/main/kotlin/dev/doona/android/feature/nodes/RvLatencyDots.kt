@@ -28,10 +28,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvChartSize
 import dev.doona.android.designsystem.rv.RvLatencyDotsSize
+import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvPillInk
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.latencyColor
@@ -44,6 +46,13 @@ import dev.doona.android.designsystem.rv.rvValuePill
 import dev.doona.android.designsystem.rv.scripted
 import kotlin.math.abs
 import kotlin.math.roundToInt
+
+/** [RvLatencyDots]' height with [time] (a test's time as the page writes it) in its marker's chip: its skeleton's block. */
+@Composable
+internal fun rvLatencyDotsHeight(time: String): Dp {
+    val text = rememberTextMeasurer().measure(time, Rv.type.pill).size.height.toFloat()
+    return RvLatencyDotsSize.head + RvLatencyDotsSize.plot + RvChartSize.markerGap + with(LocalDensity.current) { rvMarkerChip(text).toDp() }
+}
 
 /**
  * Revolut's EPS dot chart for a node's last tests: one dot per test in its quality's hue, an empty ring for one that
@@ -96,7 +105,7 @@ internal fun RvLatencyDots(
     val empty = if (history.isEmpty()) stringResource(R.string.rv_stats_no_data) else null
     val emptySize = empty?.let { measurer.measure(scripted(it), Rv.type.rowSub).size }
     val pick by rememberUpdatedState(onSelect)
-    Box(modifier.fillMaxWidth()) {
+    Box(modifier.fillMaxWidth().testTag(RvPart.FRAME)) {
         Canvas(
             Modifier.testTag(RV_LATENCY_DOTS).fillMaxWidth().height(RvLatencyDotsSize.head + RvLatencyDotsSize.plot + RvChartSize.markerGap + with(density) { chipHeight.toDp() }).pointerInput(history.size, widest, strip) {
                 detectTapGestures { tap -> if (history.isNotEmpty()) pick(Columns(size.width - strip, history.size, widest + 2 * pad).at(tap.x)) }

@@ -70,6 +70,7 @@ import dev.doona.android.feature.nodes.ui.RV_INLINE
 import dev.doona.android.feature.nodes.ui.RvApplyCard
 import dev.doona.android.feature.nodes.ui.RvApplyTo
 import dev.doona.android.feature.nodes.ui.RvNodeSection
+import dev.doona.android.feature.nodes.ui.RvNodeSectionSkeleton
 import dev.doona.android.feature.nodes.ui.RvRowsComposed
 import dev.doona.android.feature.nodes.ui.inPicked
 import dev.doona.android.feature.nodes.ui.matches
@@ -117,6 +118,7 @@ internal fun RvNodePicker(
     apply: RvApplyTo? = null,
     onApply: (RvApplyTo) -> Unit = {},
     onAdd: () -> Unit = {},
+    loading: Boolean = false,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val focus = remember { FocusRequester() }
@@ -155,18 +157,13 @@ internal fun RvNodePicker(
             Column(Modifier.fillMaxSize().rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll).graphicsLayer { translationY = stretch() }) {
                 Column(section(1)) {
                     val (subChip, orderChip) = rvNodeChips(subscriptions, nodes, picked, order, { chosen = it }, { order = it })
-                    // With no node the chips have nothing to pick or order; the empty state takes the list's place.
-                    val chips: (@Composable () -> Unit)? = if (nodes.isEmpty()) null else ({ RvFilterChipRow(subChip, orderChip) })
+                    // With no node the chips have nothing to pick or order; the empty state takes the list's place. Before the
+                    // catalog is read the chips stand (their labels are known) over the list's skeleton.
+                    val empty = !loading && nodes.isEmpty()
+                    val chips: (@Composable () -> Unit)? = if (empty) null else ({ RvFilterChipRow(subChip, orderChip) })
                     RvPageHeader(title, Modifier, insets, caption = caption?.let { line -> { RvCaption(line) } }, control = chips)
                     RvBannerSlot(banner)
-                    if (nodes.isEmpty()) {
-                        RvGutter { RvNoSubscription(onAdd) }
-                    } else if (apply != null) {
-                        RvGutter { RvApplyCard(apply, onApply) }
-                        Spacer(Modifier.height(RvSpace.cardGap))
-                    }
-                    // A search that matches no node says so under the chips, where the list would start.
-                    if (query.isNotBlank() && matching.isEmpty()) RvGutter { RvCaption(stringResource(R.string.rv_nodes_no_match)) }
+                    ListStart(loading, empty, apply, onApply, onAdd, noMatch = query.isNotBlank() && matching.isEmpty())
                 }
                 var first = 0
                 sections.forEachIndexed { i, sub ->
@@ -190,6 +187,26 @@ internal fun RvNodePicker(
             }
         }
     }
+}
+
+/**
+ * What stands over the picker's sections: before the catalog is read ([loading]) the list's skeleton; with no node
+ * ([empty]) the empty state and its 新增訂閱 ([onAdd]); else 套用到 while the main group's networks are apart ([apply]).
+ * A search that matches no node ([noMatch]) says so under the chips, where the list would start.
+ */
+@Composable
+private fun ListStart(loading: Boolean, empty: Boolean, apply: RvApplyTo?, onApply: (RvApplyTo) -> Unit, onAdd: () -> Unit, noMatch: Boolean) {
+    when {
+        loading -> return RvNodeSectionSkeleton()
+
+        empty -> RvGutter { RvNoSubscription(onAdd) }
+
+        apply != null -> {
+            RvGutter { RvApplyCard(apply, onApply) }
+            Spacer(Modifier.height(RvSpace.cardGap))
+        }
+    }
+    if (noMatch) RvGutter { RvCaption(stringResource(R.string.rv_nodes_no_match)) }
 }
 
 /**

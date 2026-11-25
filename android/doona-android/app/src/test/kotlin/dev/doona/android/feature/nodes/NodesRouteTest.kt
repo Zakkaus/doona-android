@@ -4,6 +4,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -31,6 +32,7 @@ import dev.doona.android.designsystem.rv.RvPullState
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rememberRvPullState
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
@@ -435,6 +437,37 @@ class NodesRouteTest {
         compose.onNodeWithText("All subscriptions").assertDoesNotExist()
         compose.onNodeWithText("Add subscription").performClick()
         assertTrue(added)
+    }
+
+    /**
+     * Before the catalog is first read (a cold start, a restore after process death), search, the main node's page and the
+     * pull-down picker show the list's skeleton, not the empty state and its 新增訂閱; the nodes come with the catalog.
+     */
+    @Test
+    fun `before the first read the pickers show no empty state`() {
+        val fake = engine()
+        val catalog = MutableStateFlow<Catalog?>(null)
+        val vm = viewModel(object : Engine by fake {
+            override val catalog = catalog
+        })
+        var page by mutableIntStateOf(0)
+        compose.setContent {
+            RvTheme(rvSystemScheme(false), false) {
+                when (page) {
+                    0 -> NodeSearchRoute(vm, onClose = {}, onDetail = {}, onAdd = {})
+                    1 -> MainNodeRoute(vm, onBack = {}, onSearch = {}, onAdd = {})
+                    else -> NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true), onDetail = {}, onAdd = {}) {}
+                }
+            }
+        }
+        repeat(3) {
+            page = it
+            compose.waitForIdle()
+            compose.onNodeWithText("Add subscription").assertDoesNotExist()
+        }
+        catalog.value = fake.catalog.value
+        compose.waitForIdle()
+        compose.onAllNodesWithText("Tokyo 01", substring = true).onFirst().assertExists()
     }
 
     /** 規則's 主節點 page carries every node picker's 訂閱 and 排序 chips (ruling q-p3c-mainchips), not the range row. */
