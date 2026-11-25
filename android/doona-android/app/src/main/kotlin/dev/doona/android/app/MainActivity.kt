@@ -13,7 +13,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.feature.localnetwork.LocalNetworkHost
 
 /**
@@ -53,7 +52,7 @@ class MainActivity : ComponentActivity() {
         val version = versionName()
         val localNetwork = LocalNetworkHost(container.localNetwork, ::requestLocalNetwork, ::openAppSettings)
         setContent {
-            DoonaTheme {
+            AppTheme {
                 DoonaApp(
                     container.uiEngine,
                     container.installedApps,
