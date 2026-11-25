@@ -125,7 +125,9 @@ class PermissionAsks(private val saved: SavedStateHandle) {
             record()
             saved[KEY_UNRECORDED] = false
         }
-        if (!running || !free() || !notify.needsAsking() || !free()) return
+        if (!running || !free() || !notify.needsAsking()) return
+        // A 連線 may have landed while the flag was read (the tile, on the main thread); [show] queues behind its
+        // explanation, as the VPN's does behind this one. Nothing else can have changed meanwhile.
         show(Permission.Notify)
     }
 

@@ -184,6 +184,24 @@ class PermissionAsksTest {
     }
 
     @Test
+    fun aConnectThatLandsWhileTheFlagIsReadDoesNotDropTheOnceEverAsk() {
+        // The tile's 連線 arrives on the main thread while the settings read behind needsAsking is suspended.
+        val racing = NotifyState {
+            assertEquals(PermissionStep.Wait, asks.connect(consentNeeded = true))
+            true
+        }
+        runBlocking { asks.onStatus(true, racing) { records++ } }
+        assertEquals("the VPN's explanation shows first", Permission.Vpn, asks.showing.value)
+        assertEquals(PermissionStep.AskConsent, asks.confirm())
+        assertEquals("the notification's waits behind it", Permission.Notify, asks.showing.value)
+        assertEquals(Permission.Notify, afterProcessDeath().showing.value)
+        asks.dismiss()
+        status(running = true)
+        assertEquals(1, records)
+        assertNull(asks.showing.value)
+    }
+
+    @Test
     fun theNotificationsContinueStillLeadsToTheWaitingVpnExplanation() {
         status(running = true)
         asks.connect(consentNeeded = true)
