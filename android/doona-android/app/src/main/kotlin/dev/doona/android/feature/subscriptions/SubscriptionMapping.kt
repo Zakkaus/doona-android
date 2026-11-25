@@ -10,8 +10,8 @@ import java.net.URI
 /**
  * The engine's subscription as the RV pages show it. A provider that sends no quota leaves used and total at 0, which
  * the pages read as no quota ([RvSubscription.hasQuota]); a subscription never fetched has 0 as its update time. The
- * link is reduced to its host, since the rest of a link carries its token. A format the core has not reported yet (a
- * subscription stored before the core named formats) reads as share links, the plainest form.
+ * link is reduced to its host, since the rest of a link carries its token. A format the core does not report reads as
+ * share links, the plainest form.
  */
 internal fun rvSubscription(sub: Subscription): RvSubscription = RvSubscription(
     id = sub.id,
