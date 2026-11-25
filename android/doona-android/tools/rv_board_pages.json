@@ -411,12 +411,12 @@
  },
  {
   "page": "策略組",
-  "state": "分開選擇 TCP 與 UDP：關",
+  "state": "分開選擇 TCP/UDP：關",
   "screen": "netsel-group"
  },
  {
   "page": "策略組",
-  "state": "分開選擇 TCP 與 UDP：開",
+  "state": "分開選擇 TCP/UDP：開",
   "screen": "netsel-group-apart"
  },
  {
@@ -431,7 +431,7 @@
  },
  {
   "page": "活動",
-  "state": "已連線（規則）：串流 TCP 與 UDP 不同節點",
+  "state": "已連線（規則）：串流 TCP/UDP 不同節點",
   "screen": "netsel-activity"
  },
  {

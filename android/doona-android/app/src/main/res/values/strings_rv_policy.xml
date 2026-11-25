@@ -169,8 +169,8 @@
     <string name="rv_score_similar">Similar</string>
     <string name="rv_score_slower">Slower</string>
     <!-- Choosing TCP and UDP apart (Score and selectors, samples): the switch, the joint card's header and the network-choice menu's "both", and why UDP left the TCP node. -->
-    <string name="rv_network_apart">Choose TCP and UDP separately</string>
-    <string name="rv_network_both">TCP and UDP</string>
+    <string name="rv_network_apart">Choose TCP/UDP separately</string>
+    <string name="rv_network_both">TCP/UDP</string>
     <string name="rv_score_udp_unsupported">%1$s does not support UDP</string>
     <string name="rv_score_udp_failed">UDP test failed</string>
 </resources>

@@ -107,7 +107,7 @@ class RvScoreJointShotTest {
     fun jointIsOneCard() {
         compose.rvContent(dark = false) { Page(RvScoreSample.agreed, RvScoreSample.joint) }
         assertEquals(ToggleableState.Off, switch())
-        assertEquals(listOf(1, 1, 0), listOf("TCP 與 UDP", "已比較 4/6", "UDP").map { t -> lines().count { it == t } })
+        assertEquals(listOf(1, 1, 0), listOf("TCP/UDP", "已比較 4/6", "UDP").map { t -> lines().count { it == t } })
     }
 
     /** Joint with UDP elsewhere: TCP's card, then UDP's node saying why. */
