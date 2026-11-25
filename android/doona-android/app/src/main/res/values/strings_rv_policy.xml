@@ -114,7 +114,7 @@
     <string name="rv_effective_mode">Outbound mode</string>
     <string name="rv_effective_members_more">%1$s and others, %2$d in all</string>
     <string name="rv_effective_list_separator">",\u0020"</string>
-    <string name="rv_effective_dns_via">Through</string>
+    <string name="rv_effective_dns_via">DNS via</string>
     <string name="rv_effective_lan_value">Outside the tunnel</string>
     <string name="rv_effective_apps_in">Apps in the tunnel</string>
     <plurals name="rv_effective_apps">
@@ -136,7 +136,7 @@
     <string name="rv_rule_edit_bad_domain">Use letters, digits, hyphens and dots only</string>
     <string name="rv_rule_edit_bad_cidr">Write the range as 91.108.56.0/22</string>
     <string name="rv_rule_edit_cidr_line">Addresses in %1$s</string>
-    <string name="rv_rule_edit_geoip_line">Addresses that GeoIP places in mainland China</string>
+    <string name="rv_rule_edit_geoip_line">Addresses GeoIP locates in mainland China</string>
     <string name="rv_rule_edit_private_line">Private addresses stay outside the tunnel, so this rule matches nothing</string>
     <string name="rv_rule_edit_enabled">On</string>
     <string name="rv_rule_edit_delete">Delete rule</string>

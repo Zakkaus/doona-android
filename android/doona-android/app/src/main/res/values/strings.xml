@@ -98,7 +98,7 @@
     <string name="first_heading">Add your first subscription</string>
     <string name="first_line_what">A subscription is a link that provides your nodes.</string>
     <string name="first_line_next">Once it is added, the groups are created and you can connect.</string>
-    <string name="first_no_nodes">Could not connect: there are no nodes. Add a subscription first.</string>
+    <string name="first_no_nodes">Could not connect: no nodes. Add a subscription first.</string>
     <string name="ui_dismiss">Dismiss</string>
     <string name="ui_clear">Clear</string>
     <string name="ui_in_progress">In progress</string>

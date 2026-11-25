@@ -7,7 +7,7 @@
     <string name="perapp_summary_all">所有 App 都經由 VPN。</string>
     <string name="perapp_summary_only">只有勾選的 App 經由 VPN，其他 App 直接連線。</string>
     <string name="perapp_summary_except">勾選的 App 直接連線，其他 App 經由 VPN。</string>
-    <string name="perapp_needs_app">至少要勾選一個 App 才能儲存，否則沒有任何 App 會經由 VPN。</string>
+    <string name="perapp_needs_app">至少要勾選一個 App 才能儲存。</string>
     <string name="perapp_save">儲存</string>
     <string name="perapp_reconnect_note">VPN 已連線時，儲存會讓它重新連線，目前的連線會中斷。</string>
     <string name="perapp_search">搜尋 App</string>

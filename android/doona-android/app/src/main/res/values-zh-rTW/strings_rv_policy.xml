@@ -102,7 +102,7 @@
     <string name="rv_effective_mode">出站模式</string>
     <string name="rv_effective_members_more">%1$s 等 %2$d 個</string>
     <string name="rv_effective_list_separator">、</string>
-    <string name="rv_effective_dns_via">經由</string>
+    <string name="rv_effective_dns_via">DNS 經由</string>
     <string name="rv_effective_lan_value">通道外</string>
     <string name="rv_effective_apps_in">通道內的 App</string>
     <plurals name="rv_effective_apps">

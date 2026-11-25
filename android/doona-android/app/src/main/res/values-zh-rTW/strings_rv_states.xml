@@ -8,7 +8,7 @@
     <string name="rv_welcome_vpn">VPN</string>
     <string name="rv_welcome_vpn_sub">App 的流量經由 doona 的 VPN</string>
     <string name="rv_no_node">沒有可用的節點</string>
-    <string name="rv_no_node_reason">所有節點的延遲測試都失敗。請確認網路連線，或更新訂閱後重新測試。</string>
+    <string name="rv_no_node_reason">所有節點的延遲測試都失敗。請確認網路連線，或更新訂閱。</string>
     <string name="rv_retest">重新測試</string>
     <string name="rv_core_stopped">連線已中斷</string>
     <string name="rv_core_stopped_reason">doona 的核心已停止運作，流量不再經由節點。</string>

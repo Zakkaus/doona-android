@@ -259,7 +259,7 @@ class RvSubsShotTest {
         /** Where a finger held Harbor Cloud's card: a third of the way in, on its row. */
         val MENU_X = 136.dp
         val MENU_Y = 210.dp
-        const val IMPORT = "匯入"
+        const val IMPORT = "新增"
         const val CLIPBOARD = "使用剪貼簿的連結"
         const val SAVE = "儲存"
         const val OWN_AGENT = "clash.meta"

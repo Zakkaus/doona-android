@@ -6,12 +6,12 @@
         <item quantity="other">%1$d 条连接 · 下载 %2$s · 上传 %3$s</item>
     </plurals>
     <string name="rv_conn_all_apps">全部应用</string>
-    <string name="rv_conn_newest">最新的在前</string>
+    <string name="rv_conn_newest">最新优先</string>
     <string name="rv_conn_seconds">%1$d 秒</string>
     <string name="rv_conn_minutes">%1$d 分</string>
     <string name="rv_conn_path">路径</string>
     <string name="rv_conn_started">开始时间</string>
-    <string name="rv_conn_age">已连接</string>
+    <string name="rv_conn_age">打开至今</string>
     <string name="rv_conn_rule_index">第 %1$d 条规则</string>
     <string name="rv_conn_no_domain">无域名</string>
     <string name="rv_conn_close">关闭连接</string>
@@ -19,7 +19,7 @@
         <item quantity="other">%1$d 条连接匹配</item>
     </plurals>
     <string name="rv_conn_none_title">没有匹配的连接</string>
-    <string name="rv_conn_none_line">改用其他关键词，或清除搜索</string>
+    <string name="rv_conn_none_line">改用其他关键词，或清除搜索。</string>
     <string name="rv_conn_off_title">未连接</string>
     <string name="rv_conn_off_line">连接后，各应用的连接会显示在此处</string>
 </resources>

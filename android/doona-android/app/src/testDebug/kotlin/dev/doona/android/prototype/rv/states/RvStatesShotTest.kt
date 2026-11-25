@@ -162,7 +162,7 @@ class RvStatesShotTest {
         navFade = navFade,
     )
 
-    /** 新增訂閱 with a link on the local network, under the prompt its 匯入 raised. */
+    /** 新增訂閱 with a link on the local network, under the prompt its 新增 raised. */
     @Composable
     private fun Lan(sample: String, prompt: RvLanPrompt) {
         Box(Modifier.fillMaxSize()) {

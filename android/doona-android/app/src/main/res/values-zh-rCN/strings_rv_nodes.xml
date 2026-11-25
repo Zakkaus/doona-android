@@ -5,7 +5,7 @@
     <string name="rv_nodes_by_latency">按延迟</string>
     <string name="rv_nodes_fastest_card">最快节点</string>
     <string name="rv_nodes_fastest">最快</string>
-    <string name="rv_nodes_steadiest">最稳</string>
+    <string name="rv_nodes_steadiest">最稳定</string>
     <string name="rv_nodes_spread">节点分布</string>
     <plurals name="rv_nodes_countries">
         <item quantity="other">%1$d 个国家或地区</item>

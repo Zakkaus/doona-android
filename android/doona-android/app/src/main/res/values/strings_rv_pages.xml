@@ -15,8 +15,8 @@
     <string name="rv_cancel">Cancel</string>
     <string name="rv_sub_delete_title">Delete %1$s?</string>
     <plurals name="rv_sub_delete_body">
-        <item quantity="one">Its node is removed with it.</item>
-        <item quantity="other">Its %1$d nodes are removed with it.</item>
+        <item quantity="one">Its node is removed too.</item>
+        <item quantity="other">Its %1$d nodes are removed too.</item>
     </plurals>
     <string name="rv_add_link">Subscription URL</string>
     <string name="rv_add_name">Name (optional)</string>
@@ -32,7 +32,7 @@
     <string name="rv_empty_subscription_line">Add a subscription to pick a node and connect.</string>
     <string name="rv_add_subscription">Add subscription</string>
     <string name="rv_offline">No network</string>
-    <string name="rv_offline_reason">The phone is not on a network. Once it is, doona can connect and update subscriptions.</string>
+    <string name="rv_offline_reason">This device is not on a network. Once it is, doona can connect and update subscriptions.</string>
     <string name="rv_network_settings">Open network settings</string>
     <string name="rv_vpn_taken">Another app took over the VPN</string>
     <string name="rv_vpn_taken_reason">Android runs one VPN at a time, so doona disconnected.</string>

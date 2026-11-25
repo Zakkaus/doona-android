@@ -8,7 +8,7 @@
     <string name="rv_welcome_vpn">VPN</string>
     <string name="rv_welcome_vpn_sub">Apps\' traffic goes through doona\'s VPN</string>
     <string name="rv_no_node">No node available</string>
-    <string name="rv_no_node_reason">Every node failed its latency test. Check the network connection, or update the subscription and test again.</string>
+    <string name="rv_no_node_reason">Every node failed its latency test. Check the network connection, or update the subscription.</string>
     <string name="rv_retest">Test again</string>
     <string name="rv_core_stopped">Disconnected</string>
     <string name="rv_core_stopped_reason">doona\'s core stopped, so traffic no longer goes through a node.</string>
@@ -28,5 +28,5 @@
     <string name="rv_perm_vpn_title">Allow doona to set up a VPN</string>
     <string name="rv_perm_vpn_body">doona\'s VPN carries apps\' traffic, so the rules can send it to a node or direct.</string>
     <string name="rv_perm_notify_title">Allow notifications</string>
-    <string name="rv_perm_notify_body">Shows the connection status and lets you disconnect. Tells you when the connection drops.</string>
+    <string name="rv_perm_notify_body">Shows the connection status, lets you disconnect, and tells you when the connection drops.</string>
 </resources>
