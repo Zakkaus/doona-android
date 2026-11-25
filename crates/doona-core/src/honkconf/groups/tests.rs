@@ -32,3 +32,13 @@ fn a_selected_subgroup_and_an_unknown_group_resolve_by_id() {
     assert_eq!(p.selected("g-Missing"), None);
     assert_eq!(p.selected("Outer"), None, "a group ID carries its prefix");
 }
+
+#[test]
+fn a_label_drops_one_matching_pair_of_quotes() {
+    assert_eq!(unquote_once("'香港'"), "香港");
+    assert_eq!(unquote_once("\"Two Words\""), "Two Words");
+    assert_eq!(unquote_once("''x''"), "'x'");
+    assert_eq!(unquote_once("'x\""), "'x\"");
+    assert_eq!(unquote_once("'"), "'");
+    assert_eq!(unquote_once("Plain"), "Plain");
+}

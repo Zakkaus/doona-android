@@ -124,6 +124,22 @@ pub struct GroupRow {
     pub implicit_all: bool,
 }
 
+impl GroupRow {
+    /// The name as the UI shows it. The ID keeps honk's raw name, quotes included, because
+    /// references spell it that way (owner ruling Q-B2, 2026-11-26).
+    pub fn label(&self) -> &str {
+        unquote_once(&self.name)
+    }
+}
+
+/// Remove one pair of matching surrounding quotes, `'` or `"`.
+fn unquote_once(name: &str) -> &str {
+    ['\'', '"']
+        .into_iter()
+        .find_map(|q| name.strip_prefix(q)?.strip_suffix(q))
+        .unwrap_or(name)
+}
+
 /// A stored choice: a Selector's runtime choice or an automatic group's override.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pin {

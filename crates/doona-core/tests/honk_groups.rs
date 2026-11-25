@@ -264,3 +264,25 @@ fn an_endpoint_already_listed_is_kept_once_first_wins() {
     let s1 = Origin::Subscription("s1".into());
     assert_eq!(listed, [("lonely", &Origin::Static), ("hk", &s1)]);
 }
+
+#[test]
+fn a_quoted_name_keeps_its_quotes_in_the_id_and_drops_them_in_the_label() {
+    let p = project("quoted.dae");
+    let rows: Vec<_> = p
+        .groups
+        .iter()
+        .map(|g| (g.id.as_str(), g.label()))
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            ("g-'香港'", "香港"),
+            ("g-\"東京 1\"", "東京 1"),
+            ("g-Plain", "Plain"),
+        ]
+    );
+    assert_eq!(members(&p, "g-Plain"), ["g-\"東京 1\""]);
+    assert_eq!(members(&p, "g-\"東京 1\""), ["g-'香港'"]);
+    let plain = p.groups.iter().find(|g| g.id == "g-Plain").unwrap();
+    assert_eq!(plain.final_target.as_deref(), Some("g-'香港'"));
+}

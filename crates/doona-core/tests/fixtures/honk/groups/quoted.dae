@@ -1,0 +1,13 @@
+# Quoted group names: honk keeps the quotes in the name, so a reference quotes them again.
+node {
+  a: 'trojan://secret@192.0.2.1:443#a'
+}
+group {
+  '香港' { policy: select }
+  "東京 1" { filter: group("'香港'") }
+  Plain {
+    filter: group('"東京 1"')
+    final: "'香港'"
+  }
+}
+routing { fallback: Plain }
