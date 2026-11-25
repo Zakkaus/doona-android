@@ -91,7 +91,7 @@ internal fun RvSettingsScreen(
             RvBanner(it, Modifier.padding(start = RvSpace.gutter, top = RvSpace.sectionAbove, end = RvSpace.gutter))
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
-            ConnectionGroup(state, onChange, routes)
+            if (state.tileKnown) ConnectionGroup(state, onChange, routes)
             SubscriptionGroup(state, onChange)
             AppearanceGroup(state, onOpenTheme, routes.language)
             AdvancedGroup(state, routes, configRev)

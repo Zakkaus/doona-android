@@ -285,7 +285,7 @@ private fun SettingsPage(settings: RvSettingsState, onSettings: (RvSettingsState
         checkUpdate = update.check,
         language = { pages.push(RvSettingsPreviewRoutes.LANGUAGE) },
     )
-    RvSettingsScreen(settings.copy(tileAdded = tile.added), onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab, routes = routes, update = update.update)
+    RvSettingsScreen(settings.copy(tileAdded = tile.added ?: false, tileKnown = tile.added != null), onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab, routes = routes, update = update.update)
 }
 
 /** 設定's 依 App, and 授權條款 with each licence's text (`license:<n>`). */

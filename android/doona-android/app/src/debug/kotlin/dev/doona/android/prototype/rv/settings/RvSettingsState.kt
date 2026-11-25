@@ -43,6 +43,8 @@ internal data class RvSettingsState(
     val dns: RvDnsUpstream,
     val language: RvLanguage = RvLanguage.TraditionalChinese,
     val tileAdded: Boolean = true,
+    /** False until the tile store has answered; 連線 is not drawn before, so no row is ever inserted into the card once it shows. */
+    val tileKnown: Boolean = true,
     val tileSheet: Boolean = false,
 ) {
     /** How many apps 依 App checked. */
