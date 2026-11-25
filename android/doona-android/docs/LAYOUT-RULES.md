@@ -83,8 +83,8 @@ Font sizes are sp and scale with the font size; the line box of a row's text is 
 
 | Role | Size, weight, colour | Latin line box (1.0) | Lines | Overflow |
 |---|---|---|---|---|
-| Row title | 19 sp, semibold, text | 23 | 2 | ellipsis (middle for host:port) |
-| Row subtitle | 17 sp, regular, secondary | 20.5 | 3 | ellipsis |
+| Row title | 19 sp, semibold, text | 23 | 2 (a revision's own name: all, see Exceptions) | ellipsis (middle for host:port); none for a revision's name |
+| Row subtitle | 17 sp, regular, secondary | 20.5 | 3 (a revision's own name: all) | ellipsis; none for a revision's name |
 | Value (trailing) | 19 sp, semibold, text | 23 | 1 | ellipsis, never cuts the title |
 | Caption, action label | 17 sp, medium or semibold | 24 | 1 | no wrap |
 | Section header | 20 sp, bold, text | 24 | 1 | ellipsis |
@@ -113,7 +113,7 @@ A row is **one-line** (no subtitle, title on one line), **with subtitle**, or **
 | R11u | Trailing part under the text (a font size at which the title would not read beside it) | its top at the title's bottom (beside the subtitle) or at the text's bottom, its right edge at the content's end | `RvRow` under-end layout (`LocalRvEndSide`) | gate R11u |
 | R12 | Title to subtitle | 2 (was 0, line boxes touching, §7) | owner, q-s1125c-titlegap (2026-11-25 18:55); every row with a subtitle: list, settings, notice, skeleton | gate R12; `RvRowRulesTest.aSubtitleTouchingItsTitleBreaksR12` (the old 0 breaks) |
 | R13 | Line boxes | one height per role in a golden, within 1 dp | owner, latinrow | gate R13 |
-| R14 | Lines | title ≤ 2, subtitle ≤ 3 | `07-set-interface`, `07-privacy` | gate R14 |
+| R14 | Lines | title ≤ 2, subtitle ≤ 3; a text shown whole (Exceptions, q-s1125c-vname) takes every line and is never cut | `07-set-interface`, `07-privacy` | gate R14 (a whole text, `RvRowPart.WHOLE`, breaks it when cut) |
 | R16 | Trailing x | the part ends at the content's end (16 inside the card) | §13.4 (x 998 of 1039 px) | gate R16 |
 | R21 | An end's glyph button (`RvEndMark`, 節點's info mark) | laid out at its 22 dp glyph, 12 after the value it follows; its 48 dp target is placed round the glyph past the layout, so the text loses only the ink and the gap | s1125c: the 48 dp layout box took 26 dp more from the text (`Hong Kong 02 IPLC` wrapped) | `RvEndMarkTest` |
 | R17 | Text to trailing | ≥ 12 on one line, to what the part shows: a switch's track, not its node (owner, q-s1125c-switchgap, 2026-11-25 18:55: was 20 to the track, the node's 8 dp room included) | `RvSpace.trailingGap`; no Revolut measure | gate R17 (the switch's node starts at its track); `RvSwitchGapTest` measures the drawn track |
@@ -174,4 +174,8 @@ The gate's before list, per golden and rule, is in `rv-row-rules.txt`; it only s
 
 ## Exceptions
 
-None. An exception is added here with its date and review-page id when the owner decides one.
+An exception is added here with its date and review-page id when the owner decides one.
+
+| Id | Exception | Where | Check |
+|---|---|---|---|
+| q-s1125c-vname (owner, 2026-11-25 18:55: 「設定版本的自訂名稱整段顯示不截斷」) | A configuration revision's own name, the user's text, is shown whole: no line limit, no ellipsis, against R14's 2 title and 3 subtitle lines. At 200% a name takes 3 lines or more. | 版本紀錄's row title (`RvSettingsRow` `titleLines = Int.MAX_VALUE`) and the revision page's 名稱 row subtitle (`RvRow` `subtitleLines = Int.MAX_VALUE`); the library tags such a text `RvRowPart.WHOLE` | gate R14 (a whole text breaks it when cut); goldens `proto-rv-config-history-longname-{light,fs200}`, `proto-rv-config-revision-longname-{light,fs200}` |

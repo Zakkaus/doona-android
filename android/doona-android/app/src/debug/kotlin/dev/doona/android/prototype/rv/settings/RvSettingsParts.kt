@@ -50,6 +50,7 @@ import dev.doona.android.designsystem.rv.rvOneLine
 import dev.doona.android.designsystem.rv.rvRowPress
 import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.designsystem.rv.rvRowToggle
+import dev.doona.android.designsystem.rv.rvWhole
 import dev.doona.android.designsystem.rv.scripted
 
 /** Text in a role; CJK runs in Noto, the rest in Inter. [maxLines] defaults to one, ending in an ellipsis. */
@@ -149,7 +150,7 @@ private fun rowText(words: RowWords, code: Boolean, titleLines: Int, error: Bool
             if (code) {
                 RvCodeText(title, Rv.type.rowTitle, maxLines = titleLines)
             } else {
-                RvText(title, Rv.type.rowTitle, maxLines = titleLines, lineBox = true, keepWords = words.titleKeepWords)
+                RvText(title, Rv.type.rowTitle, rvWhole(titleLines), maxLines = titleLines, lineBox = true, keepWords = words.titleKeepWords)
             }
             val hue = if (error) Rv.colors.error else Rv.colors.textSecondary
             words.subtitle?.let {

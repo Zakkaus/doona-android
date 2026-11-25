@@ -33,6 +33,12 @@ internal object RvRowPart {
     /** A title of honk code ([RvCodeText]): it keeps the code view's own line boxes, so the gate reads no first line of a role's from it. */
     const val CODE = "rv-code"
 
+    /**
+     * A row's text shown whole, with no line limit and no ellipsis, by the owner's exception to R14 (q-s1125c-vname: a
+     * configuration revision's own name); the gate holds it uncut instead of to the role's lines.
+     */
+    const val WHOLE = "rv-whole"
+
     const val CHEVRON = "rv-chevron"
     const val SWITCH = "rv-switch"
     const val RADIO = "rv-radio"

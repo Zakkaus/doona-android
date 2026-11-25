@@ -55,7 +55,8 @@ import kotlin.math.roundToInt
  * The text follows the one row rule ([RV_ROW_TITLE_LINES], [RV_ROW_SUBTITLE_LINES], [RvSpace.titleToSubtitle] between the lines, each
  * line its role's Latin line box whatever its script: [RvLineBox]);
  * [titleLines] and [titleOverflow] can keep a title to one line cut in the middle, which keeps both ends of a host:port
- * in view. [titleKeepWords] and [subtitleKeepWords] false keep a name's or an identifier's breaks the platform's
+ * in view; [titleLines] or [subtitleLines] at [Int.MAX_VALUE] show the text whole ([RvRowPart.WHOLE]: a revision's own
+ * name, q-s1125c-vname). [titleKeepWords] and [subtitleKeepWords] false keep a name's or an identifier's breaks the platform's
  * ([RvText]'s `keepWords`: a node's name, an app's label and package). Otherwise no end cuts the text it sits beside, nor is cut itself, nor makes it read badly: an end sits beside
  * its text where the text reads well there ([rvReadsWell]); else the text takes the whole line and the end goes under
  * it, on the line's end (a node's name beside its latency at a large font size; [TextBesideEnd], [RowLine]), never
@@ -80,6 +81,7 @@ internal fun RvRow(
     titleOverflow: TextOverflow = TextOverflow.Ellipsis,
     titleKeepWords: Boolean = true,
     subtitleKeepWords: Boolean = true,
+    subtitleLines: Int = RV_ROW_SUBTITLE_LINES,
     endBusy: Boolean = false,
     endFirstLine: Boolean = false,
     trailing: (@Composable () -> Unit)? = null,
@@ -90,7 +92,7 @@ internal fun RvRow(
     val beside = trailing != null && !lineWise && titleOverflow == TextOverflow.Ellipsis
     val minHeight = if (subtitle == null) RvSize.rowOneLine else RvSize.rowTwoLine
     val titleText = rememberRowText(title, Rv.type.rowTitle, titleLines, titleKeepWords)
-    val subtitleText = subtitle?.let { rememberRowText(it, Rv.type.rowSub, RV_ROW_SUBTITLE_LINES, subtitleKeepWords) }
+    val subtitleText = subtitle?.let { rememberRowText(it, Rv.type.rowSub, subtitleLines, subtitleKeepWords) }
     // LAYOUT-RULES.md R9: with a subtitle the disc's top is the title's top, so the text publishes where its title starts.
     val top = subtitle != null
     val firstLine = if (endFirstLine && top) maxOf(RvSize.rowOneLine - RvSpace.rowTextInset * 2, rvOneLine(title, Rv.type.rowTitle, lineBox = true)) else null
@@ -412,8 +414,11 @@ private class RowText(val text: String, val style: TextStyle, val lines: Int, va
     /** The text in its role's Latin line box, as the row shows it. */
     @Composable
     fun Shown(color: Color = Rv.colors.text, overflow: TextOverflow = TextOverflow.Ellipsis) =
-        RvText(text, style, color = color, maxLines = lines, overflow = overflow, lineBox = true, keepWords = keepWords)
+        RvText(text, style, rvWhole(lines), color = color, maxLines = lines, overflow = overflow, lineBox = true, keepWords = keepWords)
 }
+
+/** A row text of [lines] lines tagged [RvRowPart.WHOLE] where it has no limit. */
+internal fun rvWhole(lines: Int): Modifier = if (lines == Int.MAX_VALUE) Modifier.testTag(RvRowPart.WHOLE) else Modifier
 
 @Composable
 private fun rememberRowText(text: String, style: TextStyle, lines: Int, keepWords: Boolean) = remember(text, style, lines, keepWords) { RowText(text, style, lines, keepWords) }

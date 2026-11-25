@@ -68,6 +68,8 @@ internal fun RvConfigRevisionPage(
                     revision.name ?: stringResource(R.string.rv_config_unnamed),
                     onClick = { onRename(RvRevisionRename(revision.rev, revision.name.orEmpty())) },
                     subtitleKeepWords = false,
+                    // The user's own name is shown whole (owner, q-s1125c-vname).
+                    subtitleLines = Int.MAX_VALUE,
                 ) { RvChevron() }
             }
         }

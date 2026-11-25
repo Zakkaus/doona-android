@@ -21,7 +21,7 @@ internal class RvNode(val parent: Int, val box: Rect, val tag: String?, val text
 }
 
 /** A text's first line, from the text's top, in dp, and how many lines it takes. */
-internal class RvFirstLine(val top: Float, val bottom: Float, val lines: Int)
+internal class RvFirstLine(val top: Float, val bottom: Float, val lines: Int, val cut: Boolean = false)
 
 /** The kinds of row the rules know (LAYOUT-RULES.md, "Row kinds"). */
 internal enum class RvRowKind { List, Settings, Notice, Menu }
@@ -49,6 +49,8 @@ internal class RvRowRead(
     val room: Rect? = null,
     /** The boxes of the row's line ends alone, not a busy bar's. */
     val endLines: List<Rect> = emptyList(),
+    /** The texts of the row shown whole ([RvRowPart.WHOLE], the owner's exception to R14, q-s1125c-vname). */
+    val whole: Set<RvNode> = emptySet(),
 ) {
     /** What the trailing part occupies: its room, else what it draws. */
     val shape get() = room ?: end
@@ -92,7 +94,8 @@ private fun SemanticsNode.firstLine(density: Float): RvFirstLine? {
     val layouts = mutableListOf<TextLayoutResult>()
     val get = config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action ?: return null
     val layout = layouts.takeIf { get(it) }?.firstOrNull()?.takeIf { it.lineCount > 0 } ?: return null
-    return RvFirstLine(layout.getLineTop(0) / density, layout.getLineBottom(0) / density, layout.lineCount)
+    val cut = layout.hasVisualOverflow || layout.isLineEllipsized(layout.lineCount - 1)
+    return RvFirstLine(layout.getLineTop(0) / density, layout.getLineBottom(0) / density, layout.lineCount, cut)
 }
 
 /** Every row of the tree: the library's rows ([RvPart.ROW]) and the row-like parts it tags (a notice, a menu item). */
@@ -158,10 +161,12 @@ private fun List<RvNode>.readRow(i: Int, kind: RvRowKind): RvRowRead? {
     val tags = end?.let { r -> inRow.filter { this[it].tag != null && this[it].box.left >= r.left - HALF && this[it].box.right <= r.right + HALF }.mapNotNull { this[it].tag }.toSet() }.orEmpty()
     val edge = this[i].box.let { it.top <= this[0].box.top + HALF || it.bottom >= this[0].box.bottom - HALF }
     val lineEnds = inRow.filter { this[it].tag in LINE_ENDS && this[it].shown() }.map { this[it].box }
-    val code = generateSequence(this.indexOf(title)) { this[it].parent.takeIf { p -> p > i } }.take(CODE_DEPTH).any { this[it].tag == RvRowPart.CODE }
+    fun tagged(text: RvNode, tag: String) = generateSequence(this.indexOf(text)) { this[it].parent.takeIf { p -> p > i } }.take(CODE_DEPTH).any { this[it].tag == tag }
+    val code = tagged(title, RvRowPart.CODE)
+    val whole = (listOf(title) + subtitles).filter { tagged(it, RvRowPart.WHOLE) }.toSet()
     val room = inRow.firstOrNull { this[it].tag == RvRowPart.END && this[it].shown() }?.let { this[it].box }
     val endLines = inRow.filter { this[it].tag == RvRowPart.LINE_END && this[it].shown() }.map { this[it].box }
-    return RvRowRead(kind, this[i].box, lead?.let { this[it] }, title, subtitles, end, tags, cardOf(i), this[i].cut || edge, edge, room ?: ends?.second, lineEnds, code, room, endLines)
+    return RvRowRead(kind, this[i].box, lead?.let { this[it] }, title, subtitles, end, tags, cardOf(i), this[i].cut || edge, edge, room ?: ends?.second, lineEnds, code, room, endLines, whole)
 }
 
 /** The bounds of the card [i] stands in, if it stands in one. */
@@ -301,12 +306,17 @@ private fun RvRowRead.textToEnd(): RvRowBreak? {
     return if (end.left - right < GAP_TRAILING - TOLERANCE) broken("R17", signed(end.left - right - GAP_TRAILING)) else null
 }
 
-/** R14: a title takes up to two lines, a subtitle up to three. */
+/**
+ * R14: a title takes up to two lines, a subtitle up to three; a text the row shows whole (q-s1125c-vname) takes every
+ * line it needs and is never cut.
+ */
 private fun RvRowRead.lines(): RvRowBreak? {
     val t = title.line?.lines ?: 1
-    val s = subtitles.maxOfOrNull { it.line?.lines ?: 1 } ?: 1
+    val s = subtitles.filter { it !in whole }.maxOfOrNull { it.line?.lines ?: 1 } ?: 1
+    val cut = whole.firstOrNull { it.line?.cut == true }
     return when {
-        t > TITLE_LINES -> broken("R14", "title $t lines")
+        cut != null -> broken("R14", "whole text cut: ${cut.line?.lines} lines")
+        title !in whole && t > TITLE_LINES -> broken("R14", "title $t lines")
         s > SUBTITLE_LINES -> broken("R14", "subtitle $s lines")
         else -> null
     }
