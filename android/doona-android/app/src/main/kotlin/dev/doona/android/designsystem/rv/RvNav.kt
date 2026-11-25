@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -38,6 +39,9 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -110,7 +114,8 @@ internal fun RvFloatingNav(selected: Int, onSelect: (Int) -> Unit, glass: RvGlas
                 .rvSoftShadow(CircleShape, RvChrome.navShadow, RvChrome.navShadowDrop, RvChrome.NAV_SHADOW_ALPHA)
                 .rvGlass(glass, CircleShape, RvGlassTint(lerp(tint.over, tint.solid, shrink), tint.solid))
                 .then(rim)
-                .padding(RvChrome.navPillInset),
+                .padding(RvChrome.navPillInset)
+                .selectableGroup(),
         ) {
             LocalRvNav.current.forEach { item -> NavItem(item, item.id == selected, shrink, labelStyle, Modifier.weight(1f)) { pick(item.id) } }
         }
@@ -126,24 +131,27 @@ private fun NavItem(item: RvNavItem, selected: Boolean, shrink: Float, labelStyl
     val colors = Rv.colors
     val ink = if (selected) colors.text else colors.textSecondary
     val pill = if (selected) Modifier.background(colors.navPill) else Modifier
+    val label = stringResource(item.label)
     Column(
         modifier
             .fillMaxHeight()
             .clip(CircleShape)
             .then(pill)
-            .selectable(selected, interactionSource = null, indication = rvPressIndication(), role = Role.Tab, onClick = onClick),
+            .selectable(selected, interactionSource = null, indication = rvPressIndication(), role = Role.Tab, onClick = onClick)
+            // The tab's one name, whether or not its label is composed: a collapsed bar draws icons only, and the
+            // drawn label is cleared below so a screen reader does not read the name twice.
+            .semantics { contentDescription = label },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         RvGlyph(item.icon, lerp(RvChrome.navGlyph, RvChrome.navCollapsedGlyph, shrink), ink)
-        val label = stringResource(item.label)
         val line = rvNavLabelLine()
         val fit = rvShrinkToFit(labelStyle)
         if (shrink < 1f) {
             Spacer(Modifier.height(RvChrome.navLabelGap * (1 - shrink)))
             // The label keeps its line while the capsule folds, so only its width can make it smaller: a word too long
             // for the tab (Connections at 92 of 93 dp) shrinks to fit, whole, inside the pill's round ends.
-            val box = Modifier.height(line * (1 - shrink)).alpha((1 - 2 * shrink).coerceAtLeast(0f)).padding(horizontal = RvNavSize.labelInset)
+            val box = Modifier.clearAndSetSemantics {}.height(line * (1 - shrink)).alpha((1 - 2 * shrink).coerceAtLeast(0f)).padding(horizontal = RvNavSize.labelInset)
             Box(box, contentAlignment = Alignment.TopCenter) {
                 RvText(
                     label,
