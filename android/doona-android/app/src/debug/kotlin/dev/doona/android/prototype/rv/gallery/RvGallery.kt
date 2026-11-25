@@ -41,11 +41,11 @@ import dev.doona.android.designsystem.rv.RvSkeletonSeeAll
 import dev.doona.android.designsystem.rv.RvSkeletonTiles
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTextField
+import dev.doona.android.feature.activity.RvActivityNotice
+import dev.doona.android.feature.activity.rvActivityBanner
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.settings.RvPerAppData
-import dev.doona.android.prototype.rv.states.RvActivityNotice
-import dev.doona.android.prototype.rv.states.rvActivityBanner
 import dev.doona.android.prototype.rv.subs.rvFailedBanner
 import dev.doona.android.prototype.rv.subs.rvSubscriptionMenu
 

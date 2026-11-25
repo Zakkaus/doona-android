@@ -10,9 +10,10 @@ import androidx.compose.ui.test.performClick
 import dev.doona.android.designsystem.rv.RvConfirmContent
 import dev.doona.android.designsystem.rv.RvSheetLayout
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.feature.activity.RvActivityNotice
+import dev.doona.android.feature.activity.rvActivityBanner
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
-import dev.doona.android.prototype.rv.RvActivityScreen
 import dev.doona.android.prototype.rv.RvActivityScreenSample
 import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.Utc

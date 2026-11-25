@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.feature.activity.rvPulse
 import dev.doona.android.testing.Seed
 import dev.doona.android.testing.seedColorScheme
 import dev.doona.android.testing.setDoonaContent

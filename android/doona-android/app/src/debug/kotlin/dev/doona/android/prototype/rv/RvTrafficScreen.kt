@@ -47,7 +47,6 @@ import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvSystemScheme
-import dev.doona.android.feature.activity.ActivityUiState
 import dev.doona.android.feature.model.RvSession
 import dev.doona.android.prototype.rv.data.RV_RANGE_POINTS
 import dev.doona.android.prototype.rv.data.RV_RANGE_SECONDS
@@ -63,7 +62,7 @@ import dev.doona.android.prototype.rv.data.RvSessionSeconds
  * [initialScrub] starts the page scrubbed to that second, as the scrubbed golden shows it.
  */
 @Composable
-internal fun RvTrafficScreen(state: ActivityUiState, session: RvSession, onBack: () -> Unit, initialScrub: Int? = null) {
+internal fun RvTrafficScreen(state: RvActivitySampleState, session: RvSession, onBack: () -> Unit, initialScrub: Int? = null) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val format = rememberRvFormat()
     val rate: (Float) -> String = { format.rate(it.toDouble()).toString() }

@@ -31,6 +31,7 @@
     <string name="rv_empty_subscription">No subscription yet</string>
     <string name="rv_empty_subscription_line">Add a subscription to pick a node and connect.</string>
     <string name="rv_add_subscription">Add subscription</string>
+    <string name="rv_edit_app_list">Edit app list</string>
     <string name="rv_offline">No network</string>
     <string name="rv_offline_reason">This device is not on a network. Once it is, doona can connect and update subscriptions.</string>
     <string name="rv_network_settings">Open network settings</string>
