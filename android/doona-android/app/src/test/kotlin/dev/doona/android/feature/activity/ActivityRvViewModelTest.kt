@@ -1,10 +1,12 @@
 package dev.doona.android.feature.activity
 
 import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Mode
+import dev.doona.android.engine.RuleBytes
 import dev.doona.android.engine.RuleKind
 import dev.doona.android.engine.RulePage
 import dev.doona.android.engine.RuleRow
@@ -17,6 +19,7 @@ import dev.doona.android.feature.model.RvRouteMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -207,6 +210,38 @@ class ActivityRvViewModelTest {
         reader.resolve(FakeRuleMode.SOURCE.rulesRevision + 1, listOf("r-3"))
         // A new revision drops what was read; its first page differs from the engine's, so the read starts again once.
         assertTrue(reads > 3)
+    }
+
+    /** [sample] with today's `byRule` naming [ids] and 120 rule rows, counting each page read in [reads]. */
+    private class ManyRules(private val sample: Engine, private val ids: List<String>, catalog: Catalog?) : Engine by sample {
+        var reads = 0
+        private val revision = sample.catalog.value?.ruleSource?.rulesRevision ?: 0L
+        private val all = List(120) { RuleRow("r-$it", it, RuleKind.Domain, "Domain", "d$it.example", 1, RuleTarget.Direct) }
+        override val catalog: StateFlow<Catalog?> = MutableStateFlow(catalog)
+
+        override suspend fun usage(): Result<Usage> = sample.usage().map { it.copy(today = it.today.copy(byRule = ids.map { id -> RuleBytes(id, 1, 1, 1) })) }
+
+        override suspend fun rules(offset: Int, limit: Int): Result<RulePage> {
+            reads++
+            return Result.success(RulePage(revision, all.size, all.drop(offset).take(limit)))
+        }
+    }
+
+    @Test
+    fun `unmatched and other are not looked up, so the read stops at the page that resolves the real ids`() = runTest {
+        val sample = rvSampleEngine()
+        val engine = ManyRules(sample, listOf("r-3", "unmatched", "other"), sample.catalog.value)
+        collected(model(engine))
+        advanceTimeBy(ActivityViewModel.USAGE_MS * 2 + 1)
+        assertEquals(1, engine.reads)
+    }
+
+    @Test
+    fun `without a catalog no rule is read`() = runTest {
+        val engine = ManyRules(rvSampleEngine(), listOf("r-3", "r-70"), catalog = null)
+        collected(model(engine))
+        advanceTimeBy(ActivityViewModel.USAGE_MS * 2 + 1)
+        assertEquals(0, engine.reads)
     }
 
     private companion object {

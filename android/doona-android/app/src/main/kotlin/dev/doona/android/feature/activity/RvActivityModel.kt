@@ -84,6 +84,7 @@ internal enum class RvActivityNotice(val route: String) {
     StartNoApps("failed-no-apps"),
     StartIncompatible("failed-incompatible"),
     StartNoNodes("failed-no-nodes"),
+    Lockdown("lockdown"),
     ConsentDenied("consent-denied"),
     NotifyDenied("notify-denied"),
 }
@@ -91,15 +92,16 @@ internal enum class RvActivityNotice(val route: String) {
 /**
  * Where a notice's one action leads (owner decisions q-fail and q-startfail): what can mend its cause. Only a cause that
  * may pass on its own is retried by connecting again ([Reconnect]); no node leads to 新增訂閱, no allowed app to the
- * per-app list, an incompatible core to the update check.
+ * per-app list, an incompatible core to the update check, another app's lockdown to the system's VPN settings.
  */
-internal enum class ActivityRemedy { AddSubscription, PerApp, CheckUpdate, Reconnect, Retest, ExportReport, NetworkSettings, NotifySettings }
+internal enum class ActivityRemedy { AddSubscription, PerApp, CheckUpdate, Reconnect, Retest, ExportReport, NetworkSettings, NotifySettings, VpnSettings }
 
 internal val RvActivityNotice.remedy: ActivityRemedy
     get() = when (this) {
         RvActivityNotice.NoSubscription, RvActivityNotice.StartNoNodes -> ActivityRemedy.AddSubscription
         RvActivityNotice.StartNoApps -> ActivityRemedy.PerApp
         RvActivityNotice.StartIncompatible -> ActivityRemedy.CheckUpdate
+        RvActivityNotice.Lockdown -> ActivityRemedy.VpnSettings
         RvActivityNotice.StartFailed, RvActivityNotice.CoreStopped, RvActivityNotice.VpnTaken, RvActivityNotice.ConsentDenied -> ActivityRemedy.Reconnect
         RvActivityNotice.NoNode -> ActivityRemedy.Retest
         RvActivityNotice.Crash -> ActivityRemedy.ExportReport

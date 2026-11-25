@@ -137,8 +137,8 @@ internal fun activityModel(
 
 /**
  * The one notice 活動 shows, the first that applies: no subscription (the page's empty state); a failed start or a
- * stopped tunnel by its reason; a crash log to export; every node failed its test. A start the system refused for
- * another app's lockdown has no notice of its own and reads as a failed start.
+ * stopped tunnel by its reason (a start the system refused because another app keeps the VPN locked down is its own
+ * notice: connecting again cannot help); a crash log to export; every node failed its test.
  */
 internal fun activityNotice(hasSubscriptions: Boolean, status: Status, crashOffered: Boolean, allFailed: Boolean): RvActivityNotice? = when {
     !hasSubscriptions -> RvActivityNotice.NoSubscription
@@ -152,7 +152,8 @@ private fun failureNotice(status: Status.Failed): RvActivityNotice = when (statu
     FailureReason.NoAllowedApps -> RvActivityNotice.StartNoApps
     FailureReason.IncompatibleCore -> RvActivityNotice.StartIncompatible
     FailureReason.StartFailed -> if (status.code == ErrorCode.NoNodes) RvActivityNotice.StartNoNodes else RvActivityNotice.StartFailed
-    FailureReason.VpnNotEstablished, FailureReason.LockdownEnabled -> RvActivityNotice.StartFailed
+    FailureReason.VpnNotEstablished -> RvActivityNotice.StartFailed
+    FailureReason.LockdownEnabled -> RvActivityNotice.Lockdown
     FailureReason.CoreStopped -> RvActivityNotice.CoreStopped
     FailureReason.Revoked -> RvActivityNotice.VpnTaken
 }
@@ -248,6 +249,12 @@ private fun GroupKind.rvKind(): RvGroupKind = when (this) {
     GroupKind.UrlTest, GroupKind.Fallback -> RvGroupKind.Auto
     GroupKind.Score -> RvGroupKind.Score
 }
+
+/**
+ * The rule ids today's `byRule` names that have a rule row: `unmatched` and `other` have none, so asking for them would
+ * read the whole list to its end on every revision.
+ */
+internal fun ruleIds(usage: Usage?): List<String> = usage?.today?.byRule.orEmpty().map { it.id }.filterNot { it == UNMATCHED || it == OTHER }
 
 /** The ids of every leaf member of the catalog's groups, once each: what `Engine.nodes` is asked for. */
 internal fun leafIds(catalog: Catalog): List<String> = catalog.groups.flatMap { it.members }.filterNot { it.isGroup }.map { it.id }.distinct()

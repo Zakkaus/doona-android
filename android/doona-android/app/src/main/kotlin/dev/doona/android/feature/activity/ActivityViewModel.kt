@@ -85,8 +85,8 @@ class ActivityViewModel internal constructor(
         combine(engine.catalog, engine.settings, engine.today.map { it.yesterdayByNow }.distinctUntilChanged(), usage, nodeInfo) { catalog, settings, yesterday, usage, info ->
             ActivityInputs(catalog, settings, yesterday, usage, info)
         }.mapLatest { inputs ->
-            val ids = inputs.usage?.today?.byRule.orEmpty().map { it.id }
-            val resolved = rules.resolve(inputs.catalog?.ruleSource?.rulesRevision, ids)
+            // Without a catalog no rule row is shown, so none is read, and the rows already read stay for the next one.
+            val resolved = inputs.catalog?.let { rules.resolve(it.ruleSource?.rulesRevision, ruleIds(inputs.usage)) }.orEmpty()
             val now = clock()
             activityCatalog(ActivityData(inputs.catalog, inputs.settings, inputs.usage, resolved, inputs.info, inputs.yesterdayByNow ?: 0L, now, hourOf(now, zone())), placeOf)
         }.flowOn(work)

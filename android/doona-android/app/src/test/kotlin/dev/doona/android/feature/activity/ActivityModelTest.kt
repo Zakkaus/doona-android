@@ -158,7 +158,7 @@ class ActivityModelTest {
             Status.Failed(FailureReason.StartFailed, ErrorCode.NoNodes) to (RvActivityNotice.StartNoNodes to ActivityRemedy.AddSubscription),
             Status.Failed(FailureReason.StartFailed) to (RvActivityNotice.StartFailed to ActivityRemedy.Reconnect),
             Status.Failed(FailureReason.VpnNotEstablished) to (RvActivityNotice.StartFailed to ActivityRemedy.Reconnect),
-            Status.Failed(FailureReason.LockdownEnabled) to (RvActivityNotice.StartFailed to ActivityRemedy.Reconnect),
+            Status.Failed(FailureReason.LockdownEnabled) to (RvActivityNotice.Lockdown to ActivityRemedy.VpnSettings),
             Status.Failed(FailureReason.CoreStopped) to (RvActivityNotice.CoreStopped to ActivityRemedy.Reconnect),
             Status.Failed(FailureReason.Revoked) to (RvActivityNotice.VpnTaken to ActivityRemedy.Reconnect),
         )
