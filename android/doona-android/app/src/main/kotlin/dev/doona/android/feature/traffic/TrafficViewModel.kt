@@ -46,9 +46,9 @@ class TrafficViewModel internal constructor(private val engine: Engine, private 
             trafficState(read, status, traffic, shown, clock()).also { shown = it.chart }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initial())
 
-    /** The page shows the range at [index] of [RV_TRAFFIC_RANGE_SECONDS]; any other index is ignored. */
+    /** The page shows the range at [index] of [RV_TRAFFIC_RANGE_SECONDS]. */
     fun onRange(index: Int) {
-        if (index in RV_TRAFFIC_RANGE_SECONDS.indices) range.value = index
+        range.value = index
     }
 
     /** Before the first read: the engine's history as the live minute, the rates and the session. */

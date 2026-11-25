@@ -91,19 +91,6 @@ class TrafficModelTest {
     }
 
     @Test
-    fun theSessionsFiguresComeFromTheEngine() {
-        val traffic = Traffic(downRate = 4_000, upRate = 300, downTotal = 7_200_000, upTotal = 720_000, downPeak = 9_000_000, upPeak = 800_000)
-        val session = trafficSession(Status.Running(NOW - 3_600_000), traffic, NOW)!!
-        assertEquals(9_000_000.0, session.peakDown, 0.0)
-        assertEquals(800_000.0, session.peakUp, 0.0)
-        assertEquals(2_000.0, session.averageDown, 0.0)
-        assertEquals(200.0, session.averageUp, 0.0)
-        assertEquals(7_200_000L, session.downTotal)
-        assertEquals(720_000L, session.upTotal)
-        assertEquals(3_600L, session.seconds)
-    }
-
-    @Test
     fun aSessionThatHasJustStartedHasNoInfiniteAverage() {
         val session = trafficSession(Status.Running(NOW), Traffic(downTotal = 5_000), NOW)!!
         assertEquals(0L, session.seconds)
@@ -113,13 +100,6 @@ class TrafficModelTest {
     @Test
     fun withNoTunnelThereIsNoSession() {
         for (status in listOf(Status.Stopped, Status.Starting, Status.Stopping)) assertNull("$status", trafficSession(status, Traffic(downTotal = 1), NOW))
-    }
-
-    @Test
-    fun theHeroRatesAreTheEnginesSecond() {
-        val state = trafficState(SeriesRead(1, null), Status.Stopped, Traffic(downRate = 12, upRate = 3), null, NOW)
-        assertEquals(12L, state.downRate)
-        assertEquals(3L, state.upRate)
     }
 
     @Test

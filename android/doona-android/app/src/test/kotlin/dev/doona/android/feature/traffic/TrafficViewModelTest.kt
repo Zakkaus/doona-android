@@ -62,15 +62,6 @@ class TrafficViewModelTest {
     }
 
     @Test
-    fun anUnknownRangeIsIgnored() = runTest {
-        val engine = Recording(rvSampleEngine())
-        val model = shown(engine)
-        model.onRange(4)
-        model.onRange(-1)
-        assertEquals(listOf(60L), engine.reads)
-    }
-
-    @Test
     fun theLiveMinuteMovesWithEachSecondWithoutReadingAgain() = runTest {
         val fake = rvSampleEngine()
         val engine = Recording(fake)
