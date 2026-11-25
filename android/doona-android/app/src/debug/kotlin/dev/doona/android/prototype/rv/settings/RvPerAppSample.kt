@@ -58,6 +58,7 @@ internal fun rvPerAppSample(name: String, saved: RvPerApp = RvPerAppData.saved):
         "search" -> rvPerAppStateSample(saved, query = RvPerAppData.QUERY)
         "no-result" -> rvPerAppStateSample(saved, query = RvPerAppData.QUERY_NONE)
         "loading" -> RvPerAppState(saved, installed = null)
+        "no-apps" -> RvPerAppState(saved, installed = emptyList())
         "none-selected" -> rvPerAppStateSample(saved, draft = RvPerApp(RvAppPolicy.Only, emptySet()))
         "saving" -> rvPerAppStateSample(saved, draft = RvPerAppData.except, save = RvSave.Saving)
         "save-failed" -> rvPerAppStateSample(saved, draft = RvPerAppData.except, save = RvSave.Failed)

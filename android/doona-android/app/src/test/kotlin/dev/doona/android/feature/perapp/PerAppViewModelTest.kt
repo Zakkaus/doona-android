@@ -303,11 +303,11 @@ class PerAppViewModelTest {
     }
 
     @Test
-    fun `a failed write inside doona keeps the approved reason, another code says what it is`() = runTest {
+    fun `a failed write inside doona says the setting was not written, another code says what it is`() = runTest {
         val inside = collected(FlakyEngine(code = ErrorCode.Internal))
         inside.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
         inside.onAction(PerAppAction.Save)
-        assertEquals(R.string.rv_report_failed_reason, inside.state.saveReason)
+        assertEquals(R.string.perapp_save_failed_reason, inside.state.saveReason)
 
         val busy = collected(FlakyEngine(code = ErrorCode.Busy))
         busy.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))

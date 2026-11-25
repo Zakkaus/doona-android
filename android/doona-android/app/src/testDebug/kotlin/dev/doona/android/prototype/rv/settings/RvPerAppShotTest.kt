@@ -37,7 +37,7 @@ import org.robolectric.annotation.GraphicsMode
  * 依 App (`proto-rv-perapp-*`), each state light, dark, fs115 and fs200, in the phone's first screen (the list runs on
  * under the floating 儲存): every app (`perapp`), only the checked ones as 設定 has it (`-only`), all but two, an edit
  * not yet saved (`-except`), a search two apps match (`-search`) and one none does (`-no-result`), the apps not yet
- * read (`-loading`), 只有勾選的 with nothing checked (`-none-selected`), a save under way (`-saving`), a failed one
+ * read (`-loading`), a phone that lists no app (`-no-apps`), 只有勾選的 with nothing checked (`-none-selected`), a save under way (`-saving`), a failed one
  * (`-save-failed`), and one stored whose tunnel would not come back (`-rebuild-failed`). The busy states are recorded at
  * animator scale 0, so the bar rests half full. Then what the page does: a policy row picks it, an app row toggles its
  * app, 儲存 takes only an edit that can be saved, the list and its search show only under a list policy, and the
@@ -100,6 +100,14 @@ class RvPerAppShotTest {
     @Test fun loadingFs115() = shot("loading", fontScale = RV_FS115)
 
     @Test fun loadingFs200() = shot("loading", fontScale = RV_FS200)
+
+    @Test fun noAppsLight() = shot("no-apps", dark = false)
+
+    @Test fun noAppsDark() = shot("no-apps", dark = true)
+
+    @Test fun noAppsFs115() = shot("no-apps", fontScale = RV_FS115)
+
+    @Test fun noAppsFs200() = shot("no-apps", fontScale = RV_FS200)
 
     @Test fun noneSelectedLight() = shot("none-selected", dark = false)
 

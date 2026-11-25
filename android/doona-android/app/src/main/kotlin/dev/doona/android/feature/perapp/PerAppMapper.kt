@@ -44,10 +44,11 @@ internal fun rvPerAppState(
 
 /**
  * The second line of the failed-save notice. A write that failed inside doona ([ErrorCode.Internal], the one code
- * `setPerApp` gives today) keeps the approved sentence; any other code says what it is.
+ * `setPerApp` gives today) says the setting was not written (owner, q-savereason, 2026-11-25); any other code says
+ * what it is.
  */
 @StringRes
-private fun saveReason(code: ErrorCode?): Int = if (code == null || code == ErrorCode.Internal) R.string.rv_report_failed_reason else code.messageRes()
+private fun saveReason(code: ErrorCode?): Int = if (code == null || code == ErrorCode.Internal) R.string.perapp_save_failed_reason else code.messageRes()
 
 /** The second line of the rebuild notice: the approved sentence for a tunnel that did not start, else the reason's own text. */
 @StringRes

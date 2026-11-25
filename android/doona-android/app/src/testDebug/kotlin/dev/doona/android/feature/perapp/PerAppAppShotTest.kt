@@ -103,6 +103,14 @@ class PerAppAppShotTest {
 
     @Test fun loadingFs200() = shot("loading", fontScale = RV_FS200)
 
+    @Test fun noAppsLight() = shot("no-apps", dark = false)
+
+    @Test fun noAppsDark() = shot("no-apps", dark = true)
+
+    @Test fun noAppsFs115() = shot("no-apps", fontScale = RV_FS115)
+
+    @Test fun noAppsFs200() = shot("no-apps", fontScale = RV_FS200)
+
     @Test fun noneSelectedLight() = shot("none-selected", dark = false)
 
     @Test fun noneSelectedDark() = shot("none-selected", dark = true)
@@ -181,6 +189,10 @@ class PerAppAppEnShotTest {
 
     @Test fun loadingSample() = sample("loading")
 
+    @Test fun noApps() = compose.appShot("no-apps", "app-rv-perapp-no-apps-en", dark = false, fontScale = 1f)
+
+    @Test fun noAppsSample() = sample("no-apps")
+
     @Test fun noneSelected() = compose.appShot("none-selected", "app-rv-perapp-none-selected-en", dark = false, fontScale = 1f)
 
     @Test fun noneSelectedSample() = sample("none-selected")
@@ -234,7 +246,11 @@ private fun ComposeContentTestRule.appShot(state: String, golden: String, dark: 
             else -> setPerApp(perApp)
         }
     }
-    val apps = if (state == "loading") NeverApps else FakeInstalledApps(sampleApps)
+    val apps = when (state) {
+        "loading" -> NeverApps
+        "no-apps" -> FakeInstalledApps(emptyList())
+        else -> FakeInstalledApps(sampleApps)
+    }
     val vm = PerAppViewModel(engine, apps)
     rvContent(dark, fontScale) { PerAppPage(vm, onConnect = {}, onBack = {}) }
     waitForIdle()

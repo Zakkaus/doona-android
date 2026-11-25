@@ -27,7 +27,7 @@ internal data class RvPerAppState(
     val query: String = "",
     val save: RvSave = RvSave.Idle,
     val rebuildFailed: Boolean = false,
-    @StringRes val saveReason: Int = R.string.rv_report_failed_reason,
+    @StringRes val saveReason: Int = R.string.perapp_save_failed_reason,
     @StringRes val rebuildReason: Int = R.string.vpn_failure_start_failed,
 ) {
     /** What the page shows: the edits, or the setting as saved. */
