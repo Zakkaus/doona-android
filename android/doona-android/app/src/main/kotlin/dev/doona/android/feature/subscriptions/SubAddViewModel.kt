@@ -62,9 +62,12 @@ internal class SubAddViewModel(
     init {
         refreshClipboard()
         viewModelScope.launch {
-            val added = imports.state.first { local.value.own != null && it.lastId == local.value.own && !it.busy && it.added != null }.added
-            val ids = engine.groups.value.asSequence().flatMap { it.members }.filter { it.subscriptionId == added?.id && !it.isGroup }.map { it.id }.distinct().toList()
-            counted.value = engine.nodes(ids).getOrNull().orEmpty().map { it.protocol }.let(::rvProtocolCounts)
+            val added = imports.state.first { local.value.own != null && it.lastId == local.value.own && !it.busy && it.added != null }.added ?: return@launch
+            // The catalog takes the nodes in after the call returns; it lists the subscription once it holds them. Every
+            // node counts, whether or not a group of the user's names it.
+            engine.subscriptions.first { subs -> subs.any { it.id == added.id } }
+            val nodes = engine.nodes().getOrNull().orEmpty().filter { it.subscriptionId == added.id }
+            counted.value = rvProtocolCounts(nodes.map { it.protocol })
         }
     }
 

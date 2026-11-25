@@ -3,6 +3,7 @@
     "nodes": [
       {
         "id": "n-0c41be77",
+        "subscriptionId": "s1",
         "protocol": "trojan",
         "server": "hk2.example.net",
         "port": 443,
@@ -25,6 +26,7 @@
       },
       {
         "id": "n-7f3a19c2",
+        "subscriptionId": null,
         "protocol": "hysteria2",
         "server": "192.168.8.20",
         "port": 443,

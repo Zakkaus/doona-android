@@ -133,6 +133,7 @@ fn node_info((entry, tests): (&Arc<NodeEntry>, Vec<LatencyTest>)) -> NodeInfo {
     };
     NodeInfo {
         id: entry.id.clone(),
+        subscription_id: entry.subscription.clone(),
         protocol: protocol.as_str().to_owned(),
         server: node.host.clone(),
         port: node.port,

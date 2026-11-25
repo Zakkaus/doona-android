@@ -66,6 +66,7 @@ fn manual_endpoints_match_their_links_and_preserve_transport_options() {
         );
         let details = call(&core, "nodes", json!({"ids":[id]}));
         assert_eq!(details["nodes"][0]["transport"], transport);
+        assert_eq!(details["nodes"][0]["subscriptionId"], Value::Null);
     }
     let added = call(
         &core,

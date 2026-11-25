@@ -455,8 +455,11 @@ pub struct Nodes {
 /// protocol is honk's name (`trojan`, `vless`, `ss`, `hysteria2`, …); the transport is `quic` for
 /// the QUIC protocols, else the stream transport (`tcp`, `ws`, `grpc`, …).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NodeInfo {
     pub id: String,
+    /// The subscription the node came from; null for a static node.
+    pub subscription_id: Option<String>,
     pub protocol: String,
     pub server: String,
     pub port: u16,

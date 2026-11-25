@@ -74,7 +74,7 @@ fun DoonaApp(
         RvNavHost(backStack, Modifier.fillMaxSize()) {
             entry<ActivityKey> {
                 OldTabFrame(Tab.Activity, onTab, onReselect) {
-                    FirstRunGate(engine, imports) { ActivityRoute(engine, onConnect, onOpenGroup = { backStack.push(GroupKey(it)) }) }
+                    FirstRunGate(engine) { ActivityRoute(engine, onConnect, onOpenGroup = { backStack.push(GroupKey(it)) }) }
                 }
             }
             entry<PoliciesKey> {
@@ -85,7 +85,7 @@ fun DoonaApp(
             entry<GroupKey> { key ->
                 GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }, onOpenGroup = { backStack.push(GroupKey(it)) })
             }
-            entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, imports, onBack = { backStack.pop(key) }) }
+            entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, onBack = { backStack.pop(key) }) }
             entry<SettingsKey> {
                 OldTabFrame(Tab.Settings, onTab, onReselect) {
                     SettingsRoute(engine, version, onOpenPerApp = { backStack.push(PerAppKey) }, onOpenSubscriptions = { backStack.push(SubscriptionsKey) })

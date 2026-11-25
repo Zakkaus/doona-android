@@ -147,6 +147,7 @@ internal data class NodesDto(val nodes: List<NodeInfoDto>) {
 @Serializable
 internal data class NodeInfoDto(
     val id: String,
+    val subscriptionId: String?,
     val protocol: String,
     val server: String,
     val port: Int,
@@ -154,7 +155,7 @@ internal data class NodeInfoDto(
     val tls: Boolean,
     val tests: List<LatencyTestDto>,
 ) {
-    fun toNodeInfo() = NodeInfo(id, protocol, server, port, transport, tls, tests.map { LatencyTest(it.atEpochMs, it.ms) })
+    fun toNodeInfo() = NodeInfo(id, subscriptionId, protocol, server, port, transport, tls, tests.map { LatencyTest(it.atEpochMs, it.ms) })
 }
 
 /** A test: when its round began, and the time it measured; null when the probe failed. */

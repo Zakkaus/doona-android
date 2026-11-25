@@ -3,6 +3,7 @@ package dev.doona.android.feature.subscriptions
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.localnetwork.LocalNetworkAccess
@@ -234,6 +235,33 @@ class SubAddViewModelTest {
             rvProtocolCounts(listOf("trojan", "vless", "mystery", "vless")),
         )
     }
+
+    /**
+     * The done card counts every node the catalog holds from the new subscription, those no group lists included (a
+     * user's own groups need not name them), and only once the catalog has taken the import in.
+     */
+    @Test
+    fun `the done card counts the catalog's nodes of the subscription once the catalog holds them`() = runTest {
+        val fake = FakeEngine(subscriptions = emptyList())
+        val added = Subscription("s9", "Harbor", LINK, 3, 0L)
+        val engine = object : Engine by fake {
+            override suspend fun addSubscription(url: String, name: String?, userAgent: String?) = Result.success(added)
+
+            override suspend fun nodes(ids: List<String>?) = Result.success(
+                listOf(node("a", "s9", "vless"), node("b", "s1", "ss"), node("c", "s9", "trojan"), node("d", null, "ss"), node("e", "s9", "vless")),
+            )
+        }
+        val vm = page(engine, imports(engine))
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.protocols.collect {} }
+        vm.type()
+        vm.import()
+        assertTrue(vm.uiState.value.phase is RvAddPhase.Done)
+        assertEquals("not before the catalog lists the subscription", emptyList<RvProtocolCount>(), vm.protocols.value)
+        fake.subscriptions.value = listOf(added)
+        assertEquals(listOf(RvProtocolCount("VLESS", 2), RvProtocolCount("Trojan", 1)), vm.protocols.value)
+    }
+
+    private fun node(id: String, subscription: String?, protocol: String) = NodeInfo(id, subscription, protocol, "$id.example", 443, "tcp", true, emptyList())
 
     private companion object {
         const val LINK = "https://sub.example/api?token=1"

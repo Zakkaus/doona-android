@@ -19,12 +19,11 @@ import kotlinx.coroutines.flow.StateFlow
 
 /**
  * 訂閱: the subscriptions, which open their page ([onOpen], also the menu's 編輯) and lead to 新增訂閱 ([onAdd]).
- * [imports] is not read here: 新增訂閱 follows the import. End dates count from [clock].
+ * End dates count from [clock].
  */
 @Composable
 fun SubscriptionsRoute(
     engine: Engine,
-    @Suppress("UNUSED_PARAMETER") imports: SubscriptionImports,
     onBack: () -> Unit,
     onOpen: (String) -> Unit = {},
     onAdd: () -> Unit = {},

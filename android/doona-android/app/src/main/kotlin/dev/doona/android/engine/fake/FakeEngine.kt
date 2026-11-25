@@ -303,7 +303,7 @@ class FakeEngine internal constructor(
             .distinctBy { it.id }
             .mapIndexed { index, member ->
                 val tests = if (member.failed || member.latencyMs != null) listOf(LatencyTest(0, member.latencyMs)) else emptyList()
-                NodeInfo(member.id, "trojan", "node-${index + 1}.example.net", 443, "tcp", true, tests)
+                NodeInfo(member.id, member.subscriptionId, "trojan", "node-${index + 1}.example.net", 443, "tcp", true, tests)
             }.toList()
 
         /** The group template before rule mode: Proxy, Auto and one region. The goldens were drawn with it. */

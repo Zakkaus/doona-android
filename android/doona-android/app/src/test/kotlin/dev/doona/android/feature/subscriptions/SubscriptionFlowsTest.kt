@@ -172,11 +172,10 @@ class SubscriptionFlowsTest {
         val backStack = rememberNavBackStack(*start.toTypedArray())
         val imports = rememberSubscriptionImports(engine)
         RvNavHost(backStack) {
-            entry<ActivityKey> { FirstRunGate(engine, imports, onAdd = { backStack.push(SubAddKey) }) { Text(ACTIVITY) } }
+            entry<ActivityKey> { FirstRunGate(engine, onAdd = { backStack.push(SubAddKey) }) { Text(ACTIVITY) } }
             entry<SubscriptionsKey> { key ->
                 SubscriptionsRoute(
                     engine,
-                    imports,
                     onBack = { backStack.pop(key) },
                     onOpen = { backStack.push(SubDetailKey(it)) },
                     onAdd = { backStack.push(SubAddKey) },

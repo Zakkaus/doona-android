@@ -37,7 +37,6 @@ import dev.doona.android.feature.subscriptions.rememberSubscriptionImports
  */
 @Composable
 internal fun OldShellApp(engine: Engine, installedApps: InstalledApps, start: List<NavKey>) {
-    val imports = rememberSubscriptionImports(engine)
     val backStack = rememberNavBackStack(*start.toTypedArray())
     DoonaAppShell(current = currentTab(backStack), onSelect = { backStack.selectTab(it) }) {
         NavDisplay(
@@ -47,7 +46,7 @@ internal fun OldShellApp(engine: Engine, installedApps: InstalledApps, start: Li
             entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
             entryProvider = entryProvider {
                 entry<ActivityKey> {
-                    FirstRunGate(engine, imports) { ActivityRoute(engine, onConnect = {}, onOpenGroup = { backStack.add(GroupKey(it)) }) }
+                    FirstRunGate(engine) { ActivityRoute(engine, onConnect = {}, onOpenGroup = { backStack.add(GroupKey(it)) }) }
                 }
                 entry<PoliciesKey> {
                     PoliciesRoute(engine, onOpenGroup = { backStack.add(GroupKey(it)) }, onOpenSubscriptions = { backStack.add(SubscriptionsKey) })
@@ -55,7 +54,7 @@ internal fun OldShellApp(engine: Engine, installedApps: InstalledApps, start: Li
                 entry<GroupKey> { key ->
                     GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }, onOpenGroup = { backStack.add(GroupKey(it)) })
                 }
-                entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, imports, onBack = { backStack.pop(key) }) }
+                entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, onBack = { backStack.pop(key) }) }
                 entry<SettingsKey> {
                     SettingsRoute(engine, "", onOpenPerApp = { backStack.add(PerAppKey) }, onOpenSubscriptions = { backStack.add(SubscriptionsKey) })
                 }

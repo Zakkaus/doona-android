@@ -341,8 +341,7 @@ class AppRvSubsShotTest {
 
     @Composable
     private fun Subs(engine: Engine = rvSampleEngine()) {
-        val imports = rememberImports(engine)
-        SubscriptionsRoute(engine, imports, onBack = {}, clock = { RvData.nowEpochMs })
+        SubscriptionsRoute(engine, onBack = {}, clock = { RvData.nowEpochMs })
     }
 
     @Composable
@@ -369,7 +368,7 @@ class AppRvSubsShotTest {
     @Composable
     private fun Welcome() {
         val engine = remember { FakeEngine(subscriptions = emptyList()) }
-        FirstRunGate(engine, rememberImports(engine)) {}
+        FirstRunGate(engine) {}
     }
 
     @Composable

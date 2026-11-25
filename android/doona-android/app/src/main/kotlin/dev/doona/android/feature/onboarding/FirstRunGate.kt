@@ -34,12 +34,11 @@ internal class FirstRunViewModel(engine: Engine) : ViewModel() {
 
 /**
  * The 活動 tab's content: the welcome page ([RvWelcome]) on the first run, whose 新增訂閱 runs [onAdd], and [content],
- * 活動, otherwise (see [showsWelcome]). [imports] is not read: the welcome page leads to 新增訂閱, which follows the import.
+ * 活動, otherwise (see [showsWelcome]).
  */
 @Composable
 fun FirstRunGate(
     engine: Engine,
-    @Suppress("UNUSED_PARAMETER") imports: SubscriptionImports,
     onAdd: () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
