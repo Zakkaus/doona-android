@@ -12,7 +12,7 @@ feature/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_median, va
 feature/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_no_quota), Rv.type.rowSub, color = Rv.colors.textSecondary)	a stat card's own line, inside the card
 feature/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_quota_total, total.toString(), count), Rv.type.rowSub, color = Rv.colors.textSec	a stat card's own line, inside the card
 feature/stats/RvStatsCards.kt	RvText(stringResource(if (split != null) R.string.rv_stats_via_proxy else R.string.rv_stats_no_data), Rv.type.rowSub, co	a stat card's own line, inside the card
-prototype/rv/subs/RvSubsPage.kt	RvText(ends, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a subscription card's usage and end date, inside the card
+feature/subscriptions/RvSubsPage.kt	RvText(ends, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a subscription card's usage and end date, inside the card
 prototype/rv/config/RvConfigHistoryPage.kt	RvCaption(state.name)	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/config/RvConfigOverviewPage.kt	RvCaption(stringResource(R.string.rv_config_applied, state.rev, applied))	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/config/RvConfigRevisionPage.kt	RvCaption(origin)	a page header's caption (RvCaption under the large title), not under a card
@@ -29,7 +29,7 @@ prototype/rv/nodes/RvNodesPage.kt	RvCaption(stringResource(R.string.rv_main_node
 prototype/rv/policy/RvEffectiveConfigPage.kt	RvCaption(stringResource(R.string.rv_effective_truncated), R.drawable.rv_nodes_ic_warning)	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/policy/RvPolicyGroupPage.kt	RvCaption(stringResource(R.string.rv_policy_auto_note))	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/policy/RvRulesPage.kt	RvCaption(stringResource(R.string.rv_policy_rules_order))	a page header's caption (RvCaption under the large title), not under a card
-prototype/rv/welcome/RvWelcome.kt	RvCaption(stringResource(R.string.rv_welcome_line), lines = Int.MAX_VALUE)	歡迎's hero line under its centred title (RvCaption with lines), above the cards
+feature/onboarding/RvWelcome.kt	RvCaption(stringResource(R.string.rv_welcome_line), lines = Int.MAX_VALUE)	歡迎's hero line under its centred title (RvCaption with lines), above the cards
 feature/nodes/ui/RvNodeList.kt	RvText(steady, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a node row's steadiness at the row's end, inside the card
 prototype/rv/nodes/RvNodePicker.kt	RvCaption(caption)	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/policy/RvPolicyGroupPage.kt	RvCaption(group.caption(), group.kind.glyph)	a page header's caption (RvCaption under the large title), not under a card
@@ -37,4 +37,4 @@ prototype/rv/samples/RvGroupFullPage.kt	RvCaption(stringResource(R.string.policy
 prototype/rv/samples/RvGroupFullPage.kt	RvCaption(stringResource(group.kind.label) + SEPARATOR + count, group.kind.glyph)	a sample page header's caption (RvCaption under the large title), not under a card
 prototype/rv/samples/RvGroupSamplePage.kt	RvCaption(stringResource(group.kind.label) + SEPARATOR + count, group.kind.glyph)	a sample page header's caption (RvCaption under the large title), not under a card
 feature/stats/RvStatsScoreCard.kt	RvText(stringResource(R.string.rv_stats_connections), Rv.type.rowSub, color = Rv.colors.textSecondary)	the Score card's label under its figure, inside the card
-prototype/rv/subs/RvSubsPage.kt	RvText(stringResource(R.string.rv_subs_used, format.usedOf(sub.usedBytes, total), total.toString()), Rv.type.rowSub, Mod	a subscription card's usage and end date, inside the card
+feature/subscriptions/RvSubsPage.kt	RvText(used, Rv.type.rowSub, Modifier.weight(1f), color = Rv.colors.textSecondary)	a subscription card's usage and end date, inside the card

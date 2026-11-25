@@ -27,7 +27,7 @@ class RvSampleEngineTest {
         val us = RvSampleNodes.groups.first { it.id == "g-US" }
         val balance = Group("g-Balance", "Balance", GroupKind.LoadBalance, jp.members + us.members, jp.members.first().id)
         val outer = Group("g-Outer", "Outer", GroupKind.Fallback, listOf(Member(jp.id, jp.name, isGroup = true)) + us.members.take(1), jp.id)
-        val engine = FakeEngine(RvSampleNodes.groups + balance + outer)
+        val engine = FakeEngine(RvSampleNodes.groups + balance + outer, subscriptions = RvSampleNodes.subscriptions)
         val groups = engine.groups.value.associateBy { it.id }
 
         assertFalse(groups.getValue(balance.id).kind.manual)
