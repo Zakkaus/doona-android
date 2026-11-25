@@ -5288,16 +5288,17 @@
     {
       "kind": "native",
       "name": "Rust standard library",
-      "version": "1.99.1",
+      "version": "1.100.0",
       "license": "MIT OR Apache-2.0",
       "bodies": [
         "Apache-2.0",
         "MIT"
       ],
-      "source": "https://github.com/rust-lang/rust/tree/1.99.1/library",
+      "source": "https://github.com/rust-lang/rust/tree/1.100.0/library",
       "attribution": [
         "    Copyright: The Rust Project Developers (see https://thanks.rust-lang.org)",
         "    Copyright: 1991-2024 Unicode, Inc",
+        "    Copyright: 2003-2019 University of Illinois at Urbana-Champaign",
         "    Copyright: 2014 Alex Crichton",
         "    Copyright: 2019 The Crossbeam Project Developers",
         "    Copyright: 2016 The Fuchsia Authors",
@@ -5305,10 +5306,10 @@
         "Copyright (c) Individual contributors",
         "Copyright (c) 2018 Josh Stone",
         "Copyright (c) 2014 The Rust Project Developers",
+        "Copyright (c) 2018-2019 Andrew Gallant",
         "Copyright (c) 2014 Alex Crichton",
         "Copyright (c) 2019 The Crossbeam Project Developers",
         "Copyright (c) 2017 Ted Driggs",
-        "Copyright (c) 2015 Utkarsh Kukreti",
         "Copyright (c) 2015",
         "Copyright (c) 2016--2023",
         "Copyright (c) 2014 Chris Wong",
@@ -5339,7 +5340,6 @@
         "Copyright (c) 2018-2026 The Rand Project Developers",
         "Copyright (c) 2010 The Rust Project Developers",
         "Copyright (c) 2017 Andrew Gallant",
-        "Copyright (c) 2017 Ingvar Stepanyan",
         "Copyright 2015 Nicholas Allegra (comex).",
         "Copyright (c) 2015 Nicholas Allegra (comex).",
         "Copyright (c) 2015 Danny Guo",
@@ -5354,7 +5354,6 @@
         "Copyright (c) 2016 Joe Wilm",
         "   Copyright (c) Microsoft Corporation.",
         "    Copyright (c) Microsoft Corporation.",
-        "Copyright (c) 2014 Vladimir Matveev",
         "Copyright (c) 2015 Chen Yuheng",
         "   Copyright 2023 The Fuchsia Authors",
         "Copyright 2019 The Fuchsia Authors.",
@@ -5364,7 +5363,7 @@
       "extras": [
         {
           "file": "COPYRIGHT-library.html (text)",
-          "text": "6eba42070530eca7185a8a28f138fd24180423945aa6c6fa33b96393a8ab0008",
+          "text": "fb140564d0b65f220cc97910c148aee782b1a0755d62b788c532ad0eb9d2f99f",
           "comment": "Upstream wording does not match a complete declared SPDX body."
         }
       ]
@@ -5473,228 +5472,228 @@
       165811,
       838
     ],
-    "6eba42070530eca7185a8a28f138fd24180423945aa6c6fa33b96393a8ab0008": [
+    "fb140564d0b65f220cc97910c148aee782b1a0755d62b788c532ad0eb9d2f99f": [
       166708,
-      1443243
+      1455860
     ],
     "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986": [
-      1609987,
+      1622604,
       35149
     ],
     "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0": [
-      1645162,
+      1657779,
       34523
     ],
     "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551": [
-      1679720,
+      1692337,
       26530
     ],
     "5e436ff8ffbb77d8607220e9bce20c8915d860010feeb6c1ebef5a85688e9b39": [
-      1706278,
+      1718895,
       20137
     ],
     "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643": [
-      1726446,
+      1739063,
       18092
     ],
     "b043b7c5fdaf8df24b2c3b50f7651e6acfc8bdd73cc152ec5d090b8a7e0ede33": [
-      1744588,
+      1757205,
       16707
     ],
     "3f3d1da78246d5c2ffc879f8239d6e856b19ba813b8349cbe48f85bd018ee3af": [
-      1761345,
+      1773962,
       16704
     ],
     "005fc765ddc5115da796cca915baa9557abae13ff35e0a47c47affc56f6c414d": [
-      1778079,
+      1790696,
       14870
     ],
     "182ee97ac50080f12320e89a077f6eefdf5ebef1cde4a82c6c22fbadeb9cb480": [
-      1792983,
+      1805600,
       14256
     ],
     "3823dda7cf046602f4b4e77ec8e227863dc4736037cc85bb33d9f19febe16bb7": [
-      1807263,
+      1819880,
       14088
     ],
     "827c8d8fc207c2392794eef9e00fe246f9f61fdcc132556c275be3dd8c3cd97f": [
-      1778079,
+      1790696,
       13115
     ],
     "946c9835d8034d24404f8cfec5f4654cee5dad17e944afc3d06d742cf2882831": [
-      1821377,
+      1833994,
       12307
     ],
     "a5695f57ea0c221e0e8b7d784ff774c35e88c3d3270353646a925880bb3492cc": [
-      1833713,
+      1846330,
       12267
     ],
     "c6596eb7be8581c18be736c846fb9173b69eccf6ef94c5135893ec56bd92ba08": [
-      172239,
+      172538,
       11358
     ],
     "87d9feb9238c6bd8e0024fc4733b06cff036f89f36d93b7df1c8a0549bbb7a5b": [
-      1846008,
+      1858625,
       11352
     ],
     "249fdb6694467dd615b259f7ddde07be3f8ae5a72cecebb0e24f6629af4215fe": [
-      1857394,
+      1870011,
       11349
     ],
     "aaff376532ea30a0cd5330b9502ad4a4c8bf769c539c87ffe78819d188a18ebf": [
-      553611,
+      565657,
       10849
     ],
     "6df43f6f4b5d4587f3d8d71e45532c688fd168afa5fe89d571cb32fa09c4ef51": [
-      553611,
+      565657,
       10282
     ],
     "4d4c32b31308f5a992434c2cf948205852bb2c7bb85cea4c1ab051f41a3eefb3": [
-      1868781,
+      1881398,
       10258
     ],
     "99938c5864dd33decb62ab20fd883a9b00181d768ae887a4f19b2d0015c41dc9": [
-      1879076,
+      1891693,
       10257
     ],
     "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0": [
-      172238,
+      172537,
       10175
     ],
     "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594": [
-      172238,
+      172537,
       10174
     ],
     "0cec06e0e55fbc3dc5cee4fca9b607f66cb8f4e4dbcf3b3c013594dd156732e9": [
-      172238,
+      172537,
       10173
     ],
     "7cde763ba32b3ec2a84eddd8beb0dcb895fd6436aeb18491ab9572a7eb8de996": [
-      1889365,
+      1901982,
       9897
     ],
     "35242e7a83f69875e6edeff02291e688c97caafe2f8902e4e19b49d3e78b4cab": [
-      553611,
+      565657,
       9724
     ],
     "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a": [
-      236245,
+      236544,
       9723
     ],
     "95bd3988beee069fa2848f648dab43cc6e0b2add2ad6bcb17360caf749802bcc": [
-      236245,
+      236544,
       9722
     ],
     "5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57": [
-      1899289,
+      1911906,
       4377
     ],
     "18aabf190848725e2576eefb5c29ba06aac1029d02132252a7f312eac2e50cf3": [
-      1903707,
+      1916324,
       4314
     ],
     "282a21b0710441c364025461a447362daf18f5798a7b72ae2f801a2aa536da51": [
-      1908046,
+      1920663,
       2719
     ],
     "e271993808fec50ab29350b39539cdec611a9103f827e0aa26d61da70e2d33f8": [
-      1910798,
+      1923415,
       2371
     ],
     "f367c1b8e1aa262435251e442901da4607b4650e0e63a026f5044473ecfb90f2": [
-      1913192,
+      1925809,
       2195
     ],
     "6226d0632e2e1a80c23597e964da9812ae193c535fe058154afb034e94167aa5": [
-      1915427,
+      1928044,
       1849
     ],
     "c30152c94a6d75e021adbc52b3a52470366a46edb917e17deae3259251af244c": [
-      1917303,
+      1929920,
       1742
     ],
     "d1bc53b493a3ab387b42717ed5c4b1976a5048996f81154278100bff86d39331": [
-      1919103,
+      1931720,
       1520
     ],
     "a01b712fbb30f80b86851468b6fa58e80eab68f69f325e88bbc7ddf47cf1b063": [
-      1920769,
+      1933386,
       1434
     ],
     "6ee2ed6c77710de911761acd5fc1ad1da00f476beb1a7ef27e78c2d1858deafc": [
-      1922227,
+      1934844,
       1022
     ],
     "5b698ca13897be3afdb7174256fa1574f8c6892b8bea1a66dd6469d3fe27885a": [
-      1923278,
+      1935895,
       916
     ],
     "9a3aeb3f63659c4c6302d315e1d98784d1e8559858a47ff9562e091bb922d28d": [
-      1924231,
+      1936848,
       858
     ],
     "7cfafc877eccc46c0e346ccbaa5c51bb6b894d2b818e617d970211e232785ad4": [
-      1925115,
+      1937732,
       775
     ],
     "3210be7332b5bdf48eb24a945258b9f38616a2cceb0dfc06e3c3c7e9740475a0": [
-      1917303,
+      1929920,
       770
     ],
     "7abd9b6960dcf7d4d0a48606a5b71bfe37d472db68d70637f3a58a56785f1621": [
-      1925919,
+      1938536,
       769
     ],
     "f9e00539c44942d94e3c6d20f0c90e63e810ea181b10f16a252c93e4ea5cefd7": [
-      1926723,
+      1939340,
       736
     ],
     "f025ccfb7dfb6bdfedc75ca0f67acc69e6fb4998143d834f7c2f38a29989680f": [
-      1927490,
+      1940107,
       731
     ],
     "48e488ce333f8a1e86a68b2a1df454464037f1ff580b5bff926053c56dbadc2d": [
-      1928243,
+      1940860,
       665
     ],
     "9eacbcb81be660840c714a560a9d65ba07913db98dd4baf969f78dd499fdd60f": [
-      1928928,
+      1941545,
       638
     ],
     "90eb64f0279b0d9432accfa6023ff803bc4965212383697eee27a0f426d5f8d5": [
-      954392,
+      978680,
       569
     ],
     "216486f29671a4262efe32af6d84a75bef398127f8c5f369b5c8305983887a06": [
-      1929614,
+      1942231,
       554
     ],
     "bf8e2ee14abe37650f7bfc63877fe6160b87103565f8797a0495f4315aaa912f": [
-      1930207,
+      1942824,
       522
     ],
     "b3d734001a94efff3579978d953391aa7115f877657d25eb54037a43875d078a": [
-      1930749,
+      1943366,
       499
     ],
     "92b81db30f7ab6d693e0af5661a40d273ca1947e891123ed823924192c10cbc7": [
-      954392,
+      978680,
       478
     ],
     "75767e53e6d21a2af55621f37a521e1974824a94d3dff655ec7b9be78aadd0cd": [
-      1931275,
+      1943892,
       359
     ],
     "c962ee4d1d05ddc138b202b2540219ebc57893fcf97b364852094a9a94ce1365": [
-      1931659,
+      1944276,
       281
     ],
     "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f": [
-      1931962,
+      1944579,
       126
     ],
     "db11fec9946737df39ca3898d9cd8c10ec6f6c3a884a6802b0ad0b81b4e8f23a": [
-      172124,
+      172423,
       17
     ]
   }
