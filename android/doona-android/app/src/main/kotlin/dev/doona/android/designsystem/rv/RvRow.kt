@@ -116,28 +116,44 @@ internal fun RvRow(
         val text = if (top) Modifier.weight(1f).alignBy(RvTitleTop) else Modifier.weight(1f)
         if (beside) {
             TextBesideEnd(titleText, subtitleText, minHeight, firstLine, trailing, top, text)
-        } else if (lineWise && endBusy) {
-            BusyAtEnd(text) {
-                LineWiseText(titleText, subtitleText, titleOverflow, titleEnd?.let(::hidden), subtitleEnd?.let(::hidden), minHeight, top, Modifier)
-            }
-        } else if (lineWise) {
-            LineWiseText(titleText, subtitleText, titleOverflow, titleEnd, subtitleEnd, minHeight, top, text)
-        } else if (top) {
-            RowTextColumn(minHeight, text) {
-                titleText.Shown(overflow = titleOverflow)
-                subtitleText?.let { UnderTitle { it.Shown(Rv.colors.textSecondary) } }
-            }
         } else {
-            Column(Modifier.weight(1f).padding(vertical = RvSpace.rowTextInset)) {
-                titleText.Shown(overflow = titleOverflow)
-                subtitleText?.let { UnderTitle { it.Shown(Rv.colors.textSecondary) } }
-            }
+            RowTextBlock(titleText, subtitleText, titleOverflow, LineEnds(titleEnd, subtitleEnd, endBusy), minHeight, top, text)
         }
         if (!beside) {
             trailing?.let {
                 Spacer(Modifier.width(RvSpace.trailingGap))
                 it()
             }
+        }
+    }
+}
+
+/** A line-wise row's ends ([RvRow]'s titleEnd and subtitleEnd), and whether a busy bar stands in for them. */
+private class LineEnds(val title: (@Composable () -> Unit)?, val subtitle: (@Composable () -> Unit)?, val busy: Boolean)
+
+/**
+ * [RvRow]'s text where no end stands beside it in a trailing column: line-wise with its [ends] ([LineWiseText]), the
+ * same under a busy bar that keeps the ends' room while they are busy ([BusyAtEnd]), or title over subtitle, from the
+ * title's top with a subtitle ([RowTextColumn]) and centred in the row without one.
+ */
+@Composable
+private fun RowTextBlock(titleText: RowText, subtitleText: RowText?, titleOverflow: TextOverflow, ends: LineEnds, minHeight: Dp, top: Boolean, modifier: Modifier) {
+    val lineWise = ends.title != null || ends.subtitle != null
+    if (lineWise && ends.busy) {
+        BusyAtEnd(modifier) {
+            LineWiseText(titleText, subtitleText, titleOverflow, ends.title?.let(::hidden), ends.subtitle?.let(::hidden), minHeight, top, Modifier)
+        }
+    } else if (lineWise) {
+        LineWiseText(titleText, subtitleText, titleOverflow, ends.title, ends.subtitle, minHeight, top, modifier)
+    } else if (top) {
+        RowTextColumn(minHeight, modifier) {
+            titleText.Shown(overflow = titleOverflow)
+            subtitleText?.let { UnderTitle { it.Shown(Rv.colors.textSecondary) } }
+        }
+    } else {
+        Column(modifier.padding(vertical = RvSpace.rowTextInset)) {
+            titleText.Shown(overflow = titleOverflow)
+            subtitleText?.let { UnderTitle { it.Shown(Rv.colors.textSecondary) } }
         }
     }
 }
