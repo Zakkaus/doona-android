@@ -9,11 +9,15 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.InputModeManager
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -21,13 +25,17 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -39,6 +47,7 @@ import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvRangeRow
 import dev.doona.android.designsystem.rv.RvRowPart
 import dev.doona.android.designsystem.rv.RvSegmented
+import dev.doona.android.designsystem.rv.RvSheetLayout
 import dev.doona.android.designsystem.rv.rvPress
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -51,7 +60,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** A focused clickable draws a 2 dp primary outline for a keyboard or a switch and never for a touch (owner, 2026-11-25, q-a11y-focus). */
+/** A focused clickable draws a 2 dp primary outline for a keyboard or a switch and never for a touch (owner, 2026-11-25, q-a11y-focus). The sheet's scrim takes no focus at all. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = RV_EN)
@@ -96,8 +105,38 @@ class RvFocusTest {
         assertEquals(2f, RvChrome.focusRing.value, 0f)
     }
 
+    @Test
+    fun theSheetScrimTakesNoKeyboardFocusAndStillDismisses() {
+        var dismissed = 0
+        lateinit var focus: FocusManager
+        compose.rvContent(dark = false) {
+            focus = LocalFocusManager.current
+            input = LocalInputModeManager.current
+            RvSheetLayout({ 1f }, { dismissed++ }, SHEET) {
+                Box(Modifier.size(120.dp, 56.dp).testTag("a").rvPress(RoundedCornerShape(12.dp), Role.Button, onClick = {}))
+            }
+        }
+        val scrim = compose.onNode(SemanticsMatcher("the scrim") { it.config.getOrElseNullable(SemanticsActions.OnClick) { null }?.label == SHEET })
+        // Tab's first stop is the sheet's own control, not the scrim behind it, and the scrim refuses focus outright.
+        compose.runOnIdle {
+            input.requestInputMode(InputMode.Keyboard)
+            focus.moveFocus(FocusDirection.Next)
+        }
+        compose.onNodeWithTag("a").assertIsFocused()
+        scrim.performSemanticsAction(SemanticsActions.RequestFocus)
+        scrim.assertIsNotFocused()
+        compose.onNodeWithTag("a").assertIsFocused()
+        // A screen reader's click and a tap outside the card still dismiss it.
+        scrim.performSemanticsAction(SemanticsActions.OnClick)
+        scrim.performTouchInput { click(Offset(1f, 1f)) }
+        compose.runOnIdle { assertEquals(2, dismissed) }
+    }
+
     private companion object {
         /** A point on the 2 dp outline, 1 dp inside the top edge. */
         const val RING_PROBE_DP = 1f
+
+        /** The sheet's pane title, the scrim's click label. */
+        const val SHEET = "Sheet"
     }
 }
