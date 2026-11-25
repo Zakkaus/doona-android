@@ -158,4 +158,10 @@
     <string name="rv_score_udp_failed">UDP 測試未通過</string>
     <string name="rv_policy_failed_quic">無法變更「封鎖 QUIC」</string>
     <string name="rv_policy_failed_update">無法更新訂閱</string>
+    <string name="rv_network_apply_to">套用到</string>
+    <string name="rv_group_by_stability">依穩定</string>
+    <string name="rv_group_by_name">依名稱</string>
+    <string name="rv_group_by_region">依地區</string>
+    <string name="rv_group_no_match">找不到符合的節點</string>
+    <string name="rv_group_apart">分開選擇 TCP/UDP</string>
 </resources>

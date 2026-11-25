@@ -1,11 +1,8 @@
 package dev.doona.android.app
 
-import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
-import androidx.compose.ui.test.hasClickAction
-import androidx.compose.ui.test.hasProgressBarRangeInfo
 import androidx.compose.ui.test.hasSetTextAction
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -14,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.navigation3.runtime.NavKey
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -51,46 +49,33 @@ class PolicyFlowsTest {
     private fun shows(text: String) = compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
 
     @Test
-    fun `a chip for a group inside opens that group's page, and back returns to the parent`() {
-        show(FakeEngine(), ActivityKey, PoliciesKey, GroupKey("g-Proxy"))
-        compose.onNodeWithText("Groups inside").assertExists()
-
-        compose.onAllNodes(hasText("Auto") and hasClickAction())[0].performClick()
-        compose.onNodeWithText("Groups inside").assertDoesNotExist()
-        compose.onNodeWithText("Auto").assertExists()
-        compose.onNodeWithText("Test this group").assertExists()
-
-        compose.onNodeWithContentDescription("Back").performClick()
-        compose.onNodeWithText("Groups inside").assertExists()
-        compose.onNodeWithText("Proxy").assertExists()
-    }
-
-    @Test
-    fun `a tapped member is pinned in its group`() {
+    fun `a tapped node is chosen in its group`() {
         val engine = FakeEngine()
         show(engine, ActivityKey, PoliciesKey, GroupKey("g-Auto"))
-        compose.onNodeWithText("jp-01").performClick()
+        // The row's own click, not a tap at its centre, which a scroll can leave under the floating 測試群組.
+        compose.waitUntil(READ_MS) { shows("jp-01") }
+        compose.onNodeWithText("jp-01").performSemanticsAction(SemanticsActions.OnClick)
         compose.runOnIdle {
             val auto = engine.groups.value.single { it.id == "g-Auto" }
             assertEquals("n-85d011c7e5f60718", auto.selectedId)
             assertTrue(auto.pinned)
         }
-        compose.onNodeWithText("Return to automatic").assertExists()
     }
 
     @Test
-    fun `a group page waits with progress and a way back until the engine has loaded`() {
+    fun `a group page shows its name and a way back until the engine has loaded`() {
         // As the real engine is before it has loaded: no groups yet, so the one the page names is not known to exist.
         val engine = FakeEngine(groups = emptyList()).apply { ready.value = false }
         show(engine, ActivityKey, PoliciesKey, GroupKey("g-Proxy"))
         compose.onNodeWithContentDescription("Back").assertExists()
-        compose.onNode(hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate)).assertExists()
+        compose.onNodeWithText("Test this group").assertDoesNotExist()
 
         compose.runOnIdle {
             engine.groups.value = FakeEngine.SAMPLE_GROUPS
             engine.ready.value = true
         }
-        compose.onNodeWithText("Groups inside").assertExists()
+        // The page reads the engine off the main thread, which waitForIdle does not wait for.
+        compose.waitUntil(READ_MS) { shows("Test this group") }
     }
 
     @Test
@@ -196,14 +181,15 @@ class PolicyFlowsTest {
                 return fake.addSubscription(url, name, userAgent)
             }
         }
-        show(engine, ActivityKey, PoliciesKey, SubscriptionsKey)
+        // The settings' row is the way back to the page; 策略 has no button for it.
+        show(engine, ActivityKey, SettingsKey, SubscriptionsKey)
         compose.onNodeWithText("Add subscription").performClick()
         typeUrl()
         compose.onNodeWithText("Add").performClick()
         compose.runOnIdle { assertEquals(1, calls) }
 
         compose.onNodeWithContentDescription("Back").performClick()
-        compose.onNodeWithContentDescription("Subscriptions").performClick()
+        compose.onNodeWithText("Subscriptions").performClick()
         if (!shows("Add")) compose.onNodeWithText("Add subscription").performClick()
         compose.onAllNodes(hasSetTextAction() and isEnabled()).fetchSemanticsNodes().firstOrNull()?.let { typeUrl() }
         compose.onNodeWithText("Add").performClick()
@@ -216,3 +202,5 @@ class PolicyFlowsTest {
         }
     }
 }
+
+private const val READ_MS = 5_000L

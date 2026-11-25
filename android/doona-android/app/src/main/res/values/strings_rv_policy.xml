@@ -175,4 +175,10 @@
     <string name="rv_score_udp_failed">UDP test failed</string>
     <string name="rv_policy_failed_quic">Could not change Block QUIC</string>
     <string name="rv_policy_failed_update">Could not update the subscriptions</string>
+    <string name="rv_network_apply_to">Apply to</string>
+    <string name="rv_group_by_stability">By stability</string>
+    <string name="rv_group_by_name">By name</string>
+    <string name="rv_group_by_region">By region</string>
+    <string name="rv_group_no_match">No matching nodes</string>
+    <string name="rv_group_apart">Choose TCP/UDP apart</string>
 </resources>

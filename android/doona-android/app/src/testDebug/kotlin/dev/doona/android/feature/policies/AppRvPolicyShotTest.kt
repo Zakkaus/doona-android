@@ -90,7 +90,8 @@ class AppRvPolicyShotTest {
         }
         compose.rvContent(dark = false) { Page({ failing }) }
         compose.onAllNodes(hasText(text(R.string.rv_failed_switch_mode)), useUnmergedTree = true).fetchSemanticsNodes().let { assertEquals(0, it.size) }
-        compose.onNode(hasText(text(R.string.mode_direct)), useUnmergedTree = true).performClick()
+        // The mode switch heads the page; the rules below it can also go 直連.
+        compose.onAllNodes(hasText(text(R.string.mode_direct)), useUnmergedTree = true)[0].performClick()
         compose.waitForIdle()
         compose.onNode(hasText(text(R.string.rv_failed_switch_mode)), useUnmergedTree = true).assertExists()
         compose.onNode(hasText(text(R.string.error_busy)), useUnmergedTree = true).assertExists()

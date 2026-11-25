@@ -28,14 +28,8 @@ import dev.doona.android.feature.model.text
 import dev.doona.android.feature.nodes.ui.RvNodeSection
 import dev.doona.android.feature.nodes.ui.RvRowsComposed
 import dev.doona.android.feature.nodes.ui.matches
+import dev.doona.android.feature.policies.RV_SECTIONS_OPEN_UP_TO
 import dev.doona.android.prototype.rv.data.RvData
-
-/**
- * A group with this many subscriptions or fewer lists every one open; with more, only the section that holds the chosen
- * node starts open. Two sections are about a screenful, so the nodes are in reach by scrolling; from three on a page of
- * open sections is several screens, and the 訂閱 rows are the index to find a section by.
- */
-internal const val RV_SECTIONS_OPEN_UP_TO = 2
 
 /**
  * nbmany v2, the selector group's page built like the node picker (節點): the page's title and caption, the chosen node's

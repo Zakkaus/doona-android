@@ -2,6 +2,7 @@ package dev.doona.android.app
 
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -19,6 +20,9 @@ import org.junit.runner.RunWith
 class NavigationTest {
     @get:Rule
     val compose = createComposeRule()
+
+    /** Waits for [text]: the pages read the engine off the main thread, which waitForIdle does not wait for. */
+    private fun appears(text: String) = compose.waitUntil(READ_MS) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
 
     @Test
     fun `switching tabs keeps 活動 at the bottom`() {
@@ -45,15 +49,14 @@ class NavigationTest {
     fun `the back stack survives saving and restoring`() {
         val restoration = StateRestorationTester(compose)
         val engine = FakeEngine(FakeEngine.SAMPLE_GROUPS)
-        restoration.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}) } }
-        compose.onNodeWithText("Policies").performClick()
-        compose.onNodeWithText("Proxy").performClick()
+        restoration.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, PoliciesKey, GroupKey("g-Auto"))) } }
+        appears(TEST_GROUP)
 
         restoration.emulateSavedInstanceStateRestore()
 
-        compose.onNodeWithText("Proxy").assertExists()
+        appears(TEST_GROUP)
         compose.onNodeWithContentDescription("Back").performClick()
-        compose.onNodeWithText("Manual 1").assertExists()
+        appears(POLICIES)
     }
 
     @Test
@@ -75,19 +78,19 @@ class NavigationTest {
         compose.onNodeWithContentDescription("Back").performClick()
         compose.mainClock.autoAdvance = true
 
-        compose.onNodeWithText("Manual 1").assertExists()
+        appears(POLICIES)
     }
 
     @Test
     fun `a group page leaves when its group is removed`() {
         val engine = FakeEngine(FakeEngine.SAMPLE_GROUPS)
-        compose.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}, start = GROUP) } }
-        compose.onNodeWithText("Proxy").assertExists()
+        compose.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, PoliciesKey, GroupKey("g-Auto"))) } }
+        appears(TEST_GROUP)
 
-        engine.groups.value = engine.groups.value.filter { it.id != "g-Proxy" }
+        engine.groups.value = engine.groups.value.filter { it.id != "g-Auto" }
 
         compose.onNodeWithContentDescription("Back").assertDoesNotExist()
-        compose.onNodeWithText("Manual 0").assertExists()
+        appears(POLICIES)
     }
 
     @Test
@@ -99,9 +102,17 @@ class NavigationTest {
         engine.groups.value = FakeEngine.SAMPLE_GROUPS
         engine.ready.value = true
 
-        compose.onNodeWithText("Proxy").assertExists()
+        appears(TEST_GROUP)
         compose.onNodeWithContentDescription("Back").assertExists()
     }
 }
 
 private val GROUP = listOf<NavKey>(ActivityKey, PoliciesKey, GroupKey("g-Proxy"))
+
+/** The group page's button, there once the group is read. */
+private const val TEST_GROUP = "Test this group"
+
+/** 策略's line under its mode switch, in the fixture's mode (全域), there once the profile is read. */
+private const val POLICIES = "All traffic goes through the main node"
+
+private const val READ_MS = 5_000L

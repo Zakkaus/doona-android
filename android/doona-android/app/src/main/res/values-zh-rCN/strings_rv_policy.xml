@@ -158,4 +158,10 @@
     <string name="rv_score_udp_failed">UDP 测试未通过</string>
     <string name="rv_policy_failed_quic">无法更改“屏蔽 QUIC”</string>
     <string name="rv_policy_failed_update">无法更新订阅</string>
+    <string name="rv_network_apply_to">应用到</string>
+    <string name="rv_group_by_stability">按稳定</string>
+    <string name="rv_group_by_name">按名称</string>
+    <string name="rv_group_by_region">按地区</string>
+    <string name="rv_group_no_match">找不到符合的节点</string>
+    <string name="rv_group_apart">分开选择 TCP/UDP</string>
 </resources>

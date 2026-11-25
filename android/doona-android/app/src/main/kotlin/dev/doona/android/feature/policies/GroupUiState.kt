@@ -17,7 +17,7 @@ internal data class GroupFailure(val action: GroupAction, val code: ErrorCode)
  * What a group's page shows: the group with its nodes ([group], null once the engine is ready and has no such group), the
  * subscriptions its nodes come from, the node each network uses with the 分開選擇 switch ([choice]), the network the next
  * tap applies to ([apply]), and for a Score group ([isScore]) Score's evidence ([score], null until read). [nowEpochMs]
- * is when it was read, for the subscriptions' end dates.
+ * is when it was read, for the subscriptions' end dates; [testing] while the group's latency test runs.
  */
 @Immutable
 internal data class GroupUiState(
@@ -29,5 +29,6 @@ internal data class GroupUiState(
     val score: ScoreGroup? = null,
     val isScore: Boolean = false,
     val nowEpochMs: Long = 0L,
+    val testing: Boolean = false,
     val failure: GroupFailure? = null,
 )

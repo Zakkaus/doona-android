@@ -154,6 +154,36 @@ class GroupViewModelTest {
     }
 
     @Test
+    fun `retry hands the failed call over again, as it was made`() = runTest {
+        val engine = Recording("n2")
+        val vm = collected(engine)
+        vm.onApply(RvApplyTo.Udp)
+        engine.result = Result.failure(EngineException(ErrorCode.Busy))
+        vm.onTap("n3")
+        engine.result = Result.success(Unit)
+        vm.retry()
+        assertEquals(listOf("select $SELECTOR n3 Udp", "select $SELECTOR n3 Udp"), engine.calls)
+        assertNull(vm.uiState.value.failure)
+        assertEquals("n3", vm.uiState.value.choice!!.udpId)
+    }
+
+    @Test
+    fun `retry with nothing failed calls nothing`() = runTest {
+        val engine = Recording()
+        collected(engine).retry()
+        assertTrue(engine.calls.isEmpty())
+    }
+
+    @Test
+    fun `the page knows while its group is being tested`() = runTest {
+        val base = FakeEngine(Recording.groups("n1"))
+        val vm = collected(base)
+        assertFalse(vm.uiState.value.testing)
+        base.groups.value = base.groups.value.map { if (it.id == SELECTOR) it.copy(testing = true) else it }
+        assertTrue(vm.uiState.value.testing)
+    }
+
+    @Test
     fun `an unknown group has no page once read`() = runTest {
         val state = collected(Recording(), "g-Gone").uiState.value
         assertFalse(state.loading)

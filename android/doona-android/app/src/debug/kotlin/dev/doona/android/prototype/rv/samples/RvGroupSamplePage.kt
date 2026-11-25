@@ -49,6 +49,8 @@ import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.text
+import dev.doona.android.feature.policies.ApplyCard
+import dev.doona.android.feature.policies.NetworkCard
 import dev.doona.android.feature.policies.RvApplyChoice
 import dev.doona.android.feature.policies.RvApplyTo
 
@@ -104,49 +106,6 @@ internal fun RvGroupCaption(group: RvPolicyGroup) {
 @Composable
 internal fun RvGroupChip(node: RvNode) {
     RvStatusChip(R.drawable.rv_nodes_ic_check_circle, stringResource(R.string.rv_policy_selected, node.name, latencyText(node.latencyMs)), Rv.colors.positive)
-}
-
-/** 目前使用中: the switch 分開選擇 TCP 與 UDP, then a row for each network, its line beginning with the network. */
-@Composable
-internal fun NetworkCard(group: RvPolicyGroup, choice: RvApplyChoice, onApart: (RvApplyChoice) -> Unit) {
-    RvCard {
-        RvCardHeader(stringResource(R.string.rv_nodes_in_use))
-        RvSwitchRow(R.drawable.rv_sym_account_tree, sampleText("分開選擇 TCP/UDP", "分开选择 TCP/UDP", "Choose TCP/UDP apart"), choice.apart, onChange = { onApart(choice) })
-        if (choice.apart) {
-            NetworkRow(group.members.first { it.id == choice.tcpId }, stringResource(R.string.ui_tcp))
-            NetworkRow(group.members.first { it.id == choice.udpId }, stringResource(R.string.ui_udp))
-        } else {
-            NetworkRow(group.members.first { it.id == choice.tcpId }, null)
-        }
-    }
-}
-
-@Composable
-private fun NetworkRow(node: RvNode, network: String?) {
-    val place = stringResource(node.place.label)
-    val shown = rvShownName(node.name)
-    RvRow(
-        { RvNameDisc(shown.mark, node.place.flag, current = true) },
-        shown.text.ifEmpty { rvMarkName(shown.mark, place) },
-        listOfNotNull(network, node.protocol, place).joinToString(SEPARATOR),
-        onClick = {},
-        titleKeepWords = false,
-    ) { RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut) }
-}
-
-/**
- * 套用到 (nbtap): the library's segmented control, the one 策略's mode switch uses, in a card above the node list as
- * 'Top movers' holds its own ([RvNodesSize.topRowGap] and the card's foot as there). 'TCP 與 UDP' first (nborder).
- */
-@Composable
-internal fun ApplyCard(selected: RvApplyTo, onSelect: (RvApplyTo) -> Unit) {
-    val options = RvApplyTo.entries
-    val labels = listOf("TCP/UDP", stringResource(R.string.ui_tcp), stringResource(R.string.ui_udp))
-    RvCard {
-        RvCardHeader(sampleText("套用到", "应用到", "Apply to"))
-        RvSegmented(labels, options.indexOf(selected), { onSelect(options[it]) }, Modifier.padding(horizontal = RvSpace.rowPadding))
-        Spacer(Modifier.height(RvNodesSize.topRowGap))
-    }
 }
 
 /** The nodes, fastest first: [rows] of them, then 查看全部. A row's tap picks the node for [apply]'s network. */

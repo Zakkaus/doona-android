@@ -102,7 +102,7 @@ class HubNavigationTest {
 
     @Test
     fun besideARailTheSheetClearsTheGestureBar() {
-        compose.setVariantContent(Landscape) { screenCases().first { it.name == "group" }.content() }
+        compose.setVariantContent(Landscape) { screenCases().first { it.name == "subscriptions" }.content() }
         compose.onNode(sheetScroll()).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 100_000f) }
         compose.waitForIdle()
         val sheet = compose.layoutTree().descendants().first { it.role == LayoutRole.Sheet }

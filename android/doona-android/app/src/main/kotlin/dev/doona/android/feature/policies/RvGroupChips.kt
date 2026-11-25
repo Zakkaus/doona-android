@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.samples
+package dev.doona.android.feature.policies
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
@@ -16,7 +16,7 @@ import dev.doona.android.feature.model.rvSteadiness
 /**
  * The group page's two chips, as the 節點 page has them: the subscription at the start, the order at the end. Each opens a
  * menu of its choices; [subscription] is the picked subscription's name, null for all of them. The menus' glyphs are the
- * library's nearest (it has no sort glyphs): the subscription's feed mark, and one per order.
+ * library's nearest (it has no sort glyphs, s1125d: 排序選單圖示暫代): the subscription's feed mark, and one per order.
  */
 @Composable
 internal fun rvGroupChips(
@@ -30,16 +30,15 @@ internal fun rvGroupChips(
     val subs = listOf(RvMenuItem(all, R.drawable.rv_sym_rss_feed) { onSubscription(null) }) +
         subscriptions.map { sub -> RvMenuItem(sub.name, R.drawable.rv_sym_rss_feed) { onSubscription(sub.name) } }
     val orders = RvNodeSort.entries.map { sort -> RvMenuItem(stringResource(sort.label), sort.glyph()) { onOrder(sort) } }
-    return RvChipPick(subscription ?: all, items = subs) to RvChipPick(order.chipLabel(), items = orders)
+    return RvChipPick(subscription ?: all, items = subs) to RvChipPick(stringResource(order.chipLabel()), items = orders)
 }
 
-/** The order chip's label: 依延遲 and its kin (the 節點 page's string for latency, the others as its wording). */
-@Composable
-private fun RvNodeSort.chipLabel(): String = when (this) {
-    RvNodeSort.Latency -> stringResource(R.string.rv_nodes_by_latency)
-    RvNodeSort.Stability -> sampleText("依穩定", "按稳定", "By stability")
-    RvNodeSort.Name -> sampleText("依名稱", "按名称", "By name")
-    RvNodeSort.Region -> sampleText("依地區", "按地区", "By region")
+/** The order chip's label: 依延遲 and its kin. */
+private fun RvNodeSort.chipLabel(): Int = when (this) {
+    RvNodeSort.Latency -> R.string.rv_nodes_by_latency
+    RvNodeSort.Stability -> R.string.rv_group_by_stability
+    RvNodeSort.Name -> R.string.rv_group_by_name
+    RvNodeSort.Region -> R.string.rv_group_by_region
 }
 
 private fun RvNodeSort.glyph(): Int = when (this) {

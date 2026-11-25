@@ -46,6 +46,9 @@ internal class GroupViewModel(
     private val failure = MutableStateFlow<GroupFailure?>(null)
     private val read = MutableStateFlow<Read?>(null)
 
+    /** The call that failed last, for the banner's 重試; null once an attempt succeeds. */
+    private var retry: (() -> Unit)? = null
+
     /** Whether the networks differed in the last catalog read; null before the first. Only the reader touches it. */
     private var differed: Boolean? = null
 
@@ -98,8 +101,15 @@ internal class GroupViewModel(
      */
     private fun perform(action: GroupAction, call: suspend () -> Result<Unit>) {
         viewModelScope.launch {
-            failure.value = call().exceptionOrNull()?.let { GroupFailure(action, it.errorCode()) }
+            val error = call().exceptionOrNull()
+            retry = error?.let { { perform(action, call) } }
+            failure.value = error?.let { GroupFailure(action, it.errorCode()) }
         }
+    }
+
+    /** The banner's 重試: hands the failed call to the engine again, as it was first made. */
+    fun retry() {
+        retry?.invoke()
     }
 
     /**
@@ -170,6 +180,7 @@ internal class GroupViewModel(
         score = read?.score,
         isScore = read?.isScore ?: false,
         nowEpochMs = read?.nowEpochMs ?: 0L,
+        testing = catalog?.groups?.firstOrNull { it.id == groupId }?.testing ?: false,
         failure = failure,
     )
 
