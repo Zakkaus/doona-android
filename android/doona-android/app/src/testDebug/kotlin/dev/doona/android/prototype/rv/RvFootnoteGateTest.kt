@@ -10,7 +10,8 @@ import java.io.File
  * (`RvText`, `Text`, `BasicText`) in the secondary colour at the row subtitle's step, or a raw `Text`/`BasicText` in the
  * secondary colour, is listed in `rv-footnote-gate.txt` with why it is not a footnote (a value inside a card's row, a
  * centred header line); any other fails, and so does a listed one that is gone. The secondary colour is found by its
- * name or through a local `val` of the file that holds it (`val secondary = Rv.colors.textSecondary`).
+ * name or through a local `val` of the file that holds it (`val secondary = Rv.colors.textSecondary`). Comments and
+ * string literals are read as blanks, so a `{` or `(` in them neither opens a block nor a call.
  */
 class RvFootnoteGateTest {
     @Test
@@ -66,6 +67,58 @@ class RvFootnoteGateTest {
     fun anAliasStaysInItsScope() =
         caught(0, "@Composable\nfun One() {\n    val quiet = Rv.colors.textSecondary\n    RvCard { }\n}\n\n@Composable\nfun Two() {\n    val quiet = Rv.colors.text\n    RvText(note, Rv.type.rowSub, color = quiet)\n}\n")
 
+    /** An expression-bodied composable has no `{`: its parameter's default holds the colour in the expression. */
+    @Test
+    fun anExpressionBodysDefaultParameterIsResolved() =
+        caught(1, "@Composable\nfun Plant(note: String, tint: Color = Rv.colors.textSecondary) = RvText(note, Rv.type.rowSub, color = tint)\n")
+
+    /** The expression's scope ends with it: the next function's text in a colour of the same name is not caught. */
+    @Test
+    fun anExpressionBodysParameterStaysInItsExpression() {
+        val found = calls(
+            "@Composable\nfun Plant(note: String, tint: Color = Rv.colors.textSecondary) =\n    RvText(note, Rv.type.rowSub, color = tint)\n\n" +
+                "@Composable\nfun Other(tint: Color) {\n    RvCard { }\n    RvText(other, Rv.type.rowSub, color = tint)\n}\n",
+        )
+        assertEquals(listOf("RvText(note, Rv.type.rowSub, color = tint)"), found)
+    }
+
+    /** A `{` in a comment paired with a later `}`, so the alias's block reached the file's end and the next function. */
+    @Test
+    fun aBraceInACommentOpensNoBlock() =
+        caught(
+            0,
+            "@Composable\nfun One() {\n    val quiet = Rv.colors.textSecondary\n    Column {\n        // (see {below\n    }\n}\n\n" +
+                "@Composable\nfun Two(quiet: Color) {\n    RvText(note, Rv.type.rowSub, color = quiet)\n}\n",
+        )
+
+    /** The same through a string literal. */
+    @Test
+    fun aBraceInAStringOpensNoBlock() =
+        caught(
+            0,
+            "@Composable\nfun One() {\n    val quiet = Rv.colors.textSecondary\n    Column {\n        val hint = \"(see {below\"\n    }\n}\n\n" +
+                "@Composable\nfun Two(quiet: Color) {\n    RvText(note, Rv.type.rowSub, color = quiet)\n}\n",
+        )
+
+    /** A `(` in a comment inside a call does not run the call past its `)`, and a call in a comment is no call. */
+    @Test
+    fun aParenthesisInACommentKeepsTheCallsEnd() {
+        val found = calls(
+            "@Composable\nfun Plant() {\n    // RvText(old, Rv.type.rowSub, color = Rv.colors.textSecondary)\n" +
+                "    RvText(\n        note, // (see {below\n        Rv.type.rowSub,\n        color = Rv.colors.textSecondary,\n    )\n    RvCard { }\n}\n",
+        )
+        assertEquals(listOf("RvText( note, // (see {below Rv.type.rowSub, color = Rv.colors.textSecondary, )"), found)
+    }
+
+    /** The calls [source] is caught on, each as the allowlist writes it (after the path). */
+    private fun calls(source: String): List<String> {
+        val plant = File.createTempFile("RvPlant", ".kt").apply {
+            writeText(source)
+            deleteOnExit()
+        }
+        return rvFootnoteLike(plant).map { it.substringAfter('\t') }
+    }
+
     private fun caught(count: Int, source: String) {
         val plant = File.createTempFile("RvPlant", ".kt").apply {
             writeText(source)
@@ -83,10 +136,11 @@ class RvFootnoteGateTest {
 /** The calls of [file] that draw secondary text in the footnote's role: `path<TAB>call`, the call's words on one line. */
 internal fun rvFootnoteLike(file: File): List<String> {
     val source = file.readText()
-    val colours = RvColourNames(source)
-    val calls = Regex("""\b(RvText|Text|BasicText)\(""").findAll(source).mapNotNull { m ->
-        val close = closing(source, m.range.last)
-        val args = arguments(source.substring(m.range.last + 1, close))
+    val code = rvCode(source)
+    val colours = RvColourNames(code)
+    val calls = Regex("""\b(RvText|Text|BasicText)\(""").findAll(code).mapNotNull { m ->
+        val close = closing(code, m.range.last)
+        val args = arguments(code.substring(m.range.last + 1, close))
         val call = source.substring(m.range.first, close + 1).split(Regex("\\s+")).joinToString(" ")
         // An argument's value, never its name: `color = Rv.colors.text` is not the colour of an alias named `color`.
         val secondary = args.any { colours.secondary(it.value, m.range.first) }
@@ -101,7 +155,8 @@ internal fun rvFootnoteLike(file: File): List<String> {
  * The names a file gives the secondary colour, each in its scope: a `val` or `var` (typed or not, its value on one
  * line or more), a parameter's default, at file level or in a block, and an alias of an alias. A name holds the colour
  * from its declaration to the end of the block it is declared in (a parameter, in its function's body); the innermost
- * declaration of a name wins, so one function's alias does not reach another's same name.
+ * declaration of a name wins, so one function's alias does not reach another's same name. [source] is the file's
+ * [rvCode].
  */
 private class RvColourNames(private val source: String) {
     private class Name(val name: String, val from: Int, val to: Int, val secondary: Boolean)
@@ -126,10 +181,17 @@ private class RvColourNames(private val source: String) {
     private fun parameters() = PARAMETER.findAll(source).mapNotNull { m ->
         val start = m.range.last + 1
         val end = argumentEnd(start)
-        // The function's body: the first block after the parameter list closes.
+        // The function's body: an expression after `=` (an expression body has no block), else the first block after the
+        // parameter list closes.
         val listEnd = closingOfOpen(source, m.range.first)
-        val body = source.indexOf('{', listEnd).takeIf { it >= 0 } ?: return@mapNotNull null
-        Quad(m.range.first, m.groupValues[1], source.substring(start, end), body..(blocks[body] ?: source.length))
+        val expression = EXPRESSION_BODY.matchAt(source, listEnd + 1)
+        val scope = if (expression != null) {
+            expression.range.last..valueEnd(expression.range.last + 1)
+        } else {
+            val body = source.indexOf('{', listEnd).takeIf { it >= 0 } ?: return@mapNotNull null
+            body..(blocks[body] ?: source.length)
+        }
+        Quad(m.range.first, m.groupValues[1], source.substring(start, end), scope)
     }.toList()
 
     /** Where a declaration's value ends: the line's end at depth 0, unless the next line goes on with the expression. */
@@ -173,9 +235,98 @@ private class RvColourNames(private val source: String) {
     private companion object {
         val DECLARATION = Regex("""\b(?:val|var)\s+(\w+)\s*(?::\s*[\w.?<>, ]+?)?\s*=(?!=)""")
         val PARAMETER = Regex("""[(,]\s*(?:@\w+\s+)*(?:(?:private|internal)\s+)?(?:val\s+|var\s+)?(\w+)\s*:\s*[\w.?<>]+\s*=(?!=)""")
+        val EXPRESSION_BODY = Regex("""\s*(?::\s*[\w.?<>, ]+?)?\s*=(?!=)""")
         val CONTINUATION = Regex("""\s*(else\b|\?:|\.|&&|\|\||\+|-|\*|/)""")
         val IDENTIFIER = Regex("""(?<![.\w])[A-Za-z_]\w*""")
     }
+}
+
+/**
+ * [source] with every comment and string literal (its quotes and templates too) turned to spaces, its line breaks kept,
+ * so each offset stays where it was and only code is left to read for braces, calls and arguments.
+ */
+internal fun rvCode(source: String): String {
+    val out = source.toCharArray()
+    val n = source.length
+
+    fun blank(from: Int, to: Int) {
+        for (k in from until minOf(to, n)) if (out[k] != '\n') out[k] = ' '
+    }
+
+    fun string(at: Int): Int {
+        val raw = source.startsWith("\"\"\"", at)
+        var i = at + if (raw) 3 else 1
+        while (i < n) {
+            when {
+                raw && source.startsWith("\"\"\"", i) -> return (i + 3 until n).firstOrNull { source[it] != '"' } ?: n
+
+                !raw && source[i] == '\\' -> i += 2
+
+                !raw && source[i] == '"' -> return i + 1
+
+                !raw && source[i] == '\n' -> return i
+
+                source.startsWith("\${", i) -> {
+                    // A template's code may hold strings of its own; it ends at its own `}`.
+                    var depth = 1
+                    i += 2
+                    while (i < n && depth > 0) {
+                        when (source[i]) {
+                            '"' -> i = string(i) - 1
+                            '{' -> depth++
+                            '}' -> depth--
+                        }
+                        i++
+                    }
+                }
+
+                else -> i++
+            }
+        }
+        return n
+    }
+
+    var i = 0
+    while (i < n) {
+        val end = when {
+            source.startsWith("//", i) -> source.indexOf('\n', i).let { if (it < 0) n else it }
+
+            source.startsWith("/*", i) -> {
+                // Kotlin's block comments nest.
+                var depth = 0
+                var k = i
+                while (k < n) {
+                    if (source.startsWith("/*", k)) {
+                        depth++
+                        k += 2
+                    } else if (source.startsWith("*/", k)) {
+                        depth--
+                        k += 2
+                        if (depth == 0) break
+                    } else {
+                        k++
+                    }
+                }
+                k
+            }
+
+            source[i] == '"' -> string(i)
+
+            source[i] == '\'' -> {
+                val close = source.indexOf('\'', i + if (source.getOrNull(i + 1) == '\\') 3 else 2)
+                if (close < 0) i + 1 else close + 1
+            }
+
+            else -> -1
+        }
+        if (end < 0) {
+            i++
+        } else {
+            blank(i, end)
+            i = end
+        }
+    }
+    return String(out)
 }
 
 /** Each `{` of [source] with its matching `}`. */
