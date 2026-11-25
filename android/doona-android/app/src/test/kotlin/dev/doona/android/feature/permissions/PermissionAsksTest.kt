@@ -160,6 +160,16 @@ class PermissionAsksTest {
     }
 
     @Test
+    fun theSystemsDialogsAnswerInANewProcessClearsTheOpenFlag() {
+        status(running = true)
+        asks.confirm()
+        val handle = SavedStateHandle(saved.keys().associateWith { saved.get<Any?>(it) })
+        assertEquals("open while the dialog is up", true, handle.get<Boolean>("notify_open"))
+        PermissionAsks(handle).notifyAnswered(granted = true)
+        assertEquals("closed by the answer", false, handle.get<Boolean>("notify_open"))
+    }
+
+    @Test
     fun aConnectDuringTheNotificationsExplanationWaitsBehindIt() {
         status(running = true)
         assertEquals("a 連線 from the tile", PermissionStep.Wait, asks.connect(consentNeeded = true))

@@ -3,6 +3,8 @@ package dev.doona.android.app
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Bundle
 import android.os.Looper
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
@@ -190,6 +192,35 @@ class MainActivityTest {
             scenario.onActivity { it.asks().dismiss() }
             assertTrue(runBlocking { settings.notifyAsked.first() })
         }
+    }
+
+    @Test
+    fun `the answer to the system's notification dialog reaches the activity a dead process brings back`() {
+        shadowOf(app).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        ShadowVpnService.setPrepareResult(null)
+        val first = Robolectric.buildActivity(MainActivity::class.java, connect).setup()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(Permission.Notify, first.get().asks().showing.value)
+        first.get().onPermissionStep(first.get().asks().confirm())
+        val requestCode = shadowOf(first.get()).lastRequestedPermission.requestCode
+
+        // The process dies while the system's dialog is up: only the saved state and the registry's mapping survive.
+        val state = Bundle()
+        first.pause().saveInstanceState(state).stop().destroy()
+        val second = Robolectric.buildActivity(MainActivity::class.java, connect).create(state).start().restoreInstanceState(state)
+            .postCreate(state).resume().visible()
+        val asks = second.get().asks()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertNull("not explained again while the dialog is up", asks.showing.value)
+        assertFalse(runBlocking { settings.notifyAsked.first() })
+
+        val denied = intArrayOf(PackageManager.PERMISSION_DENIED)
+        second.get().onRequestPermissionsResult(requestCode, arrayOf(Manifest.permission.POST_NOTIFICATIONS), denied)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals("the answer reached notifyAnswered", Permission.Notify, asks.refused.value)
+        assertTrue("and was stored", runBlocking { settings.notifyAsked.first() })
+        assertFalse(asks.unrecorded.value)
+        second.close()
     }
 
     @Test
