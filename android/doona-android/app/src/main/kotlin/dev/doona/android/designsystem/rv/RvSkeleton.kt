@@ -314,24 +314,27 @@ internal fun RvSkeletonHero() {
 
 /**
  * A line of [kind] in [style] as a bar: the line is as tall as [RvText] sets one line of that text at this font scale
- * ([rvOneLine]), [width] of the room wide, and the bar ([RvSkeletonSize.BAR] of the text's size) is centred on it.
+ * ([rvOneLine]), [width] of the room wide, and the bar ([RvSkeletonSize.BAR] of the text's size) is centred on it. A
+ * row's title or subtitle ([lineBox]) is as tall as its role's Latin line box, as the row's own text.
  */
 @Composable
-internal fun RvSkeletonLine(style: TextStyle, width: Float, modifier: Modifier = Modifier, kind: RvSkeletonText = RvSkeletonText.Words) {
-    Box(modifier.fillMaxWidth(width).height(rvOneLine(kind.sample, style)).testTag(RvPart.SKELETON_LINE), contentAlignment = Alignment.Center) { Bar(style, Modifier.fillMaxWidth()) }
+internal fun RvSkeletonLine(style: TextStyle, width: Float, modifier: Modifier = Modifier, kind: RvSkeletonText = RvSkeletonText.Words, lineBox: Boolean = false) {
+    Box(modifier.fillMaxWidth(width).height(rvOneLine(kind.sample, style, lineBox)).testTag(RvPart.SKELETON_LINE), contentAlignment = Alignment.Center) { Bar(style, Modifier.fillMaxWidth()) }
 }
 
 /**
  * A line of words the page knows before its data (a card's header, a control's caption, 出站模式, a node's name) as bars:
  * laid out as [RvText] lays out [text] in [style], up to [maxLines] ([rvLayout]: its wrap steps too), each line's bar
  * ([RvSkeletonSize.BAR] of the text's size) as wide as that line's words and centred on it, so the skeleton takes the
- * text's own box at any font size. Silent to a screen reader.
+ * text's own box at any font size; a row's title or subtitle ([lineBox]) its role's Latin line boxes ([RvLineBox]), as
+ * the row's. Silent to a screen reader.
  */
 @Composable
-internal fun RvSkeletonLabel(text: String, style: TextStyle, modifier: Modifier = Modifier, maxLines: Int = Int.MAX_VALUE) {
+internal fun RvSkeletonLabel(text: String, style: TextStyle, modifier: Modifier = Modifier, maxLines: Int = Int.MAX_VALUE, lineBox: Boolean = false) {
     val measurer = rememberTextMeasurer()
     val lines = remember { mutableStateOf<TextLayoutResult?>(null) }
-    val policy = remember(text, style, maxLines, measurer) { LabelLayout(text, style, maxLines, measurer, lines) }
+    val box = if (lineBox) rvLineBox(style) else null
+    val policy = remember(text, style, maxLines, measurer, box) { LabelLayout(text, style, maxLines, measurer, lines, box) }
     val track = Rv.colors.track
     val tall = with(LocalDensity.current) { style.fontSize.toPx() } * RvSkeletonSize.BAR
     Layout(
@@ -357,20 +360,24 @@ private class LabelLayout(
     private val maxLines: Int,
     private val measurer: TextMeasurer,
     private val laid: MutableState<TextLayoutResult?>,
+    private val box: RvLineBox?,
 ) : MeasurePolicy {
     override fun MeasureScope.measure(measurables: List<Measurable>, constraints: Constraints): MeasureResult {
         val layout = measurer.rvLayout(text, style, maxLines, constraints.maxWidth)
         laid.value = layout
-        return layout(constraints.constrainWidth(layout.size.width), constraints.constrainHeight(layout.size.height)) {}
+        return layout(constraints.constrainWidth(layout.size.width), constraints.constrainHeight(boxed(layout))) {}
     }
 
     override fun IntrinsicMeasureScope.maxIntrinsicWidth(measurables: List<IntrinsicMeasurable>, height: Int) = oneLine()
 
     override fun IntrinsicMeasureScope.minIntrinsicWidth(measurables: List<IntrinsicMeasurable>, height: Int) = oneLine()
 
-    override fun IntrinsicMeasureScope.maxIntrinsicHeight(measurables: List<IntrinsicMeasurable>, width: Int) = measurer.rvLayout(text, style, maxLines, width).size.height
+    override fun IntrinsicMeasureScope.maxIntrinsicHeight(measurables: List<IntrinsicMeasurable>, width: Int) = boxed(measurer.rvLayout(text, style, maxLines, width))
 
-    override fun IntrinsicMeasureScope.minIntrinsicHeight(measurables: List<IntrinsicMeasurable>, width: Int) = measurer.rvLayout(text, style, maxLines, width).size.height
+    override fun IntrinsicMeasureScope.minIntrinsicHeight(measurables: List<IntrinsicMeasurable>, width: Int) = boxed(measurer.rvLayout(text, style, maxLines, width))
+
+    /** The height of [layout], or of its lines' boxes where the label stands for a row's text. */
+    private fun boxed(layout: TextLayoutResult) = box?.of(layout.lineCount) ?: layout.size.height
 
     private fun oneLine() = measurer.measure(scripted(text), style, maxLines = 1).size.width
 }

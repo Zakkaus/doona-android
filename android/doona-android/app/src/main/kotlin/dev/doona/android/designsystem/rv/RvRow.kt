@@ -49,7 +49,8 @@ import kotlin.math.min
  * (`Hong Kong 02 IPLC`) and a long subtitle (`自動測速 · 48 個節點`) both fit where one trailing column would squeeze the
  * text column to its widest end. [trailing] (a chevron) still follows after both lines.
  *
- * The text follows the one row rule ([RV_ROW_TITLE_LINES], [RV_ROW_SUBTITLE_LINES], no gap between the lines);
+ * The text follows the one row rule ([RV_ROW_TITLE_LINES], [RV_ROW_SUBTITLE_LINES], no gap between the lines, each
+ * line its role's Latin line box whatever its script: [RvLineBox]);
  * [titleLines] and [titleOverflow] can keep a title to one line cut in the middle, which keeps both ends of a host:port
  * in view. Otherwise no end cuts the text it sits beside, nor is cut itself, nor makes it read badly: an end sits beside
  * its text where the text reads well there ([rvReadsWell]); else the text takes the whole line and the end goes under
@@ -102,8 +103,8 @@ internal fun RvRow(
             LineWiseText(title, subtitle, titleLines, titleOverflow, titleEnd, subtitleEnd, Modifier.weight(1f))
         } else {
             Column(Modifier.weight(1f).padding(vertical = RvSpace.rowTextInset)) {
-                RvText(title, Rv.type.rowTitle, maxLines = titleLines, overflow = titleOverflow)
-                subtitle?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES) }
+                RvText(title, Rv.type.rowTitle, maxLines = titleLines, overflow = titleOverflow, lineBox = true)
+                subtitle?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES, lineBox = true) }
             }
         }
         if (!beside) {
@@ -115,7 +116,11 @@ internal fun RvRow(
     }
 }
 
-/** A line-wise row's title and subtitle, each with its end ([RowLine]). */
+/**
+ * A line-wise row's title and subtitle, each with its end ([RowLine]). An end's text stands on its text's line, so it
+ * takes its role's Latin line box too ([LocalRvRowLine]): a line's height then depends on no script, nor on whether its
+ * end shows (節點's change, mixed, beside a subtitle held to the Latin box).
+ */
 @Composable
 private fun LineWiseText(
     title: String,
@@ -127,16 +132,19 @@ private fun LineWiseText(
     modifier: Modifier,
 ) {
     Column(modifier.padding(vertical = RvSpace.rowTextInset)) {
-        RowLine(titleEnd, RowText(title, Rv.type.rowTitle, titleLines).takeIf { titleOverflow == TextOverflow.Ellipsis }, figure = true) {
-            RvText(title, Rv.type.rowTitle, maxLines = titleLines, overflow = titleOverflow)
+        RowLine(titleEnd?.let(::onLine), RowText(title, Rv.type.rowTitle, titleLines).takeIf { titleOverflow == TextOverflow.Ellipsis }, figure = true) {
+            RvText(title, Rv.type.rowTitle, maxLines = titleLines, overflow = titleOverflow, lineBox = true)
         }
         subtitle?.let {
-            RowLine(subtitleEnd, RowText(it, Rv.type.rowSub, RV_ROW_SUBTITLE_LINES)) {
-                RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES)
+            RowLine(subtitleEnd?.let(::onLine), RowText(it, Rv.type.rowSub, RV_ROW_SUBTITLE_LINES)) {
+                RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES, lineBox = true)
             }
         }
     }
 }
+
+/** [end] on a row's line: its text in its role's Latin line box ([LocalRvRowLine]). */
+private fun onLine(end: @Composable () -> Unit): @Composable () -> Unit = { CompositionLocalProvider(LocalRvRowLine provides true, end) }
 
 /** [end] keeping its room, neither drawn nor read out. */
 private fun hidden(end: @Composable () -> Unit): @Composable () -> Unit = { Box(Modifier.alpha(0f).clearAndSetSemantics {}) { end() } }
@@ -182,8 +190,8 @@ private fun TextBesideEnd(title: String, subtitle: String?, titleLines: Int, min
     val subtitleText = subtitle?.let { RowText(it, Rv.type.rowSub, RV_ROW_SUBTITLE_LINES) }
     Layout(
         {
-            RvText(title, titleText.style, maxLines = titleLines)
-            subtitleText?.let { RvText(it.text, it.style, color = Rv.colors.textSecondary, maxLines = it.lines) }
+            RvText(title, titleText.style, maxLines = titleLines, lineBox = true)
+            subtitleText?.let { RvText(it.text, it.style, color = Rv.colors.textSecondary, maxLines = it.lines, lineBox = true) }
             Box { CompositionLocalProvider(LocalRvEndSide provides side, trailing) }
         },
         modifier,

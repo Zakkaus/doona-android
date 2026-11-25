@@ -12,14 +12,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.layout.AlignmentLine
+import androidx.compose.ui.layout.FirstBaseline
+import androidx.compose.ui.layout.LastBaseline
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFontFamilyResolver
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
@@ -34,8 +41,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.toSize
 import kotlin.math.ceil
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 /**
  * One line of text in a role; CJK runs in Noto, the rest in Inter. Cut short, it ends in an ellipsis right after the last
@@ -45,7 +55,10 @@ import kotlin.math.ceil
  * ellipsis in the middle of a single line instead. Given [autoSize], a line too long for its width shrinks to fit. A text
  * that wraps is laid out again until it reads well ([RvWrap]): a meta line breaks only between its parts, a value
  * breaks at its dots and its port's colon rather than inside a word, and the last line keeps a word, not one or two
- * letters (「當機」, not 「機」; 「不經代理」, not 「代理」).
+ * letters (「當機」, not 「機」; 「不經代理」, not 「代理」). A row's title and subtitle ([RvRow], the settings rows) take
+ * their role's Latin [lineBox] ([RvLineBox]), so the row's height and the disc and ends centred on it do not depend on
+ * the script of its text, as does an end on a row's line ([LocalRvRowLine]); any other text keeps the line boxes its
+ * fonts give it.
  */
 @Composable
 internal fun RvText(
@@ -57,6 +70,7 @@ internal fun RvText(
     maxLines: Int = 1,
     overflow: TextOverflow = TextOverflow.Ellipsis,
     autoSize: TextAutoSize? = null,
+    lineBox: Boolean = LocalRvRowLine.current,
 ) {
     val density = LocalDensity.current
     var cut by remember(text) { mutableStateOf<RvCut?>(null) }
@@ -64,9 +78,11 @@ internal fun RvText(
     var wrap by remember(text, style, density) { mutableStateOf(RvWrap()) }
     // The width the text is given before a narrower step takes its share, in px, as its last measure saw it.
     val given = remember { IntArray(1) }
+    val box = if (lineBox && autoSize == null) rvLineBox(style) else null
+    val shown = if (maxLines == 1) modifier else modifier.rvNarrower({ wrap.narrower }, given)
     BasicText(
         scripted(cut?.text ?: wrap.text(text)),
-        if (maxLines == 1) modifier else modifier.rvNarrower({ wrap.narrower }, given),
+        box?.let { shown.rvLineBoxes(it) } ?: shown,
         style.copy(color = color, textAlign = align),
         onTextLayout = { layout ->
             // The cut at a word is for one line ending in an ellipsis; any other line is the platform's.
@@ -101,6 +117,62 @@ internal fun RvSpanText(
 
 /** A line cut at a word for [width] px. */
 private class RvCut(val width: Int, val text: String)
+
+/**
+ * A row text's line boxes in a role, in px: the height of one line of Latin ([first]: Inter's ascent and descent, its line
+ * box trimmed to them at both ends) and the pitch from one line to the next. A line that mixes Inter and Noto takes
+ * Noto's ascent and Inter's descent, 1 px more than either alone (19 sp: 46 px for Latin or CJK, 47 for `關於 doona`),
+ * so without this a row's height, and the disc and controls centred on it, would depend on the script of its text.
+ * Only rows take it ([RvText]'s `lineBox`): text elsewhere keeps its fonts' line boxes.
+ */
+internal class RvLineBox(val first: Int, val pitch: Int) {
+    /** The height of [lines] lines' boxes. */
+    fun of(lines: Int): Int = first + (lines - 1).coerceAtLeast(0) * pitch
+}
+
+/** The line boxes of [style] at this density and font scale, measured once per role ([RvLineBox]); none without a line height. */
+@Composable
+internal fun rvLineBox(style: TextStyle): RvLineBox? {
+    if (!style.lineHeight.isSpecified) return null
+    val density = LocalDensity.current
+    val fonts = LocalFontFamilyResolver.current
+    val direction = LocalLayoutDirection.current
+    return remember(style, density, fonts, direction) {
+        val role = style.copy(color = Color.Unspecified, textAlign = TextAlign.Unspecified)
+        RV_LINE_BOXES.getOrPut(Triple(role, density, direction)) {
+            val measurer = TextMeasurer(fonts, density, direction, cacheSize = 0)
+            val one = measurer.measure(LATIN_LINE, role).size.height
+            val two = measurer.measure(LATIN_LINE + "\n" + LATIN_LINE, role).size.height
+            RvLineBox(one, two - one)
+        }
+    }
+}
+
+/** Whether text here is an end on a row's line ([RvRow]'s `titleEnd` and `subtitleEnd`): its [RvText] takes the line box. */
+internal val LocalRvRowLine = staticCompositionLocalOf { false }
+
+/** Each role's line boxes, by role, density and direction; a handful of entries for the whole app. */
+private val RV_LINE_BOXES = HashMap<Triple<TextStyle, Density, LayoutDirection>, RvLineBox>()
+
+/** The Latin a role's line box is measured on: Inter alone, as the type scale's metrics are Inter's. */
+private const val LATIN_LINE = "0"
+
+/**
+ * This text held to [box]'s line boxes: as tall as its lines' boxes, its foot on theirs. A text is taller than its boxes
+ * only by the px Noto's ascent adds over Inter's on a first line with Han in it, above any glyph, so that px is the one
+ * given up: the text rises by it, a mixed line then stands on the Latin baseline, and every glyph stays inside the
+ * boxes (Inter's descent is the larger, so the foot is Latin's in any script). Its node, read by a screen reader and by
+ * tests, is the boxes.
+ */
+private fun Modifier.rvLineBoxes(box: RvLineBox) = semantics {}.layout { measurable, constraints ->
+    val text = measurable.measure(constraints)
+    val first = text[FirstBaseline]
+    val last = text[LastBaseline]
+    val known = first != AlignmentLine.Unspecified && last != AlignmentLine.Unspecified
+    val lines = if (known) ((last - first).toFloat() / box.pitch).roundToInt() + 1 else 1
+    val height = box.of(lines).coerceIn(constraints.minHeight, constraints.maxHeight)
+    layout(text.width, height) { text.place(0, min(0, height - text.height)) }
+}
 
 /**
  * The text laid out [narrower] px narrower than it is given, the room kept at its end, as `padding(end)` would keep it
@@ -379,12 +451,14 @@ internal fun Modifier.rvFullLine(text: String, style: TextStyle): Modifier = hei
 
 /**
  * The height [text] takes on one line in [style] at this font scale. A line in sp does not grow with the font scale as
- * the font does, so at a large size this is the font's own height, past the style's line.
+ * the font does, so at a large size this is the font's own height, past the style's line. A row's line ([lineBox]) is
+ * held to its role's Latin line box, as [RvText] holds a row's title and subtitle.
  */
 @Composable
-internal fun rvOneLine(text: String, style: TextStyle): Dp {
+internal fun rvOneLine(text: String, style: TextStyle, lineBox: Boolean = false): Dp {
     val measurer = rememberTextMeasurer()
-    val px = remember(text, style, measurer) { measurer.measure(scripted(text), style, maxLines = 1).size.height }
+    val box = if (lineBox) rvLineBox(style) else null
+    val px = remember(text, style, measurer, box) { box?.first ?: measurer.measure(scripted(text), style, maxLines = 1).size.height }
     return with(LocalDensity.current) { px.toDp() }
 }
 

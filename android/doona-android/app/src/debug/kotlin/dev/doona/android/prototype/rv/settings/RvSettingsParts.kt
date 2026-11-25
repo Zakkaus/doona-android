@@ -82,7 +82,8 @@ internal fun RvSettingsSection(title: String, modifier: Modifier = Modifier, fir
  * keep both there when the text runs to more lines (privacy and accessibility dumps: icon and switch 2 px above the
  * title line's centre), never on the row's centre. That line is the one a one-line row keeps for its title (58 dp less its insets),
  * or the title's own line where it is taller ([rvOneLine]), so at a large font size it stays beside the title's first
- * line. The row's touch behaviour comes in [modifier], outside the padding, so the whole row is the target. A subtitle
+ * line. The title, the subtitle and that line take their role's Latin line box whatever their script, as [RvRow]'s
+ * text. The row's touch behaviour comes in [modifier], outside the padding, so the whole row is the target. A subtitle
  * that says an action failed is in the [error] hue, as a field's error message
  * ([dev.doona.android.designsystem.rv.RvFieldMessage]). An [action] (an in-card button, 40 dp, taller than a line) takes
  * the trailing place instead and centres on the whole row, title and subtitle together, so it neither rises above the
@@ -130,7 +131,8 @@ private fun rowText(
     @DrawableRes icon: Int?,
     trailing: (@Composable () -> Unit)?,
 ): @Composable RowScope.() -> Unit {
-    val line = maxOf(RvSize.rowOneLine - RvSpace.rowTextInset * 2, rvOneLine(title, Rv.type.rowTitle))
+    // A title of honk code keeps its own line boxes, as it is a code view; any other takes its role's Latin one.
+    val line = maxOf(RvSize.rowOneLine - RvSpace.rowTextInset * 2, rvOneLine(title, Rv.type.rowTitle, lineBox = !code))
     return {
         icon?.let {
             // The disc (40 dp) is taller than a line box of a small font, so it is not held to the box's height.
@@ -138,8 +140,9 @@ private fun rowText(
             Spacer(Modifier.width(RvSpace.rowGap))
         }
         Column(Modifier.weight(1f)) {
-            if (code) RvCodeText(title, Rv.type.rowTitle, maxLines = titleLines) else RvText(title, Rv.type.rowTitle, maxLines = titleLines)
-            subtitle?.let { RvText(it, Rv.type.rowSub, color = if (error) Rv.colors.error else Rv.colors.textSecondary, maxLines = RV_ROW_SUBTITLE_LINES) }
+            if (code) RvCodeText(title, Rv.type.rowTitle, maxLines = titleLines) else RvText(title, Rv.type.rowTitle, maxLines = titleLines, lineBox = true)
+            val hue = if (error) Rv.colors.error else Rv.colors.textSecondary
+            subtitle?.let { RvText(it, Rv.type.rowSub, color = hue, maxLines = RV_ROW_SUBTITLE_LINES, lineBox = true) }
         }
         trailing?.let {
             Spacer(Modifier.width(RvSettingsSpace.trailingGap))

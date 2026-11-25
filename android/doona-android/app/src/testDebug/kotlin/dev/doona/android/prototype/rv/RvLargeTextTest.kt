@@ -339,7 +339,8 @@ class RvLargeTextTest {
 
     /**
      * A settings row (A4): at 2.0 its end control centres on the title's first line, with a subtitle under the title and
-     * with a title of two lines, as at 1.0.
+     * with a title of two lines, as at 1.0. The first line is its box: the role's Latin line box, as tall as the title of
+     * one line ([dev.doona.android.designsystem.rv.RvLineBox]), whatever the script of the title.
      */
     @Test
     fun settingsRowCentresOnItsFirstLine() {
@@ -352,11 +353,11 @@ class RvLargeTextTest {
                 }
             }
         }
+        val first = compose.onAllNodes(shows(rows[0].first), useUnmergedTree = true).fetchSemanticsNodes().single().size.height
         rows.forEachIndexed { i, (text, _) ->
             val node = compose.onAllNodes(shows(text), useUnmergedTree = true).fetchSemanticsNodes().single()
-            val layout = layout(node)
-            if (i == 1) assertEquals("$text takes two lines", 2, layout.lineCount)
-            val line = node.positionInRoot.y + (layout.getLineTop(0) + layout.getLineBottom(0)) / 2
+            assertEquals("$text takes ${i + 1} lines", i + 1, layout(node).lineCount)
+            val line = node.positionInRoot.y + first / 2f
             val end = compose.onNodeWithTag("end$i", useUnmergedTree = true).fetchSemanticsNode()
             assertEquals("$text: the end's centre on the first line", line, end.positionInRoot.y + end.size.height / 2f, 1f)
         }

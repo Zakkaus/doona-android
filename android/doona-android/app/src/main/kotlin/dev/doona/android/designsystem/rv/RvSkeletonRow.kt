@@ -107,14 +107,14 @@ internal fun RvSkeletonRow(
     }
 }
 
-/** A skeleton row's title and subtitle: their words where the page knows them, else bars of row [index]'s widths. */
+/** A skeleton row's title and subtitle: their words where the page knows them, else bars of row [index]'s widths, in the row text's line boxes. */
 private class SkeletonWords(val index: Int, val title: String?, val subtitle: RvSkeletonText?, val subtitleText: String?, val titleRoom: Modifier) {
     @Composable
     fun Title() {
         if (title != null) {
-            RvSkeletonLabel(title, Rv.type.rowTitle, maxLines = RV_ROW_TITLE_LINES)
+            RvSkeletonLabel(title, Rv.type.rowTitle, maxLines = RV_ROW_TITLE_LINES, lineBox = true)
         } else {
-            RvSkeletonLine(Rv.type.rowTitle, RvSkeletonSize.titles[index % RvSkeletonSize.titles.size], titleRoom)
+            RvSkeletonLine(Rv.type.rowTitle, RvSkeletonSize.titles[index % RvSkeletonSize.titles.size], titleRoom, lineBox = true)
         }
     }
 
@@ -122,9 +122,9 @@ private class SkeletonWords(val index: Int, val title: String?, val subtitle: Rv
     fun Subtitle() {
         val kind = subtitle ?: return
         if (subtitleText != null) {
-            RvSkeletonLabel(subtitleText, Rv.type.rowSub, maxLines = RV_ROW_SUBTITLE_LINES)
+            RvSkeletonLabel(subtitleText, Rv.type.rowSub, maxLines = RV_ROW_SUBTITLE_LINES, lineBox = true)
         } else {
-            RvSkeletonLine(Rv.type.rowSub, RvSkeletonSize.subtitles[index % RvSkeletonSize.subtitles.size], kind = kind)
+            RvSkeletonLine(Rv.type.rowSub, RvSkeletonSize.subtitles[index % RvSkeletonSize.subtitles.size], kind = kind, lineBox = true)
         }
     }
 }
@@ -206,7 +206,8 @@ private fun rememberEndRoom(): EndRoom {
 
 /**
  * [RvRow]'s line-wise text: the title with the [end]'s first line (its [endText] where the page knows it) at the end of
- * its line, the subtitle with the second at the end of its, each line laid out by [RvRow]'s rule ([WithEnd]).
+ * its line, the subtitle with the second at the end of its, each line laid out by [RvRow]'s rule ([WithEnd]), the ends
+ * in the line boxes of the row's text, as the row's own ends.
  */
 @Composable
 private fun LineWise(words: SkeletonWords, end: RvSkeletonEnd, endText: String?, room: EndRoom, modifier: Modifier) {
@@ -214,16 +215,16 @@ private fun LineWise(words: SkeletonWords, end: RvSkeletonEnd, endText: String?,
         WithEnd(words.title?.let { RowWords(it, Rv.type.rowTitle, RV_ROW_TITLE_LINES) }, { words.Title() }) {
             val first = end.first ?: RvSkeletonText.Figures
             if (endText != null) {
-                RvSkeletonLabel(endText, Rv.type.rowValue.copy(textAlign = TextAlign.End), maxLines = RV_ROW_TITLE_LINES)
+                RvSkeletonLabel(endText, Rv.type.rowValue.copy(textAlign = TextAlign.End), maxLines = RV_ROW_TITLE_LINES, lineBox = true)
             } else {
-                RvSkeletonLine(Rv.type.rowValue, 1f, Modifier.width(room.figure), first)
+                RvSkeletonLine(Rv.type.rowValue, 1f, Modifier.width(room.figure), first, lineBox = true)
             }
         }
         val second = end.second
         if (words.subtitle != null) {
             WithEnd(words.subtitleText?.let { RowWords(it, Rv.type.rowSub, RV_ROW_SUBTITLE_LINES) }, { words.Subtitle() }) {
                 val wide = if (end == RvSkeletonEnd.Node) room.small else room.change
-                if (second != null) RvSkeletonLine(Rv.type.rowSub, 1f, Modifier.width(wide), second)
+                if (second != null) RvSkeletonLine(Rv.type.rowSub, 1f, Modifier.width(wide), second, lineBox = true)
             }
         }
     }
