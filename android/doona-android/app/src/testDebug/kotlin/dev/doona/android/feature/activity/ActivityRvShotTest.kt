@@ -6,6 +6,8 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.engine.Engine
+import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Mode
@@ -123,6 +125,9 @@ class ActivityRvShotTest {
 
     @Test fun crashLight() = shot("activity-crash", crash = true) { stop(Status.Stopped) }
 
+    /** A latency test the engine refused: its banner (無法測試延遲, 重試) stands where the notice would. */
+    @Test fun failedTestLight() = shot("activity-failed-test", failTest = true)
+
     @Test
     fun noNodeLight() = shot("activity-no-node") {
         stop(Status.Stopped)
@@ -147,11 +152,21 @@ class ActivityRvShotTest {
         traffic.value = Traffic()
     }
 
-    private fun shot(screen: String, dark: Boolean = false, fontScale: Float = 1f, crash: Boolean = false, whole: Boolean = false, change: FakeEngine.() -> Unit = {}) {
+    private fun shot(
+        screen: String,
+        dark: Boolean = false,
+        fontScale: Float = 1f,
+        crash: Boolean = false,
+        whole: Boolean = false,
+        failTest: Boolean = false,
+        change: FakeEngine.() -> Unit = {},
+    ) {
         val engine = rvSampleEngine().apply(change)
         // The busy bar rests half full at animator scale 0, as in the prototype's starting and stopping goldens.
         if (engine.status.value == Status.Starting || engine.status.value == Status.Stopping) rvAnimatorScale(0f)
-        val model = ActivityViewModel(engine, MutableStateFlow(crash), Dispatchers.Unconfined, { RvData.nowEpochMs }, { ZoneOffset.UTC }, { RvPlace.Other })
+        val source = if (failTest) refusingTests(engine) else engine
+        val model = ActivityViewModel(source, MutableStateFlow(crash), Dispatchers.Unconfined, { RvData.nowEpochMs }, { ZoneOffset.UTC }, { RvPlace.Other })
+        if (failTest) model.onAction(ActivityAction.TestLatency)
         compose.rvContent(dark, fontScale) { ActivityPage(model, crash = null, onConnect = {}, routes = activityTestRoutes()) }
         compose.drawFully()
         if (whole) compose.assertWhole()
@@ -163,6 +178,11 @@ class ActivityRvShotTest {
         val name = "app-rv-$screen-$variant"
         compose.rvRowRules(name)
         compose.onRoot().captureToImage().asAndroidBitmap().captureRoboImage("$SHOTS/$name.png")
+    }
+
+    /** [engine], with every latency test refused as busy. */
+    private fun refusingTests(engine: Engine): Engine = object : Engine by engine {
+        override suspend fun testLatency(groupId: String?): Result<Unit> = Result.failure(EngineException(ErrorCode.Busy))
     }
 
     private companion object {
