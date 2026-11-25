@@ -295,36 +295,6 @@ private fun Modifier.exactSize(width: Int, height: Int): Modifier = layout { mea
 }
 
 /**
- * The chart's two tool discs at the end of the range row (measured §8): 35 dp, 8 dp apart. Each keeps a 48 dp target,
- * so the two targets overlap by a few dp between the discs and stick out [rvToolOverhang] past the outer edge.
- */
-@Composable
-internal fun RvChartTools(first: Pair<Int, String>, second: Pair<Int, String>) {
-    Box(Modifier.width(RvChartSize.roundButton * 2 + RvChartSize.roundGap + rvToolOverhang * 2)) {
-        Box(Modifier.align(Alignment.CenterStart)) { RvRoundButton(first.first, first.second, NOT_WIRED) }
-        Box(Modifier.align(Alignment.CenterEnd)) { RvRoundButton(second.first, second.second, NOT_WIRED) }
-    }
-}
-
-/** How far a 48 dp target reaches past its 35 dp tool disc. */
-internal val rvToolOverhang = (RvSize.touch - RvChartSize.roundButton) / 2
-
-/** A round icon button on a container colour, as after Revolut's range chips; [label] is for the screen reader. */
-@Composable
-internal fun RvRoundButton(@DrawableRes icon: Int, label: String, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .minimumInteractiveComponentSize()
-            .size(RvChartSize.roundButton)
-            .clip(CircleShape)
-            .background(Rv.colors.roundButton)
-            .rvPress(CircleShape, Role.Button, onClick)
-            .semantics { contentDescription = label },
-        contentAlignment = Alignment.Center,
-    ) { RvGlyph(icon, RvChartSize.roundGlyph, Rv.colors.text) }
-}
-
-/**
  * The page's one main action, Revolut's full-width pill (§8): node detail's approved 'Get started' pill, moved here. One
  * style, the ink's fill (white in dark, Addendum A) with the page's colour as its label, the soft shadow under it in
  * light. Pressed, the label's colour lies over the fill as the state layer;

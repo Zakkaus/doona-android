@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -58,11 +60,11 @@ import kotlin.math.roundToInt
  * ([RvGlassButton]) at the bar's end, on its row and in 48 dp targets, and [field] puts a list page's search field
  * ([RvSearchField]) beside the back disc, in the title's place, as the node picker's bar holds it; either draws in the
  * bar's glass, [field] with the modifier that sizes it to the row. [bottomAction] floats a page's one action (an
- * [RvPrimaryButton]) on the gutter, 16 dp above the inset, with no scrim; the page keeps its room under the content, so
- * the last card scrolls clear of it. A page of dense text (a file's code) sets [actionScrim] to put [RvActionStrip]
- * behind the action, so the text under it is blurred rather than showing through at its edge. [overlay] draws over the page with its [RvGlass] (the floating nav, a page's
+ * [RvPrimaryButton]) on the gutter, 16 dp above the inset, or above the keyboard while it is up, over [RvActionStrip] ([actionScrim],
+ * on for every page, device audit 2026-11-25 finding 13): what scrolls under the action is blurred there, not showing through around
+ * the pill; the page keeps its room under the content, so the last card scrolls clear of it. [overlay] draws over the page with its [RvGlass] (the floating nav, a page's
  * floating actions). Without a [bottomAction] the content ends with [end]'s room ([RvPageEndRoom]): the navigation bar's
- * inset under a gap, or the floating nav's clearance on a tab home.
+ * inset (or the keyboard's, while it is up) under a gap, or the floating nav's clearance on a tab home.
  */
 @Composable
 internal fun RvScrollPage(
@@ -73,7 +75,7 @@ internal fun RvScrollPage(
     scroll: ScrollState = rememberScrollState(),
     actions: (@Composable (RvGlass) -> Unit)? = null,
     bottomAction: (@Composable () -> Unit)? = null,
-    actionScrim: Boolean = false,
+    actionScrim: Boolean = true,
     overlay: @Composable BoxScope.(RvGlass) -> Unit = {},
     field: (@Composable (RvGlass, Modifier) -> Unit)? = null,
     end: RvPageEnd = RvPageEnd.Inset(),
@@ -88,18 +90,20 @@ internal fun RvScrollPage(
     // 0 while the large title is clear of the bar, 1 once its bottom edge is under it.
     val collapse = { ((barBottom + fade - titleBottom) / fade).coerceIn(0f, 1f) }
     val glass = rememberRvGlass()
+    // What stands at the window's foot: the navigation bar, or the keyboard once it rises, which a bottom action and a pushed page's end follow.
+    val foot = insets.union(WindowInsets.ime)
     var actionHeight by remember { mutableIntStateOf(0) }
     // The page's foot in root px, and from it where the content stops being in the clear above the bottom action.
-    var foot by remember { mutableFloatStateOf(Float.MAX_VALUE) }
+    var bottom by remember { mutableFloatStateOf(Float.MAX_VALUE) }
     val gap = with(density) { RvSpace.gutter.toPx() }
-    val floor = remember(gap) { { foot - gap - actionHeight } }
-    Box(modifier.fillMaxSize().onGloballyPositioned { foot = it.positionInRoot().y + it.size.height }) {
+    val floor = remember(gap) { { bottom - gap - actionHeight } }
+    Box(modifier.fillMaxSize().onGloballyPositioned { bottom = it.positionInRoot().y + it.size.height }) {
         Column(Modifier.fillMaxSize().rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll)) {
             CompositionLocalProvider(LocalRvContentFloor provides floor.takeIf { bottomAction != null }) {
                 content(Modifier.onGloballyPositioned { titleBottom = it.boundsInWindow().bottom.roundToInt() })
             }
             // The bottom action's room: the gap above it, then the action with its 16 dp over the inset.
-            if (bottomAction != null) Spacer(Modifier.height(RvSpace.gutter + with(density) { actionHeight.toDp() })) else RvPageEndRoom(end, insets)
+            if (bottomAction != null) Spacer(Modifier.height(RvSpace.gutter + with(density) { actionHeight.toDp() })) else RvPageEndRoom(end, if (end is RvPageEnd.Inset) foot else insets)
         }
         RvBar(glass, insets, rvShade(scroll), Modifier.align(Alignment.TopStart), barTop) {
             when {
@@ -129,7 +133,7 @@ internal fun RvScrollPage(
                 Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter).then(fade).onSizeChanged { size -> actionHeight = size.height }) {
                     it()
                     Spacer(Modifier.height(RvSpace.gutter))
-                    Spacer(Modifier.windowInsetsBottomHeight(insets))
+                    Spacer(Modifier.windowInsetsBottomHeight(foot))
                 }
             }
         }

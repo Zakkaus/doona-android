@@ -297,11 +297,6 @@ internal object RvChartSize {
      */
     val rangeShadowReach = 3.5.dp
 
-    /** The chart's tool discs (measured §8: 35 dp, 8 dp apart, ending on the 16 dp margin). */
-    val roundButton = 35.dp
-    val roundGap = 8.dp
-    val roundGlyph = 20.dp
-
     /**
      * The segmented control in the owner's look E (rv-fix-4e; slider study §3, after Revolut's 3-icon track and FlClash):
      * a 40 dp pill track, the selected segment raised 2 dp inside it, a 20 dp glyph 6 dp before a label that has one.
