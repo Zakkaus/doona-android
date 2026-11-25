@@ -60,10 +60,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.preferredFrameRate
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
+import dev.doona.android.R
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
@@ -369,11 +372,13 @@ internal fun Modifier.rvMoves(): Modifier {
 /** Something under way with no known end (connecting, a latency test): [RvProgress] filling across, again and again. */
 @Composable
 internal fun RvBusy(modifier: Modifier = Modifier) {
-    if (Rv.motion.instant) return RvProgress(RvMotion.BUSY_STILL, modifier)
+    val spoken = stringResource(R.string.rv_a11y_busy)
+    val info = { ProgressBarRangeInfo.Indeterminate }
+    if (Rv.motion.instant) return RvProgressBar({ RvMotion.BUSY_STILL }, modifier, info, spoken)
     val fill = rememberInfiniteTransition(label = "busy").animateFloat(0f, 1f, infiniteRepeatable(tween(RvMotion.BUSY_MS, easing = RvMotion.Standard), RepeatMode.Restart), label = "fill")
     // An ambient loop: a layer of its own, so a frame of it redraws the bar alone, voting the normal rate; the fill is
     // read as it is measured, so a frame composes nothing.
-    RvProgress({ fill.value }, modifier.preferredFrameRate(FrameRateCategory.Normal).graphicsLayer {})
+    RvProgressBar({ fill.value }, modifier.preferredFrameRate(FrameRateCategory.Normal).graphicsLayer {}, info, spoken)
 }
 
 /**

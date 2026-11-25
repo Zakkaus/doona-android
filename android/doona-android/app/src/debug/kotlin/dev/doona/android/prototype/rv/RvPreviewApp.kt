@@ -180,6 +180,7 @@ private fun RvSample(options: RvMotionOptions, start: RvSampleStart, settings: R
         LocalRvUpdating provides run.updating,
         LocalRvRowActions provides actions,
     ) {
+        RvBackToHome(stack, ACTIVITY, TABS.values.toSet()) { stack = listOf(ACTIVITY) }
         RvStackHost(stack, onBack = pages.pop, options) { route -> RvSamplePage(route, run, options, settings, onSettings, policy, pages, start.launch == RvLaunch.Nodes) }
         RvPermissionSheet(run.asks)
     }

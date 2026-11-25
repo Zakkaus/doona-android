@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
@@ -25,6 +26,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
+import dev.doona.android.R
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvFigure
 import dev.doona.android.designsystem.rv.RvSize
@@ -46,6 +48,8 @@ internal fun RvStatsFigure(figure: RvFigure, style: TextStyle = Rv.type.cardValu
 /** Revolut's delta: a filled triangle and the change in [color], then what it compares with in secondary ink. */
 @Composable
 internal fun RvStatsDelta(up: Boolean, change: String, against: String, color: Color) {
+    // The triangle and the hue show the direction; a screen reader is told it in words, with what it compares with.
+    val spoken = stringResource(if (up) R.string.rv_a11y_stat_up else R.string.rv_a11y_stat_down, change)
     Row(verticalAlignment = Alignment.CenterVertically) {
         Triangle(up, color, RvStatsSize.delta)
         Spacer(Modifier.width(RvSpace.tight))
@@ -54,7 +58,7 @@ internal fun RvStatsDelta(up: Boolean, change: String, against: String, color: C
             append(" ")
             append(scripted(against))
         }
-        RvSpanText(text, Rv.type.tileCaption.copy(color = Rv.colors.textSecondary), maxLines = 1)
+        RvSpanText(text, Rv.type.tileCaption.copy(color = Rv.colors.textSecondary), Modifier.semantics { contentDescription = spoken }, maxLines = 1)
     }
 }
 

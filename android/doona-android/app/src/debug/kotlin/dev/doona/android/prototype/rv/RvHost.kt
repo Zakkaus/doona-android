@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv
 
 import android.os.Trace
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
@@ -49,6 +50,15 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
+/**
+ * Android's back from a tab home: on 策略, 連線 or 設定 with nothing stacked on it, back goes to the [home] tab (活動); on
+ * [home] it is left to the system, which leaves the app. A page stacked on a tab, or a page that is no tab, pops as before.
+ */
+@Composable
+internal fun RvBackToHome(stack: List<String>, home: String, tabs: Set<String>, onHome: () -> Unit) {
+    BackHandler(enabled = stack.size == 1 && stack[0] != home && stack[0] in tabs, onBack = onHome)
+}
+
 /** How a tab switch looks: T1 a hard cut with the hero art fading in (the default), T2 a cross-fade of the whole page. */
 internal enum class RvTabMotion(val code: String) { Cut("T1"), Fade("T2") }
 
@@ -96,24 +106,23 @@ internal fun RvStackHost(stack: List<String>, onBack: () -> Unit, options: RvMot
     val holder = rememberSaveableStateHolder()
     val state = remember { SeekableTransitionState(stack) }
     val transition = rememberTransition(state, label = "stack")
-    var back by remember { mutableStateOf<Float?>(null) }
+    // Whether a back gesture is under way; its progress is not state: each event seeks the transition directly, so the host composes nothing for it.
+    var seeking by remember { mutableStateOf(false) }
     // Every route drawn so far, and the tab homes among them: a pushed page off the stack starts afresh next time.
     val seen = remember { mutableSetOf<String>() }
     val homes = remember { mutableSetOf<String>() }
     PredictiveBackHandler(enabled = stack.size > 1) { events ->
         try {
-            events.collect { back = it.progress }
-            back = null
+            seeking = true
+            events.collect { state.seekTo(it.progress, stack.dropLast(1)) }
+            seeking = false
             onBack()
         } catch (e: CancellationException) {
-            back = null
+            seeking = false
             throw e
         }
     }
-    val progress = back
-    if (progress != null) {
-        LaunchedEffect(progress) { state.seekTo(progress, stack.dropLast(1)) }
-    } else {
+    if (!seeking) {
         LaunchedEffect(stack) {
             if (state.currentState != stack) {
                 val gesture = stackGesture(state.currentState, stack)

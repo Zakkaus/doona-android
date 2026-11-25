@@ -4,10 +4,8 @@ import android.content.res.Configuration
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -36,6 +34,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
@@ -47,6 +46,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
@@ -123,6 +124,7 @@ import dev.doona.android.prototype.rv.data.fastest
 import dev.doona.android.prototype.rv.policy.RvGroupKind
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.stats.RvStatsDots
+import kotlinx.coroutines.flow.collectLatest
 
 /**
  * The 活動 screen in Revolut's home structure (#11, #15): a header with the connection state, the download rate as the
@@ -302,10 +304,15 @@ private fun HeroLines(ticking: State<ActivityUiState>, mode: RvRouteMode) {
         RvFadeThrough("${stringResource(state.status.label)} · ${stringResource(mode.label)}", "caption", alignment = Alignment.TopCenter) { RvText(it, Rv.type.caption) }
         Spacer(Modifier.height(RvSpace.tight))
         val down = format.rate(state.downRate.toDouble())
-        Crossfade(down.number to down.unit, animationSpec = fade, label = "rate") { (number, unit) -> RvHero(RvAmount(number, unit)) }
+        Crossfade(down.number to down.unit, animationSpec = fade, label = "rate") { (number, unit) ->
+            val spoken = stringResource(R.string.rv_a11y_download, "$number $unit")
+            RvHero(RvAmount(number, unit), Modifier.semantics { contentDescription = spoken })
+        }
         Spacer(Modifier.height(RvSpace.subGap))
         // The hero is the download rate, so the line under it carries the other direction only (N-10).
-        Crossfade(format.rate(state.upRate.toDouble()).toString(), animationSpec = fade, label = "up") { RvInline(R.drawable.rv_sym_arrow_upward, it, Rv.colors.textSecondary, Rv.type.sub) }
+        Crossfade(format.rate(state.upRate.toDouble()).toString(), animationSpec = fade, label = "up") {
+            RvInline(R.drawable.rv_sym_arrow_upward, it, Rv.colors.textSecondary, Rv.type.sub, description = stringResource(R.string.rv_a11y_upload, it))
+        }
     }
 }
 
@@ -387,9 +394,20 @@ private fun ConnectionTicks(status: Status) {
  * motion, or while [resting] (read where it is drawn, so resting redraws nothing but the ring, once).
  */
 @Composable
-private fun rvPulse(on: Boolean, resting: () -> Boolean): () -> Float {
+internal fun rvPulse(on: Boolean, resting: () -> Boolean): () -> Float {
     if (!on || Rv.motion.instant) return { 0f }
-    val phase = rememberInfiniteTransition(label = "pulse").animateFloat(0f, 1f, infiniteRepeatable(tween(RvMotion.PULSE_MS, easing = RvMotion.Decelerate), RepeatMode.Restart), label = "ring")
+    val phase = remember { Animatable(0f) }
+    // The loop runs only while the ring is not resting: a resting pulse runs no animation, so it wakes no frame (it used
+    // to keep an infinite transition going and only stop reading it). It starts again from the ring's first frame.
+    LaunchedEffect(resting) {
+        snapshotFlow { resting() }.collectLatest { paused ->
+            phase.snapTo(0f)
+            while (!paused) {
+                phase.snapTo(0f)
+                phase.animateTo(1f, tween(RvMotion.PULSE_MS, easing = RvMotion.Decelerate))
+            }
+        }
+    }
     return { if (resting()) 0f else phase.value }
 }
 

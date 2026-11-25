@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -48,7 +49,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -60,6 +60,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.preferredFrameRate
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -67,6 +68,7 @@ import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
@@ -76,8 +78,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
-import androidx.core.graphics.drawable.toBitmap
 import dev.doona.android.R
+import dev.doona.android.designsystem.components.AppIcons
 import java.text.DecimalFormatSymbols
 import java.util.Locale
 import kotlin.math.max
@@ -151,6 +153,19 @@ internal fun Modifier.rvDiscPress(fill: Modifier, onClick: () -> Unit, enabled: 
 @Composable
 internal fun RvGlyph(@DrawableRes icon: Int, size: Dp, color: Color, modifier: Modifier = Modifier) {
     Image(painterResource(icon), contentDescription = null, modifier.size(size).testTag(RvRowPart.GLYPH), colorFilter = ColorFilter.tint(color))
+}
+
+/** [RvGlyph] whose [size] is read as the glyph is measured, so a size that moves every frame composes nothing. */
+@Composable
+internal fun RvGlyph(@DrawableRes icon: Int, size: () -> Dp, color: Color, modifier: Modifier = Modifier) {
+    val fit = Modifier.layout { measurable, constraints ->
+        val edge = size().roundToPx()
+        val w = edge.coerceIn(constraints.minWidth, constraints.maxWidth)
+        val h = edge.coerceIn(constraints.minHeight, constraints.maxHeight)
+        val placeable = measurable.measure(Constraints.fixed(w, h))
+        layout(w, h) { placeable.placeRelative(0, 0) }
+    }
+    Image(painterResource(icon), contentDescription = null, modifier.then(fit).testTag(RvRowPart.GLYPH), colorFilter = ColorFilter.tint(color))
 }
 
 /**
@@ -356,14 +371,13 @@ internal fun RvIconDisc(@DrawableRes icon: Int, color: Color = Rv.colors.text, s
  */
 @Composable
 internal fun RvAppDisc(packageName: String, label: String? = null, size: Dp = RvSize.rowDisc) {
-    val context = LocalContext.current
+    val context = LocalContext.current.applicationContext
     val px = with(LocalDensity.current) { size.roundToPx() }
-    val icon = remember(packageName, px) {
-        runCatching { context.packageManager.getApplicationIcon(packageName).toBitmap(px, px).asImageBitmap() }.getOrNull()
-    }
+    // Read off the main thread and kept in AppIcons' cache; until it is there, and for a package that cannot be read, the placeholder.
+    val icon by produceState(AppIcons.cached(packageName, px), packageName, px) { value = AppIcons.load(context, packageName, px) }
     val named = label?.let { Modifier.semantics { contentDescription = it } } ?: Modifier
-    if (icon == null) return Box(named.testTag(RvRowPart.APP_DISC)) { RvIconDisc(R.drawable.rv_sym_apps, size = size) }
-    Image(icon, contentDescription = label, Modifier.size(size).testTag(RvRowPart.APP_DISC).clip(CircleShape).background(Rv.colors.discOnCard))
+    val loaded = icon ?: return Box(named.testTag(RvRowPart.APP_DISC)) { RvIconDisc(R.drawable.rv_sym_apps, size = size) }
+    Image(loaded, contentDescription = label, Modifier.size(size).testTag(RvRowPart.APP_DISC).clip(CircleShape).background(Rv.colors.discOnCard))
 }
 
 /**
@@ -436,8 +450,18 @@ internal fun RvProgress(fraction: Float, modifier: Modifier = Modifier) = RvProg
  * ([RvBusy]) measures the fill alone, in a track of a fixed size, and composes nothing.
  */
 @Composable
-internal fun RvProgress(fraction: () -> Float, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxWidth().height(RvSize.progress).testTag(RvPart.FRAME).clip(CircleShape).background(Rv.colors.track)) {
+internal fun RvProgress(fraction: () -> Float, modifier: Modifier = Modifier) =
+    RvProgressBar(fraction, modifier, { ProgressBarRangeInfo(fraction().coerceIn(0f, 1f), 0f..1f) })
+
+/** The bar of [RvProgress], telling a screen reader [info] (and [description], when it has one): what the bar stands for. */
+@Composable
+internal fun RvProgressBar(fraction: () -> Float, modifier: Modifier, info: () -> ProgressBarRangeInfo, description: String? = null) {
+    Box(
+        modifier.fillMaxWidth().height(RvSize.progress).testTag(RvPart.FRAME).semantics {
+            progressBarRangeInfo = info()
+            description?.let { contentDescription = it }
+        }.clip(CircleShape).background(Rv.colors.track),
+    ) {
         Box(Modifier.rvFillWidth(fraction).fillMaxHeight().clip(CircleShape).background(Rv.colors.positive))
     }
 }
@@ -468,7 +492,7 @@ internal fun RvStatRow(label: String, value: String, valueKeepWords: Boolean = t
             RvText(label, Rv.type.statLabel, color = Rv.colors.textSecondary, maxLines = RV_ROW_TITLE_LINES)
             RvText(value, Rv.type.stat, align = if (stacked) TextAlign.Start else TextAlign.End, maxLines = Int.MAX_VALUE, keepWords = valueKeepWords)
         },
-        Modifier.fillMaxWidth().padding(horizontal = RvSpace.rowPadding),
+        Modifier.semantics(mergeDescendants = true) {}.fillMaxWidth().padding(horizontal = RvSpace.rowPadding),
     ) { (labelPart, valuePart), constraints ->
         val width = constraints.maxWidth
         val oneLine = labelPart.maxIntrinsicWidth(Constraints.Infinity) + RvSpace.trailingGap.roundToPx() + valuePart.maxIntrinsicWidth(Constraints.Infinity) <= width
@@ -556,10 +580,12 @@ internal fun RvSectionTitle(title: String, modifier: Modifier = Modifier, onClic
 
 /** A small glyph before a label in the same colour: the header's sub line. */
 @Composable
-internal fun RvInline(@DrawableRes icon: Int, text: String, color: Color, style: TextStyle, modifier: Modifier = Modifier) {
+internal fun RvInline(@DrawableRes icon: Int, text: String, color: Color, style: TextStyle, modifier: Modifier = Modifier, description: String? = null) {
+    // The glyph is decorative, so it says nothing; [description] names what the line counts when the text alone does not.
+    val spoken = if (description == null) Modifier else Modifier.semantics { contentDescription = description }
     Row(modifier.testTag(RvPart.TEXT_LINE), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(RvSpace.tight)) {
         RvGlyph(icon, RvSize.inlineGlyph, color)
-        RvText(text, style, color = color)
+        RvText(text, style, spoken, color = color)
     }
 }
 

@@ -23,6 +23,8 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
 import kotlinx.coroutines.delay
@@ -38,8 +40,13 @@ import kotlin.math.max
 @Composable
 internal fun RvDelta(changeMs: Int) {
     // No change is not a measurement, so it shows a dash and no triangle.
-    if (changeMs == 0) return RvText(RV_NO_VALUE, Rv.type.rowSub, color = Rv.colors.textSecondary)
+    if (changeMs == 0) {
+        val none = stringResource(R.string.rv_a11y_no_change)
+        return RvText(RV_NO_VALUE, Rv.type.rowSub, Modifier.semantics { contentDescription = none }, color = Rv.colors.textSecondary)
+    }
     val color = if (changeMs < 0) Rv.colors.good else Rv.colors.slow
+    // The triangle and the colour carry the direction for the eye; a screen reader is told it in words (a latency that fell is faster).
+    val spoken = stringResource(if (changeMs < 0) R.string.rv_a11y_faster else R.string.rv_a11y_slower, stringResource(R.string.latency_ms, abs(changeMs)))
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(RvHomeSize.deltaGap)) {
         Canvas(Modifier.size(RvHomeSize.delta)) {
             val h = size.width * TRIANGLE_HEIGHT
@@ -58,7 +65,8 @@ internal fun RvDelta(changeMs: Int) {
             }
             drawPath(path, color)
         }
-        RvText(stringResource(R.string.latency_ms, abs(changeMs)), Rv.type.rowSub, color = color)
+        // The words ride on the amount's own node, so the row's measured parts stay what they were.
+        RvText(stringResource(R.string.latency_ms, abs(changeMs)), Rv.type.rowSub, Modifier.semantics { contentDescription = spoken }, color = color)
     }
 }
 
@@ -139,8 +147,13 @@ private fun LatencyOverChange(latencyMs: Int?, changeMs: Int?, timedOut: Boolean
 internal fun RvLatencyText(latencyMs: Int?, timedOut: Boolean) {
     when {
         latencyMs != null -> RvText(stringResource(R.string.latency_ms, latencyMs), Rv.type.rowValue, align = TextAlign.End)
+
         timedOut -> RvText(stringResource(R.string.rv_nodes_timed_out), Rv.type.rowValue, color = Rv.colors.slow, align = TextAlign.End)
-        else -> RvText(RV_NO_VALUE, Rv.type.rowValue, align = TextAlign.End)
+
+        else -> {
+            val untested = stringResource(R.string.latency_untested)
+            RvText(RV_NO_VALUE, Rv.type.rowValue, Modifier.semantics { contentDescription = untested }, align = TextAlign.End)
+        }
     }
 }
 
