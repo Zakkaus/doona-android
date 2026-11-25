@@ -319,7 +319,7 @@ class SettingsAppEnShotTest {
     val tmp = TemporaryFolder()
 
     @Test
-    @Config(qualifiers = "+h1876dp")
+    @Config(qualifiers = "+h1958dp")
     fun settings() = compose.app("settings-en", dark = false, whole = true, content = settingsPage())
 
     @Test fun lab() = compose.app("settings-lab-en", dark = false, whole = true) { LabRoute(FakeSettingsStore(), onBack = {}, onRestart = {}) }
@@ -516,13 +516,15 @@ private object NoSystem : SettingsSystem {
 
     override fun openRepository() = Unit
 
+    override fun openPrivacy() = Unit
+
     override fun requestTile(onAnswer: (TileAnswer) -> Unit) = Unit
 }
 
-private fun noNav() = SettingsNav({}, {}, {}, {}, {}, {}, {}, {}, {})
+private fun noNav() = SettingsNav({}, {}, {}, {}, {}, {}, {}, {}, {}, {})
 
 /** As tall as each page at each font size, as its approved golden (RvLabShotTest's approved 設定, RvReportShotTest). */
-private const val LONG_PAGE = "+h1826dp"
+private const val LONG_PAGE = "+h1908dp"
 
 /** 主題 whole: the window the page fills at 1× and 2×. */
 private const val THEME_PAGE = "+h975dp"
@@ -531,8 +533,8 @@ private const val THEME_PAGE_FS200 = "+h1062dp"
 /** The core's servers in [FakeEngine], and 自訂 as it opens on them. */
 private val SERVERS = listOf("1.1.1.1:53", "8.8.8.8:53")
 private const val TYPED = "1.1.1.1, 8.8.8.8"
-private const val LONG_PAGE_FS115 = "+h1851dp"
-private const val LONG_PAGE_FS200 = "+h2373dp"
+private const val LONG_PAGE_FS115 = "+h1933dp"
+private const val LONG_PAGE_FS200 = "+h2481dp"
 
 /** The English report is longer: its window holds the whole page. */
 private const val READY_EN = "+h1300dp"

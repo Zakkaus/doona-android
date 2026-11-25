@@ -9,6 +9,7 @@ import dev.doona.android.engine.ConfigAssets
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.model.RvAppearance
 import dev.doona.android.feature.model.RvGeoData
@@ -39,7 +40,7 @@ import kotlin.time.Duration.Companion.seconds
  * What 設定 shows: the page's state ([settings], null until the store has answered, so the page never shows a switch or
  * an interval the user may not have set), whether the per-app policy and the DNS servers have been read ([perAppLoaded],
  * [dnsLoaded]; until then each row has no second line rather than a value the user may not have), the GeoIP/GeoSite
- * row, and where 檢查更新 stands ([update]).
+ * row, where 檢查更新 stands ([update]), and the level the core logs at ([logLevel], 日誌等級's row).
  */
 internal data class SettingsUiState(
     val settings: RvSettingsState?,
@@ -47,6 +48,7 @@ internal data class SettingsUiState(
     val dnsLoaded: Boolean,
     val geoData: RvGeoData,
     val update: RvUpdate = RvUpdate.Idle,
+    val logLevel: RvLogLevel = RvLogLevel.Info,
 )
 
 /**
@@ -55,12 +57,14 @@ internal data class SettingsUiState(
  * runs its update, asking the core where it stands every [poll] until it ends or [followFor] has passed, which the row
  * then shows as a failure (重試 follows it again). The DNS servers and the geo data are read at the start, when the page
  * shows again, and when the core comes up: a page opened before the core runs fills in once it does. 檢查更新 asks
- * [releases] for the latest release when the user taps it, and only then.
+ * [releases] for the latest release when the user taps it, and only then. 日誌等級's row follows the core's [levels],
+ * which 除錯's return to 資訊 changes by itself; a test that does not look at it gets a core that stays at 資訊.
  */
 internal class SettingsViewModel(
     private val engine: Engine,
     private val store: SettingsStore,
     private val releases: ReleaseCheck = ReleaseCheck { Result.success(null) },
+    private val levels: LogLevels = InfoLevels,
     private val poll: Duration = 1.seconds,
     private val followFor: Duration = 10.minutes,
 ) : ViewModel() {
@@ -88,7 +92,7 @@ internal class SettingsViewModel(
                 geoData = geoData(local, status is Status.Running),
                 update = local.update,
             )
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initialState())
+        }.combine(levels.level) { state, level -> state.copy(logLevel = rvLogLevel(level)) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initialState())
 
     init {
         viewModelScope.launch { readGeo() }
@@ -198,6 +202,7 @@ internal class SettingsViewModel(
         perAppLoaded = engine.perAppLoaded.value,
         dnsLoaded = false,
         geoData = geoData(local.value, engine.status.value is Status.Running),
+        logLevel = rvLogLevel(levels.level.value),
     )
 
     /** The store's values the page shows. */
@@ -218,8 +223,15 @@ internal class SettingsViewModel(
     )
 
     companion object {
-        fun factory(engine: Engine, store: SettingsStore, releases: ReleaseCheck): ViewModelProvider.Factory = viewModelFactory {
-            initializer { SettingsViewModel(engine, store, releases) }
+        fun factory(engine: Engine, store: SettingsStore, releases: ReleaseCheck, levels: LogLevels): ViewModelProvider.Factory = viewModelFactory {
+            initializer { SettingsViewModel(engine, store, releases, levels = levels) }
         }
     }
+}
+
+/** A core that logs at 資訊 and takes no other level: the [SettingsViewModel] default for tests of other rows. */
+private object InfoLevels : LogLevels {
+    override val level: StateFlow<LogLevel> = MutableStateFlow(LogLevel.Info)
+
+    override suspend fun set(level: LogLevel): Result<Unit> = Result.failure(UnsupportedOperationException("a fixed level"))
 }

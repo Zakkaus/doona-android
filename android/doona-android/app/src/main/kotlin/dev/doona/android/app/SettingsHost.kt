@@ -34,6 +34,7 @@ import dev.doona.android.feature.settings.DnsRoute
 import dev.doona.android.feature.settings.IntervalRoute
 import dev.doona.android.feature.settings.LabRoute
 import dev.doona.android.feature.settings.LanguageRoute
+import dev.doona.android.feature.settings.LogLevelRoute
 import dev.doona.android.feature.settings.LogLevels
 import dev.doona.android.feature.settings.ReleaseCheck
 import dev.doona.android.feature.settings.RvAboutRoutes
@@ -142,7 +143,7 @@ internal fun themeAppearance(appearance: RvAppearance) = ThemeAppearance(
     ThemeAccent.entries[appearance.accent],
 )
 
-/** What 設定 hands to Android from [activity]: its VPN settings, the releases and repository pages, and the quick settings [tile]'s request. */
+/** What 設定 hands to Android from [activity]: its VPN settings, the releases, repository and privacy pages, and the quick settings [tile]'s request. */
 internal class ActivitySettingsSystem(private val activity: Activity, private val tile: QuickTile) : SettingsSystem {
     override fun openVpnSettings() {
         activity.startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
@@ -154,6 +155,10 @@ internal class ActivitySettingsSystem(private val activity: Activity, private va
 
     override fun openRepository() {
         UpdateCheck.openRepository(activity)
+    }
+
+    override fun openPrivacy() {
+        UpdateCheck.openPrivacy(activity)
     }
 
     override fun requestTile(onAnswer: (TileAnswer) -> Unit) {
@@ -195,9 +200,9 @@ internal val APP_RELEASES = ReleaseCheck { UpdateCheck.latestRelease() }
 internal const val HONK_REVISION = "63de98b"
 
 /**
- * 設定 and the pages it opens, as the app's back stack entries: 回報問題, 關於, 主題, 語言, 更新間隔, 實驗室, DNS, 授權
- * and each licence's text. The effective config is P4's page, so its row opens nothing here yet; 日誌等級 waits for the
- * owner (q-p6a-logrow); 關於's 隱私 has no page to open (q-p6a-privacy).
+ * 設定 and the pages it opens, as the app's back stack entries: 回報問題, 日誌等級, 關於, 主題, 語言, 更新間隔, 實驗室,
+ * DNS, 授權 and each licence's text. The effective config is P4's page, so its row opens nothing here yet. 關於's 隱私
+ * opens the repository's privacy notice in the browser.
  */
 internal fun EntryProviderScope<NavKey>.settingsEntries(backStack: MutableList<NavKey>, engine: Engine, version: String, onTab: (Int) -> Unit) {
     entry<SettingsKey> {
@@ -207,6 +212,7 @@ internal fun EntryProviderScope<NavKey>.settingsEntries(backStack: MutableList<N
                 dns = { backStack.push(DnsKey) },
                 effectiveConfig = NOT_WIRED,
                 report = { backStack.push(ReportKey) },
+                logLevel = { backStack.push(LogLevelKey) },
                 about = { backStack.push(AboutKey) },
                 theme = { backStack.push(ThemeKey) },
                 language = { backStack.push(LanguageKey) },
@@ -214,8 +220,9 @@ internal fun EntryProviderScope<NavKey>.settingsEntries(backStack: MutableList<N
                 lab = { backStack.push(LabKey) },
             )
         }
-        SettingsRoute(engine, rememberSettingsStore(), APP_RELEASES, rememberSettingsSystem(), nav, version, onTab)
+        SettingsRoute(engine, rememberSettingsStore(), APP_RELEASES, rememberLogLevels(), rememberSettingsSystem(), nav, version, onTab)
     }
+    entry<LogLevelKey> { key -> LogLevelRoute(rememberLogLevels(), onBack = { backStack.pop(key) }) }
     entry<ReportKey> { key ->
         val context = LocalContext.current
         val facts = remember(context) { AppReportFacts(context.applicationContext) }
@@ -224,7 +231,7 @@ internal fun EntryProviderScope<NavKey>.settingsEntries(backStack: MutableList<N
     entry<AboutKey> { key ->
         val system = rememberSettingsSystem()
         val routes = remember(backStack, system) {
-            RvAboutRoutes(github = system::openRepository, report = { backStack.push(ReportKey) }, licenses = { backStack.push(LicensesKey) }, privacy = NOT_WIRED)
+            RvAboutRoutes(github = system::openRepository, report = { backStack.push(ReportKey) }, licenses = { backStack.push(LicensesKey) }, privacy = system::openPrivacy)
         }
         RvAboutScreen(RvAboutVersions(version.ifBlank { RV_NO_VALUE }, HONK_REVISION), onBack = { backStack.pop(key) }, routes)
     }
@@ -248,6 +255,12 @@ private fun container(): AppContainer = (LocalContext.current.applicationContext
 
 @Composable
 private fun rememberSettingsStore(): SettingsStore = container().settingsStore
+
+@Composable
+private fun rememberLogLevels(): LogLevels {
+    val container = container()
+    return remember(container) { AppLogLevels(container.logLevels) }
+}
 
 @Composable
 private fun rememberSettingsSystem(): SettingsSystem {

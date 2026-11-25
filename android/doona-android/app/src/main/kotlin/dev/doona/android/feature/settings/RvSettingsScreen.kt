@@ -67,7 +67,7 @@ import dev.doona.android.feature.model.RvSettingsState
  * ([RvUpdateGroup]; [geoData], whose 更新 runs [RvSettingsRoutes.geoUpdate]). Where the [update] check stands shows on
  * the hero's 檢查更新 action, on its row and, for a newer release, in the banner under the hero ([rvUpdateNotice]); a
  * failed check only on its row. Until the per-app policy has been read ([perAppLoaded]), 依 App's row has no second
- * line, nor the DNS row until the core's servers have ([dnsLoaded]). Over the page, the sheet that tells how to add the quick settings tile by hand while the state holds it open.
+ * line, nor the DNS row until the core's servers have ([dnsLoaded]). 日誌等級's row names the core's [logLevel]. Over the page, the sheet that tells how to add the quick settings tile by hand while the state holds it open.
  */
 @Composable
 internal fun RvSettingsScreen(
@@ -82,6 +82,7 @@ internal fun RvSettingsScreen(
     update: RvUpdate = RvUpdate.Idle,
     perAppLoaded: Boolean = true,
     dnsLoaded: Boolean = true,
+    logLevel: RvLogLevel = RvLogLevel.Info,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -101,7 +102,7 @@ internal fun RvSettingsScreen(
             ConnectionGroup(state, onChange, routes, perAppLoaded)
             SubscriptionGroup(state, onChange, routes.interval)
             AppearanceGroup(state, onOpenTheme, routes.language)
-            AdvancedGroup(state, routes, configRev, dnsLoaded)
+            AdvancedGroup(state, routes, configRev, dnsLoaded, logLevel)
             RvUpdateGroup(version, update, routes.checkUpdate, geoData, routes.geoUpdate, routes.lab)
             RvAboutEntry(version, routes.about)
         }
@@ -148,7 +149,7 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, routes: RvSettingsR
 
 /**
  * Where 設定 leads beyond the theme: the system's VPN settings, where always-on is turned on (Android owns that switch, D14), 依 App, the DNS picker, the effective config, 回報問題 from 進階's row
- * and the hero's 匯出診斷, 關於 doona (which holds the licences), and the configuration's overview (with the preview flag); and 加到快速設定
+ * and the hero's 匯出診斷, 日誌等級 ([logLevel]), 關於 doona (which holds the licences), and the configuration's overview (with the preview flag); and 加到快速設定
  * ([addTile]), the system's dialog or the sheet that tells how; the GeoIP/GeoSite update ([geoUpdate], with its sample flag); and
  * the update check ([checkUpdate], the hero's action and 關於's row) and a newer release's GitHub page ([release]); and the
  * language page ([language]), the update interval page ([interval]) and 實驗室 ([lab]). The app downloads nothing: the
@@ -161,6 +162,7 @@ internal class RvSettingsRoutes(
     val dns: () -> Unit,
     val effectiveConfig: () -> Unit,
     val report: () -> Unit,
+    val logLevel: () -> Unit,
     val about: () -> Unit,
     val config: () -> Unit,
     val geoUpdate: () -> Unit,
@@ -227,14 +229,16 @@ private fun AppearanceGroup(state: RvSettingsState, onOpenTheme: () -> Unit, onO
 
 /**
  * 進階: the DNS server (the picker); 回報問題, the report page, with the hero's 匯出診斷
- * glyph; the effective config, read-only.
+ * glyph; under it 日誌等級, the core's [logLevel] as its value (owner, 2026-11-26 07:13, q-p6a-logrow), with the log
+ * page's 除錯 glyph; the effective config, read-only.
  */
 @Composable
-private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes, configRev: Int?, dnsLoaded: Boolean) {
+private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes, configRev: Int?, dnsLoaded: Boolean, logLevel: RvLogLevel) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_advanced))
     RvSettingsCard {
         RvSettingsNavRow(stringResource(R.string.rv_settings_dns), R.drawable.rv_sym_dns, routes.dns, dnsValue(state.dns).takeIf { dnsLoaded })
         RvSettingsNavRow(stringResource(R.string.rv_report_title), R.drawable.rv_sym_ios_share, routes.report)
+        RvSettingsNavRow(stringResource(R.string.rv_settings_log_level), R.drawable.rv_settings_ic_description, routes.logLevel, stringResource(logLevel.label))
         if (configRev != null) {
             RvSettingsNavRow(stringResource(R.string.rv_config_title), R.drawable.rv_sym_edit, routes.config, stringResource(R.string.rv_config_revision, configRev))
         }

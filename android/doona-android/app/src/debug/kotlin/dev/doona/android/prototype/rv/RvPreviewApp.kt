@@ -295,6 +295,7 @@ private fun SettingsPage(settings: RvSettingsState, onSettings: (RvSettingsState
         dns = { pages.push(DNS) },
         effectiveConfig = { pages.push(RvPolicyPreviewRoutes.EFFECTIVE) },
         report = { pages.push(REPORT) },
+        logLevel = { pages.push(RvSettingsPreviewRoutes.LOG_LEVEL) },
         about = { pages.push(RvSettingsPreviewRoutes.ABOUT) },
         checkUpdate = update.check,
         language = { pages.push(RvSettingsPreviewRoutes.LANGUAGE) },

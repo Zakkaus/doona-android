@@ -7,6 +7,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 import java.net.InetAddress
 import java.net.InetSocketAddress
 
@@ -24,6 +25,15 @@ class UpdateCheckTest {
             exchange.sendResponseHeaders(code, if (bytes.isEmpty()) -1 else bytes.size.toLong())
             exchange.responseBody.use { it.write(bytes) }
         }
+    }
+
+    /** 關於's 隱私 opens `PRIVACY.md` on GitHub; the file is at the repository's root and names the request 檢查更新 sends. */
+    @Test
+    fun `the privacy link is the root's PRIVACY_md, which names 檢查更新's request`() {
+        assertTrue(UpdateCheck.PRIVACY.endsWith("/blob/HEAD/PRIVACY.md"))
+        val notice = File("../../../PRIVACY.md")
+        assertTrue("${notice.absolutePath} exists", notice.isFile)
+        assertTrue(UpdateCheck.LATEST in notice.readText())
     }
 
     @Test

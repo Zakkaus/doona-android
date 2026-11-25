@@ -58,8 +58,8 @@
     <string name="rv_settings_dns_custom_sub">輸入位址</string>
     <string name="rv_settings_dns_footer">規則與全域模式下，DNS 查詢經由主節點送出。</string>
     <string name="rv_settings_dns_custom_title">自訂 DNS 伺服器</string>
-    <string name="rv_settings_dns_custom_hint">最多 4 個 IP 位址，以逗號分隔</string>
-    <string name="rv_settings_dns_custom_invalid">請輸入 1 到 4 個 IP 位址，例如 1.1.1.1 或 1.1.1.1:53</string>
+    <string name="rv_settings_dns_custom_hint">最多 4 個 IPv4 或 IPv6 位址，以逗號分隔，例如 1.1.1.1、2606:4700:4700::1111</string>
+    <string name="rv_settings_dns_custom_invalid">請輸入 1 到 4 個 IP 位址，例如 1.1.1.1 或 [2606:4700:4700::1111]:53</string>
     <string name="rv_settings_interval_custom_title">自訂更新間隔</string>
     <string name="rv_settings_interval_custom_hint">%1$d 到 %2$d 小時</string>
     <string name="rv_settings_interval_custom_invalid">請輸入 %1$d 到 %2$d 之間的整數</string>

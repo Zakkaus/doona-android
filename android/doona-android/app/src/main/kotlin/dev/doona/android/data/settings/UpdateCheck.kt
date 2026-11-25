@@ -14,9 +14,13 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 
-/** The app's GitHub repository: its page, its releases page, and the latest release's tag, which 檢查更新 asks for. */
+/**
+ * The app's GitHub repository: its page, its releases page, its privacy notice (`PRIVACY.md` at the repository's root,
+ * on the default branch), and the latest release's tag, which 檢查更新 asks for.
+ */
 object UpdateCheck {
     private const val REPOSITORY = "https://github.com/Zakkaus/doona-android"
+    internal const val PRIVACY = "$REPOSITORY/blob/HEAD/PRIVACY.md"
     internal const val LATEST = "https://api.github.com/repos/Zakkaus/doona-android/releases/latest"
     private const val TIMEOUT_MS = 15_000
 
@@ -25,6 +29,9 @@ object UpdateCheck {
 
     /** The repository's page, for 關於's GitHub 專案; false if nothing handles the link. */
     fun openRepository(activity: Activity): Boolean = open(activity, REPOSITORY)
+
+    /** The privacy notice, for 關於's 隱私 (owner, 2026-11-26 07:13); false if nothing handles the link. */
+    fun openPrivacy(activity: Activity): Boolean = open(activity, PRIVACY)
 
     /**
      * The tag of the latest published release (pre-releases and drafts are not "latest" on GitHub), or null when the

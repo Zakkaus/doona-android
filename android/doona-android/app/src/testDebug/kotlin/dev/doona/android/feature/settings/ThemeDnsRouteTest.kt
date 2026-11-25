@@ -1,5 +1,7 @@
 package dev.doona.android.feature.settings
 
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -9,14 +11,19 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.text.TextLayoutResult
 import dev.doona.android.app.rvAppearance
 import dev.doona.android.app.themeAppearance
+import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.model.RvAppearance
 import dev.doona.android.feature.model.RvThemeMode
+import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.seedSchemes
 import dev.doona.android.prototype.rv.settings.RV_SAMPLE_THEME_PREVIEW
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -25,9 +32,13 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
-/** 檢查更新's newer release opens the releases page. 主題 stores each choice as it is made, in the form the app's theme reads; DNS saves a preset and 自訂's servers. */
+/**
+ * 檢查更新's newer release opens the releases page, and 日誌等級's row its page. 主題 stores each choice as it is made, in
+ * the form the app's theme reads; DNS saves a preset and 自訂's servers, IPv6 among them.
+ */
 @RunWith(RobolectricTestRunner::class)
 // Tall enough that 模式 and 自訂 are on screen without a scroll.
 @Config(qualifiers = "zh-rTW-w412dp-h1300dp")
@@ -80,6 +91,65 @@ class ThemeDnsRouteTest {
         assertEquals(listOf("223.5.5.5:53", "1.1.1.1:53"), servers(engine))
     }
 
+    /**
+     * The core accepts IPv6 servers, bare or as `[addr]:port`, and refuses link-local ones (doona-core `parse_upstreams`);
+     * the sheet's hint and error name both forms (s1126b, 2026-11-26 07:14).
+     */
+    @Test
+    fun ipv6ServersReachTheCoreAndALinkLocalOneSaysWhy() {
+        val engine = FakeEngine()
+        compose.rvContent(dark = false) { DnsRoute(engine, onBack = {}) }
+        compose.onNodeWithText(CUSTOM).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(V6_HINT, useUnmergedTree = true).assertFits()
+        compose.onNode(hasSetTextAction()).performTextReplacement("2606:4700:4700::1111, [2001:4860:4860::8888]:5353 1.1.1.1")
+        compose.onNodeWithText(SAVE).performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("[2606:4700:4700::1111]:53", "[2001:4860:4860::8888]:5353", "1.1.1.1:53"), servers(engine))
+
+        compose.onNodeWithText(CUSTOM).performClick()
+        compose.waitForIdle()
+        // Opened again, the field holds the servers as typed: the default port and its brackets dropped.
+        compose.onNodeWithText("2606:4700:4700::1111, [2001:4860:4860::8888]:5353, 1.1.1.1").assertExists()
+        compose.onNode(hasSetTextAction()).performTextReplacement("fe80::1")
+        compose.onNodeWithText(SAVE).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(V6_INVALID, useUnmergedTree = true).assertFits()
+        assertEquals(3, servers(engine).size)
+    }
+
+    /** At Android's largest font the hint and the error take more than two lines; the library draws them whole. */
+    @Test
+    fun atFs200TheHintAndTheErrorAreWhole() {
+        // The sheet is a window of its own, which takes the system's font scale rather than the page's density.
+        RuntimeEnvironment.setFontScale(RV_FS200)
+        compose.rvContent(dark = false, fontScale = RV_FS200) { DnsRoute(FakeEngine(), onBack = {}) }
+        compose.onNodeWithText(CUSTOM).performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(V6_HINT, useUnmergedTree = true).assertFits()
+        compose.onNode(hasSetTextAction()).performTextReplacement("fe80::1")
+        compose.onNodeWithText(SAVE).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(V6_INVALID, useUnmergedTree = true).assertFits()
+    }
+
+    /** 日誌等級's row under 回報問題 (q-p6a-logrow, 2026-11-26 07:13) names the core's level and opens its page. */
+    @Test
+    fun theLogLevelRowNamesTheLevelAndOpensItsPage() {
+        var opened = 0
+        val levels = object : LogLevels {
+            override val level: StateFlow<LogLevel> = MutableStateFlow(LogLevel.Debug)
+
+            override suspend fun set(level: LogLevel): Result<Unit> = Result.success(Unit)
+        }
+        val vm = SettingsViewModel(FakeEngine(), FakeSettingsStore(), levels = levels)
+        val nav = SettingsNav({}, {}, {}, {}, logLevel = { opened++ }, {}, {}, {}, {}, {})
+        compose.rvContent(dark = false) { SettingsPage(vm, NoSystem, nav, "0.1.0", onTab = {}) }
+        compose.onNodeWithText(DEBUG).performScrollTo().assertExists()
+        compose.onNodeWithText(LOG_LEVEL).performScrollTo().performClick()
+        assertEquals(1, opened)
+    }
+
     /** Decision 148 (2026-11-23 21:35): the app downloads nothing; a newer release's banner opens the releases page. */
     @Test
     fun aNewerReleaseOpensTheReleasesPage() {
@@ -93,15 +163,24 @@ class ThemeDnsRouteTest {
 
             override fun openRepository() = Unit
 
+            override fun openPrivacy() = Unit
+
             override fun requestTile(onAnswer: (TileAnswer) -> Unit) = Unit
         }
         val vm = SettingsViewModel(FakeEngine(), FakeSettingsStore(), releases = { Result.success("v9.0.0") })
-        compose.rvContent(dark = false) { SettingsPage(vm, system, SettingsNav({}, {}, {}, {}, {}, {}, {}, {}, {}), "0.1.0", onTab = {}) }
+        compose.rvContent(dark = false) { SettingsPage(vm, system, SettingsNav({}, {}, {}, {}, {}, {}, {}, {}, {}, {}), "0.1.0", onTab = {}) }
         // 檢查更新 is both the hero's action and the row; either checks.
         compose.onAllNodesWithText(CHECK).onFirst().performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNodeWithText(VIEW).performScrollTo().performClick()
         assertEquals(1, opened)
+    }
+
+    /** The text is drawn whole: the field's two message lines hold it, with no ellipsis. */
+    private fun SemanticsNodeInteraction.assertFits() {
+        val layouts = mutableListOf<TextLayoutResult>()
+        fetchSemanticsNode().config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
+        assertFalse("cut: ${layouts.first().layoutInput.text}", layouts.first().hasVisualOverflow)
     }
 
     private fun servers(engine: FakeEngine) = runBlocking { engine.effectiveConfig().getOrThrow().dnsUpstreams }
@@ -113,5 +192,21 @@ class ThemeDnsRouteTest {
         const val SAVE = "儲存"
         const val CHECK = "檢查更新"
         const val VIEW = "在 GitHub 檢視"
+        const val LOG_LEVEL = "日誌等級"
+        const val DEBUG = "除錯"
+        const val V6_HINT = "最多 4 個 IPv4 或 IPv6 位址，以逗號分隔，例如 1.1.1.1、2606:4700:4700::1111"
+        const val V6_INVALID = "請輸入 1 到 4 個 IP 位址，例如 1.1.1.1 或 [2606:4700:4700::1111]:53"
+    }
+
+    private object NoSystem : SettingsSystem {
+        override fun openVpnSettings() = Unit
+
+        override fun openReleases() = Unit
+
+        override fun openRepository() = Unit
+
+        override fun openPrivacy() = Unit
+
+        override fun requestTile(onAnswer: (TileAnswer) -> Unit) = Unit
     }
 }

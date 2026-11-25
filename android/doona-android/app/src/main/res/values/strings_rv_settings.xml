@@ -65,8 +65,8 @@
     <string name="rv_settings_dns_custom_sub">Enter an address</string>
     <string name="rv_settings_dns_footer">In rule and global mode, DNS queries go through the main node.</string>
     <string name="rv_settings_dns_custom_title">Custom DNS servers</string>
-    <string name="rv_settings_dns_custom_hint">Up to 4 IP addresses, separated by commas</string>
-    <string name="rv_settings_dns_custom_invalid">Enter 1 to 4 IP addresses, such as 1.1.1.1 or 1.1.1.1:53</string>
+    <string name="rv_settings_dns_custom_hint">Up to 4 IPv4 or IPv6 addresses, separated by commas, such as 1.1.1.1, 2606:4700:4700::1111</string>
+    <string name="rv_settings_dns_custom_invalid">Enter 1 to 4 IP addresses, such as 1.1.1.1 or [2606:4700:4700::1111]:53</string>
     <string name="rv_settings_interval_custom_title">Custom update interval</string>
     <string name="rv_settings_interval_custom_hint">%1$d to %2$d hours</string>
     <string name="rv_settings_interval_custom_invalid">Enter a whole number from %1$d to %2$d</string>

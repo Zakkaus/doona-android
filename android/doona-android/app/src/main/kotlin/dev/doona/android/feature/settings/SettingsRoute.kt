@@ -19,7 +19,8 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.feature.model.RvLanguage
 
 /**
- * The 設定 tab: builds the ViewModel over the [engine], the app's [store] and [releases] (檢查更新) and shows the page;
+ * The 設定 tab: builds the ViewModel over the [engine], the app's [store], [releases] (檢查更新) and the core's log
+ * [levels] (日誌等級's row) and shows the page;
  * [system] takes what Android does, [nav] the pages 設定 opens, and [onTab] the floating nav's tabs. [version] is the
  * app's version name, a dash when the shell has none.
  */
@@ -28,12 +29,13 @@ internal fun SettingsRoute(
     engine: Engine,
     store: SettingsStore,
     releases: ReleaseCheck,
+    levels: LogLevels,
     system: SettingsSystem,
     nav: SettingsNav,
     version: String,
     onTab: (Int) -> Unit,
 ) {
-    val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.factory(engine, store, releases))
+    val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.factory(engine, store, releases, levels))
     SettingsPage(viewModel, system, nav, version, onTab)
 }
 
@@ -50,6 +52,7 @@ internal fun SettingsPage(viewModel: SettingsViewModel, system: SettingsSystem, 
             dns = nav.dns,
             effectiveConfig = nav.effectiveConfig,
             report = nav.report,
+            logLevel = nav.logLevel,
             about = nav.about,
             // 設定檔 shows only with a configuration revision (a preview flag), which the app does not pass.
             config = {},
@@ -76,6 +79,7 @@ internal fun SettingsPage(viewModel: SettingsViewModel, system: SettingsSystem, 
         perAppLoaded = state.perAppLoaded,
         dnsLoaded = state.dnsLoaded,
         update = state.update,
+        logLevel = state.logLevel,
     )
 }
 

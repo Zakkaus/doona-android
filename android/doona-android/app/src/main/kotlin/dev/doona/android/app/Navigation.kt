@@ -96,6 +96,9 @@ data object ThemeKey : AppKey
 data object DnsKey : AppKey
 
 @Serializable
+data object LogLevelKey : AppKey
+
+@Serializable
 data object LicensesKey : AppKey
 
 /** One licence's text, by its place in 授權's list. */

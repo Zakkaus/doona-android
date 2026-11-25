@@ -66,7 +66,7 @@ internal enum class TileAnswer { Added, Kept, Failed }
 /**
  * What 設定 hands to Android: its VPN settings, where always-on is turned on (D14); the releases page, in the browser,
  * where a newer release is downloaded (the app downloads nothing itself, owner 2026-11-23 21:35); the repository's page,
- * for 關於's GitHub 專案; and the request to add the quick settings tile, which answers [TileAnswer.Failed] where Android
+ * for 關於's GitHub 專案, and its privacy notice, for 關於's 隱私; and the request to add the quick settings tile, which answers [TileAnswer.Failed] where Android
  * has no such request (before 13), so the page tells how to add it by hand.
  */
 internal interface SettingsSystem {
@@ -75,6 +75,8 @@ internal interface SettingsSystem {
     fun openReleases()
 
     fun openRepository()
+
+    fun openPrivacy()
 
     fun requestTile(onAnswer: (TileAnswer) -> Unit)
 }
@@ -88,14 +90,15 @@ internal fun interface ReleaseCheck {
 }
 
 /**
- * The pages 設定 opens, which the app's navigation owns: 依 App, the DNS server, the effective config, 回報問題, 關於,
- * 主題, 語言, 更新間隔 and 實驗室.
+ * The pages 設定 opens, which the app's navigation owns: 依 App, the DNS server, the effective config, 回報問題, 日誌等級,
+ * 關於, 主題, 語言, 更新間隔 and 實驗室.
  */
 internal class SettingsNav(
     val perApp: () -> Unit,
     val dns: () -> Unit,
     val effectiveConfig: () -> Unit,
     val report: () -> Unit,
+    val logLevel: () -> Unit,
     val about: () -> Unit,
     val theme: () -> Unit,
     val language: () -> Unit,

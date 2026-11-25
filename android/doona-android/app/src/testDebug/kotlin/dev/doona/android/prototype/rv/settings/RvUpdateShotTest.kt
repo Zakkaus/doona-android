@@ -271,15 +271,15 @@ class RvUpdateShotTest {
          * so every state ends as 設定's own golden does; a failed check has no banner, its row only, and wraps its line
          * at fs200. A frame is a whole dp, rounded up.
          */
-        const val WHOLE = "+h1826dp"
-        const val WHOLE_FS115 = "+h1851dp"
-        const val WHOLE_FS200 = "+h2373dp"
-        const val NEW_WHOLE = "+h1985dp"
-        const val NEW_WHOLE_FS115 = "+h2015dp"
-        const val NEW_WHOLE_FS200 = "+h2613dp"
+        const val WHOLE = "+h1908dp"
+        const val WHOLE_FS115 = "+h1933dp"
+        const val WHOLE_FS200 = "+h2481dp"
+        const val NEW_WHOLE = "+h2067dp"
+        const val NEW_WHOLE_FS115 = "+h2097dp"
+        const val NEW_WHOLE_FS200 = "+h2721dp"
         const val FAILED_WHOLE = WHOLE
         const val FAILED_WHOLE_FS115 = WHOLE_FS115
-        const val FAILED_WHOLE_FS200 = "+h2414dp"
+        const val FAILED_WHOLE_FS200 = "+h2522dp"
 
         const val WORD_JOINER = "\u2060"
         const val ZERO_WIDTH_SPACE = "\u200B"

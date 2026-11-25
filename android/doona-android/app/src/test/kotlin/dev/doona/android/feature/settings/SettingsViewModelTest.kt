@@ -7,6 +7,7 @@ import dev.doona.android.engine.EffectiveConfig
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
@@ -21,6 +22,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -406,6 +409,26 @@ class SettingsViewModelTest {
     fun `the row is not connected while the VPN is off`() = runTest {
         val vm = collected(SettingsViewModel(FakeEngine(status = Status.Stopped), FakeSettingsStore()))
         assertFalse(vm.uiState.value.geoData.connected)
+    }
+
+    @Test
+    fun `日誌等級's row names the core's level, 資訊 at first, and follows it`() = runTest {
+        val core = MutableStateFlow(LogLevel.Info)
+        val levels = object : LogLevels {
+            override val level: StateFlow<LogLevel> = core
+
+            override suspend fun set(level: LogLevel): Result<Unit> = Result.success(Unit).also { core.value = level }
+        }
+        val vm = SettingsViewModel(FakeEngine(), FakeSettingsStore(), levels = levels)
+        assertEquals("before the page collects", RvLogLevel.Info, vm.uiState.value.logLevel)
+        collected(vm)
+        core.value = LogLevel.Debug
+        assertEquals(RvLogLevel.Debug, vm.uiState.value.logLevel)
+        // 除錯's hour ends: the controller returns to 資訊 by itself.
+        core.value = LogLevel.Info
+        assertEquals(RvLogLevel.Info, vm.uiState.value.logLevel)
+        core.value = LogLevel.Warn
+        assertEquals(RvLogLevel.Warn, vm.uiState.value.logLevel)
     }
 
     @Test

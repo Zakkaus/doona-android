@@ -104,9 +104,9 @@ class RvConfigEntryShotTest {
 
     private companion object {
         const val WHOLE_POLICY = "+h1990dp"
-        const val WHOLE_SETTINGS = "+h1908dp"
-        const val WHOLE_SETTINGS_FS115 = "+h1933dp"
-        const val WHOLE_SETTINGS_FS200 = "+h2481dp"
+        const val WHOLE_SETTINGS = "+h1990dp"
+        const val WHOLE_SETTINGS_FS115 = "+h2015dp"
+        const val WHOLE_SETTINGS_FS200 = "+h2589dp"
         const val CONFIG = "設定檔"
     }
 }
