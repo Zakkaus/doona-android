@@ -118,14 +118,13 @@ private fun FilterBar(state: PoliciesUiState, onAction: (PoliciesAction) -> Unit
 }
 
 @Composable
-private fun kindLabel(kind: GroupKind): String = stringResource(
-    when (kind) {
-        GroupKind.Selector -> R.string.policy_kind_selector
-        GroupKind.UrlTest -> R.string.policy_kind_urltest
-        GroupKind.Score -> R.string.policy_kind_score
-        GroupKind.Fallback -> R.string.policy_kind_fallback
-    },
-)
+private fun kindLabel(kind: GroupKind): String = when (kind) {
+    GroupKind.Selector -> stringResource(R.string.policy_kind_selector)
+    GroupKind.UrlTest -> stringResource(R.string.policy_kind_urltest)
+    GroupKind.Score -> stringResource(R.string.policy_kind_score)
+    GroupKind.Fallback -> stringResource(R.string.policy_kind_fallback)
+    is GroupKind.Other -> kind.name
+}
 
 /**
  * Group heading facts: kind tag, then the available, untested and failed counts as small lights (§7, DoonaTag,

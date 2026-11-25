@@ -327,6 +327,14 @@ class FakeEngine internal constructor(
             SAMPLE_GROUPS.take(2) + selector("Streaming") + selector("AI") + SAMPLE_GROUPS.drop(2)
         }
 
+        /**
+         * A group from a hand-edited honk config, none of the template's: the Fallback 我的串流 over the nested HK group and
+         * two nodes. [USER_GROUPS] adds it to [TEMPLATE_GROUPS] for screens that must not assume the template.
+         */
+        val USER_GROUP = Group("g-我的串流", "我的串流", GroupKind.Fallback, listOf(Member("g-HK", "HK", isGroup = true)) + NODES.drop(2), "g-HK")
+
+        val USER_GROUPS: List<Group> = TEMPLATE_GROUPS + USER_GROUP
+
         /** A minute of download near 3.9 MB/s and upload near 330 KB/s: two slow waves around each level. */
         val SAMPLE_TRAFFIC: Traffic = run {
             fun series(level: Double, swing: Double, seed: Int) = List(60) { i ->

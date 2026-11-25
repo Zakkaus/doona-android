@@ -227,7 +227,44 @@ enum class Mode { Global, Direct, Rule }
 
 enum class Network { Tcp, Udp }
 
-enum class GroupKind(val manual: Boolean) { Selector(true), UrlTest(false), Score(false), Fallback(false) }
+/**
+ * A group's policy, by the core's [name] for it. A hand-edited honk config may hold kinds this app does not know; such a
+ * kind is [Other] and keeps its name. Only a [manual] kind lets the user pick a member.
+ */
+sealed interface GroupKind {
+    val name: String
+    val manual: Boolean get() = false
+
+    data object Selector : GroupKind {
+        override val name = "Selector"
+        override val manual = true
+    }
+
+    data object UrlTest : GroupKind {
+        override val name = "UrlTest"
+    }
+
+    data object Score : GroupKind {
+        override val name = "Score"
+    }
+
+    data object Fallback : GroupKind {
+        override val name = "Fallback"
+    }
+
+    data class Other(override val name: String) : GroupKind
+
+    companion object {
+        /** The kind the core calls [name]; one this app does not know is [Other]. */
+        fun of(name: String): GroupKind = when (name) {
+            "Selector" -> Selector
+            "UrlTest" -> UrlTest
+            "Score" -> Score
+            "Fallback" -> Fallback
+            else -> Other(name)
+        }
+    }
+}
 
 /**
  * A node or a nested group. [id] stays the same across subscription refreshes; [name] is only for display and may

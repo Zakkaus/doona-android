@@ -1,11 +1,17 @@
 package dev.doona.android.engine.fake
 
+import dev.doona.android.engine.Group
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
 
-/** The RV preview and benchmark dataset on the same in-memory engine used by JVM previews. */
-fun rvSampleEngine(): FakeEngine = FakeEngine(
-    groups = RvSampleNodes.groups,
+/**
+ * The RV preview and benchmark dataset on the same in-memory engine used by JVM previews. With [userGroup] the catalog
+ * also holds 我的串流 ([RvSampleNodes.userGroups]), a group no template has; the default keeps the approved goldens.
+ */
+fun rvSampleEngine(userGroup: Boolean = false): FakeEngine = rvSampleEngine(if (userGroup) RvSampleNodes.userGroups else RvSampleNodes.groups)
+
+private fun rvSampleEngine(groups: List<Group>): FakeEngine = FakeEngine(
+    groups = groups,
     subscriptions = RvSampleNodes.subscriptions,
     status = Status.Running(RvSampleTraffic.START),
     traffic = RvSampleTraffic.traffic,
@@ -18,6 +24,6 @@ fun rvSampleEngine(): FakeEngine = FakeEngine(
         rows = RvSampleRules.rows,
         configLines = RvSampleRules.configLines,
         series = RvSampleTraffic.series,
-        scoreState = sampleScoreState(RvSampleNodes.groups),
+        scoreState = sampleScoreState(groups),
     ),
 )

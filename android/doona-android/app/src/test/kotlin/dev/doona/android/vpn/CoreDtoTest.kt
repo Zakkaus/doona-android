@@ -167,6 +167,17 @@ class CoreDtoTest {
     }
 
     @Test
+    fun aKindTheAppDoesNotKnowKeepsItsNameAndTheRestOfTheCatalog() {
+        val json = fixture("snapshot-stopped-catalog.json").replaceFirst("\"kind\": \"Score\"", "\"kind\": \"LoadBalance\"")
+        val groups = checkNotNull(CoreJson.snapshot(json).catalog).groups.map(GroupDto::toGroup)
+        assertEquals(listOf("g-Proxy", "g-Auto", "g-Streaming", "g-AI", "g-HK"), groups.map { it.id })
+        assertEquals(GroupKind.Other("LoadBalance"), groups[1].kind)
+        assertFalse(groups[1].kind.manual)
+        assertEquals(listOf(GroupKind.Selector, GroupKind.Selector, GroupKind.Selector, GroupKind.Score), (groups - groups[1]).map { it.kind })
+        assertEquals(listOf(GroupKind.Selector, GroupKind.UrlTest, GroupKind.Score, GroupKind.Fallback), listOf("Selector", "UrlTest", "Score", "Fallback").map(GroupKind::of))
+    }
+
+    @Test
     fun legacyCatalogSharesTheSelectionAcrossNetworks() {
         val snapshot = Json.parseToJsonElement(fixture("snapshot-stopped-catalog.json")).jsonObject
         val catalog = snapshot.getValue("catalog").jsonObject

@@ -10,7 +10,8 @@ import kotlinx.serialization.Serializable
 internal data class GroupDto(
     val id: String,
     val name: String,
-    val kind: GroupKind,
+    /** The core's name for the kind; decoded by [GroupKind.of], so an unknown one keeps the rest of the catalog. */
+    val kind: String,
     val selectedId: String? = null,
     val tcpSelectedId: String? = selectedId,
     val udpSelectedId: String? = selectedId,
@@ -24,7 +25,7 @@ internal data class GroupDto(
     fun toGroup(): Group {
         val tcp = Group.Selection(tcpSelectedId, tcpPinned)
         val udp = Group.Selection(udpSelectedId, udpPinned)
-        return Group(id, name, kind, members.map(MemberDto::toMember), tcp, udp, testing)
+        return Group(id, name, GroupKind.of(kind), members.map(MemberDto::toMember), tcp, udp, testing)
     }
 }
 
