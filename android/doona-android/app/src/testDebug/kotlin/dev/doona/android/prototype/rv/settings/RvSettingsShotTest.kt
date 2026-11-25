@@ -11,7 +11,6 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.text.TextLayoutResult
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvTheme
-import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed
@@ -59,8 +58,8 @@ class RvSettingsShotTest {
     fun settingsFs200() = compose.rvShot("settings", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { Settings() }
 
     @Test
-    @Config(qualifiers = RV_EN)
-    fun settingsEn() = compose.rvShot("settings-en", dark = false) { Settings() }
+    @Config(qualifiers = LONG_PAGE_EN)
+    fun settingsEn() = compose.rvShot("settings-en", dark = false, before = { assertWhole() }) { Settings() }
 
     @Test
     fun theTopIsTheHeroWithItsTitleAndNoSearch() {
@@ -146,6 +145,7 @@ class RvSettingsShotTest {
         const val LONG_PAGE = "+h1768dp"
         const val LONG_PAGE_FS115 = "+h1793dp"
         const val LONG_PAGE_FS200 = "+h2303dp"
+        const val LONG_PAGE_EN = "en-w412dp-h1818dp-notnight-xhdpi"
 
         const val NEAR = 0.5f
 
