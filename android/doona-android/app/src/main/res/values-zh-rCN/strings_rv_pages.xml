@@ -30,7 +30,7 @@
     <string name="rv_add_subscription">添加订阅</string>
     <string name="rv_offline">没有网络连接</string>
     <string name="rv_offline_reason">设备当前未连接网络。连接网络后，doona 即可连接并更新订阅。</string>
-    <string name="rv_network_settings">网络设置</string>
+    <string name="rv_network_settings">打开网络设置</string>
     <string name="rv_vpn_taken">VPN 已由其他应用接管</string>
     <string name="rv_vpn_taken_reason">Android 一次只能运行一个 VPN，因此 doona 已断开连接。</string>
     <string name="rv_reconnect">重新连接</string>

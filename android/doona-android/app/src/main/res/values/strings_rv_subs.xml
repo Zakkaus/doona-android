@@ -28,12 +28,12 @@
     <string name="rv_sub_rename">Rename</string>
     <string name="rv_save">Save</string>
     <string name="rv_add_clipboard">Use the copied link</string>
-    <string name="rv_add_import">Import</string>
-    <string name="rv_add_importing">Importing…</string>
+    <string name="rv_add_import">Add</string>
+    <string name="rv_add_importing">Adding…</string>
     <string name="rv_add_downloaded">Downloaded %1$s</string>
-    <string name="rv_add_done">Imported %1$s</string>
+    <string name="rv_add_done">Added %1$s</string>
     <string name="rv_done">Done</string>
-    <string name="rv_add_failed">Could not import the subscription</string>
+    <string name="rv_add_failed">Could not add the subscription</string>
     <string name="rv_add_unreachable">The subscription\'s server did not answer. Check the link and the network, then try again.</string>
     <string name="rv_add_not_subscription_reason">This link did not return a subscription. Check that it is the subscription link from your provider.</string>
     <string name="rv_add_too_large">The subscription is larger than the %1$s limit.</string>

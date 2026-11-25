@@ -163,7 +163,7 @@ internal fun RvTopBar(
     RvBar(glass, insets, shade, modifier, RvChrome.tabBarTop) {
         RvTabBarRow(glass, { RvSearchPill(onSearch, it, glass, pull) }) {
             RvGlassButton(glass, R.drawable.rv_ic_analytics, stringResource(R.string.rv_stats), onStats)
-            RvGlassButton(glass, R.drawable.rv_sym_rss_feed, stringResource(R.string.rv_subscriptions), onSubscriptions)
+            RvGlassButton(glass, R.drawable.rv_sym_rss_feed, stringResource(R.string.rv_open_subscriptions), onSubscriptions)
         }
     }
 }

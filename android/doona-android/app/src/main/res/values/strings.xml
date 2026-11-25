@@ -13,7 +13,7 @@
     <string name="ui_search">Search</string>
     <string name="ui_more_options">More options</string>
     <string name="ui_back">Back</string>
-    <string name="group_new_group">New group</string>
+    <string name="group_new_group">Create group</string>
     <string name="policy_edit">Edit group</string>
     <string name="backend_connected">Connected</string>
     <string name="login_submit">Connect</string>
@@ -90,9 +90,9 @@
     <!-- Used over total as doona web writes it: 70/268 MB, the unit once when both share it. -->
     <string name="sub_traffic" translatable="false">%1$s/%2$s</string>
     <string name="sub_update">Update</string>
-    <string name="sub_remove">Remove</string>
-    <string name="sub_remove_title">Remove subscription?</string>
-    <string name="sub_remove_body">%1$s and its nodes will be removed.</string>
+    <string name="sub_remove">Delete</string>
+    <string name="sub_remove_title">Delete subscription?</string>
+    <string name="sub_remove_body">%1$s and its nodes will be deleted.</string>
     <string name="sub_empty_title">No subscriptions</string>
     <string name="sub_empty_line">Add a subscription link to import nodes.</string>
     <string name="first_heading">Add your first subscription</string>

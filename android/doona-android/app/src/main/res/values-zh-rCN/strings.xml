@@ -83,9 +83,9 @@
     <string name="sub_expires">%1$s 到期</string>
     <string name="sub_expired">已过期</string>
     <string name="sub_update">更新</string>
-    <string name="sub_remove">移除</string>
-    <string name="sub_remove_title">移除订阅？</string>
-    <string name="sub_remove_body">将移除 %1$s 及其所有节点。</string>
+    <string name="sub_remove">删除</string>
+    <string name="sub_remove_title">删除订阅？</string>
+    <string name="sub_remove_body">将删除 %1$s 及其所有节点。</string>
     <string name="sub_empty_title">没有订阅</string>
     <string name="sub_empty_line">添加订阅链接以导入节点。</string>
     <string name="first_heading">添加第一个订阅</string>

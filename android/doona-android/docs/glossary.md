@@ -39,7 +39,12 @@ One concept, one word per locale. "Web key" is the doona web locale key that set
 | Permission | permission | 權限 | 权限 | ui.backend.permissionDenied |
 | Share | Share | 分享 | 分享 | nodes.editNodeMissing |
 | Add (a subscription, a rule to a list) | Add | 新增 | 添加 | act.setup.nodes |
-| Create (new group, new rule) | New | 新增 | 新建 | rule.add, config.newSource |
+| Import (a configuration file; adding a subscription is Add, not Import) | Import | 匯入 | 导入 | - |
+| Delete (a subscription, a rule, a configuration) | Delete | 刪除 | 删除 | - |
+| Open (a page or setting) | Open | 開啟 | 打开 | - |
+| View (read a detail, a release page) | View | 檢視 | 查看 | act.viewAll |
+| Check (a list item) | check | 勾選 | 勾选 | - |
+| Create (new group, new rule) | Create | 新增 | 新建 | rule.add, config.newSource |
 | Not found | Not found | 找不到 | 找不到 | ui.backend.resourceNotFound |
 | Not yet (empty state) | yet | 尚未 / 尚無 | 尚未 / 尚无 | act.noSubscriptions |
 | In use | In use | 使用中 | 使用中 | conn.latency.inUse |

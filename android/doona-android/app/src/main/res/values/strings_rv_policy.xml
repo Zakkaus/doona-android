@@ -31,7 +31,7 @@
     <string name="rv_policy_rest_kind">Matched no rule above</string>
     <string name="rv_policy_template">Template</string>
     <string name="rv_policy_template_value">Bypass mainland China</string>
-    <string name="rv_policy_new_rule">New rule</string>
+    <string name="rv_policy_new_rule">Create rule</string>
     <string name="rv_policy_block_ads">Block ads</string>
     <string name="rv_policy_block_quic">Block QUIC</string>
     <string name="rv_policy_selected">Selected %1$s · %2$s</string>

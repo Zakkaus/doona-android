@@ -26,8 +26,9 @@
     <string name="rv_range_15m">15 分</string>
     <string name="rv_range_1h">1 小時</string>
     <string name="rv_search_nodes">搜尋節點</string>
-    <string name="rv_stats">統計</string>
+    <string name="rv_stats">開啟統計</string>
     <string name="rv_subscriptions">訂閱</string>
+    <string name="rv_open_subscriptions">開啟訂閱</string>
     <string name="rv_today_usage">今日用量</string>
     <string name="rv_less_than_yesterday">比昨天同時段少 %1$s</string>
     <string name="rv_more_than_yesterday">比昨天同時段多 %1$s</string>
@@ -48,7 +49,7 @@
     </plurals>
     <!-- Long-press menus (G3). -->
     <string name="rv_menu_set_main">設為主節點</string>
-    <string name="rv_menu_details">詳情</string>
+    <string name="rv_menu_details">檢視詳情</string>
     <string name="rv_menu_copy_link">複製分享連結</string>
     <string name="rv_reorder_up">上移</string>
     <string name="rv_reorder_down">下移</string>

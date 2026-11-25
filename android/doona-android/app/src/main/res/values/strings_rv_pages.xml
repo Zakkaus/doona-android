@@ -33,7 +33,7 @@
     <string name="rv_add_subscription">Add subscription</string>
     <string name="rv_offline">No network</string>
     <string name="rv_offline_reason">The phone is not on a network. Once it is, doona can connect and update subscriptions.</string>
-    <string name="rv_network_settings">Network settings</string>
+    <string name="rv_network_settings">Open network settings</string>
     <string name="rv_vpn_taken">Another app took over the VPN</string>
     <string name="rv_vpn_taken_reason">Android runs one VPN at a time, so doona disconnected.</string>
     <string name="rv_reconnect">Reconnect</string>
