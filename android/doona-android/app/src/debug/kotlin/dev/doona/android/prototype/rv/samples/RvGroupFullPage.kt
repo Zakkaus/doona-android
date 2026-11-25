@@ -1,12 +1,15 @@
 package dev.doona.android.prototype.rv.samples
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -17,6 +20,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvEmptyCaption
+import dev.doona.android.designsystem.rv.RvFilterChipRow
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvPrimaryButton
@@ -25,6 +29,7 @@ import dev.doona.android.designsystem.rv.RvSearchField
 import dev.doona.android.designsystem.rv.RvSearchSlot
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.prototype.rv.data.RvNode
+import dev.doona.android.prototype.rv.data.RvNodeSort
 import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.nodes.RvNodePickRow
 import dev.doona.android.prototype.rv.nodes.RvNodeSection
@@ -44,6 +49,10 @@ import dev.doona.android.prototype.rv.policy.RvPolicyGroup
  * With [score] the group is a Score group: Score picks each network's node itself, so a tap chooses nothing and the
  * 套用到 control is not there; the chosen rows begin with Score's mark (Score for both networks, Score TCP, Score UDP).
  * [query] is what the search field holds to begin with.
+ *
+ * Under the search field stand the 節點 page's two chips: the subscription (one picked, only its section shows, open; or all
+ * of them) and the order (延遲, 穩定, 名稱 or 地區, applied inside each section). They filter the list below them, not the
+ * 使用中 or the 套用到 card. [subscription] and [order] are what they hold to begin with.
  */
 @Composable
 internal fun RvGroupFullPage(
@@ -52,6 +61,8 @@ internal fun RvGroupFullPage(
     modifier: Modifier = Modifier,
     score: Boolean = false,
     query: String = "",
+    subscription: String? = null,
+    order: RvNodeSort = RvNodeSort.Latency,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val group = sample.group
@@ -60,7 +71,10 @@ internal fun RvGroupFullPage(
     var choice by remember { mutableStateOf(RvApplyChoice(sample.tcpId, if (apart) sample.udpId else sample.tcpId, apart)) }
     var apply by remember { mutableStateOf(RvApplyTo.Tcp) }
     val labels = group.members.associate { it.id to stringResource(it.place.label) }
-    val matching = group.members.filter { it.matches(typed.trim(), labels.getValue(it.id)) }.mapTo(mutableSetOf()) { it.id }
+    var picked by remember { mutableStateOf(subscription) }
+    var sorted by remember { mutableStateOf(order) }
+    val scoped = group.members.filter { picked == null || it.subscription == picked }
+    val matching = scoped.filter { it.matches(typed.trim(), labels.getValue(it.id)) }.mapTo(mutableSetOf()) { it.id }
     val holders = group.members.filter { choice.chosen(it.id) }.map { it.subscription }.toSet()
     val open = sample.subscriptions.size <= RV_SECTIONS_OPEN_UP_TO
     RvScrollPage(name, insets, modifier, onBack = {}, bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_test_group), {}) }) { titleBlock ->
@@ -71,24 +85,30 @@ internal fun RvGroupFullPage(
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
             RvSearchSlot { RvSearchField(null, typed, { typed = it }, it) }
+            val (subChip, orderChip) = rvGroupChips(sample.subscriptions, picked, sorted, { picked = it }, { sorted = it })
+            RvFilterChipRow(subChip, orderChip)
+            Spacer(Modifier.height(RvSpace.controlGap))
         }
-        sample.subscriptions.forEach { sub ->
-            RvNodeSection(
-                sub,
-                group.byLatency.filter { it.subscription == sub.name },
-                matching,
-                labels,
-                choice.tcpId,
-                searching = typed.isNotBlank(),
-                onPick = {},
-                onDetail = {},
-                rows = RvRowsComposed(0) { Int.MAX_VALUE },
-                modifier = Modifier,
-                initiallyOpen = open || sub.name in holders,
-                row = { node, label, _, order ->
-                    SectionRow(node, label, order, choice, mark = lead(choice, node.id, score)) { if (!score) choice = choice.tapped(it, apply) }
-                },
-            )
+        sample.subscriptions.filter { picked == null || it.name == picked }.forEach { sub ->
+            // A new pick starts its section afresh: open, as a section alone on the page is.
+            key(picked, sub.name) {
+                RvNodeSection(
+                    sub,
+                    rvSectionOrder(scoped.filter { it.subscription == sub.name }, sorted),
+                    matching,
+                    labels,
+                    choice.tcpId,
+                    searching = typed.isNotBlank(),
+                    onPick = {},
+                    onDetail = {},
+                    rows = RvRowsComposed(0) { Int.MAX_VALUE },
+                    modifier = Modifier,
+                    initiallyOpen = open || picked != null || sub.name in holders,
+                    row = { node, label, _, order ->
+                        SectionRow(node, label, order, choice, mark = lead(choice, node.id, score)) { if (!score) choice = choice.tapped(it, apply) }
+                    },
+                )
+            }
         }
         if (matching.isEmpty()) {
             RvGutter { RvEmptyCaption(sampleText("找不到符合的節點", "找不到符合的节点", "No matching nodes"), stringResource(R.string.rv_conn_none_line)) }
