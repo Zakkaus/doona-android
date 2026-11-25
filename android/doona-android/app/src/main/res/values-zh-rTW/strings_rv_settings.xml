@@ -74,4 +74,5 @@
     <string name="rv_perapp_saving">正在儲存…</string>
     <string name="rv_perapp_save_failed">無法儲存</string>
     <string name="rv_perapp_rebuild_failed">已儲存，但 VPN 無法重新連線</string>
+    <string name="rv_lab_restart_hint">重開 App 後生效</string>
 </resources>
