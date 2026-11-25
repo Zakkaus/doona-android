@@ -133,7 +133,8 @@ pub struct Unsupported {
     pub locations: Vec<Location>,
 }
 
-/// Rule-family scope and counts at import, not runtime packet counters.
+/// Rule-family scope and inventory at import, not runtime packet counters. Capability counts
+/// depend on platform facts and live in [`Support`].
 #[derive(Debug, PartialEq, Eq)]
 pub struct Summary {
     /// IP families admitted by the current Android ingress.
@@ -152,8 +153,6 @@ pub struct Summary {
     pub dns_request_rules: usize,
     /// Response rules, excluding the fallback.
     pub dns_response_rules: usize,
-    /// Number of affected declarations, not the sum of their reasons.
-    pub unsupported: usize,
 }
 
 /// Validated native configuration and its read-only Android capability report.
@@ -209,7 +208,6 @@ impl HonkConfig {
             dns_upstreams: cfg.dns.upstream.len(),
             dns_request_rules: dns.request.rules.len(),
             dns_response_rules: dns.response.rules.len(),
-            unsupported: self.unsupported().len(),
         }
     }
 }

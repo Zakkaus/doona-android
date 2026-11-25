@@ -8,7 +8,9 @@ use std::{
 };
 
 use common::TempDir;
-use doonacore::honkconf::{Disposition, HonkConfigError, HonkStore, StoreError, Summary, load};
+use doonacore::honkconf::{
+    Capabilities, Disposition, HonkConfigError, HonkStore, StoreError, Summary, load,
+};
 use honk_config::Config;
 
 fn write(dir: &TempDir, name: &str, text: &str) -> PathBuf {
@@ -86,9 +88,9 @@ fn shipped_examples() {
                     dns_upstreams: 2,
                     dns_request_rules: 1,
                     dns_response_rules: 3,
-                    unsupported: 19,
                 }
             );
+            assert_eq!(doc.unsupported().len(), 19);
         }
     }
 }
@@ -237,7 +239,7 @@ fn missing_assets_and_constrained_scope_are_not_parse_failures() {
     assert_eq!(report[5].disposition, Disposition::Limited);
     assert_eq!(report[6].section, "dns.routing.response");
     write(&dir, "hosts", "127.0.0.1 restored.test\n");
-    assert_eq!(load(path).unwrap().summary().unsupported, 6);
+    assert_eq!(load(path).unwrap().unsupported().len(), 6);
 }
 
 #[test]
@@ -592,7 +594,7 @@ fn imported_sources_exclude_unreferenced_assets() {
     let data = TempDir::new("honk-assets-store");
     let mut store = HonkStore::open(data.path()).unwrap();
     let draft = store.import(&entry).unwrap();
-    let rev = store.apply(draft).unwrap();
+    let rev = store.apply(draft, &Capabilities::linked()).unwrap();
     let tree = data.path().join(format!("config/revisions/{rev}"));
     let mut names: Vec<_> = fs::read_dir(&tree)
         .unwrap()

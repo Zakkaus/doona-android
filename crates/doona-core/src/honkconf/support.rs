@@ -2,7 +2,9 @@
 //! facts. It reads the parsed `Config` and honk's rule spans; it never edits either and
 //! never scans source text a second time.
 
-use std::net::{IpAddr, Ipv4Addr};
+mod capture;
+
+use std::net::IpAddr;
 
 use honk_config::Config;
 use honk_config::dns::{DnsCond, DnsDomainMatcher, DnsRequestAction, decode_ip_or_cidr};
@@ -10,36 +12,13 @@ use honk_config::parser::source_edit::{RuleSourceIndex, RuleSourceLocation};
 use honk_config::routing::RoutingCondition;
 
 use super::{Disposition, Location, Reason, Unsupported};
-
-/// The IPv4 prefixes the VPN routes into the TUN, as the platform installed them
-/// (Android: `TunRoutes.IPV4`, public IPv4 plus the TUN's own /30).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Ingress {
-    routes: Vec<(u32, u8)>,
-}
-
-impl Ingress {
-    /// Captured IPv4 routes; host bits are cleared, prefix lengths above 32 are clamped.
-    pub fn ipv4(routes: impl IntoIterator<Item = (Ipv4Addr, u8)>) -> Self {
-        let routes = routes
-            .into_iter()
-            .map(|(addr, len)| {
-                let len = len.min(32);
-                (u32::from(addr) & mask(len), len)
-            })
-            .collect();
-        Self { routes }
-    }
-}
-
-fn mask(len: u8) -> u32 {
-    u32::MAX.checked_shl(32 - u32::from(len)).unwrap_or(0)
-}
+pub use capture::Ingress;
+use capture::{PRIVATE_V4, Scope};
 
 /// Whether one geodata label resolves in the installed data. The catalog owns honk's
-/// matching rules; this projection only asks. honk lowercases codes, splits a GEOSITE label
-/// at its first `@` (so `cat@a@b` asks for the attribute `a@b`), compares attributes without
-/// case and by key presence, and reads `!attr` as a literal key.
+/// matching rules; this projection only asks. Labels arrive trimmed and lowercased, as honk
+/// folds them. honk splits a GEOSITE label at its first `@` (so `cat@a@b` asks for the
+/// attribute `a@b`), compares attributes by key presence, and reads `!attr` as a literal key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Label {
     Present,
@@ -53,6 +32,9 @@ pub enum Label {
 pub trait GeoCatalog {
     /// A GeoIP country or list code, never `private` (honk's own ranges).
     fn geoip(&self, code: &str) -> Label;
+    /// The networks a present GeoIP code expands to, or `None` when the catalog does not
+    /// know them; the rule's capture is then not assessed.
+    fn geoip_nets(&self, code: &str) -> Option<Vec<(IpAddr, u8)>>;
     /// A GEOSITE label as written, including any `@attribute`.
     fn geosite(&self, label: &str) -> Label;
 }
@@ -95,6 +77,8 @@ pub struct Support {
     pub records: Vec<Unsupported>,
     /// The asset generation the geo dispositions refer to.
     pub asset_generation: Option<u64>,
+    /// The captured routes the capture dispositions refer to; `None` when not assessed.
+    pub ingress: Option<Ingress>,
     /// Declarations whose disposition depends on an input that was not supplied.
     pub unassessed: usize,
 }
@@ -130,6 +114,11 @@ impl Support {
     pub fn assessed(&self) -> bool {
         self.complete() && self.unassessed == 0
     }
+    /// May this configuration start: every input assessed and no rule blocked. Skipped rules
+    /// and refused fallbacks do not stop it; Apply checks this against the caller's facts.
+    pub fn runnable(&self) -> bool {
+        self.assessed() && self.blocked() == 0
+    }
 }
 
 pub(super) fn project(
@@ -151,92 +140,8 @@ pub(super) fn project(
             Geo::Installed { generation, .. } => Some(generation),
             _ => None,
         },
+        ingress: caps.ingress.cloned(),
         unassessed: out.unassessed,
-    }
-}
-
-/// honk's own `geoip:private` IPv4 ranges (honk-core `routing/geo.rs:584-603` at the pin); honk never
-/// reads the dat for this code. Its IPv6 ranges cannot reach the IPv4-only TUN.
-const PRIVATE_V4: [([u8; 4], u8); 15] = [
-    ([10, 0, 0, 0], 8),
-    ([100, 64, 0, 0], 10),
-    ([127, 0, 0, 0], 8),
-    ([169, 254, 0, 0], 16),
-    ([172, 16, 0, 0], 12),
-    ([192, 0, 0, 0], 24),
-    ([192, 0, 2, 0], 24),
-    ([192, 88, 99, 0], 24),
-    ([192, 168, 0, 0], 16),
-    ([198, 18, 0, 0], 15),
-    ([198, 51, 100, 0], 24),
-    ([203, 0, 113, 0], 24),
-    ([224, 0, 0, 0], 4),
-    ([240, 0, 0, 0], 4),
-    ([255, 255, 255, 255], 32),
-];
-
-/// Reachability of one rule's positive destination alternatives.
-#[derive(Default)]
-struct Scope {
-    reachable: bool,
-    unknown: bool,
-    v6: bool,
-    lan: bool,
-}
-
-impl Scope {
-    fn v4(&mut self, ingress: Option<&Ingress>, addr: Ipv4Addr, len: u8) {
-        let Some(ingress) = ingress else {
-            self.unknown = true;
-            return;
-        };
-        let reach = ingress.reach(addr, len);
-        self.reachable |= reach != Reach::None;
-        self.lan |= reach != Reach::All;
-    }
-}
-
-/// How much of one destination prefix the TUN receives.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Reach {
-    All,
-    Part,
-    None,
-}
-
-impl Ingress {
-    fn reach(&self, addr: Ipv4Addr, len: u8) -> Reach {
-        let base = u32::from(addr) & mask(len);
-        if self.covers(base, len) {
-            Reach::All
-        } else if self.routes.iter().any(|&(route, rlen)| {
-            let shorter = rlen.min(len);
-            route & mask(shorter) == base & mask(shorter)
-        }) {
-            Reach::Part
-        } else {
-            Reach::None
-        }
-    }
-
-    /// True when the union of routes holds the whole prefix; splits only where a route lies inside.
-    fn covers(&self, base: u32, len: u8) -> bool {
-        if self
-            .routes
-            .iter()
-            .any(|&(route, rlen)| rlen <= len && base & mask(rlen) == route)
-        {
-            return true;
-        }
-        let inside = self
-            .routes
-            .iter()
-            .any(|&(route, rlen)| rlen > len && route & mask(len) == base);
-        if !inside || len == 32 {
-            return false;
-        }
-        let bit = 1u32 << (31 - u32::from(len));
-        self.covers(base, len + 1) && self.covers(base | bit, len + 1)
     }
 }
 
@@ -303,8 +208,8 @@ impl<'c> Projection<'c, '_> {
         ordinal: Option<usize>,
         source: Option<&RuleSourceLocation>,
     ) {
-        // A rule already skipped or blocked has a known disposition despite an unknown input.
-        if f.unknown && !f.skip && !f.block {
+        // Only Blocked is final: a skipped rule naming an unassessed label may still block the run.
+        if f.unknown && !f.block {
             self.unassessed += 1;
         }
         if f.reasons.is_empty() {
@@ -366,21 +271,36 @@ impl Findings<'_> {
 
     // honk's `geoip:private` is its own range list, not a lookup in the installed data.
     fn geoip(&mut self, code: &str) {
-        if code.eq_ignore_ascii_case("private") {
+        let code = fold(code);
+        if code == "private" {
             return;
         }
         match self.caps.geo {
             Geo::NotAssessed => self.unknown = true,
-            Geo::Unavailable => self.missing("missing_geoip", code),
+            Geo::Unavailable => self.missing("missing_geoip", &code),
             Geo::Installed { catalog, .. } => {
-                if catalog.geoip(code) != Label::Present {
-                    self.missing("missing_geoip", code);
+                if catalog.geoip(&code) != Label::Present {
+                    self.missing("missing_geoip", &code);
                 }
             }
         }
     }
 
+    /// The networks a folded GeoIP code adds to a destination scope: none for a missing code,
+    /// which honk expands to nothing, and `None` when nobody knows them.
+    fn geoip_nets(&self, code: &str) -> Option<Vec<(IpAddr, u8)>> {
+        match self.caps.geo {
+            Geo::NotAssessed => None,
+            Geo::Unavailable => Some(Vec::new()),
+            Geo::Installed { catalog, .. } => match catalog.geoip(code) {
+                Label::Present => catalog.geoip_nets(code),
+                _ => Some(Vec::new()),
+            },
+        }
+    }
+
     fn geosite(&mut self, label: &str) {
+        let label = &fold(label);
         let found = match self.caps.geo {
             Geo::NotAssessed => {
                 self.unknown = true;
@@ -397,41 +317,48 @@ impl Findings<'_> {
     }
 
     /// Positive destination alternatives: the rule survives while one can reach the TUN; a
-    /// prefix only partly routed into it constrains the rule.
+    /// prefix only partly routed into it constrains the rule. A GeoIP code is judged by its
+    /// networks exactly as `dip(<cidr>)` is.
     fn destinations(&mut self, cidrs: &[String], geo_ip: &[String]) {
         let ingress = self.caps.ingress;
         let mut scope = Scope::default();
-        for code in geo_ip {
-            if code.eq_ignore_ascii_case("private") {
+        for code in geo_ip.iter().map(|c| fold(c)) {
+            if code == "private" {
                 for &(octets, len) in &PRIVATE_V4 {
-                    scope.v4(ingress, Ipv4Addr::from(octets), len);
+                    scope.net(ingress, IpAddr::from(octets), len);
                 }
-            } else {
-                scope.reachable = true;
+                continue;
+            }
+            match self.geoip_nets(&code) {
+                Some(nets) => nets
+                    .into_iter()
+                    .for_each(|(addr, len)| scope.net(ingress, addr, len)),
+                None => scope.unknown = true,
             }
         }
         for network in cidrs.iter().filter_map(|s| decode_ip_or_cidr(s)) {
-            match network.network.addr() {
-                IpAddr::V6(_) => scope.v6 = true,
-                IpAddr::V4(addr) => scope.v4(ingress, addr, network.network.prefix_len()),
-            }
+            scope.net(
+                ingress,
+                network.network.addr(),
+                network.network.prefix_len(),
+            );
         }
-        if scope.reachable || scope.unknown {
-            // Unknown routes leave a constraint open even when another alternative reaches the TUN.
-            self.unknown |= scope.unknown;
-            if scope.v6 {
-                self.add("ipv4_scope", None, false);
-            }
-            if scope.lan {
-                self.add("lan_outside_capture", None, false);
-            }
-            return;
-        }
+        // Unknown routes leave a constraint open even when another alternative reaches the TUN.
+        let skip = !scope.reachable && !scope.unknown;
+        self.unknown |= scope.unknown;
         if scope.v6 {
-            self.add("ipv6_ingress_only", None, true);
+            let code = if skip {
+                "ipv6_ingress_only"
+            } else {
+                "ipv4_scope"
+            };
+            self.add(code, None, skip);
         }
         if scope.lan {
-            self.add("lan_outside_capture", None, true);
+            self.add("lan_outside_capture", None, skip);
+        }
+        if scope.other {
+            self.add("outside_capture", None, skip);
         }
     }
 
@@ -486,6 +413,9 @@ impl Findings<'_> {
             self.geoip(code);
         }
         self.destinations(&c.ip, &c.geo_ip);
+        // `sip` is judged by family only. honk matches it against the source address the
+        // embedding passes (honk answer Q4): with the TUN's own address a LAN `sip` never
+        // matches, with the app's original source it does. Slice 8 decides which one doona passes.
         self.families(&c.source_ip, false);
         self.families(&c.not.ip, true);
         self.families(&c.not.source_ip, true);
@@ -515,9 +445,15 @@ impl Findings<'_> {
                         self.geoip(code);
                     }
                 }
+                // Family only, for the same reason as traffic `sip`; DNS `sip` is request-only.
                 DnsCond::Sip { not, cidrs } => self.families(cidrs, *not),
                 _ => {}
             }
         }
     }
+}
+
+/// A geodata code as honk compares it: trimmed and lowercased (honk-core `routing/geo.rs`).
+fn fold(code: &str) -> String {
+    code.trim().to_lowercase()
 }

@@ -3,13 +3,13 @@ mod common;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
-use std::net::Ipv4Addr;
+use std::net::{IpAddr, Ipv4Addr};
 use std::path::PathBuf;
 
 use common::TempDir;
 use doonacore::honkconf::{
-    Capabilities, Disposition, Geo, GeoCatalog, HonkConfig, HonkStore, Ingress, Label, Support,
-    load,
+    Capabilities, Disposition, Geo, GeoCatalog, HonkConfig, HonkStore, Ingress, Label, StoreError,
+    Support, load,
 };
 
 fn write(dir: &TempDir, name: &str, text: &str) -> PathBuf {
@@ -61,6 +61,8 @@ fn d25() -> Ingress {
 struct Catalog {
     ip: BTreeSet<&'static str>,
     site: BTreeMap<&'static str, BTreeSet<&'static str>>,
+    /// GeoIP codes whose networks the fixture knows; the others answer `None`.
+    nets: BTreeMap<&'static str, Vec<(IpAddr, u8)>>,
 }
 
 /// Follows honk's rules: lowercase codes, one split at the first `@`, attributes by key
@@ -72,6 +74,9 @@ impl GeoCatalog for Catalog {
         } else {
             Label::MissingCategory
         }
+    }
+    fn geoip_nets(&self, code: &str) -> Option<Vec<(IpAddr, u8)>> {
+        self.nets.get(code.to_ascii_lowercase().as_str()).cloned()
     }
     fn geosite(&self, label: &str) -> Label {
         let (code, attr) = label
@@ -97,6 +102,10 @@ fn caps<'a>(ingress: &'a Ingress, catalog: &'a Catalog, generation: u64) -> Capa
             catalog,
         },
     }
+}
+
+fn net(a: u8, b: u8, c: u8, d: u8, len: u8) -> (IpAddr, u8) {
+    (IpAddr::V4(Ipv4Addr::new(a, b, c, d)), len)
 }
 
 fn rows(report: &Support) -> Vec<(&str, &str, Vec<&str>, Disposition)> {
@@ -178,12 +187,13 @@ fn private_list_is_partly_captured() {
         "routing {\n dip(geoip:private) -> direct\n !dip(geoip:private) -> direct\n fallback: direct\n}",
     );
     let report = doc.support(&caps(&ingress, &geo, 1));
+    // 127/8 and 224/3 are excluded as well, and they are not LAN.
     assert_eq!(
         rows(&report),
         [(
             "routing",
             "rule[0]",
-            vec!["lan_outside_capture"],
+            vec!["lan_outside_capture", "outside_capture"],
             Disposition::Limited
         )]
     );
@@ -377,13 +387,14 @@ fn restored_asset_clears_the_block_at_the_same_revision() {
     );
     let mut store = HonkStore::open(data.path()).unwrap();
     let draft = store.import(&write(&src, "config.dae", RESTORE)).unwrap();
-    let rev = store.apply(draft).unwrap();
     let ingress = d25();
     let stale = Catalog::default();
     let restored = Catalog {
         ip: BTreeSet::from(["cn"]),
         site: BTreeMap::from([("cn", BTreeSet::new())]),
+        nets: BTreeMap::from([("cn", vec![net(1, 0, 1, 0, 24)])]),
     };
+    let rev = store.apply(draft, &caps(&ingress, &restored, 2)).unwrap();
     let before = store
         .read_revision(rev)
         .unwrap()
@@ -407,4 +418,185 @@ fn restored_asset_clears_the_block_at_the_same_revision() {
     assert_eq!(store.head(), Some(rev));
     assert!(after.records.is_empty(), "{:?}", after.records);
     assert_eq!((after.asset_generation, after.blocked()), (Some(2), 0));
+}
+
+fn import(text: &str) -> (TempDir, HonkStore, u64) {
+    let (data, src) = (TempDir::new("honk-run-data"), TempDir::new("honk-run-src"));
+    let mut store = HonkStore::open(data.path()).unwrap();
+    let draft = store.import(&write(&src, "config.dae", text)).unwrap();
+    (data, store, draft)
+}
+
+#[test]
+fn apply_refuses_a_blocked_rule() {
+    let (_data, mut store, draft) =
+        import("routing {\n domain(geosite:cn) -> direct\n fallback: direct\n}");
+    let ingress = d25();
+    let stale = Catalog::default();
+    let report = store
+        .check(draft)
+        .unwrap()
+        .support(&caps(&ingress, &stale, 1));
+    assert!(report.assessed() && !report.runnable());
+    match store.apply(draft, &caps(&ingress, &stale, 1)) {
+        Err(StoreError::NotRunnable(report)) => assert_eq!(report.blocked(), 1),
+        other => panic!("{other:?}"),
+    }
+    assert_eq!(store.head(), None);
+    let restored = Catalog {
+        site: BTreeMap::from([("cn", BTreeSet::new())]),
+        ..Catalog::default()
+    };
+    let rev = store.apply(draft, &caps(&ingress, &restored, 2)).unwrap();
+    assert_eq!(store.head(), Some(rev));
+}
+
+#[test]
+fn apply_refuses_an_unassessed_rule() {
+    let (_data, mut store, draft) =
+        import("routing {\n dip(192.168.1.0/24) -> direct\n fallback: direct\n}");
+    let unknown = Capabilities {
+        ingress: None,
+        geo: Geo::NotAssessed,
+    };
+    let report = store.check(draft).unwrap().support(&unknown);
+    assert!(report.complete() && !report.runnable());
+    match store.apply(draft, &unknown) {
+        Err(StoreError::NotRunnable(report)) => assert_eq!(report.unassessed, 1),
+        other => panic!("{other:?}"),
+    }
+    // With the capture known the rule is skipped, and a skipped rule does not stop the run.
+    let (ingress, geo) = (d25(), Catalog::default());
+    store.apply(draft, &caps(&ingress, &geo, 1)).unwrap();
+}
+
+#[test]
+fn skipped_rule_still_counts_unknown_geo() {
+    let doc =
+        doc("routing {\n pname(chrome) && domain(geosite:cn) -> direct\n fallback: direct\n}");
+    let ingress = d25();
+    let report = doc.support(&Capabilities {
+        ingress: Some(&ingress),
+        geo: Geo::NotAssessed,
+    });
+    assert_eq!(
+        rows(&report),
+        [(
+            "routing",
+            "rule[0]",
+            vec!["process_name_unavailable"],
+            Disposition::Skip
+        )]
+    );
+    // The installed data could still lack the label and block the configuration.
+    assert_eq!(report.unassessed, 1);
+    assert!(!report.assessed() && !report.runnable());
+}
+
+#[test]
+fn geoip_nets_are_judged_against_the_capture() {
+    let ingress = d25();
+    let geo = Catalog {
+        ip: BTreeSet::from(["cn", "home", "opaque"]),
+        nets: BTreeMap::from([
+            ("cn", vec![net(1, 0, 1, 0, 24)]),
+            ("home", vec![net(192, 168, 0, 0, 16)]),
+        ]),
+        ..Catalog::default()
+    };
+    let doc = doc(
+        "routing {\n dip(geoip:home) -> direct\n dip(geoip:home, geoip:cn) -> direct\n dip(geoip:cn) -> direct\n dip(geoip:opaque) -> direct\n fallback: direct\n}",
+    );
+    let report = doc.support(&caps(&ingress, &geo, 1));
+    assert_eq!(
+        rows(&report),
+        [
+            (
+                "routing",
+                "rule[0]",
+                vec!["lan_outside_capture"],
+                Disposition::Skip
+            ),
+            (
+                "routing",
+                "rule[1]",
+                vec!["lan_outside_capture"],
+                Disposition::Limited
+            ),
+        ]
+    );
+    // `opaque` is present, but nobody knows its networks.
+    assert_eq!(report.unassessed, 1);
+}
+
+#[test]
+fn report_echoes_the_ingress_it_used() {
+    let (ingress, geo) = (d25(), Catalog::default());
+    let doc = doc("routing {\n fallback: direct\n}");
+    let report = doc.support(&caps(&ingress, &geo, 1));
+    assert_eq!(report.ingress.as_ref(), Some(&ingress));
+    let routes: Vec<_> = report.ingress.as_ref().unwrap().routes().collect();
+    assert!(routes.contains(&(Ipv4Addr::new(172, 19, 0, 0), 30)));
+    assert_eq!(routes.len(), ingress.routes().len());
+    assert_eq!(doc.support(&Capabilities::linked()).ingress, None);
+}
+
+#[test]
+fn excluded_non_lan_prefix_has_its_own_reason() {
+    let (ingress, geo) = (d25(), Catalog::default());
+    let doc = doc(
+        "routing {\n dip(0.0.0.0/8) -> direct\n dip(224.0.0.1) -> direct\n dip(127.0.0.1, 192.168.1.1) -> direct\n fallback: direct\n}",
+    );
+    let report = doc.support(&caps(&ingress, &geo, 1));
+    assert_eq!(
+        rows(&report),
+        [
+            (
+                "routing",
+                "rule[0]",
+                vec!["outside_capture"],
+                Disposition::Skip
+            ),
+            (
+                "routing",
+                "rule[1]",
+                vec!["outside_capture"],
+                Disposition::Skip
+            ),
+            (
+                "routing",
+                "rule[2]",
+                vec!["lan_outside_capture", "outside_capture"],
+                Disposition::Skip
+            ),
+        ]
+    );
+}
+
+#[test]
+fn geo_codes_fold_and_trim_as_honk_does() {
+    let (ingress, geo) = (d25(), Catalog::default());
+    let doc = doc(
+        "routing {\n domain(geosite:CN, geosite:cn) -> direct\n fallback: direct\n}\ndns {\n routing {\n response { ip(geoip:' XX ', geoip:xx) -> accept }\n }\n}",
+    );
+    let report = doc.support(&caps(&ingress, &geo, 1));
+    let reasons: Vec<_> = report
+        .records
+        .iter()
+        .map(|r| {
+            let labels: Vec<_> = r.reasons.iter().map(|r| r.category.as_deref()).collect();
+            (r.section, labels, r.disposition)
+        })
+        .collect();
+    assert_eq!(
+        reasons,
+        [
+            ("routing", vec![Some("cn")], Disposition::Blocked),
+            (
+                "dns.routing.response",
+                vec![Some("xx")],
+                Disposition::Blocked
+            ),
+        ]
+    );
 }

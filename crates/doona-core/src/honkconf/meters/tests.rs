@@ -3,8 +3,8 @@
 
 use std::path::Path;
 
-use crate::honkconf::HonkStore;
 use crate::honkconf::edit::{Edit, RuleRow};
+use crate::honkconf::{Capabilities, HonkStore};
 use crate::stats::Clock;
 use crate::stats::day::{self, Moved, Usage};
 use crate::stats::meter::{DIRECT, Meters as Ledger, Tally};
@@ -63,7 +63,7 @@ fn twins_keep_separate_balances_through_edit_move_pause_and_restart() {
     let draft = store.draft(None).unwrap();
     let twins = routing(&RULE.repeat(2));
     store.edit(draft, Path::new(ENTRY), &twins).unwrap();
-    store.apply(draft).unwrap();
+    store.apply(draft, &Capabilities::linked()).unwrap();
     let [(a, a_meter), (_, b_meter), _] = <[_; 3]>::try_from(head(&mut store)).unwrap();
     assert_ne!(a_meter, b_meter);
 
@@ -79,7 +79,7 @@ fn twins_keep_separate_balances_through_edit_move_pause_and_restart() {
     let draft = store.draft(None).unwrap();
     let edited = routing(&format!("{EDITED}{RULE}"));
     store.edit(draft, Path::new(ENTRY), &edited).unwrap();
-    store.apply(draft).unwrap();
+    store.apply(draft, &Capabilities::linked()).unwrap();
     let [(_, new_meter), (b, b_kept), _] = <[_; 3]>::try_from(head(&mut store)).unwrap();
     assert_eq!(b.id, a.id);
     assert_eq!(b_kept, b_meter);
@@ -112,7 +112,7 @@ fn twins_keep_separate_balances_through_edit_move_pause_and_restart() {
     store
         .form_edit(draft, path, Edit::Pause(&moved[0].id))
         .unwrap();
-    let paused = store.apply(draft).unwrap();
+    let paused = store.apply(draft, &Capabilities::linked()).unwrap();
     let after = head(&mut store);
     assert!(after[0].0.paused);
     assert_eq!(after[0].1, b_meter);
@@ -128,7 +128,7 @@ fn twins_keep_separate_balances_through_edit_move_pause_and_restart() {
     store
         .form_edit(draft, path, Edit::Resume(&after[0].0.id))
         .unwrap();
-    store.apply(draft).unwrap();
+    store.apply(draft, &Capabilities::linked()).unwrap();
     let resumed = head(&mut store);
     assert!(!resumed[0].0.paused);
     assert_eq!(
