@@ -6,9 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
 /** What the activity does after a step of [PermissionAsks]: nothing yet, connect, or open one of the system's dialogs. */
 enum class PermissionStep { Wait, Connect, AskConsent, AskNotify }
@@ -28,17 +26,17 @@ fun interface NotifyState {
  * stored it, so neither an activity that dies before the explanation shows nor one that dies before the store loses it.
  *
  * [showing] is the explanation on screen; one asked for while another shows waits behind it and shows when it closes,
- * so a 連線 from the tile does not take the notification's explanation away. [refused] is the last refusal in a system
- * dialog, which 活動 tells (`RvActivityNotice.ConsentDenied`, `NotifyDenied`) until the next connection starts or
- * [clearRefusal]. A pending request ([connect] to the consent's answer) is joined by a repeated tap or a redelivered
- * intent. [showing], the waiting explanation and the pending request are saved with the activity, because a pending
- * result is delivered to the recreated one, and so are the notification's open dialog and its unrecorded answer.
+ * so a 連線 from the tile does not take the notification's explanation away. [refused] is the last refusal, the
+ * explanation's 取消 or 暫時不要 or a no in the system's dialog, which 活動 tells (`RvActivityNotice.ConsentDenied`,
+ * `NotifyDenied`) until the next connection starts or [clearRefusal]; back or a tap above the explanation ([close])
+ * refuses nothing. A pending request ([connect] to the consent's answer) is joined by a repeated tap or a redelivered
+ * intent. [showing], the waiting explanation, [refused] and the pending request are saved with the activity, because a
+ * pending result is delivered to the recreated one, and so are the notification's open dialog and its unrecorded answer.
  */
 class PermissionAsks(private val saved: SavedStateHandle) {
     val showing: StateFlow<Permission?> = saved.getStateFlow(KEY_SHOWING, null)
 
-    private val refusal = MutableStateFlow<Permission?>(null)
-    val refused: StateFlow<Permission?> = refusal.asStateFlow()
+    val refused: StateFlow<Permission?> = saved.getStateFlow(KEY_REFUSED, null)
 
     /** The notification was answered and the answer is not stored yet; [onStatus] stores it, and retries until it can. */
     val unrecorded: StateFlow<Boolean> = saved.getStateFlow(KEY_UNRECORDED, false)
@@ -59,7 +57,7 @@ class PermissionAsks(private val saved: SavedStateHandle) {
     /** 連線, from the UI or the app's own connect entry. [consentNeeded]: the system would show its consent dialog. */
     fun connect(consentNeeded: Boolean): PermissionStep {
         if (connecting) return PermissionStep.Wait
-        refusal.value = null
+        clearRefusal()
         if (!consentNeeded) return PermissionStep.Connect
         connecting = true
         show(Permission.Vpn)
@@ -82,12 +80,22 @@ class PermissionAsks(private val saved: SavedStateHandle) {
         null -> PermissionStep.Wait
     }
 
-    /** The explanation's other action, back, or a tap above it: nothing is asked, and a 連線 ends here. */
+    /** The explanation's other action, 取消 or 暫時不要: nothing is asked, a 連線 ends here, and the refusal is told. */
     fun dismiss() {
+        val permission = showing.value ?: return
+        close()
+        saved[KEY_REFUSED] = permission
+    }
+
+    /**
+     * Back or a tap above the explanation: nothing is asked and a 連線 ends here, as with [dismiss], but nothing is
+     * refused. The notification's explanation counts as answered, so it is not asked again.
+     */
+    fun close() {
         when (showing.value) {
             Permission.Vpn -> connecting = false
             Permission.Notify -> saved[KEY_UNRECORDED] = true
-            null -> Unit
+            null -> return
         }
         next()
     }
@@ -96,7 +104,7 @@ class PermissionAsks(private val saved: SavedStateHandle) {
     fun consentAnswered(given: Boolean): PermissionStep {
         connecting = false
         if (given) return PermissionStep.Connect
-        refusal.value = Permission.Vpn
+        saved[KEY_REFUSED] = Permission.Vpn
         return PermissionStep.Wait
     }
 
@@ -104,7 +112,7 @@ class PermissionAsks(private val saved: SavedStateHandle) {
     fun notifyAnswered(granted: Boolean) {
         notifyOpen = false
         saved[KEY_UNRECORDED] = true
-        if (!granted) refusal.value = Permission.Notify
+        if (!granted) saved[KEY_REFUSED] = Permission.Notify
     }
 
     /**
@@ -136,12 +144,13 @@ class PermissionAsks(private val saved: SavedStateHandle) {
     }
 
     fun clearRefusal() {
-        refusal.value = null
+        saved[KEY_REFUSED] = null
     }
 
     private companion object {
         const val KEY_SHOWING = "permission_showing"
         const val KEY_QUEUED = "permission_queued"
+        const val KEY_REFUSED = "permission_refused"
         const val KEY_CONNECTING = "connecting"
         const val KEY_NOTIFY_OPEN = "notify_open"
         const val KEY_UNRECORDED = "notify_unrecorded"

@@ -60,13 +60,39 @@ class PermissionAsksTest {
     }
 
     @Test
-    fun aCancelledExplanationAsksNothingAndShowsAgainOnTheNextConnect() {
+    fun aCancelledExplanationAsksNothingIsToldAndShowsAgainOnTheNextConnect() {
         asks.connect(consentNeeded = true)
         asks.dismiss()
         assertNull(asks.showing.value)
-        assertNull("nothing was refused", asks.refused.value)
+        assertEquals("取消 is a refusal", Permission.Vpn, asks.refused.value)
         assertEquals(PermissionStep.Wait, asks.connect(consentNeeded = true))
         assertEquals(Permission.Vpn, asks.showing.value)
+        assertNull("the next 連線 clears it", asks.refused.value)
+    }
+
+    @Test
+    fun anExplanationClosedByBackRefusesNothing() {
+        asks.connect(consentNeeded = true)
+        asks.close()
+        assertNull(asks.showing.value)
+        assertNull(asks.refused.value)
+        assertEquals("the 連線 ended", PermissionStep.Wait, asks.connect(consentNeeded = true))
+        assertEquals(Permission.Vpn, asks.showing.value)
+        asks.close()
+        status(running = true)
+        assertEquals(Permission.Notify, asks.showing.value)
+        asks.close()
+        status(running = true)
+        assertNull(asks.refused.value)
+        assertEquals("the notification's counts as asked", 1, records)
+    }
+
+    @Test
+    fun notNowOnTheNotificationsExplanationIsToldAndSurvivesProcessDeath() {
+        status(running = true)
+        asks.dismiss()
+        assertEquals(Permission.Notify, asks.refused.value)
+        assertEquals(Permission.Notify, afterProcessDeath().refused.value)
     }
 
     @Test
@@ -75,6 +101,7 @@ class PermissionAsksTest {
         asks.confirm()
         assertEquals(PermissionStep.Wait, asks.consentAnswered(given = false))
         assertEquals(Permission.Vpn, asks.refused.value)
+        assertEquals("kept for 活動 in a new process", Permission.Vpn, afterProcessDeath().refused.value)
         asks.connect(consentNeeded = false)
         assertNull(asks.refused.value)
     }

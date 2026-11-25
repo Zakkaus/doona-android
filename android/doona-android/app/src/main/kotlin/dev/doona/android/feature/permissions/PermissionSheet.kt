@@ -34,19 +34,22 @@ internal fun Permission.text(): RvPromptText = when (this) {
     )
 }
 
-/** The explanation in RV's confirm sheet while [showing] is set: 繼續 runs [onConfirm]; the other action, back or a tap above it [onDismiss]. */
+/**
+ * The explanation in RV's confirm sheet while [showing] is set: 繼續 runs [onConfirm], the other action [onDismiss], and
+ * back or a tap above it [onDismissRequest].
+ */
 @Composable
-internal fun PermissionSheet(showing: Permission?, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+internal fun PermissionSheet(showing: Permission?, onConfirm: () -> Unit, onDismiss: () -> Unit, onDismissRequest: () -> Unit = onDismiss) {
     // The sheet keeps its last words while it falls; a plain holder, since only a new explanation changes them.
     val last = remember { arrayOf(Permission.Vpn) }
     if (showing != null) last[0] = showing
     val text = last[0].text()
-    RvConfirmSheet(showing != null, text.title, text.body, text.confirm, text.dismiss, onConfirm, onDismiss)
+    RvConfirmSheet(showing != null, text.title, text.body, text.confirm, text.dismiss, onConfirm, onDismiss, onDismissRequest = onDismissRequest)
 }
 
 /** [PermissionSheet] over the app for [asks]; 繼續 hands [PermissionAsks.confirm]'s step to [onStep]. */
 @Composable
 fun PermissionPrompts(asks: PermissionAsks, onStep: (PermissionStep) -> Unit) {
     val showing by asks.showing.collectAsStateWithLifecycle()
-    PermissionSheet(showing, onConfirm = { onStep(asks.confirm()) }, onDismiss = asks::dismiss)
+    PermissionSheet(showing, onConfirm = { onStep(asks.confirm()) }, onDismiss = asks::dismiss, onDismissRequest = asks::close)
 }

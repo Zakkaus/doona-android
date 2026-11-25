@@ -74,13 +74,13 @@ class MainActivityTest {
     }
 
     @Test
-    fun `a cancelled explanation asks nothing and connects nothing`() {
+    fun `a cancelled explanation asks nothing, connects nothing and is told`() {
         ShadowVpnService.setPrepareResult(Intent("dev.doona.test.CONSENT"))
         ActivityScenario.launch<MainActivity>(connect).use { scenario ->
             scenario.onActivity { activity ->
                 activity.asks().dismiss()
                 assertNull(shadowOf(activity).peekNextStartedActivityForResult())
-                assertNull(activity.asks().refused.value)
+                assertEquals(Permission.Vpn, activity.asks().refused.value)
             }
             assertEquals(Status.Stopped, app.container.engine.status.value)
         }
