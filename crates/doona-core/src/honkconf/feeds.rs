@@ -69,6 +69,9 @@ pub fn providers(config: &HonkConfig) -> Vec<Provider> {
                 assets.then_some(IntervalSource::Assets)
             };
             let id = provider_id(&sub.name, &sub.url);
+            // The file cannot tell exact twins apart, so only their order does: one written
+            // above takes the bare id and what is stored under it, and the other moves to `#2`.
+            // Accepted, rather than keep an id map beside the source.
             let n = seen.entry(id.clone()).or_default();
             *n += 1;
             Provider {

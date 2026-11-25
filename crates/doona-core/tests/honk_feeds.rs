@@ -189,6 +189,25 @@ fn inserting_an_entry_with_the_same_tag_keeps_the_other_ids() {
 }
 
 #[test]
+fn an_exact_twin_written_above_takes_the_bare_id() {
+    let ids = |intervals: &[&str]| -> Vec<(u32, String)> {
+        let entries: String = intervals
+            .iter()
+            .map(|i| format!("    twin: 'https://feeds.example.net/one' {{ interval: {i} }}\n"))
+            .collect();
+        let text = format!("subscription {{\n{entries}}}\nrouting {{ fallback: direct }}");
+        feeds::providers(&parse(&text))
+            .into_iter()
+            .map(|p| (p.interval.unwrap().seconds, p.id))
+            .collect()
+    };
+    let bare = ids(&["1h"]).remove(0).1;
+    // The interval tells the entries apart here: the older 1 h one moves to `#2`.
+    let want = [(21_600, bare.clone()), (3_600, format!("{bare}#2"))];
+    assert_eq!(ids(&["6h", "1h"]), want);
+}
+
+#[test]
 fn an_interval_too_long_for_u32_saturates() {
     let providers = feeds::providers(&config("huge.dae"));
     let interval = providers[0].interval.unwrap();
