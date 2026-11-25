@@ -118,7 +118,8 @@ class PolicyFlowsTest {
         compose.runOnIdle { engine.subscriptions.value = emptyList() }
 
         assertFalse("no welcome page", welcomeShown())
-        compose.onNodeWithText("No subscription yet").assertExists()
+        // 活動 reads its state off the main thread, which an idle main looper does not wait for.
+        compose.waitUntil(READ_MS) { shows("No subscription yet") }
         compose.onNodeWithText("Connected", substring = true).assertExists()
         roundAction(DISCONNECT).assertIsEnabled()
 
