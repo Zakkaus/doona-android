@@ -47,9 +47,12 @@ internal fun PermissionSheet(showing: Permission?, onConfirm: () -> Unit, onDism
     RvConfirmSheet(showing != null, text.title, text.body, text.confirm, text.dismiss, onConfirm, onDismiss, onDismissRequest = onDismissRequest)
 }
 
-/** [PermissionSheet] over the app for [asks]; 繼續 hands [PermissionAsks.confirm]'s step to [onStep]. */
+/**
+ * [PermissionSheet] over the app for [asks]; 繼續 hands [PermissionAsks.confirm]'s step to [onStep]. Not [visible], the
+ * explanation waits off screen while another sheet is up.
+ */
 @Composable
-fun PermissionPrompts(asks: PermissionAsks, onStep: (PermissionStep) -> Unit) {
+fun PermissionPrompts(asks: PermissionAsks, visible: Boolean = true, onStep: (PermissionStep) -> Unit) {
     val showing by asks.showing.collectAsStateWithLifecycle()
-    PermissionSheet(showing, onConfirm = { onStep(asks.confirm()) }, onDismiss = asks::dismiss, onDismissRequest = asks::close)
+    PermissionSheet(showing.takeIf { visible }, onConfirm = { onStep(asks.confirm()) }, onDismiss = asks::dismiss, onDismissRequest = asks::close)
 }

@@ -16,13 +16,14 @@ class LocalNetworkHost(val access: LocalNetworkAccess, val request: () -> Unit, 
  * Shows the prompt [LocalNetworkHost.access] holds, over whatever page is open. The reason's confirm button goes on to
  * the system's question unless the reason was withdrawn meanwhile, and back or a tap outside it closes it without a
  * refusal; the refusal's confirm button opens the app's settings page, where the user can still allow access, and an
- * action that waits on the refusal waits for the user to come back. It is RV's confirm sheet ([RvLanSheet]).
+ * action that waits on the refusal waits for the user to come back. It is RV's confirm sheet ([RvLanSheet]). Not
+ * [visible], the prompt waits off screen while another sheet is up.
  */
 @Composable
-fun LocalNetworkPrompts(host: LocalNetworkHost) {
+fun LocalNetworkPrompts(host: LocalNetworkHost, visible: Boolean = true) {
     val prompt by host.access.prompt.collectAsStateWithLifecycle()
     RvLanSheet(
-        prompt,
+        prompt.takeIf { visible },
         onConfirm = {
             when (prompt) {
                 LocalNetworkPrompt.Ask -> host.proceed()

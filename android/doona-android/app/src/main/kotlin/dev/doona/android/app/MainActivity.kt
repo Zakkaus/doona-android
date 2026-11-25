@@ -22,7 +22,6 @@ import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.localnetwork.LocalNetworkHost
 import dev.doona.android.feature.permissions.NotifyState
-import dev.doona.android.feature.permissions.PermissionPrompts
 import dev.doona.android.feature.permissions.PermissionStep
 import dev.doona.android.feature.permissions.PermissionViewModel
 import dev.doona.android.vpn.VpnLog
@@ -71,9 +70,8 @@ class MainActivity : ComponentActivity() {
                     onConnect = ::connect,
                     imports = container.imports,
                     version = version,
-                    localNetwork = localNetwork,
                 )
-                PermissionPrompts(asks, ::onPermissionStep)
+                AppSheets(asks, ::onPermissionStep, localNetwork)
             }
         }
         askNotifyOnceConnected()
