@@ -266,7 +266,7 @@ class CoreDtoTest {
         assertEquals(Mode.Rule, config.mode)
         assertEquals("g-Proxy", config.mainGroupId)
         assertEquals("g-Proxy", config.dnsVia)
-        assertEquals(listOf("1.1.1.1:53", "8.8.8.8:53"), config.dnsUpstreams)
+        assertEquals(emptyList<String>(), config.dnsUpstreams)
         assertEquals(91044300313602L, config.ruleSource.rulesRevision)
         assertTrue(config.text.startsWith("# mode: Rule\n"))
         assertTrue(config.text.endsWith("MATCH,Proxy\n"))
