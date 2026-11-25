@@ -1,5 +1,6 @@
 package dev.doona.android.prototype.rv
 
+import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
@@ -39,6 +40,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.test.core.app.ApplicationProvider
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCaption
@@ -120,7 +122,8 @@ class RvFocusTest {
                 Box(Modifier.size(120.dp, 56.dp).testTag("a").rvPress(RoundedCornerShape(12.dp), Role.Button, onClick = {}))
             }
         }
-        val scrim = compose.onNode(SemanticsMatcher("the scrim") { it.config.getOrElseNullable(SemanticsActions.OnClick) { null }?.label == SHEET })
+        val dismiss = ApplicationProvider.getApplicationContext<Context>().getString(R.string.ui_dismiss)
+        val scrim = compose.onNode(SemanticsMatcher("the scrim") { it.config.getOrElseNullable(SemanticsActions.OnClick) { null }?.label == dismiss })
         // Tab's first stop is the sheet's own control, not the scrim behind it, and the scrim refuses focus outright.
         compose.runOnIdle {
             input.requestInputMode(InputMode.Keyboard)
@@ -140,7 +143,7 @@ class RvFocusTest {
         /** A point on the 2 dp outline, 1 dp inside the top edge. */
         const val RING_PROBE_DP = 1f
 
-        /** The sheet's pane title, the scrim's click label. */
+        /** The sheet's pane title. */
         const val SHEET = "Sheet"
     }
 }

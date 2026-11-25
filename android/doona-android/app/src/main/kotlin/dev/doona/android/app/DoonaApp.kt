@@ -111,7 +111,8 @@ private fun RvOverDoona(content: @Composable () -> Unit) {
  * A tab root the RV page lanes have not replaced yet (plan §2.5): the old page above RV's floating nav, which RV's own
  * tab pages draw themselves. The page ends where the nav's clearance begins, so nothing it shows lies under the nav;
  * the nav's glass blurs the page's colour. The old page does not give the frame its scroll, so the nav does not fold
- * away, and tapping the selected tab does nothing: [onReselect] finds no page above the root, and there is no scroll.
+ * away. Tapping the selected tab does nothing here: the frame draws the nav on the tab's root only, so [onReselect] has
+ * no page above the root to pop and returns false, and with no scroll the bar has nothing to move to the top.
  */
 @Composable
 private fun OldTabFrame(tab: Tab, onTab: (Int) -> Unit, onReselect: () -> Boolean, content: @Composable () -> Unit) {

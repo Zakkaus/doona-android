@@ -2,7 +2,7 @@ use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::Path;
 
-use super::{HonkConfigError, HonkStore, StoreError};
+use super::{Capabilities, HonkConfigError, HonkStore, StoreError};
 use crate::testutil::TempDir;
 
 const BYTES: usize = 8 * 1024 * 1024;
@@ -33,7 +33,7 @@ fn byte_boundary(entry_text: &str, names: &[&str]) {
     }
     let mut store = HonkStore::open(data.path()).unwrap();
     let id = store.import(&entry).unwrap();
-    let head = store.apply(id).unwrap();
+    let head = store.apply(id, &Capabilities::linked()).unwrap();
     // Over budget takes precedence over decoding any of the supplied text.
     for name in names {
         replace_first(&bundle.path().join(name));
@@ -80,7 +80,7 @@ fn thirty_third_file_refused_before_decoding() {
     let mut store = HonkStore::open(data.path()).unwrap();
     let draft = store.import(&entry).unwrap();
     assert_eq!(store.check(draft).unwrap().sources().len(), 32);
-    let head = store.apply(draft).unwrap();
+    let head = store.apply(draft, &Capabilities::linked()).unwrap();
     for i in 1..=32 {
         fs::write(bundle.path().join(format!("part-{i}.dae")), [0xff]).unwrap();
     }

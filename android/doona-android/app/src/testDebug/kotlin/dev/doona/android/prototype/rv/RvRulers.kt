@@ -125,6 +125,12 @@ internal class RvMeasure(private val parts: Map<String, List<Rect>>, private val
                 // A pager runs edge to edge; its tiles keep to the gutter by its content padding.
                 kind == RvPart.BLOCK -> Unit
 
+                // A footnote keeps the footnote tokens from the cards' edges (LAYOUT-RULES.md R20), the rest on the gutter.
+                kind == RvPart.FOOTER -> {
+                    edge("$kind's start at ${rect.top} dp", rect.left, GUTTER.value + RvSpace.footnoteStart.value, rect)
+                    edge("$kind's end at ${rect.top} dp", rect.right, end - RvSpace.footnoteEnd.value, rect)
+                }
+
                 kind != RvPart.CARD -> edge("$kind's start at ${rect.top} dp", rect.left, GUTTER.value, rect)
 
                 // A tile beside another keeps one edge on the gutter: the nearer one is measured.

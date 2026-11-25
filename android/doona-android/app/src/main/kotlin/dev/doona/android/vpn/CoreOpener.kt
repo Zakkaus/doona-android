@@ -9,8 +9,16 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-/** Runs the core's `init` before any other call; a failed `init` is retried by the next caller. */
-internal class CoreOpener(private val core: CoreBridge, private val dataDir: () -> String, private val io: CoroutineDispatcher) {
+/**
+ * Runs the core's `init` before any other call; a failed `init` is retried by the next caller. [performanceMode] is read
+ * on [io] as the core opens, and counts as off when the read fails; the core keeps it until the process ends.
+ */
+internal class CoreOpener(
+    private val core: CoreBridge,
+    private val dataDir: () -> String,
+    private val io: CoroutineDispatcher,
+    private val performanceMode: suspend () -> Boolean = { false },
+) {
     private val mutex = Mutex()
     private val initialized = MutableStateFlow<Int?>(null)
 
@@ -33,8 +41,20 @@ internal class CoreOpener(private val core: CoreBridge, private val dataDir: () 
         disabled = true
     }
 
+    private suspend fun storedPerformanceMode(): Boolean = try {
+        performanceMode()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        VpnLog.warn("performance mode unreadable: ${e.javaClass.simpleName}")
+        false
+    }
+
     private suspend fun open(): Int? = try {
-        withContext(io) { CoreJson.schema(core.init(dataDir())) }
+        withContext(io) {
+            val options = CoreJson.encode(InitOptionsDto.serializer(), InitOptionsDto(storedPerformanceMode()))
+            CoreJson.schema(core.init(dataDir(), options))
+        }
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {

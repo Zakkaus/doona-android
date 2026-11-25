@@ -34,7 +34,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * The first run and the states that stop traffic, light and dark: the welcome page whole (`proto-rv-welcome-*`); 活動
+ * The first run and the states that stop traffic, light and dark: the welcome page whole (`proto-rv-welcome-*`, also
+ * fs115, fs200, English and Simplified); 活動
  * with no subscription (`-activity-empty-*`), with every node failed (`-activity-no-node-*`), with the VPN taken
  * (`-activity-vpn-taken-*`), offline (`-activity-offline-*`) and after the core stopped (`-activity-core-stopped-*`), each
  * its first screen, and once after a crash (`-activity-crash-*`, also fs115 and fs200); and the local network prompts
@@ -55,6 +56,22 @@ class RvStatesShotTest {
     @Test fun welcomeLight() = shot("welcome", false, whole = true) { RvWelcome(onAdd = {}) }
 
     @Test fun welcomeDark() = shot("welcome", true, whole = true) { RvWelcome(onAdd = {}) }
+
+    @Test
+    @Config(qualifiers = "+h943dp")
+    fun welcomeFs115() = shot("welcome", false, whole = true, fontScale = RV_FS115) { RvWelcome(onAdd = {}) }
+
+    @Test
+    @Config(qualifiers = "+h1315dp")
+    fun welcomeFs200() = shot("welcome", false, whole = true, fontScale = RV_FS200) { RvWelcome(onAdd = {}) }
+
+    @Test
+    @Config(qualifiers = "+en-h973dp")
+    fun welcomeEnglish() = shot("welcome-en", false, whole = true) { RvWelcome(onAdd = {}) }
+
+    @Test
+    @Config(qualifiers = "+zh-rCN")
+    fun welcomeSimplified() = shot("welcome-zh-cn", false, whole = true) { RvWelcome(onAdd = {}) }
 
     @Test fun emptyLight() = notice(RvActivityNotice.NoSubscription, false)
 

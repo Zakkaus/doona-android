@@ -22,6 +22,7 @@ import androidx.compose.ui.FrameRateCategory
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.preferredFrameRate
+import dev.doona.android.data.settings.LanguageSettings
 import dev.doona.android.designsystem.rv.LocalRvTesting
 import dev.doona.android.designsystem.rv.LocalRvTestingNodes
 import dev.doona.android.designsystem.rv.LocalRvUpdating
@@ -42,6 +43,7 @@ import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.activity.ActivityAction
 import dev.doona.android.feature.activity.ActivityUiState
+import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.model.fastest
@@ -145,7 +147,9 @@ internal data class RvSampleStart(
  */
 @Composable
 internal fun RvPreviewApp(options: RvMotionOptions = RvMotionOptions(), start: RvSampleStart = RvSampleStart()) {
-    var settings by remember { mutableStateOf(rvSampleSettings()) }
+    // 設定's 語言 row names the app's language as the phone has it (none chosen: the system's), not the sample's.
+    val context = LocalContext.current
+    var settings by remember { mutableStateOf(rvSampleSettings().copy(language = RvLanguage.of(LanguageSettings.languageTags(context)))) }
     val systemDark = isSystemInDarkTheme()
     // Every layer that moves votes for the display's high rate while it moves: with no vote, an adaptive-rate panel
     // (API 35 and later) runs the app at its normal rate, 60 Hz. Ambient loops vote normal where they run (RvBusy, the

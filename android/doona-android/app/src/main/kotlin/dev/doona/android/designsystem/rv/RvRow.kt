@@ -1,16 +1,19 @@
 package dev.doona.android.designsystem.rv
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,6 +33,8 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -38,7 +43,6 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.dp
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -54,16 +58,17 @@ import kotlin.math.roundToInt
  * (`Hong Kong 02 IPLC`) and a long subtitle (`自動測速 · 48 個節點`) both fit where one trailing column would squeeze the
  * text column to its widest end. [trailing] (a chevron) still follows after both lines.
  *
- * The text follows the one row rule ([RV_ROW_TITLE_LINES], [RV_ROW_SUBTITLE_LINES], no gap between the lines, each
+ * The text follows the one row rule ([RV_ROW_TITLE_LINES], [RV_ROW_SUBTITLE_LINES], [RvSpace.titleToSubtitle] between the lines, each
  * line its role's Latin line box whatever its script: [RvLineBox]);
  * [titleLines] and [titleOverflow] can keep a title to one line cut in the middle, which keeps both ends of a host:port
- * in view. [titleKeepWords] and [subtitleKeepWords] false keep a name's or an identifier's breaks the platform's
+ * in view; [titleLines] or [subtitleLines] at [Int.MAX_VALUE] with an owner's exception ([titleWhole], [subtitleWhole]) show that text whole
+ * ([RvRowPart.WHOLE]: a revision's own name, [RvWhole.RevisionName]); without one, the text is still held to R14, and an exception given to a text with a line limit is an error. [titleKeepWords] and [subtitleKeepWords] false keep a name's or an identifier's breaks the platform's
  * ([RvText]'s `keepWords`: a node's name, an app's label and package). Otherwise no end cuts the text it sits beside, nor is cut itself, nor makes it read badly: an end sits beside
  * its text where the text reads well there ([rvReadsWell]); else the text takes the whole line and the end goes under
  * it, on the line's end (a node's name beside its latency at a large font size; [TextBesideEnd], [RowLine]), never
  * beside a part of the text. A line-wise end, on its own line, also may not make that line wrap where the whole line
  * holds it, so the ends stay on their lines. An end under its text starts where the text's last line ends, with no gap,
- * as the subtitle starts where the title ends, and the row ends [RvSpace.rowTextInset] under it. While [endBusy] (a
+ * and the row ends [RvSpace.rowTextInset] under it. While [endBusy] (a
  * latency test runs for the row), a busy bar stands at the row's end in place of [titleEnd] and [subtitleEnd], which
  * keep their room, so the text keeps its width and its lines: centred on the text, or on the line of an end that went
  * under it.
@@ -82,17 +87,22 @@ internal fun RvRow(
     titleOverflow: TextOverflow = TextOverflow.Ellipsis,
     titleKeepWords: Boolean = true,
     subtitleKeepWords: Boolean = true,
+    subtitleLines: Int = RV_ROW_SUBTITLE_LINES,
+    titleWhole: RvWhole? = null,
+    subtitleWhole: RvWhole? = null,
     endBusy: Boolean = false,
     endFirstLine: Boolean = false,
     trailing: (@Composable () -> Unit)? = null,
 ) {
+    rvRequireWhole(titleWhole, titleLines)
+    rvRequireWhole(subtitleWhole, subtitleLines)
     // The card clips the layer of its first and last row to its corners.
     val press = onClick?.let { Modifier.rvRowPress(Role.Button, it, onLongClick) } ?: Modifier
     val lineWise = titleEnd != null || subtitleEnd != null
     val beside = trailing != null && !lineWise
     val minHeight = if (subtitle == null) RvSize.rowOneLine else RvSize.rowTwoLine
-    val titleText = rememberRowText(title, Rv.type.rowTitle, titleLines, titleKeepWords)
-    val subtitleText = subtitle?.let { rememberRowText(it, Rv.type.rowSub, RV_ROW_SUBTITLE_LINES, subtitleKeepWords) }
+    val titleText = rememberRowText(title, Rv.type.rowTitle, titleLines, titleKeepWords, titleWhole)
+    val subtitleText = subtitle?.let { rememberRowText(it, Rv.type.rowSub, subtitleLines, subtitleKeepWords, subtitleWhole) }
     // LAYOUT-RULES.md R9: with a subtitle the disc's top is the title's top, so the text publishes where its title starts.
     val top = subtitle != null
     val firstLine = if (endFirstLine && top) maxOf(RvSize.rowOneLine - RvSpace.rowTextInset * 2, rvOneLine(title, Rv.type.rowTitle, lineBox = true)) else null
@@ -110,28 +120,44 @@ internal fun RvRow(
         val text = if (top) Modifier.weight(1f).alignBy(RvTitleTop) else Modifier.weight(1f)
         if (beside) {
             TextBesideEnd(titleText, subtitleText, titleOverflow, minHeight, firstLine, trailing, top, text)
-        } else if (lineWise && endBusy) {
-            BusyAtEnd(text) {
-                LineWiseText(titleText, subtitleText, titleOverflow, titleEnd?.let(::hidden), subtitleEnd?.let(::hidden), minHeight, top, Modifier)
-            }
-        } else if (lineWise) {
-            LineWiseText(titleText, subtitleText, titleOverflow, titleEnd, subtitleEnd, minHeight, top, text)
-        } else if (top) {
-            RowTextColumn(minHeight, text) {
-                titleText.Shown(overflow = titleOverflow)
-                subtitleText?.Shown(Rv.colors.textSecondary)
-            }
         } else {
-            Column(Modifier.weight(1f).padding(vertical = RvSpace.rowTextInset)) {
-                titleText.Shown(overflow = titleOverflow)
-                subtitleText?.Shown(Rv.colors.textSecondary, subtitle = true)
-            }
+            RowTextBlock(titleText, subtitleText, titleOverflow, LineEnds(titleEnd, subtitleEnd, endBusy), minHeight, top, text)
         }
         if (!beside) {
             trailing?.let {
                 Spacer(Modifier.width(RvSpace.trailingGap))
                 it()
             }
+        }
+    }
+}
+
+/** A line-wise row's ends ([RvRow]'s titleEnd and subtitleEnd), and whether a busy bar stands in for them. */
+private class LineEnds(val title: (@Composable () -> Unit)?, val subtitle: (@Composable () -> Unit)?, val busy: Boolean)
+
+/**
+ * [RvRow]'s text where no end stands beside it in a trailing column: line-wise with its [ends] ([LineWiseText]), the
+ * same under a busy bar that keeps the ends' room while they are busy ([BusyAtEnd]), or title over subtitle, from the
+ * title's top with a subtitle ([RowTextColumn]) and centred in the row without one.
+ */
+@Composable
+private fun RowTextBlock(titleText: RowText, subtitleText: RowText?, titleOverflow: TextOverflow, ends: LineEnds, minHeight: Dp, top: Boolean, modifier: Modifier) {
+    val lineWise = ends.title != null || ends.subtitle != null
+    if (lineWise && ends.busy) {
+        BusyAtEnd(modifier) {
+            LineWiseText(titleText, subtitleText, titleOverflow, ends.title?.let(::hidden), ends.subtitle?.let(::hidden), minHeight, top, Modifier)
+        }
+    } else if (lineWise) {
+        LineWiseText(titleText, subtitleText, titleOverflow, ends.title, ends.subtitle, minHeight, top, modifier)
+    } else if (top) {
+        RowTextColumn(minHeight, modifier) {
+            titleText.Shown(overflow = titleOverflow)
+            subtitleText?.let { UnderTitle { it.Shown(Rv.colors.textSecondary) } }
+        }
+    } else {
+        Column(modifier.padding(vertical = RvSpace.rowTextInset)) {
+            titleText.Shown(overflow = titleOverflow)
+            subtitleText?.let { UnderTitle { it.Shown(Rv.colors.textSecondary) } }
         }
     }
 }
@@ -157,7 +183,7 @@ private fun LineWiseText(
             title.Shown(overflow = titleOverflow)
         }
         subtitle?.let {
-            RowLine(subtitleEnd?.let(::onLine), it) { it.Shown(Rv.colors.textSecondary, subtitle = true) }
+            UnderTitle { RowLine(subtitleEnd?.let(::onLine), it) { it.Shown(Rv.colors.textSecondary) } }
         }
     }
     if (top) RowTextColumn(minHeight, modifier, lines) else Column(modifier.padding(vertical = RvSpace.rowTextInset)) { lines() }
@@ -183,6 +209,13 @@ private fun RowTextColumn(minHeight: Dp, modifier: Modifier, content: @Composabl
             }
         }
     }
+}
+
+/** A row's subtitle line, [RvSpace.titleToSubtitle] under its title's (R12; owner, q-s1125c-titlegap). */
+@Composable
+private fun UnderTitle(line: @Composable () -> Unit) {
+    Spacer(Modifier.height(RvSpace.titleToSubtitle))
+    line()
 }
 
 /** [end] on a row's line: its text in its role's Latin line box ([LocalRvRowLine]). */
@@ -232,7 +265,7 @@ private fun TextBesideEnd(titleText: RowText, subtitleText: RowText?, titleOverf
     Layout(
         {
             titleText.Shown(overflow = titleOverflow)
-            subtitleText?.Shown(Rv.colors.textSecondary, subtitle = true)
+            subtitleText?.Shown(Rv.colors.textSecondary)
             Box(Modifier.testTag(RvRowPart.END)) { CompositionLocalProvider(LocalRvEndSide provides side, trailing) }
         },
         modifier,
@@ -241,6 +274,7 @@ private fun TextBesideEnd(titleText: RowText, subtitleText: RowText?, titleOverf
         val inset = RvSpace.rowTextInset.roundToPx()
         val gap = RvSpace.trailingGap.roundToPx()
         val least = minHeight.roundToPx()
+        val under = if (subtitleText != null) RvSpace.titleToSubtitle.roundToPx() else 0
         val end = parts.last().measure(Constraints(maxWidth = max(0, width - gap)))
         val beside = max(0, width - gap - end.width)
         val titleFits = if (titleOverflow == TextOverflow.MiddleEllipsis) keepsHostEnds(titleText, beside) else rvReadsWell(measurer.layout(titleText, beside))
@@ -251,21 +285,21 @@ private fun TextBesideEnd(titleText: RowText, subtitleText: RowText?, titleOverf
         val titleLine = parts[0].measure(Constraints(maxWidth = textWidth))
         val subtitleLine = if (subtitleText != null) parts[1].measure(Constraints(maxWidth = textWidth)) else null
         if (fits) {
-            val text = titleLine.height + (subtitleLine?.height ?: 0) + inset * 2
+            val text = titleLine.height + under + (subtitleLine?.height ?: 0) + inset * 2
             val height = maxOf(text, end.height, least)
             val first = Alignment.CenterVertically.align(text, height) + inset
             layout(width, height, if (top) mapOf(RvTitleTop to first) else emptyMap()) {
                 titleLine.place(0, first)
-                subtitleLine?.place(0, first + titleLine.height)
+                subtitleLine?.place(0, first + titleLine.height + under)
                 // R11: a control stands on the title's first line, as Revolut's switch rows do; a value or chevron is centred.
                 val at = endLine?.let { first + it.roundToPx() / 2 - end.height / 2 } ?: Alignment.CenterVertically.align(end.height, height)
                 end.place(width - end.width, at)
             }
         } else {
-            val text = titleLine.height + (subtitleLine?.height ?: 0)
+            val text = titleLine.height + under + (subtitleLine?.height ?: 0)
             layout(width, max(least, inset * 2 + text + end.height), if (top) mapOf(RvTitleTop to inset) else emptyMap()) {
                 titleLine.place(0, inset)
-                subtitleLine?.place(0, inset + titleLine.height)
+                subtitleLine?.place(0, inset + titleLine.height + under)
                 end.place(width - end.width, inset + text)
             }
         }
@@ -356,9 +390,34 @@ internal fun RvRowEnd(value: @Composable () -> Unit, glyph: @Composable () -> Un
 }
 
 /**
+ * A row end's glyph button ([RvRowEnd]'s glyph: 節點's info mark), [RvSpace.trailingGap] after the value it follows: laid
+ * out at its ink, the 22 dp glyph, so it takes from the row's text only what it draws (it took a 48 dp box, 26 dp more:
+ * `Hong Kong 02 IPLC` wrapped beside it, s1125c). Its 48 dp target ([RvRowPart.TARGET]) is placed round the glyph past
+ * that layout, so it reaches into the row's padding and over the gap; the glyph ends where every trailing ink ends.
+ */
+@Composable
+internal fun RvEndMark(@DrawableRes glyph: Int, description: String, onClick: () -> Unit) {
+    Layout({
+        Box(
+            Modifier
+                .size(RvSize.touch)
+                .testTag(RvRowPart.TARGET)
+                .rvPress(CircleShape, Role.Button, onClick)
+                .semantics { contentDescription = description },
+            contentAlignment = Alignment.Center,
+        ) { RvGlyph(glyph, RvSize.rowGlyph, Rv.colors.control) }
+    }) { (target), _ ->
+        val box = target.measure(Constraints())
+        val gap = RvSpace.trailingGap.roundToPx()
+        val ink = RvSize.rowGlyph.roundToPx()
+        layout(gap + ink, ink) { box.place(gap - (box.width - ink) / 2, -(box.height - ink) / 2) }
+    }
+}
+
+/**
  * The one row rule, every list row's ([RvRow] and the settings rows), as Revolut's measured rows (`07-set-interface.xml`,
  * `07-privacy.xml`): the title wraps to two lines and the subtitle to three, the last ending in an ellipsis; the
- * subtitle's line box starts where the title's ends.
+ * subtitle's line box starts [RvSpace.titleToSubtitle] under the title's (owner, q-s1125c-titlegap).
  */
 internal const val RV_ROW_TITLE_LINES = 2
 internal const val RV_ROW_SUBTITLE_LINES = 3
@@ -408,26 +467,35 @@ private fun RowLine(end: (@Composable () -> Unit)?, text: RowText?, figure: Bool
 }
 
 /**
- * The gap between a row's title and its subtitle: none, the line boxes touch (LAYOUT-RULES Table 0). Only a comparison
- * sample provides another value, to show the owner what a gap would look like; no page does.
+ * A row's text as it is laid out: its words, its role, how many lines it may take, whether its words are held
+ * ([RvText]'s `keepWords`) and the exception that shows it whole; [words] is the text as its [RvText] takes it
+ * ([rvWords]), taken once for the text.
  */
-internal val LocalRvTitleGap = compositionLocalOf { 0.dp } // literal: Table 0, title to subtitle is 0
-
-/**
- * A row's text as it is laid out: its words, its role, how many lines it may take and whether its words are held
- * ([RvText]'s `keepWords`); [words] is the text as its [RvText] takes it ([rvWords]), taken once for the text.
- */
-private class RowText(val text: String, val style: TextStyle, val lines: Int, val keepWords: Boolean) {
+private class RowText(val text: String, val style: TextStyle, val lines: Int, val keepWords: Boolean, val whole: RvWhole?) {
     val words = rvWords(text, lines, keepWords)
 
-    /** The text in its role's Latin line box, as the row shows it; a [subtitle] stands [LocalRvTitleGap] under the title. */
+    /** The text in its role's Latin line box, as the row shows it. */
     @Composable
-    fun Shown(color: Color = Rv.colors.text, overflow: TextOverflow = TextOverflow.Ellipsis, subtitle: Boolean = false) =
-        RvText(text, style, if (subtitle) Modifier.padding(top = LocalRvTitleGap.current) else Modifier, color, maxLines = lines, overflow = overflow, lineBox = true, keepWords = keepWords)
+    fun Shown(color: Color = Rv.colors.text, overflow: TextOverflow = TextOverflow.Ellipsis) =
+        RvText(text, style, rvWhole(whole), color = color, maxLines = lines, overflow = overflow, lineBox = true, keepWords = keepWords)
 }
 
+/**
+ * A row text tagged [RvRowPart.WHOLE] with [whole]'s id where it has no limit by that exception. The row checks the
+ * exception against the text's lines once, on entry ([rvRequireWhole]).
+ */
+internal fun rvWhole(whole: RvWhole?): Modifier = whole?.let { Modifier.testTag("${RvRowPart.WHOLE}:${it.id}") } ?: Modifier
+
+/**
+ * A text given an exception [whole] takes [Int.MAX_VALUE] lines; one of [lines] lines would be cut all the same, so the
+ * exception would do nothing: an error.
+ */
+internal fun rvRequireWhole(whole: RvWhole?, lines: Int) =
+    require(whole == null || lines == Int.MAX_VALUE) { "a text given $whole takes $lines lines: a text shown whole takes Int.MAX_VALUE" }
+
 @Composable
-private fun rememberRowText(text: String, style: TextStyle, lines: Int, keepWords: Boolean) = remember(text, style, lines, keepWords) { RowText(text, style, lines, keepWords) }
+private fun rememberRowText(text: String, style: TextStyle, lines: Int, keepWords: Boolean, whole: RvWhole?) =
+    remember(text, style, lines, keepWords, whole) { RowText(text, style, lines, keepWords, whole) }
 
 /** [text] laid out [width] px wide as its [RvText] lays it out. */
 private fun TextMeasurer.layout(text: RowText, width: Int) = rvLayout(text.words, text.style, text.lines, width)

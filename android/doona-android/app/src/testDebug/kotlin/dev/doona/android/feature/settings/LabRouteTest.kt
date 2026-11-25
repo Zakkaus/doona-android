@@ -7,13 +7,14 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.doona.android.prototype.rv.rvContent
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** 實驗室's restart banner: it shows while 效能模式 differs from what the app started with, and 重開 App restarts. */
+/** 實驗室: 效能模式 is stored at once; the restart banner shows while it differs from what the app started with, and 重開 App restarts. */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "zh-rTW")
 class LabRouteTest {
@@ -23,11 +24,13 @@ class LabRouteTest {
     @Test
     fun theBannerShowsOnceTheSwitchTurnsAndGoesWhenItTurnsBack() {
         var restarts = 0
-        compose.rvContent(dark = false) { LabRoute(onBack = {}, onRestart = { restarts++ }) }
+        val store = FakeSettingsStore()
+        compose.rvContent(dark = false) { LabRoute(store, onBack = {}, onRestart = { restarts++ }) }
         compose.onNodeWithText(HINT).assertDoesNotExist()
 
         compose.onNode(isToggleable()).performClick()
         compose.onNode(isToggleable()).assertIsOn()
+        assertTrue("stored at once", store.performanceMode.value)
         compose.onNodeWithText(HINT).assertExists()
         compose.onNodeWithText(RESTART).performClick()
         assertEquals(1, restarts)
@@ -38,7 +41,7 @@ class LabRouteTest {
 
     @Test
     fun anAppThatStartedWithTheModeOnOffersARestartWhenItIsTurnedOff() {
-        compose.rvContent(dark = false) { LabRoute(onBack = {}, onRestart = {}, started = true) }
+        compose.rvContent(dark = false) { LabRoute(FakeSettingsStore(performanceMode = true), onBack = {}, onRestart = {}) }
         compose.onNodeWithText(HINT).assertDoesNotExist()
         compose.onNode(isToggleable()).performClick()
         compose.onNodeWithText(HINT).assertExists()

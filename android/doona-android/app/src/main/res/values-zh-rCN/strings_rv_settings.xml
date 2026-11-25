@@ -10,7 +10,7 @@
     <plurals name="rv_settings_per_app_value">
         <item quantity="other">只代理 %1$d 个应用</item>
     </plurals>
-    <string name="rv_settings_connection_footer">只有选中的应用经由代理，其他应用与局域网地址直接连接。</string>
+    <string name="rv_settings_connection_footer">只有选中的应用经由代理，其他应用和局域网地址直接连接。</string>
 
     <string name="rv_settings_group_subscription">订阅</string>
     <string name="rv_settings_auto_update">自动更新</string>

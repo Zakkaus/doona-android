@@ -62,8 +62,8 @@ class RvSettingsShotTest {
     fun settingsFs200() = compose.rvShot("settings", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { Settings() }
 
     @Test
-    @Config(qualifiers = RV_EN)
-    fun settingsEn() = compose.rvShot("settings-en", dark = false) { Settings() }
+    @Config(qualifiers = LONG_PAGE_EN)
+    fun settingsEn() = compose.rvShot("settings-en", dark = false, before = { assertWhole() }) { Settings() }
 
     @Test
     fun theTopIsTheHeroWithItsTitleAndNoSearch() {
@@ -146,9 +146,10 @@ class RvSettingsShotTest {
          * As tall as the whole 設定 page, at each font size, so its end shows as the phone shows it: the last card 28 dp
          * above the bottom navigation.
          */
-        const val LONG_PAGE = "+h1822dp"
-        const val LONG_PAGE_FS115 = "+h1847dp"
-        const val LONG_PAGE_FS200 = "+h2358dp"
+        const val LONG_PAGE = "+h1826dp"
+        const val LONG_PAGE_FS115 = "+h1851dp"
+        const val LONG_PAGE_FS200 = "+h2373dp"
+        const val LONG_PAGE_EN = "en-w412dp-h1876dp-notnight-xhdpi"
 
         const val NEAR = 0.5f
 

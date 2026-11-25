@@ -7,7 +7,7 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 files="$root/app/src/main/kotlin/dev/doona/android/designsystem/rv/RvTokens.kt $root/app/src/main/kotlin/dev/doona/android/designsystem/rv/RvSettingsTokens.kt"
 scale=" 0 4 8 12 16 24 "
 # name: reason (LAYOUT-RULES.md, "Exceptions")
-exceptions=" subGap emptyLine barGap headerTop heroToActions actionColumn titleToActions accentInset "
+exceptions=" subGap titleToSubtitle emptyLine barGap headerTop heroToActions actionColumn titleToActions accentInset "
 bad=$(
     for f in $files; do
         awk -v f="$f" '

@@ -107,12 +107,13 @@ internal fun LogLevelRoute(levels: LogLevels, onBack: () -> Unit) {
 }
 
 /**
- * 實驗室: 效能模式 is the page's own until the core takes a worker count at its start (owner, 2026-11-25 15:20); no
- * setting or engine call carries it yet, so the running app [started] with it off. Once the switch differs from that,
- * the page offers 重開 App, which runs [onRestart].
+ * 實驗室 over the [store]: 效能模式 is stored at once, and the core reads it when it starts (owner, 2026-11-25 15:20).
+ * While the switch differs from what this run started with, the page offers 重開 App, which runs [onRestart]. Until
+ * the store answers, the page's background alone.
  */
 @Composable
-internal fun LabRoute(onBack: () -> Unit, onRestart: () -> Unit, started: Boolean = false) {
-    var performance by rememberSaveable { mutableStateOf(started) }
-    RvLabScreen(performance, { performance = it }, onBack, restart = onRestart.takeIf { performance != started })
+internal fun LabRoute(store: SettingsStore, onBack: () -> Unit, onRestart: () -> Unit) {
+    val viewModel: LabViewModel = viewModel(factory = LabViewModel.factory(store))
+    val state = viewModel.uiState.collectAsStateWithLifecycle().value ?: return RvSettingsLoading()
+    RvLabScreen(state.performance, viewModel::setPerformance, onBack, restart = onRestart.takeIf { state.restartPending })
 }

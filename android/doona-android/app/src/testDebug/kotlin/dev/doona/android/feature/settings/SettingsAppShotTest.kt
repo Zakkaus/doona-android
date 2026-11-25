@@ -198,23 +198,23 @@ class SettingsAppShotTest {
 
     @Test fun languageFs200() = compose.app("settings-language", fontScale = RV_FS200) { Language() }
 
-    @Test fun labLight() = compose.app("settings-lab", dark = false, whole = true) { LabRoute(onBack = {}, onRestart = {}) }
+    @Test fun labLight() = compose.app("settings-lab", dark = false, whole = true) { LabRoute(FakeSettingsStore(), onBack = {}, onRestart = {}) }
 
     /** The dark sample shows 效能模式 on: the user turns it on. */
     @Test
-    fun labDark() = compose.app("settings-lab", dark = true, whole = true, before = { turnPerformance() }) { LabRoute(onBack = {}, onRestart = {}) }
+    fun labDark() = compose.app("settings-lab", dark = true, whole = true, before = { turnPerformance() }) { LabRoute(FakeSettingsStore(), onBack = {}, onRestart = {}) }
 
-    @Test fun labFs115() = compose.app("settings-lab", fontScale = RV_FS115, whole = true) { LabRoute(onBack = {}, onRestart = {}) }
+    @Test fun labFs115() = compose.app("settings-lab", fontScale = RV_FS115, whole = true) { LabRoute(FakeSettingsStore(), onBack = {}, onRestart = {}) }
 
-    @Test fun labFs200() = compose.app("settings-lab", fontScale = RV_FS200, whole = true) { LabRoute(onBack = {}, onRestart = {}) }
+    @Test fun labFs200() = compose.app("settings-lab", fontScale = RV_FS200, whole = true) { LabRoute(FakeSettingsStore(), onBack = {}, onRestart = {}) }
 
     /** 效能模式 turned: the banner over the card says it takes effect after a restart, with 重開 App. */
     @Test
-    fun labRestartLight() = compose.app("settings-lab-restart", dark = false, whole = true, before = { turnPerformance() }) { LabRoute(onBack = {}, onRestart = {}) }
+    fun labRestartLight() = compose.app("settings-lab-restart", dark = false, whole = true, before = { turnPerformance() }) { LabRoute(FakeSettingsStore(), onBack = {}, onRestart = {}) }
 
     @Test
     fun labRestartFs200() =
-        compose.app("settings-lab-restart", fontScale = RV_FS200, whole = true, before = { turnPerformance() }) { LabRoute(onBack = {}, onRestart = {}) }
+        compose.app("settings-lab-restart", fontScale = RV_FS200, whole = true, before = { turnPerformance() }) { LabRoute(FakeSettingsStore(), onBack = {}, onRestart = {}) }
 
     @Composable
     private fun Interval() = IntervalRoute(sampleStore(), onCustom = {}, onBack = {})
@@ -243,14 +243,14 @@ class SettingsAppEnShotTest {
     val tmp = TemporaryFolder()
 
     @Test
-    @Config(qualifiers = "+h1872dp")
+    @Config(qualifiers = "+h1876dp")
     fun settings() = compose.app("settings-en", dark = false, whole = true, content = settingsPage())
 
-    @Test fun lab() = compose.app("settings-lab-en", dark = false, whole = true) { LabRoute(onBack = {}, onRestart = {}) }
+    @Test fun lab() = compose.app("settings-lab-en", dark = false, whole = true) { LabRoute(FakeSettingsStore(), onBack = {}, onRestart = {}) }
 
     @Test
     fun labRestart() =
-        compose.app("settings-lab-restart-en", dark = false, whole = true, before = { turnPerformance() }) { LabRoute(onBack = {}, onRestart = {}) }
+        compose.app("settings-lab-restart-en", dark = false, whole = true, before = { turnPerformance() }) { LabRoute(FakeSettingsStore(), onBack = {}, onRestart = {}) }
 
     @Test
     @Config(qualifiers = READY_EN)
@@ -444,23 +444,23 @@ private object NoSystem : SettingsSystem {
 private fun noNav() = SettingsNav({}, {}, {}, {}, {}, {}, {}, {}, {})
 
 /** As tall as each page at each font size, as its approved golden (RvLabShotTest's approved 設定, RvReportShotTest). */
-private const val LONG_PAGE = "+h1822dp"
-private const val LONG_PAGE_FS115 = "+h1847dp"
-private const val LONG_PAGE_FS200 = "+h2351dp"
+private const val LONG_PAGE = "+h1826dp"
+private const val LONG_PAGE_FS115 = "+h1851dp"
+private const val LONG_PAGE_FS200 = "+h2373dp"
 
 /** The English report is longer: its window holds the whole page. */
-private const val READY_EN = "+h1288dp"
+private const val READY_EN = "+h1300dp"
 private const val READY = "+h1177dp"
-private const val READY_FS115 = "+h1209dp"
+private const val READY_FS115 = "+h1213dp"
 private const val READY_FS200 = "+h1820dp"
 private const val BUILDING = "+h1259dp"
-private const val BUILDING_FS115 = "+h1291dp"
+private const val BUILDING_FS115 = "+h1295dp"
 private const val BUILDING_FS200 = "+h1959dp"
 private const val FAILED = "+h1335dp"
-private const val FAILED_FS115 = "+h1371dp"
+private const val FAILED_FS115 = "+h1376dp"
 private const val FAILED_FS200 = "+h2053dp"
-private const val LINK_FAILED = "+h1352dp"
-private const val LINK_FAILED_FS200 = "+h2053dp"
+private const val LINK_FAILED = "+h1357dp"
+private const val LINK_FAILED_FS200 = "+h2062dp"
 
 /** Turns 實驗室's 效能模式, the page's one switch. */
 private fun ComposeContentTestRule.turnPerformance() {

@@ -1,10 +1,11 @@
-package dev.doona.android.prototype.rv.samples
+package dev.doona.android.designsystem.rv
 
+import dev.doona.android.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/** The names of the emoji1 sample. */
+/** The emoji of a name become the library's marks. */
 class RvNameMarksTest {
     @Test
     fun aFlagBecomesTheFlagAndLeavesTheName() {
@@ -23,7 +24,7 @@ class RvNameMarksTest {
     @Test
     fun aBrandBecomesItsMark() {
         val shown = rvShownName("🍎 Apple")
-        assertEquals("Apple", (shown.mark as RvNameMark.Icon).en)
+        assertEquals(R.string.rv_name_apple, (shown.mark as RvNameMark.Icon).name)
         assertEquals("Apple", shown.text)
     }
 

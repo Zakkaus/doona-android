@@ -166,9 +166,9 @@ class RvSettingsTileTest {
          * 設定's whole page with the row, at each font size, as tall as the page, a whole dp rounded up, so the last card
          * ends 28 dp above the nav (28.5 where the page ends on a half dp).
          */
-        const val LONG_PAGE = "+h1764dp"
-        const val TILE_PAGE = "+h1904dp"
-        const val TILE_PAGE_FS115 = "+h1959dp"
-        const val TILE_PAGE_FS200 = "+h2512dp"
+        const val LONG_PAGE = "+h1768dp"
+        const val TILE_PAGE = "+h1908dp"
+        const val TILE_PAGE_FS115 = "+h1963dp"
+        const val TILE_PAGE_FS200 = "+h2522dp"
     }
 }

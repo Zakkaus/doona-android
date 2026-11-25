@@ -25,9 +25,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.IOException
@@ -59,6 +62,13 @@ class QuickTile(private val store: DataStore<Preferences>, private val scope: Co
         .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
         .map { it[ADDED] ?: false }
         .distinctUntilChanged()
+
+    /**
+     * [added] as a state that starts with this object, which the app container builds at app start: null only until the
+     * store has answered, so a page opened later reads the answer already there instead of waiting for it, and never
+     * draws the fallback for a moment.
+     */
+    val state: StateFlow<Boolean?> = added.stateIn(scope, SharingStarted.Eagerly, null)
 
     /** Stores [added] on the process-wide scope, so a tile service destroyed right after its callback still saves it. */
     fun record(added: Boolean): Job = scope.launch { store.edit { it[ADDED] = added } }

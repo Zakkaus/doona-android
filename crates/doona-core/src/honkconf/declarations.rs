@@ -5,9 +5,8 @@ use honk_config::Config;
 use honk_config::diagnostic::{DetailedDiagnostic, Severity};
 use honk_config::parser::cursor::{Document, Segment};
 use honk_config::parser::lexer::Span;
-use honk_config::parser::source_edit::RuleSourceIndex;
 
-use super::{Disposition, Location, Reason, Unsupported, rules};
+use super::{Disposition, Location, Reason, Unsupported};
 
 type Settings = BTreeMap<(&'static str, String), (&'static str, Vec<Location>)>;
 
@@ -27,12 +26,8 @@ pub(super) struct Context<'a> {
 }
 
 impl Declarations {
-    pub(super) fn finish(
-        self,
-        cfg: &Config,
-        index: &RuleSourceIndex,
-        records: &mut Vec<Unsupported>,
-    ) {
+    /// Settings and nodes; rule records depend on platform inputs and come from `support`.
+    pub(super) fn finish(self, cfg: &Config, records: &mut Vec<Unsupported>) {
         let mut settings = self.settings;
         if let Some((code, mut alias)) =
             settings.remove(&("experimental.udp_nfqueue", "enabled".into()))
@@ -63,7 +58,6 @@ impl Declarations {
                 ));
             }
         }
-        rules::append(cfg, index, records);
     }
 
     pub(super) fn collect(&mut self, doc: &Document<'_>, i: usize, ctx: &Context<'_>) {

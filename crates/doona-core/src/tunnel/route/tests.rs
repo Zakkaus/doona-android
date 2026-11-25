@@ -32,7 +32,7 @@ pub(crate) fn published_links(links: &[u8], options: Options, mode: Mode) -> (Ou
     let nodes = entries("s1", parse(links).unwrap().nodes);
     let mut model = Model::new(nodes, HashMap::from([("s1".to_owned(), 1)]));
     model.policy = template(&model, options);
-    let outbounds = Outbounds::new(Arc::default()).unwrap();
+    let outbounds = Outbounds::new(Arc::default(), 2).unwrap();
     let built = outbounds.build(&model.nodes);
     outbounds.replace(built, routing(&model, mode));
     (outbounds, model)
@@ -234,7 +234,7 @@ fn reject_and_a_group_without_a_node_are_refused_never_direct() {
     }
     assert_eq!(target(&route(tcp(ABROAD, 443))), "g-Proxy");
     // With no node at all, Rule refuses what the main group would carry, as Global does.
-    let empty = Outbounds::new(Arc::default()).unwrap();
+    let empty = Outbounds::new(Arc::default(), 2).unwrap();
     let route = Route::of(Inbound::Tun, tcp(ABROAD, 443), Mode::Rule, &empty, &session);
     assert!(route.refused());
     let route = Route::of(
@@ -253,7 +253,7 @@ fn reject_and_a_group_without_a_node_are_refused_never_direct() {
 #[test]
 fn without_a_node_rule_keeps_its_direct_rows_and_refuses_the_rest() {
     let model = Model::new(Vec::new(), HashMap::new());
-    let outbounds = Outbounds::new(Arc::default()).unwrap();
+    let outbounds = Outbounds::new(Arc::default(), 2).unwrap();
     let built = outbounds.build(&model.nodes);
     outbounds.replace(built, routing(&model, Mode::Rule));
     let session = session();
@@ -367,7 +367,7 @@ fn dns_goes_through_the_main_group_unless_direct() {
     assert_eq!(target(&dns(Mode::Rule)), "g-Proxy");
     assert_eq!(target(&dns(Mode::Global)), "g-Proxy");
     assert_eq!(target(&dns(Mode::Direct)), "direct");
-    let empty = Outbounds::new(Arc::default()).unwrap();
+    let empty = Outbounds::new(Arc::default(), 2).unwrap();
     assert!(Route::dns(Inbound::Tun, Mode::Rule, &empty, &session).refused());
     for family in [IpVersion::V4, IpVersion::V6] {
         assert!(
@@ -389,7 +389,7 @@ fn dns_goes_through_the_main_group_unless_direct() {
 
 #[tokio::test]
 async fn global_without_a_node_is_refused_never_sent_direct() {
-    let outbounds = Outbounds::new(Arc::default()).unwrap();
+    let outbounds = Outbounds::new(Arc::default(), 2).unwrap();
     let session = session();
     let global = Route::of(
         Inbound::Tun,
@@ -440,7 +440,7 @@ fn bench_route_per_flow() {
         .collect();
     let nodes = entries("s1", parse(links.as_bytes()).unwrap().nodes);
     let model = Model::new(nodes, HashMap::from([("s1".to_owned(), 1)]));
-    let outbounds = Outbounds::new(Arc::default()).unwrap();
+    let outbounds = Outbounds::new(Arc::default(), 2).unwrap();
     outbounds.replace(outbounds.build(&model.nodes), routing(&model, Mode::Rule));
     let session = session();
     let named: Vec<Ipv4Addr> = (0..CAPACITY as u32)

@@ -50,6 +50,10 @@ internal const val CORE_SCHEMA = 3
 @Serializable
 internal data class InitDto(val schema: Int)
 
+/** `init`'s options; the core builds its runtimes with them once per process. */
+@Serializable
+internal data class InitOptionsDto(val performanceMode: Boolean)
+
 @Serializable
 internal data class SnapshotDto(
     val revision: Long,
@@ -157,9 +161,12 @@ internal data class NodeInfoDto(
     fun toNodeInfo() = NodeInfo(id, protocol, server, port, transport, tls, tests.map { LatencyTest(it.atEpochMs, it.ms) })
 }
 
-/** A test: when its round began, and the time it measured; null when the probe failed. */
+/**
+ * A test: when its round began, and the time it measured; null when the probe failed. The core always sends `ms`, so a
+ * test without it is unreadable rather than a failed probe.
+ */
 @Serializable
-internal data class LatencyTestDto(val atEpochMs: Long, val ms: Int? = null)
+internal data class LatencyTestDto(val atEpochMs: Long, val ms: Int?)
 
 @OptIn(ExperimentalSerializationApi::class)
 @JsonClassDiscriminator("status")

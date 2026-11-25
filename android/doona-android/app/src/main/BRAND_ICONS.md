@@ -58,8 +58,10 @@ GitHub's row uses `rv_sym_github`, the GitHub mark already in the app (github.co
 ## Bootstrap Icons
 
 From [Bootstrap Icons](https://icons.getbootstrap.com) **1.13.2** (`https://raw.githubusercontent.com/twbs/icons/v1.13.2/icons/<name>.svg`),
-MIT License, copyright (c) 2019-2024 The Bootstrap Authors; the licence text is
-`assets/licenses/bootstrap-icons-MIT.txt` and the row 「Bootstrap Icons」 on the licences page.
+MIT License, copyright (c) 2019-2024 The Bootstrap Authors. Only debug pages use these marks, so the release APK's
+resource shrinking drops them: the licence text is the debug asset `licenses/bootstrap-icons-MIT.txt`, the row
+「Bootstrap Icons」 on the debug licences page. When a release page uses one, add Bootstrap Icons to
+`tools/notice-sources.json` and regenerate the notices (`tools/notices.py`).
 
 | drawable | file | SHA-1 of the file |
 |---|---|---|

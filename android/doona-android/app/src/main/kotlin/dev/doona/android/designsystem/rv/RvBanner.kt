@@ -66,8 +66,11 @@ internal fun RvBanner(notice: RvNotice, modifier: Modifier = Modifier) {
                 RvIconDisc(notice.kind.glyph, glyph = RvSize.noticeGlyph)
                 Spacer(Modifier.width(RvSpace.rowGap))
                 Column(Modifier.weight(1f)) {
-                    RvText(notice.title, Rv.type.rowTitle, maxLines = BANNER_TITLE_LINES, keepWords = notice.titleKeepWords)
-                    notice.reason?.let { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BANNER_REASON_LINES, keepWords = notice.reasonKeepWords) }
+                    RvText(notice.title, Rv.type.rowTitle, maxLines = BANNER_TITLE_LINES, keepWords = notice.titleKeepWords, lineBox = true)
+                    notice.reason?.let {
+                        Spacer(Modifier.height(RvSpace.titleToSubtitle))
+                        RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BANNER_REASON_LINES, keepWords = notice.reasonKeepWords, lineBox = true)
+                    }
                 }
             }
             RvSecondaryButton(notice.action, notice.onAction)

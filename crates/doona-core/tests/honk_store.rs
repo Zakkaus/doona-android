@@ -4,7 +4,7 @@ use std::fs;
 use std::path::Path;
 
 use common::TempDir;
-use doonacore::honkconf::{HonkConfigError, HonkStore, StoreError};
+use doonacore::honkconf::{Capabilities, HonkConfigError, HonkStore, StoreError};
 use honk_config::parser::SourceLimits;
 
 const DIRECT: &str = "routing { fallback: direct }";
@@ -13,7 +13,7 @@ const BLOCK: &str = "routing { fallback: block }";
 fn apply(store: &mut HonkStore, source: &str) -> u64 {
     let id = store.draft(None).unwrap();
     store.edit(id, Path::new("config.dae"), source).unwrap();
-    store.apply(id).unwrap()
+    store.apply(id, &Capabilities::linked()).unwrap()
 }
 
 fn revision_dirs(data: &TempDir) -> Vec<u64> {
@@ -36,8 +36,8 @@ fn stale_draft_cannot_overwrite_the_committed_revision() {
         id
     });
     let [winner, stale] = drafts;
-    let head = store.apply(winner).unwrap();
-    let conflict = store.apply(stale).unwrap_err();
+    let head = store.apply(winner, &Capabilities::linked()).unwrap();
+    let conflict = store.apply(stale, &Capabilities::linked()).unwrap_err();
     assert_eq!(revision_dirs(&data), [base, head]);
     assert!(
         matches!(conflict, StoreError::Conflict { base: Some(b), head: Some(h) } if b == base && h == head)
@@ -97,7 +97,10 @@ fn restart_keeps_invalid_current_draft_and_collects_abandoned_files() {
         .edit(current, Path::new("config.dae"), "global {")
         .unwrap();
     let preview = store.draft(Some(head)).unwrap();
-    assert!(matches!(store.apply(current), Err(StoreError::Config(_))));
+    assert!(matches!(
+        store.apply(current, &Capabilities::linked()),
+        Err(StoreError::Config(_))
+    ));
     let root = data.path().join("config");
     fs::create_dir(root.join("staging/unpublished")).unwrap();
     fs::create_dir(root.join("revisions/999")).unwrap();
@@ -212,7 +215,7 @@ fn restore_publishes_a_new_revision_with_original_companions_and_entry_name() {
     fs::write(bundle.path().join("sub/hosts"), "# original\r\n").unwrap();
     let mut store = HonkStore::open(data.path()).unwrap();
     let imported = store.import(&entry).unwrap();
-    let original = store.apply(imported).unwrap();
+    let original = store.apply(imported, &Capabilities::linked()).unwrap();
     let edit = store.draft(None).unwrap();
     store
         .edit(edit, Path::new("sub/policy.dae"), BLOCK)
@@ -220,10 +223,10 @@ fn restore_publishes_a_new_revision_with_original_companions_and_entry_name() {
     store
         .edit(edit, Path::new("sub/hosts"), "# changed")
         .unwrap();
-    let changed = store.apply(edit).unwrap();
+    let changed = store.apply(edit, &Capabilities::linked()).unwrap();
     let restore = store.draft(Some(original)).unwrap();
     assert_eq!(store.head(), Some(changed));
-    let restored = store.apply(restore).unwrap();
+    let restored = store.apply(restore, &Capabilities::linked()).unwrap();
     assert!(original < changed && changed < restored);
     assert_eq!(store.head(), Some(restored));
     for (rev, policy, hosts) in [
@@ -275,7 +278,10 @@ fn edits_and_imports_enforce_the_shared_companion_budget_and_boundary() {
         )
         .unwrap();
     assert!(!store.check(edit).unwrap().complete());
-    assert!(matches!(store.apply(edit), Err(StoreError::Incomplete)));
+    assert!(matches!(
+        store.apply(edit, &Capabilities::linked()),
+        Err(StoreError::Incomplete)
+    ));
     let bundle = TempDir::new("honk-companions");
     let entry = bundle.path().join("main.dae");
     let mut config = String::from("dns {\n");
@@ -318,15 +324,18 @@ fn symlinked_dependencies_are_located_escapes_in_editable_drafts() {
     fs::write(&entry, "include { a*.dae }").unwrap();
     let draft = store.import(&entry).unwrap();
     assert_escape(&store, draft, "include_escape", "a*.dae");
-    assert!(matches!(store.apply(draft), Err(StoreError::Incomplete)));
+    assert!(matches!(
+        store.apply(draft, &Capabilities::linked()),
+        Err(StoreError::Incomplete)
+    ));
     store.edit(draft, Path::new("main.dae"), DIRECT).unwrap();
-    let rev = store.apply(draft).unwrap();
+    let rev = store.apply(draft, &Capabilities::linked()).unwrap();
     let tree = data.path().join(format!("config/revisions/{rev}"));
     assert!(!tree.join("alias.dae").exists());
     fs::write(&entry, "dns { use_host: alias.dae }").unwrap();
     let draft = store.import(&entry).unwrap();
     assert_escape(&store, draft, "use_host_escape", "use_host: alias.dae");
-    let rev = store.apply(draft).unwrap();
+    let rev = store.apply(draft, &Capabilities::linked()).unwrap();
     let tree = data.path().join(format!("config/revisions/{rev}"));
     assert_eq!(fs::read_link(tree.join("alias.dae")).unwrap(), sentinel);
     let restored = store.draft(Some(rev)).unwrap();

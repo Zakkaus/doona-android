@@ -41,6 +41,14 @@ internal interface SettingsStore {
 
     /** Stores [hours], which must be one of [updateIntervals]. */
     suspend fun setUpdateHours(hours: Int)
+
+    /** 實驗室's 效能模式 as stored, which the core reads only when it starts. */
+    val performanceMode: Flow<Boolean>
+
+    /** 效能模式 as this run of the app started with it: the stored value read once per process. */
+    suspend fun performanceAtStart(): Boolean
+
+    suspend fun setPerformanceMode(enabled: Boolean)
 }
 
 /** How the system answered 加到快速設定: the tile was added, the dialog was dismissed, or the request failed. */

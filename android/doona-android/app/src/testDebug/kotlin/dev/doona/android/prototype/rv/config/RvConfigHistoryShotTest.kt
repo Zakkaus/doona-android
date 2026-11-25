@@ -124,7 +124,8 @@ class RvConfigHistoryShotTest {
     fun revisionFs115() = compose.rvShot("config-revision", dark = false, fontScale = RV_FS115) { Revision(UNNAMED) }
 
     @Test
-    fun revisionFs200() = compose.rvShot("config-revision", dark = false, fontScale = RV_FS200) { Revision(UNNAMED) }
+    @Config(qualifiers = WHOLE_REVISION_FS200)
+    fun revisionFs200() = compose.rvShot("config-revision", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { Revision(UNNAMED) }
 
     @Test
     fun revisionNamedLight() = compose.rvShot("config-revision-named", dark = false) { Revision(HOME) }
@@ -136,7 +137,25 @@ class RvConfigHistoryShotTest {
     fun revisionNamedFs115() = compose.rvShot("config-revision-named", dark = false, fontScale = RV_FS115) { Revision(HOME) }
 
     @Test
-    fun revisionNamedFs200() = compose.rvShot("config-revision-named", dark = false, fontScale = RV_FS200) { Revision(HOME) }
+    @Config(qualifiers = WHOLE_REVISION_NAMED_FS200)
+    fun revisionNamedFs200() = compose.rvShot("config-revision-named", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { Revision(HOME) }
+
+    /** A revision's own name, long, shown whole wherever it is a row's text (owner, q-s1125c-vname): the list and its page. */
+    @Test
+    @Config(qualifiers = WHOLE_LONG_NAME)
+    fun longNameLight() = compose.rvShot("config-history-longname", dark = false, before = { assertWhole() }) { LongNamed() }
+
+    @Test
+    @Config(qualifiers = WHOLE_LONG_NAME_FS200)
+    fun longNameFs200() = compose.rvShot("config-history-longname", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { LongNamed() }
+
+    @Test
+    @Config(qualifiers = WHOLE_REVISION_LONG_NAME)
+    fun revisionLongNameLight() = compose.rvShot("config-revision-longname", dark = false, before = { assertWhole() }) { RevisionLongNamed() }
+
+    @Test
+    @Config(qualifiers = WHOLE_REVISION_LONG_NAME_FS200)
+    fun revisionLongNameFs200() = compose.rvShot("config-revision-longname", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { RevisionLongNamed() }
 
     @Test
     fun limitLight() = compose.rvShot("config-import-limit", dark = false) { Import(RvConfigHistoryData.limit) }
@@ -293,6 +312,15 @@ class RvConfigHistoryShotTest {
     @Composable
     private fun Named() = RvConfigHistoryPage(RvConfigHistoryData.named, RvConfigData.REV, onBack = {})
 
+    @Composable
+    private fun LongNamed() = RvConfigHistoryPage(longNamed, RvConfigData.REV, onBack = {})
+
+    @Composable
+    private fun RevisionLongNamed() = RvConfigRevisionPage(longNamed.first { it.rev == RvConfigData.REV }, listOf(RvConfigHistoryData.restoreDiff), onBack = {})
+
+    /** The named revisions with the head's name long enough to take several lines at every font size. */
+    private val longNamed = RvConfigHistoryData.named.map { if (it.rev == RvConfigData.REV) it.named(LONG_NAME) else it }
+
     /** Where the menu's card goes: set by [placeMenu] once the list is laid out. */
     private var menuAt by mutableStateOf(DpOffset.Zero)
 
@@ -342,6 +370,13 @@ class RvConfigHistoryShotTest {
     private companion object {
         const val WHOLE_HISTORY = "+h1019dp"
         const val WHOLE_NAMED = "+h1045dp"
+        const val WHOLE_REVISION_FS200 = "+h992dp"
+        const val WHOLE_REVISION_NAMED_FS200 = "+h991dp"
+        const val WHOLE_LONG_NAME = "+h1092dp"
+        const val WHOLE_LONG_NAME_FS200 = "+h2032dp"
+        const val WHOLE_REVISION_LONG_NAME = "+h915dp"
+        const val WHOLE_REVISION_LONG_NAME_FS200 = "+h1155dp"
+        const val LONG_NAME = "東京出差兩週：影音、AI 與遊戲走日本節點，GitHub 與 Slack 直連，其餘照家用設定"
         const val RENAME = "重新命名"
         const val NAME = "名稱"
         const val UNNAMED = 8

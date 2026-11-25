@@ -12,6 +12,7 @@ internal class FakeSettingsStore(
     updateHours: Int = 12,
     appearance: RvAppearance = RvAppearance(RvThemeMode.System, followWallpaper = false, accent = 0),
     tileAdded: Boolean = true,
+    performanceMode: Boolean = false,
     override val shippedGeoDate: String = "2026-11-23",
     var languages: String = "",
 ) : SettingsStore {
@@ -21,6 +22,8 @@ internal class FakeSettingsStore(
     override val updateIntervals = UpdateInterval.entries.map { it.hours }
     override val appearance = MutableStateFlow(appearance)
     override val tileAdded = MutableStateFlow(tileAdded)
+    override val performanceMode = MutableStateFlow(performanceMode)
+    private val started = performanceMode
 
     override fun languageTags(): String = languages
 
@@ -39,5 +42,11 @@ internal class FakeSettingsStore(
     override suspend fun setUpdateHours(hours: Int) {
         require(hours in updateIntervals) { "no update interval of $hours h" }
         updateHours.value = hours
+    }
+
+    override suspend fun performanceAtStart(): Boolean = started
+
+    override suspend fun setPerformanceMode(enabled: Boolean) {
+        performanceMode.value = enabled
     }
 }

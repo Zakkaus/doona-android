@@ -6,14 +6,18 @@ import android.net.LinkProperties
 import android.net.NetworkCapabilities
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import dev.doona.android.app.FakeEngineApplication
 import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.data.settings.PerAppSettings
 import dev.doona.android.engine.AppPolicy
+import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.LatencyTest
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
+import dev.doona.android.engine.NetworkState
+import dev.doona.android.engine.NetworkTransport
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RecentFlow
@@ -24,6 +28,7 @@ import dev.doona.android.engine.TrafficSeries
 import dev.doona.android.report.AppEvents
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -39,12 +44,15 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowNetwork
 import org.robolectric.shadows.ShadowNetworkCapabilities
 import java.io.IOException
 import java.net.InetAddress
 
 @OptIn(ExperimentalCoroutinesApi::class)
+// The real application would start an engine whose own default-network callback shows up in the callback assertions.
+@Config(application = FakeEngineApplication::class)
 @RunWith(AndroidJUnit4::class)
 class EngineTelemetryTest {
     @get:Rule
@@ -137,6 +145,55 @@ class EngineTelemetryTest {
         assertEquals(today, engine.today.value)
         engine.disconnect()
         runCurrent()
+        assertEquals(today, engine.today.value)
+    }
+
+    @Test
+    fun anUnreadableSeriesOrNodesReplyFailsAsInternal() = runTest {
+        val engine = engine()
+        val series = ContractFixtures.read("call-ok-traffic-series.json")
+        val nodes = ContractFixtures.read("call-ok-nodes.json")
+        val replies = listOf<Pair<String, suspend () -> Result<*>>>(
+            series.replace("\"upPeak\": 141203,", "") to { engine.trafficSeries(300) },
+            series.replace("3120", "\"3 KB/s\"") to { engine.trafficSeries(300) },
+            // Without `ms` a test would otherwise read as a failed probe.
+            nodes.replace("\"ms\": 33", "\"later\": 33") to { engine.nodes() },
+            nodes.replace("\"port\": 443,", "") to { engine.nodes() },
+        )
+        assertTrue("a fixture edit no longer matches its fixture", replies.none { it.first == series || it.first == nodes })
+        for ((reply, read) in replies) {
+            core.reply = reply
+            assertEquals(reply, ErrorCode.Internal, (read().exceptionOrNull() as EngineException).code)
+        }
+    }
+
+    /** Peaks and today's totals may be absent, from an older core; a field of another type makes the snapshot unreadable. */
+    @Test
+    fun anUnreadableSnapshotKeepsTheLastTrafficAndDayAndFailsTheHealthCheck() = runTest {
+        val engine = engine()
+        backgroundScope.launch { engine.traffic.collect {} }
+        start(engine)
+        val traffic = engine.traffic.value
+        val today = engine.today.value
+        assertEquals(12, traffic.activeFlows)
+        val running = ContractFixtures.read("snapshot-running.json")
+        val broken = listOf(
+            running.replace("\"activeFlows\": 12,", ""),
+            running.replace("\"upPeak\": 262144", "\"upPeak\": \"256 KiB\""),
+            running.replace("\"yesterdayByNow\": 1610612736", "\"yesterdayByNow\": \"1.5 GiB\""),
+        )
+        assertFalse(running in broken)
+        var next = 0
+        core.snapshotReply = { broken[next++ % broken.size] }
+
+        advanceTimeBy(4_000)
+        runCurrent()
+        assertTrue(next >= broken.size)
+        assertEquals(traffic, engine.traffic.value)
+        assertEquals(today, engine.today.value)
+        advanceTimeBy(1_000)
+        runCurrent()
+        assertEquals(Status.Failed(FailureReason.CoreStopped), engine.status.value)
         assertEquals(today, engine.today.value)
     }
 
@@ -402,7 +459,7 @@ class EngineTelemetryTest {
         core.reply = ContractFixtures.read("call-error-bootstrap-dns.json")
         engine.controller.refreshBootstrapDns(listOf("192.0.2.54"))
         runCurrent()
-        assertEquals(listOf("command=setBootstrapDns phase=complete outcome=failed code=InvalidArgument"), AppEvents.snapshot().map { it.text })
+        assertEquals(listOf("command=setBootstrapDns phase=complete outcome=failed code=InvalidArgument"), AppEvents.snapshot().map { it.text }.filter { it.startsWith("command=") })
         assertEquals(session, engine.controller.session.value)
     }
 
@@ -442,6 +499,31 @@ class EngineTelemetryTest {
         assertEquals(listOf("setBootstrapDns" to """{"servers":["192.0.2.54"]}"""), core.calls.filter { it.first == "setBootstrapDns" })
     }
 
+    /** The engine the app creates reads the default network itself; its value is right before anyone collects it. */
+    @Test
+    fun aCreatedEngineReportsTheDefaultNetworkWithoutACollector() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val connectivity = app.getSystemService(ConnectivityManager::class.java)
+        val manager = shadowOf(connectivity)
+        val existing = manager.networkCallbacks.toSet()
+        val caps = ShadowNetworkCapabilities.newInstance()
+        shadowOf(caps).addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+        shadowOf(caps).addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        shadowOf(caps).addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+        manager.setNetworkCapabilities(checkNotNull(connectivity.activeNetwork), caps)
+
+        val engine = ServiceEngine.create(app, endDebugCapture = {}, expireDebugCapture = { null })
+        assertEquals(NetworkState(NetworkTransport.WiFi, metered = false, validated = false), engine.network.value)
+
+        // The engine lives as long as the process. Let its default-network callback, registered on another thread, land
+        // in this test rather than in a later one that counts callbacks; the bootstrap DNS callback is already there.
+        val deadline = System.nanoTime() + 5_000_000_000L
+        while ((manager.networkCallbacks - existing).size < 2) {
+            check(System.nanoTime() < deadline) { "the engine registered ${(manager.networkCallbacks - existing).size} network callbacks" }
+            Thread.sleep(10)
+        }
+    }
+
     private fun TestScope.start(engine: ServiceEngine) {
         engine.connect()
         assertTrue(engine.controller.start(host, engine.controller.session.value.generation))
@@ -468,7 +550,7 @@ class EngineTelemetryTest {
             expireDebugCapture = expireDebugCapture,
             clock = { testScheduler.currentTime },
         )
-        return ServiceEngine(core, opener, controller, settings, { true }, dispatcher, backgroundScope, expireDebugCapture)
+        return ServiceEngine(core, opener, controller, settings, MutableStateFlow(NetworkState()), { true }, dispatcher, backgroundScope, expireDebugCapture)
             .also { it.launch(dispatcher, connectivity) }
     }
 

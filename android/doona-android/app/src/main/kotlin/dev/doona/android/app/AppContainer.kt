@@ -8,7 +8,6 @@ import android.net.ConnectivityManager
 import android.os.Build
 import android.os.SystemClock
 import androidx.work.WorkManager
-import dev.doona.android.data.network.networkState
 import dev.doona.android.data.network.ownAddresses
 import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.data.settings.LogLevelController
@@ -59,12 +58,15 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
     /** Whether the quick settings tile is added; the tile reports it, and the settings page offers the tile until it is. */
     val quickTile: QuickTile by lazy { QuickTile.create(application) }
 
+    /** Starts [quickTile] with the process, so its state is read from the store before 設定 is first opened. */
+    internal fun startQuickTile() {
+        quickTile
+    }
+
     /** Outlives every screen: imports and local network prompts that a page started go on when it is left. */
     private val uiScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) }
 
     val logLevels: LogLevelController by lazy { LogLevelController({ engine.setLogLevel(it) }, uiScope, SystemClock::elapsedRealtime) }
-
-    val networkState by lazy { networkState(application, uiScope) }
 
     internal val subscriptionRefresh by lazy { SubscriptionRefresh(AppSettings.get(application), { engine }) }
 

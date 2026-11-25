@@ -22,6 +22,12 @@ internal object RvSpace {
     val rowGap = 16.dp
     val trailingGap = 12.dp
 
+    /**
+     * From a row's title to its subtitle, in every row with one (LAYOUT-RULES.md R12; owner, q-s1125c-titlegap,
+     * 2026-11-25 18:55: was 0, the line boxes touching).
+     */
+    val titleToSubtitle = 2.dp
+
     /** From a round action's disc to its label (measured §6: 8 dp). */
     val discToLabel = 8.dp
 
@@ -72,7 +78,15 @@ internal object RvSpace {
     val sectionBelow = 12.dp
 
     /** A footnote ([RvFootnote]) sits this far under its card, on the gutter as the section titles (spacing audit row 5). */
-    val footnoteAbove = 8.dp
+    val footnoteAbove = 12.dp
+
+    /**
+     * Where a footnote's box starts and ends, in from the card's start and end edges above it ([RvFootnote]; LAYOUT-RULES.md
+     * R20): the card's text column on both sides (owner, q-s1125c-footgap, 2026-11-25 19:05: 「右邊也內縮到 32 dp」; the
+     * end was 0, the box ran 16 dp past the text column). The footnote reads them; its check measures the card's column.
+     */
+    val footnoteStart = 16.dp
+    val footnoteEnd = 16.dp
 
     /** A card's in-card header row sits this far under the card's top, so the card's padding is the same at both ends. */
     val headerInset = 4.dp

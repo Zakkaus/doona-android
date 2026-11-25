@@ -35,7 +35,7 @@ class LanEngine(private val granted: () -> Boolean, private val fake: FakeEngine
 }
 
 /** The app on a [LanEngine]: a subscription on the local network that only the permission lets through. */
-class LanEngineApplication : DoonaApplication() {
+class LanEngineApplication : DoonaTestApplication() {
     override fun createEngine(): Engine =
         LanEngine({ checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED })
 

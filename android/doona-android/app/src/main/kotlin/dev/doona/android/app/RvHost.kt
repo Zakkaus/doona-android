@@ -6,8 +6,12 @@ import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -31,13 +35,15 @@ import dev.doona.android.designsystem.rv.RvShared
  * transitions ([rvSceneMove]). Each entry gets its own saved state and ViewModels, which Navigation 3 clears only once
  * the entry is off the stack and its exit has finished; the stack itself is the caller's, saved with the activity
  * (`rememberNavBackStack`), so it survives process death. A stack restored with a page [entries] has no entry for,
- * such as one another version of the app saved, falls back to its tab's root ([keepRouted]) before anything shows.
+ * such as one another version of the app saved, falls back to its tab's root ([keepRouted]) before anything shows:
+ * the host composes nothing until an effect, outside composition, has cut the stack back once.
  *
  * Back pops the top page, following the finger while a predictive back gesture runs; a cancelled gesture runs the
  * page back and pops nothing, a committed one pops once: a second back while the popped page still leaves pops
- * nothing, as that page is the one it would pop ([RvTabMoves.shown]). On a tab root back pops to 活動, which is
- * always underneath, and on 活動 back is left to the system, which leaves the app. A page that handles back itself
- * (the pull-down's picker on 活動) registers after the host, so it closes first.
+ * nothing, whether that page had been shown or was still coming in, as it is the one back would pop
+ * ([RvTabMoves.shown]); a page pushed while it leaves is popped. On a tab root back pops to 活動, which is always
+ * underneath, and on 活動 back is left to the system, which leaves the app. A page that handles back itself (the
+ * pull-down's picker on 活動) registers after the host, so it closes first.
  *
  * Every entry shares one [SharedTransitionLayout] ([LocalRvShared]); the floating nav shows the app's three tabs
  * ([LocalRvNav]); a tab root a hard-cut tab switch is showing gets [LocalRvTabEntry].
@@ -47,17 +53,24 @@ internal fun RvNavHost(backStack: MutableList<NavKey>, modifier: Modifier = Modi
     val motion = Rv.motion
     val shift = with(LocalDensity.current) { RvMotion.axisShift.roundToPx() }
     val provider = entryProvider(fallback = ::rvUnrouted, builder = entries)
-    val moves = remember(backStack) {
-        backStack.keepRouted { key -> RV_UNROUTED !in provider(key).metadata }
-        RvTabMoves(backStack.toList())
+    val routed: (NavKey) -> Boolean = { key -> RV_UNROUTED !in provider(key).metadata }
+    // Checked once per stack, when it is created or restored; a key pushed later without an entry still fails.
+    var unrouted by remember(backStack) { mutableStateOf(!backStack.all(routed)) }
+    if (unrouted) {
+        SideEffect {
+            backStack.keepRouted(routed)
+            unrouted = false
+        }
+        return
     }
+    val moves = remember(backStack) { RvTabMoves(backStack.toList()) }
     moves.see(backStack.toList())
     CompositionLocalProvider(LocalRvNav provides APP_NAV) {
         SharedTransitionLayout(modifier) {
             val rv = remember(this) { rvEntryDecorator(this, moves) }
             NavDisplay(
                 backStack = backStack,
-                onBack = { backStack.popShown(moves.shown) },
+                onBack = { backStack.popShown(moves) },
                 entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator(), rv),
                 sharedTransitionScope = this,
                 transitionSpec = { rvSceneMove(motion, shift, forward = true) },
@@ -90,8 +103,9 @@ private fun rvEntryDecorator(layout: SharedTransitionScope, moves: RvTabMoves) =
     val entering = moves.tabSwitch && key == moves.top
     val move = LocalNavAnimatedContentScope.current.transition
     if (key != null && move.currentState == EnterExitState.Visible && move.targetState == EnterExitState.Visible) {
-        SideEffect { moves.shown = key }
+        SideEffect { moves.show(key) }
     }
+    if (key != null) DisposableEffect(key) { onDispose { moves.left(key) } }
     CompositionLocalProvider(LocalRvShared provides shared, LocalRvTabEntry provides entering) {
         Trace.beginSection(TRACE_PAGE)
         entry.Content()
@@ -109,8 +123,36 @@ private class RvTabMoves(private var stack: List<NavKey>) {
         private set
     val top: NavKey get() = stack.last()
 
-    /** The page last shown on its own, every move into it finished: the page the user sees on top, which back pops. */
+    /**
+     * The page last shown on its own, every move into it finished: the page the user sees on top, which back pops. The
+     * host's back sets it to the page it pops, so while that page leaves it is the one shown; once it has left ([left])
+     * nothing is, until the page under it is shown on its own.
+     */
     var shown: NavKey? = null
+        private set
+
+    /** The stack [shown] was on top of when it was shown or popped. */
+    private var shownOn: List<NavKey> = emptyList()
+
+    /** Takes [key], on top of [on], as the page shown. */
+    fun show(key: NavKey, on: List<NavKey> = stack) {
+        shown = key
+        shownOn = on
+    }
+
+    /**
+     * Whether the shown page is leaving [now]: it is off the stack and nothing has come on since, [now] being what was
+     * under it. A page pushed while it leaves is the one back pops.
+     */
+    fun leaving(now: List<NavKey>): Boolean {
+        val key = shown ?: return false
+        return key !in now && now.size < shownOn.size && shownOn.subList(0, now.size) == now
+    }
+
+    /** [key]'s page has left the composition: if it was the shown page and is off the stack, its exit is over. */
+    fun left(key: NavKey) {
+        if (shown == key && key !in stack) shown = null
+    }
 
     fun see(now: List<NavKey>) {
         if (now == stack) return
@@ -120,12 +162,17 @@ private class RvTabMoves(private var stack: List<NavKey>) {
 }
 
 /**
- * Back from the host: pops the page on top once. While a popped page still leaves, [shown] is that page and no longer
- * on the stack, so a second back pops nothing rather than the page underneath; while a pushed page comes in, [shown]
- * is the page under it and back pops the new one, as on its own.
+ * Back from the host: pops the page on top once, and takes that page as the one shown ([RvTabMoves.shown]) until it
+ * has left. A second back meanwhile finds the shown page leaving and pops nothing, rather than the page underneath:
+ * after a pop, and as well after a back that popped a pushed page while it still came in, when the page last shown was
+ * the one under it. A page pushed while the shown page leaves is popped, as any page coming in is.
  */
-private fun MutableList<NavKey>.popShown(shown: NavKey?) {
-    if (shown == null || shown in this) pop(last())
+private fun MutableList<NavKey>.popShown(moves: RvTabMoves) {
+    if (size < 2 || moves.leaving(this)) return
+    val top = last()
+    val on = toList()
+    pop(top)
+    moves.show(top, on)
 }
 
 private const val TRACE_PAGE = "RvPage"

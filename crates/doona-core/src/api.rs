@@ -26,6 +26,7 @@ mod assets;
 mod diagnostics;
 #[cfg(feature = "fault-hook")]
 mod fault;
+mod init;
 mod rules;
 mod score;
 mod selection;
@@ -35,8 +36,6 @@ mod subscriptions;
 
 pub use snapshot::snapshot_before_init;
 
-/// The tokio runtime's worker threads; flows are I/O bound and the phone has few big cores.
-const WORKERS: usize = 2;
 /// `start` returns or fails within this bound (core-api.md).
 const START_BOUND: Duration = Duration::from_secs(10);
 /// The smallest MTU `start` takes. honk's transparent stack raises a smaller one to 1280 while
@@ -59,6 +58,8 @@ pub struct Options {
     pub udp_idle: Duration,
     /// How long a TCP flow may stall after a FIN, and a TCP/53 connection to the core's DNS idle.
     pub tcp_drain: Duration,
+    /// Worker threads of each runtime, the core's and the carriers'.
+    pub workers: usize,
 }
 
 impl Default for Options {
@@ -71,6 +72,7 @@ impl Default for Options {
             bootstrap_fallback: bootstrap::FALLBACK.to_vec(),
             udp_idle: tunnel::UDP_IDLE,
             tcp_drain: tunnel::TCP_DRAIN,
+            workers: init::WORKERS,
         }
     }
 }
@@ -159,7 +161,7 @@ impl Core {
         crate::panics::install();
         let (counted, reported) = (Arc::clone(&panics), Arc::downgrade(&diag));
         let runtime = tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(WORKERS)
+            .worker_threads(options.workers)
             .thread_name("doona-core")
             .on_thread_start(move || {
                 crate::panics::count_on_this_thread(&counted);
@@ -172,7 +174,7 @@ impl Core {
         bootstrap::use_servers(options.bootstrap_fallback.clone());
         let model = catalog::load(&mut state, &diag);
         diagnostics::loaded(&diag, &state, &model, loaded);
-        let outbounds = Arc::new(Outbounds::new(Arc::clone(&panics))?);
+        let outbounds = Arc::new(Outbounds::new(Arc::clone(&panics), options.workers)?);
         let built = outbounds.build(&model.nodes);
         let mode = Arc::new(ModeCell::new(state.mode));
         let upstreams = state

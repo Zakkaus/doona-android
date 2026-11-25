@@ -9,7 +9,7 @@ import dev.doona.android.designsystem.components.DoonaMetricLatency
 import dev.doona.android.designsystem.components.DoonaSmallStatusLight
 import dev.doona.android.designsystem.components.DoonaStatusLight
 import dev.doona.android.designsystem.components.LayoutRole
-import dev.doona.android.designsystem.components.Tone
+import dev.doona.android.designsystem.rv.Tone
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.testing.FontScale200
 import dev.doona.android.testing.Light

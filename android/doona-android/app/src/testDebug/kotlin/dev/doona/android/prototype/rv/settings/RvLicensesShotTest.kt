@@ -137,6 +137,6 @@ class RvLicensesShotTest {
         /** As tall as the whole 授權條款 page at each font size, so its last row shows as the phone shows it. */
         const val LONG_PAGE = "+h1448dp"
         const val LONG_PAGE_FS115 = "+h1453dp"
-        const val LONG_PAGE_FS200 = "+h1864dp"
+        const val LONG_PAGE_FS200 = "+h1878dp"
     }
 }

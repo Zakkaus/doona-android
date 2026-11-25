@@ -27,6 +27,7 @@ import dev.doona.android.vpn.QuickTile
 import dev.doona.android.vpn.QuickTileResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 /**
@@ -61,6 +62,12 @@ internal class AppSettingsStore(
 
     override suspend fun setUpdateHours(hours: Int) = settings.setUpdateInterval(UpdateInterval.ofHours(hours))
 
+    override val performanceMode: Flow<Boolean> = settings.performanceMode
+
+    override suspend fun performanceAtStart(): Boolean = startedPerformance ?: settings.performanceMode.first().also { startedPerformance = it }
+
+    override suspend fun setPerformanceMode(enabled: Boolean) = settings.setPerformanceMode(enabled)
+
     private fun rvThemeMode(mode: ThemeMode) = when (mode) {
         ThemeMode.System -> RvThemeMode.System
         ThemeMode.Light -> RvThemeMode.Light
@@ -70,6 +77,13 @@ internal class AppSettingsStore(
     companion object {
         /** `release_date` of `crates/doona-core/tools/geo-pins.json`: the GeoIP/GeoSite release the APK ships. */
         const val SHIPPED_GEO_DATE = "2026-11-23"
+
+        /**
+         * 效能模式 as first read in this process. The core reads the stored value when it starts, at the app's start and
+         * before 實驗室 can open, and a turn of the switch is stored only after 實驗室 has read this, so the two agree.
+         */
+        @Volatile
+        private var startedPerformance: Boolean? = null
     }
 }
 

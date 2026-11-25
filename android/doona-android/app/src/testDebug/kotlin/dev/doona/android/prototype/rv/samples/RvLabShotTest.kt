@@ -34,44 +34,44 @@ class RvLabShotTest {
     val utc = Utc()
 
     @Test
-    @Config(qualifiers = "+h1822dp")
+    @Config(qualifiers = "+h1826dp")
     fun settingsApprovedLight() = compose.rvShot("samples-lab-settings-approved", dark = false, before = { assertWhole() }) { Settings() }
 
     @Test
-    @Config(qualifiers = "+h1822dp")
+    @Config(qualifiers = "+h1826dp")
     fun settingsSampleLight() = compose.rvShot("samples-lab-settings-sample", dark = false, before = { assertWhole() }) { RvSettingsLabSample(rvSampleSettings(), {}, {}) }
 
     @Test
     fun pageLight() = compose.rvShot("samples-lab-page", dark = false, before = { assertWhole() }) { RvLabScreen(performance = false) }
 
     @Test
-    @Config(qualifiers = "+h1822dp")
+    @Config(qualifiers = "+h1826dp")
     fun settingsApprovedDark() = compose.rvShot("samples-lab-settings-approved", dark = true, before = { assertWhole() }) { Settings() }
 
     @Test
-    @Config(qualifiers = "+h1822dp")
+    @Config(qualifiers = "+h1826dp")
     fun settingsSampleDark() = compose.rvShot("samples-lab-settings-sample", dark = true, before = { assertWhole() }) { RvSettingsLabSample(rvSampleSettings(), {}, {}) }
 
     @Test
     fun pageDark() = compose.rvShot("samples-lab-page", dark = true, before = { assertWhole() }) { RvLabScreen(performance = true) }
 
     @Test
-    @Config(qualifiers = "+h2351dp")
+    @Config(qualifiers = "+h2373dp")
     fun settingsApprovedFs200() = compose.rvShot("samples-lab-settings-approved", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { Settings() }
 
     @Test
-    @Config(qualifiers = "+h2351dp")
+    @Config(qualifiers = "+h2373dp")
     fun settingsSampleFs200() = compose.rvShot("samples-lab-settings-sample", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { RvSettingsLabSample(rvSampleSettings(), {}, {}) }
 
     @Test
     fun pageFs200() = compose.rvShot("samples-lab-page", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { RvLabScreen(performance = false) }
 
     @Test
-    @Config(qualifiers = "en-w412dp-h1872dp-notnight-xhdpi")
+    @Config(qualifiers = "en-w412dp-h1876dp-notnight-xhdpi")
     fun settingsApprovedEn() = compose.rvShot("samples-lab-settings-approved-en", dark = false, before = { assertWhole() }) { Settings() }
 
     @Test
-    @Config(qualifiers = "en-w412dp-h1872dp-notnight-xhdpi")
+    @Config(qualifiers = "en-w412dp-h1876dp-notnight-xhdpi")
     fun settingsSampleEn() = compose.rvShot("samples-lab-settings-sample-en", dark = false, before = { assertWhole() }) { RvSettingsLabSample(rvSampleSettings(), {}, {}) }
 
     @Test

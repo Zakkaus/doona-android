@@ -527,7 +527,7 @@ class TunnelControllerTest {
         val events = CopyOnWriteArrayList<String>()
         val configs = CopyOnWriteArrayList<String>()
 
-        override fun init(dataDir: String) = """{"schema":$schema}"""
+        override fun init(dataDir: String, optionsJson: String) = """{"schema":$schema}"""
 
         override fun start(tunFd: Int, configJson: String) {
             startEntered.countDown()
@@ -593,7 +593,7 @@ class TunnelControllerTest {
         core.startError = IllegalStateException("fetch https://sub.example.net/api?token=tk_5ecret failed")
         start()
         awaitStatus { it is Status.Failed }
-        val entries = AppEvents.snapshot().map { it.text.substringBefore(" elapsedMs=") }
+        val entries = AppEvents.snapshot().map { it.text.substringBefore(" elapsedMs=") }.filter { it.startsWith("command=") }
         assertEquals(listOf("command=start phase=complete outcome=failed code=Internal"), entries)
     }
 }

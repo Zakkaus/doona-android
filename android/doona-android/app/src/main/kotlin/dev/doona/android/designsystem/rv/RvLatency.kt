@@ -29,7 +29,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
-import dev.doona.android.designsystem.components.latencyTone
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.max

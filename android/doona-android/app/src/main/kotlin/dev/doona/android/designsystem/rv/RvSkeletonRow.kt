@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -105,7 +106,7 @@ internal fun RvSkeletonRow(
 
             else -> Column(Modifier.weight(1f).padding(vertical = RvSpace.rowTextInset)) {
                 words.Title()
-                words.Subtitle()
+                words.GapAndSubtitle()
             }
         }
     }
@@ -137,6 +138,14 @@ private class SkeletonWords(
         } else {
             RvSkeletonLine(Rv.type.rowTitle, RvSkeletonSize.titles[index % RvSkeletonSize.titles.size], titleRoom, lineBox = true)
         }
+    }
+
+    /** The subtitle [RvSpace.titleToSubtitle] under the title, as [RvRow] stands it (R12). */
+    @Composable
+    fun GapAndSubtitle() {
+        if (subtitle == null) return
+        Spacer(Modifier.height(RvSpace.titleToSubtitle))
+        Subtitle()
     }
 
     @Composable
@@ -178,19 +187,19 @@ private fun BesideEnd(words: SkeletonWords, minHeight: Dp, modifier: Modifier, e
         val textWidth = if (fits) beside else width
         val titleLine = parts[0].measure(Constraints(maxWidth = textWidth))
         val subtitleLine = if (parts.size > 2) parts[1].measure(Constraints(maxWidth = textWidth)) else null
-        val text = titleLine.height + (subtitleLine?.height ?: 0)
+        val text = titleLine.height + (subtitleLine?.let { RvSpace.titleToSubtitle.roundToPx() + it.height } ?: 0)
         if (fits) {
             val height = maxOf(text + inset * 2, endPart.height, least)
             layout(width, height) {
                 val top = Alignment.CenterVertically.align(text + inset * 2, height) + inset
                 titleLine.place(0, top)
-                subtitleLine?.place(0, top + titleLine.height)
+                subtitleLine?.place(0, top + titleLine.height + RvSpace.titleToSubtitle.roundToPx())
                 endPart.place(width - endPart.width, Alignment.CenterVertically.align(endPart.height, height))
             }
         } else {
             layout(width, max(least, inset * 2 + text + endPart.height)) {
                 titleLine.place(0, inset)
-                subtitleLine?.place(0, inset + titleLine.height)
+                subtitleLine?.place(0, inset + titleLine.height + RvSpace.titleToSubtitle.roundToPx())
                 endPart.place(width - endPart.width, inset + text)
             }
         }
@@ -243,6 +252,7 @@ private fun LineWise(words: SkeletonWords, end: RvSkeletonEnd, endText: String?,
         }
         val second = end.second
         if (words.subtitle != null) {
+            Spacer(Modifier.height(RvSpace.titleToSubtitle))
             WithEnd(words.subtitleWords(), { words.Subtitle() }) {
                 val wide = if (end == RvSkeletonEnd.Node) room.small else room.change
                 if (second != null) RvSkeletonLine(Rv.type.rowSub, 1f, Modifier.width(wide), second, lineBox = true)

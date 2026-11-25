@@ -10,7 +10,7 @@ internal object NativeCore : CoreBridge {
         System.loadLibrary("doonacore")
     }
 
-    external override fun init(dataDir: String): String
+    external override fun init(dataDir: String, optionsJson: String): String
 
     external override fun start(tunFd: Int, configJson: String)
 
@@ -28,7 +28,7 @@ internal object NativeCore : CoreBridge {
 internal class DeferredCore(load: () -> CoreBridge) : CoreBridge {
     private val core by lazy(load)
 
-    override fun init(dataDir: String) = core.init(dataDir)
+    override fun init(dataDir: String, optionsJson: String) = core.init(dataDir, optionsJson)
 
     override fun start(tunFd: Int, configJson: String) = core.start(tunFd, configJson)
 

@@ -36,7 +36,7 @@ artwork · [OFL-1.1](android/doona-android/app/src/main/assets/licenses/notices.
 
 Latin subset, fixed weights and optical sizes.
 
-- [inter-OFL.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L36163) Upstream wording does not match a complete declared SPDX body.
+- [inter-OFL.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L36436) Upstream wording does not match a complete declared SPDX body.
 
 ### Material Symbols Rounded 10ecc14790612ca8fd164e3f4ffe9c16fc50d5b7
 
@@ -44,7 +44,7 @@ artwork · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notic
 
     Copyright Google LLC. From google/material-design-icons at commit
 
-- [NOTICE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36891) Upstream NOTICE; retain with this component.
+- [NOTICE](android/doona-android/app/src/main/assets/licenses/notices.txt#L37164) Upstream NOTICE; retain with this component.
 
 ### Noto Sans TC @fontsource-variable/noto-sans-tc 5.3.0
 
@@ -54,7 +54,7 @@ artwork · [OFL-1.1](android/doona-android/app/src/main/assets/licenses/notices.
 
 Subset and fixed-weight instances. Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
 
-- [noto-sans-tc-OFL.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L36260) Upstream wording does not match a complete declared SPDX body.
+- [noto-sans-tc-OFL.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L36533) Upstream wording does not match a complete declared SPDX body.
 
 ### circle-flags 379588b5da95482d6bbf10bd45644a35b0609ea6
 
@@ -63,7 +63,7 @@ artwork · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#
     Copyright (c) 2026 HatScripts
     Copyright (c) 2026 HatScripts. From HatScripts/circle-flags at commit
 
-- [NOTICE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36916) Upstream NOTICE; retain with this component.
+- [NOTICE](android/doona-android/app/src/main/assets/licenses/notices.txt#L37189) Upstream NOTICE; retain with this component.
 
 ### aead 0.6.1
 
@@ -91,7 +91,7 @@ cargo · [Unlicense](android/doona-android/app/src/main/assets/licenses/notices.
 
     Copyright (c) 2015 Andrew Gallant
 
-- [COPYING](android/doona-android/app/src/main/assets/licenses/notices.txt#L36937) Upstream wording does not match a complete declared SPDX body.
+- [COPYING](android/doona-android/app/src/main/assets/licenses/notices.txt#L37210) Upstream wording does not match a complete declared SPDX body.
 
 ### alloc-no-stdlib 3.0.0
 
@@ -114,7 +114,7 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
     Copyright 2016 The android_log_sys Developers
     Copyright (c) 2016 The android_log_sys Developers
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L35574) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L35847) Upstream wording does not match a complete declared SPDX body.
 
 ### android_logger 0.15.1
 
@@ -123,7 +123,7 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
     Copyright 2016 The android_logger Developers
     Copyright (c) 2016 The android_logger Developers
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L35779) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36052) Upstream wording does not match a complete declared SPDX body.
 
 ### android_system_properties 0.1.6
 
@@ -132,14 +132,14 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
     Copyright 2016 Nicolas Silva
     Copyright (c) 2013 Nicolas Silva
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36874) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L37147) Upstream wording does not match a complete declared SPDX body.
 
 ### anyhow 1.0.104
 
 cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1264) OR [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://crates.io/crates/anyhow/1.0.104)
 
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2931) Upstream omits the end of the SPDX Apache-2.0 text.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2952) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### arrayvec 0.7.8
 
@@ -160,7 +160,7 @@ cargo · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices
     Copyright (c) 2016 Alex Crichton
     Copyright (c) 2017 The Tokio Authors
 
-- [LICENSE-THIRD-PARTY](android/doona-android/app/src/main/assets/licenses/notices.txt#L36536) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-THIRD-PARTY](android/doona-android/app/src/main/assets/licenses/notices.txt#L36809) Upstream wording does not match a complete declared SPDX body.
 
 ### aya 0.16.0
 
@@ -207,7 +207,7 @@ cargo · [CC0-1.0](android/doona-android/app/src/main/assets/licenses/notices.tx
        Copyright 2019 Jack O'Connor and Samuel Neves
         Copyright 2019 Jack O'Connor and Samuel Neves
 
-- [LICENSE_A2LLVM](android/doona-android/app/src/main/assets/licenses/notices.txt#L34940) Upstream includes additional text after the Apache-2.0 body.
+- [LICENSE_A2LLVM](android/doona-android/app/src/main/assets/licenses/notices.txt#L35213) Upstream includes additional text after the Apache-2.0 body.
 
 ### block-buffer 0.12.1
 
@@ -224,7 +224,7 @@ cargo · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices
               2013-2014 Steven Fackler
               2020 Ivan Nikulin <ifaaan@gmail.com>
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36835) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L37108) Upstream wording does not match a complete declared SPDX body.
 
 ### boring-sys 5.2.0
 
@@ -278,7 +278,7 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
 
     Copyright (c) 2014, Kang Seonghoon.
 
-- [LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L34696) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L34969) Upstream wording does not match a complete declared SPDX body.
 
 ### cipher 0.5.2
 
@@ -309,9 +309,9 @@ cargo · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices
 cargo · [CC0-1.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L532) OR [MIT-0](android/doona-android/app/src/main/assets/licenses/notices.txt#L1286) OR [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://crates.io/crates/constant_time_eq/0.4.2)
 
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2931) Upstream omits the end of the SPDX Apache-2.0 text.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2952) Upstream omits the end of the SPDX Apache-2.0 text.
 
-- [LICENSE-MIT0](android/doona-android/app/src/main/assets/licenses/notices.txt#L36742) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-MIT0](android/doona-android/app/src/main/assets/licenses/notices.txt#L37015) Upstream wording does not match a complete declared SPDX body.
 
 ### cpubits 0.1.1
 
@@ -331,7 +331,7 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
 
     Copyright (c) 2018 Sam Rijs, Alex Crichton and contributors
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L1701) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L1722) Upstream wording does not match a complete declared SPDX body.
 
 ### crypto-common 0.2.2
 
@@ -372,7 +372,7 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
 
     Copyright (c) Individual contributors
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L1701) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L1722) Upstream wording does not match a complete declared SPDX body.
 
 ### equivalent 1.0.3
 
@@ -392,7 +392,7 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
 
     Copyright (c) 2023 Thomas Pendock
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L35984) Upstream omits the end of the SPDX Apache-2.0 text.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36257) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### fnv 1.0.7
 
@@ -412,7 +412,7 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
 
     Copyright (c) 2017 The foreign-types Developers
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L1701) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L1722) Upstream wording does not match a complete declared SPDX body.
 
 ### foreign-types-shared 0.3.1
 
@@ -420,7 +420,7 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
 
     Copyright (c) 2017 The foreign-types Developers
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L1701) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L1722) Upstream wording does not match a complete declared SPDX body.
 
 ### form_urlencoded 1.2.3
 
@@ -463,7 +463,7 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
     Copyright (c) 2018-2024 The rust-random Project Developers
     Copyright (c) 2014 The Rust Project Developers
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L9335) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L9607) Upstream wording does not match a complete declared SPDX body.
 
 ### getrandom 0.4.3
 
@@ -472,7 +472,7 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
     Copyright (c) 2018-2026 The rust-random Project Developers
     Copyright (c) 2014 The Rust Project Developers
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L9335) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L9607) Upstream wording does not match a complete declared SPDX body.
 
 ### ghash 0.6.0
 
@@ -518,7 +518,7 @@ cargo · [GPL-3.0-only](android/doona-android/app/src/main/assets/licenses/notic
      Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
         Copyright (C) <year>  <name of author>
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L30793) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L31066) Upstream wording does not match a complete declared SPDX body.
 
 ### honk-ebpf-common 0.1.0
 
@@ -527,7 +527,7 @@ cargo · [GPL-3.0-only](android/doona-android/app/src/main/assets/licenses/notic
      Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
         Copyright (C) <year>  <name of author>
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L30793) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L31066) Upstream wording does not match a complete declared SPDX body.
 
 ### honk-netstack 0.1.0
 
@@ -536,7 +536,7 @@ cargo · [GPL-3.0-only](android/doona-android/app/src/main/assets/licenses/notic
      Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
         Copyright (C) <year>  <name of author>
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L30793) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L31066) Upstream wording does not match a complete declared SPDX body.
 
 ### honk-outbound 0.1.0
 
@@ -545,7 +545,7 @@ cargo · [GPL-3.0-only](android/doona-android/app/src/main/assets/licenses/notic
      Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
         Copyright (C) <year>  <name of author>
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L30793) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L31066) Upstream wording does not match a complete declared SPDX body.
 
 ### http 1.5.0
 
@@ -579,7 +579,7 @@ cargo · [Unicode-3.0](android/doona-android/app/src/main/assets/licenses/notice
 
     Copyright © 2020-2024 Unicode, Inc.
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36486) Upstream includes additional text after the Unicode-3.0 body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36759) Upstream includes additional text after the Unicode-3.0 body.
 
 ### icu_locale_core 2.4.0
 
@@ -587,7 +587,7 @@ cargo · [Unicode-3.0](android/doona-android/app/src/main/assets/licenses/notice
 
     Copyright © 2020-2024 Unicode, Inc.
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36486) Upstream includes additional text after the Unicode-3.0 body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36759) Upstream includes additional text after the Unicode-3.0 body.
 
 ### icu_normalizer 2.4.0
 
@@ -595,7 +595,7 @@ cargo · [Unicode-3.0](android/doona-android/app/src/main/assets/licenses/notice
 
     Copyright © 2020-2024 Unicode, Inc.
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36486) Upstream includes additional text after the Unicode-3.0 body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36759) Upstream includes additional text after the Unicode-3.0 body.
 
 ### icu_normalizer_data 2.4.0
 
@@ -603,7 +603,7 @@ cargo · [Unicode-3.0](android/doona-android/app/src/main/assets/licenses/notice
 
     Copyright © 2020-2024 Unicode, Inc.
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36486) Upstream includes additional text after the Unicode-3.0 body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36759) Upstream includes additional text after the Unicode-3.0 body.
 
 ### icu_properties 2.4.0
 
@@ -611,7 +611,7 @@ cargo · [Unicode-3.0](android/doona-android/app/src/main/assets/licenses/notice
 
     Copyright © 2020-2024 Unicode, Inc.
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36486) Upstream includes additional text after the Unicode-3.0 body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36759) Upstream includes additional text after the Unicode-3.0 body.
 
 ### icu_properties_data 2.4.0
 
@@ -619,7 +619,7 @@ cargo · [Unicode-3.0](android/doona-android/app/src/main/assets/licenses/notice
 
     Copyright © 2020-2024 Unicode, Inc.
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36486) Upstream includes additional text after the Unicode-3.0 body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36759) Upstream includes additional text after the Unicode-3.0 body.
 
 ### icu_provider 2.4.0
 
@@ -627,7 +627,7 @@ cargo · [Unicode-3.0](android/doona-android/app/src/main/assets/licenses/notice
 
     Copyright © 2020-2024 Unicode, Inc.
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36486) Upstream includes additional text after the Unicode-3.0 body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36759) Upstream includes additional text after the Unicode-3.0 body.
 
 ### idna 1.1.0
 
@@ -661,14 +661,14 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
        Copyright 2017 Juniper Networks, Inc.
     Copyright 2017 Juniper Networks, Inc.
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L35163) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L35436) Upstream wording does not match a complete declared SPDX body.
 
 ### itoa 1.0.19
 
 cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1264) OR [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://crates.io/crates/itoa/1.0.19)
 
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2931) Upstream omits the end of the SPDX Apache-2.0 text.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2952) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### jni 0.22.4
 
@@ -682,7 +682,7 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
 
     Copyright (c) 2015 The rust-jni-sys Developers
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L1701) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L1722) Upstream wording does not match a complete declared SPDX body.
 
 ### keccak 0.2.2
 
@@ -696,7 +696,7 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
 
     Copyright (c) The Rust Project Developers
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2931) Upstream omits the end of the SPDX Apache-2.0 text.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2952) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### libm 0.2.16
 
@@ -711,7 +711,7 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
     Copyright © 2008 Stephen L. Moshier or
     Copyright © 2017-2018 Arm Limited
 
-- [LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L34434) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L34707) Upstream wording does not match a complete declared SPDX body.
 
 ### litemap 0.8.3
 
@@ -719,7 +719,7 @@ cargo · [Unicode-3.0](android/doona-android/app/src/main/assets/licenses/notice
 
     Copyright © 2020-2024 Unicode, Inc.
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36486) Upstream includes additional text after the Unicode-3.0 body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36759) Upstream includes additional text after the Unicode-3.0 body.
 
 ### lock_api 0.4.14
 
@@ -766,7 +766,7 @@ cargo · [Unlicense](android/doona-android/app/src/main/assets/licenses/notices.
 
     Copyright (c) 2015 Andrew Gallant
 
-- [COPYING](android/doona-android/app/src/main/assets/licenses/notices.txt#L36937) Upstream wording does not match a complete declared SPDX body.
+- [COPYING](android/doona-android/app/src/main/assets/licenses/notices.txt#L37210) Upstream wording does not match a complete declared SPDX body.
 
 ### mio 1.2.5
 
@@ -832,7 +832,7 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
 cargo · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) OR [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1264) · [Source](https://crates.io/crates/pin-project-lite/0.2.18)
 
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### poly1305 0.9.1
 
@@ -851,7 +851,7 @@ cargo · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices
 cargo · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) OR [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1264) · [Source](https://crates.io/crates/portable-atomic/1.15.0)
 
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### potential_utf 0.1.6
 
@@ -859,7 +859,7 @@ cargo · [Unicode-3.0](android/doona-android/app/src/main/assets/licenses/notice
 
     Copyright © 2020-2024 Unicode, Inc.
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36486) Upstream includes additional text after the Unicode-3.0 body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36759) Upstream includes additional text after the Unicode-3.0 body.
 
 ### quinn 0.11.12
 
@@ -886,9 +886,9 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
     Copyright 2018 Developers of the Rand project
     Copyright (c) 2014 The Rust Project Developers
 
-- [COPYRIGHT](android/doona-android/app/src/main/assets/licenses/notices.txt#L17546) Upstream wording does not match a complete declared SPDX body.
+- [COPYRIGHT](android/doona-android/app/src/main/assets/licenses/notices.txt#L18067) Upstream wording does not match a complete declared SPDX body.
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L9335) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L9607) Upstream wording does not match a complete declared SPDX body.
 
 ### rand_core 0.10.1
 
@@ -896,9 +896,9 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
 
     Copyright (c) 2018-2026 The Rand Project Developers
 
-- [COPYRIGHT](android/doona-android/app/src/main/assets/licenses/notices.txt#L17546) Upstream wording does not match a complete declared SPDX body.
+- [COPYRIGHT](android/doona-android/app/src/main/assets/licenses/notices.txt#L18067) Upstream wording does not match a complete declared SPDX body.
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L9335) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L9607) Upstream wording does not match a complete declared SPDX body.
 
 ### rand_pcg 0.10.3
 
@@ -907,9 +907,9 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
     Copyright (c) 2014-2017 Melissa O'Neill and PCG Project contributors
     Copyright 2018 Developers of the Rand project
 
-- [COPYRIGHT](android/doona-android/app/src/main/assets/licenses/notices.txt#L17546) Upstream wording does not match a complete declared SPDX body.
+- [COPYRIGHT](android/doona-android/app/src/main/assets/licenses/notices.txt#L18067) Upstream wording does not match a complete declared SPDX body.
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L9335) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L9607) Upstream wording does not match a complete declared SPDX body.
 
 ### regex 1.13.2
 
@@ -938,22 +938,22 @@ cargo · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices
     Copyright 2015-2025 Brian Smith.
     Copyright 2015-2020 the fiat-crypto authors (see the AUTHORS file)
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36855) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L37128) Upstream wording does not match a complete declared SPDX body.
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36903) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L37176) Upstream wording does not match a complete declared SPDX body.
 
-- [LICENSE-BoringSSL](android/doona-android/app/src/main/assets/licenses/notices.txt#L34048) Upstream includes additional text after the Apache-2.0 body.
+- [LICENSE-BoringSSL](android/doona-android/app/src/main/assets/licenses/notices.txt#L34321) Upstream includes additional text after the Apache-2.0 body.
 
-- [LICENSE-MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L36692) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L36965) Upstream wording does not match a complete declared SPDX body.
 
-- [LICENSE-other-bits](android/doona-android/app/src/main/assets/licenses/notices.txt#L36818) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-other-bits](android/doona-android/app/src/main/assets/licenses/notices.txt#L37091) Upstream wording does not match a complete declared SPDX body.
 
 ### rustc-hash 2.1.3
 
 cargo · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) OR [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1264) · [Source](https://crates.io/crates/rustc-hash/2.1.3)
 
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2931) Upstream omits the end of the SPDX Apache-2.0 text.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2952) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### rustls 0.23.46
 
@@ -962,7 +962,7 @@ cargo · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices
     Copyright (c) 2016, Joseph Birr-Pixton <jpixton@gmail.com>
     Copyright (c) 2016 Joseph Birr-Pixton <jpixton@gmail.com>
 
-- [LICENSE-ISC](android/doona-android/app/src/main/assets/licenses/notices.txt#L36760) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-ISC](android/doona-android/app/src/main/assets/licenses/notices.txt#L37033) Upstream wording does not match a complete declared SPDX body.
 
 ### rustls-pki-types 1.16.0
 
@@ -983,14 +983,14 @@ cargo · [ISC](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
 
     Copyright 2015 Brian Smith.
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36719) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36992) Upstream wording does not match a complete declared SPDX body.
 
 ### ryu 1.0.23
 
 cargo · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) OR [BSL-1.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L347) · [Source](https://crates.io/crates/ryu/1.0.23)
 
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2931) Upstream omits the end of the SPDX Apache-2.0 text.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2952) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### scopeguard 1.2.0
 
@@ -1003,28 +1003,28 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
 cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1264) OR [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://crates.io/crates/serde/1.0.229)
 
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2931) Upstream omits the end of the SPDX Apache-2.0 text.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2952) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### serde_core 1.0.229
 
 cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1264) OR [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://crates.io/crates/serde_core/1.0.229)
 
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2931) Upstream omits the end of the SPDX Apache-2.0 text.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2952) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### serde_json 1.0.154
 
 cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1264) OR [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://crates.io/crates/serde_json/1.0.154)
 
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2931) Upstream omits the end of the SPDX Apache-2.0 text.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2952) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### serde_path_to_error 0.1.20
 
 cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1264) OR [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://crates.io/crates/serde_path_to_error/0.1.20)
 
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2931) Upstream omits the end of the SPDX Apache-2.0 text.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2952) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### serde_spanned 1.1.3
 
@@ -1033,14 +1033,14 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
        Copyright Individual contributors
     Copyright (c) Individual contributors
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L35368) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L35641) Upstream wording does not match a complete declared SPDX body.
 
 ### serde_yaml 0.9.34+deprecated
 
 cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1264) OR [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://crates.io/crates/serde_yaml/0.9.34+deprecated)
 
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2931) Upstream omits the end of the SPDX Apache-2.0 text.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2952) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### sha1 0.11.0
 
@@ -1060,7 +1060,7 @@ cargo · [BSD-3-Clause](android/doona-android/app/src/main/assets/licenses/notic
     Copyright (c) 2006-2009 Graydon Hoare
     Copyright (c) 2009-2013 Mozilla Foundation
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36357) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36630) Upstream wording does not match a complete declared SPDX body.
 
 ### sha2 0.11.1
 
@@ -1103,7 +1103,7 @@ cargo · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices
 cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1264) OR [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://crates.io/crates/simdutf8/0.1.5)
 
 
-- [LICENSE-Apache](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [LICENSE-Apache](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### siphasher 1.0.4
 
@@ -1112,7 +1112,7 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
     Copyright 2012-2016 The Rust Project Developers.
     Copyright 2016-2026 Frank Denis.
 
-- [COPYING](android/doona-android/app/src/main/assets/licenses/notices.txt#L36926) Upstream wording does not match a complete declared SPDX body.
+- [COPYING](android/doona-android/app/src/main/assets/licenses/notices.txt#L37199) Upstream wording does not match a complete declared SPDX body.
 
 ### slab 0.4.12
 
@@ -1156,7 +1156,7 @@ cargo · [BSD-3-Clause](android/doona-android/app/src/main/assets/licenses/notic
 cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1264) OR [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://crates.io/crates/thiserror/2.0.21)
 
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2931) Upstream omits the end of the SPDX Apache-2.0 text.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L2952) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### tinystr 0.8.5
 
@@ -1164,7 +1164,7 @@ cargo · [Unicode-3.0](android/doona-android/app/src/main/assets/licenses/notice
 
     Copyright © 2020-2024 Unicode, Inc.
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36486) Upstream includes additional text after the Unicode-3.0 body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36759) Upstream includes additional text after the Unicode-3.0 body.
 
 ### tinyvec 1.13.3
 
@@ -1206,7 +1206,7 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
        Copyright Individual contributors
     Copyright (c) Individual contributors
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L35368) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L35641) Upstream wording does not match a complete declared SPDX body.
 
 ### toml_datetime 1.1.3+spec-1.1.0
 
@@ -1215,7 +1215,7 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
        Copyright Individual contributors
     Copyright (c) Individual contributors
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L35368) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L35641) Upstream wording does not match a complete declared SPDX body.
 
 ### toml_parser 1.1.6+spec-1.1.0
 
@@ -1224,7 +1224,7 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
        Copyright Individual contributors
     Copyright (c) Individual contributors
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L35368) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L35641) Upstream wording does not match a complete declared SPDX body.
 
 ### toml_writer 1.2.0+spec-1.1.0
 
@@ -1233,7 +1233,7 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
        Copyright Individual contributors
     Copyright (c) Individual contributors
 
-- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L35368) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE-APACHE](android/doona-android/app/src/main/assets/licenses/notices.txt#L35641) Upstream wording does not match a complete declared SPDX body.
 
 ### tracing 0.1.44
 
@@ -1261,7 +1261,7 @@ cargo · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
     Copyright 2014 Paho Lurie-Gregg
     Copyright (c) 2014 Paho Lurie-Gregg
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L1693) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L1714) Upstream wording does not match a complete declared SPDX body.
 
 ### universal-hash 0.6.1
 
@@ -1280,7 +1280,7 @@ cargo · [ISC](android/doona-android/app/src/main/assets/licenses/notices.txt#L1
 
     // Copyright 2015-2016 Brian Smith.
 
-- [LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L36779) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L37052) Upstream wording does not match a complete declared SPDX body.
 
 ### url 2.5.9
 
@@ -1294,7 +1294,7 @@ cargo · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices
 
     Copyright Mozilla Foundation
 
-- [COPYRIGHT](android/doona-android/app/src/main/assets/licenses/notices.txt#L36585) Upstream wording does not match a complete declared SPDX body.
+- [COPYRIGHT](android/doona-android/app/src/main/assets/licenses/notices.txt#L36858) Upstream wording does not match a complete declared SPDX body.
 
 ### utf_types 1.0.0
 
@@ -1302,7 +1302,7 @@ cargo · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices
 
     Copyright Mozilla Foundation
 
-- [COPYRIGHT](android/doona-android/app/src/main/assets/licenses/notices.txt#L36585) Upstream wording does not match a complete declared SPDX body.
+- [COPYRIGHT](android/doona-android/app/src/main/assets/licenses/notices.txt#L36858) Upstream wording does not match a complete declared SPDX body.
 
 ### uuid 1.29.3
 
@@ -1316,7 +1316,7 @@ cargo · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices
 cargo · [CDLA-Permissive-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L657) · [Source](https://crates.io/crates/webpki-root-certs/1.0.12)
 
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36421) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36694) Upstream wording does not match a complete declared SPDX body.
 
 ### wincode 0.5.5
 
@@ -1334,7 +1334,7 @@ cargo · [Unicode-3.0](android/doona-android/app/src/main/assets/licenses/notice
 
     Copyright © 2020-2024 Unicode, Inc.
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36486) Upstream includes additional text after the Unicode-3.0 body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36759) Upstream includes additional text after the Unicode-3.0 body.
 
 ### yoke 0.8.4
 
@@ -1342,7 +1342,7 @@ cargo · [Unicode-3.0](android/doona-android/app/src/main/assets/licenses/notice
 
     Copyright © 2020-2024 Unicode, Inc.
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36486) Upstream includes additional text after the Unicode-3.0 body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36759) Upstream includes additional text after the Unicode-3.0 body.
 
 ### zerofrom 0.1.8
 
@@ -1350,7 +1350,7 @@ cargo · [Unicode-3.0](android/doona-android/app/src/main/assets/licenses/notice
 
     Copyright © 2020-2024 Unicode, Inc.
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36486) Upstream includes additional text after the Unicode-3.0 body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36759) Upstream includes additional text after the Unicode-3.0 body.
 
 ### zeroize 1.9.2
 
@@ -1364,7 +1364,7 @@ cargo · [Unicode-3.0](android/doona-android/app/src/main/assets/licenses/notice
 
     Copyright © 2020-2024 Unicode, Inc.
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36486) Upstream includes additional text after the Unicode-3.0 body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36759) Upstream includes additional text after the Unicode-3.0 body.
 
 ### zerovec 0.11.9
 
@@ -1372,7 +1372,7 @@ cargo · [Unicode-3.0](android/doona-android/app/src/main/assets/licenses/notice
 
     Copyright © 2020-2024 Unicode, Inc.
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36486) Upstream includes additional text after the Unicode-3.0 body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L36759) Upstream includes additional text after the Unicode-3.0 body.
 
 ### zmij 1.0.23
 
@@ -1395,11 +1395,11 @@ data · [CC-BY-SA-4.0](android/doona-android/app/src/main/assets/licenses/notice
 
 This product includes GeoLite Data created by MaxMind, available from https://www.maxmind.com. Loyalsoldier/geoip converts and augments the country data; MetaCubeX redistributes its DAT unchanged. Under GeoLite EULA §6.1, disclosure requires prior notification and written consent from MaxMind except as explicitly permitted by CC BY-SA 4.0. Permitted disclosures require the same or substantially similar contractual duties downstream. Section 6.3 requires cessation of use and destruction of old versions within 30 days after an updated database is released. https://www.maxmind.com/en/geolite/eula
 
-- [GPL-3.0-only.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L30793) Upstream wording does not match a complete declared SPDX body.
+- [GPL-3.0-only.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L31066) Upstream wording does not match a complete declared SPDX body.
 
-- [geo-cc.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L32642) Upstream wording does not match a complete declared SPDX body.
+- [geo-cc.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L32915) Upstream wording does not match a complete declared SPDX body.
 
-- [maxmind-eula.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L34324) Upstream wording does not match a complete declared SPDX body.
+- [maxmind-eula.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L34597) Upstream wording does not match a complete declared SPDX body.
 
 ### geosite.dat 5f22a3b3371d1a489fb3d0df25d00db049a6a603
 
@@ -1417,34 +1417,34 @@ data · [GPL-3.0-only](android/doona-android/app/src/main/assets/licenses/notice
 
 MetaCubeX compiles v2fly/domain-list-community with Loyalsoldier/domain-list-custom, its own resouces/ directory and lists from mutable upstream branches: blackmatrix7/ios_rule_script, gfwlist/gfwlist via cokebar/gfwlist2dnsmasq, felixonmars/dnsmasq-china-list, crazy-max/WindowsSpyBlocker, https://gitea.com/XIU2/TrackersListCollection (GPL-3.0), and biliintl.list and sharepoint.list from xishang0128/rules (no licence file). Build recipe: https://github.com/MetaCubeX/meta-rules-dat/blob/4178770badecb1b349fbcd62c737e0d7a2079729/.github/workflows/run.yml.
 
-- [GPL-3.0-only.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L30793) Upstream wording does not match a complete declared SPDX body.
+- [GPL-3.0-only.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L31066) Upstream wording does not match a complete declared SPDX body.
 
-- [geo-dnsmasq.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L36796) Upstream wording does not match a complete declared SPDX body.
+- [geo-dnsmasq.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L37069) Upstream wording does not match a complete declared SPDX body.
 
-- [geo-gfwlist.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L32136) Upstream wording does not match a complete declared SPDX body.
+- [geo-gfwlist.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L32409) Upstream wording does not match a complete declared SPDX body.
 
-- [geo-ios.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L33073) Upstream wording does not match a complete declared SPDX body.
+- [geo-ios.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L33346) Upstream wording does not match a complete declared SPDX body.
 
 ### androidx.activity:activity 1.13.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/activity#1.13.0)
 
 
-- [META-INF/androidx/activity/activity/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/activity/activity/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.activity:activity-compose 1.13.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/activity#1.13.0)
 
 
-- [META-INF/androidx/activity/activity-compose/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/activity/activity-compose/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.activity:activity-ktx 1.13.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/activity#1.13.0)
 
 
-- [META-INF/androidx/activity/activity-ktx/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/activity/activity-ktx/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.annotation:annotation-experimental 1.4.1
 
@@ -1456,7 +1456,7 @@ maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/annotation#1.10.0)
 
 
-- [META-INF/androidx/annotation/annotation/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/annotation/annotation/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.arch.core:core-common 2.2.0
 
@@ -1478,160 +1478,160 @@ maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/collection#1.6.0)
 
 
-- [META-INF/androidx/collection/collection/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/collection/collection/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.collection:collection-ktx 1.6.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/collection#1.6.0)
 
 
-- [META-INF/androidx/collection/collection-ktx/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/collection/collection-ktx/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.compose.animation:animation-android 1.13.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/compose-animation#1.13.0)
 
 
-- [META-INF/androidx/compose/animation/animation/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/compose/animation/animation/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
-- [lint.jar!/META-INF/androidx/compose/animation/animation-lint/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [lint.jar!/META-INF/androidx/compose/animation/animation-lint/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.compose.animation:animation-core-android 1.13.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/compose-animation#1.13.0)
 
 
-- [META-INF/androidx/compose/animation/animation-core/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/compose/animation/animation-core/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
-- [lint.jar!/META-INF/androidx/compose/animation/animation-core-lint/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [lint.jar!/META-INF/androidx/compose/animation/animation-core-lint/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.compose.foundation:foundation-android 1.13.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/compose-foundation#1.13.0)
 
 
-- [META-INF/androidx/compose/foundation/foundation/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/compose/foundation/foundation/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
-- [lint.jar!/META-INF/androidx/compose/foundation/foundation-lint/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [lint.jar!/META-INF/androidx/compose/foundation/foundation-lint/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.compose.foundation:foundation-layout-android 1.13.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/compose-foundation#1.13.0)
 
 
-- [META-INF/androidx/compose/foundation/foundation-layout/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/compose/foundation/foundation-layout/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.compose.material3:material3-android 1.5.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/compose-material3#1.5.0)
 
 
-- [META-INF/androidx/compose/material3/material3/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/compose/material3/material3/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
-- [lint.jar!/META-INF/androidx/compose/material3/material3-lint/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [lint.jar!/META-INF/androidx/compose/material3/material3-lint/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.compose.material3:material3-ripple-android 1.5.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/compose-material3#1.5.0)
 
 
-- [META-INF/androidx/compose/material3/material3-ripple/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/compose/material3/material3-ripple/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.compose.material:material-ripple-android 1.13.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/compose-material#1.13.0)
 
 
-- [META-INF/androidx/compose/material/material-ripple/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/compose/material/material-ripple/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.compose.runtime:runtime-android 1.13.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/compose-runtime#1.13.0)
 
 
-- [META-INF/androidx/compose/runtime/runtime/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/compose/runtime/runtime/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
-- [lint.jar!/META-INF/androidx/compose/runtime/runtime-lint/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [lint.jar!/META-INF/androidx/compose/runtime/runtime-lint/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.compose.runtime:runtime-annotation-android 1.13.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/compose-runtime#1.13.0)
 
 
-- [META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/compose/runtime/runtime-annotation/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.compose.runtime:runtime-retain-android 1.13.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/compose-runtime#1.13.0)
 
 
-- [META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/compose/runtime/runtime-retain/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
-- [lint.jar!/META-INF/androidx/compose/runtime/runtime-retain-lint/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [lint.jar!/META-INF/androidx/compose/runtime/runtime-retain-lint/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.compose.runtime:runtime-saveable-android 1.13.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/compose-runtime#1.13.0)
 
 
-- [META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/compose/runtime/runtime-saveable/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
-- [lint.jar!/META-INF/androidx/compose/runtime/runtime-saveable-lint/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [lint.jar!/META-INF/androidx/compose/runtime/runtime-saveable-lint/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.compose.ui:ui-android 1.13.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/compose-ui#1.13.0)
 
 
-- [META-INF/androidx/compose/ui/ui/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/compose/ui/ui/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
-- [lint.jar!/META-INF/androidx/compose/ui/ui-lint/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [lint.jar!/META-INF/androidx/compose/ui/ui-lint/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.compose.ui:ui-geometry-android 1.13.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/compose-ui#1.13.0)
 
 
-- [META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/compose/ui/ui-geometry/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.compose.ui:ui-graphics-android 1.13.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/compose-ui#1.13.0)
 
 
-- [META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/compose/ui/ui-graphics/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
-- [lint.jar!/META-INF/androidx/compose/ui/ui-graphics-lint/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [lint.jar!/META-INF/androidx/compose/ui/ui-graphics-lint/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.compose.ui:ui-text-android 1.13.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/compose-ui#1.13.0)
 
 
-- [META-INF/androidx/compose/ui/ui-text/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/compose/ui/ui-text/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
-- [lint.jar!/META-INF/androidx/compose/ui/ui-text-lint/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [lint.jar!/META-INF/androidx/compose/ui/ui-text-lint/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.compose.ui:ui-tooling-preview-android 1.13.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/compose-ui#1.13.0)
 
 
-- [META-INF/androidx/compose/ui/ui-tooling-preview/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/compose/ui/ui-tooling-preview/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.compose.ui:ui-unit-android 1.13.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/compose-ui#1.13.0)
 
 
-- [META-INF/androidx/compose/ui/ui-unit/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/compose/ui/ui-unit/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.compose.ui:ui-util-android 1.13.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/compose-ui#1.13.0)
 
 
-- [META-INF/androidx/compose/ui/ui-util/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/compose/ui/ui-util/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.concurrent:concurrent-futures 1.1.0
 
@@ -1648,28 +1648,28 @@ maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/core#1.19.0)
 
 
-- [META-INF/androidx/core/core/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/core/core/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.core:core 1.19.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/core#1.19.0)
 
 
-- [META-INF/androidx/core/core/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/core/core/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.core:core-ktx 1.19.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/core#1.19.0)
 
 
-- [META-INF/androidx/core/core-ktx/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/core/core-ktx/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.core:core-viewtree 1.0.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/core#1.0.0)
 
 
-- [META-INF/androidx/core/core-viewtree/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/core/core-viewtree/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.customview:customview-poolingcontainer 1.0.0
 
@@ -1681,35 +1681,35 @@ maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/datastore#1.3.0)
 
 
-- [META-INF/androidx/datastore/datastore/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/datastore/datastore/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.datastore:datastore-core-android 1.3.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/datastore#1.3.0)
 
 
-- [META-INF/androidx/datastore/datastore-core/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/datastore/datastore-core/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.datastore:datastore-core-okio-jvm 1.3.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/datastore#1.3.0)
 
 
-- [META-INF/androidx/datastore/datastore-core-okio/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/datastore/datastore-core-okio/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.datastore:datastore-preferences-android 1.3.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/datastore#1.3.0)
 
 
-- [META-INF/androidx/datastore/datastore-preferences/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/datastore/datastore-preferences/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.datastore:datastore-preferences-core-android 1.3.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/datastore#1.3.0)
 
 
-- [META-INF/androidx/datastore/datastore-preferences-core/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/datastore/datastore-preferences-core/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.datastore:datastore-preferences-external-protobuf 1.3.0
 
@@ -1718,35 +1718,35 @@ maven · [BSD-3-Clause](android/doona-android/app/src/main/assets/licenses/notic
 
 Copyright 2008 Google Inc. All rights reserved.
 
-- [META-INF/androidx/datastore/datastore-preferences-external-protobuf/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L36664) Upstream wording does not match a complete declared SPDX body.
+- [META-INF/androidx/datastore/datastore-preferences-external-protobuf/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L36937) Upstream wording does not match a complete declared SPDX body.
 
 ### androidx.datastore:datastore-preferences-proto 1.3.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/datastore#1.3.0)
 
 
-- [META-INF/androidx/datastore/datastore-preferences-proto/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/datastore/datastore-preferences-proto/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.emoji2:emoji2 1.7.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/emoji2#1.7.0)
 
 
-- [META-INF/androidx/emoji2/emoji2/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/emoji2/emoji2/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.graphics:graphics-path 1.1.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/graphics#1.1.0)
 
 
-- [META-INF/androidx/graphics/graphics-path/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/graphics/graphics-path/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.graphics:graphics-shapes-android 1.0.1
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/graphics#1.0.1)
 
 
-- [META-INF/androidx/graphics/graphics-shapes/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/graphics/graphics-shapes/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.interpolator:interpolator 1.0.0
 
@@ -1758,189 +1758,189 @@ maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1)
 
 
-- [META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/lifecycle/lifecycle-common-java8/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.lifecycle:lifecycle-common-jvm 2.11.1
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1)
 
 
-- [META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/lifecycle/lifecycle-common/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.lifecycle:lifecycle-livedata 2.11.1
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1)
 
 
-- [META-INF/androidx/lifecycle/lifecycle-livedata/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/lifecycle/lifecycle-livedata/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.lifecycle:lifecycle-livedata-core 2.11.1
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1)
 
 
-- [META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/lifecycle/lifecycle-livedata-core/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.lifecycle:lifecycle-livedata-core-ktx 2.11.1
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1)
 
 
-- [META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/lifecycle/lifecycle-livedata-core-ktx/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.lifecycle:lifecycle-process 2.11.1
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1)
 
 
-- [META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/lifecycle/lifecycle-process/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.lifecycle:lifecycle-runtime-android 2.11.1
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1)
 
 
-- [META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/lifecycle/lifecycle-runtime/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.lifecycle:lifecycle-runtime-compose-android 2.11.1
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1)
 
 
-- [META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/lifecycle/lifecycle-runtime-compose/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.lifecycle:lifecycle-runtime-ktx-android 2.11.1
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1)
 
 
-- [META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/lifecycle/lifecycle-runtime-ktx/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.lifecycle:lifecycle-service 2.11.1
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1)
 
 
-- [META-INF/androidx/lifecycle/lifecycle-service/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/lifecycle/lifecycle-service/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.lifecycle:lifecycle-viewmodel-android 2.11.1
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1)
 
 
-- [META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/lifecycle/lifecycle-viewmodel/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.lifecycle:lifecycle-viewmodel-compose-android 2.11.1
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1)
 
 
-- [META-INF/androidx/lifecycle/lifecycle-viewmodel-compose/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/lifecycle/lifecycle-viewmodel-compose/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.lifecycle:lifecycle-viewmodel-ktx 2.11.1
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1)
 
 
-- [META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/lifecycle/lifecycle-viewmodel-ktx/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.lifecycle:lifecycle-viewmodel-navigation3-android 2.11.1
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1)
 
 
-- [META-INF/androidx/lifecycle/lifecycle-viewmodel-navigation3/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/lifecycle/lifecycle-viewmodel-navigation3/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.lifecycle:lifecycle-viewmodel-savedstate-android 2.11.1
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/lifecycle#2.11.1)
 
 
-- [META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/lifecycle/lifecycle-viewmodel-savedstate/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.navigation3:navigation3-runtime-android 1.2.2
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/navigation3#1.2.2)
 
 
-- [META-INF/androidx/navigation3/navigation3-runtime/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/navigation3/navigation3-runtime/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.navigation3:navigation3-ui-android 1.2.2
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/navigation3#1.2.2)
 
 
-- [META-INF/androidx/navigation3/navigation3-ui/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/navigation3/navigation3-ui/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.navigationevent:navigationevent-android 1.1.1
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/navigationevent#1.1.1)
 
 
-- [META-INF/androidx/navigationevent/navigationevent/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/navigationevent/navigationevent/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.navigationevent:navigationevent-compose-android 1.1.1
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/navigationevent#1.1.1)
 
 
-- [META-INF/androidx/navigationevent/navigationevent-compose/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/navigationevent/navigationevent-compose/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.profileinstaller:profileinstaller 1.4.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/profileinstaller#1.4.0)
 
 
-- [META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.room:room-common-jvm 2.7.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/room#2.7.0)
 
 
-- [META-INF/androidx/room/room-common/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/room/room-common/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.room:room-runtime-android 2.7.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/room#2.7.0)
 
 
-- [META-INF/androidx/room/room-runtime/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/room/room-runtime/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.savedstate:savedstate-android 1.5.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/savedstate#1.5.0)
 
 
-- [META-INF/androidx/savedstate/savedstate/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/savedstate/savedstate/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.savedstate:savedstate-compose-android 1.5.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/savedstate#1.5.0)
 
 
-- [META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/savedstate/savedstate-compose/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.savedstate:savedstate-ktx 1.5.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/savedstate#1.5.0)
 
 
-- [META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/savedstate/savedstate-ktx/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.sqlite:sqlite-android 2.5.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/sqlite#2.5.0)
 
 
-- [META-INF/androidx/sqlite/sqlite/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/sqlite/sqlite/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.sqlite:sqlite-framework-android 2.5.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/sqlite#2.5.0)
 
 
-- [META-INF/androidx/sqlite/sqlite-framework/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/sqlite/sqlite-framework/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.startup:startup-runtime 1.1.1
 
@@ -1952,14 +1952,14 @@ maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/tracing#2.0.1)
 
 
-- [META-INF/androidx/tracing/tracing/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/tracing/tracing/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.tracing:tracing-ktx 2.0.1
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/tracing#2.0.1)
 
 
-- [META-INF/androidx/tracing/tracing-ktx/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/tracing/tracing-ktx/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.versionedparcelable:versionedparcelable 1.1.1
 
@@ -1971,21 +1971,21 @@ maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/window#1.5.0)
 
 
-- [META-INF/androidx/window/window/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/window/window/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.window:window-core-android 1.5.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/window#1.5.0)
 
 
-- [META-INF/androidx/window/window-core/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/window/window-core/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### androidx.work:work-runtime 2.12.0
 
 maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/work#2.12.0)
 
 
-- [META-INF/androidx/work/work-runtime/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1700) Upstream omits the end of the SPDX Apache-2.0 text.
+- [META-INF/androidx/work/work-runtime/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
 ### com.google.guava:listenablefuture 1.0
 
@@ -2006,7 +2006,7 @@ maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices
 
 Copyright 2010-2024 JetBrains s.r.o. and Kotlin Programming Language contributors. Collections: GWT, copyright 2007-08 Google Inc. UnsignedLongs: copyright 2011 The Guava Authors. Time: copyright 2007-present Stephen Colebourne and Michael Nascimento Santos. Special math functions: copyright Eric Ford and Hubert Holin 2001.
 
-- [kotlin-time.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L36631) Upstream wording does not match a complete declared SPDX body.
+- [kotlin-time.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L36904) Upstream wording does not match a complete declared SPDX body.
 
 ### org.jetbrains.kotlinx:atomicfu-jvm 0.28.0
 
@@ -2049,7 +2049,7 @@ native · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notice
 
     Copyright (c) 2009 The Go Authors. All rights reserved.
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L34048) Upstream includes additional text after the Apache-2.0 body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L34321) Upstream includes additional text after the Apache-2.0 body.
 
 ### LLVM libc++ and libc++abi 30.0.16248370
 
@@ -2061,9 +2061,9 @@ native · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notice
 
 See the NDK notices for legacy licence options.
 
-- [NOTICE.toolchain](android/doona-android/app/src/main/assets/licenses/notices.txt#L33732) Upstream NOTICE; retain with this component.
+- [NOTICE.toolchain](android/doona-android/app/src/main/assets/licenses/notices.txt#L34005) Upstream NOTICE; retain with this component.
 
-- [NOTICE.toolchain](android/doona-android/app/src/main/assets/licenses/notices.txt#L33416) Upstream NOTICE; retain with this component.
+- [NOTICE.toolchain](android/doona-android/app/src/main/assets/licenses/notices.txt#L33689) Upstream NOTICE; retain with this component.
 
 ### LibYAML (Rust translation) 2c891fc7a770e8ba2fec34fc6b545c672beb37e6
 
@@ -2072,12 +2072,13 @@ native · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L
     Copyright (c) 2017-2020 Ingy döt Net
     Copyright (c) 2006-2016 Kirill Simonov
 
-### Rust standard library 1.99.1
+### Rust standard library 1.100.0
 
-native · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1264) OR [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://github.com/rust-lang/rust/tree/1.99.1/library)
+native · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1264) OR [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://github.com/rust-lang/rust/tree/1.100.0/library)
 
         Copyright: The Rust Project Developers (see https://thanks.rust-lang.org)
         Copyright: 1991-2024 Unicode, Inc
+        Copyright: 2003-2019 University of Illinois at Urbana-Champaign
         Copyright: 2014 Alex Crichton
         Copyright: 2019 The Crossbeam Project Developers
         Copyright: 2016 The Fuchsia Authors
@@ -2085,10 +2086,10 @@ native · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L
     Copyright (c) Individual contributors
     Copyright (c) 2018 Josh Stone
     Copyright (c) 2014 The Rust Project Developers
+    Copyright (c) 2018-2019 Andrew Gallant
     Copyright (c) 2014 Alex Crichton
     Copyright (c) 2019 The Crossbeam Project Developers
     Copyright (c) 2017 Ted Driggs
-    Copyright (c) 2015 Utkarsh Kukreti
     Copyright (c) 2015
     Copyright (c) 2016--2023
     Copyright (c) 2014 Chris Wong
@@ -2119,7 +2120,6 @@ native · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L
     Copyright (c) 2018-2026 The Rand Project Developers
     Copyright (c) 2010 The Rust Project Developers
     Copyright (c) 2017 Andrew Gallant
-    Copyright (c) 2017 Ingvar Stepanyan
     Copyright 2015 Nicholas Allegra (comex).
     Copyright (c) 2015 Nicholas Allegra (comex).
     Copyright (c) 2015 Danny Guo
@@ -2134,7 +2134,6 @@ native · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L
     Copyright (c) 2016 Joe Wilm
        Copyright (c) Microsoft Corporation.
         Copyright (c) Microsoft Corporation.
-    Copyright (c) 2014 Vladimir Matveev
     Copyright (c) 2015 Chen Yuheng
        Copyright 2023 The Fuchsia Authors
     Copyright 2019 The Fuchsia Authors.
@@ -2151,4 +2150,4 @@ project · [AGPL-3.0-only](android/doona-android/app/src/main/assets/licenses/no
      Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
         Copyright (C) <year>  <name of author>
 
-- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L31471) Upstream wording does not match a complete declared SPDX body.
+- [LICENSE](android/doona-android/app/src/main/assets/licenses/notices.txt#L31744) Upstream wording does not match a complete declared SPDX body.
