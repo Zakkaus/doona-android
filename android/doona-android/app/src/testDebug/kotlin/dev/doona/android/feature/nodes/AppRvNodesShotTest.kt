@@ -10,6 +10,8 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.designsystem.rv.RvPullMotion
 import dev.doona.android.designsystem.rv.rememberRvPullState
 import dev.doona.android.engine.Engine
+import dev.doona.android.engine.fake.FakeRuleMode
+import dev.doona.android.engine.fake.RvSampleNodes
 import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
@@ -34,7 +36,7 @@ import org.robolectric.annotation.GraphicsMode
  * then the routes (goldens `app-rv-nodes-page-*`, `app-rv-node-detail-*`, `app-rv-node-picker-*`), each in zh light,
  * dark and fs200 and en light, to set beside `proto-rv-nodes-page-*`, `proto-rv-node-detail-*` and `proto-rv-node-picker-*`.
  * The page and the node's page are whole; the picker is its first screen, as its prototype golden. RvData's now is the
- * ViewModel's clock.
+ * ViewModel's clock. The `-nomain` goldens are a profile with no main group (no Proxy).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -81,6 +83,20 @@ class AppRvNodesShotTest {
     @Config(qualifiers = WHOLE_DETAIL_EN)
     fun detailEnLight() = shot("node-detail-en", dark = false, whole = true) { Detail(it) }
 
+    @Test
+    @Config(qualifiers = WHOLE_PAGE)
+    fun pageNoMainLight() = shot("nodes-page-nomain", dark = false, whole = true, engine = ::noMainEngine) { Page(it) }
+
+    @Test
+    @Config(qualifiers = WHOLE_PAGE)
+    fun pageNoMainDark() = shot("nodes-page-nomain", dark = true, whole = true, engine = ::noMainEngine) { Page(it) }
+
+    @Test
+    @Config(qualifiers = WHOLE_DETAIL)
+    fun detailNoMainLight() = shot("node-detail-nomain", dark = false, whole = true, engine = ::noMainEngine) { Detail(it) }
+
+    @Test fun pickerNoMainLight() = shot("node-picker-nomain", dark = false, engine = ::noMainEngine) { Picker(it) }
+
     @Test fun pickerLight() = shot("node-picker", dark = false) { Picker(it) }
 
     @Test fun pickerDark() = shot("node-picker", dark = true) { Picker(it) }
@@ -91,9 +107,9 @@ class AppRvNodesShotTest {
     @Config(qualifiers = "en-w412dp-h915dp-notnight-xhdpi")
     fun pickerEnLight() = shot("node-picker-en", dark = false) { Picker(it) }
 
-    private fun shot(screen: String, dark: Boolean = false, fontScale: Float = 1f, whole: Boolean = false, content: @Composable (NodesViewModel) -> Unit) {
+    private fun shot(screen: String, dark: Boolean = false, fontScale: Float = 1f, whole: Boolean = false, engine: () -> Engine = ::rvSampleEngine, content: @Composable (NodesViewModel) -> Unit) {
         rvAnimatorScale(0f)
-        val vm = NodesViewModel(rvSampleEngine(), Dispatchers.Unconfined, CoreNodePlaces, clock = { RvData.nowEpochMs })
+        val vm = NodesViewModel(engine(), Dispatchers.Unconfined, CoreNodePlaces, clock = { RvData.nowEpochMs })
         compose.rvContent(dark, fontScale) { content(vm) }
         if (whole) compose.assertWhole()
         compose.drawFully()
@@ -121,6 +137,9 @@ class AppRvNodesShotTest {
     @Composable
     private fun Picker(vm: NodesViewModel) =
         NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true), onDetail = {}) {}
+
+    /** A hand-edited profile without Proxy: the sample's other groups, so the catalog's main group is missing. */
+    private fun noMainEngine(): Engine = rvSampleEngine(RvSampleNodes.groups.filterNot { it.id == FakeRuleMode.MAIN_GROUP_ID })
 
     private fun detailId(engine: Engine): String {
         val name = RvData.nodes.first { it.id == RV_NODES_DETAIL }.name
