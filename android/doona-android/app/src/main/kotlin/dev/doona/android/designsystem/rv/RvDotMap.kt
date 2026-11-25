@@ -14,6 +14,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.util.fastForEach
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlin.math.floor
 
 /** [RvLandMask] decoded once: true where a cell holds land, less every piece of land too small to read as one (N-09). */
@@ -55,6 +59,13 @@ private fun withoutSpecks(cells: List<BooleanArray>): List<BooleanArray> {
 
 /** One band of latitude on screen: its height and the dots on it. */
 internal class RvDotRow(val y: Float, val dots: List<Offset>)
+
+/**
+ * Decodes the land mask on a background thread, so that the first hero's first draw finds it done (or waits only for the
+ * rest of it) instead of decoding it on the main thread. A host calls it before its first frame; calling it again, or
+ * after a draw has decoded the mask, costs nothing.
+ */
+internal fun rvWarmDotMap(): Job = CoroutineScope(Dispatchers.Default).launch { land.size }
 
 /**
  * Revolut's dot texture (#07, #08) drawn as a world map behind the content: a dot on every land cell, in [color],

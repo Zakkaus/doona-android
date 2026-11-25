@@ -16,6 +16,7 @@ import dev.doona.android.designsystem.rv.RvInter
 import dev.doona.android.designsystem.rv.RvInterDisplay
 import dev.doona.android.designsystem.rv.RvNoto
 import dev.doona.android.designsystem.rv.RvPullMotion
+import dev.doona.android.designsystem.rv.rvWarmDotMap
 import kotlinx.coroutines.runBlocking
 import kotlin.concurrent.thread
 
@@ -67,6 +68,7 @@ class RvPreviewActivity : ComponentActivity() {
             firstRun = intent.getBooleanExtra(EXTRA_FIRST, false),
         )
         preloadFonts(applicationContext)
+        rvWarmDotMap()
         // Each gesture's frame times go to logcat (`adb logcat -s RvFrames`).
         RvFrames.attach(window)
         setContent { RvPreviewApp(options, start) }
