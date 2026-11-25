@@ -17,22 +17,22 @@ import kotlinx.coroutines.launch
 
 /**
  * A subscription's page as it is drawn: the subscription (null once it is gone, removed here or elsewhere, and the page
- * leaves), the sheet open on it, and the auto-update interval in hours.
+ * leaves), the sheet open on it, and the auto-update interval in hours, null while auto-update is off.
  */
 @Immutable
-internal data class SubDetailUiState(val sub: RvSubscription?, val sheet: RvSubDetailState = RvSubDetailState(), val updateHours: Int)
+internal data class SubDetailUiState(val sub: RvSubscription?, val sheet: RvSubDetailState = RvSubDetailState(), val updateHours: Int?)
 
-internal fun subDetailUiState(id: String, subscriptions: List<Subscription>, sheet: RvSubDetailState, updateHours: Int) =
+internal fun subDetailUiState(id: String, subscriptions: List<Subscription>, sheet: RvSubDetailState, updateHours: Int?) =
     SubDetailUiState(subscriptions.firstOrNull { it.id == id }?.let(::rvSubscription), sheet, updateHours)
 
 /**
  * Subscription [id]'s page state holder (plan §2.2): the subscription as the engine has it, the auto-update interval
- * in hours as the app's settings give it ([updateHours]), and the calls behind 立即更新, 重新命名, the User-Agent sheet and 刪除訂閱. A call that fails leaves the
+ * in hours as the app's settings give it ([updateHours], null while auto-update is off), and the calls behind 立即更新, 重新命名, the User-Agent sheet and 刪除訂閱. A call that fails leaves the
  * subscription as the engine has it; an update's failure shows on 訂閱, from the core's report.
  */
 internal class SubDetailViewModel(
     private val engine: Engine,
-    updateHours: Flow<Int>,
+    updateHours: Flow<Int?>,
     private val id: String,
 ) : ViewModel() {
     private val sheet = MutableStateFlow(RvSubDetailState())

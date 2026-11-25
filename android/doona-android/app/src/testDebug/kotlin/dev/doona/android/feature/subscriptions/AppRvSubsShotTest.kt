@@ -31,6 +31,7 @@ import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.gallery.RV_SAMPLE_LINK
 import dev.doona.android.prototype.rv.rvShot
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Rule
 import org.junit.Test
@@ -93,6 +94,23 @@ class AppRvSubsShotTest {
     @Test
     @Config(qualifiers = RV_EN)
     fun detailEn() = shot("sub-detail", english = true, whole = false) { Detail() }
+
+    /** Auto-update off in the settings: the interval row reads 關閉 (orchestrator ruling 2026-11-26). */
+    @Test
+    @Config(qualifiers = WHOLE_DETAIL)
+    fun detailOffLight() = shot("sub-detail-off") { Detail(OFF) }
+
+    @Test
+    @Config(qualifiers = WHOLE_DETAIL)
+    fun detailOffDark() = shot("sub-detail-off", dark = true) { Detail(OFF) }
+
+    @Test
+    @Config(qualifiers = WHOLE_DETAIL)
+    fun detailOffFs200() = shot("sub-detail-off", fontScale = RV_FS200, whole = false) { Detail(OFF) }
+
+    @Test
+    @Config(qualifiers = RV_EN)
+    fun detailOffEn() = shot("sub-detail-off", english = true, whole = false) { Detail(OFF) }
 
     @Test fun addLight() = add("sub-add", Answer.None, typed = false)
 
@@ -218,9 +236,9 @@ class AppRvSubsShotTest {
     }
 
     @Composable
-    private fun Detail() {
+    private fun Detail(hours: Flow<Int?> = TWELVE_HOURS) {
         val (engine, id) = remember { harborEngine().let { it to it.subscriptions.value.first().id } }
-        SubDetailRoute(engine, TWELVE_HOURS, id, onBack = {})
+        SubDetailRoute(engine, hours, id, onBack = {})
     }
 
     @Composable
@@ -284,6 +302,9 @@ class AppRvSubsShotTest {
 
         /** The settings' default interval. */
         val TWELVE_HOURS = MutableStateFlow(12)
+
+        /** Auto-update off. */
+        val OFF = MutableStateFlow<Int?>(null)
 
         fun clipboard(): ClipboardManager = ApplicationProvider.getApplicationContext<android.content.Context>().getSystemService(ClipboardManager::class.java)
 

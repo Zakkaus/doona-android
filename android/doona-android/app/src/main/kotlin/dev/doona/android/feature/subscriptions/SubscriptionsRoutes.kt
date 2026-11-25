@@ -59,10 +59,11 @@ fun SubAddRoute(engine: Engine, imports: SubscriptionImports, onBack: () -> Unit
 
 /**
  * Subscription [id]'s page; it leaves ([onBack]) once the subscription is gone, deleted here or elsewhere. The
- * auto-update interval in hours comes from [updateHours] (the app's settings); its row runs [onAutoUpdate].
+ * auto-update interval in hours comes from [updateHours] (the app's settings; null while auto-update is off); its
+ * row runs [onAutoUpdate].
  */
 @Composable
-fun SubDetailRoute(engine: Engine, updateHours: Flow<Int>, id: String, onBack: () -> Unit, onAutoUpdate: () -> Unit = {}) {
+fun SubDetailRoute(engine: Engine, updateHours: Flow<Int?>, id: String, onBack: () -> Unit, onAutoUpdate: () -> Unit = {}) {
     val viewModel: SubDetailViewModel = viewModel(factory = viewModelFactory { initializer { SubDetailViewModel(engine, updateHours, id) } })
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // The last subscription seen stays drawn while the page leaves after a delete.

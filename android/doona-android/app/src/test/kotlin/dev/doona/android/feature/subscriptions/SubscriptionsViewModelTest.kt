@@ -9,6 +9,7 @@ import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.model.RvSubFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -46,7 +47,7 @@ class SubscriptionsViewModelTest {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
     }
 
-    private fun TestScope.detail(engine: Engine, id: String, hours: Int = 6) = SubDetailViewModel(engine, MutableStateFlow(hours), id).also { vm ->
+    private fun TestScope.detail(engine: Engine, id: String, hours: Flow<Int?> = MutableStateFlow(6)) = SubDetailViewModel(engine, hours, id).also { vm ->
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
     }
 
@@ -119,6 +120,18 @@ class SubscriptionsViewModelTest {
         assertNull(vm.uiState.value.sub?.userAgent)
         vm.delete()
         assertNull("the page leaves once its subscription is gone", vm.uiState.value.sub)
+    }
+
+    @Test
+    fun `a subscription's page follows the settings' interval, and has none while auto-update is off`() = runTest {
+        val engine = FakeEngine()
+        val hours = MutableStateFlow<Int?>(12)
+        val vm = detail(engine, engine.subscriptions.value.first().id, hours)
+        assertEquals(12, vm.uiState.value.updateHours)
+        hours.value = null
+        assertNull(vm.uiState.value.updateHours)
+        hours.value = 24
+        assertEquals(24, vm.uiState.value.updateHours)
     }
 
     @Test

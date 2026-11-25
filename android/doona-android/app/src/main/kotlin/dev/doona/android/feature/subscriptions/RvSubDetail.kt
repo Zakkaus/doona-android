@@ -42,8 +42,9 @@ internal enum class RvSubSheet { Rename, UserAgent, Delete }
  * has one; a sheet with a field, as 重新命名, opens on it and saves it to this subscription through [onUserAgent], and
  * an empty field goes back to the default, null); 訂閱 with the name
  * (重新命名 in a sheet with a field) and the link's host; then 刪除訂閱 alone in its card, its glyph in the error hue,
- * asking in the confirm sheet. 立即更新 floats at the bottom. The interval reads [updateHours], and its row runs
- * [onAutoUpdate]. A saved name goes to [onRename], a confirmed delete to [onDelete].
+ * asking in the confirm sheet. 立即更新 floats at the bottom. The interval reads [updateHours] (關閉, as 設定 says
+ * it, while null: auto-update is off), and its row runs [onAutoUpdate]. A saved name goes to [onRename], a confirmed
+ * delete to [onDelete].
  */
 @Composable
 internal fun RvSubDetail(
@@ -53,7 +54,7 @@ internal fun RvSubDetail(
     onBack: () -> Unit,
     onUpdate: () -> Unit,
     onUserAgent: (String?) -> Unit = {},
-    updateHours: Int,
+    updateHours: Int?,
     onAutoUpdate: () -> Unit,
     onRename: (String) -> Unit = {},
     onDelete: () -> Unit = {},
@@ -165,16 +166,16 @@ private fun KeyStats(sub: RvSubscription) {
 }
 
 /**
- * The auto-update interval ([updateHours]), whose row runs [onAutoUpdate], and the subscription's [userAgent] (預設 while
- * null), whose row opens its sheet ([onUserAgent]).
+ * The auto-update interval ([updateHours]; 關閉 while null), whose row runs [onAutoUpdate], and the subscription's
+ * [userAgent] (預設 while null), whose row opens its sheet ([onUserAgent]).
  */
 @Composable
-private fun UpdatesCard(userAgent: String?, updateHours: Int, onAutoUpdate: () -> Unit, onUserAgent: () -> Unit) {
+private fun UpdatesCard(userAgent: String?, updateHours: Int?, onAutoUpdate: () -> Unit, onUserAgent: () -> Unit) {
     RvCard {
         RvRow(
             { RvIconDisc(R.drawable.rv_sym_schedule) },
             stringResource(R.string.rv_sub_auto_update),
-            stringResource(R.string.rv_settings_update_interval_value, updateHours),
+            updateHours?.let { stringResource(R.string.rv_settings_update_interval_value, it) } ?: stringResource(R.string.ui_off),
             onClick = onAutoUpdate,
         ) { RvChevron() }
         RvRow(
