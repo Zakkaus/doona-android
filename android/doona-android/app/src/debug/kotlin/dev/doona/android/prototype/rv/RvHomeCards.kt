@@ -245,7 +245,7 @@ internal fun RvSubscriptionRow(sub: RvSubscription) {
     RvRow(
         { RvIconDisc(R.drawable.rv_sym_rss_feed) },
         sub.name,
-        stringResource(R.string.rv_subscription_usage, format.bytesIn(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, RvData.nowEpochMs) } ?: RV_NO_VALUE),
+        stringResource(R.string.rv_subscription_usage, format.usedOf(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, RvData.nowEpochMs) } ?: RV_NO_VALUE),
         titleKeepWords = false,
     ) { RvText(format.bytes(sub.leftBytes).toString(), Rv.type.rowValue, align = TextAlign.End) }
 }

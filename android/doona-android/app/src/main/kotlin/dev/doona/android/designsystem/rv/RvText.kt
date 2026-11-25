@@ -217,8 +217,8 @@ private const val ELLIPSIS = "\u2026"
 
 /**
  * How a wrapped text is laid out again so it reads well, one step a pass, each step taken once:
- * - [bound]: a meta line, parts joined by ` · `, breaks only after a separator and keeps each part whole (`61.7 / 200 GB ·`
- *   over `3/15 到期`, not `61.7 /` over `200 GB`), unless a part is longer than its line ([unbound]);
+ * - [bound]: a meta line, parts joined by ` · `, breaks only after a separator and keeps each part whole (`61.7/200 GB ·`
+ *   over `3/15 到期`, not `61.7/200` over `GB`), unless a part is longer than its line ([unbound]);
  * - [soft]: a value broken inside a word (a host:port, an app's package) may break after a dot between letters and before
  *   a port's colon instead (`gemini.google.com` over `:443`, not `…com:4` over `43`);
  * - [joined]: one letter alone on the last line is joined to the letter before (「當機」, not 「機」);

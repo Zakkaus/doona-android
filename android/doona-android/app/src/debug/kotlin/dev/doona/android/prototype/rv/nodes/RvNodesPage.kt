@@ -76,6 +76,7 @@ internal fun RvNodesPage(
     onOpen: (String) -> Unit,
     onAllNodes: () -> Unit,
     onAdd: () -> Unit = {},
+    score: RvScoreMarks? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     var steadiest by rememberSaveable { mutableStateOf(false) }
@@ -101,7 +102,7 @@ internal fun RvNodesPage(
             }
             RvSectionTitle(stringResource(R.string.rv_nodes_all), Modifier.padding(horizontal = RvSpace.gutter), onAllNodes)
             RvGutter {
-                for ((region, nodes) in state.byRegion()) RegionCard(region, nodes, state.currentId, onOpen)
+                for ((region, nodes) in state.byRegion()) RegionCard(region, nodes, state.currentId, onOpen, score)
             }
         }
     }
@@ -177,35 +178,45 @@ private fun MapCard(state: RvNodesPageState) {
  * Revolut's 56 dp 'See all' row (S7-12), which opens the rest in place.
  */
 @Composable
-private fun RegionCard(region: RvRegion, nodes: List<RvNode>, currentId: String, onOpen: (String) -> Unit) {
+private fun RegionCard(region: RvRegion, nodes: List<RvNode>, currentId: String, onOpen: (String) -> Unit, score: RvScoreMarks?) {
     var all by rememberSaveable(region) { mutableStateOf(false) }
-    val inUse = stringResource(R.string.rv_nodes_in_use)
     // 查看全部 opens the card in place, its height growing over the move's time; a new test re-sorts the rows, each
     // moving to its new place.
     RvCard(Modifier.animateContentSize(Rv.motion.tween(RvMotion.MOVE_MS))) {
         RvCardHeader(stringResource(region.label))
         (if (all) nodes else nodes.take(REGION_ROWS)).forEachIndexed { order, node ->
             key(node.id) {
-                val current = node.id == currentId
-                // A long press opens the row's menu; the box round the row moves when a test re-sorts the card.
-                RvMenuAnchor(rvNodeMenu(node, current, LocalRvRowActions.current.useNode, onOpen), Modifier.rvMoves()) { menu, actions ->
-                    RvRow(
-                        { RvFlag(node.place.flag, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
-                        node.name,
-                        node.protocol + SEPARATOR + stringResource(node.place.label),
-                        (if (current) Modifier.semantics { stateDescription = inUse } else Modifier).then(actions),
-                        onClick = { onOpen(node.id) },
-                        onLongClick = menu,
-                        titleKeepWords = false,
-                    ) { RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut, order, node.id) }
-                }
+                RegionRow(node, node.id == currentId, order, onOpen, score)
             }
         }
         if (!all && nodes.size > REGION_ROWS) RvSeeAll(pluralStringResource(R.plurals.rv_nodes_see_all, nodes.size, nodes.size)) { all = true }
     }
 }
 
+/**
+ * A node in its part of the world: the flag (badged in use), the name, `協定 · 地區`, and its latency over its change. With
+ * [score] the line begins with the node's Score mark where a Score group chose it.
+ */
+@Composable
+private fun RegionRow(node: RvNode, current: Boolean, order: Int, onOpen: (String) -> Unit, score: RvScoreMarks?) {
+    val inUse = stringResource(R.string.rv_nodes_in_use)
+    val mark = score?.mark(node.id)
+    // A long press opens the row's menu; the box round the row moves when a test re-sorts the card.
+    RvMenuAnchor(rvNodeMenu(node, current, LocalRvRowActions.current.useNode, onOpen), Modifier.rvMoves()) { menu, actions ->
+        RvRow(
+            { RvFlag(node.place.flag, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
+            node.name,
+            listOfNotNull(mark, node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR),
+            (if (current) Modifier.semantics { stateDescription = inUse } else Modifier).then(actions),
+            onClick = { onOpen(node.id) },
+            onLongClick = menu,
+            titleKeepWords = false,
+        ) { RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut, order, node.id) }
+    }
+}
+
 internal const val SEPARATOR = " · "
+
 private const val TOP_COLUMNS = 4
 private const val REGION_ROWS = 5
 

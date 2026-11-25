@@ -46,10 +46,11 @@ import java.text.NumberFormat
  * and range chips, then the cards: 已用流量 and the paged tiles (the app-side daily history), 訂閱流量 (the
  * subscriptions' quota), 節點分布 (node names and flags), 延遲分布 (latency results), 分流比例 and the tools. A card
  * whose data v0.1 lacks (連線次數, 分流比例) carries a `v0.2` tag. Where each figure comes from is noted on
- * [RvStatsState], not on the page (N-14). The chips and the tools are not wired in the sample.
+ * [RvStatsState], not on the page (N-14). The chips and the tools are not wired in the sample. With [score] (sample, for
+ * the owner), a 綜合評分 card follows 延遲分布.
  */
 @Composable
-internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit, empty: RvStatsEmptyLook = RvStatsEmptyLook.Grid) {
+internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit, empty: RvStatsEmptyLook = RvStatsEmptyLook.Grid, score: RvStatsScore? = null) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_stats_title)
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
@@ -68,6 +69,7 @@ internal fun RvStatsScreen(state: RvStatsState, onBack: () -> Unit, empty: RvSta
             RvQuotaCard(state.subscriptions, state.nowEpochMs)
             RvNodeMapCard(state)
             RvLatencyCard(state)
+            if (score != null) RvScoreStatsCard(score)
             RvSplitCard(state.split)
             RvToolsCard(tools(state), onTool = { NOT_WIRED() })
         }

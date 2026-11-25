@@ -291,12 +291,11 @@ class RvSkeletonBoundsTest {
         /**
          * The rows whose words are data the page has not yet, and wrap at a large font size, by page and font size; none
          * elsewhere. Where the page knows a row's words (a node's, a group's, a subscription's name), its skeleton takes
-         * their lines and none of these is theirs. At 1.15 and 2.0 全域's subscription over its quota, and at 2.0 two of
+         * their lines and none of these is theirs. At 2.0 全域's subscription over its quota and two of
          * its nodes, which their latency orders; at 2.0 訂閱's subscriptions over their nodes and last update, and 依 App's
          * apps over their packages, which the phone's list gives.
          */
         val WRAPS = mapOf(
-            (RvSkeletonPages.POLICY_GLOBAL to RV_FS115) to setOf(0),
             (RvSkeletonPages.POLICY_GLOBAL to RV_FS200) to setOf(0, 3, 4),
             (RvSkeletonPages.SUBS to RV_FS200) to setOf(0, 1),
             (RvSkeletonPages.PER_APP to RV_FS200) to setOf(3, 4, 5, 6),

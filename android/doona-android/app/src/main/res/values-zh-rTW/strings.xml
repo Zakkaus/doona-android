@@ -82,7 +82,6 @@
     <string name="sub_never_updated">尚未更新</string>
     <string name="sub_expires">%1$s 到期</string>
     <string name="sub_expired">已過期</string>
-    <string name="sub_traffic">已用 %1$s / 共 %2$s</string>
     <string name="sub_update">更新</string>
     <string name="sub_remove">移除</string>
     <string name="sub_remove_title">移除訂閱？</string>

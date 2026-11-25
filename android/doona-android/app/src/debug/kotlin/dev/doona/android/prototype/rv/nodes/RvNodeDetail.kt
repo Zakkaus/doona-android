@@ -4,7 +4,7 @@ import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -66,6 +66,7 @@ internal fun RvNodeDetail(
     onUse: () -> Unit,
     onTest: () -> Unit,
     banner: RvNotice? = null,
+    score: RvScoreMarks? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val format = rememberRvFormat()
@@ -81,7 +82,7 @@ internal fun RvNodeDetail(
         // The floating actions' room under the last card (S7-17, N05): the gap, the companion, and its 16 dp over the inset.
         end = RvPageEnd.Inset(RvSpace.gutter + RvNodesSize.ctaCompanion + RvSpace.gutter),
     ) { titleBlock ->
-        Header(node, current, titleBlock, insets)
+        Header(node, current, titleBlock, insets, score?.detailMark(node.id))
         RvGutter(banner = banner) {
             HistoryCard(node, times, picked) { choice = it }
         }
@@ -90,14 +91,19 @@ internal fun RvNodeDetail(
     }
 }
 
-/** The flag over the name, `協定 · 地區`, and the chips that apply: in use, and a latency over the good range. */
+/**
+ * The flag over the name, `協定 · 地區`, and the chips that apply: in use, a Score group's choice ([scoreMark], the same
+ * chip in the same green), and a latency over the good range.
+ */
 @Composable
-private fun Header(node: RvNode, current: Boolean, titleBlock: Modifier, insets: WindowInsets) {
+private fun Header(node: RvNode, current: Boolean, titleBlock: Modifier, insets: WindowInsets, scoreMark: String?) {
     val high = latencyTone(node.latencyMs).let { it == Tone.Warn || it == Tone.Err }
-    val chips: (@Composable () -> Unit)? = if (current || high) {
+    val chips: (@Composable () -> Unit)? = if (current || high || scoreMark != null) {
         {
-            Row(horizontalArrangement = Arrangement.spacedBy(RvSpace.tight * 2)) {
+            // Chips that do not fit one line (two at fs200) wrap, the same gap between lines as between chips.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(RvSpace.tight * 2), verticalArrangement = Arrangement.spacedBy(RvSpace.tight * 2)) {
                 if (current) RvStatusChip(R.drawable.rv_nodes_ic_check_circle, stringResource(R.string.rv_nodes_in_use), Rv.colors.positive)
+                if (scoreMark != null) RvStatusChip(R.drawable.rv_nodes_ic_check_circle, scoreMark, Rv.colors.positive)
                 if (high) RvStatusChip(R.drawable.rv_nodes_ic_warning, stringResource(R.string.rv_nodes_latency_high), latencyColor(node.latencyMs))
             }
         }

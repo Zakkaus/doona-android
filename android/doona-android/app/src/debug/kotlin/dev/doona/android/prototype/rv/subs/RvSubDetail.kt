@@ -145,7 +145,7 @@ private fun KeyStats(sub: RvSubscription) {
     val format = rememberRvFormat()
     val total = format.bytes(sub.totalBytes)
     // A provider that sends no quota has no use to show against it.
-    val used = if (sub.hasQuota) stringResource(R.string.rv_subs_used, format.bytesIn(sub.usedBytes, total), total.toString()) else RV_NO_VALUE
+    val used = if (sub.hasQuota) stringResource(R.string.rv_subs_used, format.usedOf(sub.usedBytes, total), total.toString()) else RV_NO_VALUE
     RvCard {
         RvStatRow(stringResource(R.string.rv_sub_node_count), sub.nodes.toString())
         RvStatRow(stringResource(R.string.rv_sub_used), used)

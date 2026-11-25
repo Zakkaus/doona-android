@@ -124,7 +124,7 @@ internal const val RV_PICKER = "rv-picker"
  * the [searchPage] (brief rv-gestures G7) its field is the search pill's, and the keyboard comes up once the page has
  * arrived. The large title is [title], 節點 unless the caller opened the picker from a card that names it (規則's 主節點).
  * A [banner] (a failed action: a node switch) stands under the title and its caption, in [RvBannerSlot], and drops with
- * them.
+ * them. A group's picker passes its own [caption].
  */
 @Composable
 internal fun RvNodePicker(
@@ -139,6 +139,7 @@ internal fun RvNodePicker(
     searchPage: Boolean = false,
     title: String = stringResource(R.string.rv_nodes_title),
     banner: RvNotice? = null,
+    caption: String = stringResource(R.string.rv_main_node_hint),
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val focus = remember { FocusRequester() }
@@ -167,7 +168,7 @@ internal fun RvNodePicker(
             // A pull down at the top, which closes the picker, moves the list under the bar with the finger.
             Column(Modifier.fillMaxSize().rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll).graphicsLayer { translationY = stretch() }) {
                 Column(section(1)) {
-                    RvPageHeader(title, Modifier, insets, caption = { RvCaption(stringResource(R.string.rv_main_node_hint)) })
+                    RvPageHeader(title, Modifier, insets, caption = { RvCaption(caption) })
                     RvBannerSlot(banner)
                 }
                 var first = 0
@@ -268,7 +269,7 @@ private fun SubscriptionRow(sub: RvSubscription, open: Boolean, enabled: Boolean
         RvRow(
             { RvIconDisc(R.drawable.rv_sym_rss_feed) },
             sub.name,
-            stringResource(R.string.rv_subscription_usage, format.bytesIn(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, RvData.nowEpochMs) } ?: RV_NO_VALUE),
+            stringResource(R.string.rv_subscription_usage, format.usedOf(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, RvData.nowEpochMs) } ?: RV_NO_VALUE),
             toggle.then(actions),
             onClick = onToggle.takeIf { enabled },
             onLongClick = menu,

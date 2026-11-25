@@ -87,7 +87,8 @@
     <string name="sub_never_updated">Not updated yet</string>
     <string name="sub_expires">Expires %1$s</string>
     <string name="sub_expired">Expired</string>
-    <string name="sub_traffic">%1$s of %2$s used</string>
+    <!-- Used over total as doona web writes it: 70/268 MB, the unit once when both share it. -->
+    <string name="sub_traffic" translatable="false">%1$s/%2$s</string>
     <string name="sub_update">Update</string>
     <string name="sub_remove">Remove</string>
     <string name="sub_remove_title">Remove subscription?</string>

@@ -141,6 +141,11 @@
  },
  {
   "page": "統計",
+  "state": "綜合評分",
+  "screen": "stats-score"
+ },
+ {
+  "page": "統計",
   "state": "空",
   "screen": "stats-empty-a"
  },
@@ -175,6 +180,16 @@
   "screen": "nodes-page-empty"
  },
  {
+  "page": "節點",
+  "state": "Score 選用（a）",
+  "screen": "nodes-page-score-a"
+ },
+ {
+  "page": "節點",
+  "state": "Score（兩網同一節點）",
+  "screen": "nodes-page-score-both"
+ },
+ {
   "page": "節點詳情",
   "state": "正常",
   "screen": "node-detail"
@@ -188,6 +203,16 @@
   "page": "節點詳情",
   "state": "區網提示",
   "screen": "node-detail-local-network"
+ },
+ {
+  "page": "節點詳情",
+  "state": "Score 選用（a）",
+  "screen": "node-detail-score-a"
+ },
+ {
+  "page": "節點詳情",
+  "state": "Score（兩網同一節點）",
+  "screen": "node-detail-score-both"
  },
  {
   "page": "訂閱",
@@ -368,6 +393,66 @@
   "page": "策略組",
   "state": "測速中",
   "screen": "policy-group-testing"
+ },
+ {
+  "page": "策略組",
+  "state": "綜合評分",
+  "screen": "policy-group-score"
+ },
+ {
+  "page": "策略組",
+  "state": "綜合評分：評估中",
+  "screen": "policy-group-score-evaluating"
+ },
+ {
+  "page": "策略組",
+  "state": "綜合評分：沒有可用節點",
+  "screen": "policy-group-score-empty"
+ },
+ {
+  "page": "策略組",
+  "state": "分開選擇 TCP 與 UDP：關",
+  "screen": "netsel-group"
+ },
+ {
+  "page": "策略組",
+  "state": "分開選擇 TCP 與 UDP：開",
+  "screen": "netsel-group-apart"
+ },
+ {
+  "page": "策略組",
+  "state": "分開選擇：點節點時詢問網路",
+  "screen": "netsel-ask"
+ },
+ {
+  "page": "選擇節點",
+  "state": "分開選擇：從 UDP 列開啟",
+  "screen": "netsel-picker"
+ },
+ {
+  "page": "活動",
+  "state": "已連線（規則）：串流 TCP 與 UDP 不同節點",
+  "screen": "netsel-activity"
+ },
+ {
+  "page": "策略組",
+  "state": "Score 合併：同一節點",
+  "screen": "policy-group-score-joint"
+ },
+ {
+  "page": "策略組",
+  "state": "Score 合併：節點不支援 UDP",
+  "screen": "policy-group-score-joint-unsupported"
+ },
+ {
+  "page": "策略組",
+  "state": "Score 合併：UDP 測試未通過",
+  "screen": "policy-group-score-joint-failed"
+ },
+ {
+  "page": "策略組",
+  "state": "Score 分開",
+  "screen": "policy-group-score-separate"
  },
  {
   "page": "選擇節點",

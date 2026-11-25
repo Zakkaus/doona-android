@@ -50,11 +50,11 @@ internal class RvFormat(val locale: Locale) {
      */
     fun widestRates(): List<RvAmount> = UNITS.indices.map { unit -> rate(if (unit == 0) WIDEST_BYTES else WIDEST_SCALED * THOUSAND.toDouble().pow(unit)) }
 
-    /** [bytes] written in the unit [like] has, without the unit: the `61.7` of `61.7 / 200 GB`. */
-    fun bytesIn(bytes: Long, like: RvAmount): String {
-        val unit = UNITS.indexOf(like.unit.removeSuffix(PER_SECOND)).coerceAtLeast(0)
-        return digits(BigDecimal.valueOf(bytes).movePointLeft(STEP * unit), unit)
-    }
+    /**
+     * [used] as the used side of `used/total`, as doona web writes the pair: without its unit when [total] has the same
+     * one (the `61.7` of `61.7/200 GB`), with it when not (`461 GB/1.1 TB`).
+     */
+    fun usedOf(used: Long, total: RvAmount): String = bytes(used).let { if (it.unit == total.unit) it.number else it.toString() }
 
     fun duration(seconds: Long): RvDuration = RvDuration((seconds / SECONDS_PER_HOUR).toInt(), (seconds % SECONDS_PER_HOUR / SECONDS_PER_MINUTE).toInt())
 

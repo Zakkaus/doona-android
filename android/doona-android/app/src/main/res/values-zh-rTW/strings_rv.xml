@@ -32,7 +32,7 @@
     <string name="rv_less_than_yesterday">比昨天同時段少 %1$s</string>
     <string name="rv_more_than_yesterday">比昨天同時段多 %1$s</string>
     <string name="rv_remaining">剩餘</string>
-    <string name="rv_subscription_usage">%1$s / %2$s · %3$s 到期</string>
+    <string name="rv_subscription_usage">%1$s/%2$s · %3$s 到期</string>
     <string name="rv_fastest_nodes">最快節點</string>
     <string name="rv_mode_rule">規則</string>
     <string name="rv_main_node">主節點</string>

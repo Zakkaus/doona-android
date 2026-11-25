@@ -16,6 +16,9 @@ import dev.doona.android.prototype.rv.data.fastest
 internal enum class RvGroupKind(@StringRes val label: Int, @DrawableRes val glyph: Int) {
     Select(R.string.rv_policy_kind_select, R.drawable.rv_sym_touch_app),
     Auto(R.string.rv_policy_kind_auto, R.drawable.rv_sym_bolt),
+
+    /** honk's Score, doona's `policy: score`: named and drawn as the templates name and draw it. */
+    Score(R.string.policy_kind_score, R.drawable.rv_sym_bolt),
 }
 
 /** A policy group: its id, its name as the profile gives it, how it picks, its nodes and the one it uses now. */

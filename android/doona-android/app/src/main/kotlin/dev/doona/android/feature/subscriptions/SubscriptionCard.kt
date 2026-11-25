@@ -52,7 +52,7 @@ fun SubscriptionCard(item: SubscriptionItem, onUpdate: () -> Unit, onRemove: () 
             val total = Formatter.formatShortFileSize(context, sub.totalBytes ?: 0)
             // The used and total figures over the bar: one progress for a screen reader, the text read once with it.
             Column(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(DoonaTheme.spacing.tight)) {
-                DoonaText(stringResource(R.string.sub_traffic, used, total), style = DoonaTheme.type.bodyTabular)
+                DoonaText(stringResource(R.string.sub_traffic, usedPart(used, total), total), style = DoonaTheme.type.bodyTabular)
                 DoonaProgressBar(fraction)
             }
         }
@@ -63,6 +63,18 @@ fun SubscriptionCard(item: SubscriptionItem, onUpdate: () -> Unit, onRemove: () 
         }
     }
 }
+
+/**
+ * [used] as the used side of `used/total`, written as doona web writes the pair: without its unit when [total] has the
+ * same one (`70/268 MB`), with it when not (`461 GB/1.1 TB`).
+ */
+internal fun usedPart(used: String, total: String): String {
+    val unit = UNIT.find(used)?.value
+    return if (unit != null && unit == UNIT.find(total)?.value) used.removeSuffix(unit) else used
+}
+
+/** A formatted size's unit: what follows its last digit, with the space before it. */
+private val UNIT = Regex("""[^\d.,]+$""")
 
 /** Used over total, when the provider reported both and the total is more than nothing. */
 private fun Subscription.trafficFraction(): Float? {

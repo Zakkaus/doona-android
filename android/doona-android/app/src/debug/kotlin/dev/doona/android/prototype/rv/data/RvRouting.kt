@@ -10,6 +10,9 @@ import androidx.compose.runtime.Immutable
  */
 internal enum class RvRouteMode { Rule, Global, Direct }
 
-/** A rule group that sent traffic today: its name, the node it sent it to (null when it goes direct), and its bytes. */
+/**
+ * A rule group that sent traffic today: its name, the node it sent it to (null when it goes direct), and its bytes; a
+ * group that chooses per network (a sample) gives the node its UDP uses in [udpNodeId] when that is another node.
+ */
 @Immutable
-internal class RvRuleOutbound(@StringRes val group: Int, val nodeId: String?, val bytes: Long)
+internal class RvRuleOutbound(@StringRes val group: Int, val nodeId: String?, val bytes: Long, val udpNodeId: String? = null)
