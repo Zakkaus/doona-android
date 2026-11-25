@@ -30,7 +30,6 @@ import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvAmount
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvChartSize
-import dev.doona.android.designsystem.rv.RvChartTools
 import dev.doona.android.designsystem.rv.RvDetailChart
 import dev.doona.android.designsystem.rv.RvFigure
 import dev.doona.android.designsystem.rv.RvFigureText
@@ -48,7 +47,6 @@ import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvSystemScheme
-import dev.doona.android.designsystem.rv.rvToolOverhang
 import dev.doona.android.feature.activity.ActivityUiState
 import dev.doona.android.prototype.rv.data.RV_RANGE_POINTS
 import dev.doona.android.prototype.rv.data.RV_RANGE_SECONDS
@@ -118,16 +116,10 @@ private fun Hero(rate: RvAmount, at: String?) {
     RvText(at ?: stringResource(R.string.rv_now), Rv.type.sub, color = Rv.colors.textSecondary)
 }
 
-/**
- * The range chips, the [selected] one raised, with no track behind them, then Revolut's two round buttons ending on the
- * margin (measured §8).
- */
+/** The range chips, the [selected] one raised, with no track behind them, on the gutter. The chart's two tool discs are not drawn (the owner, 2026-11-23, L141). */
 @Composable
 private fun Ranges(selected: Int, onSelect: (Int) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(start = RvSpace.gutter, end = RvSpace.gutter - rvToolOverhang), verticalAlignment = Alignment.CenterVertically) {
-        RvRangeRow(RANGES.map { stringResource(it) }, selected, onSelect, Modifier.weight(1f))
-        RvChartTools(R.drawable.rv_sym_candlestick_chart to stringResource(R.string.rv_chart_type), R.drawable.rv_sym_open_in_full to stringResource(R.string.rv_full_screen))
-    }
+    RvRangeRow(RANGES.map { stringResource(it) }, selected, onSelect, Modifier.padding(horizontal = RvSpace.gutter))
 }
 
 /**
