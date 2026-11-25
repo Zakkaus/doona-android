@@ -21,7 +21,6 @@ import dev.doona.android.app.pop
 import dev.doona.android.app.selectTab
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.InstalledApps
-import dev.doona.android.feature.activity.ActivityRoute
 import dev.doona.android.feature.onboarding.FirstRunGate
 import dev.doona.android.feature.perapp.PerAppRoute
 import dev.doona.android.feature.policies.GroupRoute
@@ -47,7 +46,8 @@ internal fun OldShellApp(engine: Engine, installedApps: InstalledApps, start: Li
             entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
             entryProvider = entryProvider {
                 entry<ActivityKey> {
-                    FirstRunGate(engine, imports) { ActivityRoute(engine, onConnect = {}, onOpenGroup = { backStack.add(GroupKey(it)) }) }
+                    // 活動 is the RV page now, with goldens of its own: the old shell shows only its first-run gate.
+                    FirstRunGate(engine, imports, frame = { it() }) {}
                 }
                 entry<PoliciesKey> {
                     PoliciesRoute(engine, onOpenGroup = { backStack.add(GroupKey(it)) }, onOpenSubscriptions = { backStack.add(SubscriptionsKey) })

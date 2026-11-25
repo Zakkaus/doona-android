@@ -1,13 +1,13 @@
 package dev.doona.android.app
 
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
-import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasProgressBarRangeInfo
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isEnabled
-import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -39,6 +39,9 @@ class PolicyFlowsTest {
     val compose = createComposeRule()
 
     private val url = "https://example.invalid/x"
+
+    /** 活動's round connect or disconnect action, by its label. */
+    private fun roundAction(label: String) = compose.onNode(hasText(label) and hasClickAction())
 
     private fun show(engine: Engine, vararg start: NavKey) {
         compose.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}, start = start.toList().ifEmpty { listOf(ActivityKey) }) } }
@@ -114,18 +117,18 @@ class PolicyFlowsTest {
     }
 
     @Test
-    fun `first run offers no switch to start, and the first import hands over to the activity screen`() {
+    fun `first run offers no way to start, and the first import hands over to the activity screen`() {
         val engine = FakeEngine(subscriptions = emptyList())
         show(engine)
         compose.onNodeWithText("Add your first subscription").assertExists()
-        compose.onAllNodes(isToggleable()).assertCountEquals(0)
-        compose.onNodeWithText("Connected").assertDoesNotExist()
+        roundAction(CONNECT).assertDoesNotExist()
+        compose.onNodeWithText("Connected", substring = true).assertDoesNotExist()
 
         typeUrl()
         compose.onNodeWithText("Add").performScrollTo().performClick()
 
         compose.onNodeWithText("Add your first subscription").assertDoesNotExist()
-        assertTrue("the activity screen's switch", compose.onAllNodes(isToggleable()).fetchSemanticsNodes().isNotEmpty())
+        roundAction(CONNECT).assertExists()
     }
 
     @Test
@@ -144,18 +147,20 @@ class PolicyFlowsTest {
     }
 
     @Test
-    fun `removing the last subscription while a tunnel runs keeps its status and switch, and the page returns once it stops`() {
+    fun `removing the last subscription while a tunnel runs keeps its status and the action that stops it, and the first-run page returns once it stops`() {
         val engine = FakeEngine(status = Status.Running(sinceEpochMs = 0))
         show(engine)
         compose.runOnIdle { engine.subscriptions.value = emptyList() }
 
         compose.onNodeWithText("Add your first subscription").assertDoesNotExist()
-        compose.onNodeWithText("Connected").assertExists()
-        assertTrue("the switch that stops it", compose.onAllNodes(isToggleable()).fetchSemanticsNodes().isNotEmpty())
+        compose.onNodeWithText("No subscription yet").assertExists()
+        compose.onNodeWithText("Connected", substring = true).assertExists()
+        roundAction(DISCONNECT).assertIsEnabled()
 
         compose.runOnIdle { engine.disconnect() }
         compose.onNodeWithText("Add your first subscription").assertExists()
-        compose.onAllNodes(isToggleable()).assertCountEquals(0)
+        roundAction(CONNECT).assertDoesNotExist()
+        roundAction(DISCONNECT).assertDoesNotExist()
     }
 
     @Test
@@ -171,14 +176,17 @@ class PolicyFlowsTest {
         compose.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = { starts++ }) } }
         compose.runOnIdle { fake.subscriptions.value = emptyList() }
 
-        // The one switch is the one that stops the tunnel; a tap on it is the user's Stop.
-        compose.onAllNodes(isToggleable()).assertCountEquals(1)
-        compose.onAllNodes(isToggleable())[0].performClick()
+        // The round action stops the tunnel; a tap on it is the user's Stop.
+        roundAction(CONNECT).assertDoesNotExist()
+        roundAction(DISCONNECT).performClick()
         compose.runOnIdle { assertEquals(Status.Stopping, fake.status.value) }
 
+        // While it stops, the action stays, busy and disabled, and nothing offers to start.
         compose.onNodeWithText("Add your first subscription").assertDoesNotExist()
-        compose.onAllNodes(isToggleable()).assertCountEquals(0)
+        roundAction(CONNECT).assertDoesNotExist()
+        roundAction(DISCONNECT).assertIsNotEnabled().performClick()
         compose.runOnIdle { assertEquals("no start was requested", 0, starts) }
+        compose.runOnIdle { assertEquals(Status.Stopping, fake.status.value) }
 
         compose.runOnIdle { fake.status.value = Status.Stopped }
         compose.onNodeWithText("Add your first subscription").assertExists()
@@ -214,5 +222,10 @@ class PolicyFlowsTest {
             assertEquals("one fetch for the one import", 1, calls)
             assertEquals(1, fake.subscriptions.value.size)
         }
+    }
+
+    private companion object {
+        const val CONNECT = "Connect"
+        const val DISCONNECT = "Disconnect"
     }
 }

@@ -17,7 +17,6 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.activity.ActivityAction
-import dev.doona.android.feature.activity.ActivityUiState
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.rvUnknownPlaceNodes
 import dev.doona.android.testing.drawFully
@@ -125,7 +124,7 @@ class RvActivityPlaceFramesTest {
      * Presses the disc of [action] (連線 is also the nav's tab, which is selectable), holds it, lets go, and [STOP_AT] ms
      * later sets [ended], capturing a frame at each time.
      */
-    private fun run(kind: String, place: Place, dark: Boolean, action: SemanticsMatcher, stopped: String, end: String, ended: ActivityUiState) {
+    private fun run(kind: String, place: Place, dark: Boolean, action: SemanticsMatcher, stopped: String, end: String, ended: RvActivitySampleState) {
         compose.mainClock.autoAdvance = false
         val clock = compose.mainClock
         val disc = compose.onNode(action)
@@ -181,7 +180,7 @@ class RvActivityPlaceFramesTest {
         ;
 
         /** Connected on this node, as the sample is on Hong Kong 02. */
-        fun state(): ActivityUiState = if (this == OTHER) rvSampleActivity(nodeId, rvUnknownPlaceNodes()) else rvSampleActivity(nodeId, RvData.nodes + RvData.worldNodes)
+        fun state(): RvActivitySampleState = if (this == OTHER) rvSampleActivity(nodeId, rvUnknownPlaceNodes()) else rvSampleActivity(nodeId, RvData.nodes + RvData.worldNodes)
     }
 
     private companion object {

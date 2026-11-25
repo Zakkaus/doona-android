@@ -13,6 +13,7 @@ import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.InstalledApps
+import dev.doona.android.feature.activity.ConnectRefusals
 import dev.doona.android.feature.localnetwork.LocalNetworkAccess
 import dev.doona.android.feature.localnetwork.LocalNetworkEngine
 import dev.doona.android.feature.subscriptions.SubscriptionImports
@@ -67,6 +68,9 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
     private val uiScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) }
 
     val logLevels: LogLevelController by lazy { LogLevelController({ engine.setLogLevel(it) }, uiScope, SystemClock::elapsedRealtime) }
+
+    /** What the user refused on the way to connecting; [MainActivity] sets it, 活動 shows it. */
+    val connectRefusals = ConnectRefusals()
 
     internal val subscriptionRefresh by lazy { SubscriptionRefresh(AppSettings.get(application), { engine }) }
 

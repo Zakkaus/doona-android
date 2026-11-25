@@ -153,12 +153,12 @@ class RvMotionTest {
     }
 
     @Test
-    fun aFailedConnectSaysWhyWithoutATick() {
+    fun aFailedConnectSaysItFailedWithoutATick() {
         app(RvSampleStart(connected = false, fails = true))
         compose.mainClock.autoAdvance = false
         connectAction().performClick()
         compose.mainClock.advanceTimeBy(RV_CONNECT_MS + RvMotion.FADE_MS + FRAMES_MS)
-        compose.onNodeWithText(caption(R.string.status_failed_start)).assertExists()
+        compose.onNodeWithText(caption(R.string.vpn_status_failed)).assertExists()
         assertEquals(emptyList<HapticFeedbackType>(), taps.kinds)
     }
 

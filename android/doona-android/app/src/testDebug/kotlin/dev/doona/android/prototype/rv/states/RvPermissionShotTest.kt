@@ -11,7 +11,6 @@ import dev.doona.android.feature.permissions.text
 import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
-import dev.doona.android.prototype.rv.RvActivityScreen
 import dev.doona.android.prototype.rv.RvActivityScreenSample
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.rvIdleActivity

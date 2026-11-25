@@ -41,8 +41,11 @@ import dev.doona.android.designsystem.rv.rvEverySample
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
+import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.activity.ActivityAction
-import dev.doona.android.feature.activity.ActivityUiState
+import dev.doona.android.feature.activity.RvActivityNotice
+import dev.doona.android.feature.activity.RvActivityRoutes
+import dev.doona.android.feature.activity.rvActivityBanner
 import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSettingsState
@@ -87,11 +90,9 @@ import dev.doona.android.prototype.rv.settings.rvUpdateSample
 import dev.doona.android.prototype.rv.settings.scheme
 import dev.doona.android.prototype.rv.settings.withApp
 import dev.doona.android.prototype.rv.settings.withPolicy
-import dev.doona.android.prototype.rv.states.RvActivityNotice
 import dev.doona.android.prototype.rv.states.RvPermission
 import dev.doona.android.prototype.rv.states.RvPermissionAsks
 import dev.doona.android.prototype.rv.states.RvPermissionSheet
-import dev.doona.android.prototype.rv.states.rvActivityBanner
 import dev.doona.android.prototype.rv.states.rvNoticeActivity
 import dev.doona.android.prototype.rv.stats.RvStatsScreen
 import dev.doona.android.prototype.rv.stats.rvStatsSample
@@ -358,10 +359,11 @@ private fun ActivityPage(route: String, run: RvSampleRun, options: RvMotionOptio
         node = { pages.push("$NODE:${run.currentId}") },
         tab = pages.tab,
         mode = toPolicy,
-        rule = { name -> RvPolicyData.groups.firstOrNull { it.name == name }?.let { pages.push("${RvPolicyPreviewRoutes.GROUP}:${it.id}") } ?: toPolicy() },
+        rule = { id -> RvPolicyData.groups.firstOrNull { it.id == id }?.let { pages.push("${RvPolicyPreviewRoutes.GROUP}:${it.id}") } ?: toPolicy() },
         rules = toPolicy,
         test = run::test,
         subscriptions = { pages.push(RvSubsRoutes.LIST) },
+        more = NOT_WIRED,
     )
     val name = route.substringBefore(':')
     val notice = RvActivityNotice.entries.firstOrNull { name == STATE && it.route == route.substringAfter(':') }
@@ -533,7 +535,7 @@ internal class RvSampleRun(private val scope: CoroutineScope, connected: Boolean
     }
 
     /** 活動 as the run has it at [second]: live while connected; otherwise its state with no rates and no history. */
-    fun activity(second: Int = this.second): ActivityUiState {
+    fun activity(second: Int = this.second): RvActivitySampleState {
         val live = rvSampleActivity(currentId, nodes, second)
         return if (status is Status.Running) live else live.copy(status = status, downRate = 0, upRate = 0, downHistory = emptyList(), upHistory = emptyList())
     }

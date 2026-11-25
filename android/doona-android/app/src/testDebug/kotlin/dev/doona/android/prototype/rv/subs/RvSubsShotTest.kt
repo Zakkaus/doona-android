@@ -21,7 +21,6 @@ import dev.doona.android.designsystem.rv.RvConfirmContent
 import dev.doona.android.designsystem.rv.RvMenuPanel
 import dev.doona.android.designsystem.rv.RvSheetLayout
 import dev.doona.android.designsystem.rv.RvTheme
-import dev.doona.android.prototype.rv.RvActivityScreen
 import dev.doona.android.prototype.rv.RvActivityScreenSample
 import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.Utc

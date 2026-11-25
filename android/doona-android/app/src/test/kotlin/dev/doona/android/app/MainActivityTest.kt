@@ -2,6 +2,7 @@ package dev.doona.android.app
 
 import android.Manifest
 import android.app.Activity
+import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -39,6 +40,7 @@ import java.time.Duration
 class MainActivityTest {
     private val app = ApplicationProvider.getApplicationContext<DoonaApplication>()
     private val connect = MainActivity.connectIntent(app)
+    private val refusals get() = app.container.connectRefusals
 
     // The settings in memory: the activity reads and writes them on the main thread, so a looper idle settles each step.
     private val prefs = MemoryPreferences()
@@ -97,6 +99,7 @@ class MainActivityTest {
                 activity.asks().dismiss()
                 assertNull(shadowOf(activity).peekNextStartedActivityForResult())
                 assertEquals(Permission.Vpn, activity.asks().refused.value)
+                assertTrue("and on 活動", refusals.vpn.value)
             }
             assertEquals(Status.Stopped, app.container.engine.status.value)
         }
@@ -331,6 +334,82 @@ class MainActivityTest {
             assertTrue(runBlocking { settings.notifyAsked.first() })
         }
     }
+
+    @Test
+    fun `a refused VPN consent is recorded, and a later consent clears it`() {
+        ShadowVpnService.setPrepareResult(Intent("dev.doona.test.CONSENT"))
+        val controller = Robolectric.buildActivity(MainActivity::class.java, connect).setup()
+        val activity = controller.get()
+        val shadow = shadowOf(activity)
+        activity.onPermissionStep(activity.asks().confirm())
+        shadow.receiveResult(shadow.nextStartedActivityForResult.intent, Activity.RESULT_CANCELED, null)
+        assertTrue(refusals.vpn.value)
+
+        controller.newIntent(connect)
+        activity.onPermissionStep(activity.asks().confirm())
+        shadow.receiveResult(shadow.nextStartedActivityForResult.intent, Activity.RESULT_OK, null)
+        assertFalse(refusals.vpn.value)
+        controller.close()
+    }
+
+    @Test
+    fun `a notification refused after the connection dropped is recorded at once`() {
+        shadowOf(app).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        notificationsEnabled(false)
+        ShadowVpnService.setPrepareResult(null)
+        val controller = Robolectric.buildActivity(MainActivity::class.java, connect).setup()
+        val activity = controller.get()
+        shadowOf(Looper.getMainLooper()).idle()
+        activity.onPermissionStep(activity.asks().confirm())
+        val request = shadowOf(activity).lastRequestedPermission
+        app.container.engine.disconnect()
+        shadowOf(Looper.getMainLooper()).idle()
+
+        activity.activityResultRegistry.dispatchResult(request.requestCode, false)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertTrue(refusals.notifications.value)
+        controller.close()
+    }
+
+    @Test
+    fun `a notification asked before is recorded without asking again`() {
+        shadowOf(app).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        notificationsEnabled(false)
+        runBlocking { settings.recordNotifyAsked() }
+        ShadowVpnService.setPrepareResult(null)
+        val controller = Robolectric.buildActivity(MainActivity::class.java, connect).setup()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(Status.Running(sinceEpochMs = 0), app.container.engine.status.value)
+        assertNull(controller.get().asks().showing.value)
+        assertNull(shadowOf(controller.get()).lastRequestedPermission)
+        assertTrue(refusals.notifications.value)
+        controller.close()
+    }
+
+    @Test
+    fun `resuming clears each refusal only once the system allows it`() {
+        ShadowVpnService.setPrepareResult(Intent("dev.doona.test.CONSENT"))
+        notificationsEnabled(false)
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        refusals.vpn.value = true
+        refusals.notifications.value = true
+        controller.pause().resume()
+        assertTrue(refusals.vpn.value)
+        assertTrue(refusals.notifications.value)
+
+        notificationsEnabled(true)
+        controller.pause().resume()
+        assertTrue(refusals.vpn.value)
+        assertFalse(refusals.notifications.value)
+
+        ShadowVpnService.setPrepareResult(null)
+        controller.pause().resume()
+        assertFalse(refusals.vpn.value)
+        controller.close()
+    }
+
+    private fun notificationsEnabled(enabled: Boolean) =
+        shadowOf(app.getSystemService(NotificationManager::class.java)).setNotificationsEnabled(enabled)
 
     /** The explanation on screen once the main looper has run what the last step posted. */
     private fun ActivityScenario<MainActivity>.showing(): Permission? {

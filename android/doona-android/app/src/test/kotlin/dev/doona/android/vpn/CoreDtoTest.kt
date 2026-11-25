@@ -164,6 +164,14 @@ class CoreDtoTest {
     }
 
     @Test
+    fun aMemberCarriesTheRegionTheCoreReadsFromItsName() {
+        val placed = """{"id":"n-jp","name":"JP-NRT","failed":false,"isGroup":false,"region":"JP"}"""
+        assertEquals("JP", Json.decodeFromString(MemberDto.serializer(), placed).toMember().region)
+        val unplaced = """{"id":"n-any","name":"anonymous","failed":false,"isGroup":false,"region":null}"""
+        assertNull(Json.decodeFromString(MemberDto.serializer(), unplaced).toMember().region)
+    }
+
+    @Test
     fun dnsFailureIsAProbeErrorOnTheNode() {
         val payload = """{"id":"n-dns","name":"DNS","failed":true,"error":"dns_failed","isGroup":false}"""
         val member = Json.decodeFromString(MemberDto.serializer(), payload).toMember()

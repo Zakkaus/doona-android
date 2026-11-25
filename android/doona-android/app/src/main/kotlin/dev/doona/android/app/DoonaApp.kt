@@ -27,7 +27,11 @@ import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.InstalledApps
+import dev.doona.android.engine.NetworkState
+import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.activity.ActivityRoute
+import dev.doona.android.feature.activity.ActivityRoutes
+import dev.doona.android.feature.activity.ConnectRefusals
 import dev.doona.android.feature.onboarding.FirstRunGate
 import dev.doona.android.feature.perapp.PerAppRoute
 import dev.doona.android.feature.policies.GroupRoute
@@ -36,6 +40,8 @@ import dev.doona.android.feature.settings.SettingsRoute
 import dev.doona.android.feature.subscriptions.SubscriptionImports
 import dev.doona.android.feature.subscriptions.SubscriptionsRoute
 import dev.doona.android.feature.subscriptions.rememberSubscriptionImports
+import dev.doona.android.report.CrashOffer
+import kotlinx.coroutines.flow.Flow
 
 /**
  * The old hub bar's frame (see [DoonaHubShell]), which the old pages' screenshot cases still draw them in until the page
@@ -56,7 +62,10 @@ fun DoonaAppShell(current: Tab, onSelect: (Tab) -> Unit, content: @Composable ()
  * so it survives configuration changes and process death; each entry gets its own ViewModels and saved state.
  * [start] must begin with [ActivityKey]. [imports] is the app-wide subscription import in flight; the default lives
  * as long as the composition. [version] is the app's version name for the settings, read by the activity. The sheets
- * over every page are the activity's ([AppSheets]).
+ * over every page are the activity's ([AppSheets]). [crashOffer] puts the crash notice on 活動; [network] (the
+ * engine's by default) and [refusals] (`AppContainer.connectRefusals`) put its offline and refusal notices there;
+ * [onSystemSettings] opens one of the system's settings pages, which the activity starts. A host without them
+ * refuses nothing and opens no settings.
  */
 @Composable
 fun DoonaApp(
@@ -66,6 +75,10 @@ fun DoonaApp(
     start: List<NavKey> = listOf(ActivityKey),
     imports: SubscriptionImports = rememberSubscriptionImports(engine),
     version: String = "",
+    crashOffer: CrashOffer? = null,
+    network: Flow<NetworkState> = engine.network,
+    refusals: ConnectRefusals = remember { ConnectRefusals() },
+    onSystemSettings: (SystemSettings) -> Unit = {},
 ) {
     val backStack = rememberNavBackStack(*start.toTypedArray())
     val onTab: (Int) -> Unit = { backStack.selectTab(it) }
@@ -73,8 +86,10 @@ fun DoonaApp(
     RvOverDoona {
         RvNavHost(backStack, Modifier.fillMaxSize()) {
             entry<ActivityKey> {
-                OldTabFrame(Tab.Activity, onTab, onReselect) {
-                    FirstRunGate(engine, imports) { ActivityRoute(engine, onConnect, onOpenGroup = { backStack.push(GroupKey(it)) }) }
+                // The RV page draws its own floating nav; the gate's loading and first-run pages take the old tab frame.
+                val routes = remember(backStack, onSystemSettings) { activityRoutes(backStack, onSystemSettings) }
+                FirstRunGate(engine, imports, frame = { OldTabFrame(Tab.Activity, onTab, onReselect, it) }) {
+                    ActivityRoute(engine, crashOffer, network, refusals, onConnect, routes)
                 }
             }
             entry<PoliciesKey> {
@@ -104,6 +119,35 @@ fun DoonaApp(
         }
     }
 }
+
+/** The system settings pages the app opens; the activity starts each by its intent. */
+enum class SystemSettings { Vpn, Network, Notifications }
+
+/**
+ * Where 活動 leads: the pages with an entry here, the 策略 tab for the mode, 設定 for 更多 and 檢查更新 (q-actmore), the
+ * subscriptions page for 新增訂閱, and the system's settings for the notices that need them. The pages without an
+ * entry yet (流量, 統計, the node search and list, the main node choice, the rules and the report) are not wired.
+ */
+private fun activityRoutes(backStack: MutableList<NavKey>, onSystemSettings: (SystemSettings) -> Unit) = ActivityRoutes(
+    traffic = NOT_WIRED,
+    stats = NOT_WIRED,
+    search = NOT_WIRED,
+    nodes = NOT_WIRED,
+    node = NOT_WIRED,
+    tab = { backStack.selectTab(it) },
+    mode = { backStack.selectTab(Tab.Policies) },
+    rule = { backStack.push(GroupKey(it)) },
+    rules = NOT_WIRED,
+    subscriptions = { backStack.push(SubscriptionsKey) },
+    more = { backStack.selectTab(Tab.Settings) },
+    addSubscription = { backStack.push(SubscriptionsKey) },
+    perApp = { backStack.push(PerAppKey) },
+    checkUpdate = { backStack.selectTab(Tab.Settings) },
+    exportReport = NOT_WIRED,
+    networkSettings = { onSystemSettings(SystemSettings.Network) },
+    notifySettings = { onSystemSettings(SystemSettings.Notifications) },
+    vpnSettings = { onSystemSettings(SystemSettings.Vpn) },
+)
 
 /**
  * RV's tokens on the system scheme, for the floating nav and the host's motion, until MainActivity's theme provides

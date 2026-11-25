@@ -21,8 +21,6 @@ import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeInstalledApps
-import dev.doona.android.feature.activity.ActivityScreen
-import dev.doona.android.feature.activity.sampleActivityState
 
 /** Robolectric draws no system bars, so tests give the app the insets of a phone's status bar and gesture bar. */
 val StatusBar = 40.dp
@@ -54,15 +52,7 @@ private fun appScreenCases(): List<ScreenCase> {
     val space = DoonaTheme.spacing
     val bars = setOf(LayoutRole.Sheet, LayoutRole.TopBar)
     val withHub = bars + LayoutRole.HubBar
-    val activity = setOf(LayoutRole.Card, LayoutRole.Row, LayoutRole.Control, LayoutRole.Segmented, LayoutRole.Value, LayoutRole.Chevron)
     return listOf(
-        ScreenCase("activity", PageLayout(withHub + activity, listOf(space.afterTitle, space.section, space.section))) {
-            OldShellApp(engine, apps, listOf(ActivityKey))
-        },
-        ScreenCase("activity-error", PageLayout(withHub + activity, listOf(space.afterTitle, space.section, space.section))) {
-            // The error state sits in the frame of every other screen: the hub bar under it and the gesture bar's inset.
-            DoonaAppShell(Tab.Activity, onSelect = {}) { ActivityScreen(sampleActivityState(ErrorCode.Busy), onAction = {}, onConnect = {}, onOpenGroup = {}) }
-        },
         ScreenCase(
             "settings",
             PageLayout(withHub + setOf(LayoutRole.ListCard, LayoutRole.ListRow, LayoutRole.Mark), listOf(space.afterTitle)),

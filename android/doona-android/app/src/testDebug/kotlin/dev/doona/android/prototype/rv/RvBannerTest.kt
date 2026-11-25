@@ -12,6 +12,8 @@ import androidx.compose.ui.unit.toSize
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.feature.activity.RvActivityNotice
+import dev.doona.android.feature.activity.rvActivityBanner
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.perapp.RvPerAppScreen
 import dev.doona.android.feature.perapp.RvSave
@@ -23,9 +25,7 @@ import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.settings.rvPerAppActions
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.states.RvActionFailed
-import dev.doona.android.prototype.rv.states.RvActivityNotice
 import dev.doona.android.prototype.rv.states.rvActionFailedBanner
-import dev.doona.android.prototype.rv.states.rvActivityBanner
 import dev.doona.android.prototype.rv.subs.RvAddFailure
 import dev.doona.android.prototype.rv.subs.RvAddPhase
 import dev.doona.android.prototype.rv.subs.RvAddState

@@ -30,14 +30,15 @@ import dev.doona.android.feature.subscriptions.SubscriptionImports
  * The 活動 tab's content: the progress page until the engine has loaded, the first-run page while there is no
  * subscription and no tunnel is running, and [content], the activity screen, otherwise: from the first subscription
  * on, and for as long as a tunnel runs, so removing the last subscription never hides its status or its switch.
+ * [frame] holds the gate's own two pages (the app's tab frame with its nav); [content] draws its own.
  */
 @Composable
-fun FirstRunGate(engine: Engine, imports: SubscriptionImports, content: @Composable () -> Unit) {
+fun FirstRunGate(engine: Engine, imports: SubscriptionImports, frame: @Composable (@Composable () -> Unit) -> Unit, content: @Composable () -> Unit) {
     val viewModel: FirstRunViewModel = viewModel(factory = FirstRunViewModel.factory(engine, imports))
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     when {
-        !state.ready -> LoadingScreen()
-        state.showsFirstRun -> FirstRunScreen(state, viewModel.fields, viewModel::onAction)
+        !state.ready -> frame { LoadingScreen() }
+        state.showsFirstRun -> frame { FirstRunScreen(state, viewModel.fields, viewModel::onAction) }
         else -> content()
     }
 }

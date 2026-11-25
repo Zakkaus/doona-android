@@ -28,7 +28,7 @@ import dev.doona.android.feature.subscriptions.sampleSubscriptionsState
 
 /**
  * The screens of the 策略, 訂閱 and first-run lanes: the list, a group's page as a selector, as an automatic group and
- * as one the user pinned, the subscriptions page with its states, and the first-run and loading pages. The pages
+ * as one the user pinned, the subscriptions page with its states, and the first-run pages. The pages
  * whose state the engine fixture cannot set are drawn in the app's frame without a back stack.
  */
 internal fun policyScreenCases(): List<ScreenCase> {
@@ -38,7 +38,6 @@ internal fun policyScreenCases(): List<ScreenCase> {
     val noSubscriptions = FakeEngine(groups, subscriptions = emptyList())
     val noSubscriptionsFailed = FakeEngine(groups, subscriptions = emptyList(), status = Status.Failed(FailureReason.StartFailed, ErrorCode.NoNodes))
     val noSubscriptionsStopped = FakeEngine(groups, subscriptions = emptyList(), status = Status.Failed(FailureReason.CoreStopped))
-    val loading = FakeEngine(groups).apply { ready.value = false }
     val space = DoonaTheme.spacing
     val bars = setOf(LayoutRole.Sheet, LayoutRole.TopBar, LayoutRole.HubBar)
     val list = bars + setOf(LayoutRole.Card, LayoutRole.Segmented, LayoutRole.Mark)
@@ -86,6 +85,5 @@ internal fun policyScreenCases(): List<ScreenCase> {
         ScreenCase("first-run-failed", PageLayout(firstRun, listOf(space.section, space.section))) {
             OldShellApp(noSubscriptionsStopped, apps, listOf(ActivityKey))
         },
-        ScreenCase("activity-loading", PageLayout(bars, listOf(space.section))) { OldShellApp(loading, apps, listOf(ActivityKey)) },
     )
 }

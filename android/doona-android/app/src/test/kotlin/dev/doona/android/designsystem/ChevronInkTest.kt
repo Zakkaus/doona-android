@@ -25,6 +25,7 @@ import dev.doona.android.testing.FrameInsets
 import dev.doona.android.testing.InkInsets
 import dev.doona.android.testing.SeedTheme
 import dev.doona.android.testing.drawFully
+import dev.doona.android.testing.galleryCases
 import dev.doona.android.testing.inkInsets
 import dev.doona.android.testing.screenCases
 import org.junit.Assert.assertFalse
@@ -52,7 +53,7 @@ class ChevronInkTest {
 
     private fun checkChevrons(name: String) {
         compose.setContent {
-            CompositionLocalProvider(LocalFrameInsets provides FrameInsets) { SeedTheme { screenCases().first { it.name == name }.content() } }
+            CompositionLocalProvider(LocalFrameInsets provides FrameInsets) { SeedTheme { (screenCases() + galleryCases()).first { it.name == name }.content() } }
         }
         compose.drawFully()
         val chevrons = compose.onAllNodes(SemanticsMatcher("is a chevron") { it.config.getOrNull(LayoutRoleKey) == LayoutRole.Chevron }, useUnmergedTree = true)
@@ -64,7 +65,8 @@ class ChevronInkTest {
         assertTrue("chevrons of $name draw inside their box:\n" + off.joinToString("\n"), off.isEmpty())
     }
 
-    @Test fun pickerChevronsHaveNoInset() = checkChevrons("activity")
+    /** No screen draws a picker since 活動 moved to the RV page, so the controls gallery shows both pickers' chevrons. */
+    @Test fun pickerChevronsHaveNoInset() = checkChevrons("gallery-controls")
 
     /** The picker's arrow box and the same glyph drawn whole, as an icon of the arrow's size. */
     private fun render(chevron: Modifier = Modifier): Pair<InkInsets, InkInsets> {

@@ -1,6 +1,7 @@
 package dev.doona.android.app
 
 import android.Manifest
+import android.app.NotificationManager
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -23,6 +24,7 @@ import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.localnetwork.LocalNetworkHost
 import dev.doona.android.feature.permissions.NotifyState
+import dev.doona.android.feature.permissions.Permission
 import dev.doona.android.feature.permissions.PermissionStep
 import dev.doona.android.feature.permissions.PermissionViewModel
 import dev.doona.android.vpn.VpnLog
@@ -45,7 +47,8 @@ class MainActivity : ComponentActivity() {
     private val permissions by viewModels<PermissionViewModel> { PermissionViewModel.Factory }
     private val asks get() = permissions.asks
 
-    // A denied notification permission does not stop the connection; the service then runs without a visible notice.
+    // A denied notification permission does not stop the connection; the service then runs without a visible notice,
+    // and 活動 says so.
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { asks.notifyAnswered(it) }
 
@@ -71,11 +74,15 @@ class MainActivity : ComponentActivity() {
                     onConnect = ::connect,
                     imports = container.imports,
                     version = version,
+                    crashOffer = container.crashOffer,
+                    refusals = container.connectRefusals,
+                    onSystemSettings = ::openSystemSettings,
                 )
                 AppSheets(asks, ::onPermissionStep, localNetwork)
             }
         }
         askNotifyOnceConnected()
+        tellRefusals()
         container.checkCrashes()
         // A recreated activity or one reopened from recents must not repeat the request that first launched it.
         val fromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
@@ -87,6 +94,9 @@ class MainActivity : ComponentActivity() {
         container.logLevels.expireIfDue()
         // Back from the app's settings, where a fetch waiting on the local network refusal may have been allowed.
         container.localNetwork.resumed()
+        // Or where the refused notifications were allowed; and a refused VPN consent stands only while doona has none.
+        if (notificationsAllowed()) container.connectRefusals.notifications.value = false
+        if (VpnService.prepare(this) == null) container.connectRefusals.vpn.value = false
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -115,8 +125,15 @@ class MainActivity : ComponentActivity() {
     internal fun onPermissionStep(step: PermissionStep) {
         when (step) {
             PermissionStep.Wait -> Unit
-            PermissionStep.Connect -> engine.connect()
+
+            PermissionStep.Connect -> {
+                // A connect has the consent, given now or before, so a refused one no longer stands.
+                container.connectRefusals.vpn.value = false
+                engine.connect()
+            }
+
             PermissionStep.AskConsent -> requestVpnConsent()
+
             PermissionStep.AskNotify -> launchNotificationDialog()
         }
     }
@@ -153,9 +170,12 @@ class MainActivity : ComponentActivity() {
     private fun askNotifyOnceConnected() {
         val settings = AppSettings.get(application)
         val notify = NotifyState {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
-                !settings.notifyAsked.first()
+            val denied = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            val askedBefore = denied && settings.notifyAsked.first()
+            // Not asked again, but 活動 tells it, in a new process too.
+            if (askedBefore) container.connectRefusals.notifications.value = true
+            denied && !askedBefore
         }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -174,6 +194,25 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * 活動's refusal notices ([ConnectRefusals]) take each refusal [PermissionAsks.refused] tells. The next 連線 clears
+     * that one; a notice stands until a connect has the consent ([onPermissionStep]) or the system allows what was
+     * refused ([onResume]).
+     */
+    private fun tellRefusals() {
+        lifecycleScope.launch {
+            asks.refused.collect { refused ->
+                when (refused) {
+                    Permission.Vpn -> container.connectRefusals.vpn.value = true
+                    Permission.Notify -> container.connectRefusals.notifications.value = true
+                    null -> Unit
+                }
+            }
+        }
+    }
+
+    private fun notificationsAllowed(): Boolean = getSystemService(NotificationManager::class.java).areNotificationsEnabled()
+
     /** The system's question; below Android 17 there is no permission to ask for, so access counts as allowed. */
     private fun requestLocalNetwork() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN) {
@@ -186,6 +225,16 @@ class MainActivity : ComponentActivity() {
     /** The app's page in the system settings, where a refused permission can still be allowed. */
     private fun openAppSettings() {
         startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
+    }
+
+    /** One of the system's settings pages that 活動's notices open. */
+    private fun openSystemSettings(page: SystemSettings) {
+        val intent = when (page) {
+            SystemSettings.Vpn -> Intent(Settings.ACTION_VPN_SETTINGS)
+            SystemSettings.Network -> Intent(Settings.ACTION_WIRELESS_SETTINGS)
+            SystemSettings.Notifications -> Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+        }
+        startActivity(intent)
     }
 
     companion object {

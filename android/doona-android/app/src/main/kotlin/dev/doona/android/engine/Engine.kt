@@ -252,6 +252,11 @@ data class Member(
     /** The source subscription; null for static nodes and groups. */
     val subscriptionId: String? = null,
     val error: ErrorCode? = null,
+    /**
+     * The country or region the core reads from the node's name, as an ISO 3166 code (`JP`, `HK`): a display hint, not
+     * where the server is; null when the name gives none, and for groups.
+     */
+    val region: String? = null,
 )
 
 /** Like the core catalog, [selectedId] and [pinned] report the TCP selection even when the networks differ. */
