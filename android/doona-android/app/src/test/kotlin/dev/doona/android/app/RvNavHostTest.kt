@@ -233,6 +233,29 @@ class RvNavHostTest {
     }
 
     @Test
+    fun backPressedAgainWhileAPageLeavesPopsNothing() {
+        start(ActivityKey, PoliciesKey, GroupKey("a"), GroupKey("b"), GroupKey("c"))
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle {
+            back.onBackPressed()
+            back.onBackPressed()
+        }
+        assertEquals("two backs in one frame pop once", listOf(ActivityKey, PoliciesKey, GroupKey("a"), GroupKey("b")), stack.toList())
+
+        frames(PIPELINE_FRAMES + 1)
+        assertEquals("c still leaves", 1, shown("group c"))
+        compose.runOnIdle { back.onBackPressed() }
+        frames(SETTLE_FRAMES)
+        assertEquals("a back during the exit pops nothing", listOf(ActivityKey, PoliciesKey, GroupKey("a"), GroupKey("b")), stack.toList())
+        assertEquals(1, shown("group b"))
+
+        compose.runOnIdle { back.onBackPressed() }
+        frames(SETTLE_FRAMES)
+        assertEquals("once the exit is over, back pops again", listOf(ActivityKey, PoliciesKey, GroupKey("a")), stack.toList())
+        assertEquals(listOf("group c", "group b"), cleared)
+    }
+
+    @Test
     fun thePickerClosesBeforeAnyPop() {
         start(ActivityKey, NodesKey)
         assertTrue(pull!!.open)

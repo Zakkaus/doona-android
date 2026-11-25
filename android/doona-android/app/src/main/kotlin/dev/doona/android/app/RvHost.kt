@@ -1,10 +1,12 @@
 package dev.doona.android.app
 
 import android.os.Trace
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -31,9 +33,10 @@ import dev.doona.android.designsystem.rv.RvShared
  * (`rememberNavBackStack`), so it survives process death.
  *
  * Back pops the top page, following the finger while a predictive back gesture runs; a cancelled gesture runs the
- * page back and pops nothing, a committed one pops once. On a tab root back pops to 活動, which is always underneath,
- * and on 活動 back is left to the system, which leaves the app. A page that handles back itself (the pull-down's
- * picker on 活動) registers after the host, so it closes first.
+ * page back and pops nothing, a committed one pops once: a second back while the popped page still leaves pops
+ * nothing, as that page is the one it would pop ([RvTabMoves.shown]). On a tab root back pops to 活動, which is
+ * always underneath, and on 活動 back is left to the system, which leaves the app. A page that handles back itself
+ * (the pull-down's picker on 活動) registers after the host, so it closes first.
  *
  * Every entry shares one [SharedTransitionLayout] ([LocalRvShared]); the floating nav shows the app's three tabs
  * ([LocalRvNav]); a tab root a hard-cut tab switch is showing gets [LocalRvTabEntry].
@@ -50,7 +53,7 @@ internal fun RvNavHost(backStack: MutableList<NavKey>, modifier: Modifier = Modi
             val rv = remember(this) { rvEntryDecorator(this, moves) }
             NavDisplay(
                 backStack = backStack,
-                onBack = { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) },
+                onBack = { backStack.popShown(moves.shown) },
                 entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator(), rv),
                 sharedTransitionScope = this,
                 transitionSpec = { rvSceneMove(motion, shift, forward = true) },
@@ -71,7 +74,12 @@ private fun rvKeyed(key: NavKey, entry: NavEntry<NavKey>): NavEntry<NavKey> = Na
  */
 private fun rvEntryDecorator(layout: SharedTransitionScope, moves: RvTabMoves) = NavEntryDecorator<NavKey> { entry ->
     val shared = RvShared(layout, LocalNavAnimatedContentScope.current, RvMotion.PUSH_MS)
-    val entering = moves.tabSwitch && rvKeyOf(entry) == moves.top
+    val key = rvKeyOf(entry)
+    val entering = moves.tabSwitch && key == moves.top
+    val move = LocalNavAnimatedContentScope.current.transition
+    if (key != null && move.currentState == EnterExitState.Visible && move.targetState == EnterExitState.Visible) {
+        SideEffect { moves.shown = key }
+    }
     CompositionLocalProvider(LocalRvShared provides shared, LocalRvTabEntry provides entering) {
         Trace.beginSection(TRACE_PAGE)
         entry.Content()
@@ -89,11 +97,23 @@ private class RvTabMoves(private var stack: List<NavKey>) {
         private set
     val top: NavKey get() = stack.last()
 
+    /** The page last shown on its own, every move into it finished: the page the user sees on top, which back pops. */
+    var shown: NavKey? = null
+
     fun see(now: List<NavKey>) {
         if (now == stack) return
         tabSwitch = currentTab(now) != currentTab(stack)
         stack = now
     }
+}
+
+/**
+ * Back from the host: pops the page on top once. While a popped page still leaves, [shown] is that page and no longer
+ * on the stack, so a second back pops nothing rather than the page underneath; while a pushed page comes in, [shown]
+ * is the page under it and back pops the new one, as on its own.
+ */
+private fun MutableList<NavKey>.popShown(shown: NavKey?) {
+    if (shown == null || shown in this) pop(last())
 }
 
 private const val TRACE_PAGE = "RvPage"
