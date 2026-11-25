@@ -64,6 +64,9 @@ class LocalNetworkEngineTest {
 
     private fun Result<*>.code() = (exceptionOrNull() as? EngineException)?.code
 
+    // AppEvents is process-wide; unrelated background work can record into it, so only the actions are compared.
+    private fun actions() = AppEvents.snapshot().filter { it.text.startsWith("command=") }
+
     /** The user goes on from the reason and answers the system's dialog. */
     private fun answer(allowed: Boolean) {
         assertEquals(LocalNetworkPrompt.Ask, access.prompt.value)
@@ -90,7 +93,7 @@ class LocalNetworkEngineTest {
         assertEquals(ErrorCode.LocalNetwork, updated.await().code())
         assertEquals(2, scripted.updates)
         assertNull("allowed now: nothing more to ask", access.prompt.value)
-        val warning = AppEvents.snapshot().single()
+        val warning = actions().single()
         assertEquals(AppEventLevel.Warn, warning.level)
         assertEquals("command=updateSubscription phase=retry outcome=failed code=LocalNetwork", warning.text)
     }
@@ -127,7 +130,7 @@ class LocalNetworkEngineTest {
         access.resumed()
         assertTrue(updated.await().isSuccess)
         assertEquals(2, scripted.updates)
-        assertTrue(AppEvents.snapshot().isEmpty())
+        assertTrue(actions().isEmpty())
     }
 
     @Test
@@ -172,10 +175,10 @@ class LocalNetworkEngineTest {
         fake.groups.value = blocked
         answer(allowed = true)
         assertEquals(listOf("g-HK", "g-HK"), scripted.tested)
-        assertTrue("the retry has not finished", AppEvents.snapshot().isEmpty())
+        assertTrue("the retry has not finished", actions().isEmpty())
 
         fake.groups.value = blocked
-        val warning = AppEvents.snapshot().single()
+        val warning = actions().single()
         assertEquals(AppEventLevel.Warn, warning.level)
         assertEquals("command=testLatency phase=retry outcome=failed code=LocalNetwork", warning.text)
     }
@@ -197,7 +200,7 @@ class LocalNetworkEngineTest {
             answer(allowed = true)
             assertEquals(listOf("g-HK", "g-HK"), scripted.tested)
             fake.groups.value = listOf(group("g-HK", testing = false))
-            assertTrue("published start: $publishStart", AppEvents.snapshot().isEmpty())
+            assertTrue("published start: $publishStart", actions().isEmpty())
         }
     }
 
@@ -212,7 +215,7 @@ class LocalNetworkEngineTest {
         fake.groups.value = listOf(group("g-HK", testing = false, ErrorCode.LocalNetwork))
         answer(allowed = true)
 
-        val warning = AppEvents.snapshot().single()
+        val warning = actions().single()
         assertEquals(AppEventLevel.Warn, warning.level)
         assertEquals("command=testLatency phase=retry outcome=failed code=Busy", warning.text)
     }
