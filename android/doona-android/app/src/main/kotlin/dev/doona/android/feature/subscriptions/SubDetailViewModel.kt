@@ -19,19 +19,23 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * A subscription's page as it is drawn: the subscription, the sheet open on it, and the auto-update interval. Once the subscription is gone (removed here or elsewhere) [gone] is set and the page
- * leaves; [sub] then stays the last one seen, so the page is still drawn while it leaves.
+ * A subscription's page as it is drawn: the subscription, the sheet open on it, and the auto-update interval. Once the
+ * engine is ready and has no such subscription (removed here or elsewhere, or before a back stack restored after process
+ * death) [gone] is set and the page leaves; [sub] then stays the last one seen, so the page is still drawn while it
+ * leaves. Before the engine is ready the page draws nothing and stays.
  */
 @Immutable
 internal data class SubDetailUiState(
     val sub: RvSubscription?,
     val sheet: RvSubDetailState = RvSubDetailState(),
     val autoUpdate: RvAutoUpdate,
-    val gone: Boolean = sub == null,
+    val gone: Boolean = false,
 )
 
-internal fun subDetailUiState(id: String, subscriptions: List<Subscription>, sheet: RvSubDetailState, autoUpdate: RvAutoUpdate) =
-    SubDetailUiState(subscriptions.firstOrNull { it.id == id }?.let(::rvSubscription), sheet, autoUpdate)
+internal fun subDetailUiState(id: String, ready: Boolean, subscriptions: List<Subscription>, sheet: RvSubDetailState, autoUpdate: RvAutoUpdate): SubDetailUiState {
+    val sub = subscriptions.firstOrNull { it.id == id }?.let(::rvSubscription)
+    return SubDetailUiState(sub, sheet, autoUpdate, gone = ready && sub == null)
+}
 
 /**
  * Subscription [id]'s page state holder (plan §2.2): the subscription as the engine has it, the auto-update interval
@@ -47,10 +51,14 @@ internal class SubDetailViewModel(
     private val sheet = MutableStateFlow(RvSubDetailState())
 
     val uiState: StateFlow<SubDetailUiState> =
-        combine(engine.subscriptions, sheet, updateHours.map(::rvAutoUpdate).onStart { emit(RvAutoUpdate.Unread) }) { subscriptions, sheet, autoUpdate ->
-            subDetailUiState(id, subscriptions, sheet, autoUpdate)
+        combine(engine.ready, engine.subscriptions, sheet, updateHours.map(::rvAutoUpdate).onStart { emit(RvAutoUpdate.Unread) }) { ready, subscriptions, sheet, autoUpdate ->
+            subDetailUiState(id, ready, subscriptions, sheet, autoUpdate)
         }.runningReduce { last, next -> if (next.gone) next.copy(sub = last.sub) else next }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), subDetailUiState(id, engine.subscriptions.value, sheet.value, RvAutoUpdate.Unread))
+            .stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(STOP_MS),
+                subDetailUiState(id, engine.ready.value, engine.subscriptions.value, sheet.value, RvAutoUpdate.Unread),
+            )
 
     fun change(state: RvSubDetailState) = sheet.update { state }
 

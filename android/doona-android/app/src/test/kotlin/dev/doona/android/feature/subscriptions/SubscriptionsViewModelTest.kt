@@ -157,6 +157,28 @@ class SubscriptionsViewModelTest {
     }
 
     @Test
+    fun `a subscription's page restored before the engine is ready waits for it, and leaves only if the subscription is gone`() = runTest {
+        val fake = FakeEngine()
+        val id = fake.subscriptions.value.first().id
+        val readyFlow = MutableStateFlow(false)
+        val subscriptionsFlow = MutableStateFlow(emptyList<Subscription>())
+        val engine = object : Engine by fake {
+            override val ready = readyFlow
+            override val subscriptions = subscriptionsFlow
+        }
+        val kept = detail(engine, id)
+        val deleted = detail(engine, "s404")
+        assertFalse("no snapshot yet: the page stays", kept.uiState.value.gone)
+        assertNull(kept.uiState.value.sub)
+        assertFalse(deleted.uiState.value.gone)
+        subscriptionsFlow.value = fake.subscriptions.value
+        readyFlow.value = true
+        assertFalse(kept.uiState.value.gone)
+        assertEquals(id, kept.uiState.value.sub?.id)
+        assertTrue("a subscription deleted before the process died leaves once the engine is ready", deleted.uiState.value.gone)
+    }
+
+    @Test
     fun `a rename the core refuses opens the sheet again on the name with the failure, and the next rename goes through`() = runTest {
         val engine = FakeEngine()
         val sub = engine.subscriptions.value.first()
