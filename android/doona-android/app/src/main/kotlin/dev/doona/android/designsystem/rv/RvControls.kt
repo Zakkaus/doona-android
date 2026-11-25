@@ -567,3 +567,6 @@ internal fun RvRadio(selected: Boolean, modifier: Modifier = Modifier) {
         if (selected) drawCircle(ring, radius = RvControlSize.radioDot.toPx() / 2)
     }
 }
+
+/** A link field's placeholder: the scheme a subscription link starts with. */
+internal const val RV_LINK_PLACEHOLDER = "https://"

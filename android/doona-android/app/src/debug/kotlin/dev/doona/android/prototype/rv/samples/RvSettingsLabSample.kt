@@ -43,9 +43,9 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.rvActionRowFit
 import dev.doona.android.designsystem.rv.rvBarHeight
 import dev.doona.android.designsystem.rv.rvDotMap
+import dev.doona.android.designsystem.rv.rvHeroArt
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.model.RvGeoData
-import dev.doona.android.prototype.rv.rvHeroArt
 import dev.doona.android.prototype.rv.settings.RV_SAMPLE_GEO_SHIPPED_MS
 import dev.doona.android.prototype.rv.settings.RvAboutEntry
 import dev.doona.android.prototype.rv.settings.RvAppPolicy
