@@ -101,6 +101,29 @@ class NetworkStateSourceTest {
     }
 
     @Test
+    fun theLossOfAnOlderDefaultNetworkDoesNotTakeTheNewOneOffline() = runTest {
+        val state = observeNetwork()
+        val callback = (manager.networkCallbacks - existing).single()
+        val cellular = ShadowNetwork.newInstance(101)
+        val other = ShadowNetwork.newInstance(102)
+        callback.onCapabilitiesChanged(wifi, capabilities(NetworkCapabilities.TRANSPORT_WIFI, NetworkCapabilities.NET_CAPABILITY_NOT_METERED))
+        callback.onCapabilitiesChanged(cellular, capabilities(NetworkCapabilities.TRANSPORT_CELLULAR))
+        callback.onLost(wifi)
+        testScheduler.runCurrent()
+        assertEquals(NetworkState(NetworkTransport.Cellular, metered = true, validated = false), state.value)
+
+        // A network announced as available is the default before its capabilities arrive.
+        callback.onAvailable(other)
+        callback.onLost(cellular)
+        testScheduler.runCurrent()
+        assertEquals(NetworkState(NetworkTransport.Cellular, metered = true, validated = false), state.value)
+
+        callback.onLost(other)
+        testScheduler.runCurrent()
+        assertEquals(NetworkState(), state.value)
+    }
+
+    @Test
     fun wifiWorksInAirplaneMode() = runTest {
         Settings.Global.putInt(app.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 1)
         val state = observeNetwork()
