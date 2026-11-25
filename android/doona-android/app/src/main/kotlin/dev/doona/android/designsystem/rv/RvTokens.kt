@@ -72,7 +72,7 @@ internal object RvSpace {
     val sectionBelow = 12.dp
 
     /** A footnote ([RvFootnote]) sits this far under its card, on the gutter as the section titles (spacing audit row 5). */
-    val footnoteAbove = 8.dp
+    val footnoteAbove = 12.dp
 
     /** A card's in-card header row sits this far under the card's top, so the card's padding is the same at both ends. */
     val headerInset = 4.dp

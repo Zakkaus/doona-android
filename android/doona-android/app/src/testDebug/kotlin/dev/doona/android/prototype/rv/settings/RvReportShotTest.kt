@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.width
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvControlSize
 import dev.doona.android.designsystem.rv.RvPart
+import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
@@ -172,7 +173,7 @@ class RvReportShotTest {
         val card = compose.onAllNodesWithTag(RvPart.CARD).fetchSemanticsNodes().last().boundsInRoot
         val node = compose.onNodeWithTag(RvPart.FOOTER).fetchSemanticsNode()
         val box = node.boundsInRoot
-        assertEquals("starts on the cards' left edge", card.left, box.left, EDGE_PX)
+        assertEquals("starts at the cards' text inset", card.left + RvSpace.rowPadding.value * compose.density.density, box.left, EDGE_PX)
         assertEquals("ends on the cards' right edge", card.right, box.right, EDGE_PX)
         val layouts = mutableListOf<TextLayoutResult>().also { node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(it) }
         val layout = layouts.single()
@@ -260,13 +261,13 @@ class RvReportShotTest {
 
         /** As tall as the page in each state and font size (to the next whole dp), so its end sits above the actions as on the phone. */
         const val READY = "+h1177dp"
-        const val READY_FS115 = "+h1209dp"
+        const val READY_FS115 = "+h1211dp"
         const val READY_FS200 = "+h1820dp"
         const val BUILDING = "+h1259dp"
-        const val BUILDING_FS115 = "+h1291dp"
+        const val BUILDING_FS115 = "+h1293dp"
         const val BUILDING_FS200 = "+h1959dp"
         const val FAILED = "+h1335dp"
-        const val FAILED_FS115 = "+h1371dp"
+        const val FAILED_FS115 = "+h1372dp"
         const val FAILED_FS200 = "+h2053dp"
     }
 }

@@ -23,7 +23,7 @@ Icon alignment: **C** = centred on the row; **T** = top on the title's top (the 
 | Notice, `RvBanner` | T | 40 disc (24 glyph), x 32 | 88 | 0 | none; the button stands under the text, 16 below, at x 88 | text + 32 | 16 / 16 | 16 below the card |
 | Menu item, `RvLongPressMenu` | C | 24 bare glyph, x 16 in the item | 56 | – | none | 50 | centred | 0 / – |
 | Section header | – | – | 16 (page gutter) | – | – | 24 box | 24 above, 12 below to the card | – |
-| Footnote | – | – | 16 | – | – | text | 8 above (to the card), 24 below | – |
+| Footnote | – | – | 32 (the card's text inset; owner note on 實驗室, 2026-11-25, replaces 16) | – | – | text | 12 above (to the card; was 8), 24 below | – |
 | Card | – | – | – | – | – | – | 16 gutter, 20 radius | 16 |
 | Primary button | – | – | – | – | – | 52 | – | 12 to a secondary below |
 | Secondary button, chip, segmented control | – | – | – | – | – | 40 | 12 each side in a chip | 8 between buttons |
@@ -54,7 +54,7 @@ Component code uses only these through tokens (`RvSpace`, `RvSettingsSpace`, a c
 | Card padding, row start and end | `RvSpace.rowPadding` | S4 |
 | Gap between cards | `RvSpace.cardGap` | S4 |
 | Section header above / below | `sectionAbove` / `sectionBelow` | S5 / S3 |
-| Footnote above | `footnoteAbove` | S2 |
+| Footnote above | `footnoteAbove` | S3 (was S2: the owner found 8 tight beside the 16 between cards; 12 is also the section header's gap to its card; open for the owner: 12 or 16) |
 | Row text above and below | `rowTextInset` | S4 |
 | Icon to text | `rowGap` | S4 |
 | Text to trailing part | `trailingGap` | S3 |
