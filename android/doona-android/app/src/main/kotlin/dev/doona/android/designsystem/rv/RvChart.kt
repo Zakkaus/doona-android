@@ -64,6 +64,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.em
@@ -243,9 +244,19 @@ internal const val RV_CHART = "rv-chart"
  * on the chart moves [scrub] to the second under it, shows a line in the series' colour and a dot there and hides the
  * pills; lifting it calls [onScrub] with null. The scrub ticks as it reaches the peak sample or either end (G5). A new
  * [range] cross-fades from the old series to the new one while the axis moves to the new peak, with no placeholder.
+ * With fewer than two known samples the grid stays alone, with the [empty] line on it when one is given.
  */
 @Composable
-internal fun RvDetailChart(values: List<Float>, series: RvSeries, label: (Float) -> String, scrub: Int?, onScrub: (Int?) -> Unit, modifier: Modifier = Modifier, range: Int = 0) {
+internal fun RvDetailChart(
+    values: List<Float>,
+    series: RvSeries,
+    label: (Float) -> String,
+    scrub: Int?,
+    onScrub: (Int?) -> Unit,
+    modifier: Modifier = Modifier,
+    range: Int = 0,
+    empty: String? = null,
+) {
     val colors = Rv.colors
     val ink = DetailInk(series, colors, RvPillInk(colors.pill, colors.raisedShadow), Rv.type.pill.copy(color = colors.textSecondary), rememberTextMeasurer(), label)
     val glide = rememberRvGlide(values)
@@ -256,12 +267,26 @@ internal fun RvDetailChart(values: List<Float>, series: RvSeries, label: (Float)
         ticks.follow(i, values)
         onScrub(i)
     }
-    Canvas(modifier.fillMaxWidth().height(RvChartSize.detail + RvChartSize.pill + RvChartSize.pillClear).testTag(RV_CHART).scrubbing(values.size, follow)) {
-        hairlineGrid(colors.grid, RvChartSize.detail.toPx())
-        val top = if (change.moving) change.top.value else axisTop(values)
-        val fade = change.fade.value
-        change.before?.takeIf { fade < 1f }?.let { detailSeries(it, ink, top, AT_REST, 1f - fade, null) }
-        detailSeries(values, ink, top, glide, fade, scrub)
+    Box(modifier.fillMaxWidth().height(RvChartSize.detail + RvChartSize.pill + RvChartSize.pillClear)) {
+        Canvas(Modifier.matchParentSize().testTag(RV_CHART).scrubbing(values.size, follow)) {
+            hairlineGrid(colors.grid, RvChartSize.detail.toPx())
+            val top = if (change.moving) change.top.value else axisTop(values)
+            val fade = change.fade.value
+            change.before?.takeIf { fade < 1f }?.let { detailSeries(it, ink, top, AT_REST, 1f - fade, null) }
+            detailSeries(values, ink, top, glide, fade, scrub)
+        }
+        if (empty != null && values.count { !it.isNaN() } < 2) RvEmptyChartLine(empty, Modifier.fillMaxWidth().height(RvChartSize.detail))
+    }
+}
+
+/**
+ * The line an empty chart shows centred on its grid, such as 尚無資料 (the owner's q-stats A, 2026-11-24: keep the
+ * chart's place, say there is no data, draw no curve). Every chart with nothing to draw shows it the same way.
+ */
+@Composable
+internal fun RvEmptyChartLine(line: String, modifier: Modifier = Modifier) {
+    Box(modifier, contentAlignment = Alignment.Center) {
+        RvText(line, Rv.type.tileCaption, color = Rv.colors.textSecondary, align = TextAlign.Center)
     }
 }
 
