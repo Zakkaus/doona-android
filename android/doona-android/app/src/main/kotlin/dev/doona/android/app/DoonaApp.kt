@@ -176,7 +176,7 @@ enum class SystemSettings { Vpn, Network, Notifications }
 /**
  * Where 活動 leads: the pages with an entry here, the 策略 tab for the mode, 設定 for 更多 and 檢查更新 (q-actmore), and
  * the system's settings for the notices that need them. The pages without an entry yet (the node search and list, the
- * main node choice, the rules and the report) are not wired.
+ * main node choice and the report) are not wired.
  */
 private fun activityRoutes(backStack: MutableList<NavKey>, onSystemSettings: (SystemSettings) -> Unit) = ActivityRoutes(
     traffic = { backStack.push(TrafficKey) },
@@ -187,7 +187,7 @@ private fun activityRoutes(backStack: MutableList<NavKey>, onSystemSettings: (Sy
     tab = { backStack.selectTab(it) },
     mode = { backStack.selectTab(Tab.Policies) },
     rule = { backStack.push(GroupKey(it)) },
-    rules = NOT_WIRED,
+    rules = { backStack.push(RulesKey) },
     subscriptions = { backStack.push(SubscriptionsKey) },
     more = { backStack.selectTab(Tab.Settings) },
     addSubscription = { backStack.push(SubAddKey) },

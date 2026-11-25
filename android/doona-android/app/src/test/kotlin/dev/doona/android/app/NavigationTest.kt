@@ -17,9 +17,11 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.R
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
+import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeInstalledApps
+import dev.doona.android.engine.fake.FakeRuleMode
 import dev.doona.android.testing.SeedTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -90,6 +92,20 @@ class NavigationTest {
         compose.onNodeWithContentDescription("Back").performClick()
         compose.onNodeWithText(res.getString(R.string.rv_stats_title)).assertDoesNotExist()
         compose.onNodeWithContentDescription(res.getString(R.string.rv_stats)).assertExists()
+    }
+
+    @Test
+    fun `全部規則 on 活動 opens the rules page and back returns to 活動`() {
+        val res = ApplicationProvider.getApplicationContext<Context>().resources
+        val seeAll = res.getQuantityString(R.plurals.rv_see_all_rules, FakeRuleMode.SOURCE.rules, FakeRuleMode.SOURCE.rules)
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS, mode = Mode.Rule), FakeInstalledApps(), onConnect = {}) } }
+        appears(seeAll)
+        compose.onNode(hasClickAction() and hasText(seeAll)).performSemanticsAction(SemanticsActions.OnClick)
+        appears(res.getString(R.string.rv_policy_rules))
+
+        compose.onNodeWithContentDescription("Back").performClick()
+        appears(seeAll)
+        compose.onNodeWithText(res.getString(R.string.rv_policy_rules)).assertDoesNotExist()
     }
 
     @Test
