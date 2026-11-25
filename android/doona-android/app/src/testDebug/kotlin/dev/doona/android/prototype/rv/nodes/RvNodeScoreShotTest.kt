@@ -196,13 +196,13 @@ class RvNodeScoreShotTest {
 
         /** Windows as tall as each page whole, rounded up to a whole dp. */
         const val PAGE_A = "+h2881dp"
-        const val PAGE_A_FS115 = "+h2949dp"
-        const val PAGE_A_FS200 = "+h4925dp"
+        const val PAGE_A_FS115 = "+h2953dp"
+        const val PAGE_A_FS200 = "+h4945dp"
         const val DETAIL_A = "+h1208dp"
         const val DETAIL_A_FS115 = "+h1216dp"
         const val DETAIL_A_FS200 = "+h1389dp"
         const val PAGE_BOTH = "+h2881dp"
         const val PAGE_BOTH_FS115 = "+h2899dp"
-        const val PAGE_BOTH_FS200 = "+h4845dp"
+        const val PAGE_BOTH_FS200 = "+h4863dp"
     }
 }

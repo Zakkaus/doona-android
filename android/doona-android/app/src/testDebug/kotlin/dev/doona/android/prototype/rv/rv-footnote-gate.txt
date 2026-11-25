@@ -5,17 +5,14 @@ prototype/rv/connections/RvConnectionDetail.kt	RvText(host + PORT + connection.p
 prototype/rv/connections/RvConnectionDetail.kt	RvText(stringResource(R.string.rv_conn_no_domain), Rv.type.rowSub, color = secondary, align = TextAlign.Center)	the centred header's no-domain line, above the first card
 prototype/rv/connections/RvConnectionsPage.kt	RvText(age, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a connection row's age at the row's end, inside the card
 prototype/rv/nodes/RvLatencyDots.kt	RvText(empty, Rv.type.rowSub, color = colors.textSecondary, align = TextAlign.Center)	the latency card's empty line, centred inside the card
-prototype/rv/nodes/RvNodeList.kt	RvText(steady, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a node row's steadiness at the row's end, inside the card
 prototype/rv/policy/RvPolicyParts.kt	RvText(end ?: bytes, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a rule row's bytes at the row's end, inside the card
 prototype/rv/policy/RvPolicyScreen.kt	RvText(stringResource(R.string.rv_policy_rules_order), Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.rowPadding)	the rules card's line under its header, inside the card
 prototype/rv/policy/RvPolicyScreen.kt	RvText(value, Rv.type.rowSub, color = Rv.colors.textSecondary)	a policy row's value, inside the card
-prototype/rv/settings/RvSettingsParts.kt	RvText(it, Rv.type.rowSub, rvWhole(words.subtitleWhole), color = hue, maxLines = words.subtitleLines, lineBox = true, ke	a settings row's own subtitle (the library row), inside the card
 prototype/rv/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_median, values.size), Rv.type.rowSub, color = Rv.colors.textSecondary)	a stat card's own line, inside the card
 prototype/rv/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_no_quota), Rv.type.rowSub, color = Rv.colors.textSecondary)	a stat card's own line, inside the card
 prototype/rv/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_quota_total, total.toString(), count), Rv.type.rowSub, color = Rv.colors.textSec	a stat card's own line, inside the card
 prototype/rv/stats/RvStatsCards.kt	RvText(stringResource(if (split != null) R.string.rv_stats_via_proxy else R.string.rv_stats_no_data), Rv.type.rowSub, co	a stat card's own line, inside the card
 prototype/rv/subs/RvSubsPage.kt	RvText(ends, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a subscription card's usage and end date, inside the card
-prototype/rv/subs/RvSubsPage.kt	RvText(stringResource(R.string.rv_subs_used, format.bytesIn(sub.usedBytes, total), total.toString()), Rv.type.rowSub, Mo	a subscription card's usage and end date, inside the card
 prototype/rv/config/RvConfigHistoryPage.kt	RvCaption(state.name)	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/config/RvConfigOverviewPage.kt	RvCaption(stringResource(R.string.rv_config_applied, state.rev, applied))	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/config/RvConfigRevisionPage.kt	RvCaption(origin)	a page header's caption (RvCaption under the large title), not under a card
@@ -28,10 +25,16 @@ prototype/rv/connections/RvConnectionsPage.kt	RvCaption(pluralStringResource(R.p
 prototype/rv/connections/RvConnectionsPage.kt	RvCaption(pluralStringResource(R.plurals.rv_conn_summary, connections.size, connections.size, down, up))	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/nodes/RvNodeDetail.kt	RvCaption(node.protocol + SEPARATOR + stringResource(node.place.label))	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/nodes/RvNodeList.kt	RvCaption(stringResource(R.string.rv_main_node_hint))	a page header's caption (RvCaption under the large title), not under a card
-prototype/rv/nodes/RvNodePicker.kt	RvCaption(stringResource(R.string.rv_main_node_hint))	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/nodes/RvNodesPage.kt	RvCaption(stringResource(R.string.rv_main_node_hint))	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/policy/RvEffectiveConfigPage.kt	RvCaption(stringResource(R.string.rv_effective_truncated), R.drawable.rv_nodes_ic_warning)	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/policy/RvPolicyGroupPage.kt	RvCaption(stringResource(R.string.rv_policy_auto_note))	a page header's caption (RvCaption under the large title), not under a card
-prototype/rv/policy/RvPolicyGroupPage.kt	RvCaption(stringResource(group.kind.label) + SEPARATOR + count, group.kind.glyph)	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/policy/RvRulesPage.kt	RvCaption(stringResource(R.string.rv_policy_rules_order))	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/welcome/RvWelcome.kt	RvCaption(stringResource(R.string.rv_welcome_line), lines = Int.MAX_VALUE)	歡迎's hero line under its centred title (RvCaption with lines), above the cards
+feature/nodes/ui/RvNodeList.kt	RvText(steady, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a node row's steadiness at the row's end, inside the card
+prototype/rv/nodes/RvNodePicker.kt	RvCaption(caption)	a page header's caption (RvCaption under the large title), not under a card
+prototype/rv/policy/RvPolicyGroupPage.kt	RvCaption(group.caption(), group.kind.glyph)	a page header's caption (RvCaption under the large title), not under a card
+prototype/rv/samples/RvGroupFullPage.kt	RvCaption(stringResource(R.string.policy_kind_score) + SEPARATOR + count, R.drawable.rv_sym_bolt)	a sample page header's caption (RvCaption under the large title), not under a card
+prototype/rv/samples/RvGroupFullPage.kt	RvCaption(stringResource(group.kind.label) + SEPARATOR + count, group.kind.glyph)	a sample page header's caption (RvCaption under the large title), not under a card
+prototype/rv/samples/RvGroupSamplePage.kt	RvCaption(stringResource(group.kind.label) + SEPARATOR + count, group.kind.glyph)	a sample page header's caption (RvCaption under the large title), not under a card
+prototype/rv/stats/RvStatsScoreCard.kt	RvText(stringResource(R.string.rv_stats_connections), Rv.type.rowSub, color = Rv.colors.textSecondary)	the Score card's label under its figure, inside the card
+prototype/rv/subs/RvSubsPage.kt	RvText(stringResource(R.string.rv_subs_used, format.usedOf(sub.usedBytes, total), total.toString()), Rv.type.rowSub, Mod	a subscription card's usage and end date, inside the card

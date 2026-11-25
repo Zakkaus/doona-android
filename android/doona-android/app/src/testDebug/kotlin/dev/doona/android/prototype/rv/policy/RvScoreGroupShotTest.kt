@@ -142,7 +142,7 @@ class RvScoreGroupShotTest {
         const val EVALUATING_NAME = "policy-group-score-evaluating"
         const val EMPTY_NAME = "policy-group-score-empty"
 
-        /** Windows as tall as each page whole, rounded up to a whole dp (measured: 1475.5, 1486, 2522; 1229.5, 1239, 2136.5; 1099.5, 1102, 1502.5). */
+        /** Windows as tall as each page whole, rounded up to a whole dp (measured: 1475.5, 1486, 2522; 1229.5, 1239, 2136.5; 1099.5, 1102, 1508). */
         const val CHOSEN = "+h1476dp"
         const val CHOSEN_FS115 = "+h1486dp"
         const val CHOSEN_FS200 = "+h2522dp"
@@ -151,7 +151,7 @@ class RvScoreGroupShotTest {
         const val EVALUATING_FS200 = "+h2137dp"
         const val EMPTY = "+h1100dp"
         const val EMPTY_FS115 = "+h1102dp"
-        const val EMPTY_FS200 = "+h1503dp"
+        const val EMPTY_FS200 = "+h1509dp"
 
         const val SELECTED = "已選定"
         const val FASTER = "較快"

@@ -43,11 +43,11 @@ class RvEmojiNamesShotTest {
     fun proposedDark() = compose.rvShot("samples-emoji-proposed", dark = true, before = { assertWhole() }) { RvEmojiNamesPage(true) }
 
     @Test
-    @Config(qualifiers = "+h1719dp")
+    @Config(qualifiers = "+h1743dp")
     fun todayFs200() = compose.rvShot("samples-emoji-today", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { RvEmojiNamesPage(false) }
 
     @Test
-    @Config(qualifiers = "+h1642dp")
+    @Config(qualifiers = "+h1666dp")
     fun proposedFs200() = compose.rvShot("samples-emoji-proposed", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { RvEmojiNamesPage(true) }
 
     @Test
