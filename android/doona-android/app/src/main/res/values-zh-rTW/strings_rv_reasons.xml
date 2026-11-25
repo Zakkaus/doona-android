@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Why an engine action failed, one sentence for each ErrorCode (feature/ErrorText.kt reasonRes); a failure
+         banner puts it before what stayed the same, joined by rv_sentences. -->
+    <string name="rv_reason_invalid_argument">這個值無效。</string>
+    <string name="rv_reason_not_found">這個項目已不存在。</string>
+    <string name="rv_reason_fetch_failed">訂閱的伺服器沒有回應。</string>
+    <string name="rv_reason_too_large">訂閱內容太大。</string>
+    <string name="rv_reason_parse_failed">無法解析訂閱內容。</string>
+    <string name="rv_reason_no_nodes">訂閱中沒有節點。</string>
+    <string name="rv_reason_busy">另一項變更正在進行。</string>
+    <string name="rv_reason_internal">doona 發生內部錯誤。</string>
+    <string name="rv_reason_local_network">無法連線至區域網路上的位址。</string>
+    <string name="rv_reason_dns_failed">DNS 查詢失敗。</string>
+    <string name="rv_reason_storage_full">手機儲存空間不足。</string>
+    <string name="rv_reason_write_failed">無法寫入 doona 的資料檔。</string>
+    <string name="rv_sentences">%1$s%2$s</string>
+</resources>

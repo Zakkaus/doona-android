@@ -27,13 +27,14 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.designsystem.rv.rememberRvFormat
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.model.RvSubFormat
 import dev.doona.android.feature.model.RvSubscription
 
 /**
  * A subscription's page: which sheet is open, if any, the name or User-Agent being typed into it, whether the core
- * refused the last rename ([renameFailed], shown under the field until the name changes), and whether it refused the
- * last delete ([deleteFailed], a banner over the page until the next try).
+ * refused the last rename ([renameFailed], shown under the field until the name changes), and the code of the last
+ * delete it refused ([deleteFailed], a banner saying why over the page until the next try).
  */
 @Immutable
 internal data class RvSubDetailState(
@@ -41,7 +42,7 @@ internal data class RvSubDetailState(
     val name: String = "",
     val userAgent: String = "",
     val renameFailed: Boolean = false,
-    val deleteFailed: Boolean = false,
+    val deleteFailed: ErrorCode? = null,
 )
 
 /**
@@ -93,7 +94,7 @@ internal fun RvSubDetail(
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_sub_update_now), onUpdate) },
     ) { titleBlock ->
         RvLargeTitle(sub.name, titleBlock, insets)
-        RvGutter(banner = if (state.deleteFailed) rvDeleteFailedBanner(sub, onDelete) else null) { KeyStats(sub) }
+        RvGutter(banner = state.deleteFailed?.let { rvDeleteFailedBanner(sub, it, onDelete) }) { KeyStats(sub) }
         RvSectionTitle(stringResource(R.string.rv_sub_updates), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter { UpdatesCard(sub.userAgent, autoUpdate, onAutoUpdate) { onChange(state.copy(sheet = RvSubSheet.UserAgent, userAgent = sub.userAgent.orEmpty())) } }
         RvSectionTitle(stringResource(R.string.rv_sub_section), Modifier.padding(horizontal = RvSpace.gutter))

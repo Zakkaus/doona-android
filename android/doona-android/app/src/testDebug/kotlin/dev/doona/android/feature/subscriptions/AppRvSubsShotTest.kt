@@ -195,8 +195,9 @@ class AppRvSubsShotTest {
     @Test fun failedDark() = shot("subs-failed", dark = true) { Subs(::failedEngine) }
 
     /**
-     * Harbor Cloud deleted from its menu and the core refused: the delete-failure banner, the update failure's
-     * (orchestrator ruling 12, 2026-11-26). No approved golden yet; the owner sees these first.
+     * Harbor Cloud deleted from its menu and the core refused, as `state.json` could not be written (`write_failed`):
+     * the delete-failure banner with its reason, the update failure's (orchestrator ruling 12, 2026-11-26; the reason,
+     * p5c 2026-11-26). No approved golden yet; the owner sees these first.
      */
     @Test fun deleteFailedLight() = shot("subs-delete-failed", before = { confirmDeleteFromMenu() }) { Subs { DeleteFails() } }
 
@@ -207,6 +208,16 @@ class AppRvSubsShotTest {
     @Test
     @Config(qualifiers = RV_EN)
     fun deleteFailedEn() = shot("subs-delete-failed", english = true, before = { confirmDeleteFromMenu() }) { Subs { DeleteFails() } }
+
+    /** The same refused as the phone's storage is full (`storage_full`). */
+    @Test fun deleteFullLight() = shot("subs-delete-full", before = { confirmDeleteFromMenu() }) { Subs { DeleteFails(ErrorCode.StorageFull) } }
+
+    @Test
+    fun deleteFullFs200() = shot("subs-delete-full", fontScale = RV_FS200, whole = false, before = { confirmDeleteFromMenu() }) { Subs { DeleteFails(ErrorCode.StorageFull) } }
+
+    @Test
+    @Config(qualifiers = RV_EN)
+    fun deleteFullEn() = shot("subs-delete-full", english = true, before = { confirmDeleteFromMenu() }) { Subs { DeleteFails(ErrorCode.StorageFull) } }
 
     /** The same from Harbor Cloud's page: its 刪除訂閱 row, then the sheet's 刪除. */
     @Test
@@ -225,6 +236,20 @@ class AppRvSubsShotTest {
     @Test
     @Config(qualifiers = RV_EN)
     fun detailDeleteFailedEn() = shot("sub-detail-delete-failed", english = true, whole = false, before = { confirmDeleteFromPage() }) { Detail(build = { DeleteFails() }) }
+
+    @Test
+    @Config(qualifiers = WHOLE_DETAIL_BANNER)
+    fun detailDeleteFullLight() = shot("sub-detail-delete-full", before = { confirmDeleteFromPage() }) { Detail(build = { DeleteFails(ErrorCode.StorageFull) }) }
+
+    @Test
+    @Config(qualifiers = WHOLE_DETAIL)
+    fun detailDeleteFullFs200() =
+        shot("sub-detail-delete-full", fontScale = RV_FS200, whole = false, before = { confirmDeleteFromPage() }) { Detail(build = { DeleteFails(ErrorCode.StorageFull) }) }
+
+    @Test
+    @Config(qualifiers = RV_EN)
+    fun detailDeleteFullEn() =
+        shot("sub-detail-delete-full", english = true, whole = false, before = { confirmDeleteFromPage() }) { Detail(build = { DeleteFails(ErrorCode.StorageFull) }) }
 
     /** Harbor Cloud's card held where the prototype's finger held it; the menu opens at the finger. */
     @Test fun menuLight() = shot("subs-menu", whole = false, windows = true, before = { holdHarbor() }) { Subs() }
@@ -444,8 +469,8 @@ class AppRvSubsShotTest {
     }
 
     /** The sample, with every delete refused as the core refuses one it cannot write. */
-    private class DeleteFails(private val sample: FakeEngine = rvSampleEngine()) : Engine by sample {
-        override suspend fun removeSubscription(id: String): Result<Unit> = Result.failure(EngineException(ErrorCode.Internal))
+    private class DeleteFails(private val code: ErrorCode = ErrorCode.WriteFailed, private val sample: FakeEngine = rvSampleEngine()) : Engine by sample {
+        override suspend fun removeSubscription(id: String): Result<Unit> = Result.failure(EngineException(code))
     }
 
     private class Answering(private val answer: Answer, private val sample: FakeEngine = rvSampleEngine()) : Engine by sample {
@@ -476,8 +501,8 @@ class AppRvSubsShotTest {
         /** A subscription's page is taller than the phone, as in the prototype's golden. */
         const val WHOLE_DETAIL = "+h1087dp"
 
-        /** The same page with the delete-failure banner over its stats, 147.5 dp taller. */
-        const val WHOLE_DETAIL_BANNER = "+h1235dp"
+        /** The same page with the delete-failure banner over its stats, 175.5 dp taller (its reason takes two lines). */
+        const val WHOLE_DETAIL_BANNER = "+h1263dp"
 
         /** The settings' default interval. */
         val TWELVE_HOURS = MutableStateFlow(12)

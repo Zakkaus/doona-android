@@ -161,9 +161,23 @@ interface Engine {
 /**
  * Codes shared with the core (`plans/v1/core-api.md`). Raw details never reach the UI: they may hold subscription URLs.
  * [LocalNetwork]: the failed connection or download went to an address on the local network, which Android 17 lets doona
- * reach only with the `ACCESS_LOCAL_NETWORK` permission (ARCH D26).
+ * reach only with the `ACCESS_LOCAL_NETWORK` permission (ARCH D26). [StorageFull], [WriteFailed]: `state.json` was not
+ * written, as the disk or the app's quota is full, or for another I/O error.
  */
-enum class ErrorCode { InvalidArgument, NotFound, FetchFailed, TooLarge, ParseFailed, NoNodes, Busy, Internal, LocalNetwork, DnsFailed }
+enum class ErrorCode {
+    InvalidArgument,
+    NotFound,
+    FetchFailed,
+    TooLarge,
+    ParseFailed,
+    NoNodes,
+    Busy,
+    Internal,
+    LocalNetwork,
+    DnsFailed,
+    StorageFull,
+    WriteFailed,
+}
 
 class EngineException(val code: ErrorCode) : Exception(code.name)
 

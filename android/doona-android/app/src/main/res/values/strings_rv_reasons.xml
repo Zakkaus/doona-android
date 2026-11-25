@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Why an engine action failed, one sentence for each ErrorCode (feature/ErrorText.kt reasonRes); a failure
+         banner puts it before what stayed the same, joined by rv_sentences. -->
+    <string name="rv_reason_invalid_argument">The value is not valid.</string>
+    <string name="rv_reason_not_found">It no longer exists.</string>
+    <string name="rv_reason_fetch_failed">Its server did not answer.</string>
+    <string name="rv_reason_too_large">Its content is too large.</string>
+    <string name="rv_reason_parse_failed">Its content could not be read.</string>
+    <string name="rv_reason_no_nodes">It has no nodes.</string>
+    <string name="rv_reason_busy">Another change is in progress.</string>
+    <string name="rv_reason_internal">doona hit an internal error.</string>
+    <string name="rv_reason_local_network">An address on the local network could not be reached.</string>
+    <string name="rv_reason_dns_failed">The DNS lookup failed.</string>
+    <string name="rv_reason_storage_full">The phone\'s storage is full.</string>
+    <string name="rv_reason_write_failed">doona could not write its data file.</string>
+    <string name="rv_sentences">%1$s %2$s</string>
+</resources>

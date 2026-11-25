@@ -24,8 +24,8 @@
     <string name="rv_add_user_agent">User-Agent（可选）</string>
     <string name="rv_add_not_subscription">这个链接返回的内容不是订阅。</string>
     <string name="rv_sub_failed_title">无法更新 %1$s</string>
-    <plurals name="rv_sub_failed_reason">
-        <item quantity="other">订阅的服务器没有响应。当前仍使用上次获取的 %1$d 个节点。</item>
+    <plurals name="rv_sub_kept_nodes">
+        <item quantity="other">当前仍使用上次获取的 %1$d 个节点。</item>
     </plurals>
     <string name="rv_retry">重试</string>
     <string name="rv_empty_subscription">尚未添加订阅</string>

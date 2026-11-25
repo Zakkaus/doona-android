@@ -34,6 +34,10 @@ pub enum ErrorCode {
     /// A local-network dial or fetch failed (Android 17 `ACCESS_LOCAL_NETWORK`, ARCH D26).
     LocalNetwork,
     DnsFailed,
+    /// `state.json` could not be written because the disk or the app's quota is full.
+    StorageFull,
+    /// `state.json` could not be written for any other I/O error.
+    WriteFailed,
 }
 
 impl ErrorCode {
@@ -49,6 +53,17 @@ impl ErrorCode {
             ErrorCode::Internal => "internal",
             ErrorCode::LocalNetwork => "local_network",
             ErrorCode::DnsFailed => "dns_failed",
+            ErrorCode::StorageFull => "storage_full",
+            ErrorCode::WriteFailed => "write_failed",
+        }
+    }
+
+    /// The code of a failed `state.json` write. `internal` stays for broken invariants.
+    pub fn of_write(kind: std::io::ErrorKind) -> ErrorCode {
+        use std::io::ErrorKind::{QuotaExceeded, StorageFull};
+        match kind {
+            StorageFull | QuotaExceeded => ErrorCode::StorageFull,
+            _ => ErrorCode::WriteFailed,
         }
     }
 }

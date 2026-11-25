@@ -4,7 +4,9 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.doona.android.engine.Engine
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Subscription
+import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.model.RvSubscription
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,9 +34,17 @@ internal data class SubDetailUiState(
     val gone: Boolean = false,
 )
 
-internal fun subDetailUiState(id: String, ready: Boolean, subscriptions: List<Subscription>, sheet: RvSubDetailState, autoUpdate: RvAutoUpdate): SubDetailUiState {
+/** The page's state; [notFound]: the core answered a delete with `not_found`, so the subscription is gone already. */
+internal fun subDetailUiState(
+    id: String,
+    ready: Boolean,
+    subscriptions: List<Subscription>,
+    sheet: RvSubDetailState,
+    autoUpdate: RvAutoUpdate,
+    notFound: Boolean = false,
+): SubDetailUiState {
     val sub = subscriptions.firstOrNull { it.id == id }?.let(::rvSubscription)
-    return SubDetailUiState(sub, sheet, autoUpdate, gone = ready && sub == null)
+    return SubDetailUiState(sub, sheet, autoUpdate, gone = notFound || (ready && sub == null))
 }
 
 /**
@@ -49,10 +59,11 @@ internal class SubDetailViewModel(
     private val id: String,
 ) : ViewModel() {
     private val sheet = MutableStateFlow(RvSubDetailState())
+    private val notFound = MutableStateFlow(false)
 
     val uiState: StateFlow<SubDetailUiState> =
-        combine(engine.ready, engine.subscriptions, sheet, updateHours.map(::rvAutoUpdate).onStart { emit(RvAutoUpdate.Unread) }) { ready, subscriptions, sheet, autoUpdate ->
-            subDetailUiState(id, ready, subscriptions, sheet, autoUpdate)
+        combine(engine.ready, engine.subscriptions, sheet, updateHours.map(::rvAutoUpdate).onStart { emit(RvAutoUpdate.Unread) }, notFound) { ready, subscriptions, sheet, autoUpdate, notFound ->
+            subDetailUiState(id, ready, subscriptions, sheet, autoUpdate, notFound)
         }.runningReduce { last, next -> if (next.gone) next.copy(sub = last.sub) else next }
             .stateIn(
                 viewModelScope,
@@ -73,11 +84,15 @@ internal class SubDetailViewModel(
 
     fun setUserAgent(userAgent: String?) = call { engine.setSubscriptionUserAgent(id, userAgent) }
 
-    /** Deletes through the core (重試 on the banner, again); a refusal shows the banner over the page. */
+    /**
+     * Deletes through the core (重試 on the banner, again); a refusal shows the banner over the page, saying why.
+     * `not_found` means it is gone already: the page leaves with no banner.
+     */
     fun delete() {
-        sheet.update { it.copy(deleteFailed = false) }
+        sheet.update { it.copy(deleteFailed = null) }
         viewModelScope.launch {
-            if (engine.removeSubscription(id).isFailure) sheet.update { it.copy(deleteFailed = true) }
+            val code = engine.removeSubscription(id).exceptionOrNull()?.errorCode() ?: return@launch
+            if (code == ErrorCode.NotFound) notFound.value = true else sheet.update { it.copy(deleteFailed = code) }
         }
     }
 

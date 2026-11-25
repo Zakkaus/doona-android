@@ -36,10 +36,15 @@ import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rememberRvFormat
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.reasonRes
 
-/** Why an import failed, as the core tells them apart: no answer, not a subscription, over the 8 MiB bound. */
-internal enum class RvAddFailure { Unreachable, NotSubscription, TooLarge }
+/**
+ * Why an import failed, as the core tells them apart: no answer, not a subscription, over the 8 MiB bound, or the
+ * subscription read but not saved ([code], said through [reasonRes]).
+ */
+internal enum class RvAddFailure(val code: ErrorCode? = null) { Unreachable, NotSubscription, TooLarge, StorageFull(ErrorCode.StorageFull), WriteFailed(ErrorCode.WriteFailed) }
 
 /** Where an import stands: being typed, downloading, done with its subscription, or failed. */
 @Immutable
@@ -187,6 +192,7 @@ private fun failure(failure: RvAddFailure, onRetry: () -> Unit): RvNotice {
         RvAddFailure.Unreachable -> stringResource(R.string.rv_add_unreachable)
         RvAddFailure.NotSubscription -> stringResource(R.string.rv_add_not_subscription_reason)
         RvAddFailure.TooLarge -> stringResource(R.string.rv_add_too_large, rememberRvFormat().mebibytes(BuildConfig.SUBSCRIPTION_MAX_BODY_BYTES).unbroken())
+        RvAddFailure.StorageFull, RvAddFailure.WriteFailed -> stringResource(checkNotNull(failure.code).reasonRes())
     }
     return RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_add_failed), reason, stringResource(R.string.rv_retry), onRetry)
 }

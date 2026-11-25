@@ -229,7 +229,7 @@ fn a_rejected_reload_keeps_score_evidence_and_authority() {
     std::fs::create_dir(&temp).unwrap();
     feeds.set("/sub", b"socks5://127.0.0.1:1#replacement");
     let reload = || call(&core, "updateSubscription", json!({"id":"s1"}));
-    assert_eq!(reload(), Err(ErrorCode::Internal));
+    assert_eq!(reload(), Err(ErrorCode::WriteFailed));
     assert_eq!(score().manager.score_cache_snapshot().exact_cells, cells);
     dial(&route(&core, dst));
     assert_eq!(score().manager.score_state().root_business_starts(), 2);

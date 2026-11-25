@@ -106,7 +106,10 @@ private fun JsonObjectBuilder.copyNumber(source: JsonObject, key: String) {
     if (value == JsonNull || (!value.isString && value.longOrNull != null)) put(key, value)
 }
 
-private val CORE_ERROR_CODES = setOf("invalid_argument", "not_found", "fetch_failed", "too_large", "parse_failed", "no_nodes", "busy", "internal", "local_network")
+private val CORE_ERROR_CODES = setOf(
+    "invalid_argument", "not_found", "fetch_failed", "too_large", "parse_failed", "no_nodes", "busy", "internal", "local_network",
+    "storage_full", "write_failed",
+)
 private val IO_CODES = setOf("not_found", "permission_denied", "storage_full", "read_only", "invalid_data", "timed_out", "io")
 private val EVENT_CODES = CORE_ERROR_CODES + IO_CODES
 private val CORE_LEVELS = setOf("error", "warn", "info", "debug")

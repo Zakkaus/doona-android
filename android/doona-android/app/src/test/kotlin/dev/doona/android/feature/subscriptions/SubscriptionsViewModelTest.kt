@@ -115,8 +115,20 @@ class SubscriptionsViewModelTest {
     @Test
     fun `the core's report of a failed refresh shows the banner too`() = runTest {
         val engine = FakeEngine()
-        engine.subscriptions.value = engine.subscriptions.value.mapIndexed { i, sub -> if (i == 0) sub.copy(error = "FetchFailed") else sub }
-        assertEquals(engine.subscriptions.value[0].id, list(engine).uiState.value.page.failedId)
+        engine.subscriptions.value = engine.subscriptions.value.mapIndexed { i, sub -> if (i == 0) sub.copy(error = "TooLarge") else sub }
+        val page = list(engine).uiState.value.page
+        assertEquals(engine.subscriptions.value[0].id, page.failedId)
+        assertEquals(ErrorCode.TooLarge, page.failedCode)
+    }
+
+    @Test
+    fun `a failed update's banner says why`() = runTest {
+        for (code in listOf(ErrorCode.FetchFailed, ErrorCode.StorageFull, ErrorCode.WriteFailed)) {
+            val engine = Failing().apply { failing = code }
+            val vm = list(engine)
+            vm.update(engine.subscriptions.value.first().id)
+            assertEquals(code, vm.uiState.value.page.failedCode)
+        }
     }
 
     @Test
@@ -162,12 +174,42 @@ class SubscriptionsViewModelTest {
         val engine = Failing().apply { failing = ErrorCode.Internal }
         val vm = detail(engine, engine.subscriptions.value.first().id)
         vm.delete()
-        assertTrue(vm.uiState.value.sheet.deleteFailed)
+        assertEquals(ErrorCode.Internal, vm.uiState.value.sheet.deleteFailed)
         assertFalse(vm.uiState.value.gone)
         engine.failing = null
         vm.delete()
-        assertFalse(vm.uiState.value.sheet.deleteFailed)
+        assertNull(vm.uiState.value.sheet.deleteFailed)
         assertTrue(vm.uiState.value.gone)
+    }
+
+    @Test
+    fun `a refused delete's banner says why, on the list and on the subscription's page`() = runTest {
+        for (code in listOf(ErrorCode.StorageFull, ErrorCode.WriteFailed, ErrorCode.Busy)) {
+            val engine = Failing().apply { failing = code }
+            val id = engine.subscriptions.value.first().id
+            val vm = list(engine)
+            vm.confirmDelete(id)
+            assertEquals(id, vm.uiState.value.page.deleteFailedId)
+            assertEquals(code, vm.uiState.value.page.deleteFailedCode)
+            val page = detail(engine, id)
+            page.delete()
+            assertEquals(code, page.uiState.value.sheet.deleteFailed)
+        }
+    }
+
+    @Test
+    fun `a delete the core answers not_found is gone already, with no banner`() = runTest {
+        // The engine still lists it, as before the snapshot that drops it.
+        val engine = Failing().apply { failing = ErrorCode.NotFound }
+        val id = engine.subscriptions.value.first().id
+        val vm = list(engine)
+        vm.confirmDelete(id)
+        assertNull(vm.uiState.value.page.deleteFailedId)
+        assertTrue(vm.uiState.value.page.subscriptions.none { it.id == id })
+        val page = detail(engine, id)
+        page.delete()
+        assertNull(page.uiState.value.sheet.deleteFailed)
+        assertTrue(page.uiState.value.gone)
     }
 
     @Test

@@ -33,14 +33,19 @@ internal fun rvSubFormat(format: SubscriptionFormat): RvSubFormat = when (format
 }
 
 /**
- * Why an import failed, in the three reasons the page tells apart: the body was over the core's bound; the body was
- * read but held no subscription ([ErrorCode.ParseFailed], [ErrorCode.NoNodes]); or anything else, which leaves the
- * link and the network to check, the local network refused included.
+ * Why an import failed, in the reasons the page tells apart: the body was over the core's bound; the body was
+ * read but held no subscription ([ErrorCode.ParseFailed], [ErrorCode.NoNodes]); the subscription not saved
+ * ([ErrorCode.StorageFull], [ErrorCode.WriteFailed]); or anything else, which leaves the link and the network to
+ * check, the local network refused included.
  */
 internal fun rvAddFailure(code: ErrorCode): RvAddFailure = when (code) {
     ErrorCode.TooLarge -> RvAddFailure.TooLarge
 
     ErrorCode.ParseFailed, ErrorCode.NoNodes -> RvAddFailure.NotSubscription
+
+    ErrorCode.StorageFull -> RvAddFailure.StorageFull
+
+    ErrorCode.WriteFailed -> RvAddFailure.WriteFailed
 
     ErrorCode.InvalidArgument, ErrorCode.NotFound, ErrorCode.FetchFailed, ErrorCode.Busy, ErrorCode.Internal,
     ErrorCode.LocalNetwork, ErrorCode.DnsFailed,
