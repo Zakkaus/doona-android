@@ -166,11 +166,10 @@ class SubscriptionFlowsTest {
 
         compose.onNodeWithContentDescription(string(R.string.ui_back)).performClick()
         compose.onNodeWithText(string(R.string.rv_add_subscription)).performClick()
-        // The import in flight is still the page's; if the form is offered again, a second 新增 joins it.
-        compose.onAllNodes(hasSetTextAction() and isEnabled()).fetchSemanticsNodes().firstOrNull()?.let { typeUrl() }
-        if (compose.onAllNodes(hasText(string(R.string.rv_add_import)) and isEnabled()).fetchSemanticsNodes().isNotEmpty()) {
-            compose.onNodeWithText(string(R.string.rv_add_import)).performClick()
-        }
+        // The import in flight is still the page's: it shows the import running, with no field or 新增 to start another.
+        compose.onNodeWithText(string(R.string.rv_add_importing)).assertExists()
+        compose.onAllNodes(hasSetTextAction() and isEnabled()).assertCountEquals(0)
+        compose.onAllNodes(hasText(string(R.string.rv_add_import)) and isEnabled()).assertCountEquals(0)
 
         compose.runOnIdle { gate.complete(Unit) }
         compose.waitForIdle()

@@ -8,6 +8,7 @@ import dev.doona.android.engine.SubscriptionFetch
 import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.model.RvSubFormat
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -40,8 +41,12 @@ class SubscriptionsViewModelTest {
         var failing: ErrorCode? = null
         val updated = mutableListOf<String>()
 
+        /** Holds each update until completed. */
+        var gate = CompletableDeferred(Unit)
+
         override suspend fun updateSubscription(id: String): Result<Subscription> {
             updated += id
+            gate.await()
             return failing?.let { Result.failure(EngineException(it)) } ?: fake.updateSubscription(id)
         }
 
@@ -80,6 +85,31 @@ class SubscriptionsViewModelTest {
         vm.update(id)
         assertNull(vm.uiState.value.page.failedId)
         assertEquals(listOf(id, id), engine.updated)
+    }
+
+    @Test
+    fun `an update in flight keeps its card's bar until it ends`() = runTest {
+        val two = FakeEngine().apply { subscriptions.value += subscriptions.value.single().copy(id = "s2", name = "second") }
+        val engine = Failing(two).apply { gate = CompletableDeferred() }
+        val vm = list(engine)
+        val (first, second) = engine.subscriptions.value.map { it.id }
+        vm.update(first)
+        assertEquals(setOf(first), vm.uiState.value.updating)
+        engine.gate.complete(Unit)
+        assertEquals(emptySet<String>(), vm.uiState.value.updating)
+
+        engine.gate = CompletableDeferred()
+        vm.updateAll()
+        assertEquals(setOf(first, second), vm.uiState.value.updating)
+        engine.gate.complete(Unit)
+        assertEquals(emptySet<String>(), vm.uiState.value.updating)
+    }
+
+    @Test
+    fun `an update whose subscription is gone has no bar`() {
+        val sub = FakeEngine().subscriptions.value.single()
+        val state = subsUiState(true, listOf(sub), SubsLocal(updating = setOf(sub.id, "gone")), NOW)
+        assertEquals(setOf(sub.id), state.updating)
     }
 
     @Test
