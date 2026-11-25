@@ -60,8 +60,9 @@ internal fun ActivityPage(viewModel: ActivityViewModel, crashOffer: CrashOffer?,
     val ui = rememberHeldWhileCovered(pull) { live }
     val onAction = viewModel::onAction
     val page = remember(routes, onAction) { pageRoutes(routes) { onAction(ActivityAction.TestLatency) } }
-    if (ui.notice == RvActivityNotice.Crash && crashOffer != null) {
+    if (ui.failure == null && ui.notice == RvActivityNotice.Crash && crashOffer != null) {
         // The offer reached the screen: it is not made again for this crash, even if the user leaves without exporting.
+        // A failed action's banner takes the notice's place, so the offer is not shown while one stands.
         LaunchedEffect(crashOffer) { withContext(Dispatchers.IO) { crashOffer.shown() } }
     }
     val failure = ui.failure
