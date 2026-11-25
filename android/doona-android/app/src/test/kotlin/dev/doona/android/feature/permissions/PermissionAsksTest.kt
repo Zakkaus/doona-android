@@ -133,6 +133,32 @@ class PermissionAsksTest {
     }
 
     @Test
+    fun aConnectDuringTheNotificationsExplanationWaitsBehindIt() {
+        status(running = true)
+        assertEquals("a 連線 from the tile", PermissionStep.Wait, asks.connect(consentNeeded = true))
+        assertEquals("the notification's explanation stays", Permission.Notify, asks.showing.value)
+        val restored = afterProcessDeath()
+        restored.dismiss()
+        assertEquals("the VPN's comes next", Permission.Vpn, restored.showing.value)
+        assertEquals(PermissionStep.AskConsent, restored.confirm())
+        assertNull(restored.showing.value)
+        status(running = true, on = restored)
+        assertEquals(1, records)
+    }
+
+    @Test
+    fun theNotificationsContinueStillLeadsToTheWaitingVpnExplanation() {
+        status(running = true)
+        asks.connect(consentNeeded = true)
+        assertEquals(PermissionStep.AskNotify, asks.confirm())
+        assertEquals(Permission.Vpn, asks.showing.value)
+        asks.dismiss()
+        assertNull(asks.showing.value)
+        assertEquals("the 連線 ended with its explanation", PermissionStep.Wait, asks.connect(consentNeeded = true))
+        assertEquals(Permission.Vpn, asks.showing.value)
+    }
+
+    @Test
     fun anAnswerThatCannotBeStoredIsKeptAndStoredNextTime() {
         status(running = true)
         asks.dismiss()

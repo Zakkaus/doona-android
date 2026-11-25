@@ -27,11 +27,12 @@ fun interface NotifyState {
  * the user answers, in the explanation or in the system's dialog; [unrecorded] holds that answer until [onStatus] has
  * stored it, so neither an activity that dies before the explanation shows nor one that dies before the store loses it.
  *
- * [showing] is the explanation on screen. [refused] is the last refusal in a system dialog, which 活動 tells
- * (`RvActivityNotice.ConsentDenied`, `NotifyDenied`) until the next connection starts or [clearRefusal]. A pending
- * request ([connect] to the consent's answer) is joined by a repeated tap or a redelivered intent. [showing] and the
- * pending request are saved with the activity, because a pending result is delivered to the recreated one, and so are
- * the notification's open dialog and its unrecorded answer.
+ * [showing] is the explanation on screen; one asked for while another shows waits behind it and shows when it closes,
+ * so a 連線 from the tile does not take the notification's explanation away. [refused] is the last refusal in a system
+ * dialog, which 活動 tells (`RvActivityNotice.ConsentDenied`, `NotifyDenied`) until the next connection starts or
+ * [clearRefusal]. A pending request ([connect] to the consent's answer) is joined by a repeated tap or a redelivered
+ * intent. [showing], the waiting explanation and the pending request are saved with the activity, because a pending
+ * result is delivered to the recreated one, and so are the notification's open dialog and its unrecorded answer.
  */
 class PermissionAsks(private val saved: SavedStateHandle) {
     val showing: StateFlow<Permission?> = saved.getStateFlow(KEY_SHOWING, null)
@@ -61,20 +62,20 @@ class PermissionAsks(private val saved: SavedStateHandle) {
         refusal.value = null
         if (!consentNeeded) return PermissionStep.Connect
         connecting = true
-        saved[KEY_SHOWING] = Permission.Vpn
+        show(Permission.Vpn)
         return PermissionStep.Wait
     }
 
     /** The explanation's 繼續: the system's dialog for the permission explained. */
     fun confirm(): PermissionStep = when (showing.value) {
         Permission.Vpn -> {
-            saved[KEY_SHOWING] = null
+            next()
             PermissionStep.AskConsent
         }
 
         Permission.Notify -> {
             notifyOpen = true
-            saved[KEY_SHOWING] = null
+            next()
             PermissionStep.AskNotify
         }
 
@@ -88,7 +89,7 @@ class PermissionAsks(private val saved: SavedStateHandle) {
             Permission.Notify -> saved[KEY_UNRECORDED] = true
             null -> Unit
         }
-        saved[KEY_SHOWING] = null
+        next()
     }
 
     /** The system's consent dialog answered; given, the activity connects. */
@@ -117,11 +118,22 @@ class PermissionAsks(private val saved: SavedStateHandle) {
             saved[KEY_UNRECORDED] = false
         }
         if (!running || !free() || !notify.needsAsking() || !free()) return
-        saved[KEY_SHOWING] = Permission.Notify
+        show(Permission.Notify)
     }
 
-    /** Nothing is explained and the notification is neither asked nor waiting to be stored. */
-    private fun free() = showing.value == null && !notifyOpen && !unrecorded.value
+    /** Nothing is explained or waiting, and the notification is neither asked nor waiting to be stored. */
+    private fun free() = showing.value == null && saved.get<Permission>(KEY_QUEUED) == null && !notifyOpen && !unrecorded.value
+
+    /** [permission]'s explanation, at once if none shows, else after the one that does. */
+    private fun show(permission: Permission) {
+        if (showing.value == null) saved[KEY_SHOWING] = permission else saved[KEY_QUEUED] = permission
+    }
+
+    /** The explanation on screen closes; the one waiting, if any, takes its place. */
+    private fun next() {
+        saved[KEY_SHOWING] = saved.get<Permission>(KEY_QUEUED)
+        saved[KEY_QUEUED] = null
+    }
 
     fun clearRefusal() {
         refusal.value = null
@@ -129,6 +141,7 @@ class PermissionAsks(private val saved: SavedStateHandle) {
 
     private companion object {
         const val KEY_SHOWING = "permission_showing"
+        const val KEY_QUEUED = "permission_queued"
         const val KEY_CONNECTING = "connecting"
         const val KEY_NOTIFY_OPEN = "notify_open"
         const val KEY_UNRECORDED = "notify_unrecorded"
