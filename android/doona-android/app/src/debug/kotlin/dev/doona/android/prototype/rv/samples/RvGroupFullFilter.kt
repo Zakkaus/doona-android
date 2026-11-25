@@ -6,6 +6,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvChipPick
 import dev.doona.android.designsystem.rv.RvMenuItem
 import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.designsystem.rv.rvShownName
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvSubscription
