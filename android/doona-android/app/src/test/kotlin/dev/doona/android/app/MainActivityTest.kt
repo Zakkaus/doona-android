@@ -252,8 +252,32 @@ class MainActivityTest {
         // A destroyed activity's launcher is unregistered, so launch() throws.
         controller.pause().stop().destroy()
         activity.onPermissionStep(step)
+        assertEquals("told as a refused consent", Permission.Vpn, asks.refused.value)
         assertEquals("the 連線 ended, so the next one explains again", PermissionStep.Wait, asks.connect(consentNeeded = true))
         assertEquals(Permission.Vpn, asks.showing.value)
+    }
+
+    @Test
+    fun `a consent answered while the connection is up lets the waiting notification explanation show`() {
+        ShadowVpnService.setPrepareResult(null)
+        val controller = Robolectric.buildActivity(MainActivity::class.java, connect).setup()
+        val activity = controller.get()
+        val asks = activity.asks()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(Status.Running(sinceEpochMs = 0), app.container.engine.status.value)
+        assertNull(asks.showing.value)
+        // The permission is taken away while the connection runs, and the tile finds the consent gone.
+        shadowOf(app).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        ShadowVpnService.setPrepareResult(Intent("dev.doona.test.CONSENT"))
+        controller.newIntent(connect)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(Permission.Vpn, asks.showing.value)
+        val shadow = shadowOf(activity)
+        activity.onPermissionStep(asks.confirm())
+        shadow.receiveResult(shadow.nextStartedActivityForResult.intent, Activity.RESULT_OK, null)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals("no new status follows, the answer itself runs onStatus", Permission.Notify, asks.showing.value)
+        controller.close()
     }
 
     @Test

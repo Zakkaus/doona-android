@@ -239,6 +239,18 @@ class PermissionAsksTest {
     }
 
     @Test
+    fun aConsentAnsweredWhileTheConnectionRunsLetsTheNotificationShowOnTheNextStatusRun() {
+        asks.connect(consentNeeded = true)
+        status(running = true)
+        asks.confirm()
+        assertTrue(asks.pending.value)
+        asks.consentAnswered(given = true)
+        assertFalse("the activity runs onStatus again on this change", asks.pending.value)
+        status(running = true)
+        assertEquals(Permission.Notify, asks.showing.value)
+    }
+
+    @Test
     fun theNotificationWaitsForTheConnectionWhileTheConsentIsPending() {
         asks.connect(consentNeeded = true)
         status(running = true)
@@ -278,12 +290,14 @@ class PermissionAsksTest {
     }
 
     @Test
-    fun aConsentDialogThatCouldNotOpenEndsTheConnectAndShowsNothingOverIt() {
+    fun aConsentDialogThatCouldNotOpenEndsTheConnectIsToldAndShowsNothingOverIt() {
         asks.connect(consentNeeded = true)
         assertEquals(PermissionStep.AskConsent, asks.confirm())
         assertEquals("pending until it opens", PermissionStep.Wait, asks.connect(consentNeeded = true))
         asks.consentLaunchFailed()
         assertNull(asks.showing.value)
+        assertEquals("told as a refused consent", Permission.Vpn, asks.refused.value)
+        assertFalse(asks.pending.value)
         assertEquals("the next 連線 explains again", PermissionStep.Wait, asks.connect(consentNeeded = true))
         assertEquals(Permission.Vpn, asks.showing.value)
     }

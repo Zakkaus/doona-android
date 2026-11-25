@@ -158,7 +158,11 @@ class MainActivity : ComponentActivity() {
         }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                combine(engine.status, asks.unrecorded, asks.showing) { status, _, _ -> status is Status.Running }.collect { running ->
+                // Each input can end what held a waiting explanation back, so each runs onStatus again.
+                val changes = combine(engine.status, asks.unrecorded, asks.showing, asks.pending) { status, _, _, _ ->
+                    status is Status.Running
+                }
+                changes.collect { running ->
                     try {
                         asks.onStatus(running, notify, settings::recordNotifyAsked)
                     } catch (e: IOException) {
