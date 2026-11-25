@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use super::staged::{LIMITS, Tree};
 use super::store::STAGING;
-use super::{HonkConfig, HonkStore, StoreError};
+use super::{HonkConfig, HonkConfigError, HonkStore, StoreError};
 use crate::state::{sync_dir, write_synced};
 
 const ENTRY: &str = "config.dae";
@@ -50,6 +50,13 @@ impl Tree {
             fs::create_dir_all(dest.parent().unwrap())?;
             write_synced(&dest, text.as_bytes())?;
             directories.extend(parents(path, root));
+        }
+        // Recreate the link itself; its target is never read.
+        for link in &self.kept {
+            let dest = dir.join(link.strip_prefix(root).unwrap());
+            fs::create_dir_all(dest.parent().unwrap())?;
+            std::os::unix::fs::symlink(fs::read_link(link)?, dest)?;
+            directories.extend(parents(link, root));
         }
         for parent in directories.into_iter().rev() {
             sync_dir(&dir.join(parent.strip_prefix(root).unwrap()))?;
@@ -99,12 +106,16 @@ impl HonkStore {
     }
 
     /// Import the entry and its sources from its containing directory. The caller must
-    /// keep that directory unchanged until import returns. Invalid source remains editable.
+    /// keep that directory unchanged until import returns. Invalid honk remains editable;
+    /// an escaping include or hosts file is a located record in the draft, not a refusal.
     pub fn import(&mut self, entry: &Path) -> Result<u64, StoreError> {
         if entry.is_symlink() {
             return Err(StoreError::ImportSymlink(entry.into()));
         }
         let mut tree = Tree::read(entry)?;
+        if tree.foreign_entry() {
+            return Err(HonkConfigError::NonNativeSource.into());
+        }
         tree.capture_companions(None)?;
         self.stage(Some(tree))
     }
