@@ -24,12 +24,14 @@ import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.data.settings.PerAppSettings
 import dev.doona.android.engine.AppPolicy
 import dev.doona.android.engine.FailureReason
+import dev.doona.android.engine.NetworkState
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.Status
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.job
 import kotlinx.coroutines.runBlocking
@@ -372,7 +374,7 @@ class DoonaVpnServiceTest {
             val opener = CoreOpener(core, { noBackupFilesDir.path }, io)
             val perApp = PerAppSettings.create(this)
             val controller = TunnelController(core, opener, { perApp.perApp.first() }, scope, killProcess = {}, endDebugCapture = {}, expireDebugCapture = { null })
-            return ServiceEngine(core, opener, controller, perApp, { DoonaVpnService.start(this, it) }, io, scope, { null })
+            return ServiceEngine(core, opener, controller, perApp, MutableStateFlow(NetworkState()), { DoonaVpnService.start(this, it) }, io, scope, { null })
                 .also { it.launch(lane, getSystemService(ConnectivityManager::class.java)) }
         }
     }

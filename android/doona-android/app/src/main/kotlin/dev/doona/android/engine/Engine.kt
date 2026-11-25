@@ -36,6 +36,12 @@ interface Engine {
      */
     val warning: StateFlow<ErrorCode?>
 
+    /**
+     * The default network with internet capability as Android reports it to doona, which stays outside its own tunnel;
+     * offline when there is none. It does not depend on the tunnel's status.
+     */
+    val network: StateFlow<NetworkState>
+
     /** Starts the tunnel. The caller has already obtained VPN consent: `VpnService.prepare` returned null. */
     fun connect()
 

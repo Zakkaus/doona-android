@@ -12,6 +12,7 @@ import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
+import dev.doona.android.engine.NetworkState
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RebuildFailedException
 import dev.doona.android.engine.RuleOptions
@@ -27,6 +28,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
@@ -104,7 +106,7 @@ class ServiceEngineTest {
         }
         val perAppSettings = PerAppSettings(store)
         val controller = TunnelController(core, opener, { perAppSettings.perApp.first() }, scope, killProcess = {}, endDebugCapture = {}, expireDebugCapture = { null })
-        ServiceEngine(core, opener, controller, perAppSettings, { dispatch(it) }, io, scope, expireDebugCapture = { null }, perAppRetryMs = 50)
+        ServiceEngine(core, opener, controller, perAppSettings, MutableStateFlow(NetworkState()), { dispatch(it) }, io, scope, expireDebugCapture = { null }, perAppRetryMs = 50)
     }
 
     @After

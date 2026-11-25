@@ -15,6 +15,7 @@ import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.LatencyTest
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
+import dev.doona.android.engine.NetworkState
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RecentFlow
@@ -25,6 +26,7 @@ import dev.doona.android.engine.TrafficSeries
 import dev.doona.android.report.AppEvents
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -517,7 +519,7 @@ class EngineTelemetryTest {
             expireDebugCapture = expireDebugCapture,
             clock = { testScheduler.currentTime },
         )
-        return ServiceEngine(core, opener, controller, settings, { true }, dispatcher, backgroundScope, expireDebugCapture)
+        return ServiceEngine(core, opener, controller, settings, MutableStateFlow(NetworkState()), { true }, dispatcher, backgroundScope, expireDebugCapture)
             .also { it.launch(dispatcher, connectivity) }
     }
 
