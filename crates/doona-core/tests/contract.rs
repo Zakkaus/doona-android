@@ -39,6 +39,8 @@ fn catalog_member_locations() {
     let state = serde_json::json!({
         "stateVersion": 1, "mode": "Global",
         "subscriptions": [{"id":"s1", "name":"sample", "url":"https://example.invalid",
+            "format":"share_links", "updatedAtEpochMs":1, "usedBytes":null, "totalBytes":null,
+            "expiresAtEpochMs":null, "error":null, "document":null, "userAgent":null,
             "links":["socks5://192.0.2.1:1080#JP-NRT", "socks5://192.0.2.2:1080#anonymous",
                      "socks5://192.0.2.3:1080#DE"]}],
         "staticNodes": [{"id":"n-static", "name":"Dallas", "link":"socks5://192.0.2.4:1080"}]
