@@ -30,7 +30,8 @@ import dev.doona.android.designsystem.rv.RvShared
  * The app's pages: [backStack] (活動 first, the page on top last) shown by Navigation 3's [NavDisplay] with RV's
  * transitions ([rvSceneMove]). Each entry gets its own saved state and ViewModels, which Navigation 3 clears only once
  * the entry is off the stack and its exit has finished; the stack itself is the caller's, saved with the activity
- * (`rememberNavBackStack`), so it survives process death.
+ * (`rememberNavBackStack`), so it survives process death. A stack restored with a page [entries] has no entry for,
+ * such as one another version of the app saved, falls back to its tab's root ([keepRouted]) before anything shows.
  *
  * Back pops the top page, following the finger while a predictive back gesture runs; a cancelled gesture runs the
  * page back and pops nothing, a committed one pops once: a second back while the popped page still leaves pops
@@ -45,9 +46,12 @@ import dev.doona.android.designsystem.rv.RvShared
 internal fun RvNavHost(backStack: MutableList<NavKey>, modifier: Modifier = Modifier, entries: EntryProviderScope<NavKey>.() -> Unit) {
     val motion = Rv.motion
     val shift = with(LocalDensity.current) { RvMotion.axisShift.roundToPx() }
-    val moves = remember { RvTabMoves(backStack.toList()) }
+    val provider = entryProvider(fallback = ::rvUnrouted, builder = entries)
+    val moves = remember(backStack) {
+        backStack.keepRouted { key -> RV_UNROUTED !in provider(key).metadata }
+        RvTabMoves(backStack.toList())
+    }
     moves.see(backStack.toList())
-    val provider = entryProvider(builder = entries)
     CompositionLocalProvider(LocalRvNav provides APP_NAV) {
         SharedTransitionLayout(modifier) {
             val rv = remember(this) { rvEntryDecorator(this, moves) }
@@ -64,6 +68,14 @@ internal fun RvNavHost(backStack: MutableList<NavKey>, modifier: Modifier = Modi
         }
     }
 }
+
+/**
+ * What the host's provider gives a key [RvNavHost]'s entries do not route: an entry marked [RV_UNROUTED], so the host
+ * can drop the key from a restored stack, and that fails as an unknown key always did if it is ever shown.
+ */
+private fun rvUnrouted(key: NavKey): NavEntry<NavKey> = NavEntry(key, metadata = mapOf(RV_UNROUTED to true)) { error("No page for $key") }
+
+private const val RV_UNROUTED = "dev.doona.android.app.unrouted"
 
 /** [entry] with its [key] in its metadata, so a transition can tell which page and which tab each scene shows. */
 private fun rvKeyed(key: NavKey, entry: NavEntry<NavKey>): NavEntry<NavKey> = NavEntry(key, entry.contentKey, entry.metadata + (RV_NAV_KEY to key)) { entry.Content() }

@@ -129,6 +129,17 @@ fun MutableList<NavKey>.reselectTab(): Boolean {
     return true
 }
 
+/**
+ * Keeps the stack to pages the app has: if any key has no page ([routed] false), such as one another version of the
+ * app saved, the stack falls back to its tab's root (to 活動 if that root has no page either).
+ */
+fun MutableList<NavKey>.keepRouted(routed: (NavKey) -> Boolean) {
+    if (all(routed)) return
+    val tab = currentTab(this)
+    val root = if (tab != Tab.Activity && routed(tab.key)) 2 else 1
+    while (size > root) removeAt(lastIndex)
+}
+
 /** [selectTab] by the RV bar's id ([RvNavItem.id]); an id the app does not ship changes nothing. */
 internal fun MutableList<NavKey>.selectTab(navId: Int) {
     Tab.entries.firstOrNull { it.navId == navId }?.let { selectTab(it) }

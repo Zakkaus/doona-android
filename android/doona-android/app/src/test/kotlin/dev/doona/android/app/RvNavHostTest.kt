@@ -71,6 +71,7 @@ class RvNavHostTest {
     private val cleared = mutableListOf<String>()
     private val tabEntries = mutableListOf<Pair<String, Boolean>>()
     private var serial = 0
+    private var routesRules = true
 
     @Composable
     private fun Host(start: List<NavKey>) {
@@ -85,6 +86,7 @@ class RvNavHostTest {
                 entry<GroupKey> { key -> Page("group ${key.groupId}") }
                 entry<NodeSearchKey> { Page("search") }
                 entry<NodesKey> { Picker("nodes") }
+                if (routesRules) entry<RulesKey> { Page("rules") }
             }
         }
     }
@@ -220,6 +222,37 @@ class RvNavHostTest {
         assertEquals("the page on top keeps its state", group, stateOf("group g"))
         onUi { back.onBackPressed() }
         assertEquals("so does the page under it", policies, stateOf("policies"))
+    }
+
+    @Test
+    fun aRestoredPageTheAppHasNoEntryForFallsBackToItsTabsRoot() {
+        val restoration = StateRestorationTester(compose)
+        restoration.setContent { Host(listOf(ActivityKey)) }
+        onUi { stack.selectTab(Tab.Policies) }
+        onUi { stack.push(GroupKey("g")) }
+        onUi { stack.push(RulesKey) }
+        assertEquals(1, shown("rules"))
+
+        routesRules = false
+        restoration.emulateSavedInstanceStateRestore()
+        compose.waitForIdle()
+
+        assertEquals(listOf(ActivityKey, PoliciesKey), stack.toList())
+        assertEquals(1, shown("policies"))
+    }
+
+    @Test
+    fun aStackWithAKeyWithoutAPageFallsBackToItsTabsRoot() {
+        val routed = setOf<NavKey>(ActivityKey, PoliciesKey, GroupKey("g"))
+        val onActivity = mutableListOf<NavKey>(ActivityKey, GroupKey("g"), RulesKey)
+        onActivity.keepRouted { it in routed }
+        assertEquals(listOf<NavKey>(ActivityKey), onActivity)
+        val onSettings = mutableListOf<NavKey>(ActivityKey, SettingsKey, GroupKey("g"))
+        onSettings.keepRouted { it in routed }
+        assertEquals("a tab root without a page falls back to 活動", listOf<NavKey>(ActivityKey), onSettings)
+        val whole = mutableListOf<NavKey>(ActivityKey, PoliciesKey, GroupKey("g"))
+        whole.keepRouted { it in routed }
+        assertEquals("a stack of pages the app has is kept", listOf(ActivityKey, PoliciesKey, GroupKey("g")), whole)
     }
 
     @Test
