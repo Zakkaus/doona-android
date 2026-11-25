@@ -74,9 +74,9 @@ class RvSubsShotTest {
 
     @Test fun listDark() = shot("subs", true) { List() }
 
-    @Test fun failedLight() = shot("subs-failed", false) { List(rvSubsStateSample(failedId = HARBOR.id)) }
+    @Test fun failedLight() = shot("subs-failed", false) { List(rvSubsStateSample(failed = rvFetchFailedSample(HARBOR.id))) }
 
-    @Test fun failedDark() = shot("subs-failed", true) { List(rvSubsStateSample(failedId = HARBOR.id)) }
+    @Test fun failedDark() = shot("subs-failed", true) { List(rvSubsStateSample(failed = rvFetchFailedSample(HARBOR.id))) }
 
     @Test fun menuLight() = shot("subs-menu", false, whole = false) { Menu() }
 

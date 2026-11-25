@@ -34,7 +34,7 @@ import dev.doona.android.designsystem.rv.RvText
 /**
  * The first run: one page saying what doona does, and 新增訂閱. 活動's header, idle (the grey dot map, no place marked),
  * carries the mark, the large title and one line where 活動 has its hero; then a card of three rows, one strength each
- * (its own core, TCP and UDP each picking a node, 10 Gbps), as 設定's rows without a chevron. The page asks for nothing.
+ * (its own core, TCP/UDP each picking a node, 10 Gbps), as 設定's rows without a chevron. The page asks for nothing.
  */
 @Composable
 internal fun RvWelcome(onAdd: () -> Unit) {

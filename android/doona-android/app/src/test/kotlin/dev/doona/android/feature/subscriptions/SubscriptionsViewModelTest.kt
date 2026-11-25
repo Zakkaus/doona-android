@@ -36,7 +36,7 @@ class SubscriptionsViewModelTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    /** [FakeEngine] whose updates and deletes fail with [failing] while it is set. */
+    /** [FakeEngine] whose updates, renames, User-Agents and deletes fail with [failing] while it is set. */
     private class Failing(val fake: FakeEngine = FakeEngine()) : Engine by fake {
         var failing: ErrorCode? = null
         val updated = mutableListOf<String>()
@@ -52,6 +52,12 @@ class SubscriptionsViewModelTest {
 
         override suspend fun removeSubscription(id: String): Result<Unit> =
             failing?.let { Result.failure(EngineException(it)) } ?: fake.removeSubscription(id)
+
+        override suspend fun renameSubscription(id: String, name: String): Result<Subscription> =
+            failing?.let { Result.failure(EngineException(it)) } ?: fake.renameSubscription(id, name)
+
+        override suspend fun setSubscriptionUserAgent(id: String, userAgent: String?): Result<Subscription> =
+            failing?.let { Result.failure(EngineException(it)) } ?: fake.setSubscriptionUserAgent(id, userAgent)
     }
 
     private fun TestScope.list(engine: Engine) = SubscriptionsViewModel(engine, clock = { NOW }).also { vm ->
@@ -79,11 +85,11 @@ class SubscriptionsViewModelTest {
         val vm = list(engine)
         val id = engine.subscriptions.value.first().id
         vm.update(id)
-        assertEquals(id, vm.uiState.value.page.failedId)
+        assertEquals(id, vm.uiState.value.page.failed?.id)
         assertEquals(emptySet<String>(), vm.uiState.value.updating)
         engine.failing = null
         vm.update(id)
-        assertNull(vm.uiState.value.page.failedId)
+        assertNull(vm.uiState.value.page.failed?.id)
         assertEquals(listOf(id, id), engine.updated)
     }
 
@@ -115,10 +121,10 @@ class SubscriptionsViewModelTest {
     @Test
     fun `the core's report of a failed refresh shows the banner too`() = runTest {
         val engine = FakeEngine()
-        engine.subscriptions.value = engine.subscriptions.value.mapIndexed { i, sub -> if (i == 0) sub.copy(error = "TooLarge") else sub }
+        engine.subscriptions.value = engine.subscriptions.value.mapIndexed { i, sub -> if (i == 0) sub.copy(error = ErrorCode.TooLarge) else sub }
         val page = list(engine).uiState.value.page
-        assertEquals(engine.subscriptions.value[0].id, page.failedId)
-        assertEquals(ErrorCode.TooLarge, page.failedCode)
+        assertEquals(engine.subscriptions.value[0].id, page.failed?.id)
+        assertEquals(ErrorCode.TooLarge, page.failed?.code)
     }
 
     @Test
@@ -127,7 +133,7 @@ class SubscriptionsViewModelTest {
             val engine = Failing().apply { failing = code }
             val vm = list(engine)
             vm.update(engine.subscriptions.value.first().id)
-            assertEquals(code, vm.uiState.value.page.failedCode)
+            assertEquals(code, vm.uiState.value.page.failed?.code)
         }
     }
 
@@ -161,11 +167,11 @@ class SubscriptionsViewModelTest {
         val id = engine.subscriptions.value.first().id
         vm.update(id)
         vm.confirmDelete(id)
-        assertEquals(id, vm.uiState.value.page.deleteFailedId)
-        assertEquals(id, vm.uiState.value.page.failedId)
+        assertEquals(id, vm.uiState.value.page.deleteFailed?.id)
+        assertEquals(id, vm.uiState.value.page.failed?.id)
         engine.failing = null
         vm.confirmDelete(id)
-        assertNull(vm.uiState.value.page.deleteFailedId)
+        assertNull(vm.uiState.value.page.deleteFailed?.id)
         assertTrue(engine.subscriptions.value.none { it.id == id })
     }
 
@@ -174,11 +180,11 @@ class SubscriptionsViewModelTest {
         val engine = Failing().apply { failing = ErrorCode.Internal }
         val vm = detail(engine, engine.subscriptions.value.first().id)
         vm.delete()
-        assertEquals(ErrorCode.Internal, vm.uiState.value.sheet.deleteFailed)
+        assertEquals(RvSubDetailFailure.Delete(ErrorCode.Internal), vm.uiState.value.sheet.failed)
         assertFalse(vm.uiState.value.gone)
         engine.failing = null
         vm.delete()
-        assertNull(vm.uiState.value.sheet.deleteFailed)
+        assertNull(vm.uiState.value.sheet.failed)
         assertTrue(vm.uiState.value.gone)
     }
 
@@ -189,11 +195,49 @@ class SubscriptionsViewModelTest {
             val id = engine.subscriptions.value.first().id
             val vm = list(engine)
             vm.confirmDelete(id)
-            assertEquals(id, vm.uiState.value.page.deleteFailedId)
-            assertEquals(code, vm.uiState.value.page.deleteFailedCode)
+            assertEquals(id, vm.uiState.value.page.deleteFailed?.id)
+            assertEquals(code, vm.uiState.value.page.deleteFailed?.code)
             val page = detail(engine, id)
             page.delete()
-            assertEquals(code, page.uiState.value.sheet.deleteFailed)
+            assertEquals(RvSubDetailFailure.Delete(code), page.uiState.value.sheet.failed)
+        }
+    }
+
+    @Test
+    fun `a subscription's page shows why an update or a User-Agent the core refuses failed, and clears it on the next try`() = runTest {
+        for (code in listOf(ErrorCode.StorageFull, ErrorCode.WriteFailed, ErrorCode.FetchFailed)) {
+            val engine = Failing().apply { failing = code }
+            val sub = engine.subscriptions.value.first()
+            val vm = detail(engine, sub.id)
+            vm.update()
+            assertEquals(RvSubDetailFailure.Update(code), vm.uiState.value.sheet.failed)
+            vm.setUserAgent("clash-verge/2.0")
+            assertEquals(RvSubDetailFailure.UserAgent(code, "clash-verge/2.0"), vm.uiState.value.sheet.failed)
+            assertEquals(sub.userAgent, vm.uiState.value.sub?.userAgent)
+            engine.failing = null
+            vm.setUserAgent("clash-verge/2.0")
+            assertNull(vm.uiState.value.sheet.failed)
+            assertEquals("clash-verge/2.0", vm.uiState.value.sub?.userAgent)
+            engine.failing = code
+            vm.setUserAgent(null)
+            assertEquals(RvSubDetailFailure.UserAgent(code, null), vm.uiState.value.sheet.failed)
+            engine.failing = null
+            vm.update()
+            assertNull(vm.uiState.value.sheet.failed)
+        }
+    }
+
+    @Test
+    fun `a rename the core refuses says why under the field and keeps the page's banner`() = runTest {
+        for (code in listOf(ErrorCode.StorageFull, ErrorCode.WriteFailed)) {
+            val engine = Failing().apply { failing = code }
+            val sub = engine.subscriptions.value.first()
+            val vm = detail(engine, sub.id)
+            vm.delete()
+            vm.rename("Harbor 2")
+            val sheet = vm.uiState.value.sheet
+            assertEquals(RvSubDetailState(RvSubSheet.Rename, "Harbor 2", renameFailed = code, failed = RvSubDetailFailure.Delete(code)), sheet)
+            assertEquals(sub.name, vm.uiState.value.sub?.name)
         }
     }
 
@@ -204,11 +248,11 @@ class SubscriptionsViewModelTest {
         val id = engine.subscriptions.value.first().id
         val vm = list(engine)
         vm.confirmDelete(id)
-        assertNull(vm.uiState.value.page.deleteFailedId)
+        assertNull(vm.uiState.value.page.deleteFailed?.id)
         assertTrue(vm.uiState.value.page.subscriptions.none { it.id == id })
         val page = detail(engine, id)
         page.delete()
-        assertNull(page.uiState.value.sheet.deleteFailed)
+        assertNull(page.uiState.value.sheet.failed)
         assertTrue(page.uiState.value.gone)
     }
 
@@ -257,7 +301,7 @@ class SubscriptionsViewModelTest {
         val sub = engine.subscriptions.value.first()
         val vm = detail(engine, sub.id)
         vm.rename("Harbor\nCloud")
-        assertEquals(RvSubDetailState(RvSubSheet.Rename, "Harbor\nCloud", renameFailed = true), vm.uiState.value.sheet)
+        assertEquals(RvSubDetailState(RvSubSheet.Rename, "Harbor\nCloud", renameFailed = ErrorCode.InvalidArgument), vm.uiState.value.sheet)
         assertEquals(sub.name, vm.uiState.value.sub?.name)
         vm.rename("Harbor 2")
         assertEquals("Harbor 2", vm.uiState.value.sub?.name)

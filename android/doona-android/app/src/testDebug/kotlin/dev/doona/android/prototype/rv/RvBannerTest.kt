@@ -34,6 +34,7 @@ import dev.doona.android.prototype.rv.states.RvActivityNotice
 import dev.doona.android.prototype.rv.states.rvActionFailedBanner
 import dev.doona.android.prototype.rv.states.rvActivityBanner
 import dev.doona.android.prototype.rv.subs.RvSubAddSample
+import dev.doona.android.prototype.rv.subs.rvFetchFailedSample
 import dev.doona.android.prototype.rv.subs.rvSubsStateSample
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -143,7 +144,7 @@ class RvBannerTest {
                 banner = failed(banner, RvActionFailed.SwitchNode, R.string.error_internal),
             )
 
-            SUBS -> RvSubsPage(rvSubsStateSample(failedId = if (banner) RvData.subscriptions.first().id else null), RvSubsActions())
+            SUBS -> RvSubsPage(rvSubsStateSample(failed = if (banner) rvFetchFailedSample(RvData.subscriptions.first().id) else null), RvSubsActions())
 
             SUB_ADD -> RvSubAddSample(RvAddState(phase = if (banner) RvAddPhase.Failed(RvAddFailure.Unreachable) else RvAddPhase.Editing), {}, onPaste = {}, onImport = {}, onBack = {})
 

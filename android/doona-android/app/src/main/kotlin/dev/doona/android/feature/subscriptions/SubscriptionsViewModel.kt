@@ -25,11 +25,9 @@ internal data class SubsUiState(val page: RvSubsState, val updating: Set<String>
  */
 internal data class SubsLocal(
     val updating: Set<String> = emptySet(),
-    val failedId: String? = null,
+    val failed: RvSubFailure? = null,
     val deletingId: String? = null,
-    val deleteFailedId: String? = null,
-    val failedCode: ErrorCode = ErrorCode.FetchFailed,
-    val deleteFailedCode: ErrorCode = ErrorCode.WriteFailed,
+    val deleteFailed: RvSubFailure? = null,
     val gone: Set<String> = emptySet(),
 )
 
@@ -41,17 +39,15 @@ internal data class SubsLocal(
 internal fun subsUiState(ready: Boolean, listed: List<Subscription>, local: SubsLocal, nowEpochMs: Long): SubsUiState {
     val subscriptions = listed.filterNot { it.id in local.gone }
     val ids = subscriptions.map { it.id }.toSet()
-    val reported = subscriptions.firstOrNull { it.error != null && it.id !in local.updating }
-    val failed = local.failedId?.takeIf { it in ids }?.let { it to local.failedCode } ?: reported?.let { it.id to reportedCode(it.error) }
+    val reported = subscriptions.firstNotNullOfOrNull { s -> s.error?.takeIf { s.id !in local.updating }?.let { RvSubFailure(s.id, it) } }
+    val failed = local.failed?.takeIf { it.id in ids } ?: reported
     return SubsUiState(
         page = RvSubsState(
             subscriptions.map(::rvSubscription),
             nowEpochMs,
-            failed?.first,
+            failed,
             local.deletingId?.takeIf { it in ids },
-            local.deleteFailedId?.takeIf { it in ids },
-            failed?.second ?: ErrorCode.FetchFailed,
-            local.deleteFailedCode,
+            local.deleteFailed?.takeIf { it.id in ids },
         ),
         updating = local.updating intersect ids,
         loading = !ready,
@@ -71,7 +67,7 @@ internal class SubscriptionsViewModel(private val engine: Engine, private val cl
         var started = false
         local.update {
             started = id !in it.updating
-            if (started) it.copy(updating = it.updating + id, failedId = it.failedId?.takeUnless { failed -> failed == id }) else it
+            if (started) it.copy(updating = it.updating + id, failed = it.failed?.takeUnless { failed -> failed.id == id }) else it
         }
         if (!started) return
         viewModelScope.launch {
@@ -84,7 +80,7 @@ internal class SubscriptionsViewModel(private val engine: Engine, private val cl
     fun updateAll() {
         val ids = engine.subscriptions.value.map { it.id }.filterNot { it in local.value.updating }
         if (ids.isEmpty()) return
-        local.update { it.copy(updating = it.updating + ids, failedId = null) }
+        local.update { it.copy(updating = it.updating + ids, failed = null) }
         viewModelScope.launch {
             ids.forEach { id ->
                 val failure = engine.updateSubscription(id).exceptionOrNull()
@@ -101,22 +97,18 @@ internal class SubscriptionsViewModel(private val engine: Engine, private val cl
      * why; `not_found` means it is gone already, so it leaves the list with no banner.
      */
     fun confirmDelete(id: String) {
-        local.update { it.copy(deletingId = null, deleteFailedId = null) }
+        local.update { it.copy(deletingId = null, deleteFailed = null) }
         viewModelScope.launch {
             val code = engine.removeSubscription(id).exceptionOrNull()?.errorCode() ?: return@launch
-            local.update { if (code == ErrorCode.NotFound) it.copy(gone = it.gone + id) else it.copy(deleteFailedId = id, deleteFailedCode = code) }
+            local.update { if (code == ErrorCode.NotFound) it.copy(gone = it.gone + id) else it.copy(deleteFailed = RvSubFailure(id, code)) }
         }
     }
 }
 
-/** The code a subscription's last refresh failed with, an [ErrorCode] name as the engine gives it. */
-private fun reportedCode(error: String?): ErrorCode = ErrorCode.entries.firstOrNull { it.name == error } ?: ErrorCode.FetchFailed
-
 /** [id]'s update ended: a [failure] shows the banner with its code, until the next update starts. */
 private fun SubsLocal.failed(id: String, failure: Throwable?) = copy(
     updating = updating - id,
-    failedId = if (failure != null) id else failedId,
-    failedCode = failure?.errorCode() ?: failedCode,
+    failed = failure?.let { RvSubFailure(id, it.errorCode()) } ?: failed,
 )
 
 /** How long a page's state keeps flowing after its last collector stops: a rotation does not restart it. */

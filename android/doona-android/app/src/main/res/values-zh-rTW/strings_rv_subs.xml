@@ -19,7 +19,6 @@
     <string name="rv_sub_user_agent_default">預設</string>
     <string name="rv_sub_user_agent_invalid">最多 256 個可列印的 ASCII 字元</string>
     <string name="rv_sub_name_invalid">最多 64 個字元，只能一行</string>
-    <string name="rv_sub_rename_failed">無法重新命名，請再試一次</string>
     <string name="rv_sub_section">訂閱</string>
     <string name="rv_sub_name">名稱</string>
     <string name="rv_sub_link">連結</string>

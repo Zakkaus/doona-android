@@ -16,6 +16,9 @@
     <string name="rv_sub_delete_title">Delete %1$s?</string>
     <string name="rv_sub_delete_failed_title">Could not delete %1$s</string>
     <string name="rv_sub_delete_failed_reason">The subscription and its nodes are unchanged.</string>
+    <string name="rv_sub_agent_failed_title">Could not save the User-Agent</string>
+    <string name="rv_sub_agent_failed_reason">The User-Agent is unchanged.</string>
+    <string name="rv_sub_rename_failed_reason">The name is unchanged.</string>
     <plurals name="rv_sub_delete_body">
         <item quantity="one">Its node is removed too.</item>
         <item quantity="other">Its %1$d nodes are removed too.</item>

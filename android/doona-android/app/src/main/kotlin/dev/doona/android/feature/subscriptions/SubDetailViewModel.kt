@@ -51,7 +51,7 @@ internal fun subDetailUiState(
  * Subscription [id]'s page state holder (plan §2.2): the subscription as the engine has it, the auto-update interval
  * in hours as the app's settings give it ([updateHours], null while auto-update is off; none shown until its first
  * value), and the calls behind 立即更新, 重新命名, the User-Agent sheet and 刪除訂閱. A call that fails leaves the
- * subscription as the engine has it; an update's failure shows on 訂閱, from the core's report.
+ * subscription as the engine has it and says why: a rename under its field, the others in the page's banner.
  */
 internal class SubDetailViewModel(
     private val engine: Engine,
@@ -73,30 +73,37 @@ internal class SubDetailViewModel(
 
     fun change(state: RvSubDetailState) = sheet.update { state }
 
-    fun update() = call { engine.updateSubscription(id) }
+    /** Updates through the core (重試 on the banner, again); a refusal shows the banner, saying why. */
+    fun update() = call(RvSubDetailFailure::Update) { engine.updateSubscription(id) }
 
-    /** Renames through the core; a refusal opens the sheet again on [name] with the failure under it. */
+    /** Renames through the core; a refusal opens the sheet again on [name] with why under it. */
     fun rename(name: String) {
         viewModelScope.launch {
-            engine.renameSubscription(id, name).onFailure { sheet.update { RvSubDetailState(RvSubSheet.Rename, name, renameFailed = true) } }
+            engine.renameSubscription(id, name).onFailure { e -> sheet.update { it.copy(sheet = RvSubSheet.Rename, name = name, renameFailed = e.errorCode()) } }
         }
     }
 
-    fun setUserAgent(userAgent: String?) = call { engine.setSubscriptionUserAgent(id, userAgent) }
+    /** Saves [userAgent] through the core (重試 on the banner, again); a refusal shows the banner, saying why. */
+    fun setUserAgent(userAgent: String?) = call({ RvSubDetailFailure.UserAgent(it, userAgent) }) { engine.setSubscriptionUserAgent(id, userAgent) }
 
     /**
      * Deletes through the core (重試 on the banner, again); a refusal shows the banner over the page, saying why.
      * `not_found` means it is gone already: the page leaves with no banner.
      */
     fun delete() {
-        sheet.update { it.copy(deleteFailed = null) }
+        sheet.update { it.copy(failed = null) }
         viewModelScope.launch {
             val code = engine.removeSubscription(id).exceptionOrNull()?.errorCode() ?: return@launch
-            if (code == ErrorCode.NotFound) notFound.value = true else sheet.update { it.copy(deleteFailed = code) }
+            if (code == ErrorCode.NotFound) notFound.value = true else sheet.update { it.copy(failed = RvSubDetailFailure.Delete(code)) }
         }
     }
 
-    private fun call(action: suspend () -> Result<*>) {
-        viewModelScope.launch { action() }
+    /** Runs [action] in place of the banner; its refusal becomes the banner [failure] makes of its code. */
+    private fun call(failure: (ErrorCode) -> RvSubDetailFailure, action: suspend () -> Result<*>) {
+        sheet.update { it.copy(failed = null) }
+        viewModelScope.launch {
+            val code = action().exceptionOrNull()?.errorCode() ?: return@launch
+            sheet.update { it.copy(failed = failure(code)) }
+        }
     }
 }

@@ -66,7 +66,7 @@ abstract class ExportFixture {
             url = "https://sub.provider-example.net/api/v1/client/subscribe?token=$token",
             nodes = 3,
             lastFetch = SubscriptionFetch(1_795_300_000_000, SubscriptionFormat.Clash),
-            error = "GET https://sub.provider-example.net/api/v1/client/subscribe?token=$token: 403",
+            error = ErrorCode.FetchFailed,
             totalBytes = 1L shl 40,
         )
         val engine = FakeEngine(groups, listOf(subscription), Status.Running(sinceEpochMs = 1_795_300_000_000))

@@ -367,7 +367,7 @@ internal data class SubscriptionDto(
     val format: String?,
 ) {
     /**
-     * The error becomes an [ErrorCode] name, the same vocabulary as [EngineException]. The core sets the format and the
+     * The error becomes an [ErrorCode], the same vocabulary as [EngineException]. The core sets the format and the
      * time of a fetch together, so one without the other, or a format this build does not know, is a broken reply.
      */
     fun toSubscription() = Subscription(
@@ -376,7 +376,7 @@ internal data class SubscriptionDto(
         url = url,
         nodes = nodes,
         lastFetch = lastFetch(),
-        error = error?.let { errorCodeOf(it).name },
+        error = error?.let(::errorCodeOf),
         usedBytes = usedBytes,
         totalBytes = totalBytes,
         expiresAtEpochMs = expiresAtEpochMs,

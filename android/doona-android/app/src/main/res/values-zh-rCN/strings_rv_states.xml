@@ -4,7 +4,7 @@
     <string name="rv_welcome_line">添加订阅后即可开始使用。</string>
     <string name="rv_welcome_core">自研内核</string>
     <string name="rv_welcome_core_sub">支持 Clash、sing-box 和分享链接</string>
-    <string name="rv_welcome_split">TCP、UDP 各选节点</string>
+    <string name="rv_welcome_split">TCP/UDP 分别选节点</string>
     <string name="rv_welcome_split_sub">规则决定每个连接经由哪个节点或直连</string>
     <string name="rv_welcome_speed">10\u00A0Gbps 转发</string>
     <string name="rv_welcome_speed_sub">应用的流量经由 doona 的 VPN</string>

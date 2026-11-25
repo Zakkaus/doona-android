@@ -325,7 +325,7 @@ data class Subscription(
     val url: String,
     val nodes: Int,
     val lastFetch: SubscriptionFetch?,
-    val error: String? = null,
+    val error: ErrorCode? = null,
     val usedBytes: Long? = null,
     val totalBytes: Long? = null,
     val expiresAtEpochMs: Long? = null,

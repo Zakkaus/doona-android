@@ -59,12 +59,14 @@ import dev.doona.android.feature.rvReasonLine
 internal data class RvSubsState(
     val subscriptions: List<RvSubscription>,
     val nowEpochMs: Long,
-    val failedId: String? = null,
+    val failed: RvSubFailure? = null,
     val deletingId: String? = null,
-    val deleteFailedId: String? = null,
-    val failedCode: ErrorCode = ErrorCode.FetchFailed,
-    val deleteFailedCode: ErrorCode = ErrorCode.WriteFailed,
+    val deleteFailed: RvSubFailure? = null,
 )
+
+/** A subscription [id] the core refused an action on, with its [code] for why. */
+@Immutable
+internal data class RvSubFailure(val id: String, val code: ErrorCode)
 
 /** Where the subscriptions page leads: back, a subscription's page, the add page; and what it asks for. */
 internal class RvSubsActions(
@@ -99,8 +101,8 @@ internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions, loading: Boo
     val failed = if (loading) {
         null
     } else {
-        state.subscriptions.firstOrNull { it.id == state.deleteFailedId }?.let { rvDeleteFailedBanner(it, state.deleteFailedCode) { actions.confirmDelete(it.id) } }
-            ?: state.subscriptions.firstOrNull { it.id == state.failedId }?.let { rvFailedBanner(it, state.failedCode) { actions.update(it.id) } }
+        state.deleteFailed?.let { f -> state.subscriptions.firstOrNull { it.id == f.id }?.let { rvDeleteFailedBanner(it, f.code) { actions.confirmDelete(it.id) } } }
+            ?: state.failed?.let { f -> state.subscriptions.firstOrNull { it.id == f.id }?.let { rvFailedBanner(it, f.code) { actions.update(it.id) } } }
     }
     RvScrollPage(title, insets, onBack = actions.back, actions = updateAll, bottomAction = add) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
@@ -137,7 +139,7 @@ internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions, loading: Boo
  * updates it again.
  */
 @Composable
-internal fun rvFailedBanner(sub: RvSubscription, code: ErrorCode = ErrorCode.FetchFailed, onRetry: () -> Unit) = RvNotice(
+internal fun rvFailedBanner(sub: RvSubscription, code: ErrorCode, onRetry: () -> Unit) = RvNotice(
     RvNoticeKind.Error,
     stringResource(R.string.rv_sub_failed_title, sub.name),
     rvReasonLine(code, pluralStringResource(R.plurals.rv_sub_kept_nodes, sub.nodes, sub.nodes)),
@@ -152,6 +154,17 @@ internal fun rvDeleteFailedBanner(sub: RvSubscription, code: ErrorCode, onRetry:
     RvNoticeKind.Error,
     stringResource(R.string.rv_sub_delete_failed_title, sub.name),
     rvReasonLine(code, stringResource(R.string.rv_sub_delete_failed_reason)),
+    stringResource(R.string.rv_retry),
+    onRetry,
+    titleKeepWords = false,
+)
+
+/** The banner of a User-Agent the core would not save, an error: why ([code]), it is unchanged, and 重試 saves it again. */
+@Composable
+internal fun rvAgentFailedBanner(code: ErrorCode, onRetry: () -> Unit) = RvNotice(
+    RvNoticeKind.Error,
+    stringResource(R.string.rv_sub_agent_failed_title),
+    rvReasonLine(code, stringResource(R.string.rv_sub_agent_failed_reason)),
     stringResource(R.string.rv_retry),
     onRetry,
     titleKeepWords = false,
