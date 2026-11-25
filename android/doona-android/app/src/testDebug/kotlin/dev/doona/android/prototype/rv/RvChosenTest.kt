@@ -16,6 +16,7 @@ import androidx.compose.ui.input.InputModeManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
@@ -34,14 +35,18 @@ import androidx.compose.ui.unit.dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCaption
+import dev.doona.android.designsystem.rv.RvChartSize
 import dev.doona.android.designsystem.rv.RvChrome
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvRangeRow
 import dev.doona.android.designsystem.rv.RvRowPart
 import dev.doona.android.designsystem.rv.RvSegmented
+import dev.doona.android.designsystem.rv.RvSkeletonChips
 import dev.doona.android.designsystem.rv.rvCheckReserve
 import dev.doona.android.designsystem.rv.rvPress
 import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.data.RvNodeSort
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -63,6 +68,10 @@ import org.robolectric.annotation.GraphicsMode
 class RvChosenTest {
     @get:Rule
     val compose = createComposeRule()
+
+    /** The skeleton's shimmer runs forever; its test stops animators, and the next test gets them back. */
+    @After
+    fun restoreScale() = rvAnimatorScale(1f)
 
     private val options = listOf("Both", "TCP", "UDP")
     private val ranges = listOf("1H", "1D", "1W", "1M", "1Y")
@@ -127,6 +136,41 @@ class RvChosenTest {
         }
         expected.zip(after).forEach { (e, a) -> assertEquals("a chip's width changes by the check's room only", e, a, 1f) }
     }
+
+    /**
+     * The skeleton's chips stand where the real ones do, for every order the row can have chosen (a11y-fix2, 2026-11-25:
+     * it reserved the check on the first chip whatever the page had chosen, so a reload under 穩定, 名稱 or 地區 moved the
+     * chips by the check's room when the data arrived).
+     */
+    private fun skeletonChipsStandWhereTheRealOnesDo() {
+        rvAnimatorScale(0f)
+        var chosen by mutableIntStateOf(0)
+        compose.rvContent(dark = false) {
+            val labels = RvNodeSort.entries.map { stringResource(it.label) }
+            Column {
+                RvRangeRow(labels, chosen, {})
+                RvSkeletonChips(labels, chosen)
+            }
+        }
+        RvNodeSort.entries.forEach { sort ->
+            compose.runOnIdle { chosen = sort.ordinal }
+            compose.waitForIdle()
+            val real = chips()
+            val skeleton = chips(RvPart.SKELETON_BLOCK)
+            assertEquals("a skeleton chip for every chip", real.size, skeleton.size)
+            real.zip(skeleton).forEachIndexed { i, (r, s) ->
+                assertEquals("$sort: chip $i's left", r.first, s.first, 1f)
+                assertEquals("$sort: chip $i's width", r.second, s.second, 1f)
+            }
+        }
+    }
+
+    @Test
+    fun theSkeletonChipsStandWhereTheRealOnesDoInEn() = skeletonChipsStandWhereTheRealOnesDo()
+
+    @Test
+    @Config(qualifiers = "zh-rTW-w412dp-h915dp-notnight-xhdpi")
+    fun theSkeletonChipsStandWhereTheRealOnesDoInZhTw() = skeletonChipsStandWhereTheRealOnesDo()
 
     /** 流量's range row keeps the chosen chip's check at the default size in every locale (a11y-fix, 2026-11-25). */
     private fun trafficKeepsTheCheck(first: String) {

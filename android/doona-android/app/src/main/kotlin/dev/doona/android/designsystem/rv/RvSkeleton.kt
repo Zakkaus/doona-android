@@ -241,10 +241,11 @@ internal fun RvSkeletonControlCard(caption: String? = null) {
 /**
  * [RvRangeRow]'s skeleton, a chip per label of [labels] (the page knows its orders before its data), [RvChartSize.rangeGap]
  * apart under one shimmer: each a pill of the chip's height at this font size, as wide as its bold label and its pads, the
- * [selected] one (the page's first order unless it says otherwise) wider by the check's room, as [RvRangeRow] sets it.
+ * [selected] one wider by the check's room, as [RvRangeRow] sets it. The page says which is selected (a row's chosen order
+ * is not always its first), so the pills stand where the real chips will and nothing jumps when the data arrives.
  */
 @Composable
-internal fun RvSkeletonChips(labels: List<String>, modifier: Modifier = Modifier, selected: Int = 0) {
+internal fun RvSkeletonChips(labels: List<String>, selected: Int, modifier: Modifier = Modifier) {
     val density = LocalDensity.current
     var width by remember { mutableIntStateOf(0) }
     // The row is set as RvRangeRow sets it in the same width, so each block stands where its chip does.
