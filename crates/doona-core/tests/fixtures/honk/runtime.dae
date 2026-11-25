@@ -1,0 +1,34 @@
+# User groups with no group named Proxy: a nested selector, a fallback with a final group, and
+# a routing fallback to a user group.
+node {
+    tokyo: 'socks5://192.0.2.10:1080'
+    osaka: 'socks5://192.0.2.11:1080'
+    taipei: 'socks5://192.0.2.20:1080'
+}
+group {
+    japan {
+        filter: name(tokyo, osaka)
+        policy: fixed(0)
+    }
+    taiwan {
+        filter: name(taipei)
+        policy: fixed(0)
+    }
+    streaming {
+        filter: group(japan, taiwan)
+        policy: select
+        default: taiwan
+    }
+    rescue {
+        filter: name(osaka)
+        policy: fallback
+        final: taiwan
+    }
+}
+routing {
+    dport(22) -> direct(must)
+    domain(suffix:blocked.test) -> block
+    domain(suffix:video.test) -> streaming
+    dport(8443) -> rescue
+    fallback: japan
+}
