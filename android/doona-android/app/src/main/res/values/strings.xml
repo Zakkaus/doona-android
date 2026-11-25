@@ -86,7 +86,7 @@
     <string name="first_heading">Add your first subscription</string>
     <string name="first_line_what">A subscription is a link that provides your nodes.</string>
     <string name="first_line_next">Once it is added, the groups are created and you can connect.</string>
-    <string name="first_no_nodes">Could not connect: no nodes. Add a subscription first.</string>
+    <string name="first_no_nodes">No node available.</string>
     <string name="ui_dismiss">Dismiss</string>
     <string name="ui_clear">Clear</string>
     <string name="ui_in_progress">In progress</string>
@@ -106,7 +106,7 @@
     <string name="error_too_large">The subscription is too large</string>
     <string name="error_parse_failed">Could not read the subscription</string>
     <string name="error_no_nodes">The subscription has no nodes</string>
-    <string name="error_busy">Another change is in progress. Try again.</string>
+    <string name="error_busy">Another change is being applied.</string>
     <string name="error_internal">Internal error</string>
     <string name="error_local_network">Could not reach an address on the local network</string>
     <string name="error_dns_failed">DNS lookup failed</string>
@@ -115,7 +115,7 @@
     <string name="local_network_ask_continue">Continue</string>
     <string name="local_network_ask_not_now">Not now</string>
     <string name="local_network_denied_title">Local network access is off</string>
-    <string name="local_network_denied_body">doona cannot reach subscriptions or nodes on your local network. Allow local network access for doona in the app settings.</string>
+    <string name="local_network_denied_body">Allow local network access for doona in the app settings.</string>
     <string name="local_network_open_settings">Open settings</string>
     <!-- What a screen reader says where the screen shows only a triangle, an arrow or a bar. -->
     <string name="rv_a11y_faster">Faster by %1$s</string>

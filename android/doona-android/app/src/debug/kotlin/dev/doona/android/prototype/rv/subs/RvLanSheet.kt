@@ -24,7 +24,7 @@ internal fun RvLanPrompt.text(): RvPromptText = when (this) {
 
     RvLanPrompt.Denied -> RvPromptText(
         stringResource(R.string.rv_lan_denied_title),
-        stringResource(R.string.rv_lan_denied_body),
+        stringResource(R.string.local_network_denied_body),
         stringResource(R.string.rv_lan_open_settings),
         stringResource(R.string.ui_dismiss),
     )

@@ -79,7 +79,7 @@
     <string name="first_heading">添加第一个订阅</string>
     <string name="first_line_what">订阅是提供节点的链接。</string>
     <string name="first_line_next">添加后会创建组，即可连接。</string>
-    <string name="first_no_nodes">没有节点，无法连接。请先添加订阅。</string>
+    <string name="first_no_nodes">没有可用的节点。</string>
     <string name="ui_dismiss">关闭</string>
     <string name="ui_clear">清除</string>
     <string name="ui_in_progress">处理中</string>
@@ -98,7 +98,7 @@
     <string name="error_too_large">订阅内容太大</string>
     <string name="error_parse_failed">无法解析订阅</string>
     <string name="error_no_nodes">订阅中没有节点</string>
-    <string name="error_busy">另一项更改正在进行，请稍后重试。</string>
+    <string name="error_busy">另一项更改正在应用。</string>
     <string name="error_internal">发生内部错误</string>
     <string name="error_local_network">无法连接局域网中的地址</string>
     <string name="local_network_ask_title">允许访问局域网</string>
@@ -106,10 +106,9 @@
     <string name="local_network_ask_continue">继续</string>
     <string name="local_network_ask_not_now">暂不</string>
     <string name="local_network_denied_title">未允许访问局域网</string>
-    <string name="local_network_denied_body">无法访问局域网中的订阅和节点。请在应用设置中允许 doona 访问局域网。</string>
+    <string name="local_network_denied_body">请在应用设置中允许 doona 访问局域网。</string>
     <string name="local_network_open_settings">打开设置</string>
     <string name="error_dns_failed">DNS 查询失败</string>
-    <string name="report_redaction_hint">隐藏的信息越多，问题就越可能无法解答。</string>
     <!-- What a screen reader says where the screen shows only a triangle, an arrow or a bar. -->
     <string name="rv_a11y_faster">变快 %1$s</string>
     <string name="rv_a11y_slower">变慢 %1$s</string>

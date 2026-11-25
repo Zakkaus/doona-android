@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="rv_vpn_denied">未获得 VPN 权限</string>
-    <string name="rv_vpn_denied_reason">doona 需要获得创建 VPN 的权限。</string>
+    <string name="rv_vpn_denied_reason">doona 需要创建 VPN 的权限，才能运行。</string>
     <string name="rv_notify_denied">通知已关闭</string>
     <string name="rv_notify_denied_reason">doona 无法显示连接状态，连接中断时也不会通知。</string>
     <string name="rv_rules_parse_failed">无法解析规则来源</string>

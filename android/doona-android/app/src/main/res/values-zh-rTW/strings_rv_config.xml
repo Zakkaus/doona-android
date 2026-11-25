@@ -41,7 +41,7 @@
     <string name="rv_config_draft_base">草稿 · 依據第 %1$d 版</string>
     <string name="rv_config_based_on">依據第 %1$d 版</string>
     <string name="rv_config_stale_title">設定檔已更新</string>
-    <string name="rv_config_stale_reason">草稿依據第 %1$d 版，目前已套用第 %2$d 版。</string>
+    <string name="rv_config_stale_reason">草稿依據第 %1$d 版，已套用第 %2$d 版。</string>
     <string name="rv_config_reload">重新載入</string>
     <string name="rv_config_revision">第 %1$d 版</string>
     <string name="rv_config_origin_import">匯入</string>

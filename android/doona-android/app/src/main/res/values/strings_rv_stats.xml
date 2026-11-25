@@ -46,6 +46,6 @@
         <item quantity="one">%1$d trial</item>
         <item quantity="other">%1$d trials</item>
     </plurals>
-    <string name="rv_score_trial_ok">succeeded</string>
-    <string name="rv_score_trial_failed">failed</string>
+    <string name="rv_score_trial_ok">Succeeded</string>
+    <string name="rv_score_trial_failed">Failed</string>
 </resources>

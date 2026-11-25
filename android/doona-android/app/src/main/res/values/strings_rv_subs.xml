@@ -34,7 +34,7 @@
     <string name="rv_add_done">Added %1$s</string>
     <string name="rv_done">Done</string>
     <string name="rv_add_failed">Could not add the subscription</string>
-    <string name="rv_add_unreachable">The subscription\'s server did not answer. Check the link and the network, then try again.</string>
+    <string name="rv_add_unreachable">The server did not answer. Check the link and the network, then try again.</string>
     <string name="rv_add_not_subscription_reason">This link did not return a subscription. Check that it is the subscription link from your provider.</string>
     <string name="rv_add_too_large">The subscription is larger than the %1$s limit.</string>
     <string name="rv_import_title">Add %1$s</string>

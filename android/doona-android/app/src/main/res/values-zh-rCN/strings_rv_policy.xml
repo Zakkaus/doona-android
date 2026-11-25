@@ -155,5 +155,5 @@
     <string name="rv_network_apart">分别选择 TCP/UDP</string>
     <string name="rv_network_both">TCP/UDP</string>
     <string name="rv_score_udp_unsupported">%1$s 不支持 UDP</string>
-    <string name="rv_score_udp_failed">UDP 测试未通过</string>
+    <string name="rv_score_udp_failed">UDP 测试失败</string>
 </resources>
