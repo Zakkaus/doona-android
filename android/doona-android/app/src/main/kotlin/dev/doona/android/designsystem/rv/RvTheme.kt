@@ -250,9 +250,6 @@ internal class RvType {
     val cardValue = RvTypeScale.cardValue.style(tabular = true)
     val cardUnit = RvTypeScale.cardUnit.style()
     val pill = RvTypeScale.pill.style(tabular = true)
-
-    /** The value pill's step for a name in a chart's chip: no tabular figures, which would widen the hyphen of `hk-01`. */
-    val pillName = RvTypeScale.pill.style()
     val section = RvTypeScale.section.style()
     val statLabel = RvTypeScale.statLabel.style()
     val stat = RvTypeScale.stat.style(tabular = true)
@@ -374,3 +371,9 @@ private fun String.joinsHan(at: Int) = this[at] == '\u2060' && getOrNull(at + 1)
 
 /** CJK Radicals Supplement: everything from here up is set in Noto. */
 private const val CJK_START = 0x2E80
+
+/**
+ * The value pill's step for a name in a chart's chip: [RvType.pill] without tabular figures, which would widen the hyphen
+ * of `hk-01`. A variant of a role, not a role, so the production theme has no twin of it.
+ */
+internal val RvType.pillName: TextStyle get() = pill.copy(fontFeatureSettings = null)

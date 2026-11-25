@@ -35,6 +35,7 @@ import dev.doona.android.designsystem.rv.RvStatsSize
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvUsageSize
 import dev.doona.android.designsystem.rv.latencyColor
+import dev.doona.android.designsystem.rv.pillName
 import dev.doona.android.designsystem.rv.rvChartMarker
 import dev.doona.android.designsystem.rv.rvLatencyAxisTop
 import dev.doona.android.designsystem.rv.rvMarkerChip
