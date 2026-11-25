@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -60,10 +61,10 @@ internal class RvNotice(
 internal fun RvBanner(notice: RvNotice, modifier: Modifier = Modifier) {
     RvCard(modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
         Column(Modifier.fillMaxWidth().padding(RvSpace.rowPadding), verticalArrangement = Arrangement.spacedBy(RvSpace.noticeToAction)) {
-            Row(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth().testTag(RvRowPart.NOTICE_ROW)) {
                 RvIconDisc(notice.kind.glyph, glyph = RvSize.noticeGlyph)
                 Spacer(Modifier.width(RvSpace.rowGap))
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
+                Column(Modifier.weight(1f)) {
                     RvText(notice.title, Rv.type.rowTitle, maxLines = BANNER_TITLE_LINES, keepWords = notice.titleKeepWords)
                     RvText(notice.reason, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BANNER_REASON_LINES, keepWords = notice.reasonKeepWords)
                 }

@@ -117,6 +117,7 @@ private fun Target(group: RvPolicyGroup?, selected: Boolean, onSelect: () -> Uni
         pick,
         titleKeepWords = false,
         subtitleKeepWords = false,
+        endFirstLine = true,
     ) { RvRadio(selected) }
 }
 

@@ -88,6 +88,7 @@ import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvRowEnd
+import dev.doona.android.designsystem.rv.RvRowPart
 import dev.doona.android.designsystem.rv.RvSearchField
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
@@ -331,6 +332,7 @@ private fun NodeTrailing(node: RvNode, order: Int, details: String, onDetail: (S
             Modifier
                 .offset(x = (RvSize.touch - RvSize.rowGlyph) / 2)
                 .size(RvSize.touch)
+                .testTag(RvRowPart.TARGET)
                 .rvPress(CircleShape, Role.Button, { onDetail(node.id) })
                 .semantics { contentDescription = details },
             contentAlignment = Alignment.Center,

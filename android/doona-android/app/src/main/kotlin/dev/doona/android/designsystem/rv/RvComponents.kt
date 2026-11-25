@@ -69,6 +69,7 @@ import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
@@ -149,7 +150,7 @@ internal fun Modifier.rvDiscPress(fill: Modifier, onClick: () -> Unit, enabled: 
 
 @Composable
 internal fun RvGlyph(@DrawableRes icon: Int, size: Dp, color: Color, modifier: Modifier = Modifier) {
-    Image(painterResource(icon), contentDescription = null, modifier.size(size), colorFilter = ColorFilter.tint(color))
+    Image(painterResource(icon), contentDescription = null, modifier.size(size).testTag(RvRowPart.GLYPH), colorFilter = ColorFilter.tint(color))
 }
 
 /**
@@ -342,7 +343,7 @@ internal object RvPart {
  */
 @Composable
 internal fun RvIconDisc(@DrawableRes icon: Int, color: Color = Rv.colors.text, size: Dp = RvSize.rowDisc, glyph: Dp = RvSize.rowGlyph * (size / RvSize.rowDisc)) {
-    Box(Modifier.size(size).clip(CircleShape).background(Rv.colors.discOnCard), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(size).testTag(RvRowPart.ICON_DISC).clip(CircleShape).background(Rv.colors.discOnCard), contentAlignment = Alignment.Center) {
         RvGlyph(icon, glyph, color)
     }
 }
@@ -361,8 +362,8 @@ internal fun RvAppDisc(packageName: String, label: String? = null, size: Dp = Rv
         runCatching { context.packageManager.getApplicationIcon(packageName).toBitmap(px, px).asImageBitmap() }.getOrNull()
     }
     val named = label?.let { Modifier.semantics { contentDescription = it } } ?: Modifier
-    if (icon == null) return Box(named) { RvIconDisc(R.drawable.rv_sym_apps, size = size) }
-    Image(icon, contentDescription = label, Modifier.size(size).clip(CircleShape).background(Rv.colors.discOnCard))
+    if (icon == null) return Box(named.testTag(RvRowPart.APP_DISC)) { RvIconDisc(R.drawable.rv_sym_apps, size = size) }
+    Image(icon, contentDescription = label, Modifier.size(size).testTag(RvRowPart.APP_DISC).clip(CircleShape).background(Rv.colors.discOnCard))
 }
 
 /**
@@ -384,7 +385,7 @@ internal fun RvCheckRow(
     subtitleKeepWords: Boolean = true,
 ) {
     val toggle = Modifier.toggleable(value = checked, enabled = enabled, interactionSource = null, indication = rvRowIndication(), role = Role.Checkbox, onValueChange = onChange)
-    RvRow(leading, title, subtitle, modifier.then(toggle), titleKeepWords = titleKeepWords, subtitleKeepWords = subtitleKeepWords) { Check(checked) }
+    RvRow(leading, title, subtitle, modifier.then(toggle), titleKeepWords = titleKeepWords, subtitleKeepWords = subtitleKeepWords, endFirstLine = true) { Check(checked) }
 }
 
 /**
@@ -396,7 +397,7 @@ private fun Check(checked: Boolean) {
     val mark = painterResource(R.drawable.rv_nodes_ic_check_circle)
     val on = Rv.colors.positive
     val ring = Rv.colors.control
-    Canvas(Modifier.size(RvControlSize.radio).clearAndSetSemantics {}) {
+    Canvas(Modifier.size(RvControlSize.radio).clearAndSetSemantics { testTag = RvRowPart.CHECK }) {
         if (checked) {
             val box = size.minDimension / CHECK_DISC
             translate((size.width - box) / 2, (size.height - box) / 2) { with(mark) { draw(Size(box, box), colorFilter = ColorFilter.tint(on)) } }
@@ -496,7 +497,7 @@ internal fun RvStatRow(label: String, value: String, valueKeepWords: Boolean = t
 /** The one chevron (measured §7): 6.7 x 12.2 dp of 2 dp stroke with round ends in a 24 dp box, in [color]. */
 @Composable
 internal fun RvChevron(modifier: Modifier = Modifier, color: Color = Rv.colors.control) {
-    Canvas(modifier.size(RvChevronSize.box)) {
+    Canvas(modifier.size(RvChevronSize.box).testTag(RvRowPart.CHEVRON)) {
         val w = RvChevronSize.width.toPx()
         val h = RvChevronSize.height.toPx()
         val stroke = RvChevronSize.stroke.toPx()

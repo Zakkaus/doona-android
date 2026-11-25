@@ -106,7 +106,8 @@ A row is **one-line** (no subtitle, title on one line), **with subtitle**, or **
 | R9 | Leading, row with subtitle | top = title top (the disc then centres 1.5 dp above the row) | Revolut Appearance, Privacy: icon top = title top | gate R9 |
 | R10 | Trailing, one-line and wrapped row | centred | Revolut | gate R10 |
 | R11 | Trailing, row with subtitle | switch, radio, check, and every trailing part of a settings row: centred on the title's first line; an in-card button as the disc, top = title top | §13.4 switch row, `07-privacy`, `07-set-accessibility-b` | gate R11 |
-| R11l | Trailing, list row with subtitle: value, chip, chevron | centred on the row | Revolut money and list rows centre the value and chevron (rowalign-1125 "What Revolut does") | gate R11l |
+| R11l | Trailing, list row with subtitle: value, chip, chevron | centred on the row, or, where the value stands on the title's line (a line-wise row), its top on the title's top | Revolut money and list rows centre the value and chevron (rowalign-1125 "What Revolut does") | gate R11l |
+| R11u | Trailing part under the text (a font size at which the title would not read beside it) | its top at the title's bottom (beside the subtitle) or at the text's bottom, its right edge at the content's end | `RvRow` under-end layout (`LocalRvEndSide`) | gate R11u |
 | R12 | Title to subtitle | 0 | §7 line boxes | gate R12 |
 | R13 | Line boxes | one height per role in a golden, within 1 dp | owner, latinrow | gate R13 |
 | R14 | Lines | title ≤ 2, subtitle ≤ 3 | `07-set-interface`, `07-privacy` | gate R14 |
@@ -122,6 +123,19 @@ Decided here (2026-11-25), to be confirmed with the package:
 - **D2** Our list rows follow Revolut's money rows for display parts (R11l); a switch or in-card control always follows its settings rule (R11), whatever the component.
 - **D3** The menu item keeps Revolut's bare 24 dp glyph (UX3 §1): it is a popup, not a row of a card.
 - **D4** A card that mixes rows with and without an icon keeps R6 per row (text at 88 and 32), as Revolut's plain list rows do.
+
+## What the gate reads (2026-11-25)
+
+The gate measures the unmerged semantics tree, so it measures what a part draws unless the library tags what it lays out. These readings are part of the rules; each came from a break that was the reading's, not the layout's.
+
+| Reading | Rule it affects | Why |
+|---|---|---|
+| A row that touches the window's top or bottom edge is **cut**: it goes on past the edge, so R1, R6 (no leading visual left), R8, R10, R11l/R11u, R13 and R18 skip it | those | its middle, height and padding are unknown; the title, the subtitle gap (R12) and the line count (R14) still hold |
+| The **trailing room** ([RvRowPart.END], the box `TextBesideEnd` lays an end out in, and a settings row's first-line box) is what R11, R11l, R11u, R16 and the row's height measure; R17 measures what shows | R10, R11*, R16, R1, R18 | a latency figure without its change, or a busy bar standing in for both, keeps the room it takes at rest on purpose (the row does not move when the result arrives) |
+| A **line end** (a figure on the title's or subtitle's line) and a **busy bar** are part of the text block; the title's end under the title, on a line of its own, is the whole gap between title and subtitle | R1, R12, R18 | RvRow puts an end that does not read well beside its text on a line of its own; R12's 0 is for the text, not for that line |
+| A busy bar stands where its end stands: centred on the line of a line end, else on the room | R11l, R11u | `BusyAtEnd`, `InRoomOf` |
+| A control (switch, radio, check) that went **under** the text stands as any end under it: R11u | R11 | the catalogue's long-subtitle rows |
+| A **honk code** title ([RvRowPart.CODE]) keeps the code view's line boxes: no R11 against a role's first line, no R13 | R11, R13 | code is not set in a role |
 
 ## Icons (R4 in detail)
 
@@ -143,10 +157,15 @@ Each earlier change that contradicts a rule. A change goes back to the rule, nev
 
 | Commit | Pages | What it did | Rule |
 |---|---|---|---|
-| `87980a14` (rowfirstline, rejected) | settings, report, about and their states | centred the disc on the first line, 7 dp above the title top | R9 (fixed in `2f97f227`) |
-| library start (`RvRow`) | every list page: 活動, 策略, 節點, 依 App, 連線, 組態, sheets, check rows | centres the disc and the trailing switch on the row with a subtitle | R9, R11 |
+| `87980a14` (rowfirstline, rejected by the owner) | 設定, 回報問題, 關於 and their states | centred the disc on the first line: 7 dp above the title top, 13 dp above Revolut's | R9 (set back in `2f97f227`) |
+| library start, `RvRow` | every list page: 活動, 策略, 節點, 依 App, 連線, 組態, sheets, check rows | centres the disc on a row with a subtitle: 1.5 dp low at 1.0, more at larger fonts (1,855 breaks in the before list) | R9 |
+| library start, `RvSwitchRow`, `RvCheckRow` | 依 App, 連線, permission and sheet rows | centre the switch or check on a row with a subtitle (528 breaks) | R11 |
+| library start, `RvSettingsRow` | 設定, 關於, 回報問題 and their states | a one-line row's title sits at the top of its 26 dp first-line box: 1.5 dp above the centre, while the disc is centred (415 breaks, "above 16 below 19") | R18 |
+| library start, `RvBanner` | 活動 notices, 當機, 匯入錯誤, per-app errors | 2 dp between title and reason (`tight / 2`), the one title-to-subtitle gap that is not 0 (113 breaks) | R12 |
+| `cdbc415f` (latinrow) | all rows | gives mixed rows the Latin line box; rows differ by 0.5 dp (1 px) from CJK-only rows | R13 holds within 1 dp; kept |
+| node picker (`node-picker-action-failed-*`) | 節點 picker with a failed action | trailing part ends 13 dp short of the row's end | R16 (cause to be read in the code) |
 
-(The list is completed from the gate's before list; see `rv-row-rules.txt`.)
+The gate's before list, per golden and rule, is in `rv-row-rules.txt`; it only shrinks.
 
 ## Exceptions
 

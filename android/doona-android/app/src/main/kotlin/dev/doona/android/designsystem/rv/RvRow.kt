@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 // The one list row of every card: RvRow, with its line-wise ends and the title it never lets its end cut.
 
@@ -79,6 +80,7 @@ internal fun RvRow(
     titleKeepWords: Boolean = true,
     subtitleKeepWords: Boolean = true,
     endBusy: Boolean = false,
+    endFirstLine: Boolean = false,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     // The card clips the layer of its first and last row to its corners.
@@ -88,6 +90,9 @@ internal fun RvRow(
     val minHeight = if (subtitle == null) RvSize.rowOneLine else RvSize.rowTwoLine
     val titleText = rememberRowText(title, Rv.type.rowTitle, titleLines, titleKeepWords)
     val subtitleText = subtitle?.let { rememberRowText(it, Rv.type.rowSub, RV_ROW_SUBTITLE_LINES, subtitleKeepWords) }
+    // LAYOUT-RULES.md R9: with a subtitle the disc's top is the title's top, so the text publishes where its title starts.
+    val top = subtitle != null
+    val firstLine = if (endFirstLine && top) maxOf(RvSize.rowOneLine - RvSpace.rowTextInset * 2, rvOneLine(title, Rv.type.rowTitle, lineBox = true)) else null
     Row(
         modifier
             .fillMaxWidth()
@@ -97,16 +102,22 @@ internal fun RvRow(
             .padding(horizontal = RvSpace.rowPadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        leading()
+        if (top) Box(Modifier.alignBy { 0 }) { leading() } else leading()
         Spacer(Modifier.width(RvSpace.rowGap))
+        val text = if (top) Modifier.weight(1f).alignBy(RvTitleTop) else Modifier.weight(1f)
         if (beside) {
-            TextBesideEnd(titleText, subtitleText, minHeight, trailing, Modifier.weight(1f))
+            TextBesideEnd(titleText, subtitleText, minHeight, firstLine, trailing, top, text)
         } else if (lineWise && endBusy) {
-            BusyAtEnd(Modifier.weight(1f)) {
-                LineWiseText(titleText, subtitleText, titleOverflow, titleEnd?.let(::hidden), subtitleEnd?.let(::hidden), Modifier)
+            BusyAtEnd(text) {
+                LineWiseText(titleText, subtitleText, titleOverflow, titleEnd?.let(::hidden), subtitleEnd?.let(::hidden), minHeight, top, Modifier)
             }
         } else if (lineWise) {
-            LineWiseText(titleText, subtitleText, titleOverflow, titleEnd, subtitleEnd, Modifier.weight(1f))
+            LineWiseText(titleText, subtitleText, titleOverflow, titleEnd, subtitleEnd, minHeight, top, text)
+        } else if (top) {
+            RowTextColumn(minHeight, text) {
+                titleText.Shown(overflow = titleOverflow)
+                subtitleText?.Shown(Rv.colors.textSecondary)
+            }
         } else {
             Column(Modifier.weight(1f).padding(vertical = RvSpace.rowTextInset)) {
                 titleText.Shown(overflow = titleOverflow)
@@ -134,9 +145,11 @@ private fun LineWiseText(
     titleOverflow: TextOverflow,
     titleEnd: (@Composable () -> Unit)?,
     subtitleEnd: (@Composable () -> Unit)?,
+    minHeight: Dp,
+    top: Boolean,
     modifier: Modifier,
 ) {
-    Column(modifier.padding(vertical = RvSpace.rowTextInset)) {
+    val lines: @Composable () -> Unit = {
         RowLine(titleEnd?.let(::onLine), title.takeIf { titleOverflow == TextOverflow.Ellipsis }, figure = true) {
             title.Shown(overflow = titleOverflow)
         }
@@ -144,10 +157,33 @@ private fun LineWiseText(
             RowLine(subtitleEnd?.let(::onLine), it) { it.Shown(Rv.colors.textSecondary) }
         }
     }
+    if (top) RowTextColumn(minHeight, modifier, lines) else Column(modifier.padding(vertical = RvSpace.rowTextInset)) { lines() }
+}
+
+/**
+ * A row's text lines stacked, at least [minHeight] tall with the lines centred in it and [RvSpace.rowTextInset] clear above
+ * and below; it publishes where its first line starts ([RvTitleTop]), so the row's disc can stand on it (R9).
+ */
+@Composable
+private fun RowTextColumn(minHeight: Dp, modifier: Modifier, content: @Composable () -> Unit) {
+    Layout(content, modifier) { parts, constraints ->
+        val inset = RvSpace.rowTextInset.roundToPx()
+        val placed = parts.map { it.measure(constraints.copy(minWidth = 0, minHeight = 0)) }
+        val block = placed.sumOf { it.height }
+        val height = max(minHeight.roundToPx(), block + inset * 2)
+        val first = ((height - block) / 2f).roundToInt()
+        layout(constraints.maxWidth, height, mapOf(RvTitleTop to first)) {
+            var y = first
+            placed.forEach {
+                it.place(0, y)
+                y += it.height
+            }
+        }
+    }
 }
 
 /** [end] on a row's line: its text in its role's Latin line box ([LocalRvRowLine]). */
-private fun onLine(end: @Composable () -> Unit): @Composable () -> Unit = { CompositionLocalProvider(LocalRvRowLine provides true, end) }
+private fun onLine(end: @Composable () -> Unit): @Composable () -> Unit = { CompositionLocalProvider(LocalRvRowLine provides true) { Box(Modifier.testTag(RvRowPart.LINE_END)) { end() } } }
 
 /** [end] keeping its room, neither drawn nor read out. */
 private fun hidden(end: @Composable () -> Unit): @Composable () -> Unit = { Box(Modifier.alpha(0f).clearAndSetSemantics {}) { end() } }
@@ -166,8 +202,9 @@ private fun BusyAtEnd(modifier: Modifier, text: @Composable () -> Unit) {
         val shown = textPart.measure(loose)
         val bar = busyPart.measure(loose)
         val size = IntSize(max(constraints.minWidth, max(shown.width, bar.width)), max(constraints.minHeight, max(shown.height, bar.height)))
-        layout(size.width, size.height) {
-            val at = Alignment.CenterEnd.align(IntSize(shown.width, shown.height), size, layoutDirection)
+        val title = shown[RvTitleTop].takeUnless { it == AlignmentLine.Unspecified }
+        val at = Alignment.CenterEnd.align(IntSize(shown.width, shown.height), size, layoutDirection)
+        layout(size.width, size.height, if (title != null) mapOf(RvTitleTop to at.y + title) else emptyMap()) {
             shown.place(at)
             val line = shown[RvEndUnder]
             val barAt = Alignment.CenterEnd.align(IntSize(bar.width, bar.height), size, layoutDirection)
@@ -186,14 +223,14 @@ private fun BusyAtEnd(modifier: Modifier, text: @Composable () -> Unit) {
  * `IPLC`), unless only part of the end shows ([besideShown]).
  */
 @Composable
-private fun TextBesideEnd(titleText: RowText, subtitleText: RowText?, minHeight: Dp, trailing: @Composable () -> Unit, modifier: Modifier) {
+private fun TextBesideEnd(titleText: RowText, subtitleText: RowText?, minHeight: Dp, endLine: Dp?, trailing: @Composable () -> Unit, top: Boolean, modifier: Modifier) {
     val measurer = rememberTextMeasurer()
     val side = remember { RvEndSide() }
     Layout(
         {
             titleText.Shown()
             subtitleText?.Shown(Rv.colors.textSecondary)
-            Box { CompositionLocalProvider(LocalRvEndSide provides side, trailing) }
+            Box(Modifier.testTag(RvRowPart.END)) { CompositionLocalProvider(LocalRvEndSide provides side, trailing) }
         },
         modifier,
     ) { parts, constraints ->
@@ -212,15 +249,17 @@ private fun TextBesideEnd(titleText: RowText, subtitleText: RowText?, minHeight:
         if (fits) {
             val text = titleLine.height + (subtitleLine?.height ?: 0) + inset * 2
             val height = maxOf(text, end.height, least)
-            layout(width, height) {
-                val top = Alignment.CenterVertically.align(text, height) + inset
-                titleLine.place(0, top)
-                subtitleLine?.place(0, top + titleLine.height)
-                end.place(width - end.width, Alignment.CenterVertically.align(end.height, height))
+            val first = Alignment.CenterVertically.align(text, height) + inset
+            layout(width, height, if (top) mapOf(RvTitleTop to first) else emptyMap()) {
+                titleLine.place(0, first)
+                subtitleLine?.place(0, first + titleLine.height)
+                // R11: a control stands on the title's first line, as Revolut's switch rows do; a value or chevron is centred.
+                val at = endLine?.let { first + it.roundToPx() / 2 - end.height / 2 } ?: Alignment.CenterVertically.align(end.height, height)
+                end.place(width - end.width, at)
             }
         } else {
             val text = titleLine.height + (subtitleLine?.height ?: 0)
-            layout(width, max(least, inset * 2 + text + end.height)) {
+            layout(width, max(least, inset * 2 + text + end.height), if (top) mapOf(RvTitleTop to inset) else emptyMap()) {
                 titleLine.place(0, inset)
                 subtitleLine?.place(0, inset + titleLine.height)
                 end.place(width - end.width, inset + text)
@@ -228,6 +267,9 @@ private fun TextBesideEnd(titleText: RowText, subtitleText: RowText?, minHeight:
         }
     }
 }
+
+/** Where a row's first text line starts, from the text part's top: the disc of a row with a subtitle stands on it. */
+internal val RvTitleTop = HorizontalAlignmentLine(::min)
 
 /** How wide what the end shows is: from where it starts ([RvEndInk], a busy bar in its latency's room) to its end. */
 private fun Placeable.shownWidth(): Int = this[RvEndInk].let { if (it == AlignmentLine.Unspecified) width else width - it }

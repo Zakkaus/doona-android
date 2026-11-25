@@ -234,9 +234,11 @@ android {
         unitTests {
             isIncludeAndroidResources = true
             all {
+                it.maxHeapSize = "2g"
                 it.systemProperty("robolectric.graphicsMode", "NATIVE")
                 System.getProperty("doona.shots")?.let { dir -> it.systemProperty("doona.shots", dir) }
                 System.getProperty("doona.board")?.let { dir -> it.systemProperty("doona.board", dir) }
+                System.getProperty("doona.rowrules")?.let { mode -> it.systemProperty("doona.rowrules", mode) }
             }
         }
     }

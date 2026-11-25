@@ -2,6 +2,7 @@ package dev.doona.android.prototype.rv.settings
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -21,11 +22,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.designsystem.rv.RV_ROW_SUBTITLE_LINES
 import dev.doona.android.designsystem.rv.RV_ROW_TITLE_LINES
@@ -36,6 +39,7 @@ import dev.doona.android.designsystem.rv.RvCodeText
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvRadio
+import dev.doona.android.designsystem.rv.RvRowPart
 import dev.doona.android.designsystem.rv.RvSectionTitle
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
@@ -115,7 +119,7 @@ internal fun RvSettingsRow(
         contentAlignment = Alignment.CenterStart,
     ) {
         val text = rowText(RowWords(title, subtitle, titleKeepWords, subtitleKeepWords), code, titleLines, error, RowEnds(icon, action, trailing))
-        Row(Modifier.fillMaxWidth().padding(vertical = RvSpace.rowTextInset), verticalAlignment = Alignment.Top, content = text)
+        Row(Modifier.fillMaxWidth().testTag(RvRowPart.SETTINGS_ROW).padding(vertical = RvSpace.rowTextInset), verticalAlignment = Alignment.Top, content = text)
     }
 }
 
@@ -140,7 +144,8 @@ private fun rowText(words: RowWords, code: Boolean, titleLines: Int, error: Bool
             Tall(line, top, Modifier.testTag(RvPart.DISC)) { RvIconDisc(it) }
             Spacer(Modifier.width(RvSpace.rowGap))
         }
-        Column(Modifier.weight(1f)) {
+        // R18: a one-line row's title is centred in the first-line box, as the disc and the control are; a taller block fills it.
+        Column(Modifier.weight(1f).heightIn(min = line), verticalArrangement = Arrangement.Center) {
             if (code) {
                 RvCodeText(title, Rv.type.rowTitle, maxLines = titleLines)
             } else {
@@ -163,18 +168,21 @@ private fun rowText(words: RowWords, code: Boolean, titleLines: Int, error: Bool
 /** [content] centred on the title's first [line]. */
 @Composable
 private fun FirstLine(line: Dp, content: @Composable () -> Unit) {
-    Box(Modifier.height(line), contentAlignment = Alignment.Center) { content() }
+    Box(Modifier.height(line).testTag(RvRowPart.END), contentAlignment = Alignment.Center) { content() }
 }
 
 /**
- * A 40 dp end (the disc, an in-card button), taller than a line box of a small font, so it is not held to the box's
- * height and never makes the row taller: its top on the title's [top] (a row with a subtitle), else centred on the
- * first [line].
+ * An end of the row's left or right side: one as tall as a line box or taller (the 40 dp disc, an in-card button) is not
+ * held to the box's height and never makes the row taller, its top on the title's [top] (a row with a subtitle), else
+ * centred on the first [line]; a shorter one (the busy bar standing in for a button) is centred on the first line.
  */
 @Composable
 private fun Tall(line: Dp, top: Boolean, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val align = if (top) Alignment.Top else Alignment.CenterVertically
-    Box(Modifier.height(line)) { Box(Modifier.wrapContentHeight(align, unbounded = true).then(modifier)) { content() } }
+    Layout({ Box(modifier) { content() } }, Modifier.height(line)) { (part), _ ->
+        val placed = part.measure(Constraints())
+        val height = line.roundToPx()
+        layout(placed.width, height) { placed.place(0, if (top && placed.height >= height) 0 else (height - placed.height) / 2) }
+    }
 }
 
 /**

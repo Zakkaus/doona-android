@@ -160,6 +160,7 @@ internal fun RvMenuPanel(items: List<RvMenuItem>, onPick: (RvMenuItem) -> Unit, 
             Row(
                 Modifier
                     .fillMaxWidth()
+                    .testTag(RvRowPart.MENU_ROW)
                     .heightIn(min = RvMenuSize.row)
                     .rvRowPress(Role.Button, { onPick(item) })
                     .padding(horizontal = RvSpace.rowPadding),
