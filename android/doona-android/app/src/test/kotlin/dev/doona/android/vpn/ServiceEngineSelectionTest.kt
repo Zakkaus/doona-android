@@ -3,6 +3,8 @@ package dev.doona.android.vpn
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.data.settings.PerAppSettings
 import dev.doona.android.engine.Network
+import dev.doona.android.engine.NetworkState
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -22,7 +24,7 @@ class ServiceEngineSelectionTest {
         val opener = CoreOpener(core, { folder.root.path }, io)
         val settings = PerAppSettings(PerAppSettings.store(backgroundScope) { folder.root.resolve("per_app.preferences_pb") })
         val controller = TunnelController(core, opener, { error("Tunnel not used") }, backgroundScope, killProcess = {}, endDebugCapture = {}, expireDebugCapture = { null })
-        val engine = ServiceEngine(core, opener, controller, settings, { error("Tunnel not used") }, io, backgroundScope, expireDebugCapture = { null })
+        val engine = ServiceEngine(core, opener, controller, settings, MutableStateFlow(NetworkState()), { error("Tunnel not used") }, io, backgroundScope, expireDebugCapture = { null })
 
         engine.select("g-Proxy", "n-hk1", Network.Tcp).getOrThrow()
         engine.select("g-Proxy", "n-hk1", Network.Udp).getOrThrow()

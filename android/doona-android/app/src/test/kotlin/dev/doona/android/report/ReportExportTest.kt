@@ -113,7 +113,7 @@ class ReportExportTest : ExportFixture() {
         runCurrent()
         assertEquals(LogLevel.Info, logLevels.level.value)
         assertEquals(LogLevel.Info, engine.diagnostics().getOrThrow().level)
-        assertEquals("command=export phase=write outcome=ok code=ok", AppEvents.snapshot().last().text)
+        assertEquals("command=export phase=write outcome=ok code=ok", AppEvents.snapshot().last { it.text.startsWith("command=") }.text)
     }
 
     @Test

@@ -6,6 +6,8 @@ import android.os.Process
 import android.os.SystemClock
 import dev.doona.android.data.geo.GeoAssets
 import dev.doona.android.data.network.followBootstrapDns
+import dev.doona.android.data.network.networkState
+import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.data.settings.PerAppSettings
 import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.ConfigAssets
@@ -19,6 +21,7 @@ import dev.doona.android.engine.Group
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Network
+import dev.doona.android.engine.NetworkState
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RebuildFailedException
@@ -81,6 +84,7 @@ class ServiceEngine internal constructor(
     private val opener: CoreOpener,
     internal val controller: TunnelController,
     private val perAppSettings: PerAppSettings,
+    override val network: StateFlow<NetworkState>,
     /** Starts the service with the generation of a requested start; false when the system finds no service to start. */
     private val startService: (Long) -> Boolean,
     private val io: CoroutineDispatcher,
@@ -539,7 +543,8 @@ class ServiceEngine internal constructor(
             val core = DeferredCore { NativeCore }
             // noBackupFilesDir keeps state.json, which holds subscription URLs with tokens, out of every backup. Asking for
             // it makes it, which is disk work: the opener asks on IO.
-            val opener = CoreOpener(core, { app.noBackupFilesDir.path }, Dispatchers.IO)
+            val settings = AppSettings.get(app)
+            val opener = CoreOpener(core, { app.noBackupFilesDir.path }, Dispatchers.IO) { settings.performanceMode.first() }
             val perApp = PerAppSettings.create(app)
             val controller = TunnelController(
                 core = core,
@@ -551,7 +556,17 @@ class ServiceEngine internal constructor(
                 expireDebugCapture = expireDebugCapture,
                 geoAssets = GeoAssets(app),
             )
-            val engine = ServiceEngine(core, opener, controller, perApp, { DoonaVpnService.start(app, it) }, Dispatchers.IO, scope, expireDebugCapture)
+            val engine = ServiceEngine(
+                core,
+                opener,
+                controller,
+                perApp,
+                networkState(app, scope).state,
+                { DoonaVpnService.start(app, it) },
+                Dispatchers.IO,
+                scope,
+                expireDebugCapture,
+            )
             engine.launch(Dispatchers.IO.limitedParallelism(1), app.getSystemService(ConnectivityManager::class.java))
             return engine
         }

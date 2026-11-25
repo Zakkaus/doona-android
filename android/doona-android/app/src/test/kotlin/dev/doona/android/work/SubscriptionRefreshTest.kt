@@ -12,6 +12,7 @@ import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.report.AppEventLevel
 import dev.doona.android.report.AppEvents
+import dev.doona.android.vpn.VpnLog
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -60,6 +61,7 @@ class SubscriptionRefreshTest {
     @Test
     fun coreReadinessDeadlineWarnsWithoutStartingARefresh() = runTest {
         AppEvents.clear()
+        VpnLog.warn("init failed: NoClassDefFoundError") // what a background core open records into the shared log
         val engine = RecordingEngine(listOf(sub("stale", null))) { error("updated before the core was ready") }
         engine.ready.value = false
 

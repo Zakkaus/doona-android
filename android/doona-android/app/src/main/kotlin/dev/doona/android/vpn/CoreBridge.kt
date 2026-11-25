@@ -5,8 +5,11 @@ package dev.doona.android.vpn
  * core. Payloads are JSON; `vpn/CoreDto.kt` types them.
  */
 interface CoreBridge {
-    /** Once per process before anything else; idempotent. Returns `{"schema":3}`. */
-    fun init(dataDir: String): String
+    /**
+     * Once per process before anything else; idempotent, so only the first call's [optionsJson] counts. Returns
+     * `{"schema":3}`.
+     */
+    fun init(dataDir: String, optionsJson: String): String
 
     /**
      * Blocks until the data path is up, at most 10 s. [tunFd] is borrowed: the core duplicates it first, and the caller

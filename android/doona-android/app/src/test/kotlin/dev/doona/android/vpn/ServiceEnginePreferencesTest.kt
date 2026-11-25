@@ -4,7 +4,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.data.settings.PerAppSettings
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.NetworkState
 import dev.doona.android.report.AppEvents
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -25,7 +27,7 @@ class ServiceEnginePreferencesTest {
         val opener = CoreOpener(core, { folder.root.path }, io)
         val settings = PerAppSettings(PerAppSettings.store(backgroundScope) { folder.root.resolve("per_app.preferences_pb") })
         val controller = TunnelController(core, opener, { error("Tunnel not used") }, backgroundScope, killProcess = {}, endDebugCapture = {}, expireDebugCapture = { null })
-        return ServiceEngine(core, opener, controller, settings, { error("Tunnel not used") }, io, backgroundScope, expireDebugCapture = { null })
+        return ServiceEngine(core, opener, controller, settings, MutableStateFlow(NetworkState()), { error("Tunnel not used") }, io, backgroundScope, expireDebugCapture = { null })
     }
 
     @Test

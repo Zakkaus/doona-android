@@ -8,8 +8,9 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use super::draft::Draft;
+use super::meters::RevisionMeters;
 use super::staged::Tree;
-use super::{HonkConfig, HonkConfigError};
+use super::{Capabilities, HonkConfig, HonkConfigError, Support};
 use crate::state::{sync_dir, write_synced};
 
 const CONFIG: &str = "config";
@@ -33,6 +34,8 @@ pub enum StoreError {
     },
     /// A refused include leaves some declarations unknown.
     Incomplete,
+    /// The report against the supplied facts holds a blocked rule or an unassessed input.
+    NotRunnable(Box<Support>),
     /// The edit does not identify a confined configuration file.
     InvalidEditPath,
     /// The imported entry is itself a symlink; its path is private editor data.
@@ -52,6 +55,7 @@ impl std::fmt::Display for StoreError {
             Self::Config(e) => return e.fmt(f),
             Self::Conflict { .. } => "draft base is not the current revision",
             Self::Incomplete => "configuration has a refused include",
+            Self::NotRunnable(_) => "configuration has a blocked rule or an unassessed input",
             Self::InvalidEditPath => "invalid draft file path",
             Self::ImportSymlink(_) => "configuration entry is a symlink",
             Self::MissingFile => "configuration file not found",
@@ -86,6 +90,7 @@ impl From<HonkConfigError> for StoreError {
 #[derive(Clone, Deserialize, Serialize)]
 struct Revision {
     entry: PathBuf,
+    meters: RevisionMeters,
 }
 
 #[derive(Clone, Default, Deserialize, Serialize)]
@@ -93,6 +98,7 @@ pub(super) struct Manifest {
     revisions: BTreeMap<u64, Revision>,
     pub drafts: Vec<Draft>,
     pub last_draft: u64,
+    last_meter: u64,
 }
 
 /// One writer owns the app-private config directory. Share this handle between editors.
@@ -162,14 +168,22 @@ impl HonkStore {
             .join(&revision.entry))
     }
 
+    /// Each traffic row's meter in `rev`, by entry-relative file and row ID.
+    pub fn revision_meters(&self, rev: u64) -> Result<&RevisionMeters, StoreError> {
+        let revision = self.manifest.revisions.get(&rev);
+        Ok(&revision.ok_or(StoreError::UnknownRevision)?.meters)
+    }
+
     pub fn read_revision(&self, rev: u64) -> Result<HonkConfig, StoreError> {
         Ok(super::load(self.revision_entry(rev)?)?)
     }
 
     /// Recheck the exact bytes to be published. On conflict or validation failure the draft stays editable.
+    /// `caps` are the ingress and asset facts the revision will run against; a report that is not
+    /// [`Support::runnable`] refuses the apply and returns that report.
     /// The rename commits the revision. If the following directory sync fails, power loss
     /// can still roll it back; the old tree is retained until the new head is durable.
-    pub fn apply(&mut self, id: u64) -> Result<u64, StoreError> {
+    pub fn apply(&mut self, id: u64, caps: &Capabilities<'_>) -> Result<u64, StoreError> {
         let draft = self.find(id)?;
         let head = self.head();
         if draft.base != head {
@@ -183,6 +197,16 @@ impl HonkStore {
         if !config.complete() {
             return Err(StoreError::Incomplete);
         }
+        let support = config.support(caps);
+        if !support.runnable() {
+            return Err(StoreError::NotRunnable(Box::new(support)));
+        }
+        let mut last_meter = self.manifest.last_meter;
+        let meters = draft.assign(
+            &config.loaded,
+            tree.entry.parent().unwrap(),
+            &mut last_meter,
+        );
         // A complete tree reaches symlinks only through hosts; keep reporting those escapes.
         tree.kept = tree.hosts_links(config.config());
         files.extend(
@@ -197,10 +221,12 @@ impl HonkStore {
         let dir = self.root.join(REVISIONS).join(rev.to_string());
         tree.copy_to(&dir)?;
         let mut next = self.manifest.clone();
+        next.last_meter = last_meter;
         next.revisions.insert(
             rev,
             Revision {
                 entry: draft.entry.clone(),
+                meters,
             },
         );
         next.drafts.retain(|d| d.id != id);
@@ -281,7 +307,7 @@ mod tests {
                 "routing { fallback: direct }",
             )
             .unwrap();
-        let old = store.apply(first).unwrap();
+        let old = store.apply(first, &Capabilities::linked()).unwrap();
         let second = store.draft(None).unwrap();
         store
             .edit(
@@ -315,7 +341,7 @@ mod tests {
             Err(io::ErrorKind::Interrupted.into())
         };
         assert!(
-            matches!(store.apply(second), Err(StoreError::Io(e)) if e.kind() == io::ErrorKind::Interrupted)
+            matches!(store.apply(second, &Capabilities::linked()), Err(StoreError::Io(e)) if e.kind() == io::ErrorKind::Interrupted)
         );
         drop(store);
         let mut store = HonkStore::open(data.path()).unwrap();
@@ -323,7 +349,7 @@ mod tests {
         let cfg = store.read_revision(old).unwrap();
         assert_eq!(&*cfg.sources()[0].content, "include { nested/child.dae }");
         assert_eq!(&*cfg.sources()[1].content, "routing { fallback: direct }");
-        let new = store.apply(second).unwrap();
+        let new = store.apply(second, &Capabilities::linked()).unwrap();
         drop(store);
         let store = HonkStore::open(data.path()).unwrap();
         assert_eq!(store.head(), Some(new));

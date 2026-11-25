@@ -464,10 +464,10 @@ fn admit(
                 file.content = original.clone();
             }
         }
-        declarations.finish(&loaded.config, &index, &mut skipped);
-        Ok(skipped)
+        declarations.finish(&loaded.config, &mut skipped);
+        Ok((skipped, index))
     });
-    let unsupported =
+    let (declared, index) =
         finish_attempt(report, &mut diagnostics).map_err(|cause| HonkConfigError::ParseFailed {
             cause,
             diagnostics: std::mem::take(&mut diagnostics),
@@ -475,7 +475,8 @@ fn admit(
     Ok(HonkConfig {
         loaded,
         diagnostics,
-        unsupported,
+        declared,
+        index,
     })
 }
 

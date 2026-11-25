@@ -3,6 +3,8 @@ package dev.doona.android.engine.fake
 import dev.doona.android.engine.AppPolicy
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
+import dev.doona.android.engine.NetworkState
+import dev.doona.android.engine.NetworkTransport
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RuleKind
 import dev.doona.android.engine.RuleOptions
@@ -24,6 +26,7 @@ class RvSampleEngineTest {
         assertEquals(Status.Running(1_795_336_920_000), engine.status.value)
         assertEquals(Mode.Rule, engine.settings.value.mode)
         assertNull(engine.warning.value)
+        assertEquals(NetworkState(NetworkTransport.WiFi, metered = false, validated = true), engine.network.value)
         assertEquals("Hong Kong 02 IPLC", engine.groups.value.first().members.first { it.id == main.selectedId }.name)
         assertEquals(listOf("Harbor Cloud" to 32, "Lantern Net" to 16), engine.subscriptions.value.map { it.name to it.nodes })
         val nodes = engine.nodes().getOrThrow()

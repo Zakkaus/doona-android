@@ -15,6 +15,8 @@ import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Network
+import dev.doona.android.engine.NetworkState
+import dev.doona.android.engine.NetworkTransport
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RecentFlow
@@ -92,6 +94,9 @@ class FakeEngine internal constructor(
 
     /** None: the fake's tunnel never dials. A test sets one to stand for the core's report. */
     override val warning = MutableStateFlow<ErrorCode?>(null)
+
+    /** Unmetered Wi-Fi that Android validated. A test sets another state, such as offline. */
+    override val network = MutableStateFlow(NetworkState(NetworkTransport.WiFi, metered = false, validated = true))
 
     override fun connect() {
         if (status.value is Status.Running) return

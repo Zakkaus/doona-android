@@ -5,12 +5,14 @@ import dev.doona.android.data.settings.PerAppSettings
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Member
+import dev.doona.android.engine.NetworkState
 import dev.doona.android.engine.StaticNode
 import dev.doona.android.engine.StaticNodeDraft
 import dev.doona.android.engine.StaticNodeDraftException
 import dev.doona.android.engine.StaticNodeReason
 import dev.doona.android.engine.StaticNodeResult
 import dev.doona.android.engine.StaticNodeUpdateResult
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -197,7 +199,7 @@ class StaticNodesTest {
         val opener = CoreOpener(core, { folder.root.path }, io)
         val settings = PerAppSettings(PerAppSettings.store(scope) { folder.root.resolve("per_app.preferences_pb") })
         val controller = TunnelController(core, opener, { error("Tunnel not used") }, scope, killProcess = {}, endDebugCapture = {}, expireDebugCapture = { null })
-        return ServiceEngine(core, opener, controller, settings, { error("Tunnel not used") }, io, scope, expireDebugCapture = { null })
+        return ServiceEngine(core, opener, controller, settings, MutableStateFlow(NetworkState()), { error("Tunnel not used") }, io, scope, expireDebugCapture = { null })
     }
 
     private fun serveCatalog(revision: Long, vararg nodes: StaticNode) {

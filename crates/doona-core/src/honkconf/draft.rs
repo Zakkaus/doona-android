@@ -6,6 +6,8 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
+use super::edit::carry::{self, Carry};
+use super::meters::{self, Carried, DraftMeters, Meters, RevisionMeters};
 use super::staged::{LIMITS, Tree};
 use super::store::STAGING;
 use super::{HonkConfig, HonkConfigError, HonkStore, StoreError};
@@ -20,6 +22,7 @@ pub struct Draft {
     pub base: Option<u64>,
     pub entry: PathBuf,
     edited: bool,
+    pub(super) meters: DraftMeters,
 }
 
 // The slot is not reachable from head. An earlier failed publish can have left it behind.
@@ -100,8 +103,11 @@ impl HonkStore {
     /// Copy a historical revision for restore, or head for editing. With no head, create an empty `config.dae`.
     pub fn draft(&mut self, from: Option<u64>) -> Result<u64, StoreError> {
         match from.or(self.head()) {
-            Some(rev) => self.import(&self.revision_entry(rev)?),
-            None => self.stage(None),
+            Some(rev) => {
+                let meters = self.revision_meters(rev)?.clone();
+                self.import_with(&self.revision_entry(rev)?, &meters)
+            }
+            None => self.stage(None, &RevisionMeters::new()),
         }
     }
 
@@ -109,6 +115,10 @@ impl HonkStore {
     /// keep that directory unchanged until import returns. Invalid honk remains editable;
     /// an escaping include or hosts file is a located record in the draft, not a refusal.
     pub fn import(&mut self, entry: &Path) -> Result<u64, StoreError> {
+        self.import_with(entry, &RevisionMeters::new())
+    }
+
+    fn import_with(&mut self, entry: &Path, meters: &RevisionMeters) -> Result<u64, StoreError> {
         if entry.is_symlink() {
             return Err(StoreError::ImportSymlink(entry.into()));
         }
@@ -117,10 +127,10 @@ impl HonkStore {
             return Err(HonkConfigError::NonNativeSource.into());
         }
         tree.capture_companions(None)?;
-        self.stage(Some(tree))
+        self.stage(Some(tree), meters)
     }
 
-    fn stage(&mut self, tree: Option<Tree>) -> Result<u64, StoreError> {
+    fn stage(&mut self, tree: Option<Tree>, meters: &RevisionMeters) -> Result<u64, StoreError> {
         let mut next = self.manifest.clone();
         next.last_draft += 1;
         let id = next.last_draft;
@@ -128,6 +138,10 @@ impl HonkStore {
             id,
             base: self.head(),
             edited: false,
+            meters: tree
+                .as_ref()
+                .map(|t| meters::staged(t, meters))
+                .unwrap_or_default(),
             entry: tree
                 .as_ref()
                 .map_or_else(|| ENTRY.into(), |t| t.entry.file_name().unwrap().into()),
@@ -165,7 +179,14 @@ impl HonkStore {
     pub fn edit(&mut self, id: u64, relative: &Path, text: &str) -> Result<(), StoreError> {
         let mut tree = Tree::read(&self.draft_entry(self.find(id)?))?;
         let path = tree.edit_path(relative)?;
-        if super::staged::is_honk_source(&path) {
+        let honk = super::staged::is_honk_source(&path);
+        let before = honk.then(|| {
+            (
+                tree.files.get(&path).cloned(),
+                carry::file_rows(&tree, &path),
+            )
+        });
+        if honk {
             tree.files.remove(&path);
             let used = tree.files.values().map(|s| s.len()).sum::<usize>();
             let value =
@@ -176,8 +197,18 @@ impl HonkStore {
         if !tree.files.contains_key(&path) {
             return Err(StoreError::InvalidEditPath);
         }
+        let root = tree.entry.parent().unwrap();
+        let carried = before.map(|(old, rows)| {
+            let old = old.as_deref().unwrap_or("");
+            let follow = |m: &Meters| match (rows, carry::file_rows(&tree, &path)) {
+                (Some(rows), Some(new)) => Carry::diff(old, text).follow(&rows, &new, m),
+                _ => Meters::new(),
+            };
+            let relative = path.strip_prefix(root).unwrap();
+            self.find(id).unwrap().carry(relative, old, text, follow)
+        });
         fs::create_dir_all(path.parent().unwrap())?;
-        self.write_edit(id, &path, tree.entry.parent().unwrap(), text)
+        self.write_edit(id, &path, root, text, carried)
     }
 
     pub(super) fn write_edit(
@@ -186,13 +217,18 @@ impl HonkStore {
         path: &Path,
         root: &Path,
         text: &str,
+        carried: Option<Carried>,
     ) -> Result<(), StoreError> {
-        // Select before replacing bytes: a crash must not collect a draft containing the edit.
-        if self.current_draft().is_none_or(|d| d.id != id || !d.edited) {
+        // Select and record the new bytes' meters before replacing bytes: a crash must not
+        // collect a draft containing the edit, and either bytes keep their meters.
+        if carried.is_some() || self.current_draft().is_none_or(|d| d.id != id || !d.edited) {
             let mut next = self.manifest.clone();
             let pos = next.drafts.iter().position(|d| d.id == id).unwrap();
             let mut draft = next.drafts.remove(pos);
             draft.edited = true;
+            if let Some(carried) = carried {
+                draft.record(carried);
+            }
             next.drafts.push(draft);
             self.publish(next)?;
         }

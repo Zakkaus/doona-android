@@ -72,6 +72,9 @@ class AppSettings internal constructor(private val store: DataStore<Preferences>
         ThemeAppearance(mode(prefs), prefs[FOLLOW_WALLPAPER] ?: false, accent)
     }
 
+    /** More core threads for more throughput over several flows, at the cost of CPU and power; read when the core opens. */
+    val performanceMode = preference { it[PERFORMANCE_MODE] ?: false }
+
     private fun <T> preference(read: (Preferences) -> T): Flow<T> = store.data.map(read).distinctUntilChanged()
 
     private suspend fun <T> set(key: Preferences.Key<T>, value: T) {
@@ -94,6 +97,8 @@ class AppSettings internal constructor(private val store: DataStore<Preferences>
 
     suspend fun setAccent(accent: ThemeAccent) = set(ACCENT, accent.name)
 
+    suspend fun setPerformanceMode(enabled: Boolean) = set(PERFORMANCE_MODE, enabled)
+
     companion object {
         private val NOTIFY_ON_DROP = booleanPreferencesKey("notify_on_drop")
         private val AUTO_UPDATE = booleanPreferencesKey("auto_update")
@@ -103,6 +108,7 @@ class AppSettings internal constructor(private val store: DataStore<Preferences>
         private val THEME_MODE = stringPreferencesKey("theme_mode")
         private val FOLLOW_WALLPAPER = booleanPreferencesKey("follow_wallpaper")
         private val ACCENT = stringPreferencesKey("accent")
+        private val PERFORMANCE_MODE = booleanPreferencesKey("performance_mode")
 
         private var instance: AppSettings? = null
 

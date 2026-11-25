@@ -73,21 +73,43 @@ private fun LinkProperties.bootstrapServers(): List<String> {
     }
 }
 
+/**
+ * [NetworkStateSource.state] runs for the life of [scope] and starts from the current default network, so its value is
+ * right without a collector. The captive-portal flag registers its callback only while observed.
+ */
 internal fun networkState(context: Context, scope: CoroutineScope): NetworkStateSource {
     val connectivity = context.getSystemService(ConnectivityManager::class.java)
     return NetworkStateSource(
-        defaultNetwork(connectivity).stateIn(scope, whileObserved, offline),
+        defaultNetwork(connectivity).stateIn(scope, SharingStarted.Eagerly, connectivity.defaultState()),
         captivePortals(connectivity).stateIn(scope, whileObserved, false),
     )
 }
 
+private fun ConnectivityManager.defaultState(): NetworkState =
+    activeNetwork?.let(::getNetworkCapabilities)?.toState() ?: offline
+
 private fun defaultNetwork(connectivity: ConnectivityManager) = callbackFlow {
+    // The default network can change between the seed in [networkState] and this registration. Read it again here and
+    // start from it, so a loss reported before any other callback still matches, and a network already gone reads offline.
+    val seed = connectivity.activeNetwork
+    trySend(seed?.let(connectivity::getNetworkCapabilities)?.toState() ?: offline)
     val callback = object : ConnectivityManager.NetworkCallback() {
+        // Callbacks arrive on one handler thread. Android can report the loss of the old default network after the new
+        // one is up, so only the loss of the current default network means offline.
+        private var current: Network? = seed
+
+        override fun onAvailable(network: Network) {
+            current = network
+        }
+
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+            current = network
             trySend(networkCapabilities.toState())
         }
 
         override fun onLost(network: Network) {
+            if (network != current) return
+            current = null
             trySend(offline)
         }
     }
