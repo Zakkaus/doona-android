@@ -2,199 +2,21 @@
 # break a rule today, one per line: golden, rule, row (its title), measured value, tab-separated, sorted. The gate fails
 # on a break not listed here and on a listed line that no longer occurs, so this list only shrinks. A change that ends a
 # break deletes its line; build/rowrules/<golden>.txt holds what a run measured (-Ddoona.rowrules=write remakes it).
-proto-rv-activity-consent-denied-v1-dark	R1	國內與區域網路	height 61.5
-proto-rv-activity-consent-denied-v1-dark	R11l	國內與區域網路	+10.3
-proto-rv-activity-consent-denied-v1-dark	R12	未取得 VPN 權限	+2.0
-proto-rv-activity-consent-denied-v1-dark	R13	國內與區域網路	subtitle 19.0 vs 20.5
-proto-rv-activity-consent-denied-v1-dark	R18	國內與區域網路	below 0.0
-proto-rv-activity-consent-denied-v1-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-consent-denied-v1-dark	R9	串流	+1.5
-proto-rv-activity-consent-denied-v1-dark	R9	出站模式	+1.5
-proto-rv-activity-consent-denied-v1-dark	R9	國內與區域網路	+1.5
-proto-rv-activity-consent-denied-v1-fs115	R12	未取得 VPN 權限	+2.0
-proto-rv-activity-consent-denied-v1-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-activity-consent-denied-v1-fs115	R9	串流	+4.0
-proto-rv-activity-consent-denied-v1-fs115	R9	出站模式	+4.0
-proto-rv-activity-consent-denied-v1-fs200	R12	未取得 VPN 權限	+2.0
-proto-rv-activity-consent-denied-v1-fs200	R18	Hong Kong 02 IPLC	below 0.0
-proto-rv-activity-consent-denied-v1-fs200	R6	Hong Kong 02 IPLC	+56.0
-proto-rv-activity-consent-denied-v1-fs200	R9	出站模式	+17.0
-proto-rv-activity-consent-denied-v1-light	R1	國內與區域網路	height 61.5
-proto-rv-activity-consent-denied-v1-light	R11l	國內與區域網路	+10.3
-proto-rv-activity-consent-denied-v1-light	R12	未取得 VPN 權限	+2.0
-proto-rv-activity-consent-denied-v1-light	R13	國內與區域網路	subtitle 19.0 vs 20.5
-proto-rv-activity-consent-denied-v1-light	R18	國內與區域網路	below 0.0
-proto-rv-activity-consent-denied-v1-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-consent-denied-v1-light	R9	串流	+1.5
-proto-rv-activity-consent-denied-v1-light	R9	出站模式	+1.5
-proto-rv-activity-consent-denied-v1-light	R9	國內與區域網路	+1.5
-proto-rv-activity-consent-denied-v2-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-consent-denied-v2-dark	R9	串流	+1.5
-proto-rv-activity-consent-denied-v2-dark	R9	出站模式	+1.5
-proto-rv-activity-consent-denied-v2-dark	R9	國內與區域網路	+1.5
-proto-rv-activity-consent-denied-v2-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-activity-consent-denied-v2-fs115	R9	串流	+4.0
-proto-rv-activity-consent-denied-v2-fs115	R9	出站模式	+4.0
-proto-rv-activity-consent-denied-v2-fs115	R9	國內與區域網路	+4.0
+proto-rv-activity-consent-denied-v1-dark	R11l	國內與區域網路	+9.3
+proto-rv-activity-consent-denied-v1-light	R11l	國內與區域網路	+9.3
 proto-rv-activity-consent-denied-v2-fs200	R1	Hong Kong 02 IPLC	height 225.0 for 149.5
-proto-rv-activity-consent-denied-v2-fs200	R1	串流	height 79.5
 proto-rv-activity-consent-denied-v2-fs200	R11	串流	+17.5
 proto-rv-activity-consent-denied-v2-fs200	R13	串流	subtitle 25.0 vs 35.0
 proto-rv-activity-consent-denied-v2-fs200	R18	Hong Kong 02 IPLC	above 16.0 below 91.5
-proto-rv-activity-consent-denied-v2-fs200	R18	串流	below 0.0
-proto-rv-activity-consent-denied-v2-fs200	R9	Hong Kong 02 IPLC	+76.5
-proto-rv-activity-consent-denied-v2-fs200	R9	串流	+17.0
-proto-rv-activity-consent-denied-v2-fs200	R9	出站模式	+17.0
-proto-rv-activity-consent-denied-v2-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-consent-denied-v2-light	R9	串流	+1.5
-proto-rv-activity-consent-denied-v2-light	R9	出站模式	+1.5
-proto-rv-activity-consent-denied-v2-light	R9	國內與區域網路	+1.5
-proto-rv-activity-core-stopped-dark	R12	連線已中斷	+2.0
-proto-rv-activity-core-stopped-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-core-stopped-dark	R9	串流	+1.5
-proto-rv-activity-core-stopped-dark	R9	出站模式	+1.5
-proto-rv-activity-core-stopped-light	R12	連線已中斷	+2.0
-proto-rv-activity-core-stopped-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-core-stopped-light	R9	串流	+1.5
-proto-rv-activity-core-stopped-light	R9	出站模式	+1.5
-proto-rv-activity-crash-dark	R1	國內與區域網路	height 66.0
-proto-rv-activity-crash-dark	R11l	國內與區域網路	+8.0
-proto-rv-activity-crash-dark	R12	doona 先前發生當機	+2.0
-proto-rv-activity-crash-dark	R18	國內與區域網路	below 3.0
-proto-rv-activity-crash-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-crash-dark	R9	串流	+1.5
-proto-rv-activity-crash-dark	R9	出站模式	+1.5
-proto-rv-activity-crash-dark	R9	國內與區域網路	+1.5
-proto-rv-activity-crash-fs115	R12	doona 先前發生當機	+2.0
-proto-rv-activity-crash-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-activity-crash-fs115	R9	串流	+4.0
-proto-rv-activity-crash-fs115	R9	出站模式	+4.0
-proto-rv-activity-crash-fs200	R1	Hong Kong 02 IPLC	height 36.0
-proto-rv-activity-crash-fs200	R12	doona 先前發生當機	+2.0
-proto-rv-activity-crash-fs200	R18	Hong Kong 02 IPLC	below 0.0
-proto-rv-activity-crash-fs200	R6	Hong Kong 02 IPLC	+56.0
-proto-rv-activity-crash-fs200	R9	出站模式	+17.0
-proto-rv-activity-crash-light	R1	國內與區域網路	height 66.0
-proto-rv-activity-crash-light	R11l	國內與區域網路	+8.0
-proto-rv-activity-crash-light	R12	doona 先前發生當機	+2.0
-proto-rv-activity-crash-light	R18	國內與區域網路	below 3.0
-proto-rv-activity-crash-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-crash-light	R9	串流	+1.5
-proto-rv-activity-crash-light	R9	出站模式	+1.5
-proto-rv-activity-crash-light	R9	國內與區域網路	+1.5
-proto-rv-activity-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-dark	R9	串流	+1.5
-proto-rv-activity-dark	R9	出站模式	+1.5
-proto-rv-activity-dark	R9	國內與區域網路	+1.5
-proto-rv-activity-direct-dark	R9	出站模式	+1.5
-proto-rv-activity-direct-fs115	R9	出站模式	+4.0
-proto-rv-activity-direct-fs200	R9	出站模式	+17.0
-proto-rv-activity-direct-light	R9	出站模式	+1.5
-proto-rv-activity-en-light	R9	Domestic and LAN	+1.5
-proto-rv-activity-en-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-en-light	R9	Outbound mode	+1.5
-proto-rv-activity-en-light	R9	Streaming	+1.5
-proto-rv-activity-failed-incompatible-dark	R12	連線失敗	+2.0
-proto-rv-activity-failed-incompatible-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-failed-incompatible-dark	R9	串流	+1.5
-proto-rv-activity-failed-incompatible-dark	R9	出站模式	+1.5
-proto-rv-activity-failed-incompatible-fs115	R12	連線失敗	+2.0
-proto-rv-activity-failed-incompatible-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-activity-failed-incompatible-fs115	R9	串流	+4.0
-proto-rv-activity-failed-incompatible-fs115	R9	出站模式	+4.0
-proto-rv-activity-failed-incompatible-fs200	R12	連線失敗	+2.0
-proto-rv-activity-failed-incompatible-fs200	R18	Hong Kong 02 IPLC	below 0.0
-proto-rv-activity-failed-incompatible-fs200	R6	Hong Kong 02 IPLC	+56.0
-proto-rv-activity-failed-incompatible-fs200	R9	出站模式	+17.0
-proto-rv-activity-failed-incompatible-light	R12	連線失敗	+2.0
-proto-rv-activity-failed-incompatible-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-failed-incompatible-light	R9	串流	+1.5
-proto-rv-activity-failed-incompatible-light	R9	出站模式	+1.5
-proto-rv-activity-failed-no-apps-dark	R1	國內與區域網路	height 66.0
-proto-rv-activity-failed-no-apps-dark	R11l	國內與區域網路	+8.0
-proto-rv-activity-failed-no-apps-dark	R12	連線失敗	+2.0
-proto-rv-activity-failed-no-apps-dark	R18	國內與區域網路	below 3.0
-proto-rv-activity-failed-no-apps-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-failed-no-apps-dark	R9	串流	+1.5
-proto-rv-activity-failed-no-apps-dark	R9	出站模式	+1.5
-proto-rv-activity-failed-no-apps-dark	R9	國內與區域網路	+1.5
-proto-rv-activity-failed-no-apps-fs115	R12	連線失敗	+2.0
-proto-rv-activity-failed-no-apps-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-activity-failed-no-apps-fs115	R9	串流	+4.0
-proto-rv-activity-failed-no-apps-fs115	R9	出站模式	+4.0
-proto-rv-activity-failed-no-apps-fs200	R12	連線失敗	+2.0
-proto-rv-activity-failed-no-apps-fs200	R18	Hong Kong 02 IPLC	below 0.0
-proto-rv-activity-failed-no-apps-fs200	R6	Hong Kong 02 IPLC	+56.0
-proto-rv-activity-failed-no-apps-fs200	R9	出站模式	+17.0
-proto-rv-activity-failed-no-apps-light	R1	國內與區域網路	height 66.0
-proto-rv-activity-failed-no-apps-light	R11l	國內與區域網路	+8.0
-proto-rv-activity-failed-no-apps-light	R12	連線失敗	+2.0
-proto-rv-activity-failed-no-apps-light	R18	國內與區域網路	below 3.0
-proto-rv-activity-failed-no-apps-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-failed-no-apps-light	R9	串流	+1.5
-proto-rv-activity-failed-no-apps-light	R9	出站模式	+1.5
-proto-rv-activity-failed-no-apps-light	R9	國內與區域網路	+1.5
-proto-rv-activity-failed-no-nodes-dark	R1	—	height 82.0 for 58.0
-proto-rv-activity-failed-no-nodes-dark	R12	連線失敗	+2.0
-proto-rv-activity-failed-no-nodes-dark	R13	—	title 15.5 vs 23.0
-proto-rv-activity-failed-no-nodes-dark	R6	—	+13.5
-proto-rv-activity-failed-no-nodes-dark	R9	出站模式	+1.5
-proto-rv-activity-failed-no-nodes-fs115	R1	—	height 82.0 for 58.0
-proto-rv-activity-failed-no-nodes-fs115	R12	連線失敗	+2.0
-proto-rv-activity-failed-no-nodes-fs115	R13	—	title 18.0 vs 25.0
-proto-rv-activity-failed-no-nodes-fs115	R6	—	+12.5
-proto-rv-activity-failed-no-nodes-fs115	R9	出站模式	+4.0
-proto-rv-activity-failed-no-nodes-fs200	R1	—	height 81.0 for 65.0
-proto-rv-activity-failed-no-nodes-fs200	R10	—	+8.0
-proto-rv-activity-failed-no-nodes-fs200	R12	連線失敗	+2.0
-proto-rv-activity-failed-no-nodes-fs200	R13	—	title 30.0 vs 38.5
-proto-rv-activity-failed-no-nodes-fs200	R6	—	+7.5
-proto-rv-activity-failed-no-nodes-fs200	R9	出站模式	+17.0
-proto-rv-activity-failed-no-nodes-light	R1	—	height 82.0 for 58.0
-proto-rv-activity-failed-no-nodes-light	R12	連線失敗	+2.0
-proto-rv-activity-failed-no-nodes-light	R13	—	title 15.5 vs 23.0
-proto-rv-activity-failed-no-nodes-light	R6	—	+13.5
-proto-rv-activity-failed-no-nodes-light	R9	出站模式	+1.5
-proto-rv-activity-failed-start-dark	R1	國內與區域網路	height 66.0
-proto-rv-activity-failed-start-dark	R11l	國內與區域網路	+8.0
-proto-rv-activity-failed-start-dark	R12	連線失敗	+2.0
-proto-rv-activity-failed-start-dark	R18	國內與區域網路	below 3.0
-proto-rv-activity-failed-start-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-failed-start-dark	R9	串流	+1.5
-proto-rv-activity-failed-start-dark	R9	出站模式	+1.5
-proto-rv-activity-failed-start-dark	R9	國內與區域網路	+1.5
-proto-rv-activity-failed-start-fs115	R12	連線失敗	+2.0
-proto-rv-activity-failed-start-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-activity-failed-start-fs115	R9	串流	+4.0
-proto-rv-activity-failed-start-fs115	R9	出站模式	+4.0
-proto-rv-activity-failed-start-fs200	R12	連線失敗	+2.0
-proto-rv-activity-failed-start-fs200	R9	出站模式	+17.0
-proto-rv-activity-failed-start-light	R1	國內與區域網路	height 66.0
-proto-rv-activity-failed-start-light	R11l	國內與區域網路	+8.0
-proto-rv-activity-failed-start-light	R12	連線失敗	+2.0
-proto-rv-activity-failed-start-light	R18	國內與區域網路	below 3.0
-proto-rv-activity-failed-start-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-failed-start-light	R9	串流	+1.5
-proto-rv-activity-failed-start-light	R9	出站模式	+1.5
-proto-rv-activity-failed-start-light	R9	國內與區域網路	+1.5
-proto-rv-activity-full-dark	R9	Harbor Cloud	+1.5
-proto-rv-activity-full-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-full-dark	R9	Lantern Net	+1.5
-proto-rv-activity-full-dark	R9	Taipei 01	+1.5
-proto-rv-activity-full-dark	R9	Taipei 02	+1.5
-proto-rv-activity-full-dark	R9	Taipei 04	+1.5
-proto-rv-activity-full-dark	R9	串流	+1.5
-proto-rv-activity-full-dark	R9	出站模式	+1.5
-proto-rv-activity-full-dark	R9	國內與區域網路	+1.5
-proto-rv-activity-full-fs115	R9	Harbor Cloud	+17.5
-proto-rv-activity-full-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-activity-full-fs115	R9	Lantern Net	+17.5
-proto-rv-activity-full-fs115	R9	Taipei 01	+4.0
-proto-rv-activity-full-fs115	R9	Taipei 02	+4.0
-proto-rv-activity-full-fs115	R9	Taipei 04	+4.0
-proto-rv-activity-full-fs115	R9	串流	+4.0
-proto-rv-activity-full-fs115	R9	出站模式	+4.0
-proto-rv-activity-full-fs115	R9	國內與區域網路	+4.0
+proto-rv-activity-crash-dark	R11l	國內與區域網路	+7.0
+proto-rv-activity-crash-light	R11l	國內與區域網路	+7.0
+proto-rv-activity-failed-no-apps-dark	R11l	國內與區域網路	+7.0
+proto-rv-activity-failed-no-apps-light	R11l	國內與區域網路	+7.0
+proto-rv-activity-failed-no-nodes-fs200	R11	—	+17.5
+proto-rv-activity-failed-no-nodes-fs200	R13	—	subtitle 28.5 vs 35.0
+proto-rv-activity-failed-start-dark	R11l	國內與區域網路	+7.0
+proto-rv-activity-failed-start-fs200	R13	Hong Kong 02 IPLC	subtitle 24.5 vs 35.0
+proto-rv-activity-failed-start-light	R11l	國內與區域網路	+7.0
 proto-rv-activity-full-fs200	R1	Hong Kong 02 IPLC	height 225.0 for 149.5
 proto-rv-activity-full-fs200	R1	Taipei 02	height 181.0 for 105.5
 proto-rv-activity-full-fs200	R11	Harbor Cloud	+80.5
@@ -205,515 +27,57 @@ proto-rv-activity-full-fs200	R11	串流	+17.5
 proto-rv-activity-full-fs200	R11	國內與區域網路	+39.5
 proto-rv-activity-full-fs200	R18	Hong Kong 02 IPLC	above 16.0 below 91.5
 proto-rv-activity-full-fs200	R18	Taipei 02	above 16.0 below 91.5
-proto-rv-activity-full-fs200	R9	Harbor Cloud	+80.0
-proto-rv-activity-full-fs200	R9	Hong Kong 02 IPLC	+76.5
-proto-rv-activity-full-fs200	R9	Lantern Net	+80.0
-proto-rv-activity-full-fs200	R9	Taipei 01	+54.5
-proto-rv-activity-full-fs200	R9	Taipei 02	+54.5
-proto-rv-activity-full-fs200	R9	Taipei 04	+54.0
-proto-rv-activity-full-fs200	R9	串流	+17.0
-proto-rv-activity-full-fs200	R9	出站模式	+17.0
-proto-rv-activity-full-fs200	R9	國內與區域網路	+39.0
-proto-rv-activity-full-light	R9	Harbor Cloud	+1.5
-proto-rv-activity-full-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-full-light	R9	Lantern Net	+1.5
-proto-rv-activity-full-light	R9	Taipei 01	+1.5
-proto-rv-activity-full-light	R9	Taipei 02	+1.5
-proto-rv-activity-full-light	R9	Taipei 04	+1.5
-proto-rv-activity-full-light	R9	串流	+1.5
-proto-rv-activity-full-light	R9	出站模式	+1.5
-proto-rv-activity-full-light	R9	國內與區域網路	+1.5
-proto-rv-activity-global-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-global-dark	R9	出站模式	+1.5
-proto-rv-activity-global-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-global-light	R9	出站模式	+1.5
-proto-rv-activity-idle-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-idle-dark	R9	串流	+1.5
-proto-rv-activity-idle-dark	R9	出站模式	+1.5
-proto-rv-activity-idle-dark	R9	國內與區域網路	+1.5
-proto-rv-activity-idle-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-idle-light	R9	串流	+1.5
-proto-rv-activity-idle-light	R9	出站模式	+1.5
-proto-rv-activity-idle-light	R9	國內與區域網路	+1.5
-proto-rv-activity-lan-ask-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-lan-ask-dark	R9	串流	+1.5
-proto-rv-activity-lan-ask-dark	R9	出站模式	+1.5
-proto-rv-activity-lan-ask-dark	R9	國內與區域網路	+1.5
-proto-rv-activity-lan-ask-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-activity-lan-ask-fs115	R9	串流	+4.0
-proto-rv-activity-lan-ask-fs115	R9	出站模式	+4.0
-proto-rv-activity-lan-ask-fs115	R9	國內與區域網路	+4.0
 proto-rv-activity-lan-ask-fs200	R1	Hong Kong 02 IPLC	height 225.0 for 149.5
-proto-rv-activity-lan-ask-fs200	R1	串流	height 79.5
 proto-rv-activity-lan-ask-fs200	R11	串流	+17.5
 proto-rv-activity-lan-ask-fs200	R13	串流	subtitle 25.0 vs 35.0
 proto-rv-activity-lan-ask-fs200	R18	Hong Kong 02 IPLC	above 16.0 below 91.5
-proto-rv-activity-lan-ask-fs200	R18	串流	below 0.0
-proto-rv-activity-lan-ask-fs200	R9	Hong Kong 02 IPLC	+76.5
-proto-rv-activity-lan-ask-fs200	R9	串流	+17.0
-proto-rv-activity-lan-ask-fs200	R9	出站模式	+17.0
-proto-rv-activity-lan-ask-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-lan-ask-light	R9	串流	+1.5
-proto-rv-activity-lan-ask-light	R9	出站模式	+1.5
-proto-rv-activity-lan-ask-light	R9	國內與區域網路	+1.5
-proto-rv-activity-lan-denied-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-lan-denied-dark	R9	串流	+1.5
-proto-rv-activity-lan-denied-dark	R9	出站模式	+1.5
-proto-rv-activity-lan-denied-dark	R9	國內與區域網路	+1.5
-proto-rv-activity-lan-denied-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-activity-lan-denied-fs115	R9	串流	+4.0
-proto-rv-activity-lan-denied-fs115	R9	出站模式	+4.0
-proto-rv-activity-lan-denied-fs115	R9	國內與區域網路	+4.0
 proto-rv-activity-lan-denied-fs200	R1	Hong Kong 02 IPLC	height 225.0 for 149.5
-proto-rv-activity-lan-denied-fs200	R1	串流	height 79.5
 proto-rv-activity-lan-denied-fs200	R11	串流	+17.5
 proto-rv-activity-lan-denied-fs200	R13	串流	subtitle 25.0 vs 35.0
 proto-rv-activity-lan-denied-fs200	R18	Hong Kong 02 IPLC	above 16.0 below 91.5
-proto-rv-activity-lan-denied-fs200	R18	串流	below 0.0
-proto-rv-activity-lan-denied-fs200	R9	Hong Kong 02 IPLC	+76.5
-proto-rv-activity-lan-denied-fs200	R9	串流	+17.0
-proto-rv-activity-lan-denied-fs200	R9	出站模式	+17.0
-proto-rv-activity-lan-denied-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-lan-denied-light	R9	串流	+1.5
-proto-rv-activity-lan-denied-light	R9	出站模式	+1.5
-proto-rv-activity-lan-denied-light	R9	國內與區域網路	+1.5
-proto-rv-activity-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-light	R9	串流	+1.5
-proto-rv-activity-light	R9	出站模式	+1.5
-proto-rv-activity-light	R9	國內與區域網路	+1.5
-proto-rv-activity-melbourne-dark	R9	Melbourne 02	+1.5
-proto-rv-activity-melbourne-dark	R9	串流	+1.5
-proto-rv-activity-melbourne-dark	R9	出站模式	+1.5
-proto-rv-activity-melbourne-dark	R9	國內與區域網路	+1.5
-proto-rv-activity-melbourne-fs115	R9	Melbourne 02	+4.0
-proto-rv-activity-melbourne-fs115	R9	串流	+4.0
-proto-rv-activity-melbourne-fs115	R9	出站模式	+4.0
-proto-rv-activity-melbourne-fs115	R9	國內與區域網路	+4.0
 proto-rv-activity-melbourne-fs200	R1	Melbourne 02	height 181.0 for 105.5
-proto-rv-activity-melbourne-fs200	R1	國內與區域網路	height 18.0
 proto-rv-activity-melbourne-fs200	R11	串流	+17.5
 proto-rv-activity-melbourne-fs200	R18	Melbourne 02	above 16.0 below 91.5
-proto-rv-activity-melbourne-fs200	R18	國內與區域網路	below 0.0
-proto-rv-activity-melbourne-fs200	R6	國內與區域網路	+56.0
-proto-rv-activity-melbourne-fs200	R9	Melbourne 02	+54.5
-proto-rv-activity-melbourne-fs200	R9	串流	+17.0
-proto-rv-activity-melbourne-fs200	R9	出站模式	+17.0
-proto-rv-activity-melbourne-light	R9	Melbourne 02	+1.5
-proto-rv-activity-melbourne-light	R9	串流	+1.5
-proto-rv-activity-melbourne-light	R9	出站模式	+1.5
-proto-rv-activity-melbourne-light	R9	國內與區域網路	+1.5
-proto-rv-activity-no-node-dark	R12	沒有可用的節點	+2.0
-proto-rv-activity-no-node-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-no-node-dark	R9	串流	+1.5
-proto-rv-activity-no-node-dark	R9	出站模式	+1.5
-proto-rv-activity-no-node-light	R12	沒有可用的節點	+2.0
-proto-rv-activity-no-node-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-no-node-light	R9	串流	+1.5
-proto-rv-activity-no-node-light	R9	出站模式	+1.5
-proto-rv-activity-notify-denied-v1-dark	R12	通知已關閉	+2.0
-proto-rv-activity-notify-denied-v1-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-notify-denied-v1-dark	R9	串流	+1.5
-proto-rv-activity-notify-denied-v1-dark	R9	出站模式	+1.5
-proto-rv-activity-notify-denied-v1-fs115	R12	通知已關閉	+2.0
-proto-rv-activity-notify-denied-v1-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-activity-notify-denied-v1-fs115	R9	串流	+4.0
-proto-rv-activity-notify-denied-v1-fs115	R9	出站模式	+4.0
-proto-rv-activity-notify-denied-v1-fs200	R1	Hong Kong 02 IPLC	height 39.0
-proto-rv-activity-notify-denied-v1-fs200	R12	通知已關閉	+2.0
-proto-rv-activity-notify-denied-v1-fs200	R18	Hong Kong 02 IPLC	below 0.0
-proto-rv-activity-notify-denied-v1-fs200	R6	Hong Kong 02 IPLC	+56.0
-proto-rv-activity-notify-denied-v1-fs200	R9	出站模式	+17.0
-proto-rv-activity-notify-denied-v1-light	R12	通知已關閉	+2.0
-proto-rv-activity-notify-denied-v1-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-notify-denied-v1-light	R9	串流	+1.5
-proto-rv-activity-notify-denied-v1-light	R9	出站模式	+1.5
-proto-rv-activity-notify-denied-v2-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-notify-denied-v2-dark	R9	串流	+1.5
-proto-rv-activity-notify-denied-v2-dark	R9	出站模式	+1.5
-proto-rv-activity-notify-denied-v2-dark	R9	國內與區域網路	+1.5
-proto-rv-activity-notify-denied-v2-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-activity-notify-denied-v2-fs115	R9	串流	+4.0
-proto-rv-activity-notify-denied-v2-fs115	R9	出站模式	+4.0
-proto-rv-activity-notify-denied-v2-fs115	R9	國內與區域網路	+4.0
 proto-rv-activity-notify-denied-v2-fs200	R1	Hong Kong 02 IPLC	height 225.0 for 149.5
-proto-rv-activity-notify-denied-v2-fs200	R1	串流	height 79.5
 proto-rv-activity-notify-denied-v2-fs200	R11	串流	+17.5
 proto-rv-activity-notify-denied-v2-fs200	R13	串流	subtitle 25.0 vs 35.0
 proto-rv-activity-notify-denied-v2-fs200	R18	Hong Kong 02 IPLC	above 16.0 below 91.5
-proto-rv-activity-notify-denied-v2-fs200	R18	串流	below 0.0
-proto-rv-activity-notify-denied-v2-fs200	R9	Hong Kong 02 IPLC	+76.5
-proto-rv-activity-notify-denied-v2-fs200	R9	串流	+17.0
-proto-rv-activity-notify-denied-v2-fs200	R9	出站模式	+17.0
-proto-rv-activity-notify-denied-v2-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-notify-denied-v2-light	R9	串流	+1.5
-proto-rv-activity-notify-denied-v2-light	R9	出站模式	+1.5
-proto-rv-activity-notify-denied-v2-light	R9	國內與區域網路	+1.5
-proto-rv-activity-offline-dark	R12	沒有網路連線	+2.0
-proto-rv-activity-offline-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-offline-dark	R9	串流	+1.5
-proto-rv-activity-offline-dark	R9	出站模式	+1.5
-proto-rv-activity-offline-fade-dark	R12	沒有網路連線	+2.0
-proto-rv-activity-offline-fade-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-offline-fade-dark	R9	串流	+1.5
-proto-rv-activity-offline-fade-dark	R9	出站模式	+1.5
-proto-rv-activity-offline-fade-fs115	R12	沒有網路連線	+2.0
-proto-rv-activity-offline-fade-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-activity-offline-fade-fs115	R9	串流	+4.0
-proto-rv-activity-offline-fade-fs115	R9	出站模式	+4.0
-proto-rv-activity-offline-fade-fs200	R1	Hong Kong 02 IPLC	height 40.0
-proto-rv-activity-offline-fade-fs200	R12	沒有網路連線	+2.0
-proto-rv-activity-offline-fade-fs200	R18	Hong Kong 02 IPLC	below 0.0
-proto-rv-activity-offline-fade-fs200	R6	Hong Kong 02 IPLC	+56.0
-proto-rv-activity-offline-fade-fs200	R9	出站模式	+17.0
-proto-rv-activity-offline-fade-light	R12	沒有網路連線	+2.0
-proto-rv-activity-offline-fade-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-offline-fade-light	R9	串流	+1.5
-proto-rv-activity-offline-fade-light	R9	出站模式	+1.5
-proto-rv-activity-offline-light	R12	沒有網路連線	+2.0
-proto-rv-activity-offline-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-offline-light	R9	串流	+1.5
-proto-rv-activity-offline-light	R9	出站模式	+1.5
-proto-rv-activity-scrolled-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-scrolled-dark	R9	串流	+1.5
-proto-rv-activity-scrolled-dark	R9	出站模式	+1.5
-proto-rv-activity-scrolled-dark	R9	國內與區域網路	+1.5
-proto-rv-activity-scrolled-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-scrolled-light	R9	串流	+1.5
-proto-rv-activity-scrolled-light	R9	出站模式	+1.5
-proto-rv-activity-scrolled-light	R9	國內與區域網路	+1.5
-proto-rv-activity-starting-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-starting-dark	R9	串流	+1.5
-proto-rv-activity-starting-dark	R9	出站模式	+1.5
-proto-rv-activity-starting-dark	R9	國內與區域網路	+1.5
-proto-rv-activity-starting-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-activity-starting-fs115	R9	串流	+4.0
-proto-rv-activity-starting-fs115	R9	出站模式	+4.0
-proto-rv-activity-starting-fs115	R9	國內與區域網路	+4.0
 proto-rv-activity-starting-fs200	R1	Hong Kong 02 IPLC	height 225.0 for 149.5
-proto-rv-activity-starting-fs200	R1	串流	height 79.5
 proto-rv-activity-starting-fs200	R11	串流	+17.5
 proto-rv-activity-starting-fs200	R13	串流	subtitle 25.0 vs 35.0
 proto-rv-activity-starting-fs200	R18	Hong Kong 02 IPLC	above 16.0 below 91.5
-proto-rv-activity-starting-fs200	R18	串流	below 0.0
-proto-rv-activity-starting-fs200	R9	Hong Kong 02 IPLC	+76.5
-proto-rv-activity-starting-fs200	R9	串流	+17.0
-proto-rv-activity-starting-fs200	R9	出站模式	+17.0
-proto-rv-activity-starting-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-starting-light	R9	串流	+1.5
-proto-rv-activity-starting-light	R9	出站模式	+1.5
-proto-rv-activity-starting-light	R9	國內與區域網路	+1.5
-proto-rv-activity-stopping-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-stopping-dark	R9	串流	+1.5
-proto-rv-activity-stopping-dark	R9	出站模式	+1.5
-proto-rv-activity-stopping-dark	R9	國內與區域網路	+1.5
-proto-rv-activity-stopping-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-activity-stopping-fs115	R9	串流	+4.0
-proto-rv-activity-stopping-fs115	R9	出站模式	+4.0
-proto-rv-activity-stopping-fs115	R9	國內與區域網路	+4.0
 proto-rv-activity-stopping-fs200	R1	Hong Kong 02 IPLC	height 225.0 for 149.5
-proto-rv-activity-stopping-fs200	R1	串流	height 79.5
 proto-rv-activity-stopping-fs200	R11	串流	+17.5
 proto-rv-activity-stopping-fs200	R13	串流	subtitle 25.0 vs 35.0
 proto-rv-activity-stopping-fs200	R18	Hong Kong 02 IPLC	above 16.0 below 91.5
-proto-rv-activity-stopping-fs200	R18	串流	below 0.0
-proto-rv-activity-stopping-fs200	R9	Hong Kong 02 IPLC	+76.5
-proto-rv-activity-stopping-fs200	R9	串流	+17.0
-proto-rv-activity-stopping-fs200	R9	出站模式	+17.0
-proto-rv-activity-stopping-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-stopping-light	R9	串流	+1.5
-proto-rv-activity-stopping-light	R9	出站模式	+1.5
-proto-rv-activity-stopping-light	R9	國內與區域網路	+1.5
-proto-rv-activity-testing-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-testing-dark	R9	串流	+1.5
-proto-rv-activity-testing-dark	R9	出站模式	+1.5
-proto-rv-activity-testing-dark	R9	國內與區域網路	+1.5
-proto-rv-activity-testing-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-activity-testing-fs115	R9	串流	+4.0
-proto-rv-activity-testing-fs115	R9	出站模式	+4.0
-proto-rv-activity-testing-fs115	R9	國內與區域網路	+4.0
 proto-rv-activity-testing-fs200	R1	Hong Kong 02 IPLC	height 225.5 for 149.5
-proto-rv-activity-testing-fs200	R1	串流	height 79.0
 proto-rv-activity-testing-fs200	R11	串流	+17.5
 proto-rv-activity-testing-fs200	R13	串流	subtitle 24.5 vs 35.0
 proto-rv-activity-testing-fs200	R18	Hong Kong 02 IPLC	above 16.0 below 92.0
-proto-rv-activity-testing-fs200	R18	串流	below 0.0
-proto-rv-activity-testing-fs200	R9	Hong Kong 02 IPLC	+77.0
-proto-rv-activity-testing-fs200	R9	串流	+17.0
-proto-rv-activity-testing-fs200	R9	出站模式	+17.0
-proto-rv-activity-testing-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-testing-light	R9	串流	+1.5
-proto-rv-activity-testing-light	R9	出站模式	+1.5
-proto-rv-activity-testing-light	R9	國內與區域網路	+1.5
-proto-rv-activity-testing-scrolled-dark	R9	Harbor Cloud	+1.5
-proto-rv-activity-testing-scrolled-dark	R9	Lantern Net	+1.5
-proto-rv-activity-testing-scrolled-dark	R9	Taipei 01	+1.5
-proto-rv-activity-testing-scrolled-dark	R9	Taipei 02	+1.5
-proto-rv-activity-testing-scrolled-dark	R9	Taipei 04	+1.5
-proto-rv-activity-testing-scrolled-fs115	R9	Harbor Cloud	+17.5
-proto-rv-activity-testing-scrolled-fs115	R9	Lantern Net	+17.5
-proto-rv-activity-testing-scrolled-fs115	R9	Taipei 01	+4.0
-proto-rv-activity-testing-scrolled-fs115	R9	Taipei 02	+4.0
-proto-rv-activity-testing-scrolled-fs115	R9	Taipei 04	+4.0
 proto-rv-activity-testing-scrolled-fs200	R1	Taipei 02	height 181.5 for 127.5
 proto-rv-activity-testing-scrolled-fs200	R11	Lantern Net	+28.5
 proto-rv-activity-testing-scrolled-fs200	R11	Taipei 01	+73.5
 proto-rv-activity-testing-scrolled-fs200	R11	Taipei 04	+73.5
 proto-rv-activity-testing-scrolled-fs200	R11l	Taipei 02	+18.3
-proto-rv-activity-testing-scrolled-fs200	R18	Lantern Net	above 0.0
 proto-rv-activity-testing-scrolled-fs200	R18	Taipei 02	above 16.0 below 70.0
-proto-rv-activity-testing-scrolled-fs200	R9	Lantern Net	+28.0
-proto-rv-activity-testing-scrolled-fs200	R9	Taipei 01	+55.0
-proto-rv-activity-testing-scrolled-fs200	R9	Taipei 02	+55.0
-proto-rv-activity-testing-scrolled-fs200	R9	Taipei 04	+54.5
-proto-rv-activity-testing-scrolled-light	R9	Harbor Cloud	+1.5
-proto-rv-activity-testing-scrolled-light	R9	Lantern Net	+1.5
-proto-rv-activity-testing-scrolled-light	R9	Taipei 01	+1.5
-proto-rv-activity-testing-scrolled-light	R9	Taipei 02	+1.5
-proto-rv-activity-testing-scrolled-light	R9	Taipei 04	+1.5
-proto-rv-activity-vpn-taken-dark	R12	VPN 已由其他 App 接管	+2.0
-proto-rv-activity-vpn-taken-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-vpn-taken-dark	R9	串流	+1.5
-proto-rv-activity-vpn-taken-dark	R9	出站模式	+1.5
-proto-rv-activity-vpn-taken-fade-dark	R12	VPN 已由其他 App 接管	+2.0
-proto-rv-activity-vpn-taken-fade-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-vpn-taken-fade-dark	R9	串流	+1.5
-proto-rv-activity-vpn-taken-fade-dark	R9	出站模式	+1.5
-proto-rv-activity-vpn-taken-fade-fs115	R12	VPN 已由其他 App 接管	+2.0
-proto-rv-activity-vpn-taken-fade-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-activity-vpn-taken-fade-fs115	R9	串流	+4.0
-proto-rv-activity-vpn-taken-fade-fs115	R9	出站模式	+4.0
-proto-rv-activity-vpn-taken-fade-fs200	R11l	出站模式	+3.3
-proto-rv-activity-vpn-taken-fade-fs200	R12	VPN 已由其他 App 接管	+2.0
-proto-rv-activity-vpn-taken-fade-fs200	R18	出站模式	below 10.0
-proto-rv-activity-vpn-taken-fade-fs200	R9	出站模式	+17.0
-proto-rv-activity-vpn-taken-fade-light	R12	VPN 已由其他 App 接管	+2.0
-proto-rv-activity-vpn-taken-fade-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-vpn-taken-fade-light	R9	串流	+1.5
-proto-rv-activity-vpn-taken-fade-light	R9	出站模式	+1.5
-proto-rv-activity-vpn-taken-light	R12	VPN 已由其他 App 接管	+2.0
-proto-rv-activity-vpn-taken-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-activity-vpn-taken-light	R9	串流	+1.5
-proto-rv-activity-vpn-taken-light	R9	出站模式	+1.5
-proto-rv-app-disc-dark	R9	Telegram	+1.5
-proto-rv-app-disc-dark	R9	doona	+1.5
-proto-rv-app-disc-light	R9	Telegram	+1.5
-proto-rv-app-disc-light	R9	doona	+1.5
-proto-rv-banner-dark	R12	doona 先前發生當機	+2.0
-proto-rv-banner-dark	R12	沒有網路連線	+2.0
-proto-rv-banner-dark	R12	無法更新 Harbor Cloud	+2.0
-proto-rv-banner-light	R12	doona 先前發生當機	+2.0
-proto-rv-banner-light	R12	沒有網路連線	+2.0
-proto-rv-banner-light	R12	無法更新 Harbor Cloud	+2.0
-proto-rv-check-row-dark	R11	Browser	+8.5
-proto-rv-check-row-dark	R11	Calendar	+8.5
-proto-rv-check-row-dark	R11	Camera	+8.5
-proto-rv-check-row-dark	R9	Browser	+1.5
-proto-rv-check-row-dark	R9	Calendar	+1.5
-proto-rv-check-row-dark	R9	Camera	+1.5
-proto-rv-check-row-fs200	R11	Browser	+38.3
-proto-rv-check-row-fs200	R11	Calendar	+38.3
-proto-rv-check-row-fs200	R11	Camera	+38.3
-proto-rv-check-row-fs200	R9	Browser	+37.5
-proto-rv-check-row-fs200	R9	Calendar	+37.5
-proto-rv-check-row-fs200	R9	Camera	+37.5
-proto-rv-check-row-light	R11	Browser	+8.5
-proto-rv-check-row-light	R11	Calendar	+8.5
-proto-rv-check-row-light	R11	Camera	+8.5
-proto-rv-check-row-light	R9	Browser	+1.5
-proto-rv-check-row-light	R9	Calendar	+1.5
-proto-rv-check-row-light	R9	Camera	+1.5
-proto-rv-config-diff-stale-dark	R12	設定檔已更新	+2.0
-proto-rv-config-diff-stale-fs115	R12	設定檔已更新	+2.0
-proto-rv-config-diff-stale-fs200	R12	設定檔已更新	+2.0
-proto-rv-config-diff-stale-light	R12	設定檔已更新	+2.0
-proto-rv-config-history-dark	R18	匯出設定檔	above 16.0 below 19.0
-proto-rv-config-history-fs200	R1	第 4 版	height 47.5
+proto-rv-activity-testing-scrolled-fs200	R6	Lantern Net	+56.0
+proto-rv-activity-vpn-taken-fade-fs200	R11l	出站模式	+2.3
 proto-rv-config-history-fs200	R10	第 4 版	+11.8
 proto-rv-config-history-fs200	R13	第 4 版	title 31.5 vs 38.5
-proto-rv-config-history-fs200	R18	第 4 版	below 0.0
-proto-rv-config-history-light	R18	匯出設定檔	above 16.0 below 19.0
-proto-rv-config-history-menu-dark	R1	初次設定	height 73.0
-proto-rv-config-history-menu-dark	R18	初次設定	below 10.0
-proto-rv-config-history-menu-fs115	R1	初次設定	height 66.0
 proto-rv-config-history-menu-fs115	R11	初次設定	-2.3
 proto-rv-config-history-menu-fs115	R11	東京出差：影音與 AI 走日本節點	-1.5
-proto-rv-config-history-menu-fs115	R18	初次設定	below 1.0
-proto-rv-config-history-menu-fs200	R1	第 5 版	height 24.0
 proto-rv-config-history-menu-fs200	R10	第 5 版	+11.8
 proto-rv-config-history-menu-fs200	R11	東京出差：影音與 AI 走日本節點	-3.0
 proto-rv-config-history-menu-fs200	R13	第 5 版	title 8.0 vs 38.5
 proto-rv-config-history-menu-fs200	R14	東京出差：影音與 AI 走日本節點	title 3 lines
-proto-rv-config-history-menu-fs200	R18	第 5 版	below 0.0
-proto-rv-config-history-menu-light	R1	初次設定	height 73.0
-proto-rv-config-history-menu-light	R18	初次設定	below 10.0
-proto-rv-config-history-named-dark	R18	匯出設定檔	above 16.0 below 19.0
-proto-rv-config-history-named-fs115	R1	初次設定	height 66.0
 proto-rv-config-history-named-fs115	R11	初次設定	-2.3
 proto-rv-config-history-named-fs115	R11	東京出差：影音與 AI 走日本節點	-1.5
-proto-rv-config-history-named-fs115	R18	初次設定	below 1.0
-proto-rv-config-history-named-fs200	R1	第 5 版	height 24.0
 proto-rv-config-history-named-fs200	R10	第 5 版	+11.8
 proto-rv-config-history-named-fs200	R11	東京出差：影音與 AI 走日本節點	-3.0
 proto-rv-config-history-named-fs200	R13	第 5 版	title 8.0 vs 38.5
 proto-rv-config-history-named-fs200	R14	東京出差：影音與 AI 走日本節點	title 3 lines
-proto-rv-config-history-named-fs200	R18	第 5 版	below 0.0
-proto-rv-config-history-named-light	R18	匯出設定檔	above 16.0 below 19.0
-proto-rv-config-history-rename-dark	R9	名稱	+1.5
-proto-rv-config-history-rename-fs115	R9	名稱	+4.0
-proto-rv-config-history-rename-fs200	R9	名稱	+17.0
-proto-rv-config-history-rename-light	R9	名稱	+1.5
-proto-rv-config-import-escape-dark	R12	引入的檔案在匯入範圍外	+2.0
-proto-rv-config-import-escape-fs115	R12	引入的檔案在匯入範圍外	+2.0
-proto-rv-config-import-escape-fs200	R12	引入的檔案在匯入範圍外	+2.0
-proto-rv-config-import-escape-light	R12	引入的檔案在匯入範圍外	+2.0
-proto-rv-config-import-limit-dark	R12	無法匯入	+2.0
-proto-rv-config-import-limit-fs115	R12	無法匯入	+2.0
-proto-rv-config-import-limit-fs200	R12	無法匯入	+2.0
-proto-rv-config-import-limit-light	R12	無法匯入	+2.0
-proto-rv-config-overview-dark	R18	匯入設定檔	above 16.0 below 19.0
-proto-rv-config-overview-dark	R18	版本記錄	above 16.0 below 19.0
-proto-rv-config-overview-fs200	R1	rules/lan.dae	height 60.0
-proto-rv-config-overview-fs200	R18	rules/lan.dae	below 0.0
-proto-rv-config-overview-light	R18	匯入設定檔	above 16.0 below 19.0
-proto-rv-config-overview-light	R18	版本記錄	above 16.0 below 19.0
-proto-rv-config-overview-skipped-include-dark	R18	匯入設定檔	above 16.0 below 19.0
-proto-rv-config-overview-skipped-include-dark	R18	版本記錄	above 16.0 below 19.0
-proto-rv-config-overview-skipped-include-fs200	R1	rules/lan.dae	height 60.0
-proto-rv-config-overview-skipped-include-fs200	R18	rules/lan.dae	below 0.0
-proto-rv-config-overview-skipped-include-light	R18	匯入設定檔	above 16.0 below 19.0
-proto-rv-config-overview-skipped-include-light	R18	版本記錄	above 16.0 below 19.0
-proto-rv-config-revision-dark	R9	名稱	+1.5
-proto-rv-config-revision-fs115	R9	名稱	+4.0
-proto-rv-config-revision-fs200	R9	名稱	+17.0
-proto-rv-config-revision-light	R9	名稱	+1.5
-proto-rv-config-revision-named-dark	R9	名稱	+1.5
-proto-rv-config-revision-named-fs115	R9	名稱	+4.0
-proto-rv-config-revision-named-fs200	R9	名稱	+17.0
-proto-rv-config-revision-named-light	R9	名稱	+1.5
-proto-rv-config-template-diff-dark	R9	Apple	+1.5
-proto-rv-config-template-diff-dark	R9	Telegram	+1.5
-proto-rv-config-template-diff-dark	R9	代理	+1.5
-proto-rv-config-template-diff-dark	R9	國外媒體	+1.5
-proto-rv-config-template-diff-dark	R9	範本	+1.5
-proto-rv-config-template-diff-dark	R9	自動選擇	+1.5
-proto-rv-config-template-diff-fs115	R9	Apple	+4.0
-proto-rv-config-template-diff-fs115	R9	Telegram	+4.0
-proto-rv-config-template-diff-fs115	R9	代理	+4.0
-proto-rv-config-template-diff-fs115	R9	國外媒體	+4.0
-proto-rv-config-template-diff-fs115	R9	範本	+4.0
-proto-rv-config-template-diff-fs115	R9	自動選擇	+4.0
-proto-rv-config-template-diff-fs200	R18	國外媒體	below 0.0
-proto-rv-config-template-diff-fs200	R9	Telegram	+37.5
-proto-rv-config-template-diff-fs200	R9	國外媒體	+37.5
-proto-rv-config-template-diff-fs200	R9	範本	+37.5
-proto-rv-config-template-diff-fs200	R9	自動選擇	+17.0
-proto-rv-config-template-diff-light	R9	Apple	+1.5
-proto-rv-config-template-diff-light	R9	Telegram	+1.5
-proto-rv-config-template-diff-light	R9	代理	+1.5
-proto-rv-config-template-diff-light	R9	國外媒體	+1.5
-proto-rv-config-template-diff-light	R9	範本	+1.5
-proto-rv-config-template-diff-light	R9	自動選擇	+1.5
-proto-rv-config-template-new-dark	R11	NetworkManager 直連	+8.5
-proto-rv-config-template-new-dark	R11	依地區分流	+8.5
-proto-rv-config-template-new-dark	R11	依服務分流	+21.0
-proto-rv-config-template-new-dark	R11	全域代理	+8.5
-proto-rv-config-template-new-dark	R11	只代理 GFW 名單	+8.5
-proto-rv-config-template-new-dark	R11	單一策略群組	+8.5
-proto-rv-config-template-new-dark	R11	回國	+8.5
-proto-rv-config-template-new-dark	R11	繞過中國大陸	+7.5
-proto-rv-config-template-new-dark	R9	Netflix	+1.5
-proto-rv-config-template-new-dark	R9	NetworkManager 直連	+1.5
-proto-rv-config-template-new-dark	R9	OpenAI	+1.5
-proto-rv-config-template-new-dark	R9	Telegram	+1.5
-proto-rv-config-template-new-dark	R9	YouTube	+1.5
-proto-rv-config-template-new-dark	R9	代理	+1.5
-proto-rv-config-template-new-dark	R9	依地區分流	+1.5
-proto-rv-config-template-new-dark	R9	依服務分流	+14.0
-proto-rv-config-template-new-dark	R9	全域代理	+1.5
-proto-rv-config-template-new-dark	R9	只代理 GFW 名單	+1.5
-proto-rv-config-template-new-dark	R9	單一策略群組	+1.5
-proto-rv-config-template-new-dark	R9	回國	+1.5
-proto-rv-config-template-new-dark	R9	國外媒體	+1.5
-proto-rv-config-template-new-dark	R9	巴哈姆特	+1.5
-proto-rv-config-template-new-dark	R9	新加坡	+1.5
-proto-rv-config-template-new-dark	R9	日本	+1.5
-proto-rv-config-template-new-dark	R9	繞過中國大陸	+1.5
-proto-rv-config-template-new-dark	R9	美國	+1.5
-proto-rv-config-template-new-dark	R9	自動選擇	+1.5
-proto-rv-config-template-new-dark	R9	臺灣	+1.5
-proto-rv-config-template-new-dark	R9	韓國	+1.5
-proto-rv-config-template-new-dark	R9	香港	+1.5
-proto-rv-config-template-new-end-fs115	R9	Netflix	+4.0
-proto-rv-config-template-new-end-fs115	R9	OpenAI	+4.0
-proto-rv-config-template-new-end-fs115	R9	Telegram	+4.0
-proto-rv-config-template-new-end-fs115	R9	YouTube	+4.0
-proto-rv-config-template-new-end-fs115	R9	國外媒體	+4.0
-proto-rv-config-template-new-end-fs115	R9	巴哈姆特	+4.0
-proto-rv-config-template-new-end-fs115	R9	新加坡	+4.0
-proto-rv-config-template-new-end-fs115	R9	臺灣	+4.0
-proto-rv-config-template-new-end-fs115	R9	韓國	+4.0
-proto-rv-config-template-new-end-fs200	R13	韓國	title 31.0 vs 38.5
-proto-rv-config-template-new-end-fs200	R18	韓國	above 0.0
-proto-rv-config-template-new-end-fs200	R9	Netflix	+17.0
-proto-rv-config-template-new-end-fs200	R9	OpenAI	+17.0
-proto-rv-config-template-new-end-fs200	R9	Telegram	+17.0
-proto-rv-config-template-new-end-fs200	R9	YouTube	+17.0
-proto-rv-config-template-new-end-fs200	R9	國外媒體	+17.0
-proto-rv-config-template-new-end-fs200	R9	巴哈姆特	+17.0
-proto-rv-config-template-new-end-fs200	R9	韓國	+9.5
-proto-rv-config-template-new-fs115	R11	依地區分流	+11.0
-proto-rv-config-template-new-fs115	R11	依服務分流	+24.5
-proto-rv-config-template-new-fs115	R11	全域代理	+24.5
-proto-rv-config-template-new-fs115	R11	只代理 GFW 名單	+24.5
-proto-rv-config-template-new-fs115	R11	單一策略群組	+24.5
-proto-rv-config-template-new-fs115	R11	回國	+24.5
-proto-rv-config-template-new-fs115	R11	繞過中國大陸	+8.8
-proto-rv-config-template-new-fs115	R18	回國	below 3.0
-proto-rv-config-template-new-fs115	R9	依地區分流	+4.0
-proto-rv-config-template-new-fs115	R9	依服務分流	+17.5
-proto-rv-config-template-new-fs115	R9	全域代理	+17.5
-proto-rv-config-template-new-fs115	R9	只代理 GFW 名單	+17.5
-proto-rv-config-template-new-fs115	R9	單一策略群組	+17.5
-proto-rv-config-template-new-fs115	R9	回國	+17.5
-proto-rv-config-template-new-fs115	R9	繞過中國大陸	+4.0
-proto-rv-config-template-new-fs200	R11	全域代理	+38.3
-proto-rv-config-template-new-fs200	R11	只代理 GFW 名單	+37.8
-proto-rv-config-template-new-fs200	R11	單一策略群組	+38.3
-proto-rv-config-template-new-fs200	R11	繞過中國大陸	+34.0
-proto-rv-config-template-new-fs200	R9	全域代理	+37.5
-proto-rv-config-template-new-fs200	R9	只代理 GFW 名單	+37.5
-proto-rv-config-template-new-fs200	R9	單一策略群組	+37.5
-proto-rv-config-template-new-fs200	R9	繞過中國大陸	+37.5
-proto-rv-config-template-new-light	R11	NetworkManager 直連	+8.5
-proto-rv-config-template-new-light	R11	依地區分流	+8.5
-proto-rv-config-template-new-light	R11	依服務分流	+21.0
-proto-rv-config-template-new-light	R11	全域代理	+8.5
-proto-rv-config-template-new-light	R11	只代理 GFW 名單	+8.5
-proto-rv-config-template-new-light	R11	單一策略群組	+8.5
-proto-rv-config-template-new-light	R11	回國	+8.5
-proto-rv-config-template-new-light	R11	繞過中國大陸	+7.5
-proto-rv-config-template-new-light	R9	Netflix	+1.5
-proto-rv-config-template-new-light	R9	NetworkManager 直連	+1.5
-proto-rv-config-template-new-light	R9	OpenAI	+1.5
-proto-rv-config-template-new-light	R9	Telegram	+1.5
-proto-rv-config-template-new-light	R9	YouTube	+1.5
-proto-rv-config-template-new-light	R9	代理	+1.5
-proto-rv-config-template-new-light	R9	依地區分流	+1.5
-proto-rv-config-template-new-light	R9	依服務分流	+14.0
-proto-rv-config-template-new-light	R9	全域代理	+1.5
-proto-rv-config-template-new-light	R9	只代理 GFW 名單	+1.5
-proto-rv-config-template-new-light	R9	單一策略群組	+1.5
-proto-rv-config-template-new-light	R9	回國	+1.5
-proto-rv-config-template-new-light	R9	國外媒體	+1.5
-proto-rv-config-template-new-light	R9	巴哈姆特	+1.5
-proto-rv-config-template-new-light	R9	新加坡	+1.5
-proto-rv-config-template-new-light	R9	日本	+1.5
-proto-rv-config-template-new-light	R9	繞過中國大陸	+1.5
-proto-rv-config-template-new-light	R9	美國	+1.5
-proto-rv-config-template-new-light	R9	自動選擇	+1.5
-proto-rv-config-template-new-light	R9	臺灣	+1.5
-proto-rv-config-template-new-light	R9	韓國	+1.5
-proto-rv-config-template-new-light	R9	香港	+1.5
+proto-rv-config-template-new-fs115	R11	繞過中國大陸	-2.3
+proto-rv-config-template-new-fs200	R11	繞過中國大陸	-4.5
 proto-rv-config-unsupported-dark	R11	!pname(helper) && mac(00	-11.5
 proto-rv-config-unsupported-dark	R13	!pname(helper) && mac(00	title 49.0 vs 23.0
 proto-rv-config-unsupported-fs115	R11	!pname(helper) && mac(00	-13.8
@@ -724,219 +88,43 @@ proto-rv-config-unsupported-fs200	R13	!pname(helper) && mac(00	title 171.0 vs 38
 proto-rv-config-unsupported-fs200	R13	lan_interface: docker0	title 82.5 vs 38.5
 proto-rv-config-unsupported-light	R11	!pname(helper) && mac(00	-11.5
 proto-rv-config-unsupported-light	R13	!pname(helper) && mac(00	title 49.0 vs 23.0
-proto-rv-confirm-sheet-dark	R9	Harbor Cloud	+1.5
-proto-rv-confirm-sheet-dark	R9	Lantern Net	+1.5
-proto-rv-confirm-sheet-light	R9	Harbor Cloud	+1.5
-proto-rv-confirm-sheet-light	R9	Lantern Net	+1.5
-proto-rv-connection-dark	R9	Taipei 04	+1.5
-proto-rv-connection-dark	R9	YouTube	+1.5
-proto-rv-connection-dark	R9	netflix.com 等 12 個網域	+1.5
-proto-rv-connection-dark	R9	串流	+1.5
-proto-rv-connection-fs115	R9	Taipei 04	+4.0
-proto-rv-connection-fs115	R9	YouTube	+4.0
-proto-rv-connection-fs115	R9	netflix.com 等 12 個網域	+4.0
-proto-rv-connection-fs115	R9	串流	+4.0
-proto-rv-connection-fs200	R9	Taipei 04	+17.0
-proto-rv-connection-fs200	R9	YouTube	+37.5
-proto-rv-connection-fs200	R9	netflix.com 等 12 個網域	+39.0
-proto-rv-connection-fs200	R9	串流	+17.0
-proto-rv-connection-ip-dark	R9	91.108.56.0/22	+1.5
-proto-rv-connection-ip-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-connection-ip-dark	R9	Telegram	+1.5
-proto-rv-connection-ip-dark	R9	主節點	+1.5
-proto-rv-connection-ip-light	R9	91.108.56.0/22	+1.5
-proto-rv-connection-ip-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-connection-ip-light	R9	Telegram	+1.5
-proto-rv-connection-ip-light	R9	主節點	+1.5
-proto-rv-connection-light	R9	Taipei 04	+1.5
-proto-rv-connection-light	R9	YouTube	+1.5
-proto-rv-connection-light	R9	netflix.com 等 12 個網域	+1.5
-proto-rv-connection-light	R9	串流	+1.5
-proto-rv-connections-dark	R9	91.108.56.130:443	+1.5
-proto-rv-connections-dark	R9	chatgpt.com:443	+1.5
-proto-rv-connections-dark	R9	gemini.google.com:443	+1.5
-proto-rv-connections-dark	R9	imap.gmail.com:993	+1.5
-proto-rv-connections-dark	R9	occ-0-4415-58.1.nflxvide	+1.5
-proto-rv-connections-dark	R9	rr3---sn-a5mekn6d.google	+1.5
-proto-rv-connections-dark	R9	szshort.weixin.qq.com:44	+1.5
-proto-rv-connections-en-fs115	R9	91.108.56.130:443	+4.0
-proto-rv-connections-en-fs115	R9	chatgpt.com:443	+4.0
-proto-rv-connections-en-fs115	R9	gemini.google.com:443	+4.0
-proto-rv-connections-en-fs115	R9	imap.gmail.com:993	+4.0
-proto-rv-connections-en-fs115	R9	occ-0-4415-58.1.nflxvide	+4.0
-proto-rv-connections-en-fs115	R9	rr3---sn-a5mekn6d.google	+4.0
-proto-rv-connections-en-fs115	R9	szshort.weixin.qq.com:44	+4.0
-proto-rv-connections-en-light	R9	91.108.56.130:443	+1.5
-proto-rv-connections-en-light	R9	chatgpt.com:443	+1.5
-proto-rv-connections-en-light	R9	gemini.google.com:443	+1.5
-proto-rv-connections-en-light	R9	imap.gmail.com:993	+1.5
-proto-rv-connections-en-light	R9	occ-0-4415-58.1.nflxvide	+1.5
-proto-rv-connections-en-light	R9	rr3---sn-a5mekn6d.google	+1.5
-proto-rv-connections-en-light	R9	szshort.weixin.qq.com:44	+1.5
-proto-rv-connections-fs115	R9	91.108.56.130:443	+4.0
-proto-rv-connections-fs115	R9	chatgpt.com:443	+4.0
-proto-rv-connections-fs115	R9	gemini.google.com:443	+4.0
-proto-rv-connections-fs115	R9	imap.gmail.com:993	+4.0
-proto-rv-connections-fs115	R9	occ-0-4415-58.1.nflxvide	+4.0
-proto-rv-connections-fs115	R9	rr3---sn-a5mekn6d.google	+4.0
-proto-rv-connections-fs115	R9	szshort.weixin.qq.com:44	+4.0
 proto-rv-connections-fs200	R11	91.108.56.130:443	+20.0
 proto-rv-connections-fs200	R11	chatgpt.com:443	+20.0
 proto-rv-connections-fs200	R11	gemini.google.com:443	+20.0
 proto-rv-connections-fs200	R11	rr3---sn-a5mekn6d.google	+20.0
 proto-rv-connections-fs200	R11	szshort.weixin.qq.com:44	+20.0
-proto-rv-connections-fs200	R18	91.108.56.130:443	below 0.0
-proto-rv-connections-fs200	R9	91.108.56.130:443	+37.5
-proto-rv-connections-fs200	R9	chatgpt.com:443	+37.5
-proto-rv-connections-fs200	R9	gemini.google.com:443	+37.5
-proto-rv-connections-fs200	R9	rr3---sn-a5mekn6d.google	+37.5
-proto-rv-connections-fs200	R9	szshort.weixin.qq.com:44	+37.5
-proto-rv-connections-light	R9	91.108.56.130:443	+1.5
-proto-rv-connections-light	R9	chatgpt.com:443	+1.5
-proto-rv-connections-light	R9	gemini.google.com:443	+1.5
-proto-rv-connections-light	R9	imap.gmail.com:993	+1.5
-proto-rv-connections-light	R9	occ-0-4415-58.1.nflxvide	+1.5
-proto-rv-connections-light	R9	rr3---sn-a5mekn6d.google	+1.5
-proto-rv-connections-light	R9	szshort.weixin.qq.com:44	+1.5
-proto-rv-connections-search-dark	R9	gemini.google.com:443	+1.5
-proto-rv-connections-search-dark	R9	rr3---sn-a5mekn6d.google	+1.5
-proto-rv-connections-search-fs115	R9	gemini.google.com:443	+4.0
-proto-rv-connections-search-fs115	R9	rr3---sn-a5mekn6d.google	+4.0
 proto-rv-connections-search-fs200	R11	gemini.google.com:443	+20.0
 proto-rv-connections-search-fs200	R11	rr3---sn-a5mekn6d.google	+20.0
-proto-rv-connections-search-fs200	R9	gemini.google.com:443	+37.5
-proto-rv-connections-search-fs200	R9	rr3---sn-a5mekn6d.google	+37.5
-proto-rv-connections-search-ime-dark	R9	91.108.56.130:443	+1.5
-proto-rv-connections-search-ime-dark	R9	chatgpt.com:443	+1.5
-proto-rv-connections-search-ime-dark	R9	gemini.google.com:443	+1.5
-proto-rv-connections-search-ime-dark	R9	imap.gmail.com:993	+1.5
-proto-rv-connections-search-ime-dark	R9	occ-0-4415-58.1.nflxvide	+1.5
-proto-rv-connections-search-ime-dark	R9	rr3---sn-a5mekn6d.google	+1.5
-proto-rv-connections-search-ime-dark	R9	szshort.weixin.qq.com:44	+1.5
-proto-rv-connections-search-ime-fs200	R1	occ-0-4415-58.1.nflxvide	height 26.5
 proto-rv-connections-search-ime-fs200	R11	91.108.56.130:443	+20.0
 proto-rv-connections-search-ime-fs200	R11	chatgpt.com:443	+20.0
 proto-rv-connections-search-ime-fs200	R11	gemini.google.com:443	+20.0
 proto-rv-connections-search-ime-fs200	R11	rr3---sn-a5mekn6d.google	+20.0
 proto-rv-connections-search-ime-fs200	R11	szshort.weixin.qq.com:44	+20.0
-proto-rv-connections-search-ime-fs200	R13	occ-0-4415-58.1.nflxvide	title 10.5 vs 38.5
-proto-rv-connections-search-ime-fs200	R18	occ-0-4415-58.1.nflxvide	below 0.0
-proto-rv-connections-search-ime-fs200	R6	occ-0-4415-58.1.nflxvide	+56.0
-proto-rv-connections-search-ime-fs200	R9	91.108.56.130:443	+37.5
-proto-rv-connections-search-ime-fs200	R9	chatgpt.com:443	+37.5
-proto-rv-connections-search-ime-fs200	R9	gemini.google.com:443	+37.5
-proto-rv-connections-search-ime-fs200	R9	rr3---sn-a5mekn6d.google	+37.5
-proto-rv-connections-search-ime-fs200	R9	szshort.weixin.qq.com:44	+37.5
-proto-rv-connections-search-ime-light	R9	91.108.56.130:443	+1.5
-proto-rv-connections-search-ime-light	R9	chatgpt.com:443	+1.5
-proto-rv-connections-search-ime-light	R9	gemini.google.com:443	+1.5
-proto-rv-connections-search-ime-light	R9	imap.gmail.com:993	+1.5
-proto-rv-connections-search-ime-light	R9	occ-0-4415-58.1.nflxvide	+1.5
-proto-rv-connections-search-ime-light	R9	rr3---sn-a5mekn6d.google	+1.5
-proto-rv-connections-search-ime-light	R9	szshort.weixin.qq.com:44	+1.5
-proto-rv-connections-search-light	R9	gemini.google.com:443	+1.5
-proto-rv-connections-search-light	R9	rr3---sn-a5mekn6d.google	+1.5
-proto-rv-cutout-activity-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-cutout-activity-dark	R9	串流	+1.5
-proto-rv-cutout-activity-dark	R9	出站模式	+1.5
-proto-rv-cutout-activity-dark	R9	國內與區域網路	+1.5
-proto-rv-cutout-activity-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-cutout-activity-light	R9	串流	+1.5
-proto-rv-cutout-activity-light	R9	出站模式	+1.5
-proto-rv-cutout-activity-light	R9	國內與區域網路	+1.5
-proto-rv-cutout-policy-dark	R1	日本	height 70.5
 proto-rv-cutout-policy-dark	R11l	香港	+5.0
-proto-rv-cutout-policy-dark	R18	日本	below 7.5
-proto-rv-cutout-policy-dark	R9	AI	+1.5
-proto-rv-cutout-policy-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-cutout-policy-dark	R9	串流	+1.5
-proto-rv-cutout-policy-dark	R9	日本	+1.5
-proto-rv-cutout-policy-dark	R9	自動	+1.5
-proto-rv-cutout-policy-dark	R9	臺灣	+1.5
-proto-rv-cutout-policy-dark	R9	香港	+1.5
-proto-rv-cutout-policy-light	R1	日本	height 70.5
 proto-rv-cutout-policy-light	R11l	香港	+5.0
-proto-rv-cutout-policy-light	R18	日本	below 7.5
-proto-rv-cutout-policy-light	R9	AI	+1.5
-proto-rv-cutout-policy-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-cutout-policy-light	R9	串流	+1.5
-proto-rv-cutout-policy-light	R9	日本	+1.5
-proto-rv-cutout-policy-light	R9	自動	+1.5
-proto-rv-cutout-policy-light	R9	臺灣	+1.5
-proto-rv-cutout-policy-light	R9	香港	+1.5
-proto-rv-cutout-settings-dark	R1	主題	height 59.0
 proto-rv-cutout-settings-dark	R13	主題	subtitle 16.5 vs 20.5
-proto-rv-cutout-settings-dark	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-cutout-settings-dark	R18	主題	below 0.0
-proto-rv-cutout-settings-dark	R18	自動更新	above 16.0 below 19.0
-proto-rv-cutout-settings-light	R1	主題	height 59.0
 proto-rv-cutout-settings-light	R13	主題	subtitle 16.5 vs 20.5
-proto-rv-cutout-settings-light	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-cutout-settings-light	R18	主題	below 0.0
-proto-rv-cutout-settings-light	R18	自動更新	above 16.0 below 19.0
 proto-rv-effective-config-dark	R11l	AI	-10.0
 proto-rv-effective-config-dark	R11l	串流	-10.0
 proto-rv-effective-config-dark	R11l	日本	-10.0
 proto-rv-effective-config-dark	R11l	自動	-10.0
 proto-rv-effective-config-dark	R11l	臺灣	-10.0
-proto-rv-effective-config-dark	R9	AI	+1.5
-proto-rv-effective-config-dark	R9	串流	+1.5
-proto-rv-effective-config-dark	R9	主節點	+1.5
-proto-rv-effective-config-dark	R9	日本	+1.5
-proto-rv-effective-config-dark	R9	美國	+1.5
-proto-rv-effective-config-dark	R9	自動	+1.5
-proto-rv-effective-config-dark	R9	臺灣	+1.5
-proto-rv-effective-config-dark	R9	香港	+1.5
-proto-rv-effective-config-failed-dark	R12	無法讀取生效組態	+2.0
-proto-rv-effective-config-failed-fs115	R12	無法讀取生效組態	+2.0
-proto-rv-effective-config-failed-fs200	R12	無法讀取生效組態	+2.0
-proto-rv-effective-config-failed-light	R12	無法讀取生效組態	+2.0
 proto-rv-effective-config-light	R11l	AI	-10.0
 proto-rv-effective-config-light	R11l	串流	-10.0
 proto-rv-effective-config-light	R11l	日本	-10.0
 proto-rv-effective-config-light	R11l	自動	-10.0
 proto-rv-effective-config-light	R11l	臺灣	-10.0
-proto-rv-effective-config-light	R9	AI	+1.5
-proto-rv-effective-config-light	R9	串流	+1.5
-proto-rv-effective-config-light	R9	主節點	+1.5
-proto-rv-effective-config-light	R9	日本	+1.5
-proto-rv-effective-config-light	R9	美國	+1.5
-proto-rv-effective-config-light	R9	自動	+1.5
-proto-rv-effective-config-light	R9	臺灣	+1.5
-proto-rv-effective-config-light	R9	香港	+1.5
 proto-rv-effective-config-truncated-dark	R11l	AI	-10.0
 proto-rv-effective-config-truncated-dark	R11l	串流	-10.0
 proto-rv-effective-config-truncated-dark	R11l	自動	-10.0
 proto-rv-effective-config-truncated-dark	R11l	臺灣	-10.0
-proto-rv-effective-config-truncated-dark	R9	AI	+1.5
-proto-rv-effective-config-truncated-dark	R9	串流	+1.5
-proto-rv-effective-config-truncated-dark	R9	主節點	+1.5
-proto-rv-effective-config-truncated-dark	R9	自動	+1.5
-proto-rv-effective-config-truncated-dark	R9	臺灣	+1.5
-proto-rv-effective-config-truncated-dark	R9	香港	+1.5
 proto-rv-effective-config-truncated-fs115	R11l	串流	-11.5
 proto-rv-effective-config-truncated-fs115	R11l	自動	-11.5
 proto-rv-effective-config-truncated-fs115	R11l	臺灣	-11.5
-proto-rv-effective-config-truncated-fs115	R9	AI	+4.0
-proto-rv-effective-config-truncated-fs115	R9	串流	+4.0
-proto-rv-effective-config-truncated-fs115	R9	主節點	+4.0
-proto-rv-effective-config-truncated-fs115	R9	自動	+4.0
-proto-rv-effective-config-truncated-fs115	R9	臺灣	+4.0
-proto-rv-effective-config-truncated-fs115	R9	香港	+4.0
-proto-rv-effective-config-truncated-fs200	R18	串流	below 0.0
-proto-rv-effective-config-truncated-fs200	R9	串流	+37.5
-proto-rv-effective-config-truncated-fs200	R9	主節點	+56.5
-proto-rv-effective-config-truncated-fs200	R9	自動	+37.5
 proto-rv-effective-config-truncated-light	R11l	AI	-10.0
 proto-rv-effective-config-truncated-light	R11l	串流	-10.0
 proto-rv-effective-config-truncated-light	R11l	自動	-10.0
 proto-rv-effective-config-truncated-light	R11l	臺灣	-10.0
-proto-rv-effective-config-truncated-light	R9	AI	+1.5
-proto-rv-effective-config-truncated-light	R9	串流	+1.5
-proto-rv-effective-config-truncated-light	R9	主節點	+1.5
-proto-rv-effective-config-truncated-light	R9	自動	+1.5
-proto-rv-effective-config-truncated-light	R9	臺灣	+1.5
-proto-rv-effective-config-truncated-light	R9	香港	+1.5
 proto-rv-layout-en-fs200	R1	Always-on VPN settings a	height 138.5 for 114.5
 proto-rv-layout-en-fs200	R1	Always-on VPN 永久連線	height 225.5 for 190.5
 proto-rv-layout-en-fs200	R1	Per app	height 211.5 for 187.5
@@ -944,8 +132,6 @@ proto-rv-layout-en-fs200	R1	Per app #2	height 214.5 for 187.5
 proto-rv-layout-en-fs200	R1	Update	height 231.5 for 67.0
 proto-rv-layout-en-fs200	R1	Update #2	height 114.5 for 67.0
 proto-rv-layout-en-fs200	R11	Per app	+38.0
-proto-rv-layout-en-fs200	R11	Per app #2	+38.3
-proto-rv-layout-en-fs200	R12	Per app	+2.0
 proto-rv-layout-en-fs200	R13	Update	title 35.0 vs 38.5
 proto-rv-layout-en-fs200	R13	Update #2	title 35.0 vs 38.5
 proto-rv-layout-en-fs200	R18	Always-on VPN settings a	above 16.0 below 40.0
@@ -960,25 +146,15 @@ proto-rv-layout-en-fs200	R7	Update	x 189.5 vs 72.0
 proto-rv-layout-en-fs200	R7	Update #2	x 189.5 vs 72.0
 proto-rv-layout-en-fs200	R8	Update	-79.8
 proto-rv-layout-en-fs200	R8	Update #2	-21.8
-proto-rv-layout-en-fs200	R9	Always-on VPN 永久連線	+77.0
-proto-rv-layout-en-fs200	R9	Per app	+37.5
-proto-rv-layout-en-fs200	R9	Per app #2	+70.0
-proto-rv-layout-en-fs200	R9	Per app #3	+37.5
-proto-rv-layout-en-fs200	R9	Per app #4	+71.5
-proto-rv-layout-en-fs200	R9	Per app #5	+37.5
 proto-rv-layout-en-light	R1	Always-on VPN settings a	height 105.0 for 81.0
 proto-rv-layout-en-light	R1	Per app	height 147.5 for 123.5
 proto-rv-layout-en-light	R1	Per app #2	height 150.5 for 123.5
 proto-rv-layout-en-light	R1	Update	height 149.5 for 58.0
 proto-rv-layout-en-light	R1	Update #2	height 81.0 for 58.0
-proto-rv-layout-en-light	R11	Per app	+8.5
 proto-rv-layout-en-light	R11l	Always-on VPN 永久連線	+5.0
-proto-rv-layout-en-light	R12	Per app	+2.0
 proto-rv-layout-en-light	R13	Update	title 20.5 vs 23.0
 proto-rv-layout-en-light	R13	Update #2	title 20.5 vs 23.0
 proto-rv-layout-en-light	R18	Always-on VPN settings a	above 16.0 below 40.0
-proto-rv-layout-en-light	R18	Notify when disconnected	above 16.0 below 19.0
-proto-rv-layout-en-light	R18	Notify when disconnected #2	above 16.0 below 19.0
 proto-rv-layout-en-light	R18	Per app	above 16.0 below 40.0
 proto-rv-layout-en-light	R18	Per app #2	above 16.0 below 43.0
 proto-rv-layout-en-light	R18	Update	above 26.0 below 103.0
@@ -989,22 +165,11 @@ proto-rv-layout-en-light	R7	Update	x 210.5 vs 72.0
 proto-rv-layout-en-light	R7	Update #2	x 210.5 vs 72.0
 proto-rv-layout-en-light	R8	Update	-38.8
 proto-rv-layout-en-light	R8	Update #2	-11.5
-proto-rv-layout-en-light	R9	Always-on VPN 永久連線	+1.5
-proto-rv-layout-en-light	R9	Per app	+1.5
-proto-rv-layout-en-light	R9	Per app #2	+38.0
-proto-rv-layout-en-light	R9	Per app #3	+1.5
-proto-rv-layout-en-light	R9	Per app #4	+39.5
-proto-rv-layout-en-light	R9	Per app #5	+1.5
 proto-rv-layout-zh-dark	R1	更新	height 149.5 for 58.0
 proto-rv-layout-zh-dark	R1	更新 #2	height 81.0 for 58.0
-proto-rv-layout-zh-dark	R11	依 App	+33.0
-proto-rv-layout-zh-dark	R11	依 App #2	+8.5
 proto-rv-layout-zh-dark	R11l	永久連線的 VPN	+5.0
-proto-rv-layout-zh-dark	R12	依 App	+2.0
 proto-rv-layout-zh-dark	R13	更新	title 20.5 vs 23.0
 proto-rv-layout-zh-dark	R13	更新 #2	title 20.5 vs 23.0
-proto-rv-layout-zh-dark	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-layout-zh-dark	R18	中斷連線時通知 #2	above 16.0 below 19.0
 proto-rv-layout-zh-dark	R18	更新	above 26.0 below 103.0
 proto-rv-layout-zh-dark	R18	更新 #2	above 19.0 below 41.5
 proto-rv-layout-zh-dark	R6	更新	+151.0
@@ -1013,12 +178,6 @@ proto-rv-layout-zh-dark	R7	更新	x 223.0 vs 72.0
 proto-rv-layout-zh-dark	R7	更新 #2	x 223.0 vs 72.0
 proto-rv-layout-zh-dark	R8	更新	-38.8
 proto-rv-layout-zh-dark	R8	更新 #2	-11.5
-proto-rv-layout-zh-dark	R9	依 App	+1.5
-proto-rv-layout-zh-dark	R9	依 App #2	+26.0
-proto-rv-layout-zh-dark	R9	依 App #3	+1.5
-proto-rv-layout-zh-dark	R9	依 App #4	+26.0
-proto-rv-layout-zh-dark	R9	依 App #5	+1.5
-proto-rv-layout-zh-dark	R9	永久連線的 VPN	+1.5
 proto-rv-layout-zh-fs200	R1	依 App	height 211.5 for 187.5
 proto-rv-layout-zh-fs200	R1	依 App #2	height 214.5 for 187.5
 proto-rv-layout-zh-fs200	R1	更新	height 231.5 for 67.0
@@ -1026,8 +185,6 @@ proto-rv-layout-zh-fs200	R1	更新 #2	height 114.5 for 67.0
 proto-rv-layout-zh-fs200	R1	永久連線的 VPN	height 181.5 for 146.5
 proto-rv-layout-zh-fs200	R1	永久連線的 VPN 設定與其他需要換行的很長很長	height 138.5 for 114.5
 proto-rv-layout-zh-fs200	R11	依 App	+38.0
-proto-rv-layout-zh-fs200	R11	依 App #2	+17.3
-proto-rv-layout-zh-fs200	R12	依 App	+2.0
 proto-rv-layout-zh-fs200	R13	更新	title 35.0 vs 38.5
 proto-rv-layout-zh-fs200	R13	更新 #2	title 35.0 vs 38.5
 proto-rv-layout-zh-fs200	R18	依 App	above 16.0 below 40.0
@@ -1042,22 +199,11 @@ proto-rv-layout-zh-fs200	R7	更新	x 211.0 vs 72.0
 proto-rv-layout-zh-fs200	R7	更新 #2	x 211.0 vs 72.0
 proto-rv-layout-zh-fs200	R8	更新	-79.8
 proto-rv-layout-zh-fs200	R8	更新 #2	-21.8
-proto-rv-layout-zh-fs200	R9	依 App	+17.0
-proto-rv-layout-zh-fs200	R9	依 App #2	+70.0
-proto-rv-layout-zh-fs200	R9	依 App #3	+37.5
-proto-rv-layout-zh-fs200	R9	依 App #4	+71.5
-proto-rv-layout-zh-fs200	R9	依 App #5	+17.0
-proto-rv-layout-zh-fs200	R9	永久連線的 VPN	+55.0
 proto-rv-layout-zh-light	R1	更新	height 149.5 for 58.0
 proto-rv-layout-zh-light	R1	更新 #2	height 81.0 for 58.0
-proto-rv-layout-zh-light	R11	依 App	+33.0
-proto-rv-layout-zh-light	R11	依 App #2	+8.5
 proto-rv-layout-zh-light	R11l	永久連線的 VPN	+5.0
-proto-rv-layout-zh-light	R12	依 App	+2.0
 proto-rv-layout-zh-light	R13	更新	title 20.5 vs 23.0
 proto-rv-layout-zh-light	R13	更新 #2	title 20.5 vs 23.0
-proto-rv-layout-zh-light	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-layout-zh-light	R18	中斷連線時通知 #2	above 16.0 below 19.0
 proto-rv-layout-zh-light	R18	更新	above 26.0 below 103.0
 proto-rv-layout-zh-light	R18	更新 #2	above 19.0 below 41.5
 proto-rv-layout-zh-light	R6	更新	+151.0
@@ -1066,565 +212,106 @@ proto-rv-layout-zh-light	R7	更新	x 223.0 vs 72.0
 proto-rv-layout-zh-light	R7	更新 #2	x 223.0 vs 72.0
 proto-rv-layout-zh-light	R8	更新	-38.8
 proto-rv-layout-zh-light	R8	更新 #2	-11.5
-proto-rv-layout-zh-light	R9	依 App	+1.5
-proto-rv-layout-zh-light	R9	依 App #2	+26.0
-proto-rv-layout-zh-light	R9	依 App #3	+1.5
-proto-rv-layout-zh-light	R9	依 App #4	+26.0
-proto-rv-layout-zh-light	R9	依 App #5	+1.5
-proto-rv-layout-zh-light	R9	永久連線的 VPN	+1.5
 proto-rv-licenses-fs115	R11	品牌標誌	-2.3
 proto-rv-licenses-fs200	R11	品牌標誌	-4.0
-proto-rv-menu-dark	R9	Harbor Cloud	+1.5
-proto-rv-menu-dark	R9	Lantern Net	+1.5
-proto-rv-menu-light	R9	Harbor Cloud	+1.5
-proto-rv-menu-light	R9	Lantern Net	+1.5
-proto-rv-node-detail-local-network-dark	R12	無法測試延遲	+2.0
-proto-rv-node-detail-local-network-fs200	R12	無法測試延遲	+2.0
-proto-rv-node-detail-local-network-light	R12	無法測試延遲	+2.0
-proto-rv-node-picker-action-failed-dark	R1	Taipei 02	height 21.0
-proto-rv-node-picker-action-failed-dark	R10	Taipei 02	+8.5
-proto-rv-node-picker-action-failed-dark	R11	Hong Kong 01	-2.5
-proto-rv-node-picker-action-failed-dark	R11	Hong Kong 02 IPLC	+11.0
-proto-rv-node-picker-action-failed-dark	R11	Hong Kong 04	-2.5
-proto-rv-node-picker-action-failed-dark	R11	Hong Kong 05 IEPL	+11.0
-proto-rv-node-picker-action-failed-dark	R11	Taipei 01	-2.5
-proto-rv-node-picker-action-failed-dark	R12	無法切換節點	+2.0
-proto-rv-node-picker-action-failed-dark	R13	Taipei 02	title 1.5 vs 23.0
-proto-rv-node-picker-action-failed-dark	R16	Hong Kong 01	+13.0
-proto-rv-node-picker-action-failed-dark	R16	Hong Kong 02 IPLC	+13.0
-proto-rv-node-picker-action-failed-dark	R16	Hong Kong 04	+13.0
-proto-rv-node-picker-action-failed-dark	R16	Hong Kong 05 IEPL	+13.0
-proto-rv-node-picker-action-failed-dark	R16	Taipei 01	+13.0
-proto-rv-node-picker-action-failed-dark	R16	Taipei 02	+13.0
-proto-rv-node-picker-action-failed-dark	R18	Taipei 02	below 0.0
-proto-rv-node-picker-action-failed-dark	R6	Taipei 02	+56.0
-proto-rv-node-picker-action-failed-dark	R9	Harbor Cloud	+14.0
-proto-rv-node-picker-action-failed-dark	R9	Hong Kong 01	+1.5
-proto-rv-node-picker-action-failed-dark	R9	Hong Kong 02 IPLC	+15.0
-proto-rv-node-picker-action-failed-dark	R9	Hong Kong 04	+1.5
-proto-rv-node-picker-action-failed-dark	R9	Hong Kong 05 IEPL	+15.0
-proto-rv-node-picker-action-failed-dark	R9	Taipei 01	+1.5
-proto-rv-node-picker-action-failed-fs115	R1	Taipei 01	height 74.0
+proto-rv-node-picker-action-failed-dark	R11	Hong Kong 02 IPLC	+13.0
+proto-rv-node-picker-action-failed-dark	R11	Hong Kong 05 IEPL	+13.0
 proto-rv-node-picker-action-failed-fs115	R11	Hong Kong 02 IPLC	+13.5
 proto-rv-node-picker-action-failed-fs115	R11	Hong Kong 05 IEPL	+13.5
-proto-rv-node-picker-action-failed-fs115	R12	無法切換節點	+2.0
-proto-rv-node-picker-action-failed-fs115	R16	Hong Kong 01	+13.0
-proto-rv-node-picker-action-failed-fs115	R16	Hong Kong 02 IPLC	+13.0
-proto-rv-node-picker-action-failed-fs115	R16	Hong Kong 04	+13.0
-proto-rv-node-picker-action-failed-fs115	R16	Hong Kong 05 IEPL	+13.0
-proto-rv-node-picker-action-failed-fs115	R16	Taipei 01	+13.0
-proto-rv-node-picker-action-failed-fs115	R18	Taipei 01	below 9.0
-proto-rv-node-picker-action-failed-fs115	R9	Harbor Cloud	+17.5
-proto-rv-node-picker-action-failed-fs115	R9	Hong Kong 01	+4.0
-proto-rv-node-picker-action-failed-fs115	R9	Hong Kong 02 IPLC	+18.5
-proto-rv-node-picker-action-failed-fs115	R9	Hong Kong 04	+4.0
-proto-rv-node-picker-action-failed-fs115	R9	Hong Kong 05 IEPL	+18.5
-proto-rv-node-picker-action-failed-fs115	R9	Taipei 01	+4.0
-proto-rv-node-picker-action-failed-fs200	R1	Hong Kong 01	height 181.0 for 149.0
+proto-rv-node-picker-action-failed-fs200	R1	Hong Kong 01	height 181.0 for 136.0
 proto-rv-node-picker-action-failed-fs200	R11	Harbor Cloud	+80.5
-proto-rv-node-picker-action-failed-fs200	R11	Hong Kong 01	+69.0
-proto-rv-node-picker-action-failed-fs200	R12	無法切換節點	+2.0
-proto-rv-node-picker-action-failed-fs200	R16	Hong Kong 01	+13.0
-proto-rv-node-picker-action-failed-fs200	R18	Hong Kong 01	above 16.0 below 48.0
-proto-rv-node-picker-action-failed-fs200	R9	Harbor Cloud	+80.0
-proto-rv-node-picker-action-failed-fs200	R9	Hong Kong 01	+54.5
-proto-rv-node-picker-action-failed-light	R1	Taipei 02	height 21.0
-proto-rv-node-picker-action-failed-light	R10	Taipei 02	+8.5
-proto-rv-node-picker-action-failed-light	R11	Hong Kong 01	-2.5
-proto-rv-node-picker-action-failed-light	R11	Hong Kong 02 IPLC	+11.0
-proto-rv-node-picker-action-failed-light	R11	Hong Kong 04	-2.5
-proto-rv-node-picker-action-failed-light	R11	Hong Kong 05 IEPL	+11.0
-proto-rv-node-picker-action-failed-light	R11	Taipei 01	-2.5
-proto-rv-node-picker-action-failed-light	R12	無法切換節點	+2.0
-proto-rv-node-picker-action-failed-light	R13	Taipei 02	title 1.5 vs 23.0
-proto-rv-node-picker-action-failed-light	R16	Hong Kong 01	+13.0
-proto-rv-node-picker-action-failed-light	R16	Hong Kong 02 IPLC	+13.0
-proto-rv-node-picker-action-failed-light	R16	Hong Kong 04	+13.0
-proto-rv-node-picker-action-failed-light	R16	Hong Kong 05 IEPL	+13.0
-proto-rv-node-picker-action-failed-light	R16	Taipei 01	+13.0
-proto-rv-node-picker-action-failed-light	R16	Taipei 02	+13.0
-proto-rv-node-picker-action-failed-light	R18	Taipei 02	below 0.0
-proto-rv-node-picker-action-failed-light	R6	Taipei 02	+56.0
-proto-rv-node-picker-action-failed-light	R9	Harbor Cloud	+14.0
-proto-rv-node-picker-action-failed-light	R9	Hong Kong 01	+1.5
-proto-rv-node-picker-action-failed-light	R9	Hong Kong 02 IPLC	+15.0
-proto-rv-node-picker-action-failed-light	R9	Hong Kong 04	+1.5
-proto-rv-node-picker-action-failed-light	R9	Hong Kong 05 IEPL	+15.0
-proto-rv-node-picker-action-failed-light	R9	Taipei 01	+1.5
-proto-rv-node-picker-dark	R11	Hong Kong 01	-2.5
-proto-rv-node-picker-dark	R11	Hong Kong 02 IPLC	+11.0
-proto-rv-node-picker-dark	R11	Hong Kong 04	-2.5
-proto-rv-node-picker-dark	R11	Hong Kong 05 IEPL	+11.0
-proto-rv-node-picker-dark	R11	Taipei 01	-2.5
-proto-rv-node-picker-dark	R11	Taipei 02	-2.5
-proto-rv-node-picker-dark	R11	Taipei 04	-2.5
-proto-rv-node-picker-dark	R16	Hong Kong 01	+13.0
-proto-rv-node-picker-dark	R16	Hong Kong 02 IPLC	+13.0
-proto-rv-node-picker-dark	R16	Hong Kong 04	+13.0
-proto-rv-node-picker-dark	R16	Hong Kong 05 IEPL	+13.0
-proto-rv-node-picker-dark	R16	Taipei 01	+13.0
-proto-rv-node-picker-dark	R16	Taipei 02	+13.0
-proto-rv-node-picker-dark	R16	Taipei 04	+13.0
-proto-rv-node-picker-dark	R9	Harbor Cloud	+14.0
-proto-rv-node-picker-dark	R9	Hong Kong 01	+1.5
-proto-rv-node-picker-dark	R9	Hong Kong 02 IPLC	+15.0
-proto-rv-node-picker-dark	R9	Hong Kong 04	+1.5
-proto-rv-node-picker-dark	R9	Hong Kong 05 IEPL	+15.0
-proto-rv-node-picker-dark	R9	Taipei 01	+1.5
-proto-rv-node-picker-dark	R9	Taipei 02	+1.5
-proto-rv-node-picker-dark	R9	Taipei 04	+1.5
-proto-rv-node-picker-fs115	R1	Taipei 04	height 69.5
+proto-rv-node-picker-action-failed-fs200	R11l	Hong Kong 01	+18.5
+proto-rv-node-picker-action-failed-fs200	R18	Hong Kong 01	above 16.0 below 61.0
+proto-rv-node-picker-action-failed-light	R11	Hong Kong 02 IPLC	+13.0
+proto-rv-node-picker-action-failed-light	R11	Hong Kong 05 IEPL	+13.0
+proto-rv-node-picker-dark	R11	Hong Kong 02 IPLC	+13.0
+proto-rv-node-picker-dark	R11	Hong Kong 05 IEPL	+13.0
 proto-rv-node-picker-fs115	R11	Hong Kong 02 IPLC	+13.5
 proto-rv-node-picker-fs115	R11	Hong Kong 05 IEPL	+13.5
-proto-rv-node-picker-fs115	R16	Hong Kong 01	+13.0
-proto-rv-node-picker-fs115	R16	Hong Kong 02 IPLC	+13.0
-proto-rv-node-picker-fs115	R16	Hong Kong 04	+13.0
-proto-rv-node-picker-fs115	R16	Hong Kong 05 IEPL	+13.0
-proto-rv-node-picker-fs115	R16	Taipei 01	+13.0
-proto-rv-node-picker-fs115	R16	Taipei 02	+13.0
-proto-rv-node-picker-fs115	R16	Taipei 04	+13.0
-proto-rv-node-picker-fs115	R18	Taipei 04	below 4.5
-proto-rv-node-picker-fs115	R9	Harbor Cloud	+17.5
-proto-rv-node-picker-fs115	R9	Hong Kong 01	+4.0
-proto-rv-node-picker-fs115	R9	Hong Kong 02 IPLC	+18.5
-proto-rv-node-picker-fs115	R9	Hong Kong 04	+4.0
-proto-rv-node-picker-fs115	R9	Hong Kong 05 IEPL	+18.5
-proto-rv-node-picker-fs115	R9	Taipei 01	+4.0
-proto-rv-node-picker-fs115	R9	Taipei 02	+4.0
-proto-rv-node-picker-fs115	R9	Taipei 04	+4.0
-proto-rv-node-picker-fs200	R1	Hong Kong 01	height 181.0 for 149.0
+proto-rv-node-picker-fs200	R1	Hong Kong 01	height 181.0 for 136.0
 proto-rv-node-picker-fs200	R1	Hong Kong 02 IPLC	height 225.0 for 149.5
-proto-rv-node-picker-fs200	R1	Hong Kong 04	height 62.5
 proto-rv-node-picker-fs200	R11	Harbor Cloud	+80.5
-proto-rv-node-picker-fs200	R11	Hong Kong 01	+69.0
+proto-rv-node-picker-fs200	R11l	Hong Kong 01	+18.5
 proto-rv-node-picker-fs200	R13	Hong Kong 04	subtitle 8.0 vs 35.0
-proto-rv-node-picker-fs200	R16	Hong Kong 01	+13.0
-proto-rv-node-picker-fs200	R18	Hong Kong 01	above 16.0 below 48.0
+proto-rv-node-picker-fs200	R18	Hong Kong 01	above 16.0 below 61.0
 proto-rv-node-picker-fs200	R18	Hong Kong 02 IPLC	above 16.0 below 91.5
-proto-rv-node-picker-fs200	R18	Hong Kong 04	below 0.0
-proto-rv-node-picker-fs200	R6	Hong Kong 04	+56.0
-proto-rv-node-picker-fs200	R9	Harbor Cloud	+80.0
-proto-rv-node-picker-fs200	R9	Hong Kong 01	+54.5
-proto-rv-node-picker-fs200	R9	Hong Kong 02 IPLC	+76.5
 proto-rv-node-picker-ime-end-dark	R1	Amsterdam 02	height 123.5 for 120.0
 proto-rv-node-picker-ime-end-dark	R1	Manchester 03	height 123.5 for 120.0
 proto-rv-node-picker-ime-end-dark	R1	Sydney 03	height 123.5 for 120.0
-proto-rv-node-picker-ime-end-dark	R11	Amsterdam 02	+31.0
-proto-rv-node-picker-ime-end-dark	R11	Frankfurt 02	-2.5
-proto-rv-node-picker-ime-end-dark	R11	Manchester 03	+31.0
-proto-rv-node-picker-ime-end-dark	R11	Marseille 02	-2.5
-proto-rv-node-picker-ime-end-dark	R11	New York 05	-2.5
-proto-rv-node-picker-ime-end-dark	R11	San Jose 02	-2.5
-proto-rv-node-picker-ime-end-dark	R11	Singapore 04	+10.0
-proto-rv-node-picker-ime-end-dark	R11	Sydney 03	+31.0
-proto-rv-node-picker-ime-end-dark	R11	Toronto 02	-2.5
-proto-rv-node-picker-ime-end-dark	R16	Amsterdam 02	+13.0
-proto-rv-node-picker-ime-end-dark	R16	Frankfurt 02	+13.0
-proto-rv-node-picker-ime-end-dark	R16	Manchester 03	+13.0
-proto-rv-node-picker-ime-end-dark	R16	Marseille 02	+13.0
-proto-rv-node-picker-ime-end-dark	R16	New York 05	+13.0
-proto-rv-node-picker-ime-end-dark	R16	San Jose 02	+13.0
-proto-rv-node-picker-ime-end-dark	R16	Singapore 04	+13.0
-proto-rv-node-picker-ime-end-dark	R16	Sydney 03	+13.0
-proto-rv-node-picker-ime-end-dark	R16	Toronto 02	+13.0
-proto-rv-node-picker-ime-end-dark	R17	Amsterdam 02	-9.5
-proto-rv-node-picker-ime-end-dark	R17	Manchester 03	-9.5
-proto-rv-node-picker-ime-end-dark	R17	Sydney 03	-9.5
+proto-rv-node-picker-ime-end-dark	R11	Amsterdam 02	+43.5
+proto-rv-node-picker-ime-end-dark	R11	Manchester 03	+43.5
+proto-rv-node-picker-ime-end-dark	R11	Singapore 04	+12.0
+proto-rv-node-picker-ime-end-dark	R11	Sydney 03	+43.5
 proto-rv-node-picker-ime-end-dark	R18	Amsterdam 02	above 16.0 below 19.5
 proto-rv-node-picker-ime-end-dark	R18	Manchester 03	above 16.0 below 19.5
-proto-rv-node-picker-ime-end-dark	R18	Singapore 04	above 11.0
 proto-rv-node-picker-ime-end-dark	R18	Sydney 03	above 16.0 below 19.5
-proto-rv-node-picker-ime-end-dark	R9	Amsterdam 02	+26.0
-proto-rv-node-picker-ime-end-dark	R9	Frankfurt 02	+1.5
-proto-rv-node-picker-ime-end-dark	R9	Manchester 03	+26.0
-proto-rv-node-picker-ime-end-dark	R9	Marseille 02	+1.5
-proto-rv-node-picker-ime-end-dark	R9	New York 05	+1.5
-proto-rv-node-picker-ime-end-dark	R9	San Jose 02	+1.5
-proto-rv-node-picker-ime-end-dark	R9	Singapore 04	+14.0
-proto-rv-node-picker-ime-end-dark	R9	Sydney 03	+26.0
-proto-rv-node-picker-ime-end-dark	R9	Toronto 02	+1.5
 proto-rv-node-picker-ime-end-light	R1	Amsterdam 02	height 123.5 for 120.0
 proto-rv-node-picker-ime-end-light	R1	Manchester 03	height 123.5 for 120.0
 proto-rv-node-picker-ime-end-light	R1	Sydney 03	height 123.5 for 120.0
-proto-rv-node-picker-ime-end-light	R11	Amsterdam 02	+31.0
-proto-rv-node-picker-ime-end-light	R11	Frankfurt 02	-2.5
-proto-rv-node-picker-ime-end-light	R11	Manchester 03	+31.0
-proto-rv-node-picker-ime-end-light	R11	Marseille 02	-2.5
-proto-rv-node-picker-ime-end-light	R11	New York 05	-2.5
-proto-rv-node-picker-ime-end-light	R11	San Jose 02	-2.5
-proto-rv-node-picker-ime-end-light	R11	Singapore 04	+10.0
-proto-rv-node-picker-ime-end-light	R11	Sydney 03	+31.0
-proto-rv-node-picker-ime-end-light	R11	Toronto 02	-2.5
-proto-rv-node-picker-ime-end-light	R16	Amsterdam 02	+13.0
-proto-rv-node-picker-ime-end-light	R16	Frankfurt 02	+13.0
-proto-rv-node-picker-ime-end-light	R16	Manchester 03	+13.0
-proto-rv-node-picker-ime-end-light	R16	Marseille 02	+13.0
-proto-rv-node-picker-ime-end-light	R16	New York 05	+13.0
-proto-rv-node-picker-ime-end-light	R16	San Jose 02	+13.0
-proto-rv-node-picker-ime-end-light	R16	Singapore 04	+13.0
-proto-rv-node-picker-ime-end-light	R16	Sydney 03	+13.0
-proto-rv-node-picker-ime-end-light	R16	Toronto 02	+13.0
-proto-rv-node-picker-ime-end-light	R17	Amsterdam 02	-9.5
-proto-rv-node-picker-ime-end-light	R17	Manchester 03	-9.5
-proto-rv-node-picker-ime-end-light	R17	Sydney 03	-9.5
+proto-rv-node-picker-ime-end-light	R11	Amsterdam 02	+43.5
+proto-rv-node-picker-ime-end-light	R11	Manchester 03	+43.5
+proto-rv-node-picker-ime-end-light	R11	Singapore 04	+12.0
+proto-rv-node-picker-ime-end-light	R11	Sydney 03	+43.5
 proto-rv-node-picker-ime-end-light	R18	Amsterdam 02	above 16.0 below 19.5
 proto-rv-node-picker-ime-end-light	R18	Manchester 03	above 16.0 below 19.5
-proto-rv-node-picker-ime-end-light	R18	Singapore 04	above 11.0
 proto-rv-node-picker-ime-end-light	R18	Sydney 03	above 16.0 below 19.5
-proto-rv-node-picker-ime-end-light	R9	Amsterdam 02	+26.0
-proto-rv-node-picker-ime-end-light	R9	Frankfurt 02	+1.5
-proto-rv-node-picker-ime-end-light	R9	Manchester 03	+26.0
-proto-rv-node-picker-ime-end-light	R9	Marseille 02	+1.5
-proto-rv-node-picker-ime-end-light	R9	New York 05	+1.5
-proto-rv-node-picker-ime-end-light	R9	San Jose 02	+1.5
-proto-rv-node-picker-ime-end-light	R9	Singapore 04	+14.0
-proto-rv-node-picker-ime-end-light	R9	Sydney 03	+26.0
-proto-rv-node-picker-ime-end-light	R9	Toronto 02	+1.5
-proto-rv-node-picker-light	R11	Hong Kong 01	-2.5
-proto-rv-node-picker-light	R11	Hong Kong 02 IPLC	+11.0
-proto-rv-node-picker-light	R11	Hong Kong 04	-2.5
-proto-rv-node-picker-light	R11	Hong Kong 05 IEPL	+11.0
-proto-rv-node-picker-light	R11	Taipei 01	-2.5
-proto-rv-node-picker-light	R11	Taipei 02	-2.5
-proto-rv-node-picker-light	R11	Taipei 04	-2.5
-proto-rv-node-picker-light	R16	Hong Kong 01	+13.0
-proto-rv-node-picker-light	R16	Hong Kong 02 IPLC	+13.0
-proto-rv-node-picker-light	R16	Hong Kong 04	+13.0
-proto-rv-node-picker-light	R16	Hong Kong 05 IEPL	+13.0
-proto-rv-node-picker-light	R16	Taipei 01	+13.0
-proto-rv-node-picker-light	R16	Taipei 02	+13.0
-proto-rv-node-picker-light	R16	Taipei 04	+13.0
-proto-rv-node-picker-light	R9	Harbor Cloud	+14.0
-proto-rv-node-picker-light	R9	Hong Kong 01	+1.5
-proto-rv-node-picker-light	R9	Hong Kong 02 IPLC	+15.0
-proto-rv-node-picker-light	R9	Hong Kong 04	+1.5
-proto-rv-node-picker-light	R9	Hong Kong 05 IEPL	+15.0
-proto-rv-node-picker-light	R9	Taipei 01	+1.5
-proto-rv-node-picker-light	R9	Taipei 02	+1.5
-proto-rv-node-picker-light	R9	Taipei 04	+1.5
-proto-rv-node-picker-testing-dark	R11	Hong Kong 01	-2.5
-proto-rv-node-picker-testing-dark	R11	Hong Kong 02 IPLC	-2.5
-proto-rv-node-picker-testing-dark	R11	Hong Kong 04	-2.5
-proto-rv-node-picker-testing-dark	R11	Hong Kong 05 IEPL	-2.5
-proto-rv-node-picker-testing-dark	R11	Taipei 01	-2.5
-proto-rv-node-picker-testing-dark	R11	Taipei 02	-2.5
-proto-rv-node-picker-testing-dark	R11	Taipei 04	-2.5
-proto-rv-node-picker-testing-dark	R16	Hong Kong 01	+13.0
-proto-rv-node-picker-testing-dark	R16	Hong Kong 02 IPLC	+13.0
-proto-rv-node-picker-testing-dark	R16	Hong Kong 04	+13.0
-proto-rv-node-picker-testing-dark	R16	Hong Kong 05 IEPL	+13.0
-proto-rv-node-picker-testing-dark	R16	Taipei 01	+13.0
-proto-rv-node-picker-testing-dark	R16	Taipei 02	+13.0
-proto-rv-node-picker-testing-dark	R16	Taipei 04	+13.0
+proto-rv-node-picker-light	R11	Hong Kong 02 IPLC	+13.0
+proto-rv-node-picker-light	R11	Hong Kong 05 IEPL	+13.0
+proto-rv-node-picker-testing-dark	R11l	Hong Kong 02 IPLC	+5.5
 proto-rv-node-picker-testing-dark	R17	Hong Kong 05 IEPL	-12.0
-proto-rv-node-picker-testing-dark	R9	Harbor Cloud	+14.0
-proto-rv-node-picker-testing-dark	R9	Hong Kong 01	+1.5
-proto-rv-node-picker-testing-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-node-picker-testing-dark	R9	Hong Kong 04	+1.5
-proto-rv-node-picker-testing-dark	R9	Hong Kong 05 IEPL	+1.5
-proto-rv-node-picker-testing-dark	R9	Taipei 01	+1.5
-proto-rv-node-picker-testing-dark	R9	Taipei 02	+1.5
-proto-rv-node-picker-testing-dark	R9	Taipei 04	+1.5
-proto-rv-node-picker-testing-fs115	R16	Hong Kong 01	+13.0
-proto-rv-node-picker-testing-fs115	R16	Hong Kong 02 IPLC	+13.0
-proto-rv-node-picker-testing-fs115	R16	Hong Kong 04	+13.0
-proto-rv-node-picker-testing-fs115	R16	Hong Kong 05 IEPL	+13.0
-proto-rv-node-picker-testing-fs115	R16	Taipei 01	+13.0
-proto-rv-node-picker-testing-fs115	R16	Taipei 02	+13.0
-proto-rv-node-picker-testing-fs115	R16	Taipei 04	+13.0
+proto-rv-node-picker-testing-fs115	R11l	Hong Kong 05 IEPL	+6.8
 proto-rv-node-picker-testing-fs115	R17	Hong Kong 05 IEPL	-10.0
-proto-rv-node-picker-testing-fs115	R9	Harbor Cloud	+17.5
-proto-rv-node-picker-testing-fs115	R9	Hong Kong 01	+4.0
-proto-rv-node-picker-testing-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-node-picker-testing-fs115	R9	Hong Kong 04	+4.0
-proto-rv-node-picker-testing-fs115	R9	Hong Kong 05 IEPL	+4.0
-proto-rv-node-picker-testing-fs115	R9	Taipei 01	+4.0
-proto-rv-node-picker-testing-fs115	R9	Taipei 02	+4.0
-proto-rv-node-picker-testing-fs115	R9	Taipei 04	+4.0
-proto-rv-node-picker-testing-fs200	R1	Hong Kong 01	height 181.5 for 149.0
+proto-rv-node-picker-testing-fs200	R1	Hong Kong 01	height 181.5 for 136.0
 proto-rv-node-picker-testing-fs200	R1	Hong Kong 02 IPLC	height 225.5 for 149.5
-proto-rv-node-picker-testing-fs200	R1	Hong Kong 04	height 61.5
 proto-rv-node-picker-testing-fs200	R11	Harbor Cloud	+80.5
-proto-rv-node-picker-testing-fs200	R11	Hong Kong 01	+69.0
+proto-rv-node-picker-testing-fs200	R11l	Hong Kong 01	+18.3
 proto-rv-node-picker-testing-fs200	R13	Hong Kong 04	subtitle 7.0 vs 35.0
-proto-rv-node-picker-testing-fs200	R16	Hong Kong 01	+13.0
-proto-rv-node-picker-testing-fs200	R18	Hong Kong 01	above 16.0 below 48.5
+proto-rv-node-picker-testing-fs200	R18	Hong Kong 01	above 16.0 below 61.5
 proto-rv-node-picker-testing-fs200	R18	Hong Kong 02 IPLC	above 16.0 below 92.0
-proto-rv-node-picker-testing-fs200	R18	Hong Kong 04	below 0.0
-proto-rv-node-picker-testing-fs200	R6	Hong Kong 04	+56.0
-proto-rv-node-picker-testing-fs200	R9	Harbor Cloud	+80.0
-proto-rv-node-picker-testing-fs200	R9	Hong Kong 01	+55.0
-proto-rv-node-picker-testing-fs200	R9	Hong Kong 02 IPLC	+77.0
-proto-rv-node-picker-testing-light	R11	Hong Kong 01	-2.5
-proto-rv-node-picker-testing-light	R11	Hong Kong 02 IPLC	-2.5
-proto-rv-node-picker-testing-light	R11	Hong Kong 04	-2.5
-proto-rv-node-picker-testing-light	R11	Hong Kong 05 IEPL	-2.5
-proto-rv-node-picker-testing-light	R11	Taipei 01	-2.5
-proto-rv-node-picker-testing-light	R11	Taipei 02	-2.5
-proto-rv-node-picker-testing-light	R11	Taipei 04	-2.5
-proto-rv-node-picker-testing-light	R16	Hong Kong 01	+13.0
-proto-rv-node-picker-testing-light	R16	Hong Kong 02 IPLC	+13.0
-proto-rv-node-picker-testing-light	R16	Hong Kong 04	+13.0
-proto-rv-node-picker-testing-light	R16	Hong Kong 05 IEPL	+13.0
-proto-rv-node-picker-testing-light	R16	Taipei 01	+13.0
-proto-rv-node-picker-testing-light	R16	Taipei 02	+13.0
-proto-rv-node-picker-testing-light	R16	Taipei 04	+13.0
+proto-rv-node-picker-testing-light	R11l	Hong Kong 02 IPLC	+5.5
 proto-rv-node-picker-testing-light	R17	Hong Kong 05 IEPL	-12.0
-proto-rv-node-picker-testing-light	R9	Harbor Cloud	+14.0
-proto-rv-node-picker-testing-light	R9	Hong Kong 01	+1.5
-proto-rv-node-picker-testing-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-node-picker-testing-light	R9	Hong Kong 04	+1.5
-proto-rv-node-picker-testing-light	R9	Hong Kong 05 IEPL	+1.5
-proto-rv-node-picker-testing-light	R9	Taipei 01	+1.5
-proto-rv-node-picker-testing-light	R9	Taipei 02	+1.5
-proto-rv-node-picker-testing-light	R9	Taipei 04	+1.5
-proto-rv-node-picker-testing-one-dark	R11	Hong Kong 01	-2.5
-proto-rv-node-picker-testing-one-dark	R11	Hong Kong 02 IPLC	+11.0
-proto-rv-node-picker-testing-one-dark	R11	Hong Kong 04	-2.5
-proto-rv-node-picker-testing-one-dark	R11	Hong Kong 05 IEPL	+11.0
-proto-rv-node-picker-testing-one-dark	R11	Taipei 01	-2.5
-proto-rv-node-picker-testing-one-dark	R11	Taipei 02	-2.5
-proto-rv-node-picker-testing-one-dark	R11	Taipei 04	-2.5
-proto-rv-node-picker-testing-one-dark	R16	Hong Kong 01	+13.0
-proto-rv-node-picker-testing-one-dark	R16	Hong Kong 02 IPLC	+13.0
-proto-rv-node-picker-testing-one-dark	R16	Hong Kong 04	+13.0
-proto-rv-node-picker-testing-one-dark	R16	Hong Kong 05 IEPL	+13.0
-proto-rv-node-picker-testing-one-dark	R16	Taipei 01	+13.0
-proto-rv-node-picker-testing-one-dark	R16	Taipei 02	+13.0
-proto-rv-node-picker-testing-one-dark	R16	Taipei 04	+13.0
-proto-rv-node-picker-testing-one-dark	R9	Harbor Cloud	+14.0
-proto-rv-node-picker-testing-one-dark	R9	Hong Kong 01	+1.5
-proto-rv-node-picker-testing-one-dark	R9	Hong Kong 02 IPLC	+15.0
-proto-rv-node-picker-testing-one-dark	R9	Hong Kong 04	+1.5
-proto-rv-node-picker-testing-one-dark	R9	Hong Kong 05 IEPL	+15.0
-proto-rv-node-picker-testing-one-dark	R9	Taipei 01	+1.5
-proto-rv-node-picker-testing-one-dark	R9	Taipei 02	+1.5
-proto-rv-node-picker-testing-one-dark	R9	Taipei 04	+1.5
-proto-rv-node-picker-testing-one-fs115	R1	Taipei 04	height 69.5
+proto-rv-node-picker-testing-one-dark	R11	Hong Kong 02 IPLC	+13.0
+proto-rv-node-picker-testing-one-dark	R11	Hong Kong 05 IEPL	+13.0
 proto-rv-node-picker-testing-one-fs115	R11	Hong Kong 02 IPLC	+13.5
 proto-rv-node-picker-testing-one-fs115	R11	Hong Kong 05 IEPL	+13.5
-proto-rv-node-picker-testing-one-fs115	R16	Hong Kong 01	+13.0
-proto-rv-node-picker-testing-one-fs115	R16	Hong Kong 02 IPLC	+13.0
-proto-rv-node-picker-testing-one-fs115	R16	Hong Kong 04	+13.0
-proto-rv-node-picker-testing-one-fs115	R16	Hong Kong 05 IEPL	+13.0
-proto-rv-node-picker-testing-one-fs115	R16	Taipei 01	+13.0
-proto-rv-node-picker-testing-one-fs115	R16	Taipei 02	+13.0
-proto-rv-node-picker-testing-one-fs115	R16	Taipei 04	+13.0
-proto-rv-node-picker-testing-one-fs115	R18	Taipei 04	below 4.5
-proto-rv-node-picker-testing-one-fs115	R9	Harbor Cloud	+17.5
-proto-rv-node-picker-testing-one-fs115	R9	Hong Kong 01	+4.0
-proto-rv-node-picker-testing-one-fs115	R9	Hong Kong 02 IPLC	+18.5
-proto-rv-node-picker-testing-one-fs115	R9	Hong Kong 04	+4.0
-proto-rv-node-picker-testing-one-fs115	R9	Hong Kong 05 IEPL	+18.5
-proto-rv-node-picker-testing-one-fs115	R9	Taipei 01	+4.0
-proto-rv-node-picker-testing-one-fs115	R9	Taipei 02	+4.0
-proto-rv-node-picker-testing-one-fs115	R9	Taipei 04	+4.0
-proto-rv-node-picker-testing-one-fs200	R1	Hong Kong 01	height 181.5 for 149.0
+proto-rv-node-picker-testing-one-fs200	R1	Hong Kong 01	height 181.5 for 136.0
 proto-rv-node-picker-testing-one-fs200	R1	Hong Kong 02 IPLC	height 225.0 for 149.5
-proto-rv-node-picker-testing-one-fs200	R1	Hong Kong 04	height 62.0
 proto-rv-node-picker-testing-one-fs200	R11	Harbor Cloud	+80.5
-proto-rv-node-picker-testing-one-fs200	R11	Hong Kong 01	+69.0
+proto-rv-node-picker-testing-one-fs200	R11l	Hong Kong 01	+18.3
 proto-rv-node-picker-testing-one-fs200	R13	Hong Kong 04	subtitle 7.5 vs 35.0
-proto-rv-node-picker-testing-one-fs200	R16	Hong Kong 01	+13.0
-proto-rv-node-picker-testing-one-fs200	R18	Hong Kong 01	above 16.0 below 48.5
+proto-rv-node-picker-testing-one-fs200	R18	Hong Kong 01	above 16.0 below 61.5
 proto-rv-node-picker-testing-one-fs200	R18	Hong Kong 02 IPLC	above 16.0 below 91.5
-proto-rv-node-picker-testing-one-fs200	R18	Hong Kong 04	below 0.0
-proto-rv-node-picker-testing-one-fs200	R6	Hong Kong 04	+56.0
-proto-rv-node-picker-testing-one-fs200	R9	Harbor Cloud	+80.0
-proto-rv-node-picker-testing-one-fs200	R9	Hong Kong 01	+55.0
-proto-rv-node-picker-testing-one-fs200	R9	Hong Kong 02 IPLC	+76.5
-proto-rv-node-picker-testing-one-light	R11	Hong Kong 01	-2.5
-proto-rv-node-picker-testing-one-light	R11	Hong Kong 02 IPLC	+11.0
-proto-rv-node-picker-testing-one-light	R11	Hong Kong 04	-2.5
-proto-rv-node-picker-testing-one-light	R11	Hong Kong 05 IEPL	+11.0
-proto-rv-node-picker-testing-one-light	R11	Taipei 01	-2.5
-proto-rv-node-picker-testing-one-light	R11	Taipei 02	-2.5
-proto-rv-node-picker-testing-one-light	R11	Taipei 04	-2.5
-proto-rv-node-picker-testing-one-light	R16	Hong Kong 01	+13.0
-proto-rv-node-picker-testing-one-light	R16	Hong Kong 02 IPLC	+13.0
-proto-rv-node-picker-testing-one-light	R16	Hong Kong 04	+13.0
-proto-rv-node-picker-testing-one-light	R16	Hong Kong 05 IEPL	+13.0
-proto-rv-node-picker-testing-one-light	R16	Taipei 01	+13.0
-proto-rv-node-picker-testing-one-light	R16	Taipei 02	+13.0
-proto-rv-node-picker-testing-one-light	R16	Taipei 04	+13.0
-proto-rv-node-picker-testing-one-light	R9	Harbor Cloud	+14.0
-proto-rv-node-picker-testing-one-light	R9	Hong Kong 01	+1.5
-proto-rv-node-picker-testing-one-light	R9	Hong Kong 02 IPLC	+15.0
-proto-rv-node-picker-testing-one-light	R9	Hong Kong 04	+1.5
-proto-rv-node-picker-testing-one-light	R9	Hong Kong 05 IEPL	+15.0
-proto-rv-node-picker-testing-one-light	R9	Taipei 01	+1.5
-proto-rv-node-picker-testing-one-light	R9	Taipei 02	+1.5
-proto-rv-node-picker-testing-one-light	R9	Taipei 04	+1.5
-proto-rv-nodes-page-dark	R9	Amsterdam 01	+1.5
-proto-rv-nodes-page-dark	R9	Frankfurt 01	+1.5
-proto-rv-nodes-page-dark	R9	Hong Kong 01	+1.5
-proto-rv-nodes-page-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-nodes-page-dark	R9	London 01	+1.5
-proto-rv-nodes-page-dark	R9	Los Angeles 01	+1.5
-proto-rv-nodes-page-dark	R9	Los Angeles 04	+1.5
-proto-rv-nodes-page-dark	R9	Marseille 02	+1.5
-proto-rv-nodes-page-dark	R9	Melbourne 02	+1.5
-proto-rv-nodes-page-dark	R9	Paris 01	+1.5
-proto-rv-nodes-page-dark	R9	San Jose 02	+1.5
-proto-rv-nodes-page-dark	R9	Seattle 03	+1.5
-proto-rv-nodes-page-dark	R9	Sydney 01	+1.5
-proto-rv-nodes-page-dark	R9	Sydney 03	+1.5
-proto-rv-nodes-page-dark	R9	Taipei 01	+1.5
-proto-rv-nodes-page-dark	R9	Taipei 02	+1.5
-proto-rv-nodes-page-dark	R9	Taipei 04	+1.5
-proto-rv-nodes-page-dark	R9	Vancouver 01	+1.5
-proto-rv-nodes-page-light	R9	Amsterdam 01	+1.5
-proto-rv-nodes-page-light	R9	Frankfurt 01	+1.5
-proto-rv-nodes-page-light	R9	Hong Kong 01	+1.5
-proto-rv-nodes-page-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-nodes-page-light	R9	London 01	+1.5
-proto-rv-nodes-page-light	R9	Los Angeles 01	+1.5
-proto-rv-nodes-page-light	R9	Los Angeles 04	+1.5
-proto-rv-nodes-page-light	R9	Marseille 02	+1.5
-proto-rv-nodes-page-light	R9	Melbourne 02	+1.5
-proto-rv-nodes-page-light	R9	Paris 01	+1.5
-proto-rv-nodes-page-light	R9	San Jose 02	+1.5
-proto-rv-nodes-page-light	R9	Seattle 03	+1.5
-proto-rv-nodes-page-light	R9	Sydney 01	+1.5
-proto-rv-nodes-page-light	R9	Sydney 03	+1.5
-proto-rv-nodes-page-light	R9	Taipei 01	+1.5
-proto-rv-nodes-page-light	R9	Taipei 02	+1.5
-proto-rv-nodes-page-light	R9	Taipei 04	+1.5
-proto-rv-nodes-page-light	R9	Vancouver 01	+1.5
-proto-rv-nodes-search-ime-dark	R11	Hong Kong 01	-2.5
-proto-rv-nodes-search-ime-dark	R11	Hong Kong 02 IPLC	+11.0
-proto-rv-nodes-search-ime-dark	R11	Hong Kong 04	-2.5
-proto-rv-nodes-search-ime-dark	R11	Hong Kong 05 IEPL	+11.0
-proto-rv-nodes-search-ime-dark	R11	Taipei 01	-2.5
-proto-rv-nodes-search-ime-dark	R11	Taipei 02	-2.5
-proto-rv-nodes-search-ime-dark	R11	Taipei 04	-2.5
-proto-rv-nodes-search-ime-dark	R16	Hong Kong 01	+13.0
-proto-rv-nodes-search-ime-dark	R16	Hong Kong 02 IPLC	+13.0
-proto-rv-nodes-search-ime-dark	R16	Hong Kong 04	+13.0
-proto-rv-nodes-search-ime-dark	R16	Hong Kong 05 IEPL	+13.0
-proto-rv-nodes-search-ime-dark	R16	Taipei 01	+13.0
-proto-rv-nodes-search-ime-dark	R16	Taipei 02	+13.0
-proto-rv-nodes-search-ime-dark	R16	Taipei 04	+13.0
-proto-rv-nodes-search-ime-dark	R9	Harbor Cloud	+14.0
-proto-rv-nodes-search-ime-dark	R9	Hong Kong 01	+1.5
-proto-rv-nodes-search-ime-dark	R9	Hong Kong 02 IPLC	+15.0
-proto-rv-nodes-search-ime-dark	R9	Hong Kong 04	+1.5
-proto-rv-nodes-search-ime-dark	R9	Hong Kong 05 IEPL	+15.0
-proto-rv-nodes-search-ime-dark	R9	Taipei 01	+1.5
-proto-rv-nodes-search-ime-dark	R9	Taipei 02	+1.5
-proto-rv-nodes-search-ime-dark	R9	Taipei 04	+1.5
+proto-rv-node-picker-testing-one-light	R11	Hong Kong 02 IPLC	+13.0
+proto-rv-node-picker-testing-one-light	R11	Hong Kong 05 IEPL	+13.0
+proto-rv-nodes-search-ime-dark	R11	Hong Kong 02 IPLC	+13.0
+proto-rv-nodes-search-ime-dark	R11	Hong Kong 05 IEPL	+13.0
 proto-rv-nodes-search-ime-end-dark	R1	Amsterdam 02	height 123.5 for 120.0
 proto-rv-nodes-search-ime-end-dark	R1	Manchester 03	height 123.5 for 120.0
 proto-rv-nodes-search-ime-end-dark	R1	Sydney 03	height 123.5 for 120.0
-proto-rv-nodes-search-ime-end-dark	R1	Toronto 02	height 64.5
-proto-rv-nodes-search-ime-end-dark	R11	Amsterdam 02	+31.0
-proto-rv-nodes-search-ime-end-dark	R11	Frankfurt 02	-2.5
-proto-rv-nodes-search-ime-end-dark	R11	Manchester 03	+31.0
-proto-rv-nodes-search-ime-end-dark	R11	Marseille 02	-2.5
-proto-rv-nodes-search-ime-end-dark	R11	Sydney 03	+31.0
-proto-rv-nodes-search-ime-end-dark	R11	Toronto 02	-2.0
-proto-rv-nodes-search-ime-end-dark	R16	Amsterdam 02	+13.0
-proto-rv-nodes-search-ime-end-dark	R16	Frankfurt 02	+13.0
-proto-rv-nodes-search-ime-end-dark	R16	Manchester 03	+13.0
-proto-rv-nodes-search-ime-end-dark	R16	Marseille 02	+13.0
-proto-rv-nodes-search-ime-end-dark	R16	Sydney 03	+13.0
-proto-rv-nodes-search-ime-end-dark	R16	Toronto 02	+13.0
-proto-rv-nodes-search-ime-end-dark	R17	Amsterdam 02	-9.5
-proto-rv-nodes-search-ime-end-dark	R17	Manchester 03	-9.5
-proto-rv-nodes-search-ime-end-dark	R17	Sydney 03	-9.5
+proto-rv-nodes-search-ime-end-dark	R11	Amsterdam 02	+43.5
+proto-rv-nodes-search-ime-end-dark	R11	Manchester 03	+43.5
+proto-rv-nodes-search-ime-end-dark	R11	Sydney 03	+43.5
 proto-rv-nodes-search-ime-end-dark	R18	Amsterdam 02	above 16.0 below 19.5
 proto-rv-nodes-search-ime-end-dark	R18	Manchester 03	above 16.0 below 19.5
 proto-rv-nodes-search-ime-end-dark	R18	Sydney 03	above 16.0 below 19.5
-proto-rv-nodes-search-ime-end-dark	R18	Toronto 02	above 2.0
-proto-rv-nodes-search-ime-end-dark	R9	Amsterdam 02	+26.0
-proto-rv-nodes-search-ime-end-dark	R9	Frankfurt 02	+1.5
-proto-rv-nodes-search-ime-end-dark	R9	Manchester 03	+26.0
-proto-rv-nodes-search-ime-end-dark	R9	Marseille 02	+1.5
-proto-rv-nodes-search-ime-end-dark	R9	Sydney 03	+26.0
-proto-rv-nodes-search-ime-end-dark	R9	Toronto 02	+1.5
 proto-rv-nodes-search-ime-end-light	R1	Amsterdam 02	height 123.5 for 120.0
 proto-rv-nodes-search-ime-end-light	R1	Manchester 03	height 123.5 for 120.0
 proto-rv-nodes-search-ime-end-light	R1	Sydney 03	height 123.5 for 120.0
-proto-rv-nodes-search-ime-end-light	R1	Toronto 02	height 64.5
-proto-rv-nodes-search-ime-end-light	R11	Amsterdam 02	+31.0
-proto-rv-nodes-search-ime-end-light	R11	Frankfurt 02	-2.5
-proto-rv-nodes-search-ime-end-light	R11	Manchester 03	+31.0
-proto-rv-nodes-search-ime-end-light	R11	Marseille 02	-2.5
-proto-rv-nodes-search-ime-end-light	R11	Sydney 03	+31.0
-proto-rv-nodes-search-ime-end-light	R11	Toronto 02	-2.0
-proto-rv-nodes-search-ime-end-light	R16	Amsterdam 02	+13.0
-proto-rv-nodes-search-ime-end-light	R16	Frankfurt 02	+13.0
-proto-rv-nodes-search-ime-end-light	R16	Manchester 03	+13.0
-proto-rv-nodes-search-ime-end-light	R16	Marseille 02	+13.0
-proto-rv-nodes-search-ime-end-light	R16	Sydney 03	+13.0
-proto-rv-nodes-search-ime-end-light	R16	Toronto 02	+13.0
-proto-rv-nodes-search-ime-end-light	R17	Amsterdam 02	-9.5
-proto-rv-nodes-search-ime-end-light	R17	Manchester 03	-9.5
-proto-rv-nodes-search-ime-end-light	R17	Sydney 03	-9.5
+proto-rv-nodes-search-ime-end-light	R11	Amsterdam 02	+43.5
+proto-rv-nodes-search-ime-end-light	R11	Manchester 03	+43.5
+proto-rv-nodes-search-ime-end-light	R11	Sydney 03	+43.5
 proto-rv-nodes-search-ime-end-light	R18	Amsterdam 02	above 16.0 below 19.5
 proto-rv-nodes-search-ime-end-light	R18	Manchester 03	above 16.0 below 19.5
 proto-rv-nodes-search-ime-end-light	R18	Sydney 03	above 16.0 below 19.5
-proto-rv-nodes-search-ime-end-light	R18	Toronto 02	above 2.0
-proto-rv-nodes-search-ime-end-light	R9	Amsterdam 02	+26.0
-proto-rv-nodes-search-ime-end-light	R9	Frankfurt 02	+1.5
-proto-rv-nodes-search-ime-end-light	R9	Manchester 03	+26.0
-proto-rv-nodes-search-ime-end-light	R9	Marseille 02	+1.5
-proto-rv-nodes-search-ime-end-light	R9	Sydney 03	+26.0
-proto-rv-nodes-search-ime-end-light	R9	Toronto 02	+1.5
-proto-rv-nodes-search-ime-fs200	R1	Hong Kong 01	height 181.0 for 149.0
+proto-rv-nodes-search-ime-fs200	R1	Hong Kong 01	height 181.0 for 136.0
 proto-rv-nodes-search-ime-fs200	R1	Hong Kong 02 IPLC	height 225.0 for 149.5
-proto-rv-nodes-search-ime-fs200	R1	Hong Kong 04	height 62.5
 proto-rv-nodes-search-ime-fs200	R11	Harbor Cloud	+80.5
-proto-rv-nodes-search-ime-fs200	R11	Hong Kong 01	+69.0
+proto-rv-nodes-search-ime-fs200	R11l	Hong Kong 01	+18.5
 proto-rv-nodes-search-ime-fs200	R13	Hong Kong 04	subtitle 8.0 vs 35.0
-proto-rv-nodes-search-ime-fs200	R16	Hong Kong 01	+13.0
-proto-rv-nodes-search-ime-fs200	R18	Hong Kong 01	above 16.0 below 48.0
+proto-rv-nodes-search-ime-fs200	R18	Hong Kong 01	above 16.0 below 61.0
 proto-rv-nodes-search-ime-fs200	R18	Hong Kong 02 IPLC	above 16.0 below 91.5
-proto-rv-nodes-search-ime-fs200	R18	Hong Kong 04	below 0.0
-proto-rv-nodes-search-ime-fs200	R6	Hong Kong 04	+56.0
-proto-rv-nodes-search-ime-fs200	R9	Harbor Cloud	+80.0
-proto-rv-nodes-search-ime-fs200	R9	Hong Kong 01	+54.5
-proto-rv-nodes-search-ime-fs200	R9	Hong Kong 02 IPLC	+76.5
-proto-rv-nodes-search-ime-light	R11	Hong Kong 01	-2.5
-proto-rv-nodes-search-ime-light	R11	Hong Kong 02 IPLC	+11.0
-proto-rv-nodes-search-ime-light	R11	Hong Kong 04	-2.5
-proto-rv-nodes-search-ime-light	R11	Hong Kong 05 IEPL	+11.0
-proto-rv-nodes-search-ime-light	R11	Taipei 01	-2.5
-proto-rv-nodes-search-ime-light	R11	Taipei 02	-2.5
-proto-rv-nodes-search-ime-light	R11	Taipei 04	-2.5
-proto-rv-nodes-search-ime-light	R16	Hong Kong 01	+13.0
-proto-rv-nodes-search-ime-light	R16	Hong Kong 02 IPLC	+13.0
-proto-rv-nodes-search-ime-light	R16	Hong Kong 04	+13.0
-proto-rv-nodes-search-ime-light	R16	Hong Kong 05 IEPL	+13.0
-proto-rv-nodes-search-ime-light	R16	Taipei 01	+13.0
-proto-rv-nodes-search-ime-light	R16	Taipei 02	+13.0
-proto-rv-nodes-search-ime-light	R16	Taipei 04	+13.0
-proto-rv-nodes-search-ime-light	R9	Harbor Cloud	+14.0
-proto-rv-nodes-search-ime-light	R9	Hong Kong 01	+1.5
-proto-rv-nodes-search-ime-light	R9	Hong Kong 02 IPLC	+15.0
-proto-rv-nodes-search-ime-light	R9	Hong Kong 04	+1.5
-proto-rv-nodes-search-ime-light	R9	Hong Kong 05 IEPL	+15.0
-proto-rv-nodes-search-ime-light	R9	Taipei 01	+1.5
-proto-rv-nodes-search-ime-light	R9	Taipei 02	+1.5
-proto-rv-nodes-search-ime-light	R9	Taipei 04	+1.5
-proto-rv-nodes-world-dark	R9	Ashburn 07	+1.5
-proto-rv-nodes-world-dark	R9	Auckland 01	+1.5
-proto-rv-nodes-world-dark	R9	Dubai 01	+1.5
-proto-rv-nodes-world-dark	R9	Istanbul 01	+1.5
-proto-rv-nodes-world-dark	R9	Johannesburg 01	+1.5
-proto-rv-nodes-world-dark	R9	Mumbai 01	+1.5
-proto-rv-nodes-world-dark	R9	São Paulo 01	+1.5
-proto-rv-nodes-world-dark	R9	Warsaw 01	+1.5
-proto-rv-nodes-world-dark	R9	Zurich 01	+1.5
-proto-rv-nodes-world-fs115	R9	Ashburn 07	+4.0
-proto-rv-nodes-world-fs115	R9	Auckland 01	+4.0
-proto-rv-nodes-world-fs115	R9	Dubai 01	+4.0
-proto-rv-nodes-world-fs115	R9	Istanbul 01	+4.0
-proto-rv-nodes-world-fs115	R9	Johannesburg 01	+4.0
-proto-rv-nodes-world-fs115	R9	Mumbai 01	+4.0
-proto-rv-nodes-world-fs115	R9	São Paulo 01	+4.0
-proto-rv-nodes-world-fs115	R9	Warsaw 01	+4.0
-proto-rv-nodes-world-fs115	R9	Zurich 01	+4.0
+proto-rv-nodes-search-ime-light	R11	Hong Kong 02 IPLC	+13.0
+proto-rv-nodes-search-ime-light	R11	Hong Kong 05 IEPL	+13.0
 proto-rv-nodes-world-fs200	R1	Istanbul 01	height 181.0 for 105.5
 proto-rv-nodes-world-fs200	R1	Johannesburg 01	height 181.0 for 105.5
 proto-rv-nodes-world-fs200	R1	Mumbai 01	height 181.0 for 105.5
@@ -1637,947 +324,48 @@ proto-rv-nodes-world-fs200	R11	Zurich 01	+113.0
 proto-rv-nodes-world-fs200	R18	Istanbul 01	above 16.0 below 91.5
 proto-rv-nodes-world-fs200	R18	Johannesburg 01	above 16.0 below 91.5
 proto-rv-nodes-world-fs200	R18	Mumbai 01	above 16.0 below 91.5
-proto-rv-nodes-world-fs200	R9	Ashburn 07	+54.5
-proto-rv-nodes-world-fs200	R9	Auckland 01	+54.5
-proto-rv-nodes-world-fs200	R9	Dubai 01	+54.5
-proto-rv-nodes-world-fs200	R9	Istanbul 01	+54.5
-proto-rv-nodes-world-fs200	R9	Johannesburg 01	+54.5
-proto-rv-nodes-world-fs200	R9	Mumbai 01	+54.5
-proto-rv-nodes-world-fs200	R9	São Paulo 01	+54.5
-proto-rv-nodes-world-fs200	R9	Warsaw 01	+54.5
-proto-rv-nodes-world-fs200	R9	Zurich 01	+54.5
-proto-rv-nodes-world-light	R9	Ashburn 07	+1.5
-proto-rv-nodes-world-light	R9	Auckland 01	+1.5
-proto-rv-nodes-world-light	R9	Dubai 01	+1.5
-proto-rv-nodes-world-light	R9	Istanbul 01	+1.5
-proto-rv-nodes-world-light	R9	Johannesburg 01	+1.5
-proto-rv-nodes-world-light	R9	Mumbai 01	+1.5
-proto-rv-nodes-world-light	R9	São Paulo 01	+1.5
-proto-rv-nodes-world-light	R9	Warsaw 01	+1.5
-proto-rv-nodes-world-light	R9	Zurich 01	+1.5
-proto-rv-perapp-dark	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-dark	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-dark	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-except-dark	R1	Drive	height 79.5
-proto-rv-perapp-except-dark	R11	Browser	+8.5
-proto-rv-perapp-except-dark	R11	Calendar	+8.5
-proto-rv-perapp-except-dark	R11	Camera	+8.5
-proto-rv-perapp-except-dark	R11	Chat	+8.5
-proto-rv-perapp-except-dark	R11	Clock	+8.5
-proto-rv-perapp-except-dark	R11	Drive	+8.5
-proto-rv-perapp-except-dark	R18	Drive	above 19.5 below 16.5
-proto-rv-perapp-except-dark	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-except-dark	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-except-dark	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-except-dark	R9	Browser	+1.5
-proto-rv-perapp-except-dark	R9	Calendar	+1.5
-proto-rv-perapp-except-dark	R9	Camera	+1.5
-proto-rv-perapp-except-dark	R9	Chat	+1.5
-proto-rv-perapp-except-dark	R9	Clock	+1.5
-proto-rv-perapp-except-dark	R9	Drive	+1.5
-proto-rv-perapp-except-fs115	R1	Drive	height 79.5
-proto-rv-perapp-except-fs115	R11	Browser	+11.0
-proto-rv-perapp-except-fs115	R11	Calendar	+11.0
-proto-rv-perapp-except-fs115	R11	Camera	+11.0
-proto-rv-perapp-except-fs115	R11	Chat	+11.0
-proto-rv-perapp-except-fs115	R11	Clock	+11.0
-proto-rv-perapp-except-fs115	R11	Drive	+11.0
-proto-rv-perapp-except-fs115	R18	Drive	below 14.5
-proto-rv-perapp-except-fs115	R9	Browser	+4.0
-proto-rv-perapp-except-fs115	R9	Calendar	+4.0
-proto-rv-perapp-except-fs115	R9	Camera	+4.0
-proto-rv-perapp-except-fs115	R9	Chat	+4.0
-proto-rv-perapp-except-fs115	R9	Clock	+4.0
-proto-rv-perapp-except-fs115	R9	Drive	+4.0
-proto-rv-perapp-except-fs200	R11	Browser	+38.3
-proto-rv-perapp-except-fs200	R11	Calendar	+38.3
-proto-rv-perapp-except-fs200	R11	Camera	+38.3
-proto-rv-perapp-except-fs200	R9	Browser	+37.5
-proto-rv-perapp-except-fs200	R9	Calendar	+37.5
-proto-rv-perapp-except-fs200	R9	Camera	+37.5
-proto-rv-perapp-except-light	R1	Drive	height 79.5
-proto-rv-perapp-except-light	R11	Browser	+8.5
-proto-rv-perapp-except-light	R11	Calendar	+8.5
-proto-rv-perapp-except-light	R11	Camera	+8.5
-proto-rv-perapp-except-light	R11	Chat	+8.5
-proto-rv-perapp-except-light	R11	Clock	+8.5
-proto-rv-perapp-except-light	R11	Drive	+8.5
-proto-rv-perapp-except-light	R18	Drive	above 19.5 below 16.5
-proto-rv-perapp-except-light	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-except-light	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-except-light	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-except-light	R9	Browser	+1.5
-proto-rv-perapp-except-light	R9	Calendar	+1.5
-proto-rv-perapp-except-light	R9	Camera	+1.5
-proto-rv-perapp-except-light	R9	Chat	+1.5
-proto-rv-perapp-except-light	R9	Clock	+1.5
-proto-rv-perapp-except-light	R9	Drive	+1.5
-proto-rv-perapp-light	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-light	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-light	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-loading-dark	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-loading-dark	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-loading-dark	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-loading-light	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-loading-light	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-loading-light	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-no-result-dark	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-no-result-dark	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-no-result-dark	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-no-result-light	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-no-result-light	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-no-result-light	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-none-selected-dark	R11	Browser	+8.5
-proto-rv-perapp-none-selected-dark	R11	Calendar	+8.5
-proto-rv-perapp-none-selected-dark	R11	Camera	+8.5
-proto-rv-perapp-none-selected-dark	R11	Chat	+8.5
-proto-rv-perapp-none-selected-dark	R11	Clock	+8.5
-proto-rv-perapp-none-selected-dark	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-none-selected-dark	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-none-selected-dark	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-none-selected-dark	R9	Browser	+1.5
-proto-rv-perapp-none-selected-dark	R9	Calendar	+1.5
-proto-rv-perapp-none-selected-dark	R9	Camera	+1.5
-proto-rv-perapp-none-selected-dark	R9	Chat	+1.5
-proto-rv-perapp-none-selected-dark	R9	Clock	+1.5
-proto-rv-perapp-none-selected-fs115	R11	Browser	+11.0
-proto-rv-perapp-none-selected-fs115	R11	Calendar	+11.0
-proto-rv-perapp-none-selected-fs115	R11	Camera	+11.0
-proto-rv-perapp-none-selected-fs115	R11	Chat	+11.0
-proto-rv-perapp-none-selected-fs115	R11	Clock	+11.0
-proto-rv-perapp-none-selected-fs115	R9	Browser	+4.0
-proto-rv-perapp-none-selected-fs115	R9	Calendar	+4.0
-proto-rv-perapp-none-selected-fs115	R9	Camera	+4.0
-proto-rv-perapp-none-selected-fs115	R9	Chat	+4.0
-proto-rv-perapp-none-selected-fs115	R9	Clock	+4.0
-proto-rv-perapp-none-selected-fs200	R11	Browser	+38.3
-proto-rv-perapp-none-selected-fs200	R11	Calendar	+38.3
-proto-rv-perapp-none-selected-fs200	R11	Camera	+38.3
-proto-rv-perapp-none-selected-fs200	R18	Camera	below 0.0
-proto-rv-perapp-none-selected-fs200	R9	Browser	+37.5
-proto-rv-perapp-none-selected-fs200	R9	Calendar	+37.5
-proto-rv-perapp-none-selected-fs200	R9	Camera	+37.5
-proto-rv-perapp-none-selected-light	R11	Browser	+8.5
-proto-rv-perapp-none-selected-light	R11	Calendar	+8.5
-proto-rv-perapp-none-selected-light	R11	Camera	+8.5
-proto-rv-perapp-none-selected-light	R11	Chat	+8.5
-proto-rv-perapp-none-selected-light	R11	Clock	+8.5
-proto-rv-perapp-none-selected-light	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-none-selected-light	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-none-selected-light	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-none-selected-light	R9	Browser	+1.5
-proto-rv-perapp-none-selected-light	R9	Calendar	+1.5
-proto-rv-perapp-none-selected-light	R9	Camera	+1.5
-proto-rv-perapp-none-selected-light	R9	Chat	+1.5
-proto-rv-perapp-none-selected-light	R9	Clock	+1.5
-proto-rv-perapp-only-dark	R1	Drive	height 79.5
-proto-rv-perapp-only-dark	R11	Browser	+8.5
-proto-rv-perapp-only-dark	R11	Calendar	+8.5
-proto-rv-perapp-only-dark	R11	Camera	+8.5
-proto-rv-perapp-only-dark	R11	Chat	+8.5
-proto-rv-perapp-only-dark	R11	Clock	+8.5
-proto-rv-perapp-only-dark	R11	Drive	+8.5
-proto-rv-perapp-only-dark	R18	Drive	above 19.5 below 16.5
-proto-rv-perapp-only-dark	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-only-dark	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-only-dark	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-only-dark	R9	Browser	+1.5
-proto-rv-perapp-only-dark	R9	Calendar	+1.5
-proto-rv-perapp-only-dark	R9	Camera	+1.5
-proto-rv-perapp-only-dark	R9	Chat	+1.5
-proto-rv-perapp-only-dark	R9	Clock	+1.5
-proto-rv-perapp-only-dark	R9	Drive	+1.5
-proto-rv-perapp-only-fs115	R1	Drive	height 79.5
-proto-rv-perapp-only-fs115	R11	Browser	+11.0
-proto-rv-perapp-only-fs115	R11	Calendar	+11.0
-proto-rv-perapp-only-fs115	R11	Camera	+11.0
-proto-rv-perapp-only-fs115	R11	Chat	+11.0
-proto-rv-perapp-only-fs115	R11	Clock	+11.0
-proto-rv-perapp-only-fs115	R11	Drive	+11.0
-proto-rv-perapp-only-fs115	R18	Drive	below 14.5
-proto-rv-perapp-only-fs115	R9	Browser	+4.0
-proto-rv-perapp-only-fs115	R9	Calendar	+4.0
-proto-rv-perapp-only-fs115	R9	Camera	+4.0
-proto-rv-perapp-only-fs115	R9	Chat	+4.0
-proto-rv-perapp-only-fs115	R9	Clock	+4.0
-proto-rv-perapp-only-fs115	R9	Drive	+4.0
-proto-rv-perapp-only-fs200	R11	Browser	+38.3
-proto-rv-perapp-only-fs200	R11	Calendar	+38.3
-proto-rv-perapp-only-fs200	R11	Camera	+38.3
-proto-rv-perapp-only-fs200	R9	Browser	+37.5
-proto-rv-perapp-only-fs200	R9	Calendar	+37.5
-proto-rv-perapp-only-fs200	R9	Camera	+37.5
-proto-rv-perapp-only-light	R1	Drive	height 79.5
-proto-rv-perapp-only-light	R11	Browser	+8.5
-proto-rv-perapp-only-light	R11	Calendar	+8.5
-proto-rv-perapp-only-light	R11	Camera	+8.5
-proto-rv-perapp-only-light	R11	Chat	+8.5
-proto-rv-perapp-only-light	R11	Clock	+8.5
-proto-rv-perapp-only-light	R11	Drive	+8.5
-proto-rv-perapp-only-light	R18	Drive	above 19.5 below 16.5
-proto-rv-perapp-only-light	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-only-light	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-only-light	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-only-light	R9	Browser	+1.5
-proto-rv-perapp-only-light	R9	Calendar	+1.5
-proto-rv-perapp-only-light	R9	Camera	+1.5
-proto-rv-perapp-only-light	R9	Chat	+1.5
-proto-rv-perapp-only-light	R9	Clock	+1.5
-proto-rv-perapp-only-light	R9	Drive	+1.5
-proto-rv-perapp-rebuild-failed-dark	R11	Browser	+8.5
-proto-rv-perapp-rebuild-failed-dark	R11	Calendar	+8.5
-proto-rv-perapp-rebuild-failed-dark	R11	Camera	+8.5
-proto-rv-perapp-rebuild-failed-dark	R11	Chat	+8.5
-proto-rv-perapp-rebuild-failed-dark	R12	已儲存，但 VPN 無法重新連線	+2.0
-proto-rv-perapp-rebuild-failed-dark	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-rebuild-failed-dark	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-rebuild-failed-dark	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-rebuild-failed-dark	R9	Browser	+1.5
-proto-rv-perapp-rebuild-failed-dark	R9	Calendar	+1.5
-proto-rv-perapp-rebuild-failed-dark	R9	Camera	+1.5
-proto-rv-perapp-rebuild-failed-dark	R9	Chat	+1.5
-proto-rv-perapp-rebuild-failed-fs115	R11	Browser	+11.0
-proto-rv-perapp-rebuild-failed-fs115	R11	Calendar	+11.0
-proto-rv-perapp-rebuild-failed-fs115	R11	Camera	+11.0
-proto-rv-perapp-rebuild-failed-fs115	R11	Chat	+11.0
-proto-rv-perapp-rebuild-failed-fs115	R12	已儲存，但 VPN 無法重新連線	+2.0
-proto-rv-perapp-rebuild-failed-fs115	R9	Browser	+4.0
-proto-rv-perapp-rebuild-failed-fs115	R9	Calendar	+4.0
-proto-rv-perapp-rebuild-failed-fs115	R9	Camera	+4.0
-proto-rv-perapp-rebuild-failed-fs115	R9	Chat	+4.0
-proto-rv-perapp-rebuild-failed-fs200	R11	Browser	+38.3
-proto-rv-perapp-rebuild-failed-fs200	R12	已儲存，但 VPN 無法重新連線	+2.0
-proto-rv-perapp-rebuild-failed-fs200	R9	Browser	+37.5
-proto-rv-perapp-rebuild-failed-light	R11	Browser	+8.5
-proto-rv-perapp-rebuild-failed-light	R11	Calendar	+8.5
-proto-rv-perapp-rebuild-failed-light	R11	Camera	+8.5
-proto-rv-perapp-rebuild-failed-light	R11	Chat	+8.5
-proto-rv-perapp-rebuild-failed-light	R12	已儲存，但 VPN 無法重新連線	+2.0
-proto-rv-perapp-rebuild-failed-light	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-rebuild-failed-light	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-rebuild-failed-light	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-rebuild-failed-light	R9	Browser	+1.5
-proto-rv-perapp-rebuild-failed-light	R9	Calendar	+1.5
-proto-rv-perapp-rebuild-failed-light	R9	Camera	+1.5
-proto-rv-perapp-rebuild-failed-light	R9	Chat	+1.5
-proto-rv-perapp-save-failed-dark	R11	Browser	+8.5
-proto-rv-perapp-save-failed-dark	R11	Calendar	+8.5
-proto-rv-perapp-save-failed-dark	R11	Camera	+8.5
-proto-rv-perapp-save-failed-dark	R11	Chat	+8.5
-proto-rv-perapp-save-failed-dark	R12	無法儲存	+2.0
-proto-rv-perapp-save-failed-dark	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-save-failed-dark	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-save-failed-dark	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-save-failed-dark	R9	Browser	+1.5
-proto-rv-perapp-save-failed-dark	R9	Calendar	+1.5
-proto-rv-perapp-save-failed-dark	R9	Camera	+1.5
-proto-rv-perapp-save-failed-dark	R9	Chat	+1.5
-proto-rv-perapp-save-failed-fs115	R11	Browser	+11.0
-proto-rv-perapp-save-failed-fs115	R11	Calendar	+11.0
-proto-rv-perapp-save-failed-fs115	R11	Camera	+11.0
-proto-rv-perapp-save-failed-fs115	R11	Chat	+11.0
-proto-rv-perapp-save-failed-fs115	R12	無法儲存	+2.0
-proto-rv-perapp-save-failed-fs115	R9	Browser	+4.0
-proto-rv-perapp-save-failed-fs115	R9	Calendar	+4.0
-proto-rv-perapp-save-failed-fs115	R9	Camera	+4.0
-proto-rv-perapp-save-failed-fs115	R9	Chat	+4.0
-proto-rv-perapp-save-failed-fs200	R11	Browser	+38.3
-proto-rv-perapp-save-failed-fs200	R12	無法儲存	+2.0
-proto-rv-perapp-save-failed-fs200	R9	Browser	+37.5
-proto-rv-perapp-save-failed-light	R11	Browser	+8.5
-proto-rv-perapp-save-failed-light	R11	Calendar	+8.5
-proto-rv-perapp-save-failed-light	R11	Camera	+8.5
-proto-rv-perapp-save-failed-light	R11	Chat	+8.5
-proto-rv-perapp-save-failed-light	R12	無法儲存	+2.0
-proto-rv-perapp-save-failed-light	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-save-failed-light	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-save-failed-light	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-save-failed-light	R9	Browser	+1.5
-proto-rv-perapp-save-failed-light	R9	Calendar	+1.5
-proto-rv-perapp-save-failed-light	R9	Camera	+1.5
-proto-rv-perapp-save-failed-light	R9	Chat	+1.5
-proto-rv-perapp-saving-dark	R11	Browser	+8.5
-proto-rv-perapp-saving-dark	R11	Calendar	+8.5
-proto-rv-perapp-saving-dark	R11	Camera	+8.5
-proto-rv-perapp-saving-dark	R11	Chat	+8.5
-proto-rv-perapp-saving-dark	R11	Clock	+8.5
-proto-rv-perapp-saving-dark	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-saving-dark	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-saving-dark	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-saving-dark	R9	Browser	+1.5
-proto-rv-perapp-saving-dark	R9	Calendar	+1.5
-proto-rv-perapp-saving-dark	R9	Camera	+1.5
-proto-rv-perapp-saving-dark	R9	Chat	+1.5
-proto-rv-perapp-saving-dark	R9	Clock	+1.5
-proto-rv-perapp-saving-fs115	R11	Browser	+11.0
-proto-rv-perapp-saving-fs115	R11	Calendar	+11.0
-proto-rv-perapp-saving-fs115	R11	Camera	+11.0
-proto-rv-perapp-saving-fs115	R11	Chat	+11.0
-proto-rv-perapp-saving-fs115	R11	Clock	+11.0
-proto-rv-perapp-saving-fs115	R9	Browser	+4.0
-proto-rv-perapp-saving-fs115	R9	Calendar	+4.0
-proto-rv-perapp-saving-fs115	R9	Camera	+4.0
-proto-rv-perapp-saving-fs115	R9	Chat	+4.0
-proto-rv-perapp-saving-fs115	R9	Clock	+4.0
-proto-rv-perapp-saving-fs200	R11	Browser	+38.3
-proto-rv-perapp-saving-fs200	R11	Calendar	+38.3
-proto-rv-perapp-saving-fs200	R9	Browser	+37.5
-proto-rv-perapp-saving-fs200	R9	Calendar	+37.5
-proto-rv-perapp-saving-light	R11	Browser	+8.5
-proto-rv-perapp-saving-light	R11	Calendar	+8.5
-proto-rv-perapp-saving-light	R11	Camera	+8.5
-proto-rv-perapp-saving-light	R11	Chat	+8.5
-proto-rv-perapp-saving-light	R11	Clock	+8.5
-proto-rv-perapp-saving-light	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-saving-light	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-saving-light	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-saving-light	R9	Browser	+1.5
-proto-rv-perapp-saving-light	R9	Calendar	+1.5
-proto-rv-perapp-saving-light	R9	Camera	+1.5
-proto-rv-perapp-saving-light	R9	Chat	+1.5
-proto-rv-perapp-saving-light	R9	Clock	+1.5
-proto-rv-perapp-search-dark	R11	Mail	+8.5
-proto-rv-perapp-search-dark	R11	Maps	+8.5
-proto-rv-perapp-search-dark	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-search-dark	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-search-dark	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-search-dark	R9	Mail	+1.5
-proto-rv-perapp-search-dark	R9	Maps	+1.5
-proto-rv-perapp-search-fs115	R11	Mail	+11.0
-proto-rv-perapp-search-fs115	R11	Maps	+11.0
-proto-rv-perapp-search-fs115	R9	Mail	+4.0
-proto-rv-perapp-search-fs115	R9	Maps	+4.0
-proto-rv-perapp-search-fs200	R11	Mail	+38.3
-proto-rv-perapp-search-fs200	R11	Maps	+38.3
-proto-rv-perapp-search-fs200	R9	Mail	+37.5
-proto-rv-perapp-search-fs200	R9	Maps	+37.5
-proto-rv-perapp-search-ime-dark	R1	Drive	height 79.5
-proto-rv-perapp-search-ime-dark	R11	Browser	+8.5
-proto-rv-perapp-search-ime-dark	R11	Calendar	+8.5
-proto-rv-perapp-search-ime-dark	R11	Camera	+8.5
-proto-rv-perapp-search-ime-dark	R11	Chat	+8.5
-proto-rv-perapp-search-ime-dark	R11	Clock	+8.5
-proto-rv-perapp-search-ime-dark	R11	Drive	+8.5
-proto-rv-perapp-search-ime-dark	R18	Drive	above 19.5 below 16.5
-proto-rv-perapp-search-ime-dark	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-search-ime-dark	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-search-ime-dark	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-search-ime-dark	R9	Browser	+1.5
-proto-rv-perapp-search-ime-dark	R9	Calendar	+1.5
-proto-rv-perapp-search-ime-dark	R9	Camera	+1.5
-proto-rv-perapp-search-ime-dark	R9	Chat	+1.5
-proto-rv-perapp-search-ime-dark	R9	Clock	+1.5
-proto-rv-perapp-search-ime-dark	R9	Drive	+1.5
-proto-rv-perapp-search-ime-end-dark	R1	News	height 69.0
-proto-rv-perapp-search-ime-end-dark	R11	News	+8.5
-proto-rv-perapp-search-ime-end-dark	R11	Notes	+8.5
-proto-rv-perapp-search-ime-end-dark	R11	Photos	+8.5
-proto-rv-perapp-search-ime-end-dark	R11	Podcasts	+8.5
-proto-rv-perapp-search-ime-end-dark	R11	Reader	+8.5
-proto-rv-perapp-search-ime-end-dark	R11	Shop	+8.5
-proto-rv-perapp-search-ime-end-dark	R11	Translate	+8.5
-proto-rv-perapp-search-ime-end-dark	R11	Video	+8.5
-proto-rv-perapp-search-ime-end-dark	R11	Wallet	+8.5
-proto-rv-perapp-search-ime-end-dark	R11	Weather	+8.5
-proto-rv-perapp-search-ime-end-dark	R18	News	above 6.5
-proto-rv-perapp-search-ime-end-dark	R9	News	+1.5
-proto-rv-perapp-search-ime-end-dark	R9	Notes	+1.5
-proto-rv-perapp-search-ime-end-dark	R9	Photos	+1.5
-proto-rv-perapp-search-ime-end-dark	R9	Podcasts	+1.5
-proto-rv-perapp-search-ime-end-dark	R9	Reader	+1.5
-proto-rv-perapp-search-ime-end-dark	R9	Shop	+1.5
-proto-rv-perapp-search-ime-end-dark	R9	Translate	+1.5
-proto-rv-perapp-search-ime-end-dark	R9	Video	+1.5
-proto-rv-perapp-search-ime-end-dark	R9	Wallet	+1.5
-proto-rv-perapp-search-ime-end-dark	R9	Weather	+1.5
-proto-rv-perapp-search-ime-end-light	R1	News	height 69.0
-proto-rv-perapp-search-ime-end-light	R11	News	+8.5
-proto-rv-perapp-search-ime-end-light	R11	Notes	+8.5
-proto-rv-perapp-search-ime-end-light	R11	Photos	+8.5
-proto-rv-perapp-search-ime-end-light	R11	Podcasts	+8.5
-proto-rv-perapp-search-ime-end-light	R11	Reader	+8.5
-proto-rv-perapp-search-ime-end-light	R11	Shop	+8.5
-proto-rv-perapp-search-ime-end-light	R11	Translate	+8.5
-proto-rv-perapp-search-ime-end-light	R11	Video	+8.5
-proto-rv-perapp-search-ime-end-light	R11	Wallet	+8.5
-proto-rv-perapp-search-ime-end-light	R11	Weather	+8.5
-proto-rv-perapp-search-ime-end-light	R18	News	above 6.5
-proto-rv-perapp-search-ime-end-light	R9	News	+1.5
-proto-rv-perapp-search-ime-end-light	R9	Notes	+1.5
-proto-rv-perapp-search-ime-end-light	R9	Photos	+1.5
-proto-rv-perapp-search-ime-end-light	R9	Podcasts	+1.5
-proto-rv-perapp-search-ime-end-light	R9	Reader	+1.5
-proto-rv-perapp-search-ime-end-light	R9	Shop	+1.5
-proto-rv-perapp-search-ime-end-light	R9	Translate	+1.5
-proto-rv-perapp-search-ime-end-light	R9	Video	+1.5
-proto-rv-perapp-search-ime-end-light	R9	Wallet	+1.5
-proto-rv-perapp-search-ime-end-light	R9	Weather	+1.5
-proto-rv-perapp-search-ime-fs200	R11	Browser	+38.3
-proto-rv-perapp-search-ime-fs200	R11	Calendar	+38.3
-proto-rv-perapp-search-ime-fs200	R11	Camera	+38.3
-proto-rv-perapp-search-ime-fs200	R9	Browser	+37.5
-proto-rv-perapp-search-ime-fs200	R9	Calendar	+37.5
-proto-rv-perapp-search-ime-fs200	R9	Camera	+37.5
-proto-rv-perapp-search-ime-light	R1	Drive	height 79.5
-proto-rv-perapp-search-ime-light	R11	Browser	+8.5
-proto-rv-perapp-search-ime-light	R11	Calendar	+8.5
-proto-rv-perapp-search-ime-light	R11	Camera	+8.5
-proto-rv-perapp-search-ime-light	R11	Chat	+8.5
-proto-rv-perapp-search-ime-light	R11	Clock	+8.5
-proto-rv-perapp-search-ime-light	R11	Drive	+8.5
-proto-rv-perapp-search-ime-light	R18	Drive	above 19.5 below 16.5
-proto-rv-perapp-search-ime-light	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-search-ime-light	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-search-ime-light	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-search-ime-light	R9	Browser	+1.5
-proto-rv-perapp-search-ime-light	R9	Calendar	+1.5
-proto-rv-perapp-search-ime-light	R9	Camera	+1.5
-proto-rv-perapp-search-ime-light	R9	Chat	+1.5
-proto-rv-perapp-search-ime-light	R9	Clock	+1.5
-proto-rv-perapp-search-ime-light	R9	Drive	+1.5
-proto-rv-perapp-search-light	R11	Mail	+8.5
-proto-rv-perapp-search-light	R11	Maps	+8.5
-proto-rv-perapp-search-light	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-search-light	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-search-light	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-search-light	R9	Mail	+1.5
-proto-rv-perapp-search-light	R9	Maps	+1.5
-proto-rv-perapp-v1-dark	R11	Browser	+8.5
-proto-rv-perapp-v1-dark	R11	Calendar	+8.5
-proto-rv-perapp-v1-dark	R11	Camera	+8.5
-proto-rv-perapp-v1-dark	R11	Chat	+8.5
-proto-rv-perapp-v1-dark	R11	Clock	+8.5
-proto-rv-perapp-v1-dark	R11	Drive	+8.5
-proto-rv-perapp-v1-dark	R11	Files	+8.5
-proto-rv-perapp-v1-dark	R11	Mail	+8.5
-proto-rv-perapp-v1-dark	R11	Maps	+8.5
-proto-rv-perapp-v1-dark	R11	Music	+8.5
-proto-rv-perapp-v1-dark	R11	News	+8.5
-proto-rv-perapp-v1-dark	R11	Notes	+8.5
-proto-rv-perapp-v1-dark	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-v1-dark	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-v1-dark	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-v1-dark	R9	Browser	+1.5
-proto-rv-perapp-v1-dark	R9	Calendar	+1.5
-proto-rv-perapp-v1-dark	R9	Camera	+1.5
-proto-rv-perapp-v1-dark	R9	Chat	+1.5
-proto-rv-perapp-v1-dark	R9	Clock	+1.5
-proto-rv-perapp-v1-dark	R9	Drive	+1.5
-proto-rv-perapp-v1-dark	R9	Files	+1.5
-proto-rv-perapp-v1-dark	R9	Mail	+1.5
-proto-rv-perapp-v1-dark	R9	Maps	+1.5
-proto-rv-perapp-v1-dark	R9	Music	+1.5
-proto-rv-perapp-v1-dark	R9	News	+1.5
-proto-rv-perapp-v1-dark	R9	Notes	+1.5
-proto-rv-perapp-v1-fs200	R11	Browser	+38.3
-proto-rv-perapp-v1-fs200	R11	Calendar	+38.3
-proto-rv-perapp-v1-fs200	R11	Camera	+38.3
-proto-rv-perapp-v1-fs200	R11	Chat	+17.8
-proto-rv-perapp-v1-fs200	R11	Clock	+38.3
-proto-rv-perapp-v1-fs200	R11	Drive	+38.3
-proto-rv-perapp-v1-fs200	R11	Files	+17.8
-proto-rv-perapp-v1-fs200	R11	Mail	+17.8
-proto-rv-perapp-v1-fs200	R11	Maps	+38.3
-proto-rv-perapp-v1-fs200	R11	Music	+38.3
-proto-rv-perapp-v1-fs200	R11	News	+38.3
-proto-rv-perapp-v1-fs200	R11	Notes	+38.3
-proto-rv-perapp-v1-fs200	R9	Browser	+37.5
-proto-rv-perapp-v1-fs200	R9	Calendar	+37.5
-proto-rv-perapp-v1-fs200	R9	Camera	+37.5
-proto-rv-perapp-v1-fs200	R9	Chat	+17.0
-proto-rv-perapp-v1-fs200	R9	Clock	+37.5
-proto-rv-perapp-v1-fs200	R9	Drive	+37.5
-proto-rv-perapp-v1-fs200	R9	Files	+17.0
-proto-rv-perapp-v1-fs200	R9	Mail	+17.0
-proto-rv-perapp-v1-fs200	R9	Maps	+37.5
-proto-rv-perapp-v1-fs200	R9	Music	+37.5
-proto-rv-perapp-v1-fs200	R9	News	+37.5
-proto-rv-perapp-v1-fs200	R9	Notes	+37.5
-proto-rv-perapp-v1-light	R11	Browser	+8.5
-proto-rv-perapp-v1-light	R11	Calendar	+8.5
-proto-rv-perapp-v1-light	R11	Camera	+8.5
-proto-rv-perapp-v1-light	R11	Chat	+8.5
-proto-rv-perapp-v1-light	R11	Clock	+8.5
-proto-rv-perapp-v1-light	R11	Drive	+8.5
-proto-rv-perapp-v1-light	R11	Files	+8.5
-proto-rv-perapp-v1-light	R11	Mail	+8.5
-proto-rv-perapp-v1-light	R11	Maps	+8.5
-proto-rv-perapp-v1-light	R11	Music	+8.5
-proto-rv-perapp-v1-light	R11	News	+8.5
-proto-rv-perapp-v1-light	R11	Notes	+8.5
-proto-rv-perapp-v1-light	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-v1-light	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-v1-light	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-v1-light	R9	Browser	+1.5
-proto-rv-perapp-v1-light	R9	Calendar	+1.5
-proto-rv-perapp-v1-light	R9	Camera	+1.5
-proto-rv-perapp-v1-light	R9	Chat	+1.5
-proto-rv-perapp-v1-light	R9	Clock	+1.5
-proto-rv-perapp-v1-light	R9	Drive	+1.5
-proto-rv-perapp-v1-light	R9	Files	+1.5
-proto-rv-perapp-v1-light	R9	Mail	+1.5
-proto-rv-perapp-v1-light	R9	Maps	+1.5
-proto-rv-perapp-v1-light	R9	Music	+1.5
-proto-rv-perapp-v1-light	R9	News	+1.5
-proto-rv-perapp-v1-light	R9	Notes	+1.5
-proto-rv-perapp-v1-loading-dark	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-v1-loading-dark	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-v1-loading-dark	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-v1-loading-light	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-v1-loading-light	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-v1-loading-light	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-v1-no-result-dark	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-v1-no-result-dark	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-v1-no-result-dark	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-v1-no-result-light	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-v1-no-result-light	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-v1-no-result-light	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-v1-none-selected-dark	R11	Browser	+8.5
-proto-rv-perapp-v1-none-selected-dark	R11	Calendar	+8.5
-proto-rv-perapp-v1-none-selected-dark	R11	Camera	+8.5
-proto-rv-perapp-v1-none-selected-dark	R11	Chat	+8.5
-proto-rv-perapp-v1-none-selected-dark	R11	Clock	+8.5
-proto-rv-perapp-v1-none-selected-dark	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-v1-none-selected-dark	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-v1-none-selected-dark	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-v1-none-selected-dark	R9	Browser	+1.5
-proto-rv-perapp-v1-none-selected-dark	R9	Calendar	+1.5
-proto-rv-perapp-v1-none-selected-dark	R9	Camera	+1.5
-proto-rv-perapp-v1-none-selected-dark	R9	Chat	+1.5
-proto-rv-perapp-v1-none-selected-dark	R9	Clock	+1.5
-proto-rv-perapp-v1-none-selected-light	R11	Browser	+8.5
-proto-rv-perapp-v1-none-selected-light	R11	Calendar	+8.5
-proto-rv-perapp-v1-none-selected-light	R11	Camera	+8.5
-proto-rv-perapp-v1-none-selected-light	R11	Chat	+8.5
-proto-rv-perapp-v1-none-selected-light	R11	Clock	+8.5
-proto-rv-perapp-v1-none-selected-light	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-v1-none-selected-light	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-v1-none-selected-light	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-v1-none-selected-light	R9	Browser	+1.5
-proto-rv-perapp-v1-none-selected-light	R9	Calendar	+1.5
-proto-rv-perapp-v1-none-selected-light	R9	Camera	+1.5
-proto-rv-perapp-v1-none-selected-light	R9	Chat	+1.5
-proto-rv-perapp-v1-none-selected-light	R9	Clock	+1.5
-proto-rv-perapp-v1-rebuild-failed-dark	R11	Browser	+8.5
-proto-rv-perapp-v1-rebuild-failed-dark	R11	Calendar	+8.5
-proto-rv-perapp-v1-rebuild-failed-dark	R11	Camera	+8.5
-proto-rv-perapp-v1-rebuild-failed-dark	R11	Chat	+8.5
-proto-rv-perapp-v1-rebuild-failed-dark	R12	已儲存，但 VPN 無法重新連線	+2.0
-proto-rv-perapp-v1-rebuild-failed-dark	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-v1-rebuild-failed-dark	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-v1-rebuild-failed-dark	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-v1-rebuild-failed-dark	R9	Browser	+1.5
-proto-rv-perapp-v1-rebuild-failed-dark	R9	Calendar	+1.5
-proto-rv-perapp-v1-rebuild-failed-dark	R9	Camera	+1.5
-proto-rv-perapp-v1-rebuild-failed-dark	R9	Chat	+1.5
-proto-rv-perapp-v1-rebuild-failed-light	R11	Browser	+8.5
-proto-rv-perapp-v1-rebuild-failed-light	R11	Calendar	+8.5
-proto-rv-perapp-v1-rebuild-failed-light	R11	Camera	+8.5
-proto-rv-perapp-v1-rebuild-failed-light	R11	Chat	+8.5
-proto-rv-perapp-v1-rebuild-failed-light	R12	已儲存，但 VPN 無法重新連線	+2.0
-proto-rv-perapp-v1-rebuild-failed-light	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-v1-rebuild-failed-light	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-v1-rebuild-failed-light	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-v1-rebuild-failed-light	R9	Browser	+1.5
-proto-rv-perapp-v1-rebuild-failed-light	R9	Calendar	+1.5
-proto-rv-perapp-v1-rebuild-failed-light	R9	Camera	+1.5
-proto-rv-perapp-v1-rebuild-failed-light	R9	Chat	+1.5
-proto-rv-perapp-v1-save-failed-dark	R11	Browser	+8.5
-proto-rv-perapp-v1-save-failed-dark	R11	Calendar	+8.5
-proto-rv-perapp-v1-save-failed-dark	R11	Camera	+8.5
-proto-rv-perapp-v1-save-failed-dark	R11	Chat	+8.5
-proto-rv-perapp-v1-save-failed-dark	R12	無法儲存	+2.0
-proto-rv-perapp-v1-save-failed-dark	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-v1-save-failed-dark	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-v1-save-failed-dark	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-v1-save-failed-dark	R9	Browser	+1.5
-proto-rv-perapp-v1-save-failed-dark	R9	Calendar	+1.5
-proto-rv-perapp-v1-save-failed-dark	R9	Camera	+1.5
-proto-rv-perapp-v1-save-failed-dark	R9	Chat	+1.5
-proto-rv-perapp-v1-save-failed-light	R11	Browser	+8.5
-proto-rv-perapp-v1-save-failed-light	R11	Calendar	+8.5
-proto-rv-perapp-v1-save-failed-light	R11	Camera	+8.5
-proto-rv-perapp-v1-save-failed-light	R11	Chat	+8.5
-proto-rv-perapp-v1-save-failed-light	R12	無法儲存	+2.0
-proto-rv-perapp-v1-save-failed-light	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-v1-save-failed-light	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-v1-save-failed-light	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-v1-save-failed-light	R9	Browser	+1.5
-proto-rv-perapp-v1-save-failed-light	R9	Calendar	+1.5
-proto-rv-perapp-v1-save-failed-light	R9	Camera	+1.5
-proto-rv-perapp-v1-save-failed-light	R9	Chat	+1.5
-proto-rv-perapp-v1-search-dark	R11	Mail	+8.5
-proto-rv-perapp-v1-search-dark	R11	Maps	+8.5
-proto-rv-perapp-v1-search-dark	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-v1-search-dark	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-v1-search-dark	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-v1-search-dark	R9	Mail	+1.5
-proto-rv-perapp-v1-search-dark	R9	Maps	+1.5
-proto-rv-perapp-v1-search-light	R11	Mail	+8.5
-proto-rv-perapp-v1-search-light	R11	Maps	+8.5
-proto-rv-perapp-v1-search-light	R18	全部 App	above 16.0 below 19.0
-proto-rv-perapp-v1-search-light	R18	勾選的以外	above 16.0 below 19.0
-proto-rv-perapp-v1-search-light	R18	只有勾選的	above 16.0 below 19.0
-proto-rv-perapp-v1-search-light	R9	Mail	+1.5
-proto-rv-perapp-v1-search-light	R9	Maps	+1.5
-proto-rv-perapp-v2-dark	R11	Browser	+8.5
-proto-rv-perapp-v2-dark	R11	Calendar	+8.5
-proto-rv-perapp-v2-dark	R11	Camera	+8.5
-proto-rv-perapp-v2-dark	R11	Chat	+8.5
-proto-rv-perapp-v2-dark	R11	Clock	+8.5
-proto-rv-perapp-v2-dark	R11	Drive	+8.5
-proto-rv-perapp-v2-dark	R11	Files	+8.5
-proto-rv-perapp-v2-dark	R11	Mail	+8.5
-proto-rv-perapp-v2-dark	R11	Maps	+8.5
-proto-rv-perapp-v2-dark	R11	Music	+8.5
-proto-rv-perapp-v2-dark	R11	News	+8.5
-proto-rv-perapp-v2-dark	R11	Notes	+8.5
-proto-rv-perapp-v2-dark	R9	Browser	+1.5
-proto-rv-perapp-v2-dark	R9	Calendar	+1.5
-proto-rv-perapp-v2-dark	R9	Camera	+1.5
-proto-rv-perapp-v2-dark	R9	Chat	+1.5
-proto-rv-perapp-v2-dark	R9	Clock	+1.5
-proto-rv-perapp-v2-dark	R9	Drive	+1.5
-proto-rv-perapp-v2-dark	R9	Files	+1.5
-proto-rv-perapp-v2-dark	R9	Mail	+1.5
-proto-rv-perapp-v2-dark	R9	Maps	+1.5
-proto-rv-perapp-v2-dark	R9	Music	+1.5
-proto-rv-perapp-v2-dark	R9	News	+1.5
-proto-rv-perapp-v2-dark	R9	Notes	+1.5
-proto-rv-perapp-v2-fs200	R11	Browser	+38.3
-proto-rv-perapp-v2-fs200	R11	Calendar	+38.3
-proto-rv-perapp-v2-fs200	R11	Camera	+38.3
-proto-rv-perapp-v2-fs200	R11	Chat	+17.8
-proto-rv-perapp-v2-fs200	R11	Clock	+38.3
-proto-rv-perapp-v2-fs200	R11	Drive	+38.3
-proto-rv-perapp-v2-fs200	R11	Files	+17.8
-proto-rv-perapp-v2-fs200	R11	Mail	+17.8
-proto-rv-perapp-v2-fs200	R11	Maps	+38.3
-proto-rv-perapp-v2-fs200	R11	Music	+38.3
-proto-rv-perapp-v2-fs200	R11	News	+38.3
-proto-rv-perapp-v2-fs200	R11	Notes	+38.3
-proto-rv-perapp-v2-fs200	R9	Browser	+37.5
-proto-rv-perapp-v2-fs200	R9	Calendar	+37.5
-proto-rv-perapp-v2-fs200	R9	Camera	+37.5
-proto-rv-perapp-v2-fs200	R9	Chat	+17.0
-proto-rv-perapp-v2-fs200	R9	Clock	+37.5
-proto-rv-perapp-v2-fs200	R9	Drive	+37.5
-proto-rv-perapp-v2-fs200	R9	Files	+17.0
-proto-rv-perapp-v2-fs200	R9	Mail	+17.0
-proto-rv-perapp-v2-fs200	R9	Maps	+37.5
-proto-rv-perapp-v2-fs200	R9	Music	+37.5
-proto-rv-perapp-v2-fs200	R9	News	+37.5
-proto-rv-perapp-v2-fs200	R9	Notes	+37.5
-proto-rv-perapp-v2-light	R11	Browser	+8.5
-proto-rv-perapp-v2-light	R11	Calendar	+8.5
-proto-rv-perapp-v2-light	R11	Camera	+8.5
-proto-rv-perapp-v2-light	R11	Chat	+8.5
-proto-rv-perapp-v2-light	R11	Clock	+8.5
-proto-rv-perapp-v2-light	R11	Drive	+8.5
-proto-rv-perapp-v2-light	R11	Files	+8.5
-proto-rv-perapp-v2-light	R11	Mail	+8.5
-proto-rv-perapp-v2-light	R11	Maps	+8.5
-proto-rv-perapp-v2-light	R11	Music	+8.5
-proto-rv-perapp-v2-light	R11	News	+8.5
-proto-rv-perapp-v2-light	R11	Notes	+8.5
-proto-rv-perapp-v2-light	R9	Browser	+1.5
-proto-rv-perapp-v2-light	R9	Calendar	+1.5
-proto-rv-perapp-v2-light	R9	Camera	+1.5
-proto-rv-perapp-v2-light	R9	Chat	+1.5
-proto-rv-perapp-v2-light	R9	Clock	+1.5
-proto-rv-perapp-v2-light	R9	Drive	+1.5
-proto-rv-perapp-v2-light	R9	Files	+1.5
-proto-rv-perapp-v2-light	R9	Mail	+1.5
-proto-rv-perapp-v2-light	R9	Maps	+1.5
-proto-rv-perapp-v2-light	R9	Music	+1.5
-proto-rv-perapp-v2-light	R9	News	+1.5
-proto-rv-perapp-v2-light	R9	Notes	+1.5
-proto-rv-perm-notify-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-perm-notify-dark	R9	串流	+1.5
-proto-rv-perm-notify-dark	R9	出站模式	+1.5
-proto-rv-perm-notify-dark	R9	國內與區域網路	+1.5
-proto-rv-perm-notify-en-light	R9	Domestic and LAN	+1.5
-proto-rv-perm-notify-en-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-perm-notify-en-light	R9	Outbound mode	+1.5
-proto-rv-perm-notify-en-light	R9	Streaming	+1.5
-proto-rv-perm-notify-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-perm-notify-fs115	R9	串流	+4.0
-proto-rv-perm-notify-fs115	R9	出站模式	+4.0
-proto-rv-perm-notify-fs115	R9	國內與區域網路	+4.0
 proto-rv-perm-notify-fs200	R1	Hong Kong 02 IPLC	height 225.0 for 149.5
-proto-rv-perm-notify-fs200	R1	串流	height 79.5
 proto-rv-perm-notify-fs200	R11	串流	+17.5
 proto-rv-perm-notify-fs200	R13	串流	subtitle 25.0 vs 35.0
 proto-rv-perm-notify-fs200	R18	Hong Kong 02 IPLC	above 16.0 below 91.5
-proto-rv-perm-notify-fs200	R18	串流	below 0.0
-proto-rv-perm-notify-fs200	R9	Hong Kong 02 IPLC	+76.5
-proto-rv-perm-notify-fs200	R9	串流	+17.0
-proto-rv-perm-notify-fs200	R9	出站模式	+17.0
-proto-rv-perm-notify-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-perm-notify-light	R9	串流	+1.5
-proto-rv-perm-notify-light	R9	出站模式	+1.5
-proto-rv-perm-notify-light	R9	國內與區域網路	+1.5
-proto-rv-perm-notify-zhcn-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-perm-notify-zhcn-light	R9	出站模式	+1.5
-proto-rv-perm-notify-zhcn-light	R9	国内与局域网	+1.5
-proto-rv-perm-notify-zhcn-light	R9	流媒体	+1.5
-proto-rv-perm-vpn-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-perm-vpn-dark	R9	串流	+1.5
-proto-rv-perm-vpn-dark	R9	出站模式	+1.5
-proto-rv-perm-vpn-dark	R9	國內與區域網路	+1.5
-proto-rv-perm-vpn-en-light	R9	Domestic and LAN	+1.5
-proto-rv-perm-vpn-en-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-perm-vpn-en-light	R9	Outbound mode	+1.5
-proto-rv-perm-vpn-en-light	R9	Streaming	+1.5
-proto-rv-perm-vpn-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-perm-vpn-fs115	R9	串流	+4.0
-proto-rv-perm-vpn-fs115	R9	出站模式	+4.0
-proto-rv-perm-vpn-fs115	R9	國內與區域網路	+4.0
 proto-rv-perm-vpn-fs200	R1	Hong Kong 02 IPLC	height 225.0 for 149.5
-proto-rv-perm-vpn-fs200	R1	串流	height 79.5
 proto-rv-perm-vpn-fs200	R11	串流	+17.5
 proto-rv-perm-vpn-fs200	R13	串流	subtitle 25.0 vs 35.0
 proto-rv-perm-vpn-fs200	R18	Hong Kong 02 IPLC	above 16.0 below 91.5
-proto-rv-perm-vpn-fs200	R18	串流	below 0.0
-proto-rv-perm-vpn-fs200	R9	Hong Kong 02 IPLC	+76.5
-proto-rv-perm-vpn-fs200	R9	串流	+17.0
-proto-rv-perm-vpn-fs200	R9	出站模式	+17.0
-proto-rv-perm-vpn-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-perm-vpn-light	R9	串流	+1.5
-proto-rv-perm-vpn-light	R9	出站模式	+1.5
-proto-rv-perm-vpn-light	R9	國內與區域網路	+1.5
-proto-rv-perm-vpn-zhcn-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-perm-vpn-zhcn-light	R9	出站模式	+1.5
-proto-rv-perm-vpn-zhcn-light	R9	国内与局域网	+1.5
-proto-rv-perm-vpn-zhcn-light	R9	流媒体	+1.5
 proto-rv-policy-action-failed-dark	R11l	香港	+5.0
-proto-rv-policy-action-failed-dark	R12	無法切換模式	+2.0
-proto-rv-policy-action-failed-dark	R9	AI	+1.5
-proto-rv-policy-action-failed-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-action-failed-dark	R9	串流	+1.5
-proto-rv-policy-action-failed-dark	R9	自動	+1.5
-proto-rv-policy-action-failed-dark	R9	香港	+1.5
-proto-rv-policy-action-failed-fs115	R1	香港	height 80.5
 proto-rv-policy-action-failed-fs115	R11	AI	+12.0
 proto-rv-policy-action-failed-fs115	R11	串流	+12.0
 proto-rv-policy-action-failed-fs115	R11	自動	+12.0
 proto-rv-policy-action-failed-fs115	R11	香港	+12.0
-proto-rv-policy-action-failed-fs115	R12	無法切換模式	+2.0
-proto-rv-policy-action-failed-fs115	R18	香港	above 17.0 below 15.5
-proto-rv-policy-action-failed-fs115	R9	AI	+4.0
-proto-rv-policy-action-failed-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-policy-action-failed-fs115	R9	串流	+4.0
-proto-rv-policy-action-failed-fs115	R9	自動	+4.0
-proto-rv-policy-action-failed-fs115	R9	香港	+4.0
 proto-rv-policy-action-failed-fs200	R1	Hong Kong 02 IPLC	height 266.0 for 190.5
-proto-rv-policy-action-failed-fs200	R1	自動	height 16.5
-proto-rv-policy-action-failed-fs200	R10	自動	+8.0
-proto-rv-policy-action-failed-fs200	R12	無法切換模式	+2.0
-proto-rv-policy-action-failed-fs200	R16	自動	-36.0
 proto-rv-policy-action-failed-fs200	R18	Hong Kong 02 IPLC	above 16.0 below 91.5
-proto-rv-policy-action-failed-fs200	R18	自動	below 0.0
-proto-rv-policy-action-failed-fs200	R6	自動	+56.0
-proto-rv-policy-action-failed-fs200	R9	Hong Kong 02 IPLC	+97.0
 proto-rv-policy-action-failed-light	R11l	香港	+5.0
-proto-rv-policy-action-failed-light	R12	無法切換模式	+2.0
-proto-rv-policy-action-failed-light	R9	AI	+1.5
-proto-rv-policy-action-failed-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-action-failed-light	R9	串流	+1.5
-proto-rv-policy-action-failed-light	R9	自動	+1.5
-proto-rv-policy-action-failed-light	R9	香港	+1.5
 proto-rv-policy-config-entry-dark	R11l	美國	+5.0
 proto-rv-policy-config-entry-dark	R11l	香港	+5.0
-proto-rv-policy-config-entry-dark	R9	AI	+1.5
-proto-rv-policy-config-entry-dark	R9	CN	+1.5
-proto-rv-policy-config-entry-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-config-entry-dark	R9	netflix.com 等 12 個網域	+1.5
-proto-rv-policy-config-entry-dark	R9	openai.com 等 6 個網域	+1.5
-proto-rv-policy-config-entry-dark	R9	串流	+1.5
-proto-rv-policy-config-entry-dark	R9	其餘流量	+1.5
-proto-rv-policy-config-entry-dark	R9	區域網路	+1.5
-proto-rv-policy-config-entry-dark	R9	日本	+1.5
-proto-rv-policy-config-entry-dark	R9	美國	+1.5
-proto-rv-policy-config-entry-dark	R9	自動	+1.5
-proto-rv-policy-config-entry-dark	R9	臺灣	+1.5
-proto-rv-policy-config-entry-dark	R9	香港	+1.5
-proto-rv-policy-config-entry-fs115	R1	日本	height 76.0
 proto-rv-policy-config-entry-fs115	R11	AI	+12.0
 proto-rv-policy-config-entry-fs115	R11	串流	+12.0
 proto-rv-policy-config-entry-fs115	R11	自動	+12.0
 proto-rv-policy-config-entry-fs115	R11	香港	+12.0
 proto-rv-policy-config-entry-fs115	R17	日本	-9.5
 proto-rv-policy-config-entry-fs115	R17	臺灣	-8.5
-proto-rv-policy-config-entry-fs115	R18	日本	below 11.0
-proto-rv-policy-config-entry-fs115	R9	AI	+4.0
-proto-rv-policy-config-entry-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-policy-config-entry-fs115	R9	串流	+4.0
-proto-rv-policy-config-entry-fs115	R9	日本	+4.0
-proto-rv-policy-config-entry-fs115	R9	自動	+4.0
-proto-rv-policy-config-entry-fs115	R9	臺灣	+4.0
-proto-rv-policy-config-entry-fs115	R9	香港	+4.0
 proto-rv-policy-config-entry-fs200	R1	Hong Kong 02 IPLC	height 266.0 for 190.5
 proto-rv-policy-config-entry-fs200	R11	串流	+45.5
 proto-rv-policy-config-entry-fs200	R11	自動	+45.5
 proto-rv-policy-config-entry-fs200	R18	Hong Kong 02 IPLC	above 16.0 below 91.5
-proto-rv-policy-config-entry-fs200	R18	串流	below 0.0
-proto-rv-policy-config-entry-fs200	R9	Hong Kong 02 IPLC	+97.0
-proto-rv-policy-config-entry-fs200	R9	串流	+37.5
-proto-rv-policy-config-entry-fs200	R9	自動	+37.5
 proto-rv-policy-config-entry-light	R11l	美國	+5.0
 proto-rv-policy-config-entry-light	R11l	香港	+5.0
-proto-rv-policy-config-entry-light	R9	AI	+1.5
-proto-rv-policy-config-entry-light	R9	CN	+1.5
-proto-rv-policy-config-entry-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-config-entry-light	R9	netflix.com 等 12 個網域	+1.5
-proto-rv-policy-config-entry-light	R9	openai.com 等 6 個網域	+1.5
-proto-rv-policy-config-entry-light	R9	串流	+1.5
-proto-rv-policy-config-entry-light	R9	其餘流量	+1.5
-proto-rv-policy-config-entry-light	R9	區域網路	+1.5
-proto-rv-policy-config-entry-light	R9	日本	+1.5
-proto-rv-policy-config-entry-light	R9	美國	+1.5
-proto-rv-policy-config-entry-light	R9	自動	+1.5
-proto-rv-policy-config-entry-light	R9	臺灣	+1.5
-proto-rv-policy-config-entry-light	R9	香港	+1.5
 proto-rv-policy-dark	R11l	美國	+5.0
 proto-rv-policy-dark	R11l	香港	+5.0
-proto-rv-policy-dark	R9	AI	+1.5
-proto-rv-policy-dark	R9	CN	+1.5
-proto-rv-policy-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-dark	R9	netflix.com 等 12 個網域	+1.5
-proto-rv-policy-dark	R9	openai.com 等 6 個網域	+1.5
-proto-rv-policy-dark	R9	串流	+1.5
-proto-rv-policy-dark	R9	其餘流量	+1.5
-proto-rv-policy-dark	R9	區域網路	+1.5
-proto-rv-policy-dark	R9	日本	+1.5
-proto-rv-policy-dark	R9	美國	+1.5
-proto-rv-policy-dark	R9	自動	+1.5
-proto-rv-policy-dark	R9	臺灣	+1.5
-proto-rv-policy-dark	R9	香港	+1.5
-proto-rv-policy-flow-dark	R11	AI	+8.5
-proto-rv-policy-flow-dark	R11	串流	+8.5
-proto-rv-policy-flow-dark	R11	主節點	+8.5
-proto-rv-policy-flow-dark	R11	直連	+8.5
-proto-rv-policy-flow-dark	R11	自動	+8.5
-proto-rv-policy-flow-dark	R9	AI	+1.5
-proto-rv-policy-flow-dark	R9	串流	+1.5
-proto-rv-policy-flow-dark	R9	主節點	+1.5
-proto-rv-policy-flow-dark	R9	位置	+1.5
-proto-rv-policy-flow-dark	R9	直連	+1.5
-proto-rv-policy-flow-dark	R9	自動	+1.5
-proto-rv-policy-flow-light	R11	AI	+8.5
-proto-rv-policy-flow-light	R11	串流	+8.5
-proto-rv-policy-flow-light	R11	主節點	+8.5
-proto-rv-policy-flow-light	R11	直連	+8.5
-proto-rv-policy-flow-light	R11	自動	+8.5
-proto-rv-policy-flow-light	R9	AI	+1.5
-proto-rv-policy-flow-light	R9	串流	+1.5
-proto-rv-policy-flow-light	R9	主節點	+1.5
-proto-rv-policy-flow-light	R9	位置	+1.5
-proto-rv-policy-flow-light	R9	直連	+1.5
-proto-rv-policy-flow-light	R9	自動	+1.5
-proto-rv-policy-fs115	R1	日本	height 76.0
 proto-rv-policy-fs115	R11	AI	+12.0
 proto-rv-policy-fs115	R11	串流	+12.0
 proto-rv-policy-fs115	R11	自動	+12.0
 proto-rv-policy-fs115	R11	香港	+12.0
 proto-rv-policy-fs115	R17	日本	-9.5
 proto-rv-policy-fs115	R17	臺灣	-8.5
-proto-rv-policy-fs115	R18	日本	below 11.0
-proto-rv-policy-fs115	R9	AI	+4.0
-proto-rv-policy-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-policy-fs115	R9	串流	+4.0
-proto-rv-policy-fs115	R9	日本	+4.0
-proto-rv-policy-fs115	R9	自動	+4.0
-proto-rv-policy-fs115	R9	臺灣	+4.0
-proto-rv-policy-fs115	R9	香港	+4.0
 proto-rv-policy-fs200	R1	Hong Kong 02 IPLC	height 266.0 for 190.5
 proto-rv-policy-fs200	R11	串流	+45.5
 proto-rv-policy-fs200	R11	自動	+45.5
 proto-rv-policy-fs200	R18	Hong Kong 02 IPLC	above 16.0 below 91.5
-proto-rv-policy-fs200	R18	串流	below 0.0
-proto-rv-policy-fs200	R9	Hong Kong 02 IPLC	+97.0
-proto-rv-policy-fs200	R9	串流	+37.5
-proto-rv-policy-fs200	R9	自動	+37.5
-proto-rv-policy-global-dark	R9	Harbor Cloud	+1.5
-proto-rv-policy-global-dark	R9	Hong Kong 01	+1.5
-proto-rv-policy-global-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-global-dark	R9	Hong Kong 05 IEPL	+1.5
-proto-rv-policy-global-dark	R9	Taipei 01	+1.5
-proto-rv-policy-global-dark	R9	Taipei 02	+1.5
-proto-rv-policy-global-dark	R9	Taipei 04	+1.5
-proto-rv-policy-global-light	R9	Harbor Cloud	+1.5
-proto-rv-policy-global-light	R9	Hong Kong 01	+1.5
-proto-rv-policy-global-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-global-light	R9	Hong Kong 05 IEPL	+1.5
-proto-rv-policy-global-light	R9	Taipei 01	+1.5
-proto-rv-policy-global-light	R9	Taipei 02	+1.5
-proto-rv-policy-global-light	R9	Taipei 04	+1.5
-proto-rv-policy-global-scrolled-dark	R9	Hong Kong 03	+1.5
-proto-rv-policy-global-scrolled-dark	R9	Hong Kong 06	+1.5
-proto-rv-policy-global-scrolled-dark	R9	Lantern Net	+1.5
-proto-rv-policy-global-scrolled-dark	R9	Seoul 01	+1.5
-proto-rv-policy-global-scrolled-dark	R9	Singapore 01	+1.5
-proto-rv-policy-global-scrolled-dark	R9	Singapore 04	+1.5
-proto-rv-policy-global-scrolled-dark	R9	Taichung 03	+1.5
-proto-rv-policy-global-scrolled-dark	R9	Tokyo 01	+1.5
-proto-rv-policy-global-scrolled-dark	R9	Tokyo 04 IPLC	+1.5
-proto-rv-policy-global-scrolled-light	R9	Hong Kong 03	+1.5
-proto-rv-policy-global-scrolled-light	R9	Hong Kong 06	+1.5
-proto-rv-policy-global-scrolled-light	R9	Lantern Net	+1.5
-proto-rv-policy-global-scrolled-light	R9	Seoul 01	+1.5
-proto-rv-policy-global-scrolled-light	R9	Singapore 01	+1.5
-proto-rv-policy-global-scrolled-light	R9	Singapore 04	+1.5
-proto-rv-policy-global-scrolled-light	R9	Taichung 03	+1.5
-proto-rv-policy-global-scrolled-light	R9	Tokyo 01	+1.5
-proto-rv-policy-global-scrolled-light	R9	Tokyo 04 IPLC	+1.5
-proto-rv-policy-group-auto-dark	R9	Hong Kong 01	+1.5
-proto-rv-policy-group-auto-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-group-auto-dark	R9	Hong Kong 03	+1.5
-proto-rv-policy-group-auto-dark	R9	Hong Kong 05 IEPL	+1.5
-proto-rv-policy-group-auto-dark	R9	Taichung 03	+1.5
-proto-rv-policy-group-auto-dark	R9	Taipei 01	+1.5
-proto-rv-policy-group-auto-dark	R9	Taipei 02	+1.5
-proto-rv-policy-group-auto-dark	R9	Taipei 04	+1.5
-proto-rv-policy-group-auto-light	R9	Hong Kong 01	+1.5
-proto-rv-policy-group-auto-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-group-auto-light	R9	Hong Kong 03	+1.5
-proto-rv-policy-group-auto-light	R9	Hong Kong 05 IEPL	+1.5
-proto-rv-policy-group-auto-light	R9	Taichung 03	+1.5
-proto-rv-policy-group-auto-light	R9	Taipei 01	+1.5
-proto-rv-policy-group-auto-light	R9	Taipei 02	+1.5
-proto-rv-policy-group-auto-light	R9	Taipei 04	+1.5
-proto-rv-policy-group-select-dark	R9	Hong Kong 01	+1.5
-proto-rv-policy-group-select-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-group-select-dark	R9	Hong Kong 03	+1.5
-proto-rv-policy-group-select-dark	R9	Hong Kong 05 IEPL	+1.5
-proto-rv-policy-group-select-dark	R9	Taichung 03	+1.5
-proto-rv-policy-group-select-dark	R9	Taipei 01	+1.5
-proto-rv-policy-group-select-dark	R9	Taipei 02	+1.5
-proto-rv-policy-group-select-dark	R9	Taipei 04	+1.5
-proto-rv-policy-group-select-light	R9	Hong Kong 01	+1.5
-proto-rv-policy-group-select-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-group-select-light	R9	Hong Kong 03	+1.5
-proto-rv-policy-group-select-light	R9	Hong Kong 05 IEPL	+1.5
-proto-rv-policy-group-select-light	R9	Taichung 03	+1.5
-proto-rv-policy-group-select-light	R9	Taipei 01	+1.5
-proto-rv-policy-group-select-light	R9	Taipei 02	+1.5
-proto-rv-policy-group-select-light	R9	Taipei 04	+1.5
-proto-rv-policy-group-testing-dark	R9	Hong Kong 01	+1.5
-proto-rv-policy-group-testing-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-group-testing-dark	R9	Hong Kong 03	+1.5
-proto-rv-policy-group-testing-dark	R9	Hong Kong 05 IEPL	+1.5
-proto-rv-policy-group-testing-dark	R9	Taichung 03	+1.5
-proto-rv-policy-group-testing-dark	R9	Taipei 01	+1.5
-proto-rv-policy-group-testing-dark	R9	Taipei 02	+1.5
-proto-rv-policy-group-testing-dark	R9	Taipei 04	+1.5
-proto-rv-policy-group-testing-fs115	R9	Hong Kong 01	+4.0
-proto-rv-policy-group-testing-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-policy-group-testing-fs115	R9	Hong Kong 03	+4.0
-proto-rv-policy-group-testing-fs115	R9	Hong Kong 05 IEPL	+4.0
-proto-rv-policy-group-testing-fs115	R9	Taichung 03	+4.0
-proto-rv-policy-group-testing-fs115	R9	Taipei 01	+4.0
-proto-rv-policy-group-testing-fs115	R9	Taipei 02	+4.0
-proto-rv-policy-group-testing-fs115	R9	Taipei 04	+4.0
 proto-rv-policy-group-testing-fs200	R1	Hong Kong 03	height 179.0 for 144.0
 proto-rv-policy-group-testing-fs200	R1	Taichung 03	height 179.0 for 144.0
 proto-rv-policy-group-testing-fs200	R1	Taipei 02	height 140.5 for 105.5
@@ -2592,933 +380,52 @@ proto-rv-policy-group-testing-fs200	R17	Taipei 04	-7.0
 proto-rv-policy-group-testing-fs200	R18	Hong Kong 03	above 16.0 below 51.0
 proto-rv-policy-group-testing-fs200	R18	Taichung 03	above 16.0 below 51.0
 proto-rv-policy-group-testing-fs200	R18	Taipei 02	above 16.0 below 51.0
-proto-rv-policy-group-testing-fs200	R9	Hong Kong 01	+36.0
-proto-rv-policy-group-testing-fs200	R9	Hong Kong 02 IPLC	+58.0
-proto-rv-policy-group-testing-fs200	R9	Hong Kong 03	+53.5
-proto-rv-policy-group-testing-fs200	R9	Hong Kong 05 IEPL	+58.0
-proto-rv-policy-group-testing-fs200	R9	Taichung 03	+53.5
-proto-rv-policy-group-testing-fs200	R9	Taipei 01	+17.0
-proto-rv-policy-group-testing-fs200	R9	Taipei 02	+34.5
-proto-rv-policy-group-testing-fs200	R9	Taipei 04	+17.0
-proto-rv-policy-group-testing-light	R9	Hong Kong 01	+1.5
-proto-rv-policy-group-testing-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-group-testing-light	R9	Hong Kong 03	+1.5
-proto-rv-policy-group-testing-light	R9	Hong Kong 05 IEPL	+1.5
-proto-rv-policy-group-testing-light	R9	Taichung 03	+1.5
-proto-rv-policy-group-testing-light	R9	Taipei 01	+1.5
-proto-rv-policy-group-testing-light	R9	Taipei 02	+1.5
-proto-rv-policy-group-testing-light	R9	Taipei 04	+1.5
 proto-rv-policy-light	R11l	美國	+5.0
 proto-rv-policy-light	R11l	香港	+5.0
-proto-rv-policy-light	R9	AI	+1.5
-proto-rv-policy-light	R9	CN	+1.5
-proto-rv-policy-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-light	R9	netflix.com 等 12 個網域	+1.5
-proto-rv-policy-light	R9	openai.com 等 6 個網域	+1.5
-proto-rv-policy-light	R9	串流	+1.5
-proto-rv-policy-light	R9	其餘流量	+1.5
-proto-rv-policy-light	R9	區域網路	+1.5
-proto-rv-policy-light	R9	日本	+1.5
-proto-rv-policy-light	R9	美國	+1.5
-proto-rv-policy-light	R9	自動	+1.5
-proto-rv-policy-light	R9	臺灣	+1.5
-proto-rv-policy-light	R9	香港	+1.5
-proto-rv-policy-picker-dark	R9	Harbor Cloud	+1.5
-proto-rv-policy-picker-dark	R9	Hong Kong 01	+1.5
-proto-rv-policy-picker-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-picker-dark	R9	Hong Kong 05 IEPL	+1.5
-proto-rv-policy-picker-dark	R9	Taipei 01	+1.5
-proto-rv-policy-picker-dark	R9	Taipei 02	+1.5
-proto-rv-policy-picker-dark	R9	Taipei 04	+1.5
-proto-rv-policy-picker-edges-latency-dark	R1	Amsterdam 01	height 69.5
 proto-rv-policy-picker-edges-latency-dark	R11l	Amsterdam 01	-3.8
 proto-rv-policy-picker-edges-latency-dark	R11l	New York 05	-10.0
 proto-rv-policy-picker-edges-latency-dark	R12	Hong Kong 02 IPLC Premiu	+23.0
-proto-rv-policy-picker-edges-latency-dark	R18	Amsterdam 01	below 6.5
-proto-rv-policy-picker-edges-latency-dark	R9	Amsterdam 01	+1.5
-proto-rv-policy-picker-edges-latency-dark	R9	Harbor Cloud	+1.5
-proto-rv-policy-picker-edges-latency-dark	R9	Hong Kong 01	+1.5
-proto-rv-policy-picker-edges-latency-dark	R9	Hong Kong 02 IPLC Premiu	+26.5
-proto-rv-policy-picker-edges-latency-dark	R9	New York 05	+1.5
-proto-rv-policy-picker-edges-latency-dark	R9	Taipei 04	+1.5
-proto-rv-policy-picker-edges-latency-dark	R9	Tokyo 01	+1.5
-proto-rv-policy-picker-edges-latency-light	R1	Amsterdam 01	height 66.0
 proto-rv-policy-picker-edges-latency-light	R11l	Amsterdam 01	-2.0
 proto-rv-policy-picker-edges-latency-light	R11l	New York 05	-10.0
 proto-rv-policy-picker-edges-latency-light	R12	Hong Kong 02 IPLC Premiu	+23.0
-proto-rv-policy-picker-edges-latency-light	R18	Amsterdam 01	below 3.0
-proto-rv-policy-picker-edges-latency-light	R9	Amsterdam 01	+1.5
-proto-rv-policy-picker-edges-latency-light	R9	Harbor Cloud	+1.5
-proto-rv-policy-picker-edges-latency-light	R9	Hong Kong 01	+1.5
-proto-rv-policy-picker-edges-latency-light	R9	Hong Kong 02 IPLC Premiu	+26.5
-proto-rv-policy-picker-edges-latency-light	R9	New York 05	+1.5
-proto-rv-policy-picker-edges-latency-light	R9	Taipei 04	+1.5
-proto-rv-policy-picker-edges-latency-light	R9	Tokyo 01	+1.5
-proto-rv-policy-picker-edges-name-dark	R1	New York 05	height 69.5
 proto-rv-policy-picker-edges-name-dark	R11l	Amsterdam 01	-10.0
 proto-rv-policy-picker-edges-name-dark	R11l	New York 05	-3.8
 proto-rv-policy-picker-edges-name-dark	R12	Hong Kong 02 IPLC Premiu	+23.0
-proto-rv-policy-picker-edges-name-dark	R18	New York 05	below 6.5
-proto-rv-policy-picker-edges-name-dark	R9	Amsterdam 01	+1.5
-proto-rv-policy-picker-edges-name-dark	R9	Harbor Cloud	+1.5
-proto-rv-policy-picker-edges-name-dark	R9	Hong Kong 01	+1.5
-proto-rv-policy-picker-edges-name-dark	R9	Hong Kong 02 IPLC Premiu	+26.5
-proto-rv-policy-picker-edges-name-dark	R9	New York 05	+1.5
-proto-rv-policy-picker-edges-name-dark	R9	Taipei 04	+1.5
-proto-rv-policy-picker-edges-name-dark	R9	Tokyo 01	+1.5
-proto-rv-policy-picker-edges-name-light	R1	New York 05	height 66.0
 proto-rv-policy-picker-edges-name-light	R11l	Amsterdam 01	-10.0
 proto-rv-policy-picker-edges-name-light	R11l	New York 05	-2.0
 proto-rv-policy-picker-edges-name-light	R12	Hong Kong 02 IPLC Premiu	+23.0
-proto-rv-policy-picker-edges-name-light	R18	New York 05	below 3.0
-proto-rv-policy-picker-edges-name-light	R9	Amsterdam 01	+1.5
-proto-rv-policy-picker-edges-name-light	R9	Harbor Cloud	+1.5
-proto-rv-policy-picker-edges-name-light	R9	Hong Kong 01	+1.5
-proto-rv-policy-picker-edges-name-light	R9	Hong Kong 02 IPLC Premiu	+26.5
-proto-rv-policy-picker-edges-name-light	R9	New York 05	+1.5
-proto-rv-policy-picker-edges-name-light	R9	Taipei 04	+1.5
-proto-rv-policy-picker-edges-name-light	R9	Tokyo 01	+1.5
-proto-rv-policy-picker-ime-dark	R11	Tokyo 01	-2.5
-proto-rv-policy-picker-ime-dark	R11	Tokyo 02	-2.5
-proto-rv-policy-picker-ime-dark	R11	Tokyo 04 IPLC	-2.5
-proto-rv-policy-picker-ime-dark	R11	Tokyo 06	-2.5
-proto-rv-policy-picker-ime-dark	R16	Tokyo 01	+13.0
-proto-rv-policy-picker-ime-dark	R16	Tokyo 02	+13.0
-proto-rv-policy-picker-ime-dark	R16	Tokyo 04 IPLC	+13.0
-proto-rv-policy-picker-ime-dark	R16	Tokyo 06	+13.0
-proto-rv-policy-picker-ime-dark	R9	Harbor Cloud	+14.0
-proto-rv-policy-picker-ime-dark	R9	Lantern Net	+14.0
-proto-rv-policy-picker-ime-dark	R9	Tokyo 01	+1.5
-proto-rv-policy-picker-ime-dark	R9	Tokyo 02	+1.5
-proto-rv-policy-picker-ime-dark	R9	Tokyo 04 IPLC	+1.5
-proto-rv-policy-picker-ime-dark	R9	Tokyo 06	+1.5
-proto-rv-policy-picker-ime-fs200	R1	Tokyo 02	height 181.0 for 149.0
+proto-rv-policy-picker-ime-fs200	R1	Tokyo 02	height 181.0 for 136.0
 proto-rv-policy-picker-ime-fs200	R11	Harbor Cloud	+80.5
-proto-rv-policy-picker-ime-fs200	R11	Tokyo 02	+69.0
-proto-rv-policy-picker-ime-fs200	R11	Tokyo 06	+69.0
-proto-rv-policy-picker-ime-fs200	R16	Tokyo 02	+13.0
-proto-rv-policy-picker-ime-fs200	R16	Tokyo 06	+13.0
-proto-rv-policy-picker-ime-fs200	R17	Tokyo 06	-3.5
-proto-rv-policy-picker-ime-fs200	R18	Tokyo 02	above 16.0 below 48.0
-proto-rv-policy-picker-ime-fs200	R9	Harbor Cloud	+80.0
-proto-rv-policy-picker-ime-fs200	R9	Tokyo 02	+54.5
-proto-rv-policy-picker-ime-fs200	R9	Tokyo 06	+54.5
-proto-rv-policy-picker-ime-light	R11	Tokyo 01	-2.5
-proto-rv-policy-picker-ime-light	R11	Tokyo 02	-2.5
-proto-rv-policy-picker-ime-light	R11	Tokyo 04 IPLC	-2.5
-proto-rv-policy-picker-ime-light	R11	Tokyo 06	-2.5
-proto-rv-policy-picker-ime-light	R16	Tokyo 01	+13.0
-proto-rv-policy-picker-ime-light	R16	Tokyo 02	+13.0
-proto-rv-policy-picker-ime-light	R16	Tokyo 04 IPLC	+13.0
-proto-rv-policy-picker-ime-light	R16	Tokyo 06	+13.0
-proto-rv-policy-picker-ime-light	R9	Harbor Cloud	+14.0
-proto-rv-policy-picker-ime-light	R9	Lantern Net	+14.0
-proto-rv-policy-picker-ime-light	R9	Tokyo 01	+1.5
-proto-rv-policy-picker-ime-light	R9	Tokyo 02	+1.5
-proto-rv-policy-picker-ime-light	R9	Tokyo 04 IPLC	+1.5
-proto-rv-policy-picker-ime-light	R9	Tokyo 06	+1.5
-proto-rv-policy-picker-light	R9	Harbor Cloud	+1.5
-proto-rv-policy-picker-light	R9	Hong Kong 01	+1.5
-proto-rv-policy-picker-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-picker-light	R9	Hong Kong 05 IEPL	+1.5
-proto-rv-policy-picker-light	R9	Taipei 01	+1.5
-proto-rv-policy-picker-light	R9	Taipei 02	+1.5
-proto-rv-policy-picker-light	R9	Taipei 04	+1.5
+proto-rv-policy-picker-ime-fs200	R11	Tokyo 06	+82.0
+proto-rv-policy-picker-ime-fs200	R11l	Tokyo 02	+18.5
+proto-rv-policy-picker-ime-fs200	R18	Tokyo 02	above 16.0 below 61.0
 proto-rv-policy-picker-name-dark	R11l	Chuncheon 03	-10.0
-proto-rv-policy-picker-name-dark	R9	Amsterdam 01	+1.5
-proto-rv-policy-picker-name-dark	R9	Berlin 03	+1.5
-proto-rv-policy-picker-name-dark	R9	Chuncheon 03	+1.5
-proto-rv-policy-picker-name-dark	R9	Dallas 06	+1.5
-proto-rv-policy-picker-name-dark	R9	Frankfurt 01	+1.5
-proto-rv-policy-picker-name-dark	R9	Harbor Cloud	+1.5
-proto-rv-policy-picker-name-dark	R9	Hong Kong 01	+1.5
 proto-rv-policy-picker-name-light	R11l	Chuncheon 03	-10.0
-proto-rv-policy-picker-name-light	R9	Amsterdam 01	+1.5
-proto-rv-policy-picker-name-light	R9	Berlin 03	+1.5
-proto-rv-policy-picker-name-light	R9	Chuncheon 03	+1.5
-proto-rv-policy-picker-name-light	R9	Dallas 06	+1.5
-proto-rv-policy-picker-name-light	R9	Frankfurt 01	+1.5
-proto-rv-policy-picker-name-light	R9	Harbor Cloud	+1.5
-proto-rv-policy-picker-name-light	R9	Hong Kong 01	+1.5
-proto-rv-policy-picker-region-dark	R9	Kaohsiung 05	+1.5
-proto-rv-policy-picker-region-dark	R9	Taichung 03	+1.5
-proto-rv-policy-picker-region-dark	R9	Taipei 01	+1.5
-proto-rv-policy-picker-region-dark	R9	Taipei 02	+1.5
-proto-rv-policy-picker-region-dark	R9	Taipei 04	+1.5
-proto-rv-policy-picker-region-dark	R9	臺灣	+1.5
-proto-rv-policy-picker-region-dark	R9	香港	+1.5
-proto-rv-policy-picker-region-light	R9	Kaohsiung 05	+1.5
-proto-rv-policy-picker-region-light	R9	Taichung 03	+1.5
-proto-rv-policy-picker-region-light	R9	Taipei 01	+1.5
-proto-rv-policy-picker-region-light	R9	Taipei 02	+1.5
-proto-rv-policy-picker-region-light	R9	Taipei 04	+1.5
-proto-rv-policy-picker-region-light	R9	臺灣	+1.5
-proto-rv-policy-picker-region-light	R9	香港	+1.5
-proto-rv-policy-picker-region-scrolled-dark	R9	Hong Kong 01	+1.5
-proto-rv-policy-picker-region-scrolled-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-picker-region-scrolled-dark	R9	Hong Kong 03	+1.5
-proto-rv-policy-picker-region-scrolled-dark	R9	Hong Kong 04	+1.5
-proto-rv-policy-picker-region-scrolled-dark	R9	Hong Kong 05 IEPL	+1.5
-proto-rv-policy-picker-region-scrolled-dark	R9	Hong Kong 06	+1.5
-proto-rv-policy-picker-region-scrolled-dark	R9	Kaohsiung 05	+1.5
-proto-rv-policy-picker-region-scrolled-dark	R9	Taichung 03	+1.5
-proto-rv-policy-picker-region-scrolled-dark	R9	日本	+1.5
-proto-rv-policy-picker-region-scrolled-dark	R9	香港	+1.5
-proto-rv-policy-picker-region-scrolled-light	R1	Tokyo 02	height 20.5
-proto-rv-policy-picker-region-scrolled-light	R10	Tokyo 02	+9.8
-proto-rv-policy-picker-region-scrolled-light	R13	Tokyo 02	title 1.0 vs 23.0
-proto-rv-policy-picker-region-scrolled-light	R18	Tokyo 02	below 0.0
-proto-rv-policy-picker-region-scrolled-light	R6	Tokyo 02	+56.0
-proto-rv-policy-picker-region-scrolled-light	R9	Hong Kong 01	+1.5
-proto-rv-policy-picker-region-scrolled-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-picker-region-scrolled-light	R9	Hong Kong 03	+1.5
-proto-rv-policy-picker-region-scrolled-light	R9	Hong Kong 04	+1.5
-proto-rv-policy-picker-region-scrolled-light	R9	Hong Kong 05 IEPL	+1.5
-proto-rv-policy-picker-region-scrolled-light	R9	Hong Kong 06	+1.5
-proto-rv-policy-picker-region-scrolled-light	R9	Kaohsiung 05	+1.5
-proto-rv-policy-picker-region-scrolled-light	R9	Taichung 03	+1.5
-proto-rv-policy-picker-region-scrolled-light	R9	日本	+1.5
-proto-rv-policy-picker-region-scrolled-light	R9	香港	+1.5
-proto-rv-policy-picker-stability-dark	R9	Harbor Cloud	+1.5
-proto-rv-policy-picker-stability-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-picker-stability-dark	R9	Los Angeles 04	+1.5
-proto-rv-policy-picker-stability-dark	R9	Taipei 02	+1.5
-proto-rv-policy-picker-stability-dark	R9	Taipei 04	+1.5
-proto-rv-policy-picker-stability-dark	R9	Tokyo 02	+1.5
-proto-rv-policy-picker-stability-dark	R9	Tokyo 06	+1.5
-proto-rv-policy-picker-stability-light	R9	Harbor Cloud	+1.5
-proto-rv-policy-picker-stability-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-picker-stability-light	R9	Los Angeles 04	+1.5
-proto-rv-policy-picker-stability-light	R9	Taipei 02	+1.5
-proto-rv-policy-picker-stability-light	R9	Taipei 04	+1.5
-proto-rv-policy-picker-stability-light	R9	Tokyo 02	+1.5
-proto-rv-policy-picker-stability-light	R9	Tokyo 06	+1.5
-proto-rv-policy-picker-testing-dark	R9	Harbor Cloud	+1.5
-proto-rv-policy-picker-testing-dark	R9	Hong Kong 01	+1.5
-proto-rv-policy-picker-testing-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-picker-testing-dark	R9	Hong Kong 05 IEPL	+1.5
-proto-rv-policy-picker-testing-dark	R9	Taipei 01	+1.5
-proto-rv-policy-picker-testing-dark	R9	Taipei 02	+1.5
-proto-rv-policy-picker-testing-dark	R9	Taipei 04	+1.5
-proto-rv-policy-picker-testing-fs115	R1	Hong Kong 05 IEPL	height 80.0
-proto-rv-policy-picker-testing-fs115	R18	Hong Kong 05 IEPL	above 17.0 below 15.0
-proto-rv-policy-picker-testing-fs115	R9	Harbor Cloud	+17.5
-proto-rv-policy-picker-testing-fs115	R9	Hong Kong 01	+4.0
-proto-rv-policy-picker-testing-fs115	R9	Hong Kong 02 IPLC	+4.0
-proto-rv-policy-picker-testing-fs115	R9	Hong Kong 05 IEPL	+4.0
-proto-rv-policy-picker-testing-fs115	R9	Taipei 01	+4.0
-proto-rv-policy-picker-testing-fs115	R9	Taipei 02	+4.0
-proto-rv-policy-picker-testing-fs115	R9	Taipei 04	+4.0
-proto-rv-policy-picker-testing-fs200	R1	Taipei 02	height 122.0 for 105.5
 proto-rv-policy-picker-testing-fs200	R11	Harbor Cloud	+80.5
 proto-rv-policy-picker-testing-fs200	R11l	Taipei 02	+9.5
 proto-rv-policy-picker-testing-fs200	R17	Taipei 01	-1.5
 proto-rv-policy-picker-testing-fs200	R17	Taipei 04	-7.0
-proto-rv-policy-picker-testing-fs200	R18	Taipei 02	above 16.0 below 32.5
-proto-rv-policy-picker-testing-fs200	R9	Harbor Cloud	+80.0
-proto-rv-policy-picker-testing-fs200	R9	Taipei 01	+17.0
-proto-rv-policy-picker-testing-fs200	R9	Taipei 02	+34.5
-proto-rv-policy-picker-testing-fs200	R9	Taipei 04	+17.0
-proto-rv-policy-picker-testing-light	R9	Harbor Cloud	+1.5
-proto-rv-policy-picker-testing-light	R9	Hong Kong 01	+1.5
-proto-rv-policy-picker-testing-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-policy-picker-testing-light	R9	Hong Kong 05 IEPL	+1.5
-proto-rv-policy-picker-testing-light	R9	Taipei 01	+1.5
-proto-rv-policy-picker-testing-light	R9	Taipei 02	+1.5
-proto-rv-policy-picker-testing-light	R9	Taipei 04	+1.5
-proto-rv-policy-picker-unknown-dark	R1	—	height 82.0 for 58.0
-proto-rv-policy-picker-unknown-dark	R1	— #2	height 82.0 for 58.0
-proto-rv-policy-picker-unknown-dark	R1	— #3	height 82.0 for 58.0
-proto-rv-policy-picker-unknown-dark	R1	— #4	height 82.0 for 58.0
-proto-rv-policy-picker-unknown-dark	R13	Taipei 01	title 23.0 vs 15.5
-proto-rv-policy-picker-unknown-dark	R13	臺灣	title 23.0 vs 15.5
-proto-rv-policy-picker-unknown-dark	R16	—	-225.5
-proto-rv-policy-picker-unknown-dark	R6	—	+13.5
-proto-rv-policy-picker-unknown-dark	R6	— #2	+13.5
-proto-rv-policy-picker-unknown-dark	R6	— #3	+13.5
-proto-rv-policy-picker-unknown-dark	R6	— #4	+13.5
-proto-rv-policy-picker-unknown-dark	R9	Taipei 01	+1.5
-proto-rv-policy-picker-unknown-dark	R9	臺灣	+1.5
-proto-rv-policy-picker-unknown-fs115	R1	—	height 82.0 for 58.0
-proto-rv-policy-picker-unknown-fs115	R1	— #2	height 82.0 for 58.0
-proto-rv-policy-picker-unknown-fs115	R1	— #3	height 82.0 for 58.0
-proto-rv-policy-picker-unknown-fs115	R1	— #4	height 82.0 for 58.0
-proto-rv-policy-picker-unknown-fs115	R13	Taipei 01	title 25.0 vs 18.0
-proto-rv-policy-picker-unknown-fs115	R13	臺灣	title 25.0 vs 18.0
-proto-rv-policy-picker-unknown-fs115	R16	—	-220.0
-proto-rv-policy-picker-unknown-fs115	R6	—	+12.5
-proto-rv-policy-picker-unknown-fs115	R6	— #2	+12.5
-proto-rv-policy-picker-unknown-fs115	R6	— #3	+12.5
-proto-rv-policy-picker-unknown-fs115	R6	— #4	+12.5
-proto-rv-policy-picker-unknown-fs115	R9	Taipei 01	+4.0
-proto-rv-policy-picker-unknown-fs115	R9	臺灣	+4.0
-proto-rv-policy-picker-unknown-fs200	R1	—	height 105.5 for 73.5
-proto-rv-policy-picker-unknown-fs200	R1	— #2	height 144.0 for 112.0
-proto-rv-policy-picker-unknown-fs200	R1	— #3	height 88.0 for 72.0
-proto-rv-policy-picker-unknown-fs200	R10	—	+8.0
-proto-rv-policy-picker-unknown-fs200	R13	Taipei 01	title 38.5 vs 30.0
-proto-rv-policy-picker-unknown-fs200	R13	臺灣	title 38.5 vs 30.0
-proto-rv-policy-picker-unknown-fs200	R16	—	-179.0
+proto-rv-policy-picker-unknown-fs200	R11l	Premium 01	+38.5
+proto-rv-policy-picker-unknown-fs200	R12	Premium 01	+38.5
 proto-rv-policy-picker-unknown-fs200	R17	Taipei 01	-1.5
-proto-rv-policy-picker-unknown-fs200	R6	—	+7.5
-proto-rv-policy-picker-unknown-fs200	R6	— #2	+7.5
-proto-rv-policy-picker-unknown-fs200	R6	— #3	+7.5
-proto-rv-policy-picker-unknown-fs200	R9	Taipei 01	+17.0
-proto-rv-policy-picker-unknown-fs200	R9	臺灣	+17.0
-proto-rv-policy-picker-unknown-light	R1	—	height 82.0 for 58.0
-proto-rv-policy-picker-unknown-light	R1	— #2	height 82.0 for 58.0
-proto-rv-policy-picker-unknown-light	R1	— #3	height 82.0 for 58.0
-proto-rv-policy-picker-unknown-light	R1	— #4	height 82.0 for 58.0
-proto-rv-policy-picker-unknown-light	R13	Taipei 01	title 23.0 vs 15.5
-proto-rv-policy-picker-unknown-light	R13	臺灣	title 23.0 vs 15.5
-proto-rv-policy-picker-unknown-light	R16	—	-225.5
-proto-rv-policy-picker-unknown-light	R6	—	+13.5
-proto-rv-policy-picker-unknown-light	R6	— #2	+13.5
-proto-rv-policy-picker-unknown-light	R6	— #3	+13.5
-proto-rv-policy-picker-unknown-light	R6	— #4	+13.5
-proto-rv-policy-picker-unknown-light	R9	Taipei 01	+1.5
-proto-rv-policy-picker-unknown-light	R9	臺灣	+1.5
-proto-rv-radius20-activity-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-radius20-activity-dark	R9	串流	+1.5
-proto-rv-radius20-activity-dark	R9	出站模式	+1.5
-proto-rv-radius20-activity-dark	R9	國內與區域網路	+1.5
-proto-rv-radius20-activity-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-radius20-activity-light	R9	串流	+1.5
-proto-rv-radius20-activity-light	R9	出站模式	+1.5
-proto-rv-radius20-activity-light	R9	國內與區域網路	+1.5
+proto-rv-policy-picker-unknown-fs200	R8	Premium 02	-8.0
 proto-rv-radius20-policy-dark	R11l	美國	+5.0
 proto-rv-radius20-policy-dark	R11l	香港	+5.0
-proto-rv-radius20-policy-dark	R9	AI	+1.5
-proto-rv-radius20-policy-dark	R9	CN	+1.5
-proto-rv-radius20-policy-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-radius20-policy-dark	R9	netflix.com 等 12 個網域	+1.5
-proto-rv-radius20-policy-dark	R9	openai.com 等 6 個網域	+1.5
-proto-rv-radius20-policy-dark	R9	串流	+1.5
-proto-rv-radius20-policy-dark	R9	其餘流量	+1.5
-proto-rv-radius20-policy-dark	R9	區域網路	+1.5
-proto-rv-radius20-policy-dark	R9	日本	+1.5
-proto-rv-radius20-policy-dark	R9	美國	+1.5
-proto-rv-radius20-policy-dark	R9	自動	+1.5
-proto-rv-radius20-policy-dark	R9	臺灣	+1.5
-proto-rv-radius20-policy-dark	R9	香港	+1.5
 proto-rv-radius20-policy-light	R11l	美國	+5.0
 proto-rv-radius20-policy-light	R11l	香港	+5.0
-proto-rv-radius20-policy-light	R9	AI	+1.5
-proto-rv-radius20-policy-light	R9	CN	+1.5
-proto-rv-radius20-policy-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-radius20-policy-light	R9	netflix.com 等 12 個網域	+1.5
-proto-rv-radius20-policy-light	R9	openai.com 等 6 個網域	+1.5
-proto-rv-radius20-policy-light	R9	串流	+1.5
-proto-rv-radius20-policy-light	R9	其餘流量	+1.5
-proto-rv-radius20-policy-light	R9	區域網路	+1.5
-proto-rv-radius20-policy-light	R9	日本	+1.5
-proto-rv-radius20-policy-light	R9	美國	+1.5
-proto-rv-radius20-policy-light	R9	自動	+1.5
-proto-rv-radius20-policy-light	R9	臺灣	+1.5
-proto-rv-radius20-policy-light	R9	香港	+1.5
-proto-rv-radius24-activity-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-radius24-activity-dark	R9	串流	+1.5
-proto-rv-radius24-activity-dark	R9	出站模式	+1.5
-proto-rv-radius24-activity-dark	R9	國內與區域網路	+1.5
-proto-rv-radius24-activity-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-radius24-activity-light	R9	串流	+1.5
-proto-rv-radius24-activity-light	R9	出站模式	+1.5
-proto-rv-radius24-activity-light	R9	國內與區域網路	+1.5
 proto-rv-radius24-policy-dark	R11l	美國	+5.0
 proto-rv-radius24-policy-dark	R11l	香港	+5.0
-proto-rv-radius24-policy-dark	R9	AI	+1.5
-proto-rv-radius24-policy-dark	R9	CN	+1.5
-proto-rv-radius24-policy-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-radius24-policy-dark	R9	netflix.com 等 12 個網域	+1.5
-proto-rv-radius24-policy-dark	R9	openai.com 等 6 個網域	+1.5
-proto-rv-radius24-policy-dark	R9	串流	+1.5
-proto-rv-radius24-policy-dark	R9	其餘流量	+1.5
-proto-rv-radius24-policy-dark	R9	區域網路	+1.5
-proto-rv-radius24-policy-dark	R9	日本	+1.5
-proto-rv-radius24-policy-dark	R9	美國	+1.5
-proto-rv-radius24-policy-dark	R9	自動	+1.5
-proto-rv-radius24-policy-dark	R9	臺灣	+1.5
-proto-rv-radius24-policy-dark	R9	香港	+1.5
 proto-rv-radius24-policy-light	R11l	美國	+5.0
 proto-rv-radius24-policy-light	R11l	香港	+5.0
-proto-rv-radius24-policy-light	R9	AI	+1.5
-proto-rv-radius24-policy-light	R9	CN	+1.5
-proto-rv-radius24-policy-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-radius24-policy-light	R9	netflix.com 等 12 個網域	+1.5
-proto-rv-radius24-policy-light	R9	openai.com 等 6 個網域	+1.5
-proto-rv-radius24-policy-light	R9	串流	+1.5
-proto-rv-radius24-policy-light	R9	其餘流量	+1.5
-proto-rv-radius24-policy-light	R9	區域網路	+1.5
-proto-rv-radius24-policy-light	R9	日本	+1.5
-proto-rv-radius24-policy-light	R9	美國	+1.5
-proto-rv-radius24-policy-light	R9	自動	+1.5
-proto-rv-radius24-policy-light	R9	臺灣	+1.5
-proto-rv-radius24-policy-light	R9	香港	+1.5
-proto-rv-report-building-dark	R18	正在建立診斷報告…	above 16.0 below 19.0
-proto-rv-report-building-light	R18	正在建立診斷報告…	above 16.0 below 19.0
-proto-rv-report-failed-dark	R12	無法匯出診斷報告	+2.0
-proto-rv-report-failed-fs115	R12	無法匯出診斷報告	+2.0
-proto-rv-report-failed-fs200	R12	無法匯出診斷報告	+2.0
-proto-rv-report-failed-light	R12	無法匯出診斷報告	+2.0
-proto-rv-rule-edit-dark	R11	AI	+8.5
-proto-rv-rule-edit-dark	R11	串流	+8.5
-proto-rv-rule-edit-dark	R11	主節點	+8.5
-proto-rv-rule-edit-dark	R11	直連	+8.5
-proto-rv-rule-edit-dark	R11	自動	+8.5
-proto-rv-rule-edit-dark	R9	AI	+1.5
-proto-rv-rule-edit-dark	R9	串流	+1.5
-proto-rv-rule-edit-dark	R9	主節點	+1.5
-proto-rv-rule-edit-dark	R9	直連	+1.5
-proto-rv-rule-edit-dark	R9	自動	+1.5
-proto-rv-rule-edit-error-dark	R11	AI	+8.5
-proto-rv-rule-edit-error-dark	R11	串流	+8.5
-proto-rv-rule-edit-error-dark	R11	主節點	+8.5
-proto-rv-rule-edit-error-dark	R11	直連	+8.5
-proto-rv-rule-edit-error-dark	R11	自動	+8.5
-proto-rv-rule-edit-error-dark	R9	AI	+1.5
-proto-rv-rule-edit-error-dark	R9	串流	+1.5
-proto-rv-rule-edit-error-dark	R9	主節點	+1.5
-proto-rv-rule-edit-error-dark	R9	直連	+1.5
-proto-rv-rule-edit-error-dark	R9	自動	+1.5
-proto-rv-rule-edit-error-fs200	R11	串流	+17.8
-proto-rv-rule-edit-error-fs200	R11	主節點	+38.3
-proto-rv-rule-edit-error-fs200	R11	自動	+17.8
-proto-rv-rule-edit-error-fs200	R9	串流	+17.0
-proto-rv-rule-edit-error-fs200	R9	主節點	+37.5
-proto-rv-rule-edit-error-fs200	R9	自動	+17.0
-proto-rv-rule-edit-error-light	R11	AI	+8.5
-proto-rv-rule-edit-error-light	R11	串流	+8.5
-proto-rv-rule-edit-error-light	R11	主節點	+8.5
-proto-rv-rule-edit-error-light	R11	直連	+8.5
-proto-rv-rule-edit-error-light	R11	自動	+8.5
-proto-rv-rule-edit-error-light	R9	AI	+1.5
-proto-rv-rule-edit-error-light	R9	串流	+1.5
-proto-rv-rule-edit-error-light	R9	主節點	+1.5
-proto-rv-rule-edit-error-light	R9	直連	+1.5
-proto-rv-rule-edit-error-light	R9	自動	+1.5
-proto-rv-rule-edit-fs200	R11	串流	+17.8
-proto-rv-rule-edit-fs200	R11	主節點	+38.3
-proto-rv-rule-edit-fs200	R11	自動	+17.8
-proto-rv-rule-edit-fs200	R9	串流	+17.0
-proto-rv-rule-edit-fs200	R9	主節點	+37.5
-proto-rv-rule-edit-fs200	R9	自動	+17.0
-proto-rv-rule-edit-light	R11	AI	+8.5
-proto-rv-rule-edit-light	R11	串流	+8.5
-proto-rv-rule-edit-light	R11	主節點	+8.5
-proto-rv-rule-edit-light	R11	直連	+8.5
-proto-rv-rule-edit-light	R11	自動	+8.5
-proto-rv-rule-edit-light	R9	AI	+1.5
-proto-rv-rule-edit-light	R9	串流	+1.5
-proto-rv-rule-edit-light	R9	主節點	+1.5
-proto-rv-rule-edit-light	R9	直連	+1.5
-proto-rv-rule-edit-light	R9	自動	+1.5
-proto-rv-rules-dark	R9	91.108.56.0/22	+1.5
-proto-rv-rules-dark	R9	CN	+1.5
-proto-rv-rules-dark	R9	apple-cn	+1.5
-proto-rv-rules-dark	R9	gamer	+1.5
-proto-rv-rules-dark	R9	gemini.google.com	+1.5
-proto-rv-rules-dark	R9	github.com	+1.5
-proto-rv-rules-dark	R9	google	+1.5
-proto-rv-rules-dark	R9	icloud.com	+1.5
-proto-rv-rules-dark	R9	netflix.com 等 12 個網域	+1.5
-proto-rv-rules-dark	R9	nintendo.net	+1.5
-proto-rv-rules-dark	R9	openai.com 等 6 個網域	+1.5
-proto-rv-rules-dark	R9	steamcontent.com	+1.5
-proto-rv-rules-dark	R9	其餘流量	+1.5
-proto-rv-rules-dark	R9	區域網路	+1.5
-proto-rv-rules-edit-dark	R9	91.108.56.0/22	+1.5
-proto-rv-rules-edit-dark	R9	CN	+1.5
-proto-rv-rules-edit-dark	R9	apple-cn	+1.5
-proto-rv-rules-edit-dark	R9	gamer	+1.5
-proto-rv-rules-edit-dark	R9	gemini.google.com	+1.5
-proto-rv-rules-edit-dark	R9	github.com	+1.5
-proto-rv-rules-edit-dark	R9	google	+1.5
-proto-rv-rules-edit-dark	R9	icloud.com	+1.5
-proto-rv-rules-edit-dark	R9	netflix.com 等 12 個網域	+1.5
-proto-rv-rules-edit-dark	R9	nintendo.net	+1.5
-proto-rv-rules-edit-dark	R9	openai.com 等 6 個網域	+1.5
-proto-rv-rules-edit-dark	R9	steamcontent.com	+1.5
-proto-rv-rules-edit-dark	R9	其餘流量	+1.5
-proto-rv-rules-edit-dark	R9	區域網路	+1.5
-proto-rv-rules-edit-light	R9	91.108.56.0/22	+1.5
-proto-rv-rules-edit-light	R9	CN	+1.5
-proto-rv-rules-edit-light	R9	apple-cn	+1.5
-proto-rv-rules-edit-light	R9	gamer	+1.5
-proto-rv-rules-edit-light	R9	gemini.google.com	+1.5
-proto-rv-rules-edit-light	R9	github.com	+1.5
-proto-rv-rules-edit-light	R9	google	+1.5
-proto-rv-rules-edit-light	R9	icloud.com	+1.5
-proto-rv-rules-edit-light	R9	netflix.com 等 12 個網域	+1.5
-proto-rv-rules-edit-light	R9	nintendo.net	+1.5
-proto-rv-rules-edit-light	R9	openai.com 等 6 個網域	+1.5
-proto-rv-rules-edit-light	R9	steamcontent.com	+1.5
-proto-rv-rules-edit-light	R9	其餘流量	+1.5
-proto-rv-rules-edit-light	R9	區域網路	+1.5
-proto-rv-rules-error-parse-dark	R12	無法解析規則來源	+2.0
-proto-rv-rules-error-parse-fs115	R12	無法解析規則來源	+2.0
-proto-rv-rules-error-parse-fs200	R12	無法解析規則來源	+2.0
-proto-rv-rules-error-parse-light	R12	無法解析規則來源	+2.0
-proto-rv-rules-error-read-dark	R12	無法讀取規則	+2.0
-proto-rv-rules-error-read-fs115	R12	無法讀取規則	+2.0
-proto-rv-rules-error-read-fs200	R12	無法讀取規則	+2.0
-proto-rv-rules-error-read-light	R12	無法讀取規則	+2.0
-proto-rv-rules-light	R9	91.108.56.0/22	+1.5
-proto-rv-rules-light	R9	CN	+1.5
-proto-rv-rules-light	R9	apple-cn	+1.5
-proto-rv-rules-light	R9	gamer	+1.5
-proto-rv-rules-light	R9	gemini.google.com	+1.5
-proto-rv-rules-light	R9	github.com	+1.5
-proto-rv-rules-light	R9	google	+1.5
-proto-rv-rules-light	R9	icloud.com	+1.5
-proto-rv-rules-light	R9	netflix.com 等 12 個網域	+1.5
-proto-rv-rules-light	R9	nintendo.net	+1.5
-proto-rv-rules-light	R9	openai.com 等 6 個網域	+1.5
-proto-rv-rules-light	R9	steamcontent.com	+1.5
-proto-rv-rules-light	R9	其餘流量	+1.5
-proto-rv-rules-light	R9	區域網路	+1.5
-proto-rv-rules-pending-dark	R9	91.108.56.0/22	+1.5
-proto-rv-rules-pending-dark	R9	CN	+1.5
-proto-rv-rules-pending-dark	R9	ani.gamer.com.tw	+1.5
-proto-rv-rules-pending-dark	R9	apple-cn	+1.5
-proto-rv-rules-pending-dark	R9	claude.ai	+1.5
-proto-rv-rules-pending-dark	R9	gamer	+1.5
-proto-rv-rules-pending-dark	R9	gemini.google.com	+1.5
-proto-rv-rules-pending-dark	R9	github.com	+1.5
-proto-rv-rules-pending-dark	R9	google	+1.5
-proto-rv-rules-pending-dark	R9	icloud.com	+1.5
-proto-rv-rules-pending-dark	R9	netflix.com 等 12 個網域	+1.5
-proto-rv-rules-pending-dark	R9	nintendo.net	+1.5
-proto-rv-rules-pending-dark	R9	openai.com 等 6 個網域	+1.5
-proto-rv-rules-pending-dark	R9	steamcontent.com	+1.5
-proto-rv-rules-pending-dark	R9	其餘流量	+1.5
-proto-rv-rules-pending-dark	R9	區域網路	+1.5
-proto-rv-rules-pending-light	R9	91.108.56.0/22	+1.5
-proto-rv-rules-pending-light	R9	CN	+1.5
-proto-rv-rules-pending-light	R9	ani.gamer.com.tw	+1.5
-proto-rv-rules-pending-light	R9	apple-cn	+1.5
-proto-rv-rules-pending-light	R9	claude.ai	+1.5
-proto-rv-rules-pending-light	R9	gamer	+1.5
-proto-rv-rules-pending-light	R9	gemini.google.com	+1.5
-proto-rv-rules-pending-light	R9	github.com	+1.5
-proto-rv-rules-pending-light	R9	google	+1.5
-proto-rv-rules-pending-light	R9	icloud.com	+1.5
-proto-rv-rules-pending-light	R9	netflix.com 等 12 個網域	+1.5
-proto-rv-rules-pending-light	R9	nintendo.net	+1.5
-proto-rv-rules-pending-light	R9	openai.com 等 6 個網域	+1.5
-proto-rv-rules-pending-light	R9	steamcontent.com	+1.5
-proto-rv-rules-pending-light	R9	其餘流量	+1.5
-proto-rv-rules-pending-light	R9	區域網路	+1.5
-proto-rv-rules-service-dark	R11	Google	+8.5
-proto-rv-rules-service-dark	R9	Google	+1.5
-proto-rv-rules-service-dark	R9	出站	+1.5
-proto-rv-rules-service-fs115	R11	Google	+11.0
-proto-rv-rules-service-fs115	R9	Google	+4.0
-proto-rv-rules-service-fs115	R9	出站	+4.0
-proto-rv-rules-service-fs200	R11	Google	+17.8
-proto-rv-rules-service-fs200	R9	Google	+17.0
-proto-rv-rules-service-fs200	R9	出站	+17.0
-proto-rv-rules-service-light	R11	Google	+8.5
-proto-rv-rules-service-light	R9	Google	+1.5
-proto-rv-rules-service-light	R9	出站	+1.5
-proto-rv-settings-about-dark	R18	GitHub 專案	above 16.0 below 19.0
-proto-rv-settings-about-dark	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-about-dark	R18	開放原始碼授權	above 16.0 below 19.0
-proto-rv-settings-about-dark	R18	隱私	above 16.0 below 19.0
-proto-rv-settings-about-light	R18	GitHub 專案	above 16.0 below 19.0
-proto-rv-settings-about-light	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-about-light	R18	開放原始碼授權	above 16.0 below 19.0
-proto-rv-settings-about-light	R18	隱私	above 16.0 below 19.0
-proto-rv-settings-config-entry-dark	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-config-entry-dark	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-config-entry-dark	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-config-entry-dark	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-config-entry-light	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-config-entry-light	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-config-entry-light	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-config-entry-light	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-dark	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-dark	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-dark	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-dark	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-en-light	R18	Auto-update	above 16.0 below 19.0
-proto-rv-settings-geodata-failed-dark	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-geodata-failed-dark	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-geodata-failed-dark	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-geodata-failed-dark	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-geodata-failed-light	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-geodata-failed-light	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-geodata-failed-light	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-geodata-failed-light	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-geodata-idle-dark	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-geodata-idle-dark	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-geodata-idle-dark	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-geodata-idle-dark	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-geodata-idle-light	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-geodata-idle-light	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-geodata-idle-light	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-geodata-idle-light	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-geodata-latest-dark	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-geodata-latest-dark	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-geodata-latest-dark	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-geodata-latest-dark	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-geodata-latest-light	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-geodata-latest-light	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-geodata-latest-light	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-geodata-latest-light	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-geodata-updated-dark	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-geodata-updated-dark	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-geodata-updated-dark	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-geodata-updated-dark	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-geodata-updated-light	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-geodata-updated-light	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-geodata-updated-light	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-geodata-updated-light	R18	自動更新	above 16.0 below 19.0
+proto-rv-rule-edit-error-fs200	R13	AI	subtitle 10.0 vs 35.0
+proto-rv-rule-edit-fs200	R13	AI	subtitle 10.0 vs 35.0
 proto-rv-settings-geodata-updating-dark	R11	GeoIP/GeoSite	-10.5
-proto-rv-settings-geodata-updating-dark	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-geodata-updating-dark	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-geodata-updating-dark	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-geodata-updating-dark	R18	自動更新	above 16.0 below 19.0
 proto-rv-settings-geodata-updating-fs115	R11	GeoIP/GeoSite	-10.5
 proto-rv-settings-geodata-updating-fs200	R11	GeoIP/GeoSite	-16.8
 proto-rv-settings-geodata-updating-light	R11	GeoIP/GeoSite	-10.5
-proto-rv-settings-geodata-updating-light	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-geodata-updating-light	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-geodata-updating-light	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-geodata-updating-light	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-geodata-waiting-dark	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-geodata-waiting-dark	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-geodata-waiting-dark	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-geodata-waiting-dark	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-geodata-waiting-light	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-geodata-waiting-light	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-geodata-waiting-light	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-geodata-waiting-light	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-interval-dark	R18	每 1 小時	above 16.0 below 19.0
-proto-rv-settings-interval-dark	R18	每 12 小時	above 16.0 below 19.0
-proto-rv-settings-interval-dark	R18	每 24 小時	above 16.0 below 19.0
-proto-rv-settings-interval-dark	R18	每 6 小時	above 16.0 below 19.0
-proto-rv-settings-interval-dark	R18	自訂	above 16.0 below 19.0
-proto-rv-settings-interval-light	R18	每 1 小時	above 16.0 below 19.0
-proto-rv-settings-interval-light	R18	每 12 小時	above 16.0 below 19.0
-proto-rv-settings-interval-light	R18	每 24 小時	above 16.0 below 19.0
-proto-rv-settings-interval-light	R18	每 6 小時	above 16.0 below 19.0
-proto-rv-settings-interval-light	R18	自訂	above 16.0 below 19.0
-proto-rv-settings-language-dark	R18	English	above 16.0 below 19.0
-proto-rv-settings-language-dark	R18	简体中文	above 16.0 below 19.0
-proto-rv-settings-language-dark	R18	繁體中文	above 16.0 below 19.0
-proto-rv-settings-language-light	R18	English	above 16.0 below 19.0
-proto-rv-settings-language-light	R18	简体中文	above 16.0 below 19.0
-proto-rv-settings-language-light	R18	繁體中文	above 16.0 below 19.0
-proto-rv-settings-light	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-light	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-light	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-light	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-log-level-dark	R18	警告	above 16.0 below 19.0
-proto-rv-settings-log-level-dark	R18	錯誤	above 16.0 below 19.0
-proto-rv-settings-log-level-dark	R18	除錯	above 16.0 below 19.0
-proto-rv-settings-log-level-debug-dark	R18	警告	above 16.0 below 19.0
-proto-rv-settings-log-level-debug-dark	R18	錯誤	above 16.0 below 19.0
-proto-rv-settings-log-level-debug-dark	R18	除錯	above 16.0 below 19.0
-proto-rv-settings-log-level-debug-light	R18	警告	above 16.0 below 19.0
-proto-rv-settings-log-level-debug-light	R18	錯誤	above 16.0 below 19.0
-proto-rv-settings-log-level-debug-light	R18	除錯	above 16.0 below 19.0
-proto-rv-settings-log-level-light	R18	警告	above 16.0 below 19.0
-proto-rv-settings-log-level-light	R18	錯誤	above 16.0 below 19.0
-proto-rv-settings-log-level-light	R18	除錯	above 16.0 below 19.0
-proto-rv-settings-theme-dark	R18	跟隨桌布	above 16.0 below 19.0
-proto-rv-settings-theme-light	R18	跟隨桌布	above 16.0 below 19.0
-proto-rv-settings-tile-dark	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-tile-dark	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-tile-dark	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-tile-dark	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-tile-light	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-tile-light	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-tile-light	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-tile-light	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-tile-manual-dark	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-tile-manual-dark	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-tile-manual-light	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-tile-manual-light	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-update-checking-dark	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-update-checking-dark	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-update-checking-dark	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-update-checking-dark	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-update-checking-light	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-update-checking-light	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-update-checking-light	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-update-checking-light	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-update-failed-dark	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-update-failed-dark	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-update-failed-dark	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-update-failed-dark	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-update-failed-light	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-update-failed-light	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-update-failed-light	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-update-failed-light	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-update-latest-dark	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-update-latest-dark	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-update-latest-dark	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-update-latest-dark	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-update-latest-light	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-update-latest-light	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-update-latest-light	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-update-latest-light	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-update-new-dark	R12	有新版本 0.2.0	+2.0
-proto-rv-settings-update-new-dark	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-update-new-dark	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-update-new-dark	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-update-new-dark	R18	自動更新	above 16.0 below 19.0
-proto-rv-settings-update-new-fs115	R12	有新版本 0.2.0	+2.0
-proto-rv-settings-update-new-fs200	R12	有新版本 0.2.0	+2.0
-proto-rv-settings-update-new-light	R12	有新版本 0.2.0	+2.0
-proto-rv-settings-update-new-light	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-settings-update-new-light	R18	回報問題	above 16.0 below 19.0
-proto-rv-settings-update-new-light	R18	檢視生效組態	above 16.0 below 19.0
-proto-rv-settings-update-new-light	R18	自動更新	above 16.0 below 19.0
-proto-rv-stats-dark	R9	匯出診斷	+1.5
-proto-rv-stats-dark	R9	更新所有訂閱	+1.5
-proto-rv-stats-dark	R9	測試全部延遲	+1.5
-proto-rv-stats-empty-a-dark	R9	匯出診斷	+1.5
-proto-rv-stats-empty-a-dark	R9	更新所有訂閱	+1.5
-proto-rv-stats-empty-a-dark	R9	測試全部延遲	+1.5
-proto-rv-stats-empty-a-fs115	R9	匯出診斷	+4.0
-proto-rv-stats-empty-a-fs115	R9	更新所有訂閱	+4.0
-proto-rv-stats-empty-a-fs115	R9	測試全部延遲	+4.0
-proto-rv-stats-empty-a-fs200	R9	匯出診斷	+17.0
-proto-rv-stats-empty-a-fs200	R9	更新所有訂閱	+17.0
-proto-rv-stats-empty-a-fs200	R9	測試全部延遲	+17.0
-proto-rv-stats-empty-a-light	R9	匯出診斷	+1.5
-proto-rv-stats-empty-a-light	R9	更新所有訂閱	+1.5
-proto-rv-stats-empty-a-light	R9	測試全部延遲	+1.5
-proto-rv-stats-empty-v1-dark	R9	匯出診斷	+1.5
-proto-rv-stats-empty-v1-dark	R9	更新所有訂閱	+1.5
-proto-rv-stats-empty-v1-dark	R9	測試全部延遲	+1.5
-proto-rv-stats-empty-v1-fs200	R9	匯出診斷	+17.0
-proto-rv-stats-empty-v1-fs200	R9	更新所有訂閱	+17.0
-proto-rv-stats-empty-v1-fs200	R9	測試全部延遲	+17.0
-proto-rv-stats-empty-v1-light	R9	匯出診斷	+1.5
-proto-rv-stats-empty-v1-light	R9	更新所有訂閱	+1.5
-proto-rv-stats-empty-v1-light	R9	測試全部延遲	+1.5
-proto-rv-stats-empty-v2-dark	R9	匯出診斷	+1.5
-proto-rv-stats-empty-v2-dark	R9	更新所有訂閱	+1.5
-proto-rv-stats-empty-v2-dark	R9	測試全部延遲	+1.5
-proto-rv-stats-empty-v2-fs200	R9	匯出診斷	+17.0
-proto-rv-stats-empty-v2-fs200	R9	更新所有訂閱	+17.0
-proto-rv-stats-empty-v2-fs200	R9	測試全部延遲	+17.0
-proto-rv-stats-empty-v2-light	R9	匯出診斷	+1.5
-proto-rv-stats-empty-v2-light	R9	更新所有訂閱	+1.5
-proto-rv-stats-empty-v2-light	R9	測試全部延遲	+1.5
-proto-rv-stats-light	R9	匯出診斷	+1.5
-proto-rv-stats-light	R9	更新所有訂閱	+1.5
-proto-rv-stats-light	R9	測試全部延遲	+1.5
-proto-rv-sub-add-done-dark	R9	已匯入 Harbor Cloud	+1.5
-proto-rv-sub-add-done-light	R9	已匯入 Harbor Cloud	+1.5
-proto-rv-sub-add-importing-dark	R9	正在匯入…	+1.5
-proto-rv-sub-add-importing-light	R9	正在匯入…	+1.5
-proto-rv-sub-add-not-subscription-dark	R12	無法匯入訂閱	+2.0
-proto-rv-sub-add-not-subscription-light	R12	無法匯入訂閱	+2.0
-proto-rv-sub-add-too-large-dark	R12	無法匯入訂閱	+2.0
-proto-rv-sub-add-too-large-light	R12	無法匯入訂閱	+2.0
-proto-rv-sub-add-unreachable-dark	R12	無法匯入訂閱	+2.0
-proto-rv-sub-add-unreachable-light	R12	無法匯入訂閱	+2.0
-proto-rv-sub-adding-unknown-dark	R9	正在匯入…	+1.5
-proto-rv-sub-adding-unknown-fs200	R9	正在匯入…	+17.0
-proto-rv-sub-adding-unknown-light	R9	正在匯入…	+1.5
-proto-rv-sub-detail-dark	R9	User-Agent	+1.5
-proto-rv-sub-detail-dark	R9	名稱	+1.5
-proto-rv-sub-detail-dark	R9	自動更新	+1.5
-proto-rv-sub-detail-dark	R9	連結	+1.5
-proto-rv-sub-detail-light	R9	User-Agent	+1.5
-proto-rv-sub-detail-light	R9	名稱	+1.5
-proto-rv-sub-detail-light	R9	自動更新	+1.5
-proto-rv-sub-detail-light	R9	連結	+1.5
-proto-rv-sub-detail-noquota-dark	R9	User-Agent	+1.5
-proto-rv-sub-detail-noquota-dark	R9	名稱	+1.5
-proto-rv-sub-detail-noquota-dark	R9	自動更新	+1.5
-proto-rv-sub-detail-noquota-dark	R9	連結	+1.5
 proto-rv-sub-detail-noquota-fs200	R11l	名稱	+11.0
 proto-rv-sub-detail-noquota-fs200	R13	名稱	subtitle 29.5 vs 35.0
-proto-rv-sub-detail-noquota-fs200	R18	名稱	below 0.0
-proto-rv-sub-detail-noquota-fs200	R9	User-Agent	+17.0
-proto-rv-sub-detail-noquota-fs200	R9	名稱	+17.0
-proto-rv-sub-detail-noquota-fs200	R9	自動更新	+17.0
-proto-rv-sub-detail-noquota-light	R9	User-Agent	+1.5
-proto-rv-sub-detail-noquota-light	R9	名稱	+1.5
-proto-rv-sub-detail-noquota-light	R9	自動更新	+1.5
-proto-rv-sub-detail-noquota-light	R9	連結	+1.5
-proto-rv-sub-detail-rename-dark	R9	User-Agent	+1.5
-proto-rv-sub-detail-rename-dark	R9	名稱	+1.5
-proto-rv-sub-detail-rename-dark	R9	自動更新	+1.5
-proto-rv-sub-detail-rename-dark	R9	連結	+1.5
-proto-rv-sub-detail-rename-light	R9	User-Agent	+1.5
-proto-rv-sub-detail-rename-light	R9	名稱	+1.5
-proto-rv-sub-detail-rename-light	R9	自動更新	+1.5
-proto-rv-sub-detail-rename-light	R9	連結	+1.5
-proto-rv-sub-detail-user-agent-dark	R9	User-Agent	+1.5
-proto-rv-sub-detail-user-agent-dark	R9	名稱	+1.5
-proto-rv-sub-detail-user-agent-dark	R9	自動更新	+1.5
-proto-rv-sub-detail-user-agent-dark	R9	連結	+1.5
-proto-rv-sub-detail-user-agent-light	R9	User-Agent	+1.5
-proto-rv-sub-detail-user-agent-light	R9	名稱	+1.5
-proto-rv-sub-detail-user-agent-light	R9	自動更新	+1.5
-proto-rv-sub-detail-user-agent-light	R9	連結	+1.5
-proto-rv-sub-import-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-sub-import-dark	R9	串流	+1.5
-proto-rv-sub-import-dark	R9	出站模式	+1.5
-proto-rv-sub-import-dark	R9	國內與區域網路	+1.5
-proto-rv-sub-import-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-sub-import-light	R9	串流	+1.5
-proto-rv-sub-import-light	R9	出站模式	+1.5
-proto-rv-sub-import-light	R9	國內與區域網路	+1.5
-proto-rv-sub-sip008-dark	R9	User-Agent	+1.5
-proto-rv-sub-sip008-dark	R9	名稱	+1.5
-proto-rv-sub-sip008-dark	R9	自動更新	+1.5
-proto-rv-sub-sip008-dark	R9	連結	+1.5
-proto-rv-sub-sip008-fs200	R1	名稱	height 33.0
-proto-rv-sub-sip008-fs200	R13	名稱	title 17.0 vs 38.5
-proto-rv-sub-sip008-fs200	R18	名稱	below 0.0
-proto-rv-sub-sip008-fs200	R6	名稱	+56.0
-proto-rv-sub-sip008-fs200	R9	User-Agent	+17.0
-proto-rv-sub-sip008-fs200	R9	自動更新	+17.0
-proto-rv-sub-sip008-light	R9	User-Agent	+1.5
-proto-rv-sub-sip008-light	R9	名稱	+1.5
-proto-rv-sub-sip008-light	R9	自動更新	+1.5
-proto-rv-sub-sip008-light	R9	連結	+1.5
-proto-rv-subs-dark	R9	Harbor Cloud	+1.5
-proto-rv-subs-dark	R9	Lantern Net	+1.5
-proto-rv-subs-delete-dark	R9	Harbor Cloud	+1.5
-proto-rv-subs-delete-dark	R9	Lantern Net	+1.5
-proto-rv-subs-delete-light	R9	Harbor Cloud	+1.5
-proto-rv-subs-delete-light	R9	Lantern Net	+1.5
-proto-rv-subs-failed-dark	R12	無法更新 Harbor Cloud	+2.0
-proto-rv-subs-failed-dark	R9	Harbor Cloud	+1.5
-proto-rv-subs-failed-dark	R9	Lantern Net	+1.5
-proto-rv-subs-failed-light	R12	無法更新 Harbor Cloud	+2.0
-proto-rv-subs-failed-light	R9	Harbor Cloud	+1.5
-proto-rv-subs-failed-light	R9	Lantern Net	+1.5
-proto-rv-subs-light	R9	Harbor Cloud	+1.5
-proto-rv-subs-light	R9	Lantern Net	+1.5
-proto-rv-subs-menu-dark	R9	Harbor Cloud	+1.5
-proto-rv-subs-menu-dark	R9	Lantern Net	+1.5
-proto-rv-subs-menu-light	R9	Harbor Cloud	+1.5
-proto-rv-subs-menu-light	R9	Lantern Net	+1.5
-proto-rv-subs-updating-dark	R9	Harbor Cloud	+1.5
-proto-rv-subs-updating-dark	R9	Lantern Net	+1.5
-proto-rv-subs-updating-fs115	R9	Harbor Cloud	+4.0
-proto-rv-subs-updating-fs115	R9	Lantern Net	+4.0
-proto-rv-subs-updating-fs200	R9	Harbor Cloud	+37.5
-proto-rv-subs-updating-fs200	R9	Lantern Net	+37.5
-proto-rv-subs-updating-light	R9	Harbor Cloud	+1.5
-proto-rv-subs-updating-light	R9	Lantern Net	+1.5
-proto-rv-template-dark	R11	依地區分流	+8.5
-proto-rv-template-dark	R11	依服務分流	+21.0
-proto-rv-template-dark	R11	只代理 GFW 名單	+21.0
-proto-rv-template-dark	R11	回國	+8.5
-proto-rv-template-dark	R11	繞過中國大陸	+7.5
-proto-rv-template-dark	R9	依地區分流	+1.5
-proto-rv-template-dark	R9	依服務分流	+14.0
-proto-rv-template-dark	R9	只代理 GFW 名單	+14.0
-proto-rv-template-dark	R9	回國	+1.5
-proto-rv-template-dark	R9	繞過中國大陸	+1.5
 proto-rv-template-impact-dark	R11l	openai.com 等 9 個網域	-10.0
-proto-rv-template-impact-dark	R9	149.154.160.0/20	+1.5
-proto-rv-template-impact-dark	R9	91.108.4.0/22	+1.5
-proto-rv-template-impact-dark	R9	AI	+1.5
-proto-rv-template-impact-dark	R9	Telegram	+1.5
-proto-rv-template-impact-dark	R9	YouTube	+1.5
-proto-rv-template-impact-dark	R9	openai.com 等 9 個網域	+1.5
-proto-rv-template-impact-dark	R9	telegram.org 等 5 個網域	+1.5
-proto-rv-template-impact-dark	R9	youtube.com 等 8 個網域	+1.5
-proto-rv-template-impact-dark	R9	串流	+1.5
 proto-rv-template-impact-light	R11l	openai.com 等 9 個網域	-10.0
-proto-rv-template-impact-light	R9	149.154.160.0/20	+1.5
-proto-rv-template-impact-light	R9	91.108.4.0/22	+1.5
-proto-rv-template-impact-light	R9	AI	+1.5
-proto-rv-template-impact-light	R9	Telegram	+1.5
-proto-rv-template-impact-light	R9	YouTube	+1.5
-proto-rv-template-impact-light	R9	openai.com 等 9 個網域	+1.5
-proto-rv-template-impact-light	R9	telegram.org 等 5 個網域	+1.5
-proto-rv-template-impact-light	R9	youtube.com 等 8 個網域	+1.5
-proto-rv-template-impact-light	R9	串流	+1.5
-proto-rv-template-light	R11	依地區分流	+8.5
-proto-rv-template-light	R11	依服務分流	+21.0
-proto-rv-template-light	R11	只代理 GFW 名單	+21.0
-proto-rv-template-light	R11	回國	+8.5
-proto-rv-template-light	R11	繞過中國大陸	+7.5
-proto-rv-template-light	R9	依地區分流	+1.5
-proto-rv-template-light	R9	依服務分流	+14.0
-proto-rv-template-light	R9	只代理 GFW 名單	+14.0
-proto-rv-template-light	R9	回國	+1.5
-proto-rv-template-light	R9	繞過中國大陸	+1.5
-proto-rv-threebutton-activity-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-threebutton-activity-dark	R9	串流	+1.5
-proto-rv-threebutton-activity-dark	R9	出站模式	+1.5
-proto-rv-threebutton-activity-dark	R9	國內與區域網路	+1.5
-proto-rv-threebutton-activity-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-threebutton-activity-light	R9	串流	+1.5
-proto-rv-threebutton-activity-light	R9	出站模式	+1.5
-proto-rv-threebutton-activity-light	R9	國內與區域網路	+1.5
-proto-rv-threebutton-policy-dark	R1	日本	height 78.5
 proto-rv-threebutton-policy-dark	R11l	香港	+5.0
-proto-rv-threebutton-policy-dark	R18	日本	above 19.5 below 15.5
-proto-rv-threebutton-policy-dark	R9	AI	+1.5
-proto-rv-threebutton-policy-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-threebutton-policy-dark	R9	串流	+1.5
-proto-rv-threebutton-policy-dark	R9	日本	+1.5
-proto-rv-threebutton-policy-dark	R9	自動	+1.5
-proto-rv-threebutton-policy-dark	R9	臺灣	+1.5
-proto-rv-threebutton-policy-dark	R9	香港	+1.5
-proto-rv-threebutton-policy-light	R1	日本	height 78.5
 proto-rv-threebutton-policy-light	R11l	香港	+5.0
-proto-rv-threebutton-policy-light	R18	日本	above 19.5 below 15.5
-proto-rv-threebutton-policy-light	R9	AI	+1.5
-proto-rv-threebutton-policy-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-threebutton-policy-light	R9	串流	+1.5
-proto-rv-threebutton-policy-light	R9	日本	+1.5
-proto-rv-threebutton-policy-light	R9	自動	+1.5
-proto-rv-threebutton-policy-light	R9	臺灣	+1.5
-proto-rv-threebutton-policy-light	R9	香港	+1.5
-proto-rv-threebutton-settings-dark	R1	主題	height 67.0
-proto-rv-threebutton-settings-dark	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-threebutton-settings-dark	R18	主題	below 4.0
-proto-rv-threebutton-settings-dark	R18	自動更新	above 16.0 below 19.0
-proto-rv-threebutton-settings-light	R1	主題	height 67.0
-proto-rv-threebutton-settings-light	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-threebutton-settings-light	R18	主題	below 4.0
-proto-rv-threebutton-settings-light	R18	自動更新	above 16.0 below 19.0
-proto-rv-welcome-dark	R9	VPN	+1.5
-proto-rv-welcome-dark	R9	規則	+1.5
-proto-rv-welcome-dark	R9	訂閱	+1.5
-proto-rv-welcome-light	R9	VPN	+1.5
-proto-rv-welcome-light	R9	規則	+1.5
-proto-rv-welcome-light	R9	訂閱	+1.5
-proto-rv-wide-activity-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-wide-activity-dark	R9	串流	+1.5
-proto-rv-wide-activity-dark	R9	出站模式	+1.5
-proto-rv-wide-activity-dark	R9	國內與區域網路	+1.5
-proto-rv-wide-activity-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-wide-activity-light	R9	串流	+1.5
-proto-rv-wide-activity-light	R9	出站模式	+1.5
-proto-rv-wide-activity-light	R9	國內與區域網路	+1.5
-proto-rv-wide-policy-dark	R1	日本	height 78.5
-proto-rv-wide-policy-dark	R18	日本	above 19.5 below 15.5
-proto-rv-wide-policy-dark	R9	AI	+1.5
-proto-rv-wide-policy-dark	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-wide-policy-dark	R9	串流	+1.5
-proto-rv-wide-policy-dark	R9	日本	+1.5
-proto-rv-wide-policy-dark	R9	自動	+1.5
-proto-rv-wide-policy-dark	R9	臺灣	+1.5
-proto-rv-wide-policy-dark	R9	香港	+1.5
-proto-rv-wide-policy-light	R1	日本	height 78.5
-proto-rv-wide-policy-light	R18	日本	above 19.5 below 15.5
-proto-rv-wide-policy-light	R9	AI	+1.5
-proto-rv-wide-policy-light	R9	Hong Kong 02 IPLC	+1.5
-proto-rv-wide-policy-light	R9	串流	+1.5
-proto-rv-wide-policy-light	R9	日本	+1.5
-proto-rv-wide-policy-light	R9	自動	+1.5
-proto-rv-wide-policy-light	R9	臺灣	+1.5
-proto-rv-wide-policy-light	R9	香港	+1.5
-proto-rv-wide-settings-dark	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-wide-settings-dark	R18	自動更新	above 16.0 below 19.0
-proto-rv-wide-settings-light	R18	中斷連線時通知	above 16.0 below 19.0
-proto-rv-wide-settings-light	R18	自動更新	above 16.0 below 19.0

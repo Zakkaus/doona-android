@@ -385,7 +385,7 @@ internal fun RvCheckRow(
     subtitleKeepWords: Boolean = true,
 ) {
     val toggle = Modifier.toggleable(value = checked, enabled = enabled, interactionSource = null, indication = rvRowIndication(), role = Role.Checkbox, onValueChange = onChange)
-    RvRow(leading, title, subtitle, modifier.then(toggle), titleKeepWords = titleKeepWords, subtitleKeepWords = subtitleKeepWords) { Check(checked) }
+    RvRow(leading, title, subtitle, modifier.then(toggle), titleKeepWords = titleKeepWords, subtitleKeepWords = subtitleKeepWords, endFirstLine = true) { Check(checked) }
 }
 
 /**

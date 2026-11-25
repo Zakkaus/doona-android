@@ -580,7 +580,7 @@ internal fun RvSwitch(checked: Boolean, modifier: Modifier = Modifier) {
 @Composable
 internal fun RvSwitchRow(@DrawableRes icon: Int, title: String, checked: Boolean, subtitle: String? = null, onChange: (Boolean) -> Unit) {
     val toggle = Modifier.toggleable(checked, interactionSource = null, indication = rvRowIndication(), role = Role.Switch, onValueChange = onChange)
-    RvRow({ RvIconDisc(icon) }, title, subtitle, toggle) { RvSwitch(checked) }
+    RvRow({ RvIconDisc(icon) }, title, subtitle, toggle, endFirstLine = true) { RvSwitch(checked) }
 }
 
 /** A radio: a 2 dp ring in [RvColors.control], in the accent with a dot inside once selected. */

@@ -64,7 +64,7 @@ internal fun RvBanner(notice: RvNotice, modifier: Modifier = Modifier) {
             Row(Modifier.fillMaxWidth().testTag(RvRowPart.NOTICE_ROW)) {
                 RvIconDisc(notice.kind.glyph, glyph = RvSize.noticeGlyph)
                 Spacer(Modifier.width(RvSpace.rowGap))
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(RvSpace.tight / 2)) {
+                Column(Modifier.weight(1f)) {
                     RvText(notice.title, Rv.type.rowTitle, maxLines = BANNER_TITLE_LINES, keepWords = notice.titleKeepWords)
                     RvText(notice.reason, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BANNER_REASON_LINES, keepWords = notice.reasonKeepWords)
                 }

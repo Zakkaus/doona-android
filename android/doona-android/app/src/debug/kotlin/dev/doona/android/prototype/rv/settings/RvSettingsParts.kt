@@ -2,6 +2,7 @@ package dev.doona.android.prototype.rv.settings
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -141,7 +142,8 @@ private fun rowText(words: RowWords, code: Boolean, titleLines: Int, error: Bool
             Tall(line, top, Modifier.testTag(RvPart.DISC)) { RvIconDisc(it) }
             Spacer(Modifier.width(RvSpace.rowGap))
         }
-        Column(Modifier.weight(1f)) {
+        // R18: a one-line row's title is centred in the first-line box, as the disc and the control are; a taller block fills it.
+        Column(Modifier.weight(1f).heightIn(min = line), verticalArrangement = Arrangement.Center) {
             if (code) {
                 RvCodeText(title, Rv.type.rowTitle, maxLines = titleLines)
             } else {

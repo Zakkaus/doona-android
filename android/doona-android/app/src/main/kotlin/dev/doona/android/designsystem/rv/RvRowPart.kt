@@ -18,6 +18,9 @@ internal object RvRowPart {
     /** A bare glyph ([RvGlyph]). */
     const val GLYPH = "rv-glyph"
 
+    /** A touch target that reaches past what it draws (the node picker's info mark): the gate reads its ink, not its box. */
+    const val TARGET = "rv-target"
+
     const val CHEVRON = "rv-chevron"
     const val SWITCH = "rv-switch"
     const val RADIO = "rv-radio"

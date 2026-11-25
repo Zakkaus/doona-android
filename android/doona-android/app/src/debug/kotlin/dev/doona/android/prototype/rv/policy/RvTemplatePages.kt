@@ -80,7 +80,7 @@ internal fun RvTemplateRow(template: RvTemplate, selected: Boolean, inUse: Boole
     val pick = Modifier
         .graphicsLayer { alpha = if (reason == null) 1f else RvAlpha.DISABLED }
         .rvRowSelect(selected, onSelect, enabled = reason == null)
-    RvRow({ RvIconDisc(template.glyph) }, title, line, pick) { RvRadio(selected) }
+    RvRow({ RvIconDisc(template.glyph) }, title, line, pick, endFirstLine = true) { RvRadio(selected) }
 }
 
 /**

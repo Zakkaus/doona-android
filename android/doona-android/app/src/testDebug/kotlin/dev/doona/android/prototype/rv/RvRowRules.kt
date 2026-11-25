@@ -16,7 +16,7 @@ import kotlin.math.abs
 // The row rules gate: every golden's rows measured against docs/LAYOUT-RULES.md, its breaks held to the allowlist.
 
 /** One part of a golden's unmerged semantics tree: its bounds in dp, test tag, text and the text's first line. */
-internal class RvNode(val parent: Int, val box: Rect, val tag: String?, val text: String?, val line: RvFirstLine?) {
+internal class RvNode(val parent: Int, val box: Rect, val tag: String?, val text: String?, val line: RvFirstLine?, val cut: Boolean = false) {
     val kids = mutableListOf<Int>()
 }
 
@@ -36,6 +36,7 @@ internal class RvRowRead(
     val end: Rect?,
     val endTags: Set<String>,
     val card: Rect?,
+    val cut: Boolean = false,
 ) {
     val textLeft get() = title.box.left
     val oneLine get() = subtitles.isEmpty() && (title.line?.lines ?: 1) == 1
@@ -56,7 +57,7 @@ internal fun ComposeContentTestRule.rvRowNodes(): List<RvNode> {
     fun walk(n: SemanticsNode, parent: Int) {
         val b = n.boundsInRoot
         val text = n.config.getOrNull(SemanticsProperties.Text)?.joinToString("") { it.text }
-        val node = RvNode(parent, Rect(b.left / density, b.top / density, b.right / density, b.bottom / density), n.config.getOrNull(SemanticsProperties.TestTag), text, text?.let { n.firstLine(density) })
+        val node = RvNode(parent, Rect(b.left / density, b.top / density, b.right / density, b.bottom / density), n.config.getOrNull(SemanticsProperties.TestTag), text, text?.let { n.firstLine(density) }, abs(n.size.height - (b.bottom - b.top)) > density / 2 || abs(n.size.width - (b.right - b.left)) > density / 2)
         val at = out.size
         out += node
         if (parent >= 0) out[parent].kids += at
@@ -109,10 +110,13 @@ private fun RvNode.shown() = box.width > 0f && box.height > 0f
  */
 private fun List<RvNode>.readRow(i: Int, kind: RvRowKind): RvRowRead? {
     val inRow = subtree(i).drop(1)
-    val texts = inRow.filter { this[it].text != null && this[it].shown() }
+    // A text inside a leading visual (the fallback flag's code, a dash) is its drawing, not the row's text.
+    val leads = leadOf(inRow)
+    val inLead = leads.flatMap { subtree(it) }.toSet()
+    val texts = inRow.filter { this[it].text != null && this[it].shown() && it !in inLead }
     if (texts.isEmpty()) return null
     val firstText = texts.minOf { this[it].box.left }
-    val lead = leadOf(inRow).firstOrNull { this[it].box.right <= firstText + HALF }
+    val lead = leads.firstOrNull { this[it].box.right <= firstText + HALF }
     // A row cut by its window (a scrolled page, a sheet's edge) is not a whole row: its disc is a sliver.
     if (lead != null && this[lead].box.let { minOf(it.width, it.height) < DISC - HALF && maxOf(it.width, it.height) > DISC - HALF }) return null
     val from = lead?.let { this[it].box.right - HALF } ?: this[i].box.left
@@ -125,7 +129,7 @@ private fun List<RvNode>.readRow(i: Int, kind: RvRowKind): RvRowRead? {
     val leadParts = lead?.let { subtree(it).toSet() }.orEmpty()
     val end = endOf(inRow, column, leadParts)
     val tags = end?.let { r -> inRow.filter { this[it].tag != null && this[it].box.left >= r.left - HALF && this[it].box.right <= r.right + HALF }.mapNotNull { this[it].tag }.toSet() }.orEmpty()
-    return RvRowRead(kind, this[i].box, lead?.let { this[it] }, title, subtitles, end, tags, cardOf(i))
+    return RvRowRead(kind, this[i].box, lead?.let { this[it] }, title, subtitles, end, tags, cardOf(i), this[i].cut)
 }
 
 /** The bounds of the card [i] stands in, if it stands in one. */
@@ -151,7 +155,14 @@ private fun List<RvNode>.endOf(inRow: List<Int>, column: List<RvNode>, lead: Set
     val holders = inRow.filter { j -> subtree(j).any { this[it] in column } }.toSet()
     val parts = inRow.filter { it !in lead && it !in holders && this[it] !in column && this[it].shown() && this[it].box.left >= right - HALF }
     val inner = parts.flatMap { subtree(it).drop(1) }.toSet()
-    return parts.filterNot { it in inner }.map { this[it].box }.reduceOrNull { a, b -> Rect(minOf(a.left, b.left), minOf(a.top, b.top), maxOf(a.right, b.right), maxOf(a.bottom, b.bottom)) }
+    return parts.filterNot { it in inner }.map { ink(it) }.reduceOrNull { a, b -> Rect(minOf(a.left, b.left), minOf(a.top, b.top), maxOf(a.right, b.right), maxOf(a.bottom, b.bottom)) }
+}
+
+/** What part [i] draws: its box, or where it holds a touch target ([RvRowPart.TARGET]) that reaches past its ink, the shown parts inside. */
+private fun List<RvNode>.ink(i: Int): Rect {
+    if (subtree(i).none { this[it].tag == RvRowPart.TARGET }) return this[i].box
+    val inside = this[i].kids.filter { this[it].shown() }.map { ink(it) }
+    return inside.reduceOrNull { a, b -> Rect(minOf(a.left, b.left), minOf(a.top, b.top), maxOf(a.right, b.right), maxOf(a.bottom, b.bottom)) } ?: this[i].box
 }
 
 /** The rules every row of [rows] breaks, in the rows' order, then the card columns' (R7) and the line boxes' (R13). */
@@ -237,6 +248,7 @@ private fun RvRowRead.lines(): RvRowBreak? {
 
 /** R18: the text keeps its row's padding above and below (16 dp or more, equal unless the row's minimum height is the larger). */
 private fun RvRowRead.padding(): RvRowBreak? {
+    if (cut) return null
     if (end != null && end.height > textBottom - textTop + 2 * INSET) return null
     val above = textTop - row.top
     val below = row.bottom - maxOf(textBottom, end?.takeIf { it.top >= title.box.bottom - TOLERANCE }?.bottom ?: textBottom)
@@ -250,6 +262,7 @@ private fun RvRowRead.padding(): RvRowBreak? {
 
 /** R1: a row is as tall as its text and padding need, and not less than 58 dp (one line) or 82 dp (with a subtitle) at 1.0. */
 private fun RvRowRead.height(): RvRowBreak? {
+    if (cut) return null
     val least = if (subtitles.isEmpty()) ONE_LINE else TWO_LINE
     val below = end?.takeIf { it.top >= title.box.bottom - TOLERANCE }?.bottom ?: textBottom
     val need = maxOf(maxOf(textBottom, below) - textTop + 2 * INSET, end?.height ?: 0f)
