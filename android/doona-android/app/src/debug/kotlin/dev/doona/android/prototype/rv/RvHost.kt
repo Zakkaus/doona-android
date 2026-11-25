@@ -106,24 +106,23 @@ internal fun RvStackHost(stack: List<String>, onBack: () -> Unit, options: RvMot
     val holder = rememberSaveableStateHolder()
     val state = remember { SeekableTransitionState(stack) }
     val transition = rememberTransition(state, label = "stack")
-    var back by remember { mutableStateOf<Float?>(null) }
+    // Whether a back gesture is under way; its progress is not state: each event seeks the transition directly, so the host composes nothing for it.
+    var seeking by remember { mutableStateOf(false) }
     // Every route drawn so far, and the tab homes among them: a pushed page off the stack starts afresh next time.
     val seen = remember { mutableSetOf<String>() }
     val homes = remember { mutableSetOf<String>() }
     PredictiveBackHandler(enabled = stack.size > 1) { events ->
         try {
-            events.collect { back = it.progress }
-            back = null
+            seeking = true
+            events.collect { state.seekTo(it.progress, stack.dropLast(1)) }
+            seeking = false
             onBack()
         } catch (e: CancellationException) {
-            back = null
+            seeking = false
             throw e
         }
     }
-    val progress = back
-    if (progress != null) {
-        LaunchedEffect(progress) { state.seekTo(progress, stack.dropLast(1)) }
-    } else {
+    if (!seeking) {
         LaunchedEffect(stack) {
             if (state.currentState != stack) {
                 val gesture = stackGesture(state.currentState, stack)
