@@ -163,7 +163,9 @@ internal fun RvFilterChip(label: String, onClick: () -> Unit, modifier: Modifier
  * apart: under a chart it picks the range; under a node list's search it picks the order. The labels take one size, the
  * largest at which the whole row fits its width ([rvChipRowFit]), and every pill grows with that size's line, keeping
  * [RvChartSize.rangeInset] above and below it, so at a large font size no label is cut or runs past its pill. The chosen
- * chip's label is bold after a check ([RvChoiceLabel]); every chip keeps room for both, so a choice moves no pill.
+ * chip's label is bold after a check ([RvChoiceLabel], [rvRangeFit]): every chip is as wide as its bold label, so the
+ * weight moves nothing, and the chosen one is wider by the check's room, so a choice moves the pills between the old and
+ * the new one by that room.
  */
 @Composable
 internal fun RvRangeRow(labels: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
@@ -194,7 +196,7 @@ private fun RvRangePill(label: String, selected: Boolean, fit: RvRangeFit, heigh
             .padding(horizontal = RvChartSize.rangePad),
         contentAlignment = Alignment.Center,
     ) {
-        RvChoiceLabel(label, selected, fit.style, Rv.type.action, if (selected) colors.text else colors.textSecondary, Modifier.widthIn(min = bold + fit.room), check = fit.check)
+        RvChoiceLabel(label, selected, fit.style, Rv.type.action, if (selected) colors.text else colors.textSecondary, Modifier.widthIn(min = bold + fit.room(selected)), check = fit.check)
     }
 }
 

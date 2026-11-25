@@ -240,10 +240,11 @@ internal fun RvSkeletonControlCard(caption: String? = null) {
 
 /**
  * [RvRangeRow]'s skeleton, a chip per label of [labels] (the page knows its orders before its data), [RvChartSize.rangeGap]
- * apart under one shimmer: each a pill of the chip's height at this font size, as wide as its bold label, the check's room and its pads.
+ * apart under one shimmer: each a pill of the chip's height at this font size, as wide as its bold label and its pads, the
+ * [selected] one (the page's first order unless it says otherwise) wider by the check's room, as [RvRangeRow] sets it.
  */
 @Composable
-internal fun RvSkeletonChips(labels: List<String>, modifier: Modifier = Modifier) {
+internal fun RvSkeletonChips(labels: List<String>, modifier: Modifier = Modifier, selected: Int = 0) {
     val density = LocalDensity.current
     var width by remember { mutableIntStateOf(0) }
     // The row is set as RvRangeRow sets it in the same width, so each block stands where its chip does.
@@ -253,7 +254,9 @@ internal fun RvSkeletonChips(labels: List<String>, modifier: Modifier = Modifier
     val height = maxOf(RvChartSize.range, with(density) { fit.style.lineHeight.toDp() } + RvChartSize.rangeInset * 2)
     Box(modifier.fillMaxWidth().onSizeChanged { width = it.width }) {
         Row(Modifier.rvShimmer(), horizontalArrangement = Arrangement.spacedBy(RvChartSize.rangeGap)) {
-            widths.forEach { RvSkeletonBlock(height, Modifier.width(with(density) { it.toDp() } + fit.room + RvChartSize.rangePad * 2), CircleShape) }
+            widths.forEachIndexed { i, w ->
+                RvSkeletonBlock(height, Modifier.width(with(density) { w.toDp() } + fit.room(i == selected) + RvChartSize.rangePad * 2), CircleShape)
+            }
         }
     }
 }

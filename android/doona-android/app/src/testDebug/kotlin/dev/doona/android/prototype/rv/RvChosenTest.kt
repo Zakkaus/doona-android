@@ -39,7 +39,9 @@ import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvRangeRow
 import dev.doona.android.designsystem.rv.RvRowPart
 import dev.doona.android.designsystem.rv.RvSegmented
+import dev.doona.android.designsystem.rv.rvCheckReserve
 import dev.doona.android.designsystem.rv.rvPress
+import dev.doona.android.prototype.rv.data.RvData
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -51,7 +53,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** The chosen segment or range chip is bold after a check, and choosing moves no pill (owner, 2026-11-25, q-a11y-selected). */
+/**
+ * The chosen segment or range chip is bold after a check (owner, 2026-11-25, q-a11y-selected): the weight moves no pill,
+ * and of a range row only the chosen chip's check room does.
+ */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = RV_EN)
@@ -95,17 +100,49 @@ class RvChosenTest {
     }
 
     @Test
-    fun theChosenRangeChipIsBoldAfterACheckAndNoChipMoves() {
+    fun theChosenRangeChipIsBoldAfterACheckAndOnlyItsCheckMovesThePills() {
         var chosen by mutableIntStateOf(1)
         compose.rvContent(dark = false) { RvRangeRow(ranges, chosen, { chosen = it }) }
-        val before = compose.onAllNodesWithTag(RvPart.FRAME, useUnmergedTree = true).fetchSemanticsNodes().map { it.boundsInRoot }
+        val before = compose.onAllNodesWithTag(RvPart.FRAME, useUnmergedTree = true).fetchSemanticsNodes().map { it.boundsInRoot.width }
         assertEquals(ranges.size, before.size)
         assertEquals(FontWeight.Bold, weightOf(ranges[1]))
+        assertNotEquals("the others are not bold", FontWeight.Bold, weightOf(ranges[0]))
         assertEquals(listOf(0, 1, 0, 0, 0), ranges.map { checks(it) })
         compose.runOnIdle { chosen = 4 }
         compose.waitForIdle()
-        val after = compose.onAllNodesWithTag(RvPart.FRAME, useUnmergedTree = true).fetchSemanticsNodes().map { it.boundsInRoot }
-        assertEquals("no chip changes its width or place", before, after)
+        val after = compose.onAllNodesWithTag(RvPart.FRAME, useUnmergedTree = true).fetchSemanticsNodes().map { it.boundsInRoot.width }
         assertEquals(listOf(0, 0, 0, 0, 1), ranges.map { checks(it) })
+        // Every chip is as wide as its bold label, so the weight changes no width; only the check's room moves.
+        val room = with(compose.density) { rvCheckReserve.toPx() }
+        val expected = before.mapIndexed { i, w ->
+            w + room * (
+                if (i == 4) {
+                    1
+                } else if (i == 1) {
+                    -1
+                } else {
+                    0
+                }
+                )
+        }
+        expected.zip(after).forEach { (e, a) -> assertEquals("a chip's width changes by the check's room only", e, a, 1f) }
     }
+
+    /** 流量's range row keeps the chosen chip's check at the default size in every locale (a11y-fix, 2026-11-25). */
+    private fun trafficKeepsTheCheck(first: String) {
+        compose.rvContent(dark = false) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}) }
+        assertEquals(FontWeight.Bold, weightOf(first))
+        assertEquals("the chosen range has its check", 1, checks(first))
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rTW-w412dp-h915dp-notnight-xhdpi")
+    fun trafficRangesKeepTheCheckInZhTw() = trafficKeepsTheCheck("1 分")
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w412dp-h915dp-notnight-xhdpi")
+    fun trafficRangesKeepTheCheckInZhCn() = trafficKeepsTheCheck("1 分")
+
+    @Test
+    fun trafficRangesKeepTheCheckInEn() = trafficKeepsTheCheck("1m")
 }
