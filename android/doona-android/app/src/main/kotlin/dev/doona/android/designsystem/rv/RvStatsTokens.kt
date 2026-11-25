@@ -44,15 +44,6 @@ internal object RvStatsSize {
     val ringStroke = 8.dp
     val ringGap = 2.dp
 
-    /**
-     * The latency dot chart, after Revolut's EPS chart, in node detail's grammar: dots small enough to keep a gap at a
-     * 5.6 dp pitch (47 nodes), the current node's dot a step larger (S04); its marker is the library's.
-     */
-    val latency = 156.dp
-    val latencyDot = 3.5.dp
-    val latencyDotSelected = 5.5.dp
-    val axisLabelGap = 8.dp
-
     /** Revolut's analyst bars: 8 dp rounded bars on a track, the figure after them. */
     val ratingBar = 8.dp
     val ratingRow = 28.dp

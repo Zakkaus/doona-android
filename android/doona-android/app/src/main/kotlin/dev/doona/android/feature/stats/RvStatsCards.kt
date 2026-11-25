@@ -28,6 +28,7 @@ import dev.doona.android.designsystem.rv.RvCardHeader
 import dev.doona.android.designsystem.rv.RvChevron
 import dev.doona.android.designsystem.rv.RvFigure
 import dev.doona.android.designsystem.rv.RvIconDisc
+import dev.doona.android.designsystem.rv.RvLatencySpread
 import dev.doona.android.designsystem.rv.RvLegendItem
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.designsystem.rv.RvRow
@@ -220,7 +221,7 @@ internal fun RvLatencyCard(state: RvStatsState) {
             // The current node's chip says so in words, not by its tint alone.
             val inUse = stringResource(R.string.rv_nodes_in_use)
             val label = selected?.let { "$inUse$SEPARATOR${tested[it].name}$SEPARATOR${values[it]} $unit" } ?: ""
-            RvLatencyDots(values, selected, label, median, unit)
+            RvLatencySpread(values, selected, label, median, unit)
         }
     }
 }
