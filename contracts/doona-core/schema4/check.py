@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent
 KINDS = {"Selector", "UrlTest", "LoadBalance", "Fallback", "Score"}
 BLOCK_ADS = {"on", "off", "absent", "elsewhere"}
-NEW_CODES = {"profile_newer", "conflict", "source_limit", "non_native_source", "activation_failed"}
+NEW_CODES = {"conflict", "source_limit", "non_native_source", "activation_failed"}
 MAX_DEPTH = 8
 BUILTIN = {"direct", "block"}
 CATALOG_KEYS = {"mode", "globalTargetId", "groups", "nodes", "subscriptions", "config"}
