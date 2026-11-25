@@ -50,12 +50,13 @@ internal class RvNetworkChoice(val tcpId: String, val udpId: String, val apart: 
     fun apart(on: Boolean): RvNetworkChoice = if (on) RvNetworkChoice(tcpId, udpId, true) else RvNetworkChoice(tcpId, tcpId, false)
 
     /**
-     * The network that chose [nodeId], as Score's mark names it: only while the two choices differ, so a node both use
-     * reads as before.
+     * The networks that chose [nodeId], as Score's mark names them: only while the switch is on, `TCP/UDP` for a node
+     * both chose, so a node both use keeps its prefix when the two choices happen to be one; null with the switch off.
      */
     @Composable
     fun network(nodeId: String): String? = when {
-        !differ -> null
+        !apart -> null
+        nodeId == tcpId && nodeId == udpId -> stringResource(R.string.rv_network_both)
         nodeId == tcpId -> stringResource(R.string.ui_tcp)
         nodeId == udpId -> stringResource(R.string.ui_udp)
         else -> null
@@ -129,6 +130,9 @@ internal object RvNetworkSample {
     val group: RvPolicyGroup = RvPolicyData.streaming
     val shared = RvNetworkChoice(group.selectedId, group.selectedId, apart = false)
     val apart = RvNetworkChoice(group.selectedId, UDP_NODE, apart = true)
+
+    /** The switch on with both networks on one node, as after a tap that picked it for both. */
+    val apartSame = RvNetworkChoice(group.selectedId, group.selectedId, apart = true)
 
     /** The fastest node neither network chose: the first such row on 節點's card. */
     val asked: RvNode = group.byLatency.first { !apart.chosen(it.id) }

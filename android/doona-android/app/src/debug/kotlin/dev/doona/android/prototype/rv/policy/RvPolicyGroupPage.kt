@@ -67,8 +67,9 @@ import dev.doona.android.prototype.rv.nodes.latencyText
  * A selector that can choose per network ([networks], a sample) shows its choice in [RvNetworkCard] in place of the
  * chip: the switch 分開選擇 TCP 與 UDP ([onApart]), then one row, or a row per network while the switch is on, each
  * opening the node picker for its network ([onOpenPicker]; null for both). The 節點 card badges both choices and, while
- * they differ, begins their line with the network. While the switch is on, a tap on a node first asks which network it
- * is for (TCP, UDP or both, [RvNetworkMenu]) and then calls [onSelectFor]; while it is off a tap picks for both at once.
+ * the switch is on, begins their line with the networks (`TCP/UDP` for a node both chose). While the switch is on, a tap
+ * on a node first asks which network it is for (TCP, UDP or both, [RvNetworkMenu]) and then calls [onSelectFor]; while it
+ * is off a tap picks for both at once.
  */
 @Composable
 internal fun RvPolicyGroupPage(
