@@ -119,10 +119,12 @@ fn own_intervals(config: &HonkConfig) -> Vec<bool> {
         max_bytes: usize::MAX,
         max_sources: usize::MAX,
     };
-    // The sources differ from what the loader gave honk only in the include patterns it refused,
-    // and this parse expands no include.
+    // Cannot fail once the loader has accepted these sources. It refuses a file included twice,
+    // so the paths are distinct. Its parse differed only in the include patterns it blanked:
+    // those are never empty (`confined` accepts an empty one, which honk then refuses), so they
+    // pass the syntax check, and no include is expanded here.
     let probed = parse_dae_sources(&inputs, unlimited, &mut Vec::new())
-        .expect("honk has parsed these sources");
+        .expect("the loader accepted these sources");
     cfg.subscriptions
         .iter()
         .zip(probed.config.subscriptions)
