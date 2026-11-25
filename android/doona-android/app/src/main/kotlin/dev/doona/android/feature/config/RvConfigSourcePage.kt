@@ -1,20 +1,14 @@
-package dev.doona.android.prototype.rv.config
+package dev.doona.android.feature.config
 
-import android.content.res.Configuration
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvCaption
+import dev.doona.android.designsystem.rv.RvDiffAt
 import dev.doona.android.designsystem.rv.RvFilterChip
 import dev.doona.android.designsystem.rv.RvFootnote
 import dev.doona.android.designsystem.rv.RvGlassButton
@@ -24,14 +18,11 @@ import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSourceDiff
 import dev.doona.android.designsystem.rv.RvSourceField
 import dev.doona.android.designsystem.rv.RvSourceMark
-import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvKeepRuns
 import dev.doona.android.designsystem.rv.rvKeepTail
-import dev.doona.android.designsystem.rv.rvSystemScheme
-import dev.doona.android.prototype.rv.RvDiffAt
-import dev.doona.android.prototype.rv.RvSourceDiff
 
 /**
  * 原始碼 (config plan, source editor; `configDraft` → `configRead` → `configEdit` → `configCheck`): the large title over
@@ -78,7 +69,7 @@ internal fun RvConfigSourcePage(
  * 檢視變更 before 套用 (config plan, diff before apply; `configCheck`'s diff, then `configApply` against the base): the
  * base revision under the large title, one [RvSourceDiff] card per changed file, a tap opening the file at that line,
  * and the line that only new connections follow it. When another apply made a newer head, the draft is stale: a
- * banner says which revisions, offers 重新載入, and 套用 waits.
+ * banner says which revisions, offers 重新載入, and 套用 waits; another failed 套用 shows [failure] there.
  */
 @Composable
 internal fun RvConfigDiffPage(
@@ -87,6 +78,7 @@ internal fun RvConfigDiffPage(
     onApply: () -> Unit = {},
     onReload: () -> Unit = {},
     onOpen: (String, RvDiffAt) -> Unit = { _, _ -> },
+    failure: RvNotice? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_template_review)
@@ -109,26 +101,9 @@ internal fun RvConfigDiffPage(
         } else {
             null
         }
-        RvGutter(banner = stale) {
+        RvGutter(banner = stale ?: failure) {
             diff.files.forEach { file -> RvSourceDiff(file, onOpen = { onOpen(file.source, it) }) }
         }
         RvFootnote(stringResource(R.string.rv_template_new_flows))
     }
-}
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvConfigSourcePagePreview() {
-    val dark = isSystemInDarkTheme()
-    var value by remember { mutableStateOf(TextFieldValue(RvConfigSourceData.error.text)) }
-    RvTheme(rvSystemScheme(dark), dark) { RvConfigSourcePage(RvConfigSourceData.error, value, { value = it }, onBack = {}) }
-}
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvConfigDiffPagePreview() {
-    val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvConfigDiffPage(RvConfigSourceData.stale, onBack = {}) }
 }

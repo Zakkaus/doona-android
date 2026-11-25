@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
  * a change replaces the whole value.
  * Actions fail with [EngineException]; the UI turns its code into localized text.
  */
-interface Engine {
+interface Engine : ConfigEngine {
     /** False until the saved subscriptions and groups are loaded, so an empty list is not mistaken for a first run. */
     val ready: StateFlow<Boolean>
     val status: StateFlow<Status>
@@ -193,6 +193,10 @@ enum class ErrorCode {
     DnsFailed,
     StorageFull,
     WriteFailed,
+    Conflict,
+    SourceLimit,
+    NonNativeSource,
+    ActivationFailed,
 }
 
 class EngineException(val code: ErrorCode) : Exception(code.name)

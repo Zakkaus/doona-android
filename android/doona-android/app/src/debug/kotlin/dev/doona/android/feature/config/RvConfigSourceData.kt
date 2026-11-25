@@ -1,31 +1,10 @@
-package dev.doona.android.prototype.rv.config
+package dev.doona.android.feature.config
 
-import androidx.compose.runtime.Immutable
-import dev.doona.android.prototype.rv.RvDiffFile
-import dev.doona.android.prototype.rv.RvDiffKind.Added
-import dev.doona.android.prototype.rv.RvDiffKind.Removed
-import dev.doona.android.prototype.rv.RvDiffKind.Same
-import dev.doona.android.prototype.rv.RvDiffLine
-
-/**
- * A diagnostic from `configCheck` in one file: its UTF-8 byte span in that file and the group name its message quotes.
- * The contract gives `line` and `column` (config-plan.md:104); the sample spans the word at that column.
- */
-@Immutable
-internal class RvConfigDiagnostic(val start: Int, val end: Int, val name: String)
-
-/** A draft of one file in the source editor: the file, its text, the revision the draft is based on, any diagnostic. */
-@Immutable
-internal class RvSourceDraft(val path: String, val text: String, val baseRev: Int, val diagnostic: RvConfigDiagnostic? = null)
-
-/**
- * The check's diff before 套用: each changed file against the draft's base [baseRev]; [headRev] is today's head, newer
- * than the base when another apply landed first (the draft is stale and `configApply` answers `conflict`).
- */
-@Immutable
-internal class RvConfigDiff(val files: List<RvDiffFile>, val baseRev: Int, val headRev: Int) {
-    val stale = headRev != baseRev
-}
+import dev.doona.android.designsystem.rv.RvDiffFile
+import dev.doona.android.designsystem.rv.RvDiffKind.Added
+import dev.doona.android.designsystem.rv.RvDiffKind.Removed
+import dev.doona.android.designsystem.rv.RvDiffKind.Same
+import dev.doona.android.designsystem.rv.RvDiffLine
 
 /**
  * The sample's `rules/cn.dae`, the include the editor opens. Revision 9 sends 影音 to `proxy`; the draft sends it to

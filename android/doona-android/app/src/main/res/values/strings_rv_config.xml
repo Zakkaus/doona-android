@@ -80,4 +80,9 @@
     <string name="rv_template_group_apple" translatable="false">Apple</string>
     <string name="rv_template_group_openai" translatable="false">OpenAI</string>
     <string name="rv_template_group_netflix" translatable="false">Netflix</string>
+    <string name="rv_config_read_failed">Couldn’t read the configuration</string>
+    <string name="rv_config_apply_failed">Couldn’t apply</string>
+    <string name="rv_config_export_title">Export configuration?</string>
+    <string name="rv_config_export_body">The files can hold passwords and keys.</string>
+    <string name="rv_config_export_confirm">Export</string>
 </resources>

@@ -71,4 +71,9 @@
     <string name="rv_template_group_cn">回国节点</string>
     <string name="rv_config_create">新建配置文件</string>
     <string name="rv_config_kind_note">%1$s：%2$s</string>
+    <string name="rv_config_read_failed">无法读取配置文件</string>
+    <string name="rv_config_apply_failed">无法应用</string>
+    <string name="rv_config_export_title">导出配置文件？</string>
+    <string name="rv_config_export_body">文件可能含有密码与密钥。</string>
+    <string name="rv_config_export_confirm">导出</string>
 </resources>

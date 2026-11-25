@@ -1,13 +1,10 @@
-package dev.doona.android.prototype.rv.config
+package dev.doona.android.feature.config
 
-import android.content.res.Configuration
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RV_ROW_TITLE_LINES
@@ -30,12 +27,10 @@ import dev.doona.android.designsystem.rv.RvSettingsNavRow
 import dev.doona.android.designsystem.rv.RvSettingsRow
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatusChip
-import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.RvWhole
 import dev.doona.android.designsystem.rv.rvConfigLine
 import dev.doona.android.designsystem.rv.rvKeepRuns
 import dev.doona.android.designsystem.rv.rvKeepTail
-import dev.doona.android.designsystem.rv.rvSystemScheme
 
 /**
  * 版本紀錄 (config plan, history; `configHistory`): the applied revisions newest first, each a plain navigation row
@@ -52,6 +47,7 @@ import dev.doona.android.designsystem.rv.rvSystemScheme
 internal fun RvConfigHistoryPage(
     revisions: List<RvRevision>,
     headRev: Int,
+    nowEpochMs: Long,
     onBack: () -> Unit,
     onRevision: (Int) -> Unit = {},
     onExport: () -> Unit = {},
@@ -64,7 +60,7 @@ internal fun RvConfigHistoryPage(
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         RvGutter {
-            RvCard { revisions.forEach { RevisionRow(it, it.rev == headRev, onRevision) { onRename(RvRevisionRename(it.rev, it.name.orEmpty())) } } }
+            RvCard { revisions.forEach { RevisionRow(it, it.rev == headRev, nowEpochMs, onRevision) { onRename(RvRevisionRename(it.rev, it.name.orEmpty())) } } }
             RvCard { RvSettingsNavRow(stringResource(R.string.rv_config_export), R.drawable.rv_sym_ios_share, onExport) }
         }
     }
@@ -76,11 +72,11 @@ internal fun RvConfigHistoryPage(
 internal fun rvRevisionMenu(onRename: () -> Unit): List<RvMenuItem> = listOf(RvMenuItem(stringResource(R.string.rv_sub_rename), R.drawable.rv_sym_edit, onClick = onRename))
 
 @Composable
-private fun RevisionRow(revision: RvRevision, head: Boolean, onRevision: (Int) -> Unit, onRename: () -> Unit) {
+private fun RevisionRow(revision: RvRevision, head: Boolean, nowEpochMs: Long, onRevision: (Int) -> Unit, onRename: () -> Unit) {
     val number = stringResource(R.string.rv_config_revision, revision.rev)
     val origin = revision.restored?.let { stringResource(revision.origin.label, it) } ?: stringResource(revision.origin.label)
     val inUse: (@Composable () -> Unit)? = if (head) ({ RvStatusChip(R.drawable.rv_nodes_ic_check_circle, stringResource(R.string.rv_template_in_use), Rv.colors.positive) }) else null
-    val time = rvConfigWhen(revision.appliedAtEpochMs)
+    val time = rvConfigWhen(revision.appliedAtEpochMs, nowEpochMs)
     val name = revision.name
     RvLongPressMenu(rvRevisionMenu(onRename), { onRevision(revision.rev) }) { press ->
         RvSettingsRow(
@@ -119,7 +115,7 @@ internal fun RvConfigImportPage(
                     RvNoticeKind.Error,
                     stringResource(R.string.rv_config_import_refused),
                     rvKeepTail(
-                        rvKeepRuns(pluralStringResource(R.plurals.rv_config_import_limit, RvConfigHistoryData.LIMIT_FILES, RvConfigHistoryData.LIMIT_FILES, RvConfigHistoryData.LIMIT_SIZE)),
+                        rvKeepRuns(pluralStringResource(R.plurals.rv_config_import_limit, RvConfigLimits.FILES, RvConfigLimits.FILES, RvConfigLimits.SIZE)),
                     ),
                     stringResource(R.string.rv_config_pick_again),
                     onPickAgain,
@@ -150,20 +146,4 @@ internal fun RvConfigImportPage(
             }
         }
     }
-}
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvConfigHistoryPagePreview() {
-    val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvConfigHistoryPage(RvConfigHistoryData.revisions, RvConfigData.REV, onBack = {}) }
-}
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvConfigImportPagePreview() {
-    val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvConfigImportPage(RvConfigHistoryData.escape, onBack = {}) }
 }

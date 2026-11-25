@@ -71,4 +71,9 @@
     <string name="rv_template_group_cn">回國節點</string>
     <string name="rv_config_create">新增設定檔</string>
     <string name="rv_config_kind_note">%1$s：%2$s</string>
+    <string name="rv_config_read_failed">無法讀取設定檔</string>
+    <string name="rv_config_apply_failed">無法套用</string>
+    <string name="rv_config_export_title">匯出設定檔？</string>
+    <string name="rv_config_export_body">檔案可能含有密碼與金鑰。</string>
+    <string name="rv_config_export_confirm">匯出</string>
 </resources>

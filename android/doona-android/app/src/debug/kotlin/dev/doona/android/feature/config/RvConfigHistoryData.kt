@@ -1,56 +1,11 @@
-package dev.doona.android.prototype.rv.config
+package dev.doona.android.feature.config
 
-import androidx.annotation.StringRes
-import androidx.compose.runtime.Immutable
-import dev.doona.android.R
-import dev.doona.android.prototype.rv.RvDiffFile
-import dev.doona.android.prototype.rv.RvDiffKind.Added
-import dev.doona.android.prototype.rv.RvDiffKind.Removed
-import dev.doona.android.prototype.rv.RvDiffKind.Same
-import dev.doona.android.prototype.rv.RvDiffLine
+import dev.doona.android.designsystem.rv.RvDiffFile
+import dev.doona.android.designsystem.rv.RvDiffKind.Added
+import dev.doona.android.designsystem.rv.RvDiffKind.Removed
+import dev.doona.android.designsystem.rv.RvDiffKind.Same
+import dev.doona.android.designsystem.rv.RvDiffLine
 import dev.doona.android.prototype.rv.data.RV_NOW
-
-/** Where an applied revision came from, as `configHistory` gives its origin. */
-internal enum class RvRevisionOrigin(@StringRes val label: Int) {
-    Edit(R.string.rv_rule_menu_edit),
-    Import(R.string.rv_config_origin_import),
-    Template(R.string.rv_policy_template),
-    Restore(R.string.rv_config_origin_restore),
-}
-
-/**
- * One applied revision: its number, when it was applied, its origin, for a restore the revision it restored, and the
- * [name] the user gave it (null until named; an empty name clears it).
- */
-@Immutable
-internal class RvRevision(
-    val rev: Int,
-    val appliedAtEpochMs: Long,
-    val origin: RvRevisionOrigin,
-    val restored: Int? = null,
-    val name: String? = null,
-) {
-    fun named(name: String?) = RvRevision(rev, appliedAtEpochMs, origin, restored, name)
-}
-
-/** The rename sheet over 版本紀錄: the revision [rev] being named and the [name] typed so far. */
-@Immutable
-internal data class RvRevisionRename(val rev: Int, val name: String)
-
-/**
- * What 匯入設定檔 shows after the picker: the picked [name]; refused at the budget (`source_limit`, before any parse: no
- * draft, the head unchanged), or staged as a draft whose [files] include one that reaches outside the staged root
- * (`include_escape` on [escapeLine], spelled [escapePath]): the draft stays editable and cannot be applied.
- */
-@Immutable
-internal class RvImportState(
-    val name: String,
-    val headRev: Int,
-    val refusedAtLimit: Boolean = false,
-    val files: List<RvConfigFile> = emptyList(),
-    val escapeLine: Int = 0,
-    val escapePath: String = "",
-)
 
 internal object RvConfigHistoryData {
     private const val HOUR = 60 * 60 * 1000L
@@ -110,10 +65,6 @@ internal object RvConfigHistoryData {
             ),
         ),
     )
-
-    /** The pin's `SourceLimits::DEFAULT` (config-plan.md:36): 32 files, 8 MiB, entry, includes and companions together. */
-    const val LIMIT_FILES = 32
-    const val LIMIT_SIZE = "8 MiB"
 
     private const val PICKED = "router.dae"
 

@@ -1,18 +1,17 @@
-package dev.doona.android.prototype.rv.config
+package dev.doona.android.feature.config
 
-import android.content.res.Configuration
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvChevron
 import dev.doona.android.designsystem.rv.RvConfirmSheet
+import dev.doona.android.designsystem.rv.RvDiffAt
+import dev.doona.android.designsystem.rv.RvDiffFile
 import dev.doona.android.designsystem.rv.RvFootnote
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvIconDisc
@@ -20,13 +19,9 @@ import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSourceDiff
 import dev.doona.android.designsystem.rv.RvTextField
-import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.RvWhole
-import dev.doona.android.designsystem.rv.rvSystemScheme
-import dev.doona.android.prototype.rv.RvDiffAt
-import dev.doona.android.prototype.rv.RvDiffFile
-import dev.doona.android.prototype.rv.RvSourceDiff
 
 /**
  * One revision, opened from its 版本紀錄 row (config plan, history; `configDraft from: revision`): its number as the
@@ -39,6 +34,7 @@ import dev.doona.android.prototype.rv.RvSourceDiff
 internal fun RvConfigRevisionPage(
     revision: RvRevision,
     files: List<RvDiffFile>,
+    nowEpochMs: Long,
     onBack: () -> Unit,
     onRestore: () -> Unit = {},
     onOpen: (String, RvDiffAt) -> Unit = { _, _ -> },
@@ -57,7 +53,7 @@ internal fun RvConfigRevisionPage(
             titleBlock,
             insets,
             caption = {
-                RvCaption(rvConfigWhen(revision.appliedAtEpochMs))
+                RvCaption(rvConfigWhen(revision.appliedAtEpochMs, nowEpochMs))
                 RvCaption(origin)
             },
         )
@@ -110,12 +106,4 @@ internal fun RvRevisionRenameSheet(rename: RvRevisionRename?, onRename: (RvRevis
 @Composable
 internal fun RvRevisionNameField(rename: RvRevisionRename, onName: (String) -> Unit) {
     RvTextField(rename.name, onName, label = null, name = stringResource(R.string.rv_sub_rename), placeholder = stringResource(R.string.rv_config_revision, rename.rev))
-}
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvConfigRevisionPagePreview() {
-    val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvConfigRevisionPage(RvConfigHistoryData.named[2], listOf(RvConfigHistoryData.restoreDiff), onBack = {}) }
 }

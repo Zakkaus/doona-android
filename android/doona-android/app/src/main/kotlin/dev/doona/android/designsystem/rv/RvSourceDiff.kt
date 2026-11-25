@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv
+package dev.doona.android.designsystem.rv
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Spacer
@@ -22,17 +22,6 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
-import dev.doona.android.designsystem.rv.Rv
-import dev.doona.android.designsystem.rv.RvAlpha
-import dev.doona.android.designsystem.rv.RvCard
-import dev.doona.android.designsystem.rv.RvCardHeader
-import dev.doona.android.designsystem.rv.RvCodeText
-import dev.doona.android.designsystem.rv.RvSpace
-import dev.doona.android.designsystem.rv.RvText
-import dev.doona.android.designsystem.rv.rvLineNumberStyle
-import dev.doona.android.designsystem.rv.rvLineNumberWidth
-import dev.doona.android.designsystem.rv.rvRowPress
-import dev.doona.android.designsystem.rv.rvSourceStyle
 
 /** What a line of a diff is: kept as it was, added in the candidate, or removed from the base. */
 internal enum class RvDiffKind(val sign: String, val label: Int) {

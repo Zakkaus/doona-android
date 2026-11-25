@@ -1,7 +1,5 @@
-package dev.doona.android.prototype.rv.config
+package dev.doona.android.feature.config
 
-import android.content.res.Configuration
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
@@ -9,7 +7,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvCaption
@@ -22,11 +19,8 @@ import dev.doona.android.designsystem.rv.RvSeeAll
 import dev.doona.android.designsystem.rv.RvSettingsNavRow
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
-import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvConfigLine
-import dev.doona.android.designsystem.rv.rvSystemScheme
-import dev.doona.android.prototype.rv.data.RV_NOW
 
 /**
  * 設定檔 (config plan, configuration overview; `configRead`), under 策略 and linked from 設定, in node detail's grammar:
@@ -46,7 +40,7 @@ internal fun RvConfigOverviewPage(
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_config_title)
-    val applied = rvConfigWhen(state.appliedAtEpochMs)
+    val applied = rvConfigWhen(state.appliedAtEpochMs, state.nowEpochMs)
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         RvPageHeader(title, titleBlock, insets, caption = { RvCaption(stringResource(R.string.rv_config_applied, state.rev, applied)) })
         RvSectionTitle(stringResource(R.string.rv_config_files), Modifier.padding(horizontal = RvSpace.gutter), first = true)
@@ -112,19 +106,11 @@ private fun CompatCard(state: RvConfigState, onSkipped: () -> Unit) {
     }
 }
 
-/** When something happened: its time when it is the sample's today, else its date and time. */
+/** When something happened: its time when it is [nowEpochMs]'s day, else its date and time. */
 @Composable
-internal fun rvConfigWhen(epochMs: Long): String {
+internal fun rvConfigWhen(epochMs: Long, nowEpochMs: Long): String {
     val format = rememberRvFormat()
-    return if (epochMs / MS_PER_DAY == RV_NOW / MS_PER_DAY) format.time(epochMs) else format.date(epochMs) + " " + format.time(epochMs)
+    return if (epochMs / MS_PER_DAY == nowEpochMs / MS_PER_DAY) format.time(epochMs) else format.date(epochMs) + " " + format.time(epochMs)
 }
 
 private const val MS_PER_DAY = 86_400_000L
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvConfigOverviewPagePreview() {
-    val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvConfigOverviewPage(RvConfigData.skippedInclude, onBack = {}) }
-}

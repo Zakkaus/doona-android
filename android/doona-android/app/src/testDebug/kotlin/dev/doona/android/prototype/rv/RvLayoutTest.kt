@@ -14,6 +14,8 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.NOT_WIRED
+import dev.doona.android.feature.config.RvConfigHistoryData
+import dev.doona.android.feature.config.RvConfigImportPage
 import dev.doona.android.feature.model.RvDnsUpstream
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvPolicyState
@@ -36,8 +38,6 @@ import dev.doona.android.feature.settings.RvLogLevel
 import dev.doona.android.feature.settings.RvLogLevelScreen
 import dev.doona.android.feature.settings.RvThemeScreen
 import dev.doona.android.feature.settings.RvUpdate
-import dev.doona.android.prototype.rv.config.RvConfigHistoryData
-import dev.doona.android.prototype.rv.config.RvConfigImportPage
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
 import dev.doona.android.prototype.rv.connections.RvConnectionsPage
 import dev.doona.android.prototype.rv.data.RvData

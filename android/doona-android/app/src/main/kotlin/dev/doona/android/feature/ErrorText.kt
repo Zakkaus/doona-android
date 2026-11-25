@@ -23,6 +23,10 @@ fun ErrorCode.messageRes(): Int = when (this) {
     ErrorCode.DnsFailed -> R.string.error_dns_failed
     ErrorCode.StorageFull -> R.string.error_storage_full
     ErrorCode.WriteFailed -> R.string.error_write_failed
+    ErrorCode.Conflict -> R.string.error_conflict
+    ErrorCode.SourceLimit -> R.string.error_source_limit
+    ErrorCode.NonNativeSource -> R.string.error_non_native_source
+    ErrorCode.ActivationFailed -> R.string.error_activation_failed
 }
 
 /** Why an action failed, one sentence for each engine error code; every RV failure banner says why through this. */

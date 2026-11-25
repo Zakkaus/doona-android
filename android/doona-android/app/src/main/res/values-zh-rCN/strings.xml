@@ -91,6 +91,10 @@
     <string name="error_dns_failed">DNS 查询失败</string>
     <string name="error_storage_full">存储空间不足</string>
     <string name="error_write_failed">无法写入数据文件</string>
+    <string name="error_conflict">配置文件已有较新的版本</string>
+    <string name="error_source_limit">文件过多或过大</string>
+    <string name="error_non_native_source">不是 honk 配置文件</string>
+    <string name="error_activation_failed">配置文件无法启用</string>
     <!-- What a screen reader says where the screen shows only a triangle, an arrow or a bar. -->
     <string name="rv_a11y_faster">变快 %1$s</string>
     <string name="rv_a11y_slower">变慢 %1$s</string>

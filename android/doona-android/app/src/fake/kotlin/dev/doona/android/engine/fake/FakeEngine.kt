@@ -2,6 +2,7 @@ package dev.doona.android.engine.fake
 
 import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.ConfigAssets
+import dev.doona.android.engine.ConfigEngine
 import dev.doona.android.engine.CoreDiagnostics
 import dev.doona.android.engine.CrashFile
 import dev.doona.android.engine.EffectiveConfig
@@ -59,7 +60,8 @@ class FakeEngine internal constructor(
     traffic: Traffic,
     mode: Mode,
     private val data: FakeData,
-) : Engine {
+) : Engine,
+    ConfigEngine by data.config {
     constructor(
         groups: List<Group> = TEMPLATE_GROUPS,
         subscriptions: List<Subscription> = SAMPLE_SUBSCRIPTIONS,

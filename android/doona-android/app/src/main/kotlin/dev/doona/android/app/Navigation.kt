@@ -62,6 +62,23 @@ data class TemplateImpactKey(val templateId: String) : AppKey
 @Serializable
 data object EffectiveConfigKey : AppKey
 
+/** 設定檔, the configuration's overview. */
+@Serializable
+data object ConfigKey : AppKey
+
+@Serializable
+data object ConfigSkippedKey : AppKey
+
+/** The source editor of the file at [path], relative to the entry. */
+@Serializable
+data class ConfigSourceKey(val path: String) : AppKey
+
+@Serializable
+data object ConfigHistoryKey : AppKey
+
+@Serializable
+data class ConfigRevisionKey(val rev: Int) : AppKey
+
 @Serializable
 data object SubscriptionsKey : AppKey
 

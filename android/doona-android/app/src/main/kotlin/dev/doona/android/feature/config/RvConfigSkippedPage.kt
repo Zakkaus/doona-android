@@ -1,7 +1,5 @@
-package dev.doona.android.prototype.rv.config
+package dev.doona.android.feature.config
 
-import android.content.res.Configuration
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
@@ -9,7 +7,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvCaption
@@ -20,9 +17,7 @@ import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSectionTitle
 import dev.doona.android.designsystem.rv.RvSettingsNavRow
 import dev.doona.android.designsystem.rv.RvSpace
-import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvConfigLine
-import dev.doona.android.designsystem.rv.rvSystemScheme
 
 /**
  * 已略過 (config plan, "follow a skip to its reason"; `effectiveConfig`'s support records), from 設定檔's 相容性: the
@@ -49,12 +44,4 @@ private fun SkippedRow(record: RvSkipped, onOpen: (RvSkipped) -> Unit) {
     val reasons = record.reasons.map { stringResource(it.label) }.joinToString(stringResource(R.string.rv_effective_list_separator))
     val line = rvConfigLine(listOf(stringResource(R.string.rv_config_line, record.line), reasons))
     RvSettingsNavRow(record.text, null, { onOpen(record) }, subtitle = line, code = true, titleLines = Int.MAX_VALUE)
-}
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvConfigSkippedPagePreview() {
-    val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvConfigSkippedPage(RvConfigData.skippedInclude, onBack = {}) }
 }

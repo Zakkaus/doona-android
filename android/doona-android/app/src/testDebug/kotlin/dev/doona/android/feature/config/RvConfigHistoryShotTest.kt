@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.config
+package dev.doona.android.feature.config
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,6 +32,7 @@ import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
+import dev.doona.android.prototype.rv.data.RV_NOW
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.seedColorScheme
 import org.junit.Assert.assertEquals
@@ -184,14 +185,14 @@ class RvConfigHistoryShotTest {
     @Test
     fun aRevisionOpensItsDiff() {
         var opened = 0
-        compose.setContent { Themed { RvConfigHistoryPage(RvConfigHistoryData.revisions, RvConfigData.REV, onBack = {}, onRevision = { opened = it }) } }
+        compose.setContent { Themed { RvConfigHistoryPage(RvConfigHistoryData.revisions, RvConfigData.REV, RV_NOW, onBack = {}, onRevision = { opened = it }) } }
         compose.onNodeWithText("第 6 版").performScrollTo().performClick()
         assertEquals(6, opened)
     }
 
     @Test
     fun aNamedRevisionShowsItsNameAndAnUnnamedOneItsNumber() {
-        compose.setContent { Themed { RvConfigHistoryPage(RvConfigHistoryData.named, RvConfigData.REV, onBack = {}) } }
+        compose.setContent { Themed { RvConfigHistoryPage(RvConfigHistoryData.named, RvConfigData.REV, RV_NOW, onBack = {}) } }
         compose.onNodeWithText("家用").assertExists()
         compose.onNodeWithText("第 7 版").assertDoesNotExist()
         compose.onNodeWithText("第 8 版").assertExists()
@@ -200,7 +201,7 @@ class RvConfigHistoryShotTest {
     @Test
     fun aLongPressOffersRenameWhichOpensTheSheetOnThatRevision() {
         var asked: RvRevisionRename? = null
-        compose.setContent { Themed { RvConfigHistoryPage(RvConfigHistoryData.named, RvConfigData.REV, onBack = {}, onRename = { asked = it }) } }
+        compose.setContent { Themed { RvConfigHistoryPage(RvConfigHistoryData.named, RvConfigData.REV, RV_NOW, onBack = {}, onRename = { asked = it }) } }
         compose.onNodeWithText("家用").performScrollTo().performTouchInput { longClick() }
         compose.onNodeWithText(RENAME).performClick()
         assertEquals(RvRevisionRename(7, "家用"), asked)
@@ -209,7 +210,7 @@ class RvConfigHistoryShotTest {
     @Test
     fun theNameRowOfARevisionOpensTheSheetOnThatRevision() {
         var asked: RvRevisionRename? = null
-        compose.setContent { Themed { RvConfigRevisionPage(revision(HOME), listOf(RvConfigHistoryData.restoreDiff), onBack = {}, onRename = { asked = it }) } }
+        compose.setContent { Themed { RvConfigRevisionPage(revision(HOME), listOf(RvConfigHistoryData.restoreDiff), RV_NOW, onBack = {}, onRename = { asked = it }) } }
         compose.onNodeWithText(NAME).performClick()
         assertEquals(RvRevisionRename(HOME, "家用"), asked)
     }
@@ -217,7 +218,7 @@ class RvConfigHistoryShotTest {
     @Test
     fun anUnnamedRevisionSaysSoAndOffersRestore() {
         var restored = false
-        compose.setContent { Themed { RvConfigRevisionPage(revision(UNNAMED), listOf(RvConfigHistoryData.restoreDiff), onBack = {}, onRestore = { restored = true }) } }
+        compose.setContent { Themed { RvConfigRevisionPage(revision(UNNAMED), listOf(RvConfigHistoryData.restoreDiff), RV_NOW, onBack = {}, onRestore = { restored = true }) } }
         compose.onNodeWithText("未命名").assertExists()
         compose.onNodeWithText("復原").performClick()
         assertEquals(true, restored)
@@ -228,7 +229,7 @@ class RvConfigHistoryShotTest {
         var saved: Pair<Int, String?>? = null
         var rename by mutableStateOf<RvRevisionRename?>(RvRevisionRename(7, "  "))
         compose.setContent {
-            Themed { RvConfigHistoryPage(RvConfigHistoryData.named, RvConfigData.REV, onBack = {}, rename = rename, onRename = { rename = it }, onSaveName = { rev, name -> saved = rev to name }) }
+            Themed { RvConfigHistoryPage(RvConfigHistoryData.named, RvConfigData.REV, RV_NOW, onBack = {}, rename = rename, onRename = { rename = it }, onSaveName = { rev, name -> saved = rev to name }) }
         }
         compose.onNodeWithText(SAVE).performClick()
         assertEquals(7 to null, saved)
@@ -239,7 +240,7 @@ class RvConfigHistoryShotTest {
     fun savingANameTrimsIt() {
         var saved: Pair<Int, String?>? = null
         compose.setContent {
-            Themed { RvConfigHistoryPage(RvConfigHistoryData.named, RvConfigData.REV, onBack = {}, rename = RvRevisionRename(8, " 回家前 "), onSaveName = { rev, name -> saved = rev to name }) }
+            Themed { RvConfigHistoryPage(RvConfigHistoryData.named, RvConfigData.REV, RV_NOW, onBack = {}, rename = RvRevisionRename(8, " 回家前 "), onSaveName = { rev, name -> saved = rev to name }) }
         }
         compose.onNodeWithText(SAVE).performClick()
         assertEquals(8 to "回家前", saved)
@@ -255,6 +256,7 @@ class RvConfigHistoryShotTest {
                 RvConfigHistoryPage(
                     revisions,
                     RvConfigData.REV,
+                    RV_NOW,
                     onBack = {},
                     rename = rename,
                     onRename = { rename = it },
@@ -280,6 +282,7 @@ class RvConfigHistoryShotTest {
                 RvConfigRevisionPage(
                     shown,
                     listOf(RvConfigHistoryData.restoreDiff),
+                    RV_NOW,
                     onBack = {},
                     rename = rename,
                     onRename = { rename = it },
@@ -304,19 +307,19 @@ class RvConfigHistoryShotTest {
     private fun Themed(content: @Composable () -> Unit) = RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content)
 
     @Composable
-    private fun History() = RvConfigHistoryPage(RvConfigHistoryData.revisions, RvConfigData.REV, onBack = {})
+    private fun History() = RvConfigHistoryPage(RvConfigHistoryData.revisions, RvConfigData.REV, RV_NOW, onBack = {})
 
     @Composable
     private fun Import(state: RvImportState) = RvConfigImportPage(state, onBack = {})
 
     @Composable
-    private fun Named() = RvConfigHistoryPage(RvConfigHistoryData.named, RvConfigData.REV, onBack = {})
+    private fun Named() = RvConfigHistoryPage(RvConfigHistoryData.named, RvConfigData.REV, RV_NOW, onBack = {})
 
     @Composable
-    private fun LongNamed() = RvConfigHistoryPage(longNamed, RvConfigData.REV, onBack = {})
+    private fun LongNamed() = RvConfigHistoryPage(longNamed, RvConfigData.REV, RV_NOW, onBack = {})
 
     @Composable
-    private fun RevisionLongNamed() = RvConfigRevisionPage(longNamed.first { it.rev == RvConfigData.REV }, listOf(RvConfigHistoryData.restoreDiff), onBack = {})
+    private fun RevisionLongNamed() = RvConfigRevisionPage(longNamed.first { it.rev == RvConfigData.REV }, listOf(RvConfigHistoryData.restoreDiff), RV_NOW, onBack = {})
 
     /** The named revisions with the head's name long enough to take several lines at every font size. */
     private val longNamed = RvConfigHistoryData.named.map { if (it.rev == RvConfigData.REV) it.named(LONG_NAME) else it }
@@ -349,7 +352,7 @@ class RvConfigHistoryShotTest {
     }
 
     @Composable
-    private fun Revision(rev: Int) = RvConfigRevisionPage(revision(rev), listOf(RvConfigHistoryData.restoreDiff), onBack = {})
+    private fun Revision(rev: Int) = RvConfigRevisionPage(revision(rev), listOf(RvConfigHistoryData.restoreDiff), RV_NOW, onBack = {})
 
     private fun revision(rev: Int) = RvConfigHistoryData.named.first { it.rev == rev }
 
