@@ -41,7 +41,7 @@
     <string name="rv_hero_show">显示 %1$s</string>
     <string name="rv_direct_note">所有流量直接连接，不经代理</string>
     <string name="rv_rule_streaming">流媒体</string>
-    <string name="rv_rule_domestic">国内与局域网</string>
+    <string name="rv_rule_domestic">国内和局域网</string>
     <string name="rv_rule_ai">AI</string>
     <plurals name="rv_see_all_rules">
         <item quantity="other">查看全部 %1$d 条规则</item>

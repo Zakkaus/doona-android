@@ -2,7 +2,7 @@
 <resources>
     <string name="rv_welcome_title">欢迎使用 doona</string>
     <string name="rv_welcome_line">doona 经由订阅提供的节点转发流量，并按规则决定哪些流量直连。</string>
-    <string name="rv_welcome_subs_sub">Clash、sing-box 与分享链接列表</string>
+    <string name="rv_welcome_subs_sub">Clash、sing-box 和分享链接列表</string>
     <string name="rv_welcome_rules">规则</string>
     <string name="rv_welcome_rules_sub">每个连接按规则经由节点或直连</string>
     <string name="rv_welcome_vpn">VPN</string>
@@ -19,11 +19,11 @@
     <string name="rv_failed_switch_node">无法切换节点</string>
     <string name="rv_failed_test_latency">无法测试延迟</string>
     <string name="rv_lan_ask_title">允许访问局域网</string>
-    <string name="rv_lan_ask_body">访问局域网中的订阅与节点需要此权限。</string>
+    <string name="rv_lan_ask_body">访问局域网中的订阅和节点需要此权限。</string>
     <string name="rv_lan_ask_continue">继续</string>
     <string name="rv_lan_ask_not_now">暂不</string>
     <string name="rv_lan_denied_title">未允许访问局域网</string>
-    <string name="rv_lan_denied_body">无法访问局域网中的订阅与节点。请在应用设置中允许 doona 访问局域网。</string>
+    <string name="rv_lan_denied_body">无法访问局域网中的订阅和节点。请在应用设置中允许 doona 访问局域网。</string>
     <string name="rv_lan_open_settings">打开设置</string>
     <string name="rv_perm_vpn_title">允许建立 VPN</string>
     <string name="rv_perm_vpn_body">应用的流量要先进入 doona 的 VPN，才能按规则经由节点或直连。</string>

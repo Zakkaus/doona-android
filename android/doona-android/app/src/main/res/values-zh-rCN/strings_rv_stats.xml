@@ -27,7 +27,7 @@
     <string name="rv_stats_test_all">测试全部延迟</string>
     <string name="rv_stats_update_all">更新所有订阅</string>
     <string name="rv_stats_export">导出诊断</string>
-    <string name="rv_stats_export_detail">日志与连接状态</string>
+    <string name="rv_stats_export_detail">日志和连接状态</string>
     <plurals name="rv_stats_subscriptions">
         <item quantity="other">%1$d 个订阅</item>
     </plurals>

@@ -126,6 +126,6 @@ internal object RvConfigHistoryData {
         RvConfigData.REV,
         files = listOf(RvConfigFile(PICKED, null, 40), RvConfigFile(RvConfigData.NODES, PICKED, 12)),
         escapeLine = 4,
-        escapePath = "/etc/dae/rules.d/*.dae",
+        escapePath = "/etc/honk/rules.d/*.dae",
     )
 }

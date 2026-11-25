@@ -61,10 +61,9 @@
     <string name="rv_template_global_line">局域网以外的流量都经由代理</string>
     <string name="rv_template_single">单一策略组</string>
     <string name="rv_template_single_line">代理流量都经由同一个策略组</string>
-    <string name="rv_template_by_service_line">Telegram、Apple 与国外媒体各用一个策略组</string>
+    <string name="rv_template_by_service_line">Telegram、Apple 和国外媒体各用一个策略组</string>
     <string name="rv_template_more">更多模板</string>
     <string name="rv_template_options">选项</string>
-    <string name="rv_template_nm_direct">NetworkManager 直连</string>
     <string name="rv_template_group_proxy">代理</string>
     <string name="rv_template_group_auto">自动选择</string>
     <string name="rv_template_group_media">国外媒体</string>

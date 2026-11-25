@@ -145,7 +145,7 @@
     <string name="rv_score_selected">已選定</string>
     <string name="rv_score_evaluating">評估中</string>
     <string name="rv_score_wait_traffic">等待可比較的流量</string>
-    <string name="rv_score_wait_budget">測試次數已達上限</string>
+    <string name="rv_score_wait_budget">測試流量已達上限</string>
     <string name="rv_score_wait_testing">測試中</string>
     <string name="rv_score_wait_backoff">稍後重試</string>
     <string name="rv_score_coverage">已比較 %1$d/%2$d</string>
