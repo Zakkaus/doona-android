@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use super::draft::Draft;
+use super::meters::RevisionMeters;
 use super::staged::Tree;
 use super::{HonkConfig, HonkConfigError};
 use crate::state::{sync_dir, write_synced};
@@ -86,6 +87,7 @@ impl From<HonkConfigError> for StoreError {
 #[derive(Clone, Deserialize, Serialize)]
 struct Revision {
     entry: PathBuf,
+    meters: RevisionMeters,
 }
 
 #[derive(Clone, Default, Deserialize, Serialize)]
@@ -93,6 +95,7 @@ pub(super) struct Manifest {
     revisions: BTreeMap<u64, Revision>,
     pub drafts: Vec<Draft>,
     pub last_draft: u64,
+    last_meter: u64,
 }
 
 /// One writer owns the app-private config directory. Share this handle between editors.
@@ -162,6 +165,12 @@ impl HonkStore {
             .join(&revision.entry))
     }
 
+    /// Each traffic row's meter in `rev`, by entry-relative file and row ID.
+    pub fn revision_meters(&self, rev: u64) -> Result<&RevisionMeters, StoreError> {
+        let revision = self.manifest.revisions.get(&rev);
+        Ok(&revision.ok_or(StoreError::UnknownRevision)?.meters)
+    }
+
     pub fn read_revision(&self, rev: u64) -> Result<HonkConfig, StoreError> {
         Ok(super::load(self.revision_entry(rev)?)?)
     }
@@ -183,6 +192,12 @@ impl HonkStore {
         if !config.complete() {
             return Err(StoreError::Incomplete);
         }
+        let mut last_meter = self.manifest.last_meter;
+        let meters = draft.assign(
+            &config.loaded,
+            tree.entry.parent().unwrap(),
+            &mut last_meter,
+        );
         // A complete tree reaches symlinks only through hosts; keep reporting those escapes.
         tree.kept = tree.hosts_links(config.config());
         files.extend(
@@ -197,10 +212,12 @@ impl HonkStore {
         let dir = self.root.join(REVISIONS).join(rev.to_string());
         tree.copy_to(&dir)?;
         let mut next = self.manifest.clone();
+        next.last_meter = last_meter;
         next.revisions.insert(
             rev,
             Revision {
                 entry: draft.entry.clone(),
+                meters,
             },
         );
         next.drafts.retain(|d| d.id != id);
