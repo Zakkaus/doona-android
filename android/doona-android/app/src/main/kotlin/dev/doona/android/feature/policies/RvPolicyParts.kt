@@ -33,6 +33,7 @@ import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvRuleEnd
 import dev.doona.android.feature.model.RvRuleMatch
+import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.feature.model.RvRuleState
 import dev.doona.android.feature.model.text
 
@@ -61,15 +62,23 @@ internal fun RvRuleMatch.title(): String = when (this) {
     is RvRuleMatch.GeoSite -> category
 }
 
+/** Where the rules come from, as 策略 and the template review name it: the template, the subscription, or 主設定檔. */
+@Composable
+internal fun RvRuleSource.text(): String = when (this) {
+    is RvRuleSource.Template -> stringResource(template.name)
+    is RvRuleSource.Subscription -> name
+    RvRuleSource.File -> stringResource(R.string.rv_config_entry)
+}
+
 /** The kind of match, under the title. */
 @Composable
 internal fun RvRuleMatch.kind(): String = when (this) {
     is RvRuleMatch.Domains -> stringResource(R.string.rv_policy_kind_domain)
-    is RvRuleMatch.GeoIp -> GEOIP
+    is RvRuleMatch.GeoIp -> stringResource(R.string.rv_rule_geoip)
     RvRuleMatch.Lan -> stringResource(R.string.rv_policy_lan_kind)
     RvRuleMatch.Rest -> stringResource(R.string.rv_policy_rest_kind)
     is RvRuleMatch.Value -> stringResource(kind.label)
-    is RvRuleMatch.GeoSite -> GEOSITE
+    is RvRuleMatch.GeoSite -> stringResource(R.string.rv_rule_geosite)
 }
 
 /**
@@ -153,9 +162,6 @@ private fun Target(group: RvPolicyGroup?, selected: Boolean, onSelect: () -> Uni
 
 /** The groups listed before 其他 N 個策略組: the main node, 自動, 串流 and AI. */
 private const val TARGETS = 4
-
-private const val GEOIP = "GEOIP"
-private const val GEOSITE = "GEOSITE"
 
 /**
  * A group as a row, on 策略's groups card and among a group page's members: its kind's [glyph] (flagged while [current]),

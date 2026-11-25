@@ -69,6 +69,7 @@ import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.rvNodeGroups
 import dev.doona.android.feature.model.text
@@ -173,6 +174,7 @@ internal data class RvPolicyProfile private constructor(
     val nodes: List<RvNode>,
     val subscriptions: List<RvSubscription>,
     val nowEpochMs: Long,
+    val source: RvRuleSource,
 ) {
     companion object {
         operator fun invoke(
@@ -183,7 +185,8 @@ internal data class RvPolicyProfile private constructor(
             nodes: List<RvNode>,
             subscriptions: List<RvSubscription>,
             nowEpochMs: Long,
-        ) = RvPolicyProfile(main, groups.toList(), rules.toList(), ruleCount, nodes.toList(), subscriptions.toList(), nowEpochMs)
+            source: RvRuleSource,
+        ) = RvPolicyProfile(main, groups.toList(), rules.toList(), ruleCount, nodes.toList(), subscriptions.toList(), nowEpochMs, source)
     }
 }
 
@@ -210,7 +213,7 @@ private fun PolicyContent(state: RvPolicyState, onChange: (RvPolicyState) -> Uni
             profile.main?.let { MainCard(state.group(it), routes.mainNode) }
             if (profile.groups.isNotEmpty()) GroupsCard(state, profile.groups, routes.group)
             RulesCard(profile, routes.rules)
-            OptionsCard(state, onChange, routes, configRev)
+            OptionsCard(state, onChange, routes, configRev, profile.source)
         }
     }
     if (state.mode == RvRouteMode.Global) GlobalPicker(state, profile, onChange)
@@ -356,19 +359,22 @@ private fun RulesCard(profile: RvPolicyProfile, onAll: () -> Unit) {
 }
 
 /**
- * What shapes the rules: the template they come from, the configuration file's applied revision when [configRev] is set,
- * a new rule, and the two switches doona web offers with it.
+ * What shapes the rules: where they come from ([source]: a template, a subscription or the configuration file), the
+ * configuration file's applied revision when [configRev] is set, a new rule, and the two switches doona web offers with
+ * a template: 封鎖廣告 where something can block ads, and 阻擋 QUIC, a template's option.
  */
 @Composable
-private fun OptionsCard(state: RvPolicyState, onChange: (RvPolicyState) -> Unit, routes: RvPolicyRoutes, configRev: Int?) {
+private fun OptionsCard(state: RvPolicyState, onChange: (RvPolicyState) -> Unit, routes: RvPolicyRoutes, configRev: Int?, source: RvRuleSource) {
     RvCard {
-        ValueRow(R.drawable.rv_sym_rule, stringResource(R.string.rv_policy_template), stringResource(R.string.rv_policy_template_value), routes.template)
+        ValueRow(R.drawable.rv_sym_rule, stringResource(R.string.rv_policy_template), source.text(), routes.template)
         if (configRev != null) {
             ValueRow(R.drawable.rv_sym_edit, stringResource(R.string.rv_config_title), stringResource(R.string.rv_config_revision, configRev), routes.config)
         }
         RvRow({ RvIconDisc(R.drawable.rv_sym_add) }, stringResource(R.string.rv_policy_new_rule), null, onClick = routes.newRule) { RvChevron() }
-        RvSwitchRow(R.drawable.rv_sym_ad_off, stringResource(R.string.rv_policy_block_ads), state.blockAds) { onChange(state.copy(blockAds = it)) }
-        RvSwitchRow(R.drawable.rv_sym_block, stringResource(R.string.rv_policy_block_quic), state.blockQuic) { onChange(state.copy(blockQuic = it)) }
+        state.blockAds?.let { on -> RvSwitchRow(R.drawable.rv_sym_ad_off, stringResource(R.string.rv_policy_block_ads), on) { onChange(state.copy(blockAds = it)) } }
+        if (source is RvRuleSource.Template) {
+            RvSwitchRow(R.drawable.rv_sym_block, stringResource(R.string.rv_policy_block_quic), state.blockQuic) { onChange(state.copy(blockQuic = it)) }
+        }
     }
 }
 

@@ -16,6 +16,7 @@ import dev.doona.android.designsystem.rv.RvFootnote
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLargeTitle
+import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvRadio
 import dev.doona.android.designsystem.rv.RvRow
@@ -36,11 +37,12 @@ import dev.doona.android.feature.model.text
  * 範本 (the 策略 options row), doona web's routing modes on a phone: one card of templates, each its glyph, its name over
  * one line on what it does, and a radio; the one in use says so after its line, and one the core cannot build yet is
  * listed, dimmed, with the reason after its line, and cannot be chosen. 檢視變更 opens the impact review, and only once a
- * template other than [current] is [selected]. The card lists [templates].
+ * template other than [current] is [selected]; [current] is null when the rules come from no template. The card lists
+ * [templates].
  */
 @Composable
 internal fun RvTemplatePage(
-    current: RvTemplate,
+    current: RvTemplate?,
     selected: RvTemplate,
     onSelect: (RvTemplate) -> Unit,
     onBack: () -> Unit,
@@ -53,11 +55,11 @@ internal fun RvTemplatePage(
         title,
         insets,
         onBack = onBack,
-        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_template_review), onReview, enabled = selected.id != current.id) },
+        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_template_review), onReview, enabled = selected.id != current?.id) },
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         RvGutter {
-            RvCard { templates.forEach { RvTemplateRow(it, it.id == selected.id, it.id == current.id) { onSelect(it) } } }
+            RvCard { templates.forEach { RvTemplateRow(it, it.id == selected.id, it.id == current?.id) { onSelect(it) } } }
         }
     }
 }
@@ -81,12 +83,13 @@ internal fun RvTemplateRow(template: RvTemplate, selected: Boolean, inUse: Boole
 
 /**
  * The review before a template replaces the rules (doona web's impact dialog), in node detail's grammar: what changes
- * as key stats (the template, rules added, changed and removed, the user's own rules kept in place); the groups it adds
- * and keeps; the rules it adds or changes, each drawn as the rules card draws a rule; a line saying only new
- * connections follow it; and 套用 floating at the bottom.
+ * as key stats (the source and the template, rules added, changed and removed, the user's own rules kept in place; a
+ * count the core does not tell is left out); the groups it adds and keeps and the rules it adds or changes, each drawn as
+ * the rules card draws a rule, where the core tells them; a line saying only new connections follow it; and 套用
+ * floating at the bottom. A failed 套用 shows as [banner] above the stats.
  */
 @Composable
-internal fun RvTemplateImpactPage(impact: RvImpact, onBack: () -> Unit, onApply: () -> Unit) {
+internal fun RvTemplateImpactPage(impact: RvImpact, onBack: () -> Unit, onApply: () -> Unit, banner: RvNotice? = null) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_template_review)
     RvScrollPage(
@@ -96,11 +99,15 @@ internal fun RvTemplateImpactPage(impact: RvImpact, onBack: () -> Unit, onApply:
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply) },
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
-        RvGutter { SummaryCard(impact) }
-        RvSectionTitle(stringResource(R.string.rv_policy_groups), Modifier.padding(horizontal = RvSpace.gutter))
-        RvGutter { RvCard { impact.groups.forEach { ImpactGroupRow(it) } } }
-        RvSectionTitle(stringResource(R.string.rv_policy_rules), Modifier.padding(horizontal = RvSpace.gutter))
-        RvGutter { RvCard { impact.rules.forEach { ImpactRuleRow(it) } } }
+        RvGutter(banner = banner) { SummaryCard(impact) }
+        if (impact.groups.isNotEmpty()) {
+            RvSectionTitle(stringResource(R.string.rv_policy_groups), Modifier.padding(horizontal = RvSpace.gutter))
+            RvGutter { RvCard { impact.groups.forEach { ImpactGroupRow(it) } } }
+        }
+        if (impact.rules.isNotEmpty()) {
+            RvSectionTitle(stringResource(R.string.rv_policy_rules), Modifier.padding(horizontal = RvSpace.gutter))
+            RvGutter { RvCard { impact.rules.forEach { ImpactRuleRow(it) } } }
+        }
         RvFootnote(stringResource(R.string.rv_template_new_flows))
     }
 }
@@ -108,11 +115,11 @@ internal fun RvTemplateImpactPage(impact: RvImpact, onBack: () -> Unit, onApply:
 @Composable
 private fun SummaryCard(impact: RvImpact) {
     RvCard {
-        RvStatRow(stringResource(R.string.rv_policy_template), stringResource(R.string.rv_template_from_to, stringResource(impact.from.name), stringResource(impact.to.name)))
-        RvStatRow(stringResource(R.string.rv_template_added), rules(impact.added))
-        RvStatRow(stringResource(R.string.rv_template_changed), rules(impact.changed))
-        RvStatRow(stringResource(R.string.rv_template_removed), rules(impact.removed))
-        RvStatRow(stringResource(R.string.rv_template_kept), rules(impact.kept))
+        RvStatRow(stringResource(R.string.rv_policy_template), stringResource(R.string.rv_template_from_to, impact.from.text(), stringResource(impact.to.name)))
+        impact.added?.let { RvStatRow(stringResource(R.string.rv_template_added), rules(it)) }
+        impact.changed?.let { RvStatRow(stringResource(R.string.rv_template_changed), rules(it)) }
+        impact.removed?.let { RvStatRow(stringResource(R.string.rv_template_removed), rules(it)) }
+        impact.kept?.let { RvStatRow(stringResource(R.string.rv_template_kept), rules(it)) }
     }
 }
 

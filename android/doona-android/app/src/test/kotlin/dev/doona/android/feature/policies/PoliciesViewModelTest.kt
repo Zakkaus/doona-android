@@ -12,6 +12,7 @@ import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.model.RvRuleSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -118,14 +119,13 @@ class PoliciesViewModelTest {
     }
 
     @Test
-    fun `the order and the ad switch stay on the page`() = runTest {
+    fun `the order stays on the page, and nothing can block ads, so there is no ad switch`() = runTest {
         val engine = Recording()
         val vm = collected(engine)
         val state = vm.uiState.value.state
-        assertTrue("the approved page shows 封鎖廣告 on", state.blockAds)
-        vm.onChange(state.copy(blockAds = false, nodeSort = RvNodeSort.Name))
+        assertNull(state.blockAds)
+        vm.onChange(state.copy(nodeSort = RvNodeSort.Name))
         assertEquals(emptyList<String>(), engine.calls)
-        assertFalse(vm.uiState.value.state.blockAds)
         assertEquals(RvNodeSort.Name, vm.uiState.value.state.nodeSort)
     }
 
@@ -171,17 +171,24 @@ class PoliciesViewModelTest {
     }
 
     @Test
-    fun `retry of 阻擋 QUIC with no template fails again without a call`() = runTest {
+    fun `rules from a subscription name it as their source, and 阻擋 QUIC calls nothing`() = runTest {
         val base = rvSampleEngine()
+        val sub = base.catalog.value!!.subscriptions.first()
         val engine = object : Engine by base {
-            override val catalog: StateFlow<Catalog?> = base.catalog.map { it?.copy(ruleSource = it.ruleSource.copy(template = null)) }
+            val calls = mutableListOf<String>()
+            override val catalog: StateFlow<Catalog?> = base.catalog.map { it?.copy(ruleSource = it.ruleSource.copy(template = null, subscriptionId = sub.id)) }
                 .stateIn(CoroutineScope(Dispatchers.Unconfined), SharingStarted.Eagerly, null)
+
+            override suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit> {
+                calls += template
+                return base.setRuleSource(template, options)
+            }
         }
         val vm = collected(engine)
+        assertEquals(RvRuleSource.Subscription(sub.name), vm.uiState.value.profile?.source)
         vm.onChange(vm.uiState.value.state.copy(blockQuic = true))
-        assertEquals(PolicyFailure(PolicyAction.Quic, ErrorCode.NotFound), vm.uiState.value.failure)
-        vm.retry()
-        assertEquals(PolicyFailure(PolicyAction.Quic, ErrorCode.NotFound), vm.uiState.value.failure)
+        assertEquals(emptyList<String>(), engine.calls)
+        assertNull(vm.uiState.value.failure)
     }
 
     @Test

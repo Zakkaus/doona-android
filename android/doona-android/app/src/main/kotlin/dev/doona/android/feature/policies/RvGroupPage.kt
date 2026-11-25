@@ -109,11 +109,15 @@ internal fun RvGroupPage(
     var picked by rememberSaveable { mutableStateOf(filter.source) }
     var sorted by rememberSaveable { mutableStateOf(filter.order) }
     val labels = group.members.associate { it.id to stringResource(it.place.label) }
-    val scoped = group.members.filter { picked == null || it.source == picked }
-    val matching = scoped.filter { it.matches(typed.trim(), labels.getValue(it.id)) }.mapTo(mutableSetOf()) { it.id }
-    val holders = group.members.filter { choice.chosen(it.id) }.map { it.source }.toSet()
     val inline = group.members.any { it.inline }
     val sources = content.subscriptions.map { it.id } + listOfNotNull(RV_INLINE_KEY.takeIf { inline })
+    // A pick whose subscription an update removed falls back to every subscription, chip and list alike.
+    val pick = picked?.takeIf { it in sources }
+    val scoped = group.members.filter { pick == null || it.source == pick }
+    val matching = scoped.filter { it.matches(typed.trim(), labels.getValue(it.id)) }.mapTo(mutableSetOf()) { it.id }
+    // The node each network's choice ends on: a chosen node, or the node a chosen member group ends on.
+    val ends = group.members.filter { choice.chosen(it.id) } + group.groups.filter { choice.chosen(it.id) }.mapNotNull { it.node }
+    val holders = ends.map { it.source }.toSet()
     val open = sources.size <= RV_SECTIONS_OPEN_UP_TO
     RvScrollPage(name, insets, modifier, onBack = actions.back, bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_test_group), actions.test) }) { titleBlock ->
         RvPageHeader(name, titleBlock, insets, caption = { Caption(group, content.score) })
@@ -124,14 +128,14 @@ internal fun RvGroupPage(
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
             RvSearchSlot { RvSearchField(null, typed, { typed = it }, it) }
-            val (subChip, orderChip) = rvGroupChips(content.subscriptions, inline, picked, sorted, { picked = it }, { sorted = it })
+            val (subChip, orderChip) = rvGroupChips(content.subscriptions, inline, pick, sorted, { picked = it }, { sorted = it })
             RvFilterChipRow(subChip, orderChip)
             Spacer(Modifier.height(RvSpace.controlGap))
         }
         val subs = content.subscriptions.associateBy { it.id }
-        sources.filter { picked == null || it == picked }.forEach { source ->
+        sources.filter { pick == null || it == pick }.forEach { source ->
             // A new pick starts its section afresh: open, as a section alone on the page is.
-            key(picked, source) {
+            key(pick, source) {
                 RvNodeSection(
                     subs[source],
                     rvSectionOrder(scoped.filter { it.source == source }, sorted),
@@ -144,7 +148,7 @@ internal fun RvGroupPage(
                     rows = RvRowsComposed(0) { Int.MAX_VALUE },
                     nowEpochMs = content.nowEpochMs,
                     modifier = Modifier,
-                    initiallyOpen = open || picked != null || source in holders,
+                    initiallyOpen = open || pick != null || source in holders,
                     row = { node, label, _, order ->
                         SectionRow(node, label, order, choice, lead(choice, node.id, content.score), actions)
                     },
@@ -214,13 +218,14 @@ private fun SectionRow(node: RvNode, label: String, order: Int, choice: RvApplyC
  */
 @Composable
 private fun lead(choice: RvApplyChoice, id: String, score: Boolean): String? {
-    if (!choice.apart) return SCORE.takeIf { score && id == choice.tcpId }
+    val mark = stringResource(R.string.rv_score_mark)
+    if (!choice.apart) return mark.takeIf { score && id == choice.tcpId }
     val tcp = id == choice.tcpId
     val udp = id == choice.udpId
     val networks = listOfNotNull(stringResource(R.string.ui_tcp).takeIf { tcp }, stringResource(R.string.ui_udp).takeIf { udp }).joinToString("/")
     return when {
         networks.isEmpty() -> null
-        score -> if (tcp && udp) SCORE else "$SCORE $networks"
+        score -> if (tcp && udp) mark else "$mark $networks"
         else -> networks
     }
 }
@@ -231,7 +236,7 @@ internal fun NetworkCard(group: RvPolicyGroup, choice: RvApplyChoice, onApart: (
     val node = group::nodeOf
     RvCard {
         RvCardHeader(stringResource(R.string.rv_nodes_in_use))
-        RvSwitchRow(R.drawable.rv_sym_account_tree, stringResource(R.string.rv_group_apart), choice.apart, onChange = { onApart(choice) })
+        RvSwitchRow(R.drawable.rv_sym_call_split, stringResource(R.string.rv_group_apart), choice.apart, onChange = { onApart(choice) })
         if (choice.apart) {
             node(choice.tcpId)?.let { NetworkRow(it, stringResource(R.string.ui_tcp)) }
             node(choice.udpId)?.let { NetworkRow(it, stringResource(R.string.ui_udp)) }
@@ -279,6 +284,3 @@ internal const val RV_SECTIONS_OPEN_UP_TO = 2
 
 /** The section a node is listed under: its subscription's id, or [RV_INLINE_KEY] for a node added by hand. */
 private val RvNode.source: String get() = subscriptionId ?: RV_INLINE_KEY
-
-/** Score's mark, a name the templates use in every language. */
-private const val SCORE = "Score"

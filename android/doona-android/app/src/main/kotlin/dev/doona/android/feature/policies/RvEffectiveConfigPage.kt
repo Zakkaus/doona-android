@@ -1,6 +1,5 @@
 package dev.doona.android.feature.policies
 
-import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
@@ -29,12 +28,14 @@ import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rememberRvFormat
+import dev.doona.android.feature.model.RvDnsUpstream
+import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.feature.model.RvRuleState
-import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.text
 
@@ -44,20 +45,19 @@ import dev.doona.android.feature.model.text
  * with how it picks, its first members and the node it uses; 規則, counted as D34 counts them, with the way to the list;
  * DNS; 依 App; and 來源, the template and the subscriptions the nodes come from. It ends with 複製 and 匯出 (the text
  * carries no credentials, D21). When the core cut the text at 1 MiB ([truncated]) a line under the title says so; a
- * [banner] (the config could not be read) stands in place of the cards, in [RvGutter]'s slot. The groups, rules and
- * sources are [config]'s.
+ * [banner] (the config could not be read) stands in place of the cards, in [RvGutter]'s slot. What the cards say is
+ * [config]'s, which is null until the first read: the title stands alone.
  */
 @Composable
 internal fun RvEffectiveConfigPage(
     policy: RvPolicyState,
-    settings: RvSettingsState,
     onBack: () -> Unit,
     onRules: () -> Unit = {},
     onCopy: () -> Unit = {},
     onExport: () -> Unit = {},
     truncated: Boolean = false,
     banner: RvNotice? = null,
-    config: RvEffectiveConfig,
+    config: RvEffectiveConfig?,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_effective_title)
@@ -67,27 +67,28 @@ internal fun RvEffectiveConfigPage(
         } else {
             RvLargeTitle(title, titleBlock, insets)
         }
+        val shown = config.takeIf { banner == null }
         RvGutter(banner = banner) {
-            if (banner == null) ModeCard(policy, config.main)
+            shown?.let { ModeCard(policy, it.main) }
         }
-        if (banner == null) {
-            Section(R.string.rv_policy_groups) { GroupsCard(policy, listOf(config.main) + config.groups) }
-            Section(R.string.rv_policy_rules) { RulesCard(config.rules, onRules) }
+        if (shown != null) {
+            Section(R.string.rv_policy_groups) { GroupsCard(policy, listOfNotNull(shown.main) + shown.groups) }
+            Section(R.string.rv_policy_rules) { RulesCard(shown.rules, onRules) }
             Section(R.string.rv_settings_dns) {
                 RvCard {
-                    RvStatRow(stringResource(R.string.rv_settings_dns_server), stringResource(settings.dns.label) + SEPARATOR + settings.dns.address, valueKeepWords = false)
-                    RvStatRow(stringResource(R.string.rv_effective_dns_via), stringResource(R.string.rv_main_node))
+                    RvStatRow(stringResource(R.string.rv_settings_dns_server), dnsLine(shown.dns), valueKeepWords = false)
+                    RvStatRow(stringResource(R.string.rv_effective_dns_via), shown.dnsVia.text())
                     RvStatRow(stringResource(R.string.rv_policy_lan), stringResource(R.string.rv_effective_lan_value))
                 }
             }
             Section(R.string.rv_effective_per_app) {
                 RvCard {
-                    RvStatRow(stringResource(R.string.rv_effective_apps_in), pluralStringResource(R.plurals.rv_effective_apps, settings.proxiedApps, settings.proxiedApps))
+                    RvStatRow(stringResource(R.string.rv_effective_apps_in), pluralStringResource(R.plurals.rv_effective_apps, shown.proxiedApps, shown.proxiedApps))
                     RvStatRow(stringResource(R.string.rv_effective_apps_rest), stringResource(R.string.rv_effective_apps_rest_value))
                 }
             }
             Section(R.string.rv_effective_source) {
-                SourceCard(config)
+                SourceCard(shown)
                 RvCard {
                     RvRow({ RvIconDisc(R.drawable.rv_sym_content_copy) }, stringResource(R.string.rv_effective_copy), null, onClick = onCopy)
                     RvRow({ RvIconDisc(R.drawable.rv_sym_ios_share) }, stringResource(R.string.rv_effective_export), null, onClick = onExport)
@@ -103,8 +104,21 @@ private fun Section(title: Int, content: @Composable () -> Unit) {
     RvGutter { content() }
 }
 
+/**
+ * The DNS servers, each by its name where it is one 設定 offers (Cloudflare · 1.1.1.1), else by its address alone. The
+ * core writes plain DNS's port, 53, which the row leaves out.
+ */
 @Composable
-private fun ModeCard(policy: RvPolicyState, main: RvPolicyGroup) {
+private fun dnsLine(servers: List<String>): String = servers.map { server ->
+    val address = server.removeSuffix(DNS_PORT)
+    RvDnsUpstream.entries.firstOrNull { it.address == address }?.let { stringResource(it.label) + SEPARATOR + address } ?: address
+}.joinToString(stringResource(R.string.rv_effective_list_separator))
+
+private const val DNS_PORT = ":53"
+
+/** The mode, and the node the main group uses when the configuration has a main group. */
+@Composable
+private fun ModeCard(policy: RvPolicyState, main: RvPolicyGroup?) {
     val mode = when (policy.mode) {
         RvRouteMode.Rule -> R.string.rv_mode_rule
         RvRouteMode.Global -> R.string.mode_global
@@ -112,7 +126,7 @@ private fun ModeCard(policy: RvPolicyState, main: RvPolicyGroup) {
     }
     RvCard {
         RvStatRow(stringResource(R.string.rv_effective_mode), stringResource(mode))
-        RvStatRow(stringResource(R.string.rv_main_node), policy.group(main).selected?.name.orEmpty(), valueKeepWords = false)
+        main?.let { RvStatRow(stringResource(R.string.rv_main_node), policy.group(it).selected?.name.orEmpty(), valueKeepWords = false) }
     }
 }
 
@@ -155,7 +169,7 @@ private fun rulesCount(n: Int) = pluralStringResource(R.plurals.rv_rules_count, 
 private fun SourceCard(config: RvEffectiveConfig) {
     val format = rememberRvFormat()
     RvCard {
-        RvStatRow(stringResource(R.string.rv_policy_template), stringResource(config.template))
+        RvStatRow(stringResource(R.string.rv_policy_template), config.source.text())
         config.subscriptions.forEach {
             val nodes = pluralStringResource(R.plurals.rv_policy_node_count, it.nodes, it.nodes)
             RvStatRow(it.name, nodes + SEPARATOR + stringResource(R.string.rv_updated, format.time(it.updatedAtEpochMs)))
@@ -164,27 +178,35 @@ private fun SourceCard(config: RvEffectiveConfig) {
 }
 
 /**
- * What the effective configuration holds beyond the page's own state: the main node's group, every other group, all the
- * rules in the profile's order, the template's name and the subscriptions the nodes come from. The lists are copied on
- * construction, so a caller's mutable list cannot change the configuration afterwards.
+ * What the effective configuration holds beyond the page's own state: the main node's group (null when the
+ * configuration has none), every other group, all the rules in the profile's order, where the rules come from, the
+ * subscriptions the nodes come from, the DNS servers' addresses and what their queries go through ([dnsVia]), and how many
+ * apps 依 App lists. The lists are copied on construction, so a caller's mutable list cannot change the configuration
+ * afterwards.
  */
 @ConsistentCopyVisibility
 @Immutable
 internal data class RvEffectiveConfig private constructor(
-    val main: RvPolicyGroup,
+    val main: RvPolicyGroup?,
     val groups: List<RvPolicyGroup>,
     val rules: List<RvPolicyRule>,
-    @StringRes val template: Int,
+    val source: RvRuleSource,
     val subscriptions: List<RvSubscription>,
+    val dns: List<String>,
+    val dnsVia: RvLabel,
+    val proxiedApps: Int,
 ) {
     companion object {
         operator fun invoke(
-            main: RvPolicyGroup,
+            main: RvPolicyGroup?,
             groups: List<RvPolicyGroup>,
             rules: List<RvPolicyRule>,
-            @StringRes template: Int,
+            source: RvRuleSource,
             subscriptions: List<RvSubscription>,
-        ) = RvEffectiveConfig(main, groups.toList(), rules.toList(), template, subscriptions.toList())
+            dns: List<String>,
+            dnsVia: RvLabel,
+            proxiedApps: Int,
+        ) = RvEffectiveConfig(main, groups.toList(), rules.toList(), source, subscriptions.toList(), dns.toList(), dnsVia, proxiedApps)
     }
 }
 

@@ -9,10 +9,12 @@ import dev.doona.android.engine.Mode
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.RuleKind
 import dev.doona.android.engine.RuleRow
+import dev.doona.android.engine.RuleSource
 import dev.doona.android.engine.RuleTarget
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.feature.leafOf
+import dev.doona.android.feature.model.RV_TEMPLATES
 import dev.doona.android.feature.model.RV_TESTS
 import dev.doona.android.feature.model.RvCity
 import dev.doona.android.feature.model.RvGroupKind
@@ -25,6 +27,7 @@ import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvRuleEnd
 import dev.doona.android.feature.model.RvRuleMatch
+import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.feature.model.RvRuleState
 import dev.doona.android.feature.model.RvSubFormat
 import dev.doona.android.feature.model.RvSubscription
@@ -225,7 +228,18 @@ internal fun rvPolicyProfile(
         nodes = nodes.values.toList(),
         subscriptions = catalog.subscriptions.map(::rvSubscription),
         nowEpochMs = nowEpochMs,
+        source = rvRuleSource(catalog.ruleSource, catalog.subscriptions),
     )
+}
+
+/**
+ * Where [source]'s rules come from: its template (the core and the app ship together, so the core names only a template
+ * [RV_TEMPLATES] lists), the subscription of its id from [subscriptions] by name, or else the configuration file.
+ */
+internal fun rvRuleSource(source: RuleSource, subscriptions: List<Subscription>): RvRuleSource {
+    source.template?.let { id -> return RvRuleSource.Template(RV_TEMPLATES.first { it.id == id }) }
+    val subscription = source.subscriptionId ?: return RvRuleSource.File
+    return RvRuleSource.Subscription(subscriptions.firstOrNull { it.id == subscription }?.name ?: subscription)
 }
 
 private const val GEOSITE = "GEOSITE"

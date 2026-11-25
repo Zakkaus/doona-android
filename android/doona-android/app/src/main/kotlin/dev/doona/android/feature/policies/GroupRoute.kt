@@ -31,16 +31,14 @@ import dev.doona.android.feature.messageRes
  * started. A group removed while its page is open, such as by a subscription update, leaves the page; before the engine
  * has loaded, as after process death, the group is only not read yet and the page is a skeleton under its name; a
  * first read that fails shows its banner with 重試 under the name instead.
- * [onNodeDetail] opens a node's detail (a wiring point: the 節點 lane's page). [onOpenGroup] is what DoonaApp still
- * passes until p4-handoff-doonaapp.patch drops it: a member group is a row a tap chooses, and its own page opens from
- * 策略's groups card, so this page opens none.
+ * [onNodeDetail] opens a node's detail (a wiring point: the 節點 lane's page). A member group is a row a tap chooses;
+ * its own page opens from 策略's groups card, so this page opens none.
  */
 @Composable
 fun GroupRoute(
     engine: Engine,
     groupId: String,
     onBack: () -> Unit,
-    @Suppress("UNUSED_PARAMETER") onOpenGroup: (String) -> Unit = {},
     onNodeDetail: (String) -> Unit = {},
 ) {
     val viewModel: GroupViewModel = viewModel(factory = GroupViewModel.factory(engine, groupId))

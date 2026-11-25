@@ -33,6 +33,8 @@
     <string name="rv_policy_lan_kind">Private IP addresses</string>
     <string name="rv_policy_rest">Everything else</string>
     <string name="rv_policy_rest_kind">Matched no rule above</string>
+    <string name="rv_rule_geoip" translatable="false">GEOIP</string>
+    <string name="rv_rule_geosite" translatable="false">GEOSITE</string>
     <string name="rv_policy_template">Template</string>
     <string name="rv_policy_template_value">Bypass mainland China</string>
     <string name="rv_policy_new_rule">Create rule</string>
@@ -177,6 +179,7 @@
     <string name="rv_network_both">TCP/UDP</string>
     <string name="rv_score_udp_unsupported">%1$s does not support UDP</string>
     <string name="rv_score_udp_failed">UDP test failed</string>
+    <string name="rv_template_apply_failed">Could not apply the template</string>
     <string name="rv_policy_failed_quic">Could not change Block QUIC</string>
     <string name="rv_policy_failed_update">Could not update the subscriptions</string>
     <string name="rv_network_apply_to">Apply to</string>

@@ -29,8 +29,14 @@ import dev.doona.android.feature.localnetwork.LocalNetworkHost
 import dev.doona.android.feature.localnetwork.LocalNetworkPrompts
 import dev.doona.android.feature.onboarding.FirstRunGate
 import dev.doona.android.feature.perapp.PerAppRoute
+import dev.doona.android.feature.policies.EffectiveConfigRoute
 import dev.doona.android.feature.policies.GroupRoute
 import dev.doona.android.feature.policies.PoliciesRoute
+import dev.doona.android.feature.policies.RulesRoute
+import dev.doona.android.feature.policies.RvPolicyRoutes
+import dev.doona.android.feature.policies.RvRulesRoutes
+import dev.doona.android.feature.policies.TemplateImpactRoute
+import dev.doona.android.feature.policies.TemplateRoute
 import dev.doona.android.feature.settings.SettingsRoute
 import dev.doona.android.feature.subscriptions.SubscriptionImports
 import dev.doona.android.feature.subscriptions.SubscriptionsRoute
@@ -78,13 +84,27 @@ fun DoonaApp(
                 }
             }
             entry<PoliciesKey> {
-                OldTabFrame(Tab.Policies, onTab, onReselect) {
-                    PoliciesRoute(engine, onOpenGroup = { backStack.push(GroupKey(it)) }, onOpenSubscriptions = { backStack.push(SubscriptionsKey) })
-                }
+                PoliciesRoute(
+                    engine,
+                    onOpenGroup = { backStack.push(GroupKey(it)) },
+                    onOpenSubscriptions = { backStack.push(SubscriptionsKey) },
+                    routes = RvPolicyRoutes(rules = { backStack.push(RulesKey) }, template = { backStack.push(TemplateKey) }, tab = onTab),
+                )
             }
-            entry<GroupKey> { key ->
-                GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }, onOpenGroup = { backStack.push(GroupKey(it)) })
+            entry<GroupKey> { key -> GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }) }
+            entry<RulesKey> { key ->
+                RulesRoute(
+                    engine,
+                    onBack = { backStack.pop(key) },
+                    onTemplate = { backStack.push(TemplateKey) },
+                    routes = RvRulesRoutes(effective = { backStack.push(EffectiveConfigKey) }),
+                )
             }
+            entry<TemplateKey> { key -> TemplateRoute(engine, onBack = { backStack.pop(key) }, onReview = { backStack.push(TemplateImpactKey(it)) }) }
+            entry<TemplateImpactKey> { key ->
+                TemplateImpactRoute(engine, key.templateId, onBack = { backStack.pop(key) }, onApplied = { backStack.push(PoliciesKey) })
+            }
+            entry<EffectiveConfigKey> { key -> EffectiveConfigRoute(engine, onBack = { backStack.pop(key) }, onRules = { backStack.push(RulesKey) }) }
             entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, imports, onBack = { backStack.pop(key) }) }
             entry<SettingsKey> {
                 OldTabFrame(Tab.Settings, onTab, onReselect) {

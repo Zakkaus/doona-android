@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.Engine
+import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.RuleRow
 import dev.doona.android.feature.errorCode
@@ -33,7 +34,7 @@ internal sealed interface RulesFailure {
 
 /**
  * What 全部規則 shows: every rule in order with today's bytes ([rules]), or why it cannot ([failure]); [loading] until the
- * first read ends. A failed read keeps the rules shown under the banner's place only when none were read yet.
+ * first read ends. A failed read keeps the rules last read under its banner, and none before the first read.
  */
 @Immutable
 internal data class RulesUiState(
@@ -71,7 +72,7 @@ internal class RulesViewModel(
     private suspend fun read(catalog: Catalog): RulesUiState {
         val source = catalog.ruleSource
         if (source.error == ErrorCode.ParseFailed) return RulesUiState(loading = false, failure = RulesFailure.Parse)
-        val rows = rows(source.rulesRevision).getOrElse { return failed(it) }
+        val rows = engine.allRules(source.rulesRevision).getOrElse { return failed(it) }
         val byRule = engine.usage().getOrElse { return failed(it) }.today.byRule.associate { it.id to it.up + it.down }
         val nodes = rvNodes(catalog, emptyMap(), places)
         val byId = catalog.groups.associateBy { it.id }
@@ -81,26 +82,29 @@ internal class RulesViewModel(
 
     private fun failed(error: Throwable) = RulesUiState(loading = false, rules = read.value?.rules.orEmpty(), failure = RulesFailure.Read(error.errorCode()))
 
-    /** Every row at [revision], page by page; a page at another revision starts the read over, [RULE_READS] times at most. */
-    private suspend fun rows(revision: Long): Result<List<RuleRow>> {
-        repeat(RULE_READS) {
-            val rows = mutableListOf<RuleRow>()
-            var stale = false
-            while (!stale) {
-                val page = engine.rules(rows.size, RULES_PAGE).getOrElse { return Result.failure(it) }
-                stale = page.rulesRevision != revision
-                if (!stale) rows += page.rows
-                if (!stale && (page.rows.isEmpty() || rows.size >= page.total)) return Result.success(rows)
-            }
-        }
-        return Result.failure(IllegalStateException("rules stale"))
-    }
-
     companion object {
         fun factory(engine: Engine): ViewModelProvider.Factory = viewModelFactory {
             initializer { RulesViewModel(engine) }
         }
     }
+}
+
+/**
+ * Every row of the rule source at [revision], page by page; a page at another revision starts the read over,
+ * [RULE_READS] times at most. 全部規則 and 生效設定 both list them.
+ */
+internal suspend fun Engine.allRules(revision: Long): Result<List<RuleRow>> {
+    repeat(RULE_READS) {
+        val rows = mutableListOf<RuleRow>()
+        var stale = false
+        while (!stale) {
+            val page = rules(rows.size, RULES_PAGE).getOrElse { return Result.failure(it) }
+            stale = page.rulesRevision != revision
+            if (!stale) rows += page.rows
+            if (!stale && (page.rows.isEmpty() || rows.size >= page.total)) return Result.success(rows)
+        }
+    }
+    return Result.failure(EngineException(ErrorCode.Busy))
 }
 
 /** How many rows one read asks for; the engine allows 1 to 500. */

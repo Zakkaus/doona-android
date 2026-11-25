@@ -1,12 +1,14 @@
 package dev.doona.android.prototype.rv.policy
 
 import androidx.compose.runtime.Composable
+import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRuleOutbound
+import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.model.RvTemplate
 import dev.doona.android.feature.policies.RvEffectiveConfig
@@ -26,6 +28,7 @@ internal val rvSamplePolicyProfile = RvPolicyProfile(
     nodes = RvData.nodes,
     subscriptions = RvData.subscriptions,
     nowEpochMs = RvData.nowEpochMs,
+    source = RvRuleSource.Template(RvTemplateData.cnDirect),
 )
 
 /** 策略 on the sample: the page with [rvSamplePolicyProfile]. The page itself takes the profile as a parameter. */
@@ -43,13 +46,19 @@ internal fun RvPolicyScreenSample(
 /** Where the sample's quick rule and rule page can send: the main node's group, then every other group. */
 internal val rvSampleTargets: List<RvPolicyGroup> = listOf(RvPolicyData.main) + RvPolicyData.groups
 
-/** The effective configuration as the sample's profile has it: every rule, its template and both subscriptions. */
-internal val rvSampleEffectiveConfig = RvEffectiveConfig(
+/**
+ * The effective configuration as the sample's profile has it: every rule, its template and both subscriptions, with
+ * [settings]' DNS server, its queries through the main node, and the apps its 依 App lists.
+ */
+internal fun rvSampleEffectiveConfig(settings: RvSettingsState) = RvEffectiveConfig(
     main = RvPolicyData.main,
     groups = RvPolicyData.groups,
     rules = RvPolicyData.allRules,
-    template = RvTemplateData.cnDirect.name,
+    source = RvRuleSource.Template(RvTemplateData.cnDirect),
     subscriptions = RvData.subscriptions,
+    dns = listOf(settings.dns.address),
+    dnsVia = RvLabel.Res(R.string.rv_main_node),
+    proxiedApps = settings.proxiedApps,
 )
 
 /** 生效設定 on the sample: the page with [rvSampleEffectiveConfig]. The page itself takes it as a parameter. */
@@ -63,7 +72,7 @@ internal fun RvEffectiveConfigPageSample(
     onExport: () -> Unit = {},
     truncated: Boolean = false,
     banner: RvNotice? = null,
-) = RvEffectiveConfigPage(policy, settings, onBack, onRules, onCopy, onExport, truncated, banner, rvSampleEffectiveConfig)
+) = RvEffectiveConfigPage(policy, onBack, onRules, onCopy, onExport, truncated, banner, rvSampleEffectiveConfig(settings))
 
 /** 範本 on the sample: the page with every template [RvTemplateData] has. The page itself takes the list as a parameter. */
 @Composable

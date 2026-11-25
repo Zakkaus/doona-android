@@ -40,10 +40,7 @@ internal class PoliciesViewModel(
     private val places: RvNodePlaces = RV_UNKNOWN_PLACES,
     private val reads: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
-    /**
-     * The ad switch and the node order: the engine has neither, so they live here, the switch on as the approved page has
-     * it until the user turns it off.
-     */
+    /** The node order: the engine has none, so it lives here. */
     private val local = MutableStateFlow(RvPolicyState())
     private val failure = MutableStateFlow<PolicyFailure?>(null)
 
@@ -70,12 +67,12 @@ internal class PoliciesViewModel(
 
     /**
      * The page changed its state to [next]. What differs from the state shown goes to the engine: the mode, 阻擋 QUIC and
-     * the main group's node. A tap on the mode already shown changes nothing, so it calls nothing (16c22b3). The order and
-     * the ad switch stay here.
+     * the main group's node. A tap on the mode already shown changes nothing, so it calls nothing (16c22b3). The order
+     * stays here.
      */
     fun onChange(next: RvPolicyState) {
         val shown = uiState.value
-        local.update { it.copy(blockAds = next.blockAds, nodeSort = next.nodeSort) }
+        local.update { it.copy(nodeSort = next.nodeSort) }
         val catalog = engine.catalog.value ?: return
         if (next.mode != shown.state.mode) perform(PolicyAction.Mode) { engine.setMode(engineMode(next.mode)) }
         if (next.blockQuic != shown.state.blockQuic) setBlockQuic(catalog, next.blockQuic)
@@ -99,17 +96,9 @@ internal class PoliciesViewModel(
         }
     }
 
-    /**
-     * Keeps the template and changes its option. A source that is no template (a subscription's rules) has no option to
-     * change, and the engine offers no call for it, so the switch fails as a missing template would.
-     */
+    /** Keeps the template and changes its option. Only a template has the option, so the page shows no switch for another source. */
     private fun setBlockQuic(catalog: Catalog, on: Boolean) {
-        val template = catalog.ruleSource.template
-        if (template == null) {
-            retry = { engine.catalog.value?.let { setBlockQuic(it, on) } }
-            failure.value = PolicyFailure(PolicyAction.Quic, ErrorCode.NotFound)
-            return
-        }
+        val template = catalog.ruleSource.template ?: return
         perform(PolicyAction.Quic) { engine.setRuleSource(template, catalog.ruleSource.options.copy(blockQuic = on)) }
     }
 
@@ -181,8 +170,8 @@ internal class PoliciesViewModel(
 }
 
 /**
- * The page's state from the engine's: the mode and 阻擋 QUIC from [catalog], the order and the ad switch from [local]. The
- * choices stay empty: the profile carries each group's real selection.
+ * The page's state from the engine's: the mode and 阻擋 QUIC from [catalog], the order from [local]. The engine cannot
+ * block ads, so there is no ad switch. The choices stay empty: the profile carries each group's real selection.
  */
 private fun policiesUiState(
     ready: Boolean,
@@ -193,7 +182,7 @@ private fun policiesUiState(
 ): PoliciesUiState {
     val state = RvPolicyState(
         mode = catalog?.mode?.let(::rvRouteMode) ?: local.mode,
-        blockAds = local.blockAds,
+        blockAds = null,
         blockQuic = catalog?.ruleSource?.options?.blockQuic ?: false,
         nodeSort = local.nodeSort,
     )

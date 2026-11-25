@@ -10,6 +10,7 @@ import dev.doona.android.engine.RuleRow
 import dev.doona.android.engine.RuleTarget
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.rvSampleEngine
+import dev.doona.android.feature.model.RvRuleEnd
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -87,13 +88,30 @@ class RulesViewModelTest {
     }
 
     @Test
-    fun `the rules carry today's bytes and route through the catalog's groups, refusing rows left out`() = runTest {
-        val engine = Source()
-        val state = collected(engine).uiState.value
-        val byRule = engine.base.usage().getOrThrow().today.byRule.associate { it.id to it.up + it.down }
-        val sample = engine.base.rules(0, MAX).getOrThrow().rows.filterNot { it.target == RuleTarget.Reject }
-        assertEquals(sample.map { byRule[it.id] ?: 0L }, state.rules.map { it.bytes })
-        assertEquals(sample.map { (it.target as? RuleTarget.Group)?.id }, state.rules.map { it.group?.id })
+    fun `the rules carry today's bytes and route through the catalog's groups, 拒絕 among them`() = runTest {
+        val base = rvSampleEngine()
+        val rows = withReject(base)
+        val state = collected(Source(rows, base = base)).uiState.value
+        val byRule = base.usage().getOrThrow().today.byRule.associate { it.id to it.up + it.down }
+        assertEquals(rows.map { byRule[it.id] ?: 0L }, state.rules.map { it.bytes })
+        assertEquals(rows.map { (it.target as? RuleTarget.Group)?.id }, state.rules.map { it.group?.id })
+        assertEquals(RvRuleEnd.Reject, state.rules.last().end)
+    }
+
+    @Test
+    fun `全部規則 lists as many rules as 策略's card counts, 拒絕 included`() = runTest {
+        val base = rvSampleEngine()
+        val engine = Source(withReject(base), base = base)
+        val listed = collected(engine).uiState.value.rules.size
+        val policies = PoliciesViewModel(engine, reads = UnconfinedTestDispatcher(testScheduler))
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { policies.uiState.collect {} }
+        assertEquals(listed, policies.uiState.value.profile?.ruleCount)
+    }
+
+    /** The sample's rules and one that refuses its flows last. */
+    private suspend fun withReject(base: FakeEngine): List<RuleRow> {
+        val sample = base.rules(0, MAX).getOrThrow().rows
+        return sample + RuleRow("reject", sample.size, RuleKind.DomainSuffix, "DomainSuffix", "ads.example", 1, RuleTarget.Reject)
     }
 
     @Test
