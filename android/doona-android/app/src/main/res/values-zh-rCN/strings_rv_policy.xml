@@ -169,8 +169,8 @@
     <string name="rv_group_by_name">按名称</string>
     <string name="rv_group_by_region">按地区</string>
     <string name="rv_group_no_match">找不到符合的节点</string>
-    <string name="rv_group_empty">这个群组没有节点</string>
-    <string name="rv_group_empty_line">请在配置文件中为这个群组添加节点。</string>
+    <string name="rv_group_empty">这个策略组没有节点</string>
+    <string name="rv_group_empty_line">请在配置文件中为这个策略组添加节点。</string>
     <string name="rv_group_apart">分开选择 TCP/UDP</string>
     <string name="rv_policy_reject">拒绝</string>
     <string name="rv_policy_target_missing">找不到策略组</string>
