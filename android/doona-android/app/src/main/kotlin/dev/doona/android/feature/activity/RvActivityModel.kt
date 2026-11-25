@@ -33,8 +33,12 @@ internal data class RvActivityState(
 @Immutable
 internal data class RvMainNode(val id: String, val name: String, val latencyMs: Int?, val failed: Boolean)
 
-/** The engine mode the mode action switches to from [this]: 全域 goes to 直連, anything else to 全域. */
-internal fun RvRouteMode.toggled(): Mode = if (this == RvRouteMode.Global) Mode.Direct else Mode.Global
+/** The engine mode the mode action switches to from [this]: 規則, 全域, 直連, then 規則 again. */
+internal fun RvRouteMode.next(): Mode = when (this) {
+    RvRouteMode.Rule -> Mode.Global
+    RvRouteMode.Global -> Mode.Direct
+    RvRouteMode.Direct -> Mode.Rule
+}
 
 internal fun Mode.routeMode(): RvRouteMode = when (this) {
     Mode.Rule -> RvRouteMode.Rule

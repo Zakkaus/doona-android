@@ -173,7 +173,7 @@ private fun activityRoutes(backStack: MutableList<NavKey>, onSystemSettings: (Sy
     addSubscription = { backStack.push(SubAddKey) },
     perApp = { backStack.push(PerAppKey) },
     checkUpdate = { backStack.selectTab(Tab.Settings) },
-    exportReport = NOT_WIRED,
+    exportReport = { NOT_WIRED() },
     networkSettings = { onSystemSettings(SystemSettings.Network) },
     notifySettings = { onSystemSettings(SystemSettings.Notifications) },
     vpnSettings = { onSystemSettings(SystemSettings.Vpn) },

@@ -301,12 +301,15 @@ class ActivityModelTest {
     }
 
     @Test
-    fun `a tick changes nothing the steady state keeps, and the mode action toggles as before`() {
+    fun `a tick changes nothing the steady state keeps`() {
         val state = RvActivityState(Status.Running(0), RvRouteMode.Rule, null, 1, 2, listOf(1f), listOf(2f))
         assertEquals(state.steady(), state.copy(downRate = 9, upHistory = listOf(7f)).steady())
-        assertEquals(Mode.Direct, RvRouteMode.Global.toggled())
-        assertEquals(Mode.Global, RvRouteMode.Rule.toggled())
-        assertEquals(Mode.Global, RvRouteMode.Direct.toggled())
+    }
+
+    @Test
+    fun `the mode action cycles through all three modes and returns to 規則`() {
+        val visited = generateSequence(Mode.Rule) { it.routeMode().next() }.take(4).toList()
+        assertEquals(listOf(Mode.Rule, Mode.Global, Mode.Direct, Mode.Rule), visited)
     }
 
     @Test

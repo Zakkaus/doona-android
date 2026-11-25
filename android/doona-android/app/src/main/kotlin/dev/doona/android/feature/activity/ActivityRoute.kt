@@ -20,7 +20,9 @@ import kotlin.coroutines.CoroutineContext
 /**
  * Where 活動 leads, the shell's to give: the page's own routes ([RvActivityRoutes] without the latency test, which the
  * ViewModel runs), and what each notice's action opens: 新增訂閱, the per-app list, the update check, the report, and
- * the system's network, notification and VPN settings.
+ * the system's network, notification and VPN settings. [exportReport] opens the report and hands it a callback to call
+ * once the report page holds the crash's offer; only then is the offer taken down, so a route that opens nothing never
+ * calls it and leaves the offer up.
  */
 internal class ActivityRoutes(
     val traffic: () -> Unit,
@@ -37,7 +39,7 @@ internal class ActivityRoutes(
     val addSubscription: () -> Unit,
     val perApp: () -> Unit,
     val checkUpdate: () -> Unit,
-    val exportReport: () -> Unit,
+    val exportReport: (onReportHasOffer: () -> Unit) -> Unit,
     val networkSettings: () -> Unit,
     val notifySettings: () -> Unit,
     val vpnSettings: () -> Unit,
@@ -45,7 +47,8 @@ internal class ActivityRoutes(
 
 /**
  * What 活動 does with the crash offer: [shown] once its notice reached the screen (it writes the disk, so the page calls
- * it on [disk], off the main thread), [dismiss] on 匯出報告. [ActivityRoute] takes them from `CrashOffer`.
+ * it on [disk], off the main thread), [dismiss] once 匯出報告 has opened the report and the report page holds the offer.
+ * [ActivityRoute] takes them from `CrashOffer`.
  */
 internal class ActivityCrashOffer(val shown: () -> Unit, val dismiss: () -> Unit, val disk: CoroutineContext = Dispatchers.IO)
 
@@ -125,26 +128,15 @@ private fun pageRoutes(routes: ActivityRoutes, test: () -> Unit) = RvActivityRou
     more = routes.more,
 )
 
-/** What a notice's action does by its [remedy]; 匯出報告 also takes the crash offer down. */
+/** What a notice's action does by its [remedy]; 匯出報告 opens the report first and takes the offer down once the report holds it. */
 private fun remedy(remedy: ActivityRemedy, routes: ActivityRoutes, onConnect: () -> Unit, onAction: (ActivityAction) -> Unit, crash: ActivityCrashOffer?): () -> Unit = when (remedy) {
     ActivityRemedy.AddSubscription -> routes.addSubscription
-
     ActivityRemedy.PerApp -> routes.perApp
-
     ActivityRemedy.CheckUpdate -> routes.checkUpdate
-
     ActivityRemedy.Reconnect -> onConnect
-
     ActivityRemedy.Retest -> ({ onAction(ActivityAction.TestLatency) })
-
-    ActivityRemedy.ExportReport -> fun() {
-        crash?.dismiss()
-        routes.exportReport()
-    }
-
+    ActivityRemedy.ExportReport -> ({ routes.exportReport { crash?.dismiss() } })
     ActivityRemedy.NetworkSettings -> routes.networkSettings
-
     ActivityRemedy.NotifySettings -> routes.notifySettings
-
     ActivityRemedy.VpnSettings -> routes.vpnSettings
 }
