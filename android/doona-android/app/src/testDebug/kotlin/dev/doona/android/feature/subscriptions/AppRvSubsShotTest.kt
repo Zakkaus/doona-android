@@ -338,19 +338,20 @@ class AppRvSubsShotTest {
                 mainClock.autoAdvance = false
                 onNodeWithText(string(R.string.rv_add_import)).performClick()
                 repeat(LAN_FRAMES) { mainClock.advanceTimeByFrame() }
-                if (refused) {
-                    runOnIdle {
+                // The sheet is a dialog window, laid out only once the main looper idles.
+                runOnIdle {
+                    if (refused) {
                         access.requesting()
                         access.answered(false)
                     }
-                    repeat(LAN_FRAMES) { mainClock.advanceTimeByFrame() }
                 }
+                repeat(LAN_FRAMES) { mainClock.advanceTimeByFrame() }
             },
         ) {
             val scope = rememberCoroutineScope()
             val engine = remember { LocalNetworkEngine(Answering(Answer.Fails(ErrorCode.LocalNetwork)), access, scope) }
             Add(engine, remember { access.prompt.map { it != null } })
-            // The old dialog reads the old pages' theme, as under MainActivity, until P1b's sheet replaces it.
+            // The sheet over the page, as AppSheets draws it under MainActivity's AppTheme.
             DoonaTheme { LocalNetworkPrompts(remember { LocalNetworkHost(access, request = {}, openSettings = {}) }) }
         }
     }
