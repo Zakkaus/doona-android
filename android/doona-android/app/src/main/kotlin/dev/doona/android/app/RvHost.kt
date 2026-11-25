@@ -8,7 +8,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -32,7 +35,8 @@ import dev.doona.android.designsystem.rv.RvShared
  * transitions ([rvSceneMove]). Each entry gets its own saved state and ViewModels, which Navigation 3 clears only once
  * the entry is off the stack and its exit has finished; the stack itself is the caller's, saved with the activity
  * (`rememberNavBackStack`), so it survives process death. A stack restored with a page [entries] has no entry for,
- * such as one another version of the app saved, falls back to its tab's root ([keepRouted]) before anything shows.
+ * such as one another version of the app saved, falls back to its tab's root ([keepRouted]) before anything shows:
+ * the host composes nothing until an effect, outside composition, has cut the stack back once.
  *
  * Back pops the top page, following the finger while a predictive back gesture runs; a cancelled gesture runs the
  * page back and pops nothing, a committed one pops once: a second back while the popped page still leaves pops
@@ -49,10 +53,17 @@ internal fun RvNavHost(backStack: MutableList<NavKey>, modifier: Modifier = Modi
     val motion = Rv.motion
     val shift = with(LocalDensity.current) { RvMotion.axisShift.roundToPx() }
     val provider = entryProvider(fallback = ::rvUnrouted, builder = entries)
-    val moves = remember(backStack) {
-        backStack.keepRouted { key -> RV_UNROUTED !in provider(key).metadata }
-        RvTabMoves(backStack.toList())
+    val routed: (NavKey) -> Boolean = { key -> RV_UNROUTED !in provider(key).metadata }
+    // Checked once per stack, when it is created or restored; a key pushed later without an entry still fails.
+    var unrouted by remember(backStack) { mutableStateOf(!backStack.all(routed)) }
+    if (unrouted) {
+        SideEffect {
+            backStack.keepRouted(routed)
+            unrouted = false
+        }
+        return
     }
+    val moves = remember(backStack) { RvTabMoves(backStack.toList()) }
     moves.see(backStack.toList())
     CompositionLocalProvider(LocalRvNav provides APP_NAV) {
         SharedTransitionLayout(modifier) {
