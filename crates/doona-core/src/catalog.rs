@@ -43,6 +43,7 @@ pub(crate) struct NodeEntry {
     pub name: String,
     pub location: dto::location::Location,
     pub subscription: Option<String>,
+    pub feed_index: usize,
     pub node: Arc<Node>,
 }
 
@@ -50,7 +51,8 @@ pub(crate) struct NodeEntry {
 pub(crate) fn entries(subscription: &str, nodes: Vec<Node>) -> Vec<Arc<NodeEntry>> {
     nodes
         .into_iter()
-        .map(|node| {
+        .enumerate()
+        .map(|(feed_index, node)| {
             let name = if node.name.trim().is_empty() {
                 node.protocol().as_str().to_owned()
             } else {
@@ -63,6 +65,7 @@ pub(crate) fn entries(subscription: &str, nodes: Vec<Node>) -> Vec<Arc<NodeEntry
                 location: crate::regions::locate(&name),
                 name,
                 subscription: Some(subscription.to_owned()),
+                feed_index,
                 node: Arc::new(node),
             })
         })
@@ -72,13 +75,17 @@ pub(crate) fn entries(subscription: &str, nodes: Vec<Node>) -> Vec<Arc<NodeEntry
 /// The nodes `state.json` lists, each subscription with a new incarnation. Only a file edited
 /// by hand holds a subscription over a node budget, or a document that gives no node; that one is
 /// shown without nodes.
-pub(crate) fn load(state: &State, diag: &Diag) -> Model {
+pub(crate) fn load(state: &mut State, diag: &Diag) -> Model {
     let mut nodes = Vec::new();
     let mut incarnations = HashMap::new();
-    for s in &state.subscriptions {
-        let parsed = stored_nodes(s).and_then(|p| within_budget(nodes.len(), &p).map(|()| p));
+    for s in &mut state.subscriptions {
+        let parsed = stored_nodes(s).and_then(|p| within_budget(nodes.len(), &p.nodes).map(|()| p));
         match parsed {
-            Ok(parsed) => nodes.extend(entries(&s.id, parsed)),
+            Ok(parsed) => {
+                // Admission may skip an obsolete or invalid stored link. Keep indices aligned.
+                s.links = parsed.links;
+                nodes.extend(entries(&s.id, parsed.nodes));
+            }
             Err(code) => diag.record(Event::warn("loadSubscription").code(code)),
         }
         incarnations.insert(s.id.clone(), incarnation());
@@ -94,12 +101,11 @@ pub(crate) fn load(state: &State, diag: &Diag) -> Model {
 
 /// The nodes `state.json` keeps for `s`, parsed again: from its structured document when it has
 /// one, else from its share links.
-pub(crate) fn stored_nodes(s: &StoredSubscription) -> Result<Vec<Node>, ErrorCode> {
-    let parsed = match &s.document {
+pub(crate) fn stored_nodes(s: &StoredSubscription) -> Result<parse::Parsed, ErrorCode> {
+    match &s.document {
         Some(document) => parse::parse(document.as_bytes()),
         None => parse::admit(s.links.iter().map(String::as_str)),
-    };
-    parsed.map(|p| p.nodes)
+    }
 }
 
 /// `parse_failed` when `fresh` nodes and `others` already kept are more than [`MAX_NODES`].

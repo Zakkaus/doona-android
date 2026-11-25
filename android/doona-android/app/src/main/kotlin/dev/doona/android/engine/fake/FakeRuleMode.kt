@@ -61,7 +61,7 @@ object FakeRuleMode {
         listOf("openai.com", "chatgpt.com", "oaistatic.com", "oaiusercontent.com", "anthropic.com", "claude.ai").map { "DOMAIN-SUFFIX,$it,AI" } +
         listOf("GEOIP,CN,DIRECT", "MATCH,Proxy")
 
-    private val DNS_UPSTREAMS = listOf("1.1.1.1:53", "8.8.8.8:53")
+    internal val DNS_UPSTREAMS = listOf("1.1.1.1:53", "8.8.8.8:53")
 
     val USAGE = Usage(
         today = DayUsage(
@@ -104,7 +104,7 @@ object FakeRuleMode {
      * The effective config the core would give for [mode], [groups] and [source]: the same header and group comments,
      * each node by its code only, then the template's rule lines.
      */
-    fun effectiveConfig(mode: Mode, groups: List<Group>, source: RuleSource, lines: List<String> = LINES): EffectiveConfig {
+    fun effectiveConfig(mode: Mode, groups: List<Group>, source: RuleSource, lines: List<String> = LINES, upstreams: List<String> = DNS_UPSTREAMS): EffectiveConfig {
         fun name(id: String) = groups.firstOrNull { it.id == id }?.name ?: id.removePrefix("g-")
         fun member(m: Member) = if (m.isGroup) m.name else NodeCodes.codeOf(m.id)
         val direct = mode == Mode.Direct
@@ -115,7 +115,7 @@ object FakeRuleMode {
                     "${source.rules} rows, ${source.lines} lines, ${source.skipped} skipped",
             )
             appendLine("# main group: ${name(MAIN_GROUP_ID)}")
-            appendLine("# dns: via ${if (direct) "DIRECT" else name(MAIN_GROUP_ID)}, upstreams ${DNS_UPSTREAMS.joinToString(", ")}")
+            appendLine("# dns: via ${if (direct) "DIRECT" else name(MAIN_GROUP_ID)}, upstreams ${upstreams.joinToString(", ")}")
             groups.forEach { g ->
                 val now = g.members.firstOrNull { it.id == g.selectedId }?.let(::member) ?: "none"
                 appendLine("# group ${g.name} (${g.kind}, now $now): ${g.members.joinToString(", ", transform = ::member)}")
@@ -123,7 +123,7 @@ object FakeRuleMode {
             lines.forEach(::appendLine)
         }
         val via = if (direct) RuleTarget.Direct else RuleTarget.Group(MAIN_GROUP_ID)
-        return EffectiveConfig(mode, MAIN_GROUP_ID, via, DNS_UPSTREAMS, source, text, truncated = false)
+        return EffectiveConfig(mode, MAIN_GROUP_ID, via, upstreams, source, text, truncated = false)
     }
 
     private fun row(id: String, index: Int, kind: RuleKind, sample: String?, count: Int, target: RuleTarget) =

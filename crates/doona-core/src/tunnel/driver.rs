@@ -72,7 +72,6 @@ pub(crate) async fn run(tun: Arc<Tun>, settings: Settings, gen_: Gen, ready: Sta
 struct Driver {
     stack: Stack,
     settings: Settings,
-    upstreams: Arc<[SocketAddr]>,
     gen_: Gen,
     events: Events,
     tcp: HashMap<FlowId, TcpFlow>,
@@ -112,7 +111,6 @@ impl Driver {
         let idle = settings.udp_idle;
         Ok(Driver {
             stack: Stack::new(cfg, Instant::now()),
-            upstreams: settings.dns_upstreams.clone().into(),
             settings,
             gen_,
             events,
@@ -375,7 +373,7 @@ impl Driver {
         match dst {
             Some(dst) => self.gen_.spawn(tcp::dial(io, id, dst, route, events)),
             None => {
-                let upstreams = Arc::clone(&self.upstreams);
+                let upstreams = Arc::clone(&self.settings.dns_upstreams.borrow());
                 let via = (route, Arc::clone(&self.gen_.session));
                 let task = tcp::serve_dns(io, id, via, upstreams, events);
                 self.gen_.spawn(task);
@@ -460,7 +458,8 @@ impl Driver {
             let Ok(slot) = Arc::clone(&self.dns_slots).try_acquire_owned() else {
                 return;
             };
-            let (upstreams, events) = (Arc::clone(&self.upstreams), self.events.clone());
+            let upstreams = Arc::clone(&self.settings.dns_upstreams.borrow());
+            let events = self.events.clone();
             let route = dns_route(&self.settings, &self.gen_.session);
             let task =
                 udp::answer_dns(payload.to_vec(), (src, dst), route, upstreams, events, slot);

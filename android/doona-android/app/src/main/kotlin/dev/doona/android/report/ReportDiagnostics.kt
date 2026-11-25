@@ -118,6 +118,7 @@ private val CORE_EVENTS = REPORT_COMMANDS + setOf(
 )
 private val CORE_DETAILS = REPORT_COMMANDS + CORE_LEVELS + IO_CODES + setOf(
     "Global", "Direct", "Rule", "cancelled", "stateSetAside", "repeated", "cleared", "detached", "carriersOpen", "stats.json", "latency.json",
+    "dnsUpstreamsReset",
 )
 private val COUNTS = listOf("generation", "nodes", "subscriptions", "probes", "failed", "tasks", "files")
 private val TRAFFIC_NUMBERS = listOf("upTotal", "downTotal", "activeFlows", "upPeak", "downPeak")

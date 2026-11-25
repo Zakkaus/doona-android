@@ -6,7 +6,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import java.io.File
 
-internal const val ACTION_COMMANDS = "start|stop|select|testLatency|addSubscription|updateSubscription|removeSubscription|setSubscriptionUserAgent|setMode|setRuleSource|setLogLevel|clearCrashes|export"
+internal const val ACTION_COMMANDS = "start|stop|select|testLatency|addSubscription|updateSubscription|renameSubscription|removeSubscription|setSubscriptionUserAgent|setMode|setRuleSource|setDnsUpstreams|setLogLevel|clearCrashes|export"
 internal val ACTION_CODES = ErrorCode.entries.map { it.name } + FailureReason.entries.map { it.name } + listOf("ok", "IOException")
 private val codes = ACTION_CODES.joinToString("|")
 

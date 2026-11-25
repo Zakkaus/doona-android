@@ -213,6 +213,70 @@ fn every_mode_switch_applies_to_new_flows_and_keeps_the_tunnel() {
     assert_eq!(r.generation(), before, "no switch restarted the tunnel");
 }
 
+#[test]
+fn changing_dns_redirects_queries_in_the_running_generation() {
+    let initial = [192, 0, 2, 1];
+    let changed = [192, 0, 2, 2];
+    let options = Options {
+        dns_upstreams: vec![resolver(initial)],
+        ..Options::default()
+    };
+    let mut rig = Rig::new("dns-upstream-switch", options);
+    let generation = rig.generation();
+    for address in [initial, changed] {
+        if address == changed {
+            let args = serde_json::json!({"servers":[resolver(changed)]});
+            super::tests_catalog::call(&rig.core, "setDnsUpstreams", args).unwrap();
+        }
+        rig.client.send_udp(RESOLVER, &query(1, "dns.test", None));
+        let answer = rig
+            .client
+            .recv_udp(RESOLVER, Duration::from_secs(10))
+            .unwrap();
+        assert_eq!(answer[answer.len() - 4..], address);
+    }
+    assert_eq!(rig.generation(), generation);
+}
+
+#[test]
+fn established_tcp_dns_keeps_its_list_but_new_connections_switch() {
+    let first = [192, 0, 2, 1];
+    let second = [192, 0, 2, 2];
+    let options = Options {
+        dns_upstreams: vec![resolver(first)],
+        ..Options::default()
+    };
+    let mut rig = Rig::new("dns-tcp-switch", options);
+    let old = rig.client.connect(RESOLVER);
+    assert_eq!(tcp_dns_address(&mut rig.client, old), first);
+    let args = serde_json::json!({"servers":[resolver(second)]});
+    super::tests_catalog::call(&rig.core, "setDnsUpstreams", args).unwrap();
+    assert_eq!(
+        tcp_dns_address(&mut rig.client, old),
+        first,
+        "established connection"
+    );
+    let new = rig.client.connect(RESOLVER);
+    assert_eq!(
+        tcp_dns_address(&mut rig.client, new),
+        second,
+        "new connection"
+    );
+}
+
+fn tcp_dns_address(client: &mut Client, id: FlowId) -> [u8; 4] {
+    let query = query(13, "tcp.test", None);
+    let mut frame = (query.len() as u16).to_be_bytes().to_vec();
+    frame.extend(query);
+    let (mut sent, mut reply) = (0, Vec::new());
+    assert!(client.until(Duration::from_secs(10), |c| {
+        sent += c.write_now(id, &frame[sent..]);
+        reply.extend(c.read_now(id).unwrap());
+        reply.len() >= 2 && reply.len() == usize::from(u16::from_be_bytes([reply[0], reply[1]])) + 2
+    }));
+    reply[reply.len() - 4..].try_into().unwrap()
+}
+
 /// rule-mode.md, R2: an answer of the core's DNS names its address, a flow to it takes the domain
 /// rule, and the next generation starts without the name. In Rule, DNS goes through the main
 /// group.

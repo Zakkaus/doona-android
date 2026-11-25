@@ -16,3 +16,8 @@ pub struct StartConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub geo_asset_dir: Option<std::path::PathBuf>,
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct DnsUpstreamsArgs {
+    pub servers: Vec<String>,
+}
