@@ -18,7 +18,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import dev.doona.android.designsystem.components.AppIcons
+import dev.doona.android.designsystem.rv.AppIcons
 import dev.doona.android.designsystem.components.DoonaAppIcon
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.testing.setDoonaContent

@@ -23,7 +23,7 @@ import dev.doona.android.designsystem.components.DoonaProgressBar
 import dev.doona.android.designsystem.components.DoonaSmallStatusLight
 import dev.doona.android.designsystem.components.DoonaStatusLight
 import dev.doona.android.designsystem.components.DoonaText
-import dev.doona.android.designsystem.components.Tone
+import dev.doona.android.designsystem.rv.Tone
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Subscription
 import dev.doona.android.feature.messageRes

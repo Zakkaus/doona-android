@@ -36,7 +36,7 @@ import dev.doona.android.designsystem.components.DoonaSegmented
 import dev.doona.android.designsystem.components.DoonaSmallStatusLight
 import dev.doona.android.designsystem.components.DoonaTag
 import dev.doona.android.designsystem.components.DoonaText
-import dev.doona.android.designsystem.components.Tone
+import dev.doona.android.designsystem.rv.Tone
 import dev.doona.android.designsystem.components.lineHeightOf
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
