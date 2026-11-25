@@ -1,5 +1,6 @@
 package dev.doona.android.designsystem.rv
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,7 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -30,6 +33,8 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -352,6 +357,31 @@ internal fun RvRowEnd(value: @Composable () -> Unit, glyph: @Composable () -> Un
                 mark.place(shown.width, Alignment.CenterVertically.align(mark.height, height))
             }
         }
+    }
+}
+
+/**
+ * A row end's glyph button ([RvRowEnd]'s glyph: 節點's info mark), [RvSpace.trailingGap] after the value it follows: laid
+ * out at its ink, the 22 dp glyph, so it takes from the row's text only what it draws (it took a 48 dp box, 26 dp more:
+ * `Hong Kong 02 IPLC` wrapped beside it, s1125c). Its 48 dp target ([RvRowPart.TARGET]) is placed round the glyph past
+ * that layout, so it reaches into the row's padding and over the gap; the glyph ends where every trailing ink ends.
+ */
+@Composable
+internal fun RvEndMark(@DrawableRes glyph: Int, description: String, onClick: () -> Unit) {
+    Layout({
+        Box(
+            Modifier
+                .size(RvSize.touch)
+                .testTag(RvRowPart.TARGET)
+                .rvPress(CircleShape, Role.Button, onClick)
+                .semantics { contentDescription = description },
+            contentAlignment = Alignment.Center,
+        ) { RvGlyph(glyph, RvSize.rowGlyph, Rv.colors.control) }
+    }) { (target), _ ->
+        val box = target.measure(Constraints())
+        val gap = RvSpace.trailingGap.roundToPx()
+        val ink = RvSize.rowGlyph.roundToPx()
+        layout(gap + ink, ink) { box.place(gap - (box.width - ink) / 2, -(box.height - ink) / 2) }
     }
 }
 

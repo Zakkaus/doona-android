@@ -27,7 +27,7 @@ Icon alignment: **C** = centred on the row; **T** = top on the title's top (the 
 | Footnote | – | – | `footnoteStart` in from the card's start, to `footnoteEnd` in from its end: today 32 to 396 (owner, q-s1125c-footgap; values pending Revolut's measure, R20) | – | – | text | 12 above (to the card; was 8), 24 below | – |
 | Card | – | – | – | – | – | – | 16 gutter, 20 radius | 16 |
 | Primary button | – | – | – | – | – | 52 | – | 12 to a secondary below |
-| Secondary button, chip, segmented control | – | – | – | – | – | 40 | 12 each side in a chip | 8 between buttons |
+| Secondary button, chip, segmented control | – | – | – | – | – | 40; a segmented control's parts take their labels' widths where a label does not fit an equal part (s1125c) | 12 each side in a chip | 8 between buttons |
 | Field | – | – | 16 | – | – | 52 | – | 16 |
 | Bottom sheet | – | – | 16 | – | – | – | edge 8, bottom 10, handle 8 below the top, title 20 below the top | 8 to the body, 24 to the actions |
 | Top bar | – | control 44 | 76 (title after the back control) | – | actions 44, 16 from the edge, 8 apart | 44 | 6 under the status bar | – |
@@ -170,6 +170,8 @@ Each earlier change that contradicts a rule. A change goes back to the rule, nev
 | library start, `RvSettingsRow` | 設定, 關於, 回報問題 and their states | a one-line row's title sits at the top of its 26 dp first-line box: 1.5 dp above the centre, while the disc is centred (415 breaks, "above 16 below 19") | R18 |
 | library start, `RvBanner` | 活動 notices, 當機, 匯入錯誤, per-app errors | 2 dp between title and reason (`tight / 2`), the one title-to-subtitle gap that is not 0 (113 breaks); set to 0 in `8d01f08a`, then every row got 2 dp (q-s1125c-titlegap) | R12 |
 | `cdbc415f` (latinrow) | all rows | gives mixed rows the Latin line box; rows differ by 0.5 dp (1 px) from CJK-only rows | R13 holds within 1 dp; kept |
+| node picker, info mark (to `RvEndMark`) | 節點 picker | a 48 dp layout box offset 13 dp for a 22 dp glyph: 26 dp of the row's text width went to empty room | R21 |
+| `RvSegmented` (`rvSegmentStyle`) | every segmented control at 200% | shrank every label to the size at which the longest fit an equal part, where the labels fit side by side at full size | Text roles, segment label |
 | node picker (`node-picker-action-failed-*`) | 節點 picker with a failed action | trailing part ends 13 dp short of the row's end | R16 (cause to be read in the code) |
 
 The gate's before list, per golden and rule, is in `rv-row-rules.txt`; it only shrinks.

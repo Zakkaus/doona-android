@@ -74,6 +74,7 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
@@ -210,10 +211,11 @@ internal fun Modifier.rvRaised(shape: Shape): Modifier {
  * Revolut's segmented control (measured §8) in the owner's look E (rv-fix-4e), the one slider of every page: a 40 dp
  * pill track, visible on any surface, [options] in equal parts, each after its glyph when [glyphs] gives one drawable
  * per option, the [selected] one on a raised pill 2 dp inside it (a soft shadow in light, a rim in dark). The labels
- * take one size ([rvSegmentStyle]) and the control grows with their line at a large font size ([rvSegmentHeight]), so
- * no label is cut. The track is the control's layout box, so what is above and below it measures from its visible edge
- * (spacing audit row 4); each part's target reaches 48 dp through Compose's touch target expansion, which does not move
- * the layout. The press lights only its pill.
+ * take one size and the control grows with their line ([rvSegmentHeight]); where a label does not fit its equal part
+ * at the full size, the parts take the labels' widths first (`TCP/UDP｜TCP｜UDP` at 200%, s1125c: they shrank), and
+ * only labels that do not fit even so shrink together ([rvSegmentParts]). The track is the control's layout box, so
+ * what is above and below it measures from its visible edge (spacing audit row 4); each part's target reaches 48 dp
+ * through Compose's touch target expansion, which does not move the layout. The press lights only its pill.
  */
 @Composable
 internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier, glyphs: List<Int> = emptyList()) {
@@ -222,7 +224,7 @@ internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -
     // Each segment's pill as the row lays it out; one raised pill rests there and slides to the next selection.
     val slots = remember(options.size) { mutableStateListOf<IntRect?>().apply { repeat(options.size) { add(null) } } }
     var width by remember { mutableIntStateOf(0) }
-    val style = rvSegmentStyle(options, glyphs.isNotEmpty(), width)
+    val (style, weights) = rvSegmentParts(options, glyphs.isNotEmpty(), width)
     Box(modifier.fillMaxWidth().height(rvSegmentHeight(style)).onSizeChanged { width = it.width }.testTag(RvPart.SEGMENTED)) {
         Box(Modifier.matchParentSize().clip(CircleShape).background(colors.segmentTrack))
         slots.getOrNull(selected)?.let { slot ->
@@ -235,7 +237,7 @@ internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -
                 val ink by animateColorAsState(if (i == selected) colors.text else colors.textSecondary, motion.tween(RvMotion.SLIDE_MS), label = "ink")
                 Box(
                     Modifier
-                        .weight(1f)
+                        .weight(weights[i])
                         .fillMaxHeight()
                         .selectable(i == selected, interactionSource = source, indication = null, role = Role.Tab) { onSelect(i) }
                         .padding(RvChartSize.segmentInset)
@@ -249,19 +251,20 @@ internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -
     }
 }
 
-/**
- * The segments' labels in one size for all [options] (one label size per row): the largest at which each fits on one
- * line in its part of the control [width] px wide, a range chip's padding ([RvChartSize.rangePad]) clear of its pill's
- * round ends, after its [glyph] when the control has glyphs ([rvRowFit]). Before the control is measured ([width] 0)
- * it is the full size.
- */
+/** Labels' size and parts' weights: full size in equal parts, else in parts as wide as the labels, else [rvRowFit]'s. */
 @Composable
-private fun rvSegmentStyle(options: List<String>, glyph: Boolean, width: Int): TextStyle {
+private fun rvSegmentParts(options: List<String>, glyph: Boolean, width: Int): Pair<TextStyle, List<Float>> {
     val style = Rv.type.segment
-    if (width == 0 || options.isEmpty()) return style
-    val pad = RvChartSize.segmentInset + RvChartSize.rangePad
-    val column = with(LocalDensity.current) { (width / options.size).toDp() } - pad * 2
-    return rvRowFit(options, style, if (glyph) column - RvChartSize.segmentGlyph - RvChartSize.segmentGlyphGap else column)
+    val density = LocalDensity.current
+    val pad = with(density) { (RvChartSize.segmentInset + RvChartSize.rangePad) * 2 + if (glyph) RvChartSize.segmentGlyph + RvChartSize.segmentGlyphGap else 0.dp } // literal: no glyph
+    val fit = rvRowFit(options, style, maxOf(RvSpace.none, with(density) { (width / maxOf(1, options.size)).toDp() } - pad))
+    val measurer = rememberTextMeasurer()
+    val need = remember(options, style, measurer, pad, density) { options.map { measurer.measure(scripted(it), style, maxLines = 1).size.width + with(density) { pad.toPx() } } }
+    return when {
+        width == 0 || options.isEmpty() || fit == style -> style to options.map { 1f }
+        need.sum() <= width -> style to need.map { it + (width - need.sum()) / options.size }
+        else -> fit to options.map { 1f }
+    }
 }
 
 /**

@@ -9,5 +9,3 @@
 #   Open: check at rest whether a result shown after a test leaves the 12 dp (layout-STATE.md, Q2).
 proto-rv-config-history-menu-fs115	R11	東京出差：影音與 AI 走日本節點	-1.5
 proto-rv-config-history-named-fs115	R11	東京出差：影音與 AI 走日本節點	-1.5
-proto-rv-config-history-named-fs200	R14	東京出差：影音與 AI 走日本節點	title 3 lines
-proto-rv-node-picker-testing-fs115	R17	Hong Kong 05 IEPL	-10.0

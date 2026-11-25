@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
@@ -28,7 +27,6 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -52,9 +50,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.collapse
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.expand
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -76,9 +72,9 @@ import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvChevron
 import dev.doona.android.designsystem.rv.RvChrome
 import dev.doona.android.designsystem.rv.RvConfirmSheet
+import dev.doona.android.designsystem.rv.RvEndMark
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvFrames
-import dev.doona.android.designsystem.rv.RvGlyph
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLatencyChange
 import dev.doona.android.designsystem.rv.RvLongPressTiming
@@ -88,7 +84,6 @@ import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvRowEnd
-import dev.doona.android.designsystem.rv.RvRowPart
 import dev.doona.android.designsystem.rv.RvSearchField
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
@@ -97,7 +92,6 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rememberRvGlass
 import dev.doona.android.designsystem.rv.rvGlassSource
-import dev.doona.android.designsystem.rv.rvPress
 import dev.doona.android.designsystem.rv.rvShade
 import dev.doona.android.designsystem.rv.rvSharedSearch
 import dev.doona.android.designsystem.rv.rvSystemScheme
@@ -326,16 +320,7 @@ private fun NodeRow(node: RvNode, label: String, current: Boolean, order: Int, o
 @Composable
 private fun NodeTrailing(node: RvNode, order: Int, details: String, onDetail: (String) -> Unit) {
     RvRowEnd({ RvLatencyChange(node.latencyMs, node.changeMs, order = order, node = node.id) }) {
-        // The mark's 48 dp target reaches into the row's padding, so the glyph ends where every trailing ink ends.
-        Box(
-            Modifier
-                .offset(x = (RvSize.touch - RvSize.rowGlyph) / 2)
-                .size(RvSize.touch)
-                .testTag(RvRowPart.TARGET)
-                .rvPress(CircleShape, Role.Button, { onDetail(node.id) })
-                .semantics { contentDescription = details },
-            contentAlignment = Alignment.Center,
-        ) { RvGlyph(R.drawable.rv_sym_info, RvSize.rowGlyph, Rv.colors.control) }
+        RvEndMark(R.drawable.rv_sym_info, details) { onDetail(node.id) }
     }
 }
 
