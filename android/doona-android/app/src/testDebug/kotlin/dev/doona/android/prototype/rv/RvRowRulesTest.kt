@@ -128,7 +128,7 @@ class RvRowRulesTest {
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
                 Column {
                     Spacer(Modifier.height(EDGE.dp))
-                    RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, LONG, null, titleLines = Int.MAX_VALUE, whole = RvWhole.RevisionName)
+                    RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, LONG, null, titleLines = Int.MAX_VALUE, titleWhole = RvWhole.RevisionName)
                     Spacer(Modifier.height(EDGE.dp))
                 }
             }
@@ -147,21 +147,24 @@ class RvRowRulesTest {
         assertEquals(listOf("R14"), rvRowBreaks(listOf(row)).filter { it.rule == "R14" }.map { it.rule })
     }
 
-    /** An exception on a row whose texts all have a limit would do nothing: an error, not a silent no-op. */
+    /**
+     * Each text given an exception takes [Int.MAX_VALUE] lines, or it is an error, not a silent no-op: a subtitle given
+     * one with its three-line limit fails though the row's title is unlimited.
+     */
     @Test
-    fun aWholeOnARowWithNoUnlimitedTextIsAnError() {
+    fun anExceptionOnATextWithALineLimitIsAnError() {
         val error = assertThrows(IllegalArgumentException::class.java) {
             compose.setContent {
                 RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
-                    RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, LONG, null, whole = RvWhole.RevisionName)
+                    RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, LONG, LONG, titleLines = Int.MAX_VALUE, subtitleWhole = RvWhole.RevisionName)
                 }
             }
             compose.waitForIdle()
         }
-        assertTrue(error.message.orEmpty(), "RevisionName" in error.message.orEmpty())
-        rvRequireWhole(RvWhole.RevisionName, 2, Int.MAX_VALUE)
-        rvRequireWhole(null, 2, 3)
-        assertThrows(IllegalArgumentException::class.java) { rvRequireWhole(RvWhole.RevisionName, 2, 3) }
+        assertEquals("a text given RevisionName takes 3 lines: a text shown whole takes Int.MAX_VALUE", error.message)
+        rvRequireWhole(RvWhole.RevisionName, Int.MAX_VALUE)
+        rvRequireWhole(null, 2)
+        assertThrows(IllegalArgumentException::class.java) { rvRequireWhole(RvWhole.RevisionName, 2) }
     }
 
     @Test

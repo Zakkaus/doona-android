@@ -71,7 +71,7 @@ internal fun RvConfigRevisionPage(
                     subtitleKeepWords = false,
                     // The user's own name is shown whole (owner, q-s1125c-vname).
                     subtitleLines = Int.MAX_VALUE,
-                    whole = RvWhole.RevisionName,
+                    subtitleWhole = RvWhole.RevisionName,
                 ) { RvChevron() }
             }
         }

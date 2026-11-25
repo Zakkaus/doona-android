@@ -60,8 +60,8 @@ import kotlin.math.roundToInt
  * The text follows the one row rule ([RV_ROW_TITLE_LINES], [RV_ROW_SUBTITLE_LINES], [RvSpace.titleToSubtitle] between the lines, each
  * line its role's Latin line box whatever its script: [RvLineBox]);
  * [titleLines] and [titleOverflow] can keep a title to one line cut in the middle, which keeps both ends of a host:port
- * in view; [titleLines] or [subtitleLines] at [Int.MAX_VALUE] with an owner's exception [whole] show the text whole
- * ([RvRowPart.WHOLE]: a revision's own name, [RvWhole.RevisionName]); without one, the text is still held to R14, and a [whole] with neither at [Int.MAX_VALUE] is an error. [titleKeepWords] and [subtitleKeepWords] false keep a name's or an identifier's breaks the platform's
+ * in view; [titleLines] or [subtitleLines] at [Int.MAX_VALUE] with an owner's exception ([titleWhole], [subtitleWhole]) show that text whole
+ * ([RvRowPart.WHOLE]: a revision's own name, [RvWhole.RevisionName]); without one, the text is still held to R14, and an exception given to a text with a line limit is an error. [titleKeepWords] and [subtitleKeepWords] false keep a name's or an identifier's breaks the platform's
  * ([RvText]'s `keepWords`: a node's name, an app's label and package). Otherwise no end cuts the text it sits beside, nor is cut itself, nor makes it read badly: an end sits beside
  * its text where the text reads well there ([rvReadsWell]); else the text takes the whole line and the end goes under
  * it, on the line's end (a node's name beside its latency at a large font size; [TextBesideEnd], [RowLine]), never
@@ -87,19 +87,21 @@ internal fun RvRow(
     titleKeepWords: Boolean = true,
     subtitleKeepWords: Boolean = true,
     subtitleLines: Int = RV_ROW_SUBTITLE_LINES,
-    whole: RvWhole? = null,
+    titleWhole: RvWhole? = null,
+    subtitleWhole: RvWhole? = null,
     endBusy: Boolean = false,
     endFirstLine: Boolean = false,
     trailing: (@Composable () -> Unit)? = null,
 ) {
-    rvRequireWhole(whole, titleLines, subtitleLines)
+    rvRequireWhole(titleWhole, titleLines)
+    rvRequireWhole(subtitleWhole, subtitleLines)
     // The card clips the layer of its first and last row to its corners.
     val press = onClick?.let { Modifier.rvRowPress(Role.Button, it, onLongClick) } ?: Modifier
     val lineWise = titleEnd != null || subtitleEnd != null
     val beside = trailing != null && !lineWise && titleOverflow == TextOverflow.Ellipsis
     val minHeight = if (subtitle == null) RvSize.rowOneLine else RvSize.rowTwoLine
-    val titleText = rememberRowText(title, Rv.type.rowTitle, titleLines, titleKeepWords, whole)
-    val subtitleText = subtitle?.let { rememberRowText(it, Rv.type.rowSub, subtitleLines, subtitleKeepWords, whole) }
+    val titleText = rememberRowText(title, Rv.type.rowTitle, titleLines, titleKeepWords, titleWhole)
+    val subtitleText = subtitle?.let { rememberRowText(it, Rv.type.rowSub, subtitleLines, subtitleKeepWords, subtitleWhole) }
     // LAYOUT-RULES.md R9: with a subtitle the disc's top is the title's top, so the text publishes where its title starts.
     val top = subtitle != null
     val firstLine = if (endFirstLine && top) maxOf(RvSize.rowOneLine - RvSpace.rowTextInset * 2, rvOneLine(title, Rv.type.rowTitle, lineBox = true)) else null
@@ -467,14 +469,17 @@ private class RowText(val text: String, val style: TextStyle, val lines: Int, va
 }
 
 /** A row text of [lines] lines tagged [RvRowPart.WHOLE] with [whole]'s id where it has no limit by that exception. */
-internal fun rvWhole(lines: Int, whole: RvWhole?): Modifier = if (lines == Int.MAX_VALUE && whole != null) Modifier.testTag("${RvRowPart.WHOLE}:${whole.id}") else Modifier
+internal fun rvWhole(lines: Int, whole: RvWhole?): Modifier = whole?.let {
+    rvRequireWhole(it, lines)
+    Modifier.testTag("${RvRowPart.WHOLE}:${it.id}")
+} ?: Modifier
 
 /**
- * A row's [whole] shows the row's text of [Int.MAX_VALUE] lines whole; given to a row whose texts ([lines]) all have a
- * limit, it would do nothing, so it is an error.
+ * A text given an exception [whole] takes [Int.MAX_VALUE] lines; one of [lines] lines would be cut all the same, so the
+ * exception would do nothing: an error.
  */
-internal fun rvRequireWhole(whole: RvWhole?, vararg lines: Int) =
-    require(whole == null || Int.MAX_VALUE in lines) { "$whole shows no text whole: its text takes Int.MAX_VALUE lines, or the row takes no RvWhole" }
+internal fun rvRequireWhole(whole: RvWhole?, lines: Int) =
+    require(whole == null || lines == Int.MAX_VALUE) { "a text given $whole takes $lines lines: a text shown whole takes Int.MAX_VALUE" }
 
 @Composable
 private fun rememberRowText(text: String, style: TextStyle, lines: Int, keepWords: Boolean, whole: RvWhole?) =
