@@ -1,0 +1,17 @@
+# Three levels, and a cycle A -> B -> C -> A that honk cuts at its closing edge.
+node {
+  a: 'trojan://secret@192.0.2.1:443#a'
+  b: 'trojan://secret@192.0.2.2:443#b'
+}
+group {
+  Top { filter: group(Mid) }
+  Mid { filter: group(Leaf) }
+  Leaf { filter: name(a) }
+  A { filter: group(B) }
+  B { filter: group(C) }
+  C {
+    filter: group(A)
+    filter: name(b)
+  }
+}
+routing { fallback: Top }

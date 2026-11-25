@@ -1,0 +1,6 @@
+# No group at all: every flow takes the fallback.
+node {
+  a: 'trojan://secret@192.0.2.1:443#a'
+  b: 'trojan://secret@192.0.2.2:443#b'
+}
+routing { fallback: direct }

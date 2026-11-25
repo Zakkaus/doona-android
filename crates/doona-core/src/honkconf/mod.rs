@@ -15,6 +15,7 @@ pub mod bundle;
 mod declarations;
 mod draft;
 pub mod edit;
+pub mod groups;
 pub mod meters;
 mod staged;
 mod store;

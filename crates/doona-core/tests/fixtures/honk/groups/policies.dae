@@ -1,0 +1,16 @@
+# Every honk policy and two dae aliases; no group is called Proxy.
+node {
+  a: 'trojan://secret@192.0.2.1:443#a'
+  b: 'trojan://secret@192.0.2.2:443#b'
+}
+group {
+  Pick { policy: select }
+  Fastest { policy: min_moving_avg }
+  Turns { policy: roundrobin }
+  Spread { policy: loadbalance }
+  Backup { policy: fallback }
+  Rated { policy: score }
+  Timed { policy: urltest }
+  Odd { policy: banana }
+}
+routing { fallback: Pick }
