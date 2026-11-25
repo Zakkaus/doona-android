@@ -96,7 +96,7 @@ internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBa
             // The policies and the error under them are one block of the column, as a field and its message are.
             Column(Modifier.testTag(RvPart.BLOCK)) {
                 Policies(state, actions, look)
-                if (state.needsApp) RvFieldMessage(stringResource(R.string.rv_perapp_needs_app))
+                if (state.asksForApp) RvFieldMessage(stringResource(R.string.rv_perapp_needs_app))
             }
             if (listed) {
                 RvSearchSlot { RvSearchField(null, state.query, actions.query, it, hint = hint) }

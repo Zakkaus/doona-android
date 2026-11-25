@@ -1,6 +1,9 @@
 package dev.doona.android.prototype.rv.settings
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -244,6 +247,19 @@ class RvPerAppShotTest {
         compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("rebuild-failed"), RvPerAppActions(reconnect = { reconnects++ }), onBack = {}) } }
         compose.onNodeWithText(rvText(R.string.rv_retry)).performClick()
         assertEquals(1, reconnects)
+    }
+
+    @Test
+    fun onlyCheckedWithNothingCheckedAsksForAnAppOnlyWhenThePhoneListsSome() {
+        var state by mutableStateOf(rvPerAppSample("none-selected"))
+        compose.setContent { Themed { RvPerAppScreen(state, RvPerAppActions(), onBack = {}) } }
+        compose.onNodeWithText(rvText(R.string.rv_perapp_needs_app)).assertExists()
+
+        state = rvPerAppSample("no-apps")
+        compose.waitForIdle()
+        assertTrue("only checked, with nothing it could check", state.needsApp && !state.canSave)
+        compose.onNodeWithText(rvText(R.string.rv_perapp_needs_app)).assertDoesNotExist()
+        compose.onNodeWithText(rvText(R.string.perapp_no_apps)).assertExists()
     }
 
     @Test

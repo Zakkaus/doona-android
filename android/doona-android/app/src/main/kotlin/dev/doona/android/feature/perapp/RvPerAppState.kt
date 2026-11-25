@@ -49,6 +49,13 @@ internal data class RvPerAppState(
     val needsApp: Boolean
         get() = installed != null && edited.policy == RvAppPolicy.Only && installed.none { it.packageName in edited.packages }
 
+    /**
+     * [needsApp] said under the policies: only when the phone lists apps to check. With none listed (none to launch, or
+     * a read that failed) the line would ask for the impossible; the list's caption or the notice says why instead, and
+     * 儲存 stays off all the same.
+     */
+    val asksForApp: Boolean get() = needsApp && !installed.isNullOrEmpty()
+
     /** The edits differ from what is saved, they can be saved, and no save is running. */
     val canSave: Boolean get() = installed != null && edited != saved && !needsApp && save != RvSave.Saving
 

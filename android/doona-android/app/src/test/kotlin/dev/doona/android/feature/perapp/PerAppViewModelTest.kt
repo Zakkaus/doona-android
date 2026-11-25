@@ -512,11 +512,22 @@ class PerAppViewModelTest {
     }
 
     @Test
+    fun `only checked on a phone without apps cannot be saved and does not ask for an app`() = runTest {
+        val engine = FakeEngine()
+        val vm = collected(engine, FakeInstalledApps(emptyList()))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Only))
+        assertTrue(vm.state.needsApp)
+        assertFalse("there is no app to check", vm.state.asksForApp)
+        assertFalse(vm.state.canSave)
+    }
+
+    @Test
     fun `only checked with nothing checked cannot be saved and says why`() = runTest {
         val engine = FakeEngine()
         val vm = collected(engine)
         vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Only))
         assertTrue(vm.state.needsApp)
+        assertTrue("the phone lists apps, so the page asks for one", vm.state.asksForApp)
         assertFalse(vm.state.canSave)
 
         vm.onAction(PerAppAction.Save)
