@@ -289,18 +289,17 @@ internal fun RvSearchSlot(field: @Composable (Modifier) -> Unit) {
 internal fun RvLargeTitle(text: String, titleBlock: Modifier, insets: WindowInsets) = RvPageHeader(text, titleBlock, insets)
 
 /**
- * A hero's line under its centred large title (歡迎's), in secondary text at the row subtitle's step, centred in the
- * cards' text column, and whole: it wraps to every line it needs, as a page header's caption does (q-a11y-caption), so
- * no font size cuts it with an ellipsis.
+ * A caption in secondary text at the row subtitle's step: by default one line of a page header's caption, after an
+ * optional 16 dp [icon] in the same colour. With [lines] other than one it is a hero's line under its centred large
+ * title (歡迎's): centred in the cards' text column and taking up to [lines] lines; at [Int.MAX_VALUE] it wraps to every
+ * line it needs, as a page header's caption does (q-a11y-caption), so no font size cuts it with an ellipsis.
  */
 @Composable
-internal fun RvHeroLine(text: String) {
-    RvText(text, Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.gutter + RvSpace.rowPadding), color = Rv.colors.textSecondary, align = TextAlign.Center, maxLines = Int.MAX_VALUE)
-}
-
-/** One line of a page header's caption, in secondary text, after an optional 16 dp [icon] in the same colour. */
-@Composable
-internal fun RvCaption(text: String, @DrawableRes icon: Int? = null) {
+internal fun RvCaption(text: String, @DrawableRes icon: Int? = null, lines: Int = 1) {
     val color = Rv.colors.textSecondary
-    if (icon == null) RvText(text, Rv.type.rowSub, color = color) else RvInline(icon, text, color, Rv.type.rowSub)
+    when {
+        lines != 1 -> RvText(text, Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.gutter + RvSpace.rowPadding), color = color, align = TextAlign.Center, maxLines = lines)
+        icon == null -> RvText(text, Rv.type.rowSub, color = color)
+        else -> RvInline(icon, text, color, Rv.type.rowSub)
+    }
 }

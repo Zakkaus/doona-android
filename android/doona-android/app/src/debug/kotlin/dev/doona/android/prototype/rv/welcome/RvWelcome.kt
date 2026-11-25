@@ -21,11 +21,11 @@ import androidx.compose.ui.semantics.semantics
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvDots
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvHeader
-import dev.doona.android.designsystem.rv.RvHeroLine
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvRow
@@ -58,7 +58,7 @@ internal fun RvWelcome(onAdd: () -> Unit) {
                 RvText(stringResource(R.string.rv_welcome_title), Rv.type.largeTitle, Modifier.semantics { heading() })
             }
             Spacer(Modifier.height(RvSpace.subGap))
-            RvHeroLine(stringResource(R.string.rv_welcome_line))
+            RvCaption(stringResource(R.string.rv_welcome_line), lines = Int.MAX_VALUE)
             Spacer(Modifier.height(RvSpace.actionsToCard))
         }
         RvGutter {

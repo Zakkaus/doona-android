@@ -90,7 +90,7 @@ Font sizes are sp and scale with the font size; the line box of a row's text is 
 | Caption, action label | 17 sp, medium or semibold | 24 | 1 | no wrap |
 | Section header | 20 sp, bold, text | 24 | 1 | ellipsis |
 | Footnote | 15 sp, regular, secondary | 22 | 3 | – |
-| Hero line (`RvHeroLine`, 歡迎 under its title) | 17 sp, regular, secondary, centred | 24 | all | none: it wraps, as a page header's caption (q-a11y-caption; s1125c: 歡迎 at 200% was cut at 3 lines) |
+| Hero line (`RvCaption` with `lines`, 歡迎 under its title) | 17 sp, regular, secondary, centred | 24 | all | none: it wraps, as a page header's caption (q-a11y-caption; s1125c: 歡迎 at 200% was cut at 3 lines) |
 | Segment label (`RvSegmented`) | the segment's step | its own | 1 | first the parts take the labels' widths (s1125c: 套用到's `TCP/UDP｜TCP｜UDP` shrank at 200%); only labels that do not fit side by side shrink together |
 | Button | 22 sp, semibold | 28 | 1 | – |
 | Page title | 32 sp, bold | 38 | 2 | – |
