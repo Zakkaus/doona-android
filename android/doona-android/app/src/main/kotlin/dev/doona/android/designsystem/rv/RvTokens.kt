@@ -80,6 +80,13 @@ internal object RvSpace {
     /** A footnote ([RvFootnote]) sits this far under its card, on the gutter as the section titles (spacing audit row 5). */
     val footnoteAbove = 12.dp
 
+    /**
+     * Where a footnote's box starts and ends, in from the card's start and end edges above it ([RvFootnote]; LAYOUT-RULES.md
+     * R20, owner q-s1125c-footgap). The one place these values live: the footnote and its checks read them.
+     */
+    val footnoteStart = 16.dp
+    val footnoteEnd = 0.dp
+
     /** A card's in-card header row sits this far under the card's top, so the card's padding is the same at both ends. */
     val headerInset = 4.dp
 

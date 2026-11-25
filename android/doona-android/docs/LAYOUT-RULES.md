@@ -24,7 +24,7 @@ Icon alignment: **C** = centred on the row; **T** = top on the title's top (the 
 | Notice, `RvBanner` | T | 40 disc (24 glyph), x 32 | 88 | 2 (q-s1125c-titlegap) | none; the button stands under the text, 16 below, at x 88 | text + 32 | 16 / 16 | 16 below the card |
 | Menu item, `RvLongPressMenu` | C | 24 bare glyph, x 16 in the item | 56 | – | none | 50 | centred | 0 / – |
 | Section header | – | – | 16 (page gutter) | – | – | 24 box | 24 above, 12 below to the card | – |
-| Footnote | – | – | 32 (the card's text inset; owner note on 實驗室, 2026-11-25, replaces 16) | – | – | text | 12 above (to the card; was 8), 24 below | – |
+| Footnote | – | – | `footnoteStart` in from the card's start, to `footnoteEnd` in from its end: today 32 to 396 (owner, q-s1125c-footgap; values pending Revolut's measure, R20) | – | – | text | 12 above (to the card; was 8), 24 below | – |
 | Card | – | – | – | – | – | – | 16 gutter, 20 radius | 16 |
 | Primary button | – | – | – | – | – | 52 | – | 12 to a secondary below |
 | Secondary button, chip, segmented control | – | – | – | – | – | 40 | 12 each side in a chip | 8 between buttons |
@@ -55,7 +55,8 @@ Component code uses only these through tokens (`RvSpace`, `RvSettingsSpace`, a c
 | Card padding, row start and end | `RvSpace.rowPadding` | S4 |
 | Gap between cards | `RvSpace.cardGap` | S4 |
 | Section header above / below | `sectionAbove` / `sectionBelow` | S5 / S3 |
-| Footnote above | `footnoteAbove` | S3 (was S2: the owner found 8 tight beside the 16 between cards; 12 is also the section header's gap to its card; open for the owner: 12 or 16) |
+| Footnote above | `footnoteAbove` | S3 (owner, q-s1125c-footgap: 12; was S2, 8) |
+| Footnote start and end, in from the card's edges | `footnoteStart`, `footnoteEnd` | S4 and S0 today (R20; values pending) |
 | Row text above and below | `rowTextInset` | S4 |
 | Icon to text | `rowGap` | S4 |
 | Text to trailing part | `trailingGap` | S3 |
@@ -118,6 +119,7 @@ A row is **one-line** (no subtitle, title on one line), **with subtitle**, or **
 | R18 | Padding | text keeps ≥ 16 above and below, equal when the minimum height governs | §7 | gate R18 |
 | R19 | Spacing scale | only S0–S5 | this file | `check-scale.sh`, `check-tokens.sh` |
 | R2 | Cards and sections | card on the 16 gutter, 20 radius, 16 apart; section 24 above, 12 below | §2, §13.4 | `RvLayoutTest` |
+| R20 | Footnote | one component, `RvFootnote`, on every page; its box `RvSpace.footnoteStart` in from the card above's start edge and `footnoteEnd` in from its end, 12 under it; the values live only in that token pair | owner, q-s1125c-footgap (2026-11-25 18:55; flagged again 19:05 「我感覺向右歪了」, 19:07 「就是這個超出了」, 19:10 「小字備註的啟始 結束位置統一沒做好」; values to follow Revolut's measure) | (a) `rvFootnoteRules` on every golden (each `RvPart.FOOTER` within 0.5 dp of the tokens, every locale and font size; `RvFootnoteTest` plants one on the gutter); (b) `RvFootnoteGateTest`: no page file draws secondary text in the footnote's role except through `RvFootnote` (`rv-footnote-gate.txt` lists the in-card exceptions with reasons); `RvLayoutTest` rulers |
 
 Decided here (2026-11-25), to be confirmed with the package:
 
