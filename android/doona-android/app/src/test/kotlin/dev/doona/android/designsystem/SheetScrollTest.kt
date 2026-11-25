@@ -31,7 +31,7 @@ class SheetScrollTest {
     fun sheetEndsFortyBelowItsLastBlock() {
         compose.setContent {
             CompositionLocalProvider(LocalFrameInsets provides FrameInsets) {
-                SeedTheme { screenCases().first { it.name == "subscriptions" }.content() }
+                SeedTheme { screenCases().first { it.name == "settings" }.content() }
             }
         }
         compose.onNode(sheetScroll()).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 100_000f) }
