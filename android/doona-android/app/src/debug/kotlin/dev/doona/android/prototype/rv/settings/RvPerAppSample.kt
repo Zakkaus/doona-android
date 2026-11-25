@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv.settings
 
 import android.content.res.Configuration
+import androidx.annotation.StringRes
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -62,30 +63,17 @@ internal fun rvPerAppSample(name: String, saved: RvPerApp = RvPerAppData.saved):
     val all = RvPerApp(RvAppPolicy.All, saved.packages)
     return when (name) {
         "all" -> rvPerAppStateSample(all)
-
         "except" -> rvPerAppStateSample(saved, draft = RvPerAppData.except)
-
         "search" -> rvPerAppStateSample(saved, query = RvPerAppData.QUERY)
-
         "no-result" -> rvPerAppStateSample(saved, query = RvPerAppData.QUERY_NONE)
-
-        "loading" -> RvPerAppState(saved, installed = null)
-
-        "no-apps" -> RvPerAppState(saved, installed = emptyList())
-
+        "loading" -> rvPerAppStateSample(saved, installed = null)
+        "no-apps" -> rvPerAppStateSample(saved, installed = emptyList())
         "none-selected" -> rvPerAppStateSample(saved, draft = RvPerApp(RvAppPolicy.Only, emptySet()))
-
         "saving" -> rvPerAppStateSample(saved, draft = RvPerAppData.except, save = RvSave.Saving)
-
         "save-failed" -> rvPerAppStateSample(saved, draft = RvPerAppData.except, save = RvSave.Failed)
-
         "rebuild-failed" -> rvPerAppStateSample(RvPerAppData.except, rebuildFailed = true)
-
-        "rebuild-no-apps" -> rvPerAppStateSample(RvPerAppData.gone, rebuildFailed = true)
-            .copy(rebuildReason = R.string.vpn_failure_no_allowed_apps, rebuildFix = FailureFix.EditList)
-
-        "read-failed" -> RvPerAppState(saved, installed = emptyList(), readFailed = true)
-
+        "rebuild-no-apps" -> rvPerAppStateSample(RvPerAppData.gone, rebuildFailed = true, rebuildReason = R.string.vpn_failure_no_allowed_apps, rebuildFix = FailureFix.EditList)
+        "read-failed" -> rvPerAppStateSample(saved, installed = emptyList(), readFailed = true)
         else -> rvPerAppStateSample(saved)
     }
 }
@@ -100,10 +88,23 @@ internal fun rvPerAppLookSample(name: String): RvPerAppState {
 internal fun rvPerAppStateSample(
     saved: RvPerApp,
     draft: RvPerApp? = null,
+    installed: List<RvApp>? = RvPerAppData.apps,
     query: String = "",
     save: RvSave = RvSave.Idle,
     rebuildFailed: Boolean = false,
-) = RvPerAppState(saved, draft, RvPerAppData.apps, query, save, rebuildFailed)
+    @StringRes rebuildReason: Int = R.string.vpn_failure_start_failed,
+    rebuildFix: FailureFix = FailureFix.Retry,
+    readFailed: Boolean = false,
+) = RvPerAppState(saved, draft, installed, query, save, rebuildFailed, rebuildReason, rebuildFix, readFailed)
+
+/** The sample with [policy] chosen. */
+internal fun RvPerAppState.withPolicy(policy: RvAppPolicy) = editing { it.copy(policy = policy) }
+
+/** The sample with [packageName] checked or not. */
+internal fun RvPerAppState.withApp(packageName: String, checked: Boolean) = editing { it.copy(packages = if (checked) it.packages + packageName else it.packages - packageName) }
+
+/** An edit made while a save runs is kept for the next save, as the ViewModel keeps it. */
+private fun RvPerAppState.editing(change: (RvPerApp) -> RvPerApp): RvPerAppState = copy(draft = change(edited))
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)

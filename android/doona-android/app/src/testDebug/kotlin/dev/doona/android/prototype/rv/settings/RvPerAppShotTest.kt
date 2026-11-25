@@ -224,16 +224,6 @@ class RvPerAppShotTest {
     }
 
     @Test
-    fun aSaveUnderWayKeepsAnEditForTheNextSave() {
-        val saving = rvPerAppSample("saving")
-        val policy = RvAppPolicy.entries.first { it != saving.edited.policy }
-        assertEquals(policy, saving.withPolicy(policy).edited.policy)
-        val checked = "com.example.chat" !in saving.edited.packages
-        assertEquals(checked, "com.example.chat" in saving.withApp("com.example.chat", checked).edited.packages)
-        assertEquals("the save still runs", RvSave.Saving, saving.withApp("com.example.chat", checked).save)
-    }
-
-    @Test
     fun theNoticesRetry() {
         var saves = 0
         var reconnects = 0

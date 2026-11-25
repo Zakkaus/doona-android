@@ -2,7 +2,6 @@ package dev.doona.android.feature.perapp
 
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
-import dev.doona.android.R
 import dev.doona.android.feature.FailureFix
 import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvPerApp
@@ -24,14 +23,14 @@ internal enum class RvSave { Idle, Saving, Failed }
 @Immutable
 internal data class RvPerAppState(
     val saved: RvPerApp,
-    val draft: RvPerApp? = null,
+    val draft: RvPerApp?,
     val installed: List<RvApp>?,
-    val query: String = "",
-    val save: RvSave = RvSave.Idle,
-    val rebuildFailed: Boolean = false,
-    @StringRes val rebuildReason: Int = R.string.vpn_failure_start_failed,
-    val rebuildFix: FailureFix = FailureFix.Retry,
-    val readFailed: Boolean = false,
+    val query: String,
+    val save: RvSave,
+    val rebuildFailed: Boolean,
+    @StringRes val rebuildReason: Int,
+    val rebuildFix: FailureFix,
+    val readFailed: Boolean,
 ) {
     /** What the page shows: the edits, or the setting as saved. */
     val edited: RvPerApp get() = draft ?: saved
@@ -60,13 +59,4 @@ internal data class RvPerAppState(
 
     /** The edits differ from what is saved, they can be saved, and no save is running. */
     val canSave: Boolean get() = installed != null && edited != saved && !needsApp && save != RvSave.Saving
-
-    /** The page with [policy] chosen. */
-    fun withPolicy(policy: RvAppPolicy) = editing { it.copy(policy = policy) }
-
-    /** The page with [packageName] checked or not. */
-    fun withApp(packageName: String, checked: Boolean) = editing { it.copy(packages = if (checked) it.packages + packageName else it.packages - packageName) }
-
-    /** An edit made while a save runs is kept, as the ViewModel keeps it, for the next save. */
-    private fun editing(change: (RvPerApp) -> RvPerApp): RvPerAppState = copy(draft = change(edited))
 }

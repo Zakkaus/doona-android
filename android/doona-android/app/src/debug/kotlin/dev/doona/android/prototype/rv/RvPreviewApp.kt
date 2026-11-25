@@ -83,6 +83,8 @@ import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import dev.doona.android.prototype.rv.settings.rvSystemLanguage
 import dev.doona.android.prototype.rv.settings.rvUpdateSample
 import dev.doona.android.prototype.rv.settings.scheme
+import dev.doona.android.prototype.rv.settings.withApp
+import dev.doona.android.prototype.rv.settings.withPolicy
 import dev.doona.android.prototype.rv.states.RvActivityNotice
 import dev.doona.android.prototype.rv.states.RvPermission
 import dev.doona.android.prototype.rv.states.RvPermissionAsks
