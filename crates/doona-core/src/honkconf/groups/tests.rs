@@ -1,12 +1,46 @@
 use super::*;
 use crate::testutil::TempDir;
 
-fn project(text: &str) -> Projection {
+fn load(text: &str) -> Result<HonkConfig, super::super::HonkConfigError> {
     let dir = TempDir::new("honk-groups");
     let path = dir.path().join("main.dae");
     std::fs::write(&path, text).unwrap();
-    let cfg = super::super::load(&path).unwrap();
-    Projection::build(&cfg, Vec::new(), &[]).unwrap()
+    super::super::load(&path)
+}
+
+fn project(text: &str) -> Projection {
+    Projection::build(&load(text).unwrap(), Vec::new(), &[]).unwrap()
+}
+
+#[test]
+fn a_compact_last_definition_is_the_located_one() {
+    let p = project(
+        "node { a: 'trojan://s@192.0.2.1:443#a' }\n\
+         group {\n X { policy: score }\n X {}\n}\n\
+         routing { fallback: X }\n",
+    );
+    assert_eq!(p.groups[0].kind, Kind::Selector);
+    assert_eq!(p.groups[0].location.as_ref().unwrap().line, 4);
+}
+
+#[test]
+fn groups_without_any_node_have_no_members() {
+    let p = project("group {\n Lone { policy: select }\n}\nrouting { fallback: direct }\n");
+    assert!(p.nodes.is_empty());
+    assert!(p.groups[0].members.is_empty());
+    assert_eq!(p.selected("g-Lone"), None);
+}
+
+#[test]
+fn an_unknown_final_or_exit_never_reaches_the_projection() {
+    for field in ["final: nowhere", "exit: nowhere"] {
+        let text = format!(
+            "node {{ a: 'trojan://s@192.0.2.1:443#a' }}\n\
+             group {{\n X {{\n  {field}\n }}\n}}\nrouting {{ fallback: X }}\n"
+        );
+        let refused = load(&text).map(|cfg| Projection::build(&cfg, Vec::new(), &[]).is_err());
+        assert!(refused.unwrap_or(true), "{field}");
+    }
 }
 
 #[test]

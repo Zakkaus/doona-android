@@ -46,8 +46,6 @@ pub enum Origin {
 pub struct NodeRow {
     /// `n-` and 16 hex digits (`crate::ids`).
     pub id: String,
-    /// The node's identity inside the [`GroupManager`].
-    pub uuid: Uuid,
     pub name: String,
     pub origin: Origin,
 }
@@ -140,6 +138,18 @@ fn unquote_once(name: &str) -> &str {
         .unwrap_or(name)
 }
 
+/// A fetched node left out because its endpoint is already listed (owner ruling Q-B1,
+/// 2026-11-26: the first occurrence wins).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Shadowed {
+    /// The provider whose copy was left out.
+    pub scope: String,
+    /// The name that provider gave it.
+    pub name: String,
+    /// The listed node with the same endpoint.
+    pub kept: String,
+}
+
 /// A stored choice: a Selector's runtime choice or an automatic group's override.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pin {
@@ -162,6 +172,8 @@ pub struct Projection {
     pub groups: Vec<GroupRow>,
     /// Stored pins whose group or member is gone; the sidecar drops them.
     pub pruned: Vec<Pin>,
+    /// Fetched duplicates of listed endpoints.
+    pub shadowed: Vec<Shadowed>,
     manager: GroupManager,
     /// Manager identity of every member, built-ins included.
     members: HashMap<String, SelectorMember>,
@@ -177,7 +189,7 @@ impl Projection {
         fetched: Vec<Fetched>,
         pins: &[Pin],
     ) -> Result<Self, DetailedConfigError> {
-        let (assembled, origins) = assemble(config.config(), fetched)?;
+        let (assembled, origins, shadowed) = assemble(config.config(), fetched)?;
         let manager = GroupManager::new(&assembled.groups, &assembled.nodes);
         let mut ids = HashMap::new();
         let mut nodes = Vec::new();
@@ -193,16 +205,24 @@ impl Projection {
             if let Some(origin) = origin {
                 nodes.push(NodeRow {
                     id,
-                    uuid: node.id,
                     name: node.name.clone(),
                     origin,
                 });
             }
         }
+        let shadowed = shadowed
+            .into_iter()
+            .map(|(scope, node)| Shadowed {
+                scope,
+                kept: ids[&node.id].clone(),
+                name: node.name,
+            })
+            .collect();
         let mut projection = Self {
             nodes,
             groups: Vec::new(),
             pruned: Vec::new(),
+            shadowed,
             members: HashMap::new(),
             ids,
             manager,
@@ -300,12 +320,11 @@ impl Projection {
             kind: Kind::of(group.policy),
             members,
             default,
-            final_target: group.final_outbound.as_deref().and_then(|t| self.target(t)),
-            exit: group
-                .exit
-                .as_deref()
-                .and_then(|n| self.manager.node_by_name(n))
-                .map(|n| self.ids[&n.id].clone()),
+            final_target: group.final_outbound.as_deref().map(|t| self.target(t)),
+            exit: group.exit.as_deref().map(|name| {
+                let node = self.manager.node_by_name(name);
+                self.ids[&node.expect("assembly admits only a node exit").id].clone()
+            }),
             location,
             implicit_all: group.own.implicit_all_nodes,
         }
@@ -319,19 +338,22 @@ impl Projection {
     }
 
     /// honk's `final` lookup: a built-in, then a node by name, then a group.
-    fn target(&self, name: &str) -> Option<String> {
+    fn target(&self, name: &str) -> String {
         if matches!(
             name,
             Config::BUILTIN_DIRECT_NODE | Config::BUILTIN_BLOCK_NODE
         ) {
-            return Some(name.to_owned());
+            return name.to_owned();
         }
         match self.manager.node_by_name(name) {
-            Some(node) => Some(self.ids[&node.id].clone()),
-            None => self
-                .manager
-                .group(name)
-                .map(|group| ids::group_id(&group.name)),
+            Some(node) => self.ids[&node.id].clone(),
+            None => ids::group_id(
+                &self
+                    .manager
+                    .group(name)
+                    .expect("assembly admits only an existing final")
+                    .name,
+            ),
         }
     }
 }
@@ -345,13 +367,14 @@ fn builtin(node: &Node) -> Option<&'static str> {
     }
 }
 
-/// The assembled candidate and, per node, where it comes from (`None` for a built-in).
-fn assemble(
-    config: &Config,
-    fetched: Vec<Fetched>,
-) -> Result<(Config, Vec<Option<Origin>>), DetailedConfigError> {
+type Assembled = (Config, Vec<Option<Origin>>, Vec<(String, Node)>);
+
+/// The assembled candidate, per node where it comes from (`None` for a built-in), and the
+/// fetched nodes left out as duplicates with their provider's scope.
+fn assemble(config: &Config, fetched: Vec<Fetched>) -> Result<Assembled, DetailedConfigError> {
     let mut candidate = config.clone();
     candidate.ensure_builtin_nodes();
+    let mut shadowed = Vec::new();
     let mut origins: Vec<_> = candidate
         .nodes
         .iter()
@@ -368,6 +391,7 @@ fn assemble(
         for mut node in provider.nodes {
             // honk IDs are canonical endpoint identities and must be unique in one snapshot.
             if candidate.nodes.iter().any(|n| n.id == node.id) {
+                shadowed.push((provider.scope.clone(), node));
                 continue;
             }
             node.subscription_id = Some(declared.id);
@@ -376,7 +400,7 @@ fn assemble(
         }
     }
     let assembled = candidate.assemble(honk_config::parser::resolve_group_filters)?;
-    Ok((assembled, origins))
+    Ok((assembled, origins, shadowed))
 }
 
 /// honk's runtime keeps the last definition of a repeated name, at its own position.
@@ -393,13 +417,17 @@ fn locations(config: &HonkConfig) -> HashMap<String, Location> {
     let mut found = HashMap::new();
     for (index, source) in config.sources().iter().enumerate() {
         let text = Source::new(&source.content, source.source.clone());
-        let doc = Document::parse(text, &mut Vec::new()).expect("an admitted source parses");
+        // honk admits an include with no block at all (an empty file, say); the cursor's
+        // public parse refuses exactly that, and such a source declares no group.
+        let Ok(doc) = Document::parse(text, &mut Vec::new()) else {
+            continue;
+        };
         for section in doc.sections().filter(|s| s.header() == "group") {
+            // Every entry: a compact `X {}` declares a group too, and a statement's header
+            // never equals a group name.
             for block in section.body().into_iter().flatten() {
-                if block.body().is_some() {
-                    let name = block.header().trim().to_owned();
-                    found.insert(name, location(&doc, block.header_span(), index));
-                }
+                let name = block.header().trim().to_owned();
+                found.insert(name, location(&doc, block.header_span(), index));
             }
         }
     }

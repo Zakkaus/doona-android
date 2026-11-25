@@ -4,6 +4,7 @@ use std::path::Path;
 
 use doonacore::honkconf::groups::{Fetched, Kind, Member, Origin, Pin, PinError, Projection};
 use doonacore::honkconf::{HonkConfig, load};
+use honk_config::diagnostic::SettingPath;
 use honk_config::node::Node;
 
 fn fixture(name: &str) -> HonkConfig {
@@ -58,17 +59,18 @@ fn every_policy_maps_to_its_kind_without_a_proxy_group() {
     );
     let names: Vec<_> = p.groups.iter().map(|g| g.kind.as_str()).collect();
     assert_eq!(
-        names[..6],
+        names,
         [
             "Selector",
             "UrlTest",
             "LoadBalance",
             "LoadBalance",
             "Fallback",
-            "Score"
+            "Score",
+            "UrlTest",
+            "Selector"
         ]
     );
-    assert!(p.groups.iter().all(|g| g.name != "Proxy"));
 }
 
 #[test]
@@ -78,10 +80,11 @@ fn an_unknown_policy_is_a_selector_with_a_diagnostic_at_its_line() {
     let odd = p.groups.iter().find(|g| g.id == "g-Odd").unwrap();
     assert_eq!(odd.kind, Kind::Selector);
     let line = odd.location.as_ref().unwrap().line;
+    let policy = SettingPath::new("groups").index(8).field("policy");
     assert!(
         cfg.diagnostics()
             .iter()
-            .any(|d| d.line == Some(line) && d.message.contains("not recognised")),
+            .any(|d| d.setting == policy && d.line == Some(line)),
         "{:?}",
         cfg.diagnostics()
     );
@@ -263,6 +266,56 @@ fn an_endpoint_already_listed_is_kept_once_first_wins() {
         .collect();
     let s1 = Origin::Subscription("s1".into());
     assert_eq!(listed, [("lonely", &Origin::Static), ("hk", &s1)]);
+    let kept = |name| node(&p, name).to_owned();
+    let shadowed: Vec<_> = p
+        .shadowed
+        .iter()
+        .map(|s| (s.scope.as_str(), s.name.as_str(), s.kept.clone()))
+        .collect();
+    assert_eq!(
+        shadowed,
+        [
+            ("s1", "lonely-again", kept("lonely")),
+            ("s2", "hk", kept("hk"))
+        ]
+    );
+}
+
+#[test]
+fn a_group_named_proxy_is_an_ordinary_group() {
+    let p = project("proxy.dae");
+    let rows: Vec<_> = p.groups.iter().map(|g| (g.id.as_str(), g.kind)).collect();
+    assert_eq!(
+        rows,
+        [("g-Auto", Kind::UrlTest), ("g-Proxy", Kind::Fallback)]
+    );
+    assert_eq!(members(&p, "g-Proxy"), [node(&p, "b")]);
+    assert!(!p.groups[1].implicit_all);
+}
+
+#[test]
+fn block_members_empty_groups_and_subgroup_pins() {
+    let p = project("edges.dae");
+    let row = |id: &str| p.groups.iter().find(|g| g.id == id).unwrap();
+    assert_eq!(row("g-Stop").members, [Member::Builtin("block")]);
+    assert_eq!(row("g-Stop").final_target.as_deref(), Some("block"));
+    assert!(row("g-Empty").members.is_empty());
+    assert!(!row("g-Empty").implicit_all);
+    assert_eq!(p.selected("g-Empty"), None);
+    assert_eq!(p.selected("g-Outer"), Some("g-Empty"));
+    p.pin("g-Outer", Some("g-Stop")).unwrap();
+    assert_eq!(p.selected("g-Outer"), Some("g-Stop"));
+}
+
+#[test]
+fn a_compact_block_is_located_and_an_empty_include_declares_nothing() {
+    let cfg = fixture("edges.dae");
+    assert_eq!(cfg.sources().len(), 2, "blank.dae is admitted");
+    let p = Projection::build(&cfg, Vec::new(), &[]).unwrap();
+    let bare = p.groups.iter().find(|g| g.id == "g-Bare").unwrap();
+    let at = bare.location.as_ref().map(|l| (l.source, l.line));
+    assert_eq!(at, Some((0, 12)));
+    assert_eq!(bare.members, [Member::Node(node(&p, "a").into())]);
 }
 
 #[test]

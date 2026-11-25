@@ -1,0 +1,15 @@
+# A built-in block member and final, an empty group, a subgroup choice, a compact block.
+node {
+  a: 'trojan://secret@192.0.2.1:443#a'
+}
+group {
+  Stop {
+    filter: name(block)
+    final: block
+  }
+  Empty { filter: name(nothing) }
+  Outer { filter: group(Empty, Stop) }
+  Bare {}
+}
+include { blank.dae }
+routing { fallback: Outer }
