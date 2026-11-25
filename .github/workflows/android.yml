@@ -55,6 +55,8 @@ jobs:
             fi
           fi
           uv run python check_limits.py ${base:+--base-rev "$base"}
+          # check-components.sh compares its allowlist with the same base.
+          echo "RATCHET_BASE=$base" >> "$GITHUB_ENV"
       - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
@@ -155,7 +157,7 @@ jobs:
         run: |
           set -euo pipefail
           tools/check-tokens.sh
-          tools/check-components.sh
+          tools/check-components.sh ${RATCHET_BASE:+--base-rev "$RATCHET_BASE"}
           tools/test-check-components.sh
           tools/check-layers.sh
       - name: Check Kotlin format, lint, run the JVM tests and the screenshots

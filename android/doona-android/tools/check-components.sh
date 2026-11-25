@@ -10,24 +10,55 @@
 #           RvGlyph, RvSwitch, RvPrimaryButton, ...);
 #   click   calls `clickable(`, `selectable(`, `toggleable(` or `combinedClickable(`: a press and its focus outline come
 #           from the library's `rvPress`, `rvRowPress`, `rvRowSelect`, `rvRowToggle` and `rvPressSelect`.
-# Comment lines are not read. Each existing exception is a line of tools/check-components.allow:
+# Comments are not read: a comment line, and the rest of a line after a `//` outside a string literal. Each existing
+# exception is a line of tools/check-components.allow:
 #   <file under app/src>|<rule>|<count>|<reason>
 # The count is the number of hits of that rule in that file. A hit past it fails, and so does a count above the
 # measure: lower it, or delete the line, once the page uses the library.
+# The allowlist only shrinks, as android/scripts/limits-ratchet.txt does: with --base-rev it is also compared with the
+# one at that revision, and a line not there, or a count above its count there, fails.
 #
-#   check-components.sh            check against the allowlist
-#   check-components.sh --list     every hit, allowlisted or not (the "before" count), as file:line:rule:text
+#   check-components.sh                    check against the allowlist
+#   check-components.sh --base-rev <rev>   the same, and the allowlist against the one at <rev>
+#   check-components.sh --list             every hit, allowlisted or not (the "before" count), as file:line:rule:text
 # COMPONENTS_ROOT and COMPONENTS_ALLOW point the gate at another tree and allowlist (the negative control's fixtures).
 set -eu
 root=${COMPONENTS_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}
 allow=${COMPONENTS_ALLOW:-$(dirname "$0")/check-components.allow}
 src="$root/app/src"
+base_rev=
+if [ "${1:-}" = "--base-rev" ]; then
+    base_rev=${2:?--base-rev needs a revision}
+fi
 
 dp='[0-9]\.(dp|sp)\b|(^|[^A-Za-z_.])Dp\('
 colour='Color\(0x|\b0x[0-9A-Fa-f]{8}\b|\bColor\.[A-Z]|MaterialTheme\.'
 style='TextStyle\(|\bfontSize\b|\bFontWeight\.'
 widget='(^|[^A-Za-z_.])(Text|BasicText|Icon|Image|IconButton|Switch|Button|TextButton|OutlinedButton|Card|Surface|TextField|OutlinedTextField|RadioButton|Checkbox|HorizontalDivider|Divider)\('
 click='(^|[^A-Za-z_])(clickable|selectable|toggleable|combinedClickable)[[:space:]]*[({]'
+
+# Prints each line up to its first `//` outside a string literal (a `"` opens and closes one, `\` escapes the next
+# character); a char literal is skipped whole, so `'"'` opens no string.
+# shellcheck disable=SC2016 # an awk program: its $0 is awk's
+uncomment='{
+    out = ""; ins = 0; n = length($0); i = 1
+    while (i <= n) {
+        c = substr($0, i, 1)
+        if (ins) {
+            if (c == "\\") { out = out substr($0, i, 2); i += 2; continue }
+            if (c == "\"") ins = 0
+            out = out c; i++; continue
+        }
+        if (c == "/" && substr($0, i + 1, 1) == "/") break
+        if (c == "\"") ins = 1
+        if (c == "\047") {
+            j = (substr($0, i + 1, 1) == "\\") ? i + 3 : i + 2
+            if (substr($0, j, 1) == "\047") { out = out substr($0, i, j - i + 1); i = j + 1; continue }
+        }
+        out = out c; i++
+    }
+    print out
+}'
 
 pages=$(
     {
@@ -41,8 +72,9 @@ stripped=$(mktemp)
 trap 'rm -f "$hits" "$counts" "$stripped"' EXIT
 for f in $pages; do
     rel=${f#"$src"/}
-    # Comment lines and trailing comments are blanked, not removed, so the line numbers stay.
-    sed -E -e 's#^[[:space:]]*(//|/?\*).*$##' -e 's#^import .*$##' -e 's#[[:space:]]+//.*$##' "$f" > "$stripped"
+    # Comment lines and trailing comments are blanked, not removed, so the line numbers stay. A trailing comment starts
+    # at a `//` outside a string literal: `"https://..."` and `"a // b"` are a string's text, and what follows them is read.
+    sed -E -e 's#^[[:space:]]*(//|/?\*).*$##' -e 's#^import .*$##' "$f" | awk "$uncomment" > "$stripped"
     for rule in dp colour style widget click; do
         eval "pattern=\$$rule"
         grep -nE "$pattern" "$stripped" | sed -E "s#^([0-9]+):#$rel:\1:$rule:#" || true
@@ -79,6 +111,29 @@ bad=$(
         done
     fi
 )
+# the allowlist against the one at the base revision: nothing added, no count raised
+if [ -n "$base_rev" ]; then
+    dir=$(cd "$(dirname "$allow")" && pwd)
+    git -C "$dir" rev-parse --verify --quiet "$base_rev^{commit}" > /dev/null || { echo "check-components: cannot resolve base revision $base_rev" >&2; exit 2; }
+    path=$(git -C "$dir" rev-parse --show-prefix)$(basename "$allow")
+    if base=$(git -C "$dir" show "$base_rev:$path" 2> /dev/null); then
+        grew=$(
+            grep -vE '^[[:space:]]*(#|$)' "$allow" | while IFS='|' read -r file rule allowed reason; do
+                was=$(printf '%s\n' "$base" | awk -F'|' -v f="$file" -v r="$rule" '$1 == f && $2 == r { print $3 }')
+                if [ -z "$was" ]; then
+                    echo "$file|$rule: added to the allowlist, not in $base_rev"
+                elif [ "$allowed" -gt "$was" ]; then
+                    echo "$file|$rule: raised from $was in $base_rev to $allowed"
+                fi
+            done
+        )
+        [ -z "$grew" ] || bad="${bad:+$bad
+}$grew"
+    else
+        echo "check-components: $base_rev has no $path: first freeze, not compared with the base"
+    fi
+fi
+
 total=$(wc -l < "$hits" | tr -d ' ')
 if [ -n "$bad" ]; then
     printf 'check-components:\n%s\n' "$bad" >&2
