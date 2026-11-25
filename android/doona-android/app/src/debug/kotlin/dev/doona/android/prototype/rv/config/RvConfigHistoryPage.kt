@@ -27,10 +27,11 @@ import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rvConfigLine
+import dev.doona.android.designsystem.rv.rvKeepRuns
+import dev.doona.android.designsystem.rv.rvKeepTail
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.nodes.RvStatusChip
-import dev.doona.android.prototype.rv.rvKeepRuns
-import dev.doona.android.prototype.rv.rvKeepTail
 import dev.doona.android.prototype.rv.settings.RvNavEnd
 import dev.doona.android.prototype.rv.settings.RvSettingsNavRow
 import dev.doona.android.prototype.rv.settings.RvSettingsRow

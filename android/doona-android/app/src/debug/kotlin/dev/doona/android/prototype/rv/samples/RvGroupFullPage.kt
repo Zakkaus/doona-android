@@ -28,6 +28,7 @@ import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSearchField
 import dev.doona.android.designsystem.rv.RvSearchSlot
 import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvPolicyGroup
@@ -37,7 +38,6 @@ import dev.doona.android.prototype.rv.nodes.RvNodePickRow
 import dev.doona.android.prototype.rv.nodes.RvNodeSection
 import dev.doona.android.prototype.rv.nodes.RvNodesSize
 import dev.doona.android.prototype.rv.nodes.RvRowsComposed
-import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.nodes.matches
 
 /**

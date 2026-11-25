@@ -63,6 +63,7 @@ import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.RvTabHeader
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rvRaisedReach
 import dev.doona.android.designsystem.rv.rvRowPress
 import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
@@ -77,7 +78,6 @@ import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.rvNodeGroups
 import dev.doona.android.prototype.rv.nodes.RvNodeGroups
 import dev.doona.android.prototype.rv.nodes.RvNodeListControls
-import dev.doona.android.prototype.rv.nodes.SEPARATOR
 import dev.doona.android.prototype.rv.nodes.latencyColor
 import dev.doona.android.prototype.rv.nodes.latencyText
 

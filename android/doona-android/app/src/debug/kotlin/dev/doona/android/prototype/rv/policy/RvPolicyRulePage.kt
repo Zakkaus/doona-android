@@ -43,11 +43,11 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rvInkStart
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.model.RvPolicyRule
-import dev.doona.android.prototype.rv.nodes.SEPARATOR
 
 /**
  * The quick rule, opened from a connection (doona web's one rule dialog, Karing's 選擇分流類型), in node detail's

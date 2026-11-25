@@ -13,10 +13,10 @@ import dev.doona.android.designsystem.rv.RvLatencyText
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvText
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.engine.ScoreChallenger
 import dev.doona.android.engine.ScoreNetwork
 import dev.doona.android.feature.model.RvNode
-import dev.doona.android.prototype.rv.nodes.SEPARATOR
 
 /**
  * What a Score group chose on one network ([label], TCP or UDP), as honk reports it (`scoreState`): the card's header

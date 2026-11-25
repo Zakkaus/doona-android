@@ -52,6 +52,7 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.RvWorldMap
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rvMoves
 import dev.doona.android.designsystem.rv.rvPress
 import dev.doona.android.designsystem.rv.rvSystemScheme
@@ -211,8 +212,6 @@ private fun RegionRow(node: RvNode, current: Boolean, order: Int, onOpen: (Strin
         ) { RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut, order, node.id) }
     }
 }
-
-internal const val SEPARATOR = " · "
 
 private const val TOP_COLUMNS = 4
 private const val REGION_ROWS = 5
