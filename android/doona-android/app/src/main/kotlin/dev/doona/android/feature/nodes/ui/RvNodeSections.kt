@@ -182,7 +182,7 @@ internal fun RvNodeSectionSkeleton() {
     RvGutter {
         RvSkeletonCard {
             RvSkeletonRow(0, RvSkeletonText.Mixed, RvSkeletonEnd.Value, chevron = true, titleKeepWords = false)
-            repeat(rvSkeletonRowsToFill()) { RvSkeletonRow(it + 1, RvSkeletonText.Mixed, RvSkeletonEnd.LatencyLines, chevron = true, titleKeepWords = false) }
+            repeat(rvSkeletonRowsToFill()) { RvSkeletonRow(it + 1, RvSkeletonText.Mixed, RvSkeletonEnd.LatencyLines, titleKeepWords = false, infoMark = true) }
         }
     }
 }

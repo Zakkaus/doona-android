@@ -53,7 +53,8 @@ internal enum class RvSkeletonEnd(val first: RvSkeletonText?, val second: RvSkel
 
 /**
  * [RvRow]'s skeleton, row [index] of its card: the disc, the title's bar over the subtitle's of [subtitle]'s kind (or the
- * title's alone), the [end]'s bars and the room of the row's chevron when it has one ([chevron]), laid out as [RvRow] lays
+ * title's alone), the [end]'s bars and the room of the row's chevron when it has one ([chevron]) or of the info mark a
+ * line-wise end ends in ([infoMark], [RvRowEnd]'s glyph: a touch target right after the end), laid out as [RvRow] lays
  * out its row, in its heights, insets and gaps. Words the page knows before its data ([title], [subtitleText], the
  * [endText] of a line-wise end's first line: 出站模式 over the mode, a node's name, a group's node) take their own lines
  * ([RvSkeletonLabel]), so the row is as tall as the row they wrap in, and where they do not read well beside the end, the
@@ -73,6 +74,7 @@ internal fun RvSkeletonRow(
     endText: String? = null,
     titleKeepWords: Boolean = true,
     subtitleKeepWords: Boolean = true,
+    infoMark: Boolean = false,
 ) {
     val minHeight = if (subtitle != null) RvSize.rowTwoLine else RvSize.rowOneLine
     val room = rememberEndRoom()
@@ -93,6 +95,7 @@ internal fun RvSkeletonRow(
             end.lineWise -> {
                 LineWise(words, end, endText, room, Modifier.weight(1f))
                 if (chevron) ChevronRoom()
+                if (infoMark) Spacer(Modifier.width(RvSize.touch))
             }
 
             end != RvSkeletonEnd.None || chevron -> BesideEnd(words, minHeight, Modifier.weight(1f)) {

@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.toSize
 import dev.doona.android.R
 import dev.doona.android.designsystem.components.Tone
 import dev.doona.android.designsystem.components.latencyTone
+import dev.doona.android.designsystem.rv.RvCard
+import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.feature.model.RvPolicyState
@@ -29,6 +31,8 @@ import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.nodes.RvNodeDetail
 import dev.doona.android.feature.nodes.RvNodeDetailSkeleton
 import dev.doona.android.feature.nodes.RvNodesPage
+import dev.doona.android.feature.nodes.ui.RvNodePickRow
+import dev.doona.android.feature.nodes.ui.RvNodeSectionSkeleton
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.rvTestTimes
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
@@ -175,6 +179,37 @@ class RvSkeletonBoundsTest {
     @Test fun nodeFs115() = bounds(RvSkeletonPages.NODE, RV_FS115)
 
     @Test fun nodeFs200() = bounds(RvSkeletonPages.NODE, RV_FS200)
+
+    /**
+     * The node pickers' skeleton ([RvNodeSectionSkeleton]) fills the window with no data, so its rows cannot stand for the
+     * list's own (which 訂閱 rows and folds come, and where, is data); its node row ends as a node row does: the latency's
+     * bars end where the latency ends, before the info mark's room, not a chevron's.
+     */
+    @Test
+    fun aPickerSkeletonNodeRowEndsWhereItsLatencyEnds() {
+        rvAnimatorScale(0f)
+        val loading = mutableStateOf(true)
+        val node = RvData.nodes.first { it.latencyMs != null && it.changeMs != null }
+        compose.rvContent(dark = false) {
+            if (loading.value) {
+                RvNodeSectionSkeleton()
+            } else {
+                RvGutter { RvCard { RvNodePickRow(node, "Hong Kong", current = false, order = 0, onPick = {}, onDetail = {}) } }
+            }
+        }
+        compose.waitForIdle()
+        val window = compose.onRoot().fetchSemanticsNode().let { it.size.height / it.layoutInfo.density.density }
+        val skeleton = compose.parts(window, SKELETON_TAGS)
+        // Row 0 is the 訂閱 row; row 1 the first node row.
+        val row = skeleton.of(RvPart.ROW)[1]
+        val bars = skeleton.of(RvPart.SKELETON_LINE).filter { row.contains(it.center) }
+        loading.value = false
+        compose.waitForIdle()
+        val real = compose.parts(window, LOADED_TAGS).of(RvPart.ROW).single()
+        val texts = compose.texts(window).filter { real.contains(it.center) }
+        assertEquals("the node row's end", texts.maxOf { it.right }, bars.maxOf { it.right }, TOLERANCE)
+        assertEquals("the node row's height", real.height, row.height, TOLERANCE)
+    }
 
     /**
      * 依 App's skeleton rows stop above 儲存's room (the gap over the button and the button), as the loaded list's last
