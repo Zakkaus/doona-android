@@ -15,8 +15,10 @@ import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeInstalledApps
 import dev.doona.android.feature.localnetwork.LocalNetworkPrompt
+import dev.doona.android.feature.subscriptions.ImportRequest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -58,7 +60,7 @@ class LocalNetworkRetryTest {
 
     /** An import of a LAN subscription fails; the user refuses in the system's dialog, and the refusal is shown. */
     private fun refusedImport() {
-        assertTrue(container.imports.start("http://192.168.8.161/sub", null))
+        assertNotNull(container.imports.start(ImportRequest("http://192.168.8.161/sub", null, null)))
         idle()
         assertEquals(LocalNetworkPrompt.Ask, access.prompt.value)
         access.requesting()
@@ -90,7 +92,7 @@ class LocalNetworkRetryTest {
             val state = container.imports.state.value
             assertFalse(state.busy)
             assertNull(state.error)
-            assertEquals(1, state.imported)
+            assertNotNull("the import added its subscription", state.added)
             assertEquals(subscriptions + 1, engine.subscriptions.value.size)
             scenario.leaveAndReturn()
             assertEquals("one retry only", 2, engine.adds)
@@ -113,7 +115,7 @@ class LocalNetworkRetryTest {
             val state = container.imports.state.value
             assertFalse(state.busy)
             assertNull(state.error)
-            assertEquals(1, state.imported)
+            assertNotNull("the import added its subscription", state.added)
             scenario.leaveAndReturn()
             assertEquals("one retry only", 2, engine.adds)
         }

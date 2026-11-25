@@ -33,7 +33,9 @@ private val SHOTS = System.getProperty("doona.shots") ?: "src/test/screenshots"
  * phone's font size setting scales it (the frame's status bar does not), and the golden is
  * `proto-rv-<screen>-fs<percent>`, as the app's `fs115` and `fs200`. A frame with [gesture] false draws no gesture handle
  * (the content draws its own bar, as three-button navigation does). With `doona.board` set the page is captured for the
- * design board ([rvBoard]) instead of the golden.
+ * design board ([rvBoard]) instead of the golden. A wired page's golden takes [prefix] `app-rv` (plan §2.4): the same
+ * page drawn from the engine through its view model, set against the `proto-rv` golden of the same screen. A golden of
+ * the phone in English ([RV_EN]) is `<prefix>-<screen>-en`.
  */
 internal fun ComposeContentTestRule.rvShot(
     screen: String,
@@ -41,6 +43,8 @@ internal fun ComposeContentTestRule.rvShot(
     before: ComposeContentTestRule.() -> Unit = {},
     fontScale: Float = 1f,
     gesture: Boolean = true,
+    prefix: String = PROTO,
+    english: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     rvContent(dark, fontScale, gesture, content)
@@ -48,14 +52,15 @@ internal fun ComposeContentTestRule.rvShot(
     drawFully()
     val variant = when {
         fontScale != 1f -> "fs${(fontScale * PERCENT).roundToInt()}"
+        english -> "en"
         dark -> "dark"
         else -> "light"
     }
     // The board's run draws the board, not the goldens: its windows are held to the phone's height.
     if (rvBoarding) return rvBoard(screen, variant)
     // Every golden's rows keep to the layout rules (docs/LAYOUT-RULES.md), or to the allowlist of today's breaks.
-    rvRowRules("proto-rv-$screen-$variant")
-    onRoot().captureToImage().asAndroidBitmap().captureRoboImage("$SHOTS/proto-rv-$screen-$variant.png")
+    rvRowRules("$prefix-$screen-$variant")
+    onRoot().captureToImage().asAndroidBitmap().captureRoboImage("$SHOTS/$prefix-$screen-$variant.png")
 }
 
 /**
@@ -79,6 +84,9 @@ internal fun ComposeContentTestRule.rvContent(dark: Boolean, fontScale: Float = 
 }
 
 private const val PERCENT = 100
+
+/** The prototype's goldens. */
+private const val PROTO = "proto-rv"
 
 /** Android's two font sizes beyond the default that the goldens cover. */
 internal const val RV_FS115 = 1.15f

@@ -1,12 +1,10 @@
 package dev.doona.android.feature.subscriptions
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.engine.Engine
-import dev.doona.android.feature.errorCode
+import dev.doona.android.engine.Subscription
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -15,71 +13,71 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class SubscriptionsViewModel(
-    private val engine: Engine,
-    imports: SubscriptionImports,
-    private val clock: () -> Long = System::currentTimeMillis,
-) : ViewModel() {
-    // An import that is running, or that failed while the page was left, brings the form back, as it was left.
-    private val local = MutableStateFlow(SubscriptionsLocal(adding = imports.state.value.let { it.busy || it.error != null }))
-    private val adder = SubscriptionAdder(imports, viewModelScope, onImported = { local.update { it.copy(adding = false) } })
+/** 訂閱 as the page draws it: the page's state, the subscriptions updating now, and whether the engine is still loading. */
+@Immutable
+internal data class SubsUiState(val page: RvSubsState, val updating: Set<String> = emptySet(), val loading: Boolean = false)
 
-    /** The add form's text, which the route hands the screen. */
-    val fields: AddFormFields get() = adder.fields
+/** What the view model keeps besides the engine's values: updates running, the last one that failed, the delete asked. */
+internal data class SubsLocal(val updating: Set<String> = emptySet(), val failedId: String? = null, val deletingId: String? = null)
 
-    val uiState: StateFlow<SubscriptionsUiState> =
-        combine(engine.ready, engine.subscriptions, adder.state, local) { ready, subscriptions, form, local ->
-            subscriptionsUiState(ready, subscriptions, form, local, clock())
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), current())
+/**
+ * 訂閱: the engine's subscriptions mapped to the page, with the updates the user started, the banner of the last one
+ * that failed (or of a subscription whose last refresh failed, by the core's report), and the delete question.
+ */
+internal fun subsUiState(ready: Boolean, subscriptions: List<Subscription>, local: SubsLocal, nowEpochMs: Long): SubsUiState {
+    val ids = subscriptions.map { it.id }.toSet()
+    val failedId = local.failedId?.takeIf { it in ids } ?: subscriptions.firstOrNull { it.error != null && it.id !in local.updating }?.id
+    return SubsUiState(
+        page = RvSubsState(subscriptions.map(::rvSubscription), nowEpochMs, failedId, local.deletingId?.takeIf { it in ids }),
+        updating = local.updating intersect ids,
+        loading = !ready,
+    )
+}
 
-    fun onAction(action: SubscriptionsAction) {
-        when (action) {
-            is SubscriptionsAction.Update -> update(action.id)
-            is SubscriptionsAction.AskRemove -> local.update { it.copy(removingId = action.id) }
-            SubscriptionsAction.ConfirmRemove -> remove()
-            SubscriptionsAction.CancelRemove -> local.update { it.copy(removingId = null) }
-            SubscriptionsAction.OpenForm -> local.update { it.copy(adding = true) }
-            SubscriptionsAction.CloseForm -> closeForm()
-            SubscriptionsAction.Add -> adder.submit()
-            SubscriptionsAction.DismissFormError -> adder.dismissError()
-            SubscriptionsAction.DismissError -> dismissError()
+/** The subscriptions page's state holder (plan §2.2): reads the engine, and updates and removes subscriptions. */
+internal class SubscriptionsViewModel(private val engine: Engine, private val clock: () -> Long = System::currentTimeMillis) : ViewModel() {
+    private val local = MutableStateFlow(SubsLocal())
+
+    val uiState: StateFlow<SubsUiState> =
+        combine(engine.ready, engine.subscriptions, local) { ready, subscriptions, local -> subsUiState(ready, subscriptions, local, clock()) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), subsUiState(engine.ready.value, engine.subscriptions.value, local.value, clock()))
+
+    /** Updates [id]; a second tap while it runs does nothing. A failure shows the banner until the next update starts. */
+    fun update(id: String) {
+        var started = false
+        local.update {
+            started = id !in it.updating
+            if (started) it.copy(updating = it.updating + id, failedId = it.failedId?.takeUnless { failed -> failed == id }) else it
         }
-    }
-
-    private fun dismissError() {
-        local.update { it.copy(error = null) }
-        adder.dismissError()
-    }
-
-    private fun closeForm() {
-        adder.reset()
-        local.update { it.copy(adding = false) }
-    }
-
-    private fun update(id: String) {
-        if (id in local.value.updating) return
-        local.update { it.copy(updating = it.updating + id) }
+        if (!started) return
         viewModelScope.launch {
-            val failure = engine.updateSubscription(id).exceptionOrNull()
-            local.update { it.copy(updating = it.updating - id, error = failure?.errorCode()) }
+            val failed = engine.updateSubscription(id).isFailure
+            local.update { it.copy(updating = it.updating - id, failedId = if (failed) id else it.failedId) }
         }
     }
 
-    private fun remove() {
-        val id = local.value.removingId ?: return
-        local.update { it.copy(removingId = null) }
+    /** Updates every subscription, one after another, as the core takes one fetch at a time. */
+    fun updateAll() {
+        val ids = engine.subscriptions.value.map { it.id }.filterNot { it in local.value.updating }
+        if (ids.isEmpty()) return
+        local.update { it.copy(updating = it.updating + ids, failedId = null) }
         viewModelScope.launch {
-            val failure = engine.removeSubscription(id).exceptionOrNull()
-            local.update { it.copy(error = failure?.errorCode()) }
+            ids.forEach { id ->
+                val failed = engine.updateSubscription(id).isFailure
+                local.update { it.copy(updating = it.updating - id, failedId = if (failed) id else it.failedId) }
+            }
         }
     }
 
-    /** The engine's flows are StateFlows, so the first frame already shows real values. */
-    private fun current() = subscriptionsUiState(engine.ready.value, engine.subscriptions.value, adder.snapshot(), local.value, clock())
+    /** Asks to delete [id], or closes the question when null. */
+    fun delete(id: String?) = local.update { it.copy(deletingId = id) }
 
-    companion object {
-        fun factory(engine: Engine, imports: SubscriptionImports): ViewModelProvider.Factory = viewModelFactory {
-            initializer { SubscriptionsViewModel(engine, imports) }
-        }
+    /** Deletes [id] after the question. A failure leaves the subscription in the list, where it still shows. */
+    fun confirmDelete(id: String) {
+        local.update { it.copy(deletingId = null) }
+        viewModelScope.launch { engine.removeSubscription(id) }
     }
 }
+
+/** How long a page's state keeps flowing after its last collector stops: a rotation does not restart it. */
+internal const val STOP_MS = 5_000L
