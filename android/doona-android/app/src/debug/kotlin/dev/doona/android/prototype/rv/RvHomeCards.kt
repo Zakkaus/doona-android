@@ -53,7 +53,6 @@ import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.model.RvDay
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSubscription
-import dev.doona.android.prototype.rv.data.RvData
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -220,10 +219,10 @@ private fun DrawScope.hourGrid(color: Color, chart: StepChart) {
 /**
  * 訂閱 in the style of Revolut's Total wealth: the card's own header, the data left on every subscription, and a row
  * for each, with a neutral disc (colour means a direction on this page, L-17), its use against its quota, its end date
- * and what is left. Its header opens 訂閱 ([onOpen]).
+ * as of [nowEpochMs] and what is left. Its header opens 訂閱 ([onOpen]).
  */
 @Composable
-internal fun RvSubscriptionsCard(subscriptions: List<RvSubscription>, onOpen: () -> Unit = NOT_WIRED) {
+internal fun RvSubscriptionsCard(subscriptions: List<RvSubscription>, nowEpochMs: Long, onOpen: () -> Unit = NOT_WIRED) {
     val format = rememberRvFormat()
     RvCard {
         RvCardHeader(stringResource(R.string.rv_subscriptions), onOpen)
@@ -233,19 +232,22 @@ internal fun RvSubscriptionsCard(subscriptions: List<RvSubscription>, onOpen: ()
             RvText(stringResource(R.string.rv_remaining), Rv.type.cardUnit, Modifier.alignByBaseline(), color = Rv.colors.textSecondary)
         }
         Spacer(Modifier.height(RvSpace.tight))
-        subscriptions.forEach { RvSubscriptionRow(it) }
+        subscriptions.forEach { RvSubscriptionRow(it, nowEpochMs) }
     }
 }
 
-/** A subscription's row: a neutral disc, its name over its use against its quota and its end date, and what is left. */
+/**
+ * A subscription's row: a neutral disc, its name over its use against its quota and its end date as of [nowEpochMs], and
+ * what is left.
+ */
 @Composable
-internal fun RvSubscriptionRow(sub: RvSubscription) {
+internal fun RvSubscriptionRow(sub: RvSubscription, nowEpochMs: Long) {
     val format = rememberRvFormat()
     val total = format.bytes(sub.totalBytes)
     RvRow(
         { RvIconDisc(R.drawable.rv_sym_rss_feed) },
         sub.name,
-        stringResource(R.string.rv_subscription_usage, format.usedOf(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, RvData.nowEpochMs) } ?: RV_NO_VALUE),
+        stringResource(R.string.rv_subscription_usage, format.usedOf(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, nowEpochMs) } ?: RV_NO_VALUE),
         titleKeepWords = false,
     ) { RvText(format.bytes(sub.leftBytes).toString(), Rv.type.rowValue, align = TextAlign.End) }
 }

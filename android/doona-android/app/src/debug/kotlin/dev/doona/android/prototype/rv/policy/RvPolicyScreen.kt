@@ -266,7 +266,7 @@ private fun GlobalPicker(state: RvPolicyState, onChange: (RvPolicyState) -> Unit
     val main = state.group(RvPolicyData.main)
     val groups = remember(state.nodeSort) { rvNodeGroups(RvData.nodes, RvData.subscriptions, state.nodeSort) }
     RvControlRow({ RvNodeListControls(state.nodeSort, { onChange(state.copy(nodeSort = it)) }, onSearch = null) })
-    RvNodeGroups(groups, main.selectedId, state.nodeSort) { onChange(state.choose(main.id, it)) }
+    RvNodeGroups(groups, main.selectedId, state.nodeSort, RvData.nowEpochMs) { onChange(state.choose(main.id, it)) }
 }
 
 /** Every other group: its kind's glyph, its name over how it picks and how many nodes it has, and the node it uses. */

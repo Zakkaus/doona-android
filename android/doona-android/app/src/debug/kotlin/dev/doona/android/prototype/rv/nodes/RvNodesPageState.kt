@@ -6,7 +6,6 @@ import dev.doona.android.designsystem.rv.RvRegion
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.fastest
 import dev.doona.android.feature.model.steadiest
-import dev.doona.android.prototype.rv.data.RvData
 
 /** The 節點 page: every node, the one in use, and when the rounds of tests ran, oldest first. */
 @Immutable
@@ -26,9 +25,3 @@ internal class RvNodesPageState(val nodes: List<RvNode>, val currentId: String, 
 }
 
 private const val TOP = 8
-
-/** The page as [RvData] has it. */
-internal fun sampleNodesPage() = RvNodesPageState(RvData.nodes, RvData.CURRENT_ID, RvData.testTimes)
-
-/** The node the detail page's golden shows: sg-03, whose last tests slow down steadily. */
-internal const val RV_NODES_DETAIL = "sg-03"

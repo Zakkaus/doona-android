@@ -1,11 +1,19 @@
 package dev.doona.android.prototype.rv
 
+import androidx.compose.runtime.Composable
+import dev.doona.android.designsystem.rv.RvNotice
+import dev.doona.android.designsystem.rv.RvPullLook
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
+import dev.doona.android.feature.activity.ActivityAction
 import dev.doona.android.feature.activity.ActivityUiState
 import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.model.RvRuleOutbound
+import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.policy.RvPolicyData
 
 /**
  * 活動 connected, in main's [ActivityUiState] built from [RvData]: running since the session's start, Global through the
@@ -42,3 +50,37 @@ internal fun rvIdleActivity(): ActivityUiState =
 
 /** A group's id is `g-` plus its name. */
 private const val AUTO_GROUP_ID = "g-" + RvData.AUTO_GROUP
+
+/** 活動's cards as [RvData] has them at 10:24, the rule groups' glyphs as [RvPolicyData] draws them. */
+internal val rvSampleActivityCards = RvActivityCards(
+    today = RvData.today,
+    nowHour = RvData.nowHour,
+    yesterdayByNow = RvData.YESTERDAY_BY_NOW,
+    nowEpochMs = RvData.nowEpochMs,
+    ruleCount = RvData.RULES,
+    mainNodeId = RvData.CURRENT_ID,
+    node = RvData::node,
+    groupKind = { name -> RvPolicyData.groups.firstOrNull { it.name == name }?.kind },
+)
+
+/**
+ * 活動 on the sample: the page with [RvData]'s nodes, subscriptions and rule groups and [rvSampleActivityCards] unless the
+ * caller gives its own. The page itself takes them all as parameters; the sandbox, its previews and tests call this.
+ */
+@Composable
+internal fun RvActivityScreen(
+    state: ActivityUiState,
+    onAction: (ActivityAction) -> Unit,
+    onConnect: () -> Unit,
+    routes: RvActivityRoutes = RvActivityRoutes(),
+    mode: RvRouteMode = if (state.mode == Mode.Direct) RvRouteMode.Direct else RvRouteMode.Rule,
+    nodes: List<RvNode> = RvData.nodes,
+    subscriptions: List<RvSubscription> = RvData.subscriptions,
+    pull: RvPullLook = RvPullLook.None,
+    hero: RvHeroSwipe = RvHeroSwipe.Off,
+    banner: RvNotice? = null,
+    noSubscription: (() -> Unit)? = null,
+    loading: Boolean = false,
+    navFade: Boolean = false,
+    rules: List<RvRuleOutbound> = RvData.ruleOutbounds,
+) = RvActivityScreen(state, onAction, onConnect, routes, mode, nodes, subscriptions, pull, hero, banner, noSubscription, loading, navFade, rules, rvSampleActivityCards)
