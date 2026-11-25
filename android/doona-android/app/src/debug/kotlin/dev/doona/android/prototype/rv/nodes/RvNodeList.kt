@@ -50,13 +50,13 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvRaisedReach
 import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvNodeGroup
+import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.model.rvNodeGroups
 import dev.doona.android.prototype.rv.RvSubscriptionRow
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvNode
-import dev.doona.android.prototype.rv.data.RvNodeGroup
-import dev.doona.android.prototype.rv.data.RvNodeSort
-import dev.doona.android.prototype.rv.data.RvSubscription
-import dev.doona.android.prototype.rv.data.rvNodeGroups
 
 /**
  * The node list's control row: the search pill, which opens the search page ([onSearch]), unless that is null, [RvSpace.searchGap]

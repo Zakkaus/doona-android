@@ -1,5 +1,8 @@
 package dev.doona.android.prototype.rv.data
 
+import dev.doona.android.feature.model.RvCity
+import dev.doona.android.feature.model.RvNode
+
 /**
  * Nine nodes in cities the 48 leave out, every part of the world among them (Africa only here): Dubai,
  * Mumbai and Istanbul in Asia, Ashburn (the US east coast) and São Paulo in the Americas, Zurich and Warsaw in Europe,

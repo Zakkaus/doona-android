@@ -2,11 +2,11 @@ package dev.doona.android.prototype.rv.nodes
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvNodeSort
 import dev.doona.android.prototype.rv.data.rvUnknownPlaceNodes
 import dev.doona.android.prototype.rv.rvShot
 import org.junit.Rule

@@ -1,5 +1,7 @@
 package dev.doona.android.prototype.rv.data
 
+import dev.doona.android.feature.model.RV_TESTS
+import dev.doona.android.feature.model.steadiest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

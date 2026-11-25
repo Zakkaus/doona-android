@@ -114,12 +114,12 @@ import dev.doona.android.engine.Status
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.activity.ActivityAction
 import dev.doona.android.feature.activity.ActivityUiState
+import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.model.RvRuleOutbound
+import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.model.fastest
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvNode
-import dev.doona.android.prototype.rv.data.RvRouteMode
-import dev.doona.android.prototype.rv.data.RvRuleOutbound
-import dev.doona.android.prototype.rv.data.RvSubscription
-import dev.doona.android.prototype.rv.data.fastest
 import dev.doona.android.prototype.rv.policy.RvGroupKind
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.stats.RvStatsDots

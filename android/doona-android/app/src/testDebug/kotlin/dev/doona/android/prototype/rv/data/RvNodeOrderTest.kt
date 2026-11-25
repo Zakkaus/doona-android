@@ -1,6 +1,9 @@
 package dev.doona.android.prototype.rv.data
 
 import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.feature.model.RvNodeGroup
+import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.model.rvNodeGroups
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

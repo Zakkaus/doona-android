@@ -28,9 +28,9 @@ import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.feature.NOT_WIRED
+import dev.doona.android.feature.model.RvSubFormat
+import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvSubFormat
-import dev.doona.android.prototype.rv.data.RvSubscription
 
 /** A subscription's page: which sheet is open, if any, and the name or User-Agent being typed into it. */
 @Immutable

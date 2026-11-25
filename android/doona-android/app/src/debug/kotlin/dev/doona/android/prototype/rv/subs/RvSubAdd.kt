@@ -34,8 +34,8 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.designsystem.rv.rememberRvFormat
+import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.gallery.RV_LINK_PLACEHOLDER
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 

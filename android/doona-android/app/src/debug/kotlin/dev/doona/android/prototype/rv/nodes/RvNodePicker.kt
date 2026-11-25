@@ -100,10 +100,10 @@ import dev.doona.android.designsystem.rv.rvPress
 import dev.doona.android.designsystem.rv.rvShade
 import dev.doona.android.designsystem.rv.rvSharedSearch
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.prototype.rv.LocalRvRowActions
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvNode
-import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.rvNodeMenu
 import dev.doona.android.prototype.rv.rvPageArrived
 import dev.doona.android.prototype.rv.rvSharedFlag

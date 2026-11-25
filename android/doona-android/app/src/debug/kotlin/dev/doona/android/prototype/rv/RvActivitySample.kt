@@ -4,8 +4,8 @@ import dev.doona.android.engine.Member
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.activity.ActivityUiState
+import dev.doona.android.feature.model.RvNode
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvNode
 
 /**
  * 活動 connected, in main's [ActivityUiState] built from [RvData]: running since the session's start, Global through the

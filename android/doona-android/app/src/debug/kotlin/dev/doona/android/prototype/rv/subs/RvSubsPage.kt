@@ -46,8 +46,8 @@ import dev.doona.android.designsystem.rv.RvSkeletonText
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.rememberRvFormat
+import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvSubscription
 
 /** What the subscriptions page shows: the subscriptions, the one whose last update failed, and the one asked to delete. */
 @Immutable

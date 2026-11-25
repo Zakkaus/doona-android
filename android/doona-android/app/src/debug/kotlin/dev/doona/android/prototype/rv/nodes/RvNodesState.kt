@@ -3,10 +3,10 @@ package dev.doona.android.prototype.rv.nodes
 import androidx.compose.runtime.Immutable
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.designsystem.rv.RvRegion
+import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.fastest
+import dev.doona.android.feature.model.steadiest
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvNode
-import dev.doona.android.prototype.rv.data.fastest
-import dev.doona.android.prototype.rv.data.steadiest
 
 /** The 節點 page: every node, the one in use, and when the rounds of tests ran, oldest first. */
 @Immutable

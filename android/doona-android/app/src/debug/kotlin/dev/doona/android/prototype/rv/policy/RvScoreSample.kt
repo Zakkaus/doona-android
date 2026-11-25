@@ -5,7 +5,7 @@ import dev.doona.android.engine.ScoreCounters
 import dev.doona.android.engine.ScoreCoverage
 import dev.doona.android.engine.ScoreGroup
 import dev.doona.android.engine.ScoreNetwork
-import dev.doona.android.prototype.rv.data.RvNode
+import dev.doona.android.feature.model.RvNode
 
 /**
  * A Score group for the group page's samples: the 香港 region as doona's templates write it (`policy: score`), with what

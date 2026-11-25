@@ -48,7 +48,7 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.designsystem.rv.scripted
-import dev.doona.android.prototype.rv.data.RvNode
+import dev.doona.android.feature.model.RvNode
 import dev.doona.android.prototype.rv.rvSharedFlag
 
 /**

@@ -66,10 +66,10 @@ import dev.doona.android.designsystem.rv.rvRaisedReach
 import dev.doona.android.designsystem.rv.rvRowPress
 import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.model.rvNodeGroups
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvNodeSort
-import dev.doona.android.prototype.rv.data.RvRouteMode
-import dev.doona.android.prototype.rv.data.rvNodeGroups
 import dev.doona.android.prototype.rv.nodes.RvNodeGroups
 import dev.doona.android.prototype.rv.nodes.RvNodeListControls
 import dev.doona.android.prototype.rv.nodes.SEPARATOR

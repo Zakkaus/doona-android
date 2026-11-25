@@ -15,7 +15,7 @@ import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.engine.ScoreChallenger
 import dev.doona.android.engine.ScoreNetwork
-import dev.doona.android.prototype.rv.data.RvNode
+import dev.doona.android.feature.model.RvNode
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 
 /**

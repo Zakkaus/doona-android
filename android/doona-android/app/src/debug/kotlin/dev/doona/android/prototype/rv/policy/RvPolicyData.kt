@@ -5,12 +5,12 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.model.fastest
 import dev.doona.android.prototype.rv.data.RV_NOW
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvNode
-import dev.doona.android.prototype.rv.data.RvNodeSort
-import dev.doona.android.prototype.rv.data.RvRouteMode
-import dev.doona.android.prototype.rv.data.fastest
 
 /** How a group picks its node: the user picks it (a selector), or the fastest by the last test does (url-test). */
 internal enum class RvGroupKind(@StringRes val label: Int, @DrawableRes val glyph: Int) {

@@ -3,8 +3,8 @@ package dev.doona.android.prototype.rv
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvRouteMode
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith

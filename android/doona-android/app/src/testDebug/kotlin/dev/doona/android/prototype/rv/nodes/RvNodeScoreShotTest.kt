@@ -6,11 +6,11 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.text.TextLayoutResult
+import dev.doona.android.feature.model.RvNode
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
-import dev.doona.android.prototype.rv.data.RvNode
 import dev.doona.android.prototype.rv.policy.RvScoreSample
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvShot

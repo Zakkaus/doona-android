@@ -50,10 +50,10 @@ import dev.doona.android.designsystem.rv.figure
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvMoves
 import dev.doona.android.feature.NOT_WIRED
+import dev.doona.android.feature.model.RvDay
+import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.prototype.rv.data.RvData
-import dev.doona.android.prototype.rv.data.RvDay
-import dev.doona.android.prototype.rv.data.RvNode
-import dev.doona.android.prototype.rv.data.RvSubscription
 import kotlin.math.abs
 import kotlin.math.roundToInt
 

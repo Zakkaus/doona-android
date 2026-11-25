@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvTheme
-import dev.doona.android.prototype.rv.data.RvRouteMode
+import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen

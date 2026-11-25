@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.data
+package dev.doona.android.feature.model
 
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.designsystem.rv.RvSpot
