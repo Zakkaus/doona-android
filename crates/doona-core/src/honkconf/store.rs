@@ -36,6 +36,8 @@ pub enum StoreError {
     /// The draft was edited after the apply prepared it; reported as `conflict`, like
     /// [`Self::Conflict`]. The draft keeps the edit.
     DraftChanged { prepared: u64, current: u64 },
+    /// Another apply is preparing a staged revision.
+    ApplyPending,
     /// A refused include leaves some declarations unknown.
     Incomplete,
     /// The report against the supplied facts holds a blocked rule or an unassessed input.
@@ -59,6 +61,7 @@ impl std::fmt::Display for StoreError {
             Self::Config(e) => return e.fmt(f),
             Self::Conflict { .. } => "draft base is not the current revision",
             Self::DraftChanged { .. } => "draft changed while it was being applied",
+            Self::ApplyPending => "another apply is in progress",
             Self::Incomplete => "configuration has a refused include",
             Self::NotRunnable(_) => "configuration has a blocked rule or an unassessed input",
             Self::InvalidEditPath => "invalid draft file path",
@@ -183,11 +186,22 @@ impl HonkStore {
             .revisions
             .get(&rev)
             .ok_or(StoreError::UnknownRevision)?;
-        Ok(self
-            .root
+        Ok(self.tree_entry(rev, revision))
+    }
+
+    /// Every retained revision with its entry, newest first.
+    pub(super) fn revision_entries(&self) -> Vec<(u64, PathBuf)> {
+        let revisions = self.manifest.revisions.iter().rev();
+        revisions
+            .map(|(&rev, revision)| (rev, self.tree_entry(rev, revision)))
+            .collect()
+    }
+
+    fn tree_entry(&self, rev: u64, revision: &Revision) -> PathBuf {
+        self.root
             .join(REVISIONS)
             .join(rev.to_string())
-            .join(&revision.entry))
+            .join(&revision.entry)
     }
 
     /// Each traffic row's meter in `rev`, by entry-relative file and row ID.
@@ -222,12 +236,16 @@ impl HonkStore {
     }
 
     /// Validate the draft and copy its bytes into the next revision slot, which cleanup keeps
-    /// until [`Self::commit`] or [`Self::abandon`].
+    /// until [`Self::commit`] or [`Self::abandon`]. One slot is staged at a time, so head moves
+    /// only through the staged commit.
     pub(super) fn stage_revision(
         &mut self,
         id: u64,
         caps: &Capabilities<'_>,
     ) -> Result<Staged, StoreError> {
+        if self.staged.is_some() {
+            return Err(StoreError::ApplyPending);
+        }
         let draft = self.find(id)?;
         let head = self.head();
         if draft.base != head {
@@ -280,17 +298,11 @@ impl HonkStore {
         Ok(staged)
     }
 
-    /// Compare and swap: publish `staged` only if head is still its base and its draft still
-    /// exists at the version that was staged.
+    /// Compare and swap: publish `staged` only if its draft still exists at the version that was
+    /// staged. Staging is exclusive, so head is still the staged base.
     pub(super) fn commit(&mut self, staged: Staged) -> Result<u64, StoreError> {
         self.staged = None;
-        let head = self.head();
-        if head != staged.base {
-            return Err(StoreError::Conflict {
-                base: staged.base,
-                head,
-            });
-        }
+        debug_assert_eq!(self.head(), staged.base);
         self.find(staged.draft)?;
         let current = self.version(staged.draft);
         if current != staged.version {
@@ -312,7 +324,7 @@ impl HonkStore {
     }
 
     /// Release a staged slot that will not be committed; the next cleanup removes it.
-    pub(super) fn abandon(&mut self, _staged: Staged) {
+    pub(super) fn abandon(&mut self) {
         self.staged = None;
     }
 

@@ -225,24 +225,18 @@ fn changes_made_during_prepare_are_rechecked_before_the_rename() {
     let t = setup("publish-cas");
     t.apply(t.draft(A)).unwrap();
 
-    // Another commit lands while the store is unlocked.
+    // A direct store apply cannot take the staged slot while the store is unlocked.
     let b = t.draft(B);
     let store = t.store.clone();
     t.inputs.during(move || {
         let mut store = store.lock().unwrap();
         let id = store.draft(None).unwrap();
         store.edit(id, Path::new("config.dae"), C).unwrap();
-        store.apply(id, &Capabilities::linked()).unwrap();
+        let direct = store.apply(id, &Capabilities::linked());
+        assert!(matches!(direct, Err(StoreError::ApplyPending)));
     });
-    assert!(matches!(
-        t.apply(b),
-        Err(PublishError::Store(StoreError::Conflict {
-            base: Some(1),
-            head: Some(2)
-        }))
-    ));
-    assert_eq!(t.head(), (2, C.to_owned()));
-    assert!(t.store.lock().unwrap().check(b).is_ok());
+    assert_eq!(t.apply(b).unwrap().rev, 2);
+    assert_eq!(t.head(), (2, B.to_owned()));
 
     // The draft is discarded while it is being prepared.
     let b = t.draft(B);
@@ -253,7 +247,7 @@ fn changes_made_during_prepare_are_rechecked_before_the_rename() {
         t.apply(b),
         Err(PublishError::Store(StoreError::UnknownDraft))
     ));
-    assert_eq!(t.head(), (2, C.to_owned()));
+    assert_eq!(t.head(), (2, B.to_owned()));
 
     // The same draft is edited while it is being prepared: the edit survives and commits next.
     let b = t.draft(B);
@@ -270,7 +264,7 @@ fn changes_made_during_prepare_are_rechecked_before_the_rename() {
             current: 2
         }))
     ));
-    assert_eq!(t.head(), (2, C.to_owned()));
+    assert_eq!(t.head(), (2, B.to_owned()));
     let text = t.store.lock().unwrap().text(b, Path::new("config.dae"));
     assert_eq!(&*text.unwrap(), edited);
     assert_eq!(t.apply(b).unwrap().rev, 3);
@@ -417,4 +411,44 @@ fn stopped_apply_returns_no_generation_and_start_prepares_head() {
         (second.id, second.rev, second.prepared.0.as_str()),
         (2, 2, B)
     );
+}
+
+#[test]
+fn a_notice_that_cannot_be_written_or_cleared_starts_nothing() {
+    let t = setup("publish-notice-io");
+    t.apply(t.draft(C)).unwrap();
+    t.inputs.missing.lock().unwrap().push("needs:geo");
+    // The head rename fails while head is a non-empty directory.
+    let head = t.data.path().join("config/head");
+    let committed = fs::read(&head).unwrap();
+    let block = |blocked: bool| {
+        if blocked {
+            fs::remove_file(&head).unwrap();
+            fs::create_dir_all(head.join("blocker")).unwrap();
+        } else {
+            fs::remove_dir_all(&head).unwrap();
+            fs::write(&head, &committed).unwrap();
+        }
+    };
+    block(true);
+    assert!(matches!(
+        t.publisher.start(&t.store),
+        Err(StartError::Io(_))
+    ));
+    block(false);
+    assert!(matches!(
+        t.publisher.start(&t.store),
+        Err(StartError::Refused(_))
+    ));
+
+    t.inputs.missing.lock().unwrap().clear();
+    block(true);
+    assert!(matches!(
+        t.publisher.start(&t.store),
+        Err(StartError::Io(_))
+    ));
+    assert!(t.publisher.current().is_none());
+    block(false);
+    assert_eq!(t.publisher.start(&t.store).unwrap().rev, 1);
+    assert_eq!(t.store.lock().unwrap().notice(), None);
 }

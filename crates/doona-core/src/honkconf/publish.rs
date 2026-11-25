@@ -5,12 +5,16 @@
 //! and the store's compare-and-swap before the head rename. Only an infallible swap follows the
 //! rename. Open flows keep the generation they started with until they drop it.
 //!
+//! Applies and starts run one at a time and prepare with the store unlocked, so edits, reads
+//! and discards proceed meanwhile. A replaced generation is dropped after every lock is released.
+//!
 //! A start re-prepares head. If head cannot prepare, the start is refused with a persistent
 //! notice that names the newest retained revision that does prepare; that revision runs only
 //! after [`Publisher::restore`] commits it again (decision q-restore1, 2026-11-25).
 
 use std::fmt;
-use std::sync::{Arc, Mutex, MutexGuard, RwLock};
+use std::path::Path;
+use std::sync::{Arc, Mutex, RwLock};
 
 use serde::{Deserialize, Serialize};
 
@@ -95,12 +99,8 @@ struct Live<G> {
 
 pub struct Publisher<P: Preparer> {
     preparer: P,
-    applying: Mutex<()>,
+    writer: Mutex<()>,
     live: RwLock<Live<P::Generation>>,
-}
-
-fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
-    m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 impl<P: Preparer> Publisher<P> {
@@ -108,7 +108,7 @@ impl<P: Preparer> Publisher<P> {
     pub fn new(preparer: P) -> Self {
         Self {
             preparer,
-            applying: Mutex::new(()),
+            writer: Mutex::new(()),
             live: RwLock::new(Live {
                 last: 0,
                 current: None,
@@ -118,35 +118,26 @@ impl<P: Preparer> Publisher<P> {
 
     /// The generation a new flow uses; `None` while stopped.
     pub fn current(&self) -> Option<Arc<Generation<P::Generation>>> {
-        self.live
-            .read()
-            .unwrap_or_else(|e| e.into_inner())
-            .current
-            .clone()
+        self.live.read().unwrap().current.clone()
     }
 
     pub fn stop(&self) {
-        let old = self
-            .live
-            .write()
-            .unwrap_or_else(|e| e.into_inner())
-            .current
-            .take();
+        let old = self.live.write().unwrap().current.take();
         drop(old);
     }
 
-    /// Commit `draft` and, while running, make its generation live. Applies run one at a time.
+    /// Commit `draft` and, while running, make its generation live.
     pub fn apply(
         &self,
         store: &Mutex<HonkStore>,
         draft: u64,
         caps: &Capabilities<'_>,
     ) -> Result<Applied, PublishError<P::Error>> {
-        let _applying = lock(&self.applying);
-        let staged = lock(store).stage_revision(draft, caps)?;
+        let _writer = self.writer.lock().unwrap();
+        let staged = store.lock().unwrap().stage_revision(draft, caps)?;
         let epoch = self.preparer.epoch();
         let prepared = self.prepare_entry(&staged.entry);
-        let mut store = lock(store);
+        let mut locked = store.lock().unwrap();
         let checked = prepared.and_then(|prepared| match self.preparer.epoch() {
             current if current == epoch => Ok(prepared),
             current => Err(PublishError::StaleInputs {
@@ -157,17 +148,22 @@ impl<P: Preparer> Publisher<P> {
         let prepared = match checked {
             Ok(prepared) => prepared,
             Err(e) => {
-                store.abandon(staged);
+                locked.abandon();
                 return Err(e);
             }
         };
-        let rev = store.commit(staged)?;
-        let mut live = self.live.write().unwrap_or_else(|e| e.into_inner());
-        let generation = live
+        let rev = locked.commit(staged)?;
+        drop(locked);
+        let mut live = self.live.write().unwrap();
+        let swapped = live
             .current
             .is_some()
-            .then(|| install(&mut live, rev, prepared).id);
-        Ok(Applied { rev, generation })
+            .then(|| install(&mut live, rev, prepared));
+        drop(live);
+        Ok(Applied {
+            rev,
+            generation: swapped.map(|(new, _old)| new.id),
+        })
     }
 
     /// Restore an older revision through a new, freshly prepared commit.
@@ -177,7 +173,7 @@ impl<P: Preparer> Publisher<P> {
         rev: u64,
         caps: &Capabilities<'_>,
     ) -> Result<Applied, PublishError<P::Error>> {
-        let draft = lock(store).draft(Some(rev))?;
+        let draft = store.lock().unwrap().draft(Some(rev))?;
         self.apply(store, draft, caps)
     }
 
@@ -187,46 +183,37 @@ impl<P: Preparer> Publisher<P> {
         &self,
         store: &Mutex<HonkStore>,
     ) -> Result<Arc<Generation<P::Generation>>, StartError> {
-        let mut store = lock(store);
-        let head = store.head().ok_or(StartError::NoHead)?;
-        let reason = match self.prepare_revision(&store, head) {
+        let _writer = self.writer.lock().unwrap();
+        let mut revisions = store.lock().unwrap().revision_entries().into_iter();
+        let (head, entry) = revisions.next().ok_or(StartError::NoHead)?;
+        let reason = match self.prepare_entry(&entry) {
             Ok(prepared) => {
-                if store.notice().is_some() {
-                    store.record_notice(None).map_err(StartError::Io)?;
+                let mut locked = store.lock().unwrap();
+                if locked.notice().is_some() {
+                    locked.record_notice(None).map_err(StartError::Io)?;
                 }
-                let mut live = self.live.write().unwrap_or_else(|e| e.into_inner());
-                return Ok(install(&mut live, head, prepared));
+                drop(locked);
+                let (new, _old) = install(&mut self.live.write().unwrap(), head, prepared);
+                return Ok(new);
             }
             Err(e) => e.to_string(),
         };
-        let older: Vec<u64> = store.revisions().filter(|&rev| rev != head).collect();
-        let restorable = older
-            .into_iter()
-            .rev()
-            .find(|&rev| self.prepare_revision(&store, rev).is_ok());
+        let restorable = revisions
+            .find(|(_, entry)| self.prepare_entry(entry).is_ok())
+            .map(|(rev, _)| rev);
         let notice = Notice {
             rejected: head,
             reason,
             restorable,
         };
-        store
+        let mut locked = store.lock().unwrap();
+        locked
             .record_notice(Some(notice.clone()))
             .map_err(StartError::Io)?;
         Err(StartError::Refused(notice))
     }
 
-    fn prepare_revision(
-        &self,
-        store: &HonkStore,
-        rev: u64,
-    ) -> Result<P::Generation, PublishError<P::Error>> {
-        self.prepare_entry(&store.revision_entry(rev)?)
-    }
-
-    fn prepare_entry(
-        &self,
-        entry: &std::path::Path,
-    ) -> Result<P::Generation, PublishError<P::Error>> {
+    fn prepare_entry(&self, entry: &Path) -> Result<P::Generation, PublishError<P::Error>> {
         let config = super::load(entry).map_err(StoreError::from)?;
         self.preparer
             .prepare(&config)
@@ -234,13 +221,17 @@ impl<P: Preparer> Publisher<P> {
     }
 }
 
-fn install<G>(live: &mut Live<G>, rev: u64, prepared: G) -> Arc<Generation<G>> {
+type Swapped<G> = (Arc<Generation<G>>, Option<Arc<Generation<G>>>);
+
+/// Make `prepared` live. Returns it with the generation it replaced, which the caller drops
+/// after releasing the live lock.
+fn install<G>(live: &mut Live<G>, rev: u64, prepared: G) -> Swapped<G> {
     live.last += 1;
     let generation = Arc::new(Generation {
         id: live.last,
         rev,
         prepared,
     });
-    live.current = Some(generation.clone());
-    generation
+    let old = live.current.replace(generation.clone());
+    (generation, old)
 }
