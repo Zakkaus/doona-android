@@ -210,10 +210,9 @@ impl Schedule {
             .filter(|p| p.is_for(provider))
             .map_or((None, None), |p| (p.last_success_ms, p.last_failure_ms));
         let by_success = success.map_or(now, |at| at.saturating_add(interval));
-        let retry = failure
-            .filter(|failed| success.is_none_or(|ok| failed > &ok))
-            .map(|failed| failed.saturating_add(interval.min(RETRY_MS)));
-        Some(by_success.max(retry.unwrap_or(by_success)))
+        // A failure older than the last success ends no later than `by_success`.
+        let retry = failure.map(|failed| failed.saturating_add(interval.min(RETRY_MS)));
+        retry.max(Some(by_success))
     }
 
     fn next_refresh_at(&self, claims: &Claims, providers: &[Provider], now: i64) -> Option<i64> {

@@ -165,6 +165,52 @@ fn a_failed_fetch_waits_an_hour_not_a_whole_interval() {
 }
 
 #[test]
+fn a_failed_short_feed_waits_its_own_interval() {
+    let providers = [provider("s-a", Some((600, IntervalSource::Subscription)))];
+    let mut schedule = Schedule::default();
+    let mut claims = Claims::default();
+    let t0 = 9_000_000_000;
+    schedule.refresh_due(&mut claims, &providers, t0);
+    schedule.finish(&mut claims, &providers, "s-a", false, t0);
+    let early = schedule.refresh_due(&mut claims, &providers, t0 + 600_000 - 1);
+    assert!(early.claimed.is_empty());
+    assert_eq!(early.next_refresh_at, Some(t0 + 600_000));
+    let due = schedule.refresh_due(&mut claims, &providers, t0 + 600_000);
+    assert_eq!(due.claimed, providers);
+}
+
+#[test]
+fn a_failure_after_a_success_never_brings_the_deadline_forward_and_retries_in_an_hour() {
+    let providers = [provider("s-a", None)];
+    let mut schedule = Schedule::default();
+    let mut claims = Claims::default();
+    let t0 = 10_000_000_000;
+    schedule.refresh_due(&mut claims, &providers, t0);
+    schedule.finish(&mut claims, &providers, "s-a", true, t0);
+
+    // A manual update that fails two hours in leaves the scheduled fetch at twelve.
+    assert!(claims.claim(&providers[0]));
+    schedule.finish(&mut claims, &providers, "s-a", false, t0 + 2 * HOUR);
+    let overview = schedule.overview(&claims, &providers, t0 + 2 * HOUR);
+    assert_eq!(overview.next_refresh_at, Some(t0 + 12 * HOUR));
+
+    // The scheduled fetch fails: the old success no longer makes the feed due.
+    let failed = t0 + 12 * HOUR;
+    assert_eq!(
+        schedule
+            .refresh_due(&mut claims, &providers, failed)
+            .claimed,
+        providers
+    );
+    schedule.finish(&mut claims, &providers, "s-a", false, failed);
+    let early = schedule.refresh_due(&mut claims, &providers, failed + HOUR - 1);
+    assert!(early.claimed.is_empty());
+    assert_eq!(early.next_refresh_at, Some(failed + HOUR));
+    let due = schedule.refresh_due(&mut claims, &providers, failed + HOUR);
+    assert_eq!(due.claimed, providers);
+}
+
+#[test]
 fn a_late_result_for_a_removed_or_changed_provider_is_dropped() {
     let original = provider("s-a", None);
     let mut schedule = Schedule::default();
