@@ -28,14 +28,17 @@ internal const val RV_FOOTNOTE_ABOVE = 12f
  * ends over it and shares its width. Its box is that card's text column, [RvSpace.rowPadding] in from the card's start
  * and from its end (LAYOUT-RULES.md R20, owner q-s1125c-footgap 19:05: both sides at 32 dp), whatever the footnote
  * tokens say, so a box that keeps to the tokens but not to the column (the 32..396 of 811cda31) fails; a footnote with
- * no card above it, against the page's gutter. Its top stands [RV_FOOTNOTE_ABOVE] under that card's bottom.
+ * no card above it, against the page's gutter. Its top stands [RV_FOOTNOTE_ABOVE] under that card's bottom. A footnote
+ * whose card is not wholly in the window is skipped: the card's box would be its clipped part.
  */
 internal fun rvFootnotes(nodes: List<RvNode>): List<RvFootnoteRead> {
     val root = nodes.first().box
     val cards = nodes.filter { it.tag == RvPart.CARD }
-    // A footnote scrolled out of the window has no box to measure.
-    return nodes.filter { it.tag == RvPart.FOOTER && it.box.width > 0f && it.box.height > 0f }.map { f ->
+    // A footnote scrolled out of the window has no box to measure; one whose card the window cuts has no card to
+    // measure against (the card's box is only its part in the window).
+    return nodes.filter { it.tag == RvPart.FOOTER && it.box.width > 0f && it.box.height > 0f }.mapNotNull { f ->
         val card = cards.filter { it.box.bottom <= f.box.top + 1f && it.box.left < f.box.right && it.box.right > f.box.left }.maxByOrNull { it.box.bottom }
+        if (card?.cut == true) return@mapNotNull null
         val left = card?.box?.left ?: (root.left + RvSpace.gutter.value)
         val right = card?.box?.right ?: (root.right - RvSpace.gutter.value)
         RvFootnoteRead(f.text.orEmpty(), f.box.left, f.box.right, left + RvSpace.rowPadding.value, right - RvSpace.rowPadding.value, f.line?.cut == true, card?.let { f.box.top - it.box.bottom })

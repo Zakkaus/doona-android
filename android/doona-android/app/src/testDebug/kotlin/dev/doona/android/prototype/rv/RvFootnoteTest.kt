@@ -1,9 +1,13 @@
 package dev.doona.android.prototype.rv
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.unit.dp
@@ -131,6 +135,26 @@ class RvFootnoteTest {
         }
         compose.waitForIdle()
         assertEquals("cut, whole, short", listOf(true, false, false), rvFootnotes(compose.rvRowNodes()).map { it.cut })
+    }
+
+    /** A footnote whose card the window cuts (here at its top) is skipped: its card's box is only the part in the window. */
+    @Test
+    fun aFootnoteUnderACardTheWindowCutsIsSkipped() {
+        compose.setContent {
+            RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
+                Box(Modifier.fillMaxWidth().height(200.dp).clipToBounds()) {
+                    Column(Modifier.offset(y = (-20).dp)) {
+                        RvGutter { RvCard { RvText(CARD, Rv.type.rowTitle, Modifier.padding(RvSpace.rowPadding)) } }
+                        RvFootnote(NOTE)
+                    }
+                }
+            }
+        }
+        compose.waitForIdle()
+        val nodes = compose.rvRowNodes()
+        assertTrue("the card is cut by the window", nodes.single { it.tag == RvPart.CARD }.cut)
+        assertTrue("the footnote is in the window", nodes.single { it.tag == RvPart.FOOTER }.box.height > 0f)
+        assertEquals("the footnote is skipped", emptyList<String>(), rvFootnotes(nodes).map { it.line("test") })
     }
 
     private companion object {
