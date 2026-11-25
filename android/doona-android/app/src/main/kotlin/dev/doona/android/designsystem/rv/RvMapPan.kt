@@ -1,14 +1,9 @@
-package dev.doona.android.prototype.rv
+package dev.doona.android.designsystem.rv
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import dev.doona.android.designsystem.rv.RV_MAP_REST_LAT
-import dev.doona.android.designsystem.rv.RV_MAP_REST_LON
-import dev.doona.android.designsystem.rv.Rv
-import dev.doona.android.designsystem.rv.RvMotion
-import dev.doona.android.designsystem.rv.RvSpot
 import kotlinx.coroutines.launch
 
 /**

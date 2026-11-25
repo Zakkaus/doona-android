@@ -13,9 +13,9 @@ import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvSecondaryButton
 import dev.doona.android.designsystem.rv.RvSize
+import dev.doona.android.designsystem.rv.rvConfigLine
 import dev.doona.android.designsystem.rv.rvRowPress
 import dev.doona.android.feature.model.RvGeoData
-import dev.doona.android.prototype.rv.config.rvConfigLine
 
 /**
  * Where 檢查更新 stands: not run yet, asking GitHub for the latest release, nothing newer than the app, a newer

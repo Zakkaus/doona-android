@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv
+package dev.doona.android.feature.nodes.ui
 
 import android.content.ClipData
 import androidx.compose.runtime.Composable
@@ -12,8 +12,8 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvMenuItem
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSubscription
-import dev.doona.android.prototype.rv.data.shareLink
 import kotlinx.coroutines.launch
+import java.net.URLEncoder
 
 /**
  * What the rows' long-press menus do in the running sample (brief rv-gestures G3): [useNode] makes a node the main one,
@@ -66,4 +66,15 @@ internal fun rvSubscriptionMenu(sub: RvSubscription, onDelete: () -> Unit): List
         add(RvMenuItem(updateLabel, R.drawable.rv_stats_ic_sync) { update(sub.id) })
         if (actions.deleteSubscription != null) add(RvMenuItem(deleteLabel, R.drawable.rv_sym_delete, destructive = true, separated = true, onClick = onDelete))
     }
+}
+
+/**
+ * The node as a share link in the common URI form, `scheme://host:port?type=…&security=…#name`. The sample holds no
+ * credentials, so the link carries the server's address and transport only; the app adds the subscription's user id.
+ */
+internal fun RvNode.shareLink(): String {
+    val scheme = if (protocol == "Shadowsocks") "ss" else protocol.lowercase()
+    val type = if (transport == "WebSocket") "ws" else transport.lowercase()
+    val security = if (tls) "tls" else "none"
+    return "$scheme://$host:$port?type=$type&security=$security#" + URLEncoder.encode(name, "UTF-8").replace("+", "%20")
 }

@@ -11,9 +11,9 @@ import dev.doona.android.designsystem.rv.RvBusy
 import dev.doona.android.designsystem.rv.RvSecondaryButton
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.rememberRvFormat
+import dev.doona.android.designsystem.rv.rvConfigLine
 import dev.doona.android.feature.model.RvGeoData
 import dev.doona.android.feature.model.RvGeoUpdate
-import dev.doona.android.prototype.rv.config.rvConfigLine
 
 /**
  * 設定's GeoIP/GeoSite row in 進階: the data's date as its second line, with where an update stands after it, and 更新

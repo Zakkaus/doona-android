@@ -34,6 +34,7 @@ import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvGutter
+import dev.doona.android.designsystem.rv.RvNodesSize
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvPageHeader
@@ -43,13 +44,17 @@ import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSpanText
 import dev.doona.android.designsystem.rv.RvStatRow
+import dev.doona.android.designsystem.rv.RvStatusChip
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.SEPARATOR
+import dev.doona.android.designsystem.rv.latencyColor
+import dev.doona.android.designsystem.rv.latencyText
 import dev.doona.android.designsystem.rv.rememberRvFormat
+import dev.doona.android.designsystem.rv.rvSharedFlag
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.designsystem.rv.scripted
 import dev.doona.android.feature.model.RvNode
-import dev.doona.android.prototype.rv.rvSharedFlag
 
 /**
  * A node's page in the language of Revolut's stock page: the flag over its name as the large title, which collapses into

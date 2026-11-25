@@ -47,10 +47,10 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvActionRowFit
 import dev.doona.android.designsystem.rv.rvBarHeight
 import dev.doona.android.designsystem.rv.rvDotMap
+import dev.doona.android.designsystem.rv.rvHeroArt
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.model.RvGeoData
-import dev.doona.android.prototype.rv.rvHeroArt
 
 /**
  * The 設定 tab in Revolut's settings language (§13, with the Security page's hero), the owner's S1 (rv-fix-4e): the

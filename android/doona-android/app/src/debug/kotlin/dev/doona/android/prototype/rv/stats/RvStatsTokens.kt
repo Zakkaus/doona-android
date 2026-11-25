@@ -36,11 +36,6 @@ internal object RvStatsSize {
     /** The delta's filled triangle, Revolut's 8 dp. */
     val delta = 8.dp
 
-    /** The page dots under 活動's hero views: the current one larger and darker. */
-    val dot = 8.dp
-    val dotIdle = 5.dp
-    val dotPitch = 12.dp
-
     /** The quota ring, Revolut's 'Total assets' (151 dp, 8 dp stroke), and the card-coloured gap between its parts (S05). */
     val ring = 132.dp
     val ringStroke = 8.dp

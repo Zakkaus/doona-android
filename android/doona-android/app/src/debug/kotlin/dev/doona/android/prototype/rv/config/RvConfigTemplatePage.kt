@@ -34,6 +34,8 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rvConfigLine
+import dev.doona.android.designsystem.rv.rvConfigPhrase
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.RvDiffAt
 import dev.doona.android.prototype.rv.RvSourceDiff
