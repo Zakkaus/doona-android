@@ -34,8 +34,8 @@ import org.robolectric.annotation.GraphicsMode
  * note that its text sits tighter in its card than other settings cards'. The page's row is the library's switch row; a
  * padding of the page's own round the row, inside the card or the row, would move its text in the card and fail here
  * (measured to the card's edges). Its padding is the row rule's
- * (LAYOUT-RULES.md R18): a subtitle of one line stands in the 82 dp minimum, 19.25 dp from either edge, as any settings
- * switch row with a one-line subtitle (the reference cards under the page); a subtitle of two lines makes the row its
+ * (LAYOUT-RULES.md R18): a subtitle of one line stands centred in the 82 dp minimum, as any settings switch row with a
+ * one-line subtitle (the reference cards under the page); a subtitle of two lines makes the row its
  * text plus 16 dp above and below. The subtitle is the decided copy (q-l4-labcut, DECISIONS 2026-11-25 23:52): one line
  * at 100%, and at 200% no text on the page is cut. Goldens `proto-rv-lab-{light,dark,fs200}` show the whole page for
  * the panels (`assertWhole`, as the samples' `RvLabShotTest` at 110bcc47).
