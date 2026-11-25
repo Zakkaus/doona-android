@@ -141,6 +141,26 @@ fn every_form_honk_accepts_gives_the_entrys_own_interval() {
 }
 
 #[test]
+fn a_scalar_value_is_the_entrys_own_and_a_nested_entry_is_not() {
+    let providers = feeds::providers(&config("quoted.dae"));
+    let seen: Vec<_> = providers
+        .iter()
+        .map(|p| (p.name.as_str(), p.interval.map(|a| (a.seconds, a.source))))
+        .collect();
+    assert_eq!(
+        seen,
+        [
+            ("single", Some((21_600, IntervalSource::Subscription))),
+            ("double", Some((3_600, IntervalSource::Subscription))),
+            // Written, though it repeats the assets default.
+            ("same", Some((10_800, IntervalSource::Subscription))),
+            ("outer", Some((10_800, IntervalSource::Assets))),
+            ("old", Some((86_400, IntervalSource::Subscription))),
+        ]
+    );
+}
+
+#[test]
 fn an_interval_too_long_for_u32_saturates() {
     let providers = feeds::providers(&config("huge.dae"));
     let interval = providers[0].interval.unwrap();
@@ -159,17 +179,31 @@ fn an_interval_too_long_for_u32_saturates() {
 }
 
 #[test]
-fn an_include_without_sections_does_not_hide_the_entrys_intervals() {
+fn entries_across_included_files_keep_their_own_interval() {
     let dir = TempDir::new("honk-feeds-include");
+    let entry = |tag: &str, options: &str| {
+        format!("subscription {{ {tag}: 'https://feeds.example.net/{tag}' {{ {options} }} }}\n")
+    };
+    // The loader refuses the first include, so honk never read the bytes kept in the source.
     let main = dir.path().join("main.dae");
     fs::write(
         &main,
-        "include { empty.dae }\nsubscription {\n    a: 'https://feeds.example.net/a' {\n        interval: 1h\n    }\n}\nrouting { fallback: direct }",
+        format!(
+            "include {{ '/etc/outside.dae' a.dae b.dae }}\n{}routing {{ fallback: direct }}",
+            entry("main", "")
+        ),
     )
     .unwrap();
-    fs::write(dir.path().join("empty.dae"), "# nothing here\n").unwrap();
-    let providers = feeds::providers(&load(main).unwrap());
-    assert_eq!(providers[0].interval.unwrap().seconds, 3_600);
+    fs::write(dir.path().join("a.dae"), entry("a", "")).unwrap();
+    fs::write(dir.path().join("b.dae"), entry("b", "interval: 1h")).unwrap();
+    let loaded = load(main).unwrap();
+    assert!(!loaded.complete());
+    let seen: Vec<_> = feeds::providers(&loaded)
+        .into_iter()
+        .map(|p| (p.name, p.interval.map(|a| a.seconds)))
+        .collect();
+    let want = [("main", None), ("a", None), ("b", Some(3_600))];
+    assert_eq!(seen, want.map(|(name, s)| (name.to_owned(), s)));
 }
 
 // Feeds.

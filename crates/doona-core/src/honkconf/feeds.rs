@@ -5,13 +5,13 @@
 //! nothing else: Clash `proxy-groups` and `rules` and sing-box `selector` or `urltest`
 //! outbounds never reach [`Feed`], so a provider cannot change a group.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
 use honk_config::node::Node;
-use honk_config::parser::SourceSnapshot;
-use honk_config::parser::cursor::{Document, Segment};
-use honk_config::parser::lexer::Source;
+use honk_config::parser::{SourceLimits, parse_dae_sources};
 
 use super::HonkConfig;
 use crate::dto::{ErrorCode, SubscriptionFormat};
@@ -57,18 +57,18 @@ pub struct Provider {
 pub fn providers(config: &HonkConfig) -> Vec<Provider> {
     let cfg = config.config();
     let assets = cfg.assets.subscription.interval.is_some();
-    let own = authored_intervals(config.sources());
     let mut seen = BTreeMap::<&str, usize>::new();
     cfg.subscriptions
         .iter()
-        .map(|sub| {
-            let n = seen.entry(&sub.name).or_default();
-            *n += 1;
-            let source = if own.contains(&(sub.name.clone(), sub.url.clone())) {
+        .zip(own_intervals(config))
+        .map(|(sub, own)| {
+            let source = if own {
                 Some(IntervalSource::Subscription)
             } else {
                 assets.then_some(IntervalSource::Assets)
             };
+            let n = seen.entry(&sub.name).or_default();
+            *n += 1;
             Provider {
                 id: match n {
                     1 => format!("s-{}", sub.name),
@@ -86,105 +86,36 @@ pub fn providers(config: &HonkConfig) -> Vec<Provider> {
         .collect()
 }
 
-/// The `(tag, url)` of every entry that writes `interval` itself. honk merges that value with the
-/// assets default and keeps no trace of which one it read, so the entry's lines are read again as
-/// honk reads them (`visit_subscription_segment`): a block headed `tag: 'url'` or `tag:` is one
-/// entry, its options being its own lines and those of the blocks nested in it; any other block
-/// is a wrapper whose blocks are entries. Two entries with the same tag and URL are not told
-/// apart.
-fn authored_intervals(sources: &[SourceSnapshot]) -> BTreeSet<(String, String)> {
-    let mut entries = BTreeSet::new();
-    for snapshot in sources {
-        let source = Source::new(&snapshot.content, snapshot.source.clone());
-        let Ok(doc) = Document::parse(source, &mut Vec::new()) else {
-            continue;
-        };
-        for section in doc.sections().filter(|s| s.header() == "subscription") {
-            visit(&section, &mut entries);
-        }
-    }
-    entries
-}
-
-fn visit(segment: &Segment<'_, '_>, entries: &mut BTreeSet<(String, String)>) {
-    let Some((tag, header_url)) = entry_header(segment.header()) else {
-        for child in segment.body().into_iter().flatten() {
-            visit(&child, entries);
-        }
-        return;
+/// For each subscription in order, whether its entry writes `interval` itself. honk merges that
+/// value with the `assets` default and keeps no trace of which one it read, so honk parses the
+/// loaded sources once more with another default after them: an entry that keeps its interval
+/// wrote its own.
+fn own_intervals(config: &HonkConfig) -> Vec<bool> {
+    let cfg = config.config();
+    // Flipping a bit gives a value that differs from the default in use.
+    let other = cfg.assets.subscription_base().update_interval ^ 1;
+    let probe = format!("assets {{ subscription {{ interval: {other}s }} }}");
+    let mut inputs: Vec<(PathBuf, Arc<str>)> = config
+        .sources()
+        .iter()
+        .map(|s| (s.path.clone(), s.content.clone()))
+        .collect();
+    // The empty label cannot repeat a loaded source's absolute path.
+    inputs.push((PathBuf::new(), probe.into()));
+    // The loader already held the sources to its limits.
+    let unlimited = SourceLimits {
+        max_bytes: usize::MAX,
+        max_sources: usize::MAX,
     };
-    let mut options = Options {
-        url: header_url.map(str::to_owned),
-        interval: false,
-    };
-    options.read(segment, header_url.is_none());
-    if let (true, Some(url)) = (options.interval, options.url) {
-        entries.insert((tag.to_owned(), url));
-    }
-}
-
-/// What an entry's lines say about its URL and interval.
-struct Options {
-    url: Option<String>,
-    interval: bool,
-}
-
-impl Options {
-    /// `legacy` is the `tag:` form, whose URL is a `url:` line and whose nested entries are
-    /// options like any other block.
-    fn read(&mut self, block: &Segment<'_, '_>, legacy: bool) {
-        for line in block.body().into_iter().flatten() {
-            if !legacy
-                && split_header(line.header())
-                    .and_then(|(_, v)| whole_quoted(v))
-                    .is_some()
-            {
-                continue;
-            }
-            match line.header().split_once(':') {
-                Some((key, _)) if key.trim() == "interval" => self.interval = true,
-                Some((key, value)) if legacy && key.trim() == "url" => {
-                    let value = value.trim();
-                    self.url = Some(whole_quoted(value).unwrap_or(value).to_owned());
-                }
-                _ => {}
-            }
-            self.read(&line, legacy);
-        }
-    }
-}
-
-/// `(tag, url)` of `tag: 'url'`, or `(tag, None)` of `tag:`.
-fn entry_header(header: &str) -> Option<(&str, Option<&str>)> {
-    let (tag, value) = split_header(header)?;
-    if value.is_empty() {
-        return Some((tag, None));
-    }
-    Some((tag, Some(whole_quoted(value)?)))
-}
-
-/// `tag` and `value` of `tag: value`; the tag may be quoted.
-fn split_header(header: &str) -> Option<(&str, &str)> {
-    let header = header.trim();
-    let (tag, rest) = match header.chars().next() {
-        Some(quote @ ('\'' | '"')) => {
-            let (tag, rest) = header[1..].split_once(quote)?;
-            (tag, rest.trim_start().strip_prefix(':')?)
-        }
-        _ => {
-            let (tag, rest) = header.split_once(':')?;
-            (tag.trim(), rest)
-        }
-    };
-    Some((tag, rest.trim()))
-}
-
-/// The inside of a value that is one quoted string.
-fn whole_quoted(value: &str) -> Option<&str> {
-    let quote = value.chars().next().filter(|c| matches!(c, '\'' | '"'))?;
-    value[1..]
-        .strip_suffix(quote)
-        .filter(|inner| !inner.contains(quote))
+    // The sources differ from what the loader gave honk only in the include patterns it refused,
+    // and this parse expands no include.
+    let probed = parse_dae_sources(&inputs, unlimited, &mut Vec::new())
+        .expect("honk has parsed these sources");
+    cfg.subscriptions
+        .iter()
+        .zip(probed.config.subscriptions)
+        .map(|(sub, probed)| sub.update_interval == probed.update_interval)
+        .collect()
 }
 
 /// A downloaded feed: its nodes and what the cache needs to read them again.
