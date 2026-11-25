@@ -91,7 +91,7 @@ fun DoonaApp(
                     SettingsRoute(engine, version, onOpenPerApp = { backStack.push(PerAppKey) }, onOpenSubscriptions = { backStack.push(SubscriptionsKey) })
                 }
             }
-            entry<PerAppKey> { key -> PerAppRoute(engine, installedApps, onBack = { backStack.pop(key) }) }
+            entry<PerAppKey> { key -> PerAppRoute(engine, installedApps, onConnect, onBack = { backStack.pop(key) }) }
         }
     }
     localNetwork?.let { LocalNetworkPrompts(it) }

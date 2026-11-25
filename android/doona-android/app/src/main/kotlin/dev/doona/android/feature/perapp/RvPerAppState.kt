@@ -1,6 +1,8 @@
-package dev.doona.android.prototype.rv.settings
+package dev.doona.android.feature.perapp
 
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
+import dev.doona.android.R
 import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvPerApp
 
@@ -12,9 +14,10 @@ internal data class RvApp(val label: String, val packageName: String)
 internal enum class RvSave { Idle, Saving, Failed }
 
 /**
- * The 依 App page as `PerAppUiState` has it: the [saved] setting, the edits over it ([draft], null before the first),
- * the phone's [installed] apps (null while they are read), the search [query], the save, and whether the last save was
- * stored but the tunnel could not be rebuilt with it ([rebuildFailed]).
+ * The 依 App page: the [saved] setting, the edits over it ([draft], null before the first), the phone's [installed]
+ * apps (null while they are read), the search [query], the save, and whether the last save was stored but the tunnel
+ * could not be rebuilt with it ([rebuildFailed]). [saveReason] and [rebuildReason] are the second lines of the two
+ * failure notices.
  */
 @Immutable
 internal data class RvPerAppState(
@@ -24,6 +27,8 @@ internal data class RvPerAppState(
     val query: String = "",
     val save: RvSave = RvSave.Idle,
     val rebuildFailed: Boolean = false,
+    @StringRes val saveReason: Int = R.string.rv_report_failed_reason,
+    @StringRes val rebuildReason: Int = R.string.vpn_failure_start_failed,
 ) {
     /** What the page shows: the edits, or the setting as saved. */
     val edited: RvPerApp get() = draft ?: saved

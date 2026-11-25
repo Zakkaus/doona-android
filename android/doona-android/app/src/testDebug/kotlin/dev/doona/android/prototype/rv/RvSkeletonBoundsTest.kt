@@ -24,11 +24,11 @@ import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.perapp.RvPerAppActions
+import dev.doona.android.feature.perapp.RvPerAppLook
+import dev.doona.android.feature.perapp.RvPerAppScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
-import dev.doona.android.prototype.rv.settings.RvPerAppActions
-import dev.doona.android.prototype.rv.settings.RvPerAppLook
-import dev.doona.android.prototype.rv.settings.RvPerAppScreen
 import dev.doona.android.prototype.rv.settings.rvPerAppLookSample
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.subs.RvSubsActions

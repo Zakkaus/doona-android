@@ -1,7 +1,22 @@
 package dev.doona.android.prototype.rv.settings
 
+import android.content.res.Configuration
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.tooling.preview.Preview
+import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvPerApp
+import dev.doona.android.feature.perapp.RvApp
+import dev.doona.android.feature.perapp.RvPerAppActions
+import dev.doona.android.feature.perapp.RvPerAppScreen
+import dev.doona.android.feature.perapp.RvPerAppState
+import dev.doona.android.feature.perapp.RvSave
 
 /**
  * The sample's apps: generic names and packages, not a real phone's list, so the rows show the app disc's fallback
@@ -65,3 +80,13 @@ internal fun rvPerAppStateSample(
     save: RvSave = RvSave.Idle,
     rebuildFailed: Boolean = false,
 ) = RvPerAppState(saved, draft, RvPerAppData.apps, query, save, rebuildFailed)
+
+@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
+@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun RvPerAppScreenPreview() {
+    val dark = isSystemInDarkTheme()
+    var state by remember { mutableStateOf(rvPerAppSample("")) }
+    val actions = RvPerAppActions(policy = { state = state.withPolicy(it) }, toggle = { pkg, on -> state = state.withApp(pkg, on) }, query = { state = state.copy(query = it) })
+    RvTheme(rvSystemScheme(dark), dark) { RvPerAppScreen(state, actions, onBack = {}) }
+}

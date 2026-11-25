@@ -1,5 +1,6 @@
 package dev.doona.android.feature.perapp
 
+import dev.doona.android.R
 import dev.doona.android.engine.AppPolicy
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
@@ -11,6 +12,7 @@ import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RebuildFailedException
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeInstalledApps
+import dev.doona.android.feature.model.RvAppPolicy
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -28,10 +30,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
+/** The page's ViewModel on the fake engine: what it shows (the RV page's state) and what reaches the engine. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PerAppViewModelTest {
     private val chrome = "com.android.chrome"
     private val telegram = "org.telegram.messenger"
+    private val sample = FakeInstalledApps.SAMPLE_APPS.map { RvApp(it.label, it.packageName) }
 
     @Before
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -46,6 +50,11 @@ class PerAppViewModelTest {
         vm.onAction(PerAppAction.Resume)
     }
 
+    private val PerAppViewModel.state get() = uiState.value
+    private val RvPerAppState.policy get() = edited.policy
+    private val RvPerAppState.checked get() = edited.packages
+    private val RvPerAppState.loaded get() = installed != null
+
     /** Apps that change between reads, as when one is installed or removed while the page waits in the background. */
     private class ChangingApps(var apps: List<InstalledApp>) : InstalledApps {
         var reads = 0
@@ -58,25 +67,54 @@ class PerAppViewModelTest {
         }
     }
 
-    /** An engine whose save fails with [ErrorCode.Busy] while [failing] holds, and that otherwise saves into the fake. */
-    private class FlakyEngine(private val fake: FakeEngine = FakeEngine(), var failing: Boolean = true) : Engine by fake {
+    /** An engine whose save fails with [code] while [failing] holds, and that otherwise saves into the fake. */
+    private class FlakyEngine(
+        private val fake: FakeEngine = FakeEngine(),
+        var failing: Boolean = true,
+        val code: ErrorCode = ErrorCode.Busy,
+    ) : Engine by fake {
         override suspend fun setPerApp(perApp: PerApp): Result<Unit> =
-            if (failing) Result.failure(EngineException(ErrorCode.Busy)) else fake.setPerApp(perApp)
+            if (failing) Result.failure(EngineException(code)) else fake.setPerApp(perApp)
+    }
+
+    /** An engine that stores every save and then reports that the tunnel did not come back, for [reason]. */
+    private class RebuildFails(private val fake: FakeEngine = FakeEngine(), val reason: FailureReason) : Engine by fake {
+        override suspend fun setPerApp(perApp: PerApp): Result<Unit> {
+            fake.setPerApp(perApp)
+            return Result.failure(RebuildFailedException(reason))
+        }
     }
 
     @Test
     fun `shows the saved policy and the apps of the device`() = runTest {
         val engine = FakeEngine().apply { setPerApp(PerApp(AppPolicy.ExceptListed, setOf(chrome))) }
-        val state = collected(engine).uiState.value
+        val state = collected(engine).state
         assertTrue(state.loaded)
-        assertEquals(AppPolicy.ExceptListed, state.policy)
+        assertEquals(RvAppPolicy.Except, state.policy)
         assertEquals(setOf(chrome), state.checked)
-        assertEquals(FakeInstalledApps.SAMPLE_APPS, state.apps)
+        assertEquals(sample, state.shown)
+        assertEquals(RvSave.Idle, state.save)
         assertFalse("nothing is edited yet", state.canSave)
     }
 
     @Test
-    fun `shows no list and cannot save while the apps are read`() = runTest {
+    fun `each of the three policies reaches the engine as its own`() = runTest {
+        val cases = listOf(RvAppPolicy.Only to AppPolicy.OnlyListed, RvAppPolicy.Except to AppPolicy.ExceptListed, RvAppPolicy.All to AppPolicy.All)
+        for ((policy, engined) in cases) {
+            // Start from another policy, so each one is an edit that can be saved.
+            val start = if (engined == AppPolicy.All) AppPolicy.ExceptListed else AppPolicy.All
+            val engine = FakeEngine().apply { setPerApp(PerApp(start)) }
+            val vm = collected(engine)
+            vm.onAction(PerAppAction.SetPolicy(policy))
+            vm.onAction(PerAppAction.Toggle(chrome, true))
+            vm.onAction(PerAppAction.Save)
+            assertEquals(PerApp(engined, setOf(chrome)), engine.settings.value.perApp)
+            assertEquals("the page shows what was saved", policy, vm.state.saved.policy)
+        }
+    }
+
+    @Test
+    fun `shows the apps as loading and cannot save while they are read`() = runTest {
         val gate = CompletableDeferred<List<InstalledApp>>()
         val vm = collected(
             FakeEngine(),
@@ -84,18 +122,17 @@ class PerAppViewModelTest {
                 override suspend fun launchable() = gate.await()
             },
         )
-        vm.onAction(PerAppAction.SetPolicy(AppPolicy.ExceptListed))
-        assertFalse(vm.uiState.value.loaded)
-        assertFalse("an empty list before the read is not a device without apps", vm.uiState.value.hasApps)
-        assertFalse("the apps decide what can be saved, so wait for them", vm.uiState.value.canSave)
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
+        assertNull("the skeleton stands for the apps", vm.state.installed)
+        assertFalse("the apps decide what can be saved, so wait for them", vm.state.canSave)
 
         gate.complete(FakeInstalledApps.SAMPLE_APPS)
-        assertTrue(vm.uiState.value.loaded)
-        assertTrue(vm.uiState.value.canSave)
+        assertTrue(vm.state.loaded)
+        assertTrue(vm.state.canSave)
     }
 
     @Test
-    fun `a device that cannot list its apps shows the error and stays usable for every app`() = runTest {
+    fun `a device that cannot list its apps shows none and stays usable for every policy`() = runTest {
         val engine = FakeEngine()
         val vm = collected(
             engine,
@@ -103,11 +140,9 @@ class PerAppViewModelTest {
                 override suspend fun launchable(): List<InstalledApp> = throw IllegalStateException("no package manager")
             },
         )
-        val state = vm.uiState.value
-        assertTrue(state.loaded)
-        assertFalse(state.hasApps)
-        assertEquals(ErrorCode.Internal, state.error)
-        vm.onAction(PerAppAction.SetPolicy(AppPolicy.ExceptListed))
+        assertEquals("the list is read, and empty", emptyList<RvApp>(), vm.state.installed)
+        assertEquals(RvSave.Idle, vm.state.save)
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
         vm.onAction(PerAppAction.Save)
         assertEquals(AppPolicy.ExceptListed, engine.settings.value.perApp.policy)
     }
@@ -115,62 +150,61 @@ class PerAppViewModelTest {
     @Test
     fun `search matches the label and the package name without regard to case`() = runTest {
         val vm = collected(FakeEngine())
-        vm.onAction(PerAppAction.SetPolicy(AppPolicy.OnlyListed))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Only))
 
         vm.onAction(PerAppAction.SetQuery("TELE"))
-        assertEquals(listOf(telegram), vm.uiState.value.apps.map { it.packageName })
+        assertEquals(listOf(telegram), vm.state.shown.map { it.packageName })
         vm.onAction(PerAppAction.SetQuery("com.google"))
-        assertEquals(listOf("YouTube"), vm.uiState.value.apps.map { it.label })
+        assertEquals(listOf("YouTube"), vm.state.shown.map { it.label })
         vm.onAction(PerAppAction.SetQuery("計算"))
-        assertEquals(listOf("計算機"), vm.uiState.value.apps.map { it.label })
+        assertEquals(listOf("計算機"), vm.state.shown.map { it.label })
         vm.onAction(PerAppAction.SetQuery("  "))
-        assertEquals(FakeInstalledApps.SAMPLE_APPS, vm.uiState.value.apps)
+        assertEquals(sample, vm.state.shown)
     }
 
     @Test
-    fun `a search that matches nothing is told apart from a device without apps`() = runTest {
+    fun `a search with no result is told apart from a device without apps`() = runTest {
         val vm = collected(FakeEngine())
-        vm.onAction(PerAppAction.SetPolicy(AppPolicy.OnlyListed))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Only))
         vm.onAction(PerAppAction.SetQuery("zzz"))
-        assertTrue(vm.uiState.value.apps.isEmpty())
-        assertTrue(vm.uiState.value.hasApps)
+        assertTrue(vm.state.shown.isEmpty())
+        assertEquals("the device has apps, the search matched none", sample, vm.state.installed)
 
         val bare = collected(FakeEngine(), apps = FakeInstalledApps(emptyList()))
-        assertTrue(bare.uiState.value.apps.isEmpty())
-        assertFalse(bare.uiState.value.hasApps)
+        assertEquals(emptyList<RvApp>(), bare.state.installed)
     }
 
     @Test
     fun `a check survives a search that hides its row`() = runTest {
         val vm = collected(FakeEngine())
-        vm.onAction(PerAppAction.SetPolicy(AppPolicy.OnlyListed))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Only))
         vm.onAction(PerAppAction.Toggle(chrome, true))
         vm.onAction(PerAppAction.SetQuery("telegram"))
-        assertEquals(setOf(chrome), vm.uiState.value.checked)
+        assertEquals(setOf(chrome), vm.state.checked)
     }
 
     @Test
     fun `toggling edits the draft and only a difference can be saved`() = runTest {
         val vm = collected(FakeEngine())
-        vm.onAction(PerAppAction.SetPolicy(AppPolicy.ExceptListed))
-        assertTrue(vm.uiState.value.canSave)
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
+        assertTrue(vm.state.canSave)
 
         vm.onAction(PerAppAction.Toggle(chrome, true))
         vm.onAction(PerAppAction.Toggle(telegram, true))
-        assertEquals(setOf(chrome, telegram), vm.uiState.value.checked)
+        assertEquals(setOf(chrome, telegram), vm.state.checked)
         vm.onAction(PerAppAction.Toggle(telegram, false))
-        assertEquals(setOf(chrome), vm.uiState.value.checked)
+        assertEquals(setOf(chrome), vm.state.checked)
 
         vm.onAction(PerAppAction.Toggle(chrome, false))
-        vm.onAction(PerAppAction.SetPolicy(AppPolicy.All))
-        assertFalse("back at the saved policy there is nothing to save", vm.uiState.value.canSave)
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.All))
+        assertFalse("back at the saved policy there is nothing to save", vm.state.canSave)
     }
 
     @Test
     fun `an edit does not reach the engine until it is saved`() = runTest {
         val engine = FakeEngine()
         val vm = collected(engine)
-        vm.onAction(PerAppAction.SetPolicy(AppPolicy.OnlyListed))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Only))
         vm.onAction(PerAppAction.Toggle(chrome, true))
         assertEquals(PerApp(), engine.settings.value.perApp)
     }
@@ -179,39 +213,39 @@ class PerAppViewModelTest {
     fun `save hands the edits to the engine in one call and the page follows the engine again`() = runTest {
         val engine = FakeEngine()
         val vm = collected(engine)
-        vm.onAction(PerAppAction.SetPolicy(AppPolicy.OnlyListed))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Only))
         vm.onAction(PerAppAction.Toggle(chrome, true))
         vm.onAction(PerAppAction.Save)
 
         assertEquals(PerApp(AppPolicy.OnlyListed, setOf(chrome)), engine.settings.value.perApp)
-        val state = vm.uiState.value
-        assertFalse(state.busy)
+        val state = vm.state
+        assertEquals(RvSave.Idle, state.save)
         assertFalse("saved, so nothing is left to save", state.canSave)
-        assertNull(state.error)
-        assertEquals(AppPolicy.OnlyListed, state.policy)
+        assertNull("no edit is left over the saved policy", state.draft)
+        assertEquals(RvAppPolicy.Only, state.policy)
         assertEquals(setOf(chrome), state.checked)
 
         engine.setPerApp(PerApp(AppPolicy.All))
-        assertEquals("an unedited page shows what the engine saves", AppPolicy.All, vm.uiState.value.policy)
+        assertEquals("an unedited page shows what the engine saves", RvAppPolicy.All, vm.state.policy)
     }
 
     @Test
-    fun `an edit before the stored policy has loaded is ignored, so a save keeps what was stored`() = runTest {
+    fun `before the stored policy has loaded the apps show as loading and an edit is ignored`() = runTest {
         val engine = FakeEngine().apply { perAppLoaded.value = false }
         val vm = collected(engine)
-        vm.onAction(PerAppAction.SetPolicy(AppPolicy.ExceptListed))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
         vm.onAction(PerAppAction.Toggle(telegram, true))
-        assertFalse("the controls would show a placeholder", vm.uiState.value.policyLoaded)
-        assertFalse(vm.uiState.value.canSave)
+        assertNull("the policy shown is a placeholder, so the page waits", vm.state.installed)
+        assertFalse(vm.state.canSave)
         vm.onAction(PerAppAction.Save)
         assertEquals("nothing reached the engine", PerApp(), engine.settings.value.perApp)
 
         // The stored policy arrives late, and is not the default.
         engine.setPerApp(PerApp(AppPolicy.OnlyListed, setOf(chrome)))
         engine.perAppLoaded.value = true
-        val state = vm.uiState.value
-        assertTrue(state.policyLoaded)
-        assertEquals(AppPolicy.OnlyListed, state.policy)
+        val state = vm.state
+        assertTrue(state.loaded)
+        assertEquals(RvAppPolicy.Only, state.policy)
         assertEquals(setOf(chrome), state.checked)
         assertFalse("the ignored edits left no draft", state.canSave)
 
@@ -221,42 +255,64 @@ class PerAppViewModelTest {
     }
 
     @Test
-    fun `a save that is stored but whose tunnel fails to rebuild shows the reason, not a failed write`() = runTest {
-        val fake = FakeEngine()
-        val engine = object : Engine by fake {
-            override suspend fun setPerApp(perApp: PerApp): Result<Unit> {
-                fake.setPerApp(perApp)
-                return Result.failure(RebuildFailedException(FailureReason.NoAllowedApps))
-            }
-        }
-        val vm = collected(engine)
-        vm.onAction(PerAppAction.SetPolicy(AppPolicy.OnlyListed))
+    fun `a save that is stored but whose tunnel fails to rebuild shows the rebuild notice, not a failed write`() = runTest {
+        val vm = collected(RebuildFails(reason = FailureReason.StartFailed))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Only))
         vm.onAction(PerAppAction.Toggle(chrome, true))
         vm.onAction(PerAppAction.Save)
 
-        val state = vm.uiState.value
-        assertEquals(FailureReason.NoAllowedApps, state.rebuildFailure)
-        assertNull("the write succeeded", state.error)
-        assertFalse(state.busy)
+        val state = vm.state
+        assertTrue(state.rebuildFailed)
+        assertEquals("the approved sentence for a tunnel that did not start", R.string.vpn_failure_start_failed, state.rebuildReason)
+        assertEquals("the write succeeded", RvSave.Idle, state.save)
         assertFalse("it is saved, so there is nothing left to save", state.canSave)
+        assertEquals(RvAppPolicy.Only, state.saved.policy)
+    }
 
-        vm.onAction(PerAppAction.DismissError)
-        assertNull(vm.uiState.value.rebuildFailure)
+    @Test
+    fun `the rebuild notice gives the reason the tunnel did not come back`() = runTest {
+        val vm = collected(RebuildFails(reason = FailureReason.Revoked))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
+        vm.onAction(PerAppAction.Save)
+        assertEquals(R.string.vpn_drop_revoked, vm.state.rebuildReason)
+    }
+
+    @Test
+    fun `retrying after a failed rebuild clears the notice`() = runTest {
+        val vm = collected(RebuildFails(reason = FailureReason.StartFailed))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
+        vm.onAction(PerAppAction.Save)
+        assertTrue(vm.state.rebuildFailed)
+        vm.onAction(PerAppAction.Reconnect)
+        assertFalse(vm.state.rebuildFailed)
     }
 
     @Test
     fun `a failed write is not a rebuild failure and a later save clears both`() = runTest {
         val engine = FlakyEngine()
         val vm = collected(engine)
-        vm.onAction(PerAppAction.SetPolicy(AppPolicy.ExceptListed))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
         vm.onAction(PerAppAction.Save)
-        assertNull(vm.uiState.value.rebuildFailure)
-        assertEquals(ErrorCode.Busy, vm.uiState.value.error)
+        assertFalse(vm.state.rebuildFailed)
+        assertEquals(RvSave.Failed, vm.state.save)
 
         engine.failing = false
         vm.onAction(PerAppAction.Save)
-        assertNull(vm.uiState.value.error)
-        assertNull(vm.uiState.value.rebuildFailure)
+        assertEquals(RvSave.Idle, vm.state.save)
+        assertFalse(vm.state.rebuildFailed)
+    }
+
+    @Test
+    fun `a failed write inside doona keeps the approved reason, another code says what it is`() = runTest {
+        val inside = collected(FlakyEngine(code = ErrorCode.Internal))
+        inside.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
+        inside.onAction(PerAppAction.Save)
+        assertEquals(R.string.rv_report_failed_reason, inside.state.saveReason)
+
+        val busy = collected(FlakyEngine(code = ErrorCode.Busy))
+        busy.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
+        busy.onAction(PerAppAction.Save)
+        assertEquals(R.string.error_busy, busy.state.saveReason)
     }
 
     @Test
@@ -264,18 +320,18 @@ class PerAppViewModelTest {
         val gone = InstalledApp("com.example.gone", "Gone")
         val apps = ChangingApps(listOf(gone) + FakeInstalledApps.SAMPLE_APPS)
         val vm = collected(FakeEngine(), apps)
-        vm.onAction(PerAppAction.SetPolicy(AppPolicy.OnlyListed))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Only))
         vm.onAction(PerAppAction.Toggle(gone.packageName, true))
-        assertTrue("the only checked app is installed", vm.uiState.value.canSave)
+        assertTrue("the only checked app is installed", vm.state.canSave)
 
         // The user uninstalls it while the page waits in the background.
         apps.apps = FakeInstalledApps.SAMPLE_APPS
         vm.onAction(PerAppAction.Resume)
 
         assertEquals(2, apps.reads)
-        assertFalse(vm.uiState.value.apps.contains(gone))
-        assertTrue("only checked now routes no installed app", vm.uiState.value.needsApp)
-        assertFalse(vm.uiState.value.canSave)
+        assertFalse(vm.state.shown.any { it.packageName == gone.packageName })
+        assertTrue("only checked now routes no installed app", vm.state.needsApp)
+        assertFalse(vm.state.canSave)
     }
 
     @Test
@@ -295,7 +351,7 @@ class PerAppViewModelTest {
         vm.onAction(PerAppAction.Resume)
         assertEquals(1, reads)
         gate.complete(Unit)
-        assertTrue(vm.uiState.value.loaded)
+        assertTrue(vm.state.loaded)
     }
 
     @Test
@@ -323,8 +379,7 @@ class PerAppViewModelTest {
         gate.complete(Unit)
 
         assertEquals("the resume's read ran when the first ended", 2, reads)
-        assertFalse("the page does not keep the app the first read saw", vm.uiState.value.apps.contains(gone))
-        assertEquals(FakeInstalledApps.SAMPLE_APPS, vm.uiState.value.apps)
+        assertEquals("the page does not keep the app the first read saw", sample, vm.state.installed)
     }
 
     @Test
@@ -347,60 +402,41 @@ class PerAppViewModelTest {
     }
 
     @Test
-    fun `a read that fails on resume keeps the apps the page had and shows no new error`() = runTest {
+    fun `a read that fails on resume keeps the apps the page had`() = runTest {
         val apps = ChangingApps(FakeInstalledApps.SAMPLE_APPS)
         val vm = collected(FakeEngine(), apps)
-        vm.onAction(PerAppAction.SetPolicy(AppPolicy.ExceptListed))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
         apps.failure = IllegalStateException("no package manager")
         vm.onAction(PerAppAction.Resume)
 
         assertEquals(2, apps.reads)
-        assertEquals(FakeInstalledApps.SAMPLE_APPS, vm.uiState.value.apps)
-        assertNull("the page already has a list, so a failed refresh is not an error", vm.uiState.value.error)
-        assertTrue(vm.uiState.value.canSave)
+        assertEquals(sample, vm.state.installed)
+        assertTrue(vm.state.canSave)
     }
 
     @Test
-    fun `a dismissed error does not come back when a later read fails again`() = runTest {
-        val apps = ChangingApps(FakeInstalledApps.SAMPLE_APPS).apply { failure = IllegalStateException("no package manager") }
-        val vm = collected(FakeEngine(), apps)
-        assertEquals(ErrorCode.Internal, vm.uiState.value.error)
-        vm.onAction(PerAppAction.DismissError)
-        assertNull(vm.uiState.value.error)
-
-        vm.onAction(PerAppAction.Resume)
-
-        assertEquals(2, apps.reads)
-        assertNull("the user has seen this failure", vm.uiState.value.error)
-    }
-
-    @Test
-    fun `a failed save keeps the edits, shows its code and can be tried again`() = runTest {
+    fun `a failed save keeps the edits and can be tried again`() = runTest {
         val engine = FlakyEngine()
         val vm = collected(engine)
-        vm.onAction(PerAppAction.SetPolicy(AppPolicy.OnlyListed))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Only))
         vm.onAction(PerAppAction.Toggle(chrome, true))
         vm.onAction(PerAppAction.Save)
 
-        var state = vm.uiState.value
-        assertEquals(ErrorCode.Busy, state.error)
-        assertFalse(state.busy)
+        var state = vm.state
+        assertEquals(RvSave.Failed, state.save)
         assertTrue("the edits are still there to save again", state.canSave)
         assertEquals(setOf(chrome), state.checked)
         assertEquals(PerApp(), engine.settings.value.perApp)
 
-        vm.onAction(PerAppAction.DismissError)
-        assertNull(vm.uiState.value.error)
-
         engine.failing = false
         vm.onAction(PerAppAction.Save)
-        state = vm.uiState.value
-        assertNull(state.error)
+        state = vm.state
+        assertEquals(RvSave.Idle, state.save)
         assertEquals(PerApp(AppPolicy.OnlyListed, setOf(chrome)), engine.settings.value.perApp)
     }
 
     @Test
-    fun `a save in progress is busy, ignores a second save and keeps an edit made meanwhile`() = runTest {
+    fun `a save in progress takes no second save and no edit`() = runTest {
         val release = CompletableDeferred<Unit>()
         val fake = FakeEngine()
         var calls = 0
@@ -412,69 +448,72 @@ class PerAppViewModelTest {
             }
         }
         val vm = collected(engine)
-        vm.onAction(PerAppAction.SetPolicy(AppPolicy.OnlyListed))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Only))
         vm.onAction(PerAppAction.Toggle(chrome, true))
         vm.onAction(PerAppAction.Save)
-        assertTrue(vm.uiState.value.busy)
-        assertFalse(vm.uiState.value.canSave)
+        assertEquals(RvSave.Saving, vm.state.save)
+        assertFalse(vm.state.canSave)
 
         vm.onAction(PerAppAction.Save)
         vm.onAction(PerAppAction.Toggle(telegram, true))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.All))
+        assertEquals("the page rests while the save runs", setOf(chrome), vm.state.checked)
         release.complete(Unit)
 
         assertEquals("the second save did not reach the engine", 1, calls)
         assertEquals(PerApp(AppPolicy.OnlyListed, setOf(chrome)), engine.settings.value.perApp)
-        val state = vm.uiState.value
-        assertFalse(state.busy)
-        assertEquals("the edit made during the save stays", setOf(chrome, telegram), state.checked)
-        assertTrue(state.canSave)
+        val state = vm.state
+        assertEquals(RvSave.Idle, state.save)
+        assertEquals(setOf(chrome), state.checked)
+        assertFalse(state.canSave)
     }
 
     @Test
     fun `only checked with nothing checked cannot be saved and says why`() = runTest {
         val engine = FakeEngine()
         val vm = collected(engine)
-        vm.onAction(PerAppAction.SetPolicy(AppPolicy.OnlyListed))
-        assertTrue(vm.uiState.value.needsApp)
-        assertFalse(vm.uiState.value.canSave)
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Only))
+        assertTrue(vm.state.needsApp)
+        assertFalse(vm.state.canSave)
 
         vm.onAction(PerAppAction.Save)
         assertEquals("nothing reached the engine", PerApp(), engine.settings.value.perApp)
-        assertFalse(vm.uiState.value.busy)
+        assertEquals(RvSave.Idle, vm.state.save)
 
         vm.onAction(PerAppAction.Toggle(chrome, true))
-        assertFalse(vm.uiState.value.needsApp)
-        assertTrue(vm.uiState.value.canSave)
+        assertFalse(vm.state.needsApp)
+        assertTrue(vm.state.canSave)
         vm.onAction(PerAppAction.Toggle(chrome, false))
-        assertTrue(vm.uiState.value.needsApp)
+        assertTrue(vm.state.needsApp)
     }
 
     @Test
     fun `only apps that are installed count as checked for only checked`() = runTest {
         val vm = collected(FakeEngine())
-        vm.onAction(PerAppAction.SetPolicy(AppPolicy.OnlyListed))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Only))
         vm.onAction(PerAppAction.Toggle("com.removed.app", true))
-        assertTrue("the tunnel would route no app", vm.uiState.value.needsApp)
-        assertFalse(vm.uiState.value.canSave)
-        assertEquals("the stored package stays in the set", setOf("com.removed.app"), vm.uiState.value.checked)
+        assertTrue("the tunnel would route no app", vm.state.needsApp)
+        assertFalse(vm.state.canSave)
+        assertEquals("the stored package stays in the set", setOf("com.removed.app"), vm.state.checked)
     }
 
     @Test
     fun `except checked with nothing checked is a policy that can be saved`() = runTest {
         val engine = FakeEngine()
         val vm = collected(engine)
-        vm.onAction(PerAppAction.SetPolicy(AppPolicy.ExceptListed))
-        assertFalse(vm.uiState.value.needsApp)
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
+        assertFalse(vm.state.needsApp)
         vm.onAction(PerAppAction.Save)
         assertEquals(PerApp(AppPolicy.ExceptListed), engine.settings.value.perApp)
     }
 
     @Test
-    fun `packages of apps that are gone stay in the saved set`() = runTest {
+    fun `packages of apps that are gone stay in the saved set, and so in the count 設定 shows`() = runTest {
         val engine = FakeEngine().apply { setPerApp(PerApp(AppPolicy.ExceptListed, setOf("com.removed.app"))) }
         val vm = collected(engine)
         vm.onAction(PerAppAction.Toggle(chrome, true))
         vm.onAction(PerAppAction.Save)
         assertEquals(setOf("com.removed.app", chrome), engine.settings.value.perApp.packages)
+        assertEquals(2, vm.state.saved.packages.size)
     }
 }

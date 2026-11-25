@@ -1,7 +1,5 @@
-package dev.doona.android.prototype.rv.settings
+package dev.doona.android.feature.perapp
 
-import android.content.res.Configuration
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -11,15 +9,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvAppDisc
@@ -48,10 +41,8 @@ import dev.doona.android.designsystem.rv.RvSkeletonFade
 import dev.doona.android.designsystem.rv.RvSkeletonRow
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSwitch
-import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvRowToggle
 import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
-import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RvAppPolicy
 
 /** What the 依 App page does: pick a policy, check an app, search, save, and rebuild the tunnel after a failed one. */
@@ -130,15 +121,16 @@ private fun Policies(state: RvPerAppState, actions: RvPerAppActions, look: RvPer
 private fun failure(state: RvPerAppState, actions: RvPerAppActions): RvNotice? {
     val (title, reason, retry) = when {
         state.save == RvSave.Saving -> return null
-        state.save == RvSave.Failed -> Triple(R.string.rv_perapp_save_failed, R.string.rv_report_failed_reason, actions.save)
-        state.rebuildFailed -> Triple(R.string.rv_perapp_rebuild_failed, R.string.vpn_failure_start_failed, actions.reconnect)
+        state.save == RvSave.Failed -> Triple(R.string.rv_perapp_save_failed, state.saveReason, actions.save)
+        state.rebuildFailed -> Triple(R.string.rv_perapp_rebuild_failed, state.rebuildReason, actions.reconnect)
         else -> return null
     }
     return RvNotice(RvNoticeKind.Error, stringResource(title), stringResource(reason), stringResource(R.string.rv_retry), retry)
 }
 
 /**
- * The apps, or the empty caption when the search matches none; while they are read, a skeleton of their rows, which a
+ * The apps, or the empty caption when the search matches none or the phone lists no app (its read failed, or it has
+ * none to launch); while they are read, a skeleton of their rows, which a
  * screen reader reads as the apps loading. The skeleton's card runs past the window's foot as the list does
  * ([rvSkeletonRowsToFill]); its rows stop above 儲存's room, as the list's last row clears it ([LocalRvContentFloor]).
  */
@@ -148,7 +140,9 @@ private fun Apps(state: RvPerAppState, actions: RvPerAppActions, look: RvPerAppL
     val rows = rvSkeletonRowsToFill()
     RvSkeletonFade(state.installed == null, { RvSkeletonCard(description = loading) { repeat(rows) { RvSkeletonRow(it) } } }) {
         val shown = state.shown
-        if (shown.isEmpty()) {
+        if (state.installed.isNullOrEmpty()) {
+            RvEmptyCaption(stringResource(R.string.perapp_no_apps), stringResource(R.string.perapp_no_apps_line))
+        } else if (shown.isEmpty()) {
             RvEmptyCaption(stringResource(R.string.perapp_no_match), stringResource(R.string.rv_conn_none_line))
         } else {
             RvCard { shown.forEach { key(it.packageName) { AppRow(it, it.packageName in state.edited.packages, look) { on -> actions.toggle(it.packageName, on) } } } }
@@ -172,14 +166,4 @@ private fun AppRow(app: RvApp, checked: Boolean, look: RvPerAppLook, onToggle: (
 @Composable
 private fun BusyRow(label: String) {
     RvRow({ RvIconDisc(R.drawable.rv_stats_ic_sync) }, label, null) { RvBusy(Modifier.width(RvSize.busy)) }
-}
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvPerAppScreenPreview() {
-    val dark = isSystemInDarkTheme()
-    var state by remember { mutableStateOf(rvPerAppSample("")) }
-    val actions = RvPerAppActions(policy = { state = state.withPolicy(it) }, toggle = { pkg, on -> state = state.withApp(pkg, on) }, query = { state = state.copy(query = it) })
-    RvTheme(rvSystemScheme(dark), dark) { RvPerAppScreen(state, actions, onBack = {}) }
 }

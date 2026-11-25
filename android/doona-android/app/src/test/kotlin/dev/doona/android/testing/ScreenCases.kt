@@ -67,7 +67,7 @@ private fun appScreenCases(): List<ScreenCase> {
             "settings",
             PageLayout(withHub + setOf(LayoutRole.ListCard, LayoutRole.ListRow, LayoutRole.Mark), listOf(space.afterTitle)),
         ) { OldShellApp(engine, apps, listOf(ActivityKey, SettingsKey)) },
-    ) + perAppCases()
+    )
 }
 
 /**
