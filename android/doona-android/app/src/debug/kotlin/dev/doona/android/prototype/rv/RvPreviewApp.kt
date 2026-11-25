@@ -46,6 +46,7 @@ import dev.doona.android.feature.activity.RvActivityNotice
 import dev.doona.android.feature.activity.RvActivityRoutes
 import dev.doona.android.feature.activity.rvActivityBanner
 import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.model.fastest
 import dev.doona.android.feature.nodes.ui.LocalRvRowActions
 import dev.doona.android.feature.nodes.ui.RvRowActions
@@ -76,7 +77,6 @@ import dev.doona.android.prototype.rv.settings.RvSettingsPreviewRoutes
 import dev.doona.android.prototype.rv.settings.RvSettingsRoutes
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
-import dev.doona.android.prototype.rv.settings.RvSettingsState
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
 import dev.doona.android.prototype.rv.settings.previewDark
 import dev.doona.android.prototype.rv.settings.rvLicenseEntries

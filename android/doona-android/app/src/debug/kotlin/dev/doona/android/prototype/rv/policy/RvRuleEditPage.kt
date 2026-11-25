@@ -39,6 +39,7 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvInkStart
 import dev.doona.android.designsystem.rv.rvRowToggle
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.model.RV_DIRECT
 import dev.doona.android.feature.model.RvMatchKind
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvRuleMatch

@@ -4,13 +4,12 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.feature.model.RV_DIRECT
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvMatchKind
 import dev.doona.android.feature.model.RvNode
-import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyRule
-import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvRuleMatch
 import dev.doona.android.feature.model.RvRuleState
 import dev.doona.android.feature.model.fastest
@@ -141,8 +140,6 @@ internal enum class RvMatchBy(@StringRes val label: Int, @StringRes val line: In
 /** The quick rule being written: how it matches and where it sends; [targetId] is a group's id or [RV_DIRECT]. */
 @Immutable
 internal data class RvQuickRule(val matchBy: RvMatchBy = RvMatchBy.Full, val targetId: String = AI)
-
-internal const val RV_DIRECT = "direct"
 
 private const val MAIN = "main"
 private const val AUTO = "auto"

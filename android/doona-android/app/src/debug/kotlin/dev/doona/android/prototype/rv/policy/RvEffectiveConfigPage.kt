@@ -39,8 +39,8 @@ import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvRuleState
+import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.model.RvSubscription
-import dev.doona.android.prototype.rv.settings.RvSettingsState
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 
 /**

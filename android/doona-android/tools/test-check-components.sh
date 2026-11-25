@@ -51,6 +51,13 @@ plant widget "$(printf 'val note = """\n        see https://doona.dev"""; Text("
 plant widget 'val say = """He said "hi" // and left"""; Text("a raw Text")'
 rm "$page/RvPlanted.kt"
 
+# A type named after a widget is a declaration, not a call; a call on the same page still fails.
+printf 'internal sealed interface RvMark {\n    data class Icon(val glyph: Int) : RvMark\n}\n' > "$page/RvDeclared.kt"
+out=$(gate "$none") || { echo "FAIL: a class named Icon was read as a call: $out" >&2; exit 1; }
+echo "ok: a class named after a widget is no call"
+plant widget 'Icon(painterResource(R.drawable.x), null)'
+rm "$page/RvDeclared.kt" "$page/RvPlanted.kt"
+
 # An allowlist line: at its measure it passes, below the measure it fails (new hit), above it fails (stale).
 printf '@Composable\ninternal fun RvTwo() {\n    Text("a")\n    Text("b")\n}\n' > "$page/RvTwo.kt"
 f=debug/kotlin/dev/doona/android/prototype/rv/RvTwo.kt

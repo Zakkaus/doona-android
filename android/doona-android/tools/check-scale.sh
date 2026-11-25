@@ -4,7 +4,7 @@
 # value outside the scale only with its reason in the rules file and its name here.
 set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
-files="$root/app/src/main/kotlin/dev/doona/android/designsystem/rv/RvTokens.kt $root/app/src/debug/kotlin/dev/doona/android/prototype/rv/settings/RvSettingsTokens.kt"
+files="$root/app/src/main/kotlin/dev/doona/android/designsystem/rv/RvTokens.kt $root/app/src/main/kotlin/dev/doona/android/designsystem/rv/RvSettingsTokens.kt"
 scale=" 0 4 8 12 16 24 "
 # name: reason (LAYOUT-RULES.md, "Exceptions")
 exceptions=" subGap emptyLine barGap headerTop heroToActions actionColumn titleToActions accentInset "

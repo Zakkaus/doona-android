@@ -22,6 +22,7 @@ import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.feature.activity.RvActivityNotice
 import dev.doona.android.feature.activity.rvActivityBanner
+import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.prototype.rv.connections.RvConnectionsPage
@@ -37,7 +38,6 @@ import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.policy.RvRulesPage
 import dev.doona.android.prototype.rv.policy.RvServiceRulesPage
 import dev.doona.android.prototype.rv.settings.RvAboutScreen
-import dev.doona.android.prototype.rv.settings.RvLanguage
 import dev.doona.android.prototype.rv.settings.RvLanguageScreen
 import dev.doona.android.prototype.rv.settings.RvLogLevel
 import dev.doona.android.prototype.rv.settings.RvLogLevelScreen
