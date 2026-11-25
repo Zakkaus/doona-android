@@ -12,6 +12,7 @@ use honk_config::parser::source_edit::source_indices;
 
 use super::super::meters::Meters;
 use super::super::staged::Tree;
+use super::super::{HonkStore, StoreError};
 use super::{EditError, File, List, RuleRow};
 
 pub(in super::super) struct Carry {
@@ -88,6 +89,33 @@ impl Carry {
             }
         }
         out
+    }
+}
+
+impl HonkStore {
+    /// Writes the last step's bytes over `file`, with the meters its rows carry through each
+    /// step's rewrite.
+    pub(super) fn write_steps(
+        &mut self,
+        draft: u64,
+        absolute: &Path,
+        root: &Path,
+        file: &File,
+        steps: &[(File, Carry)],
+    ) -> Result<(), StoreError> {
+        let content = &steps.last().unwrap().0.source.content;
+        let meters =
+            self.find(draft)?
+                .carry(&file.source.path, &file.source.content, content, |meters| {
+                    let mut rows = &file.rows;
+                    let mut meters = meters.clone();
+                    for (next, carry) in steps {
+                        meters = carry.follow(rows, &next.rows, &meters);
+                        rows = &next.rows;
+                    }
+                    meters
+                });
+        self.write_edit(draft, absolute, root, content, Some(meters))
     }
 }
 
