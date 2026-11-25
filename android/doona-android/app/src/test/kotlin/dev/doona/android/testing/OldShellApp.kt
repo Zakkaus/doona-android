@@ -47,7 +47,7 @@ internal fun OldShellApp(engine: Engine, installedApps: InstalledApps, start: Li
             entryProvider = entryProvider {
                 entry<ActivityKey> {
                     // 活動 is the RV page now, with goldens of its own: the old shell shows only its first-run gate.
-                    FirstRunGate(engine, imports) {}
+                    FirstRunGate(engine, imports, frame = { it() }) {}
                 }
                 entry<PoliciesKey> {
                     PoliciesRoute(engine, onOpenGroup = { backStack.add(GroupKey(it)) }, onOpenSubscriptions = { backStack.add(SubscriptionsKey) })

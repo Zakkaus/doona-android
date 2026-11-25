@@ -28,7 +28,7 @@ A legacy subscription with `format: null` returns `not_found` even if it has sto
 
 The two `hk-01` nodes are distinct endpoints with the same display name, and the second one's probe failed with `local_network`; the running snapshot carries the `local_network` warning, and the stopped one kept no yesterday (`yesterdayByNow` null); the subscription URL's token is a placeholder. The subscription was added with its own User-Agent, which the `addSubscription` reply carries; `setSubscriptionUserAgent` then set it back to null, the default, as the stopped catalog shows. The stats replies use one invented day, 2026-11-22: a five-second rate window, today and yesterday by the hour with each outbound's payload, the daily totals (2026-11-20 had no bytes, so it is absent), and two nodes' details with their latency tests, one of them failed.
 
-`catalog/member-locations.json` shows the location fields for a group, feed nodes and a static node. In the stopped snapshot both `hk-01` nodes are placed in `HK` with no city, and the groups carry no location.
+`catalog/member-locations.json` shows the location fields for a group, feed nodes and a static node. The stopped snapshot above remains a schema 3 example from before these optional fields.
 
 `select` without `network` sets or clears both pins and removes any separate choices for that group. Pass `"network":"tcp"` or `"network":"udp"` to change only that network. A null `memberId` restores the group's own choice on the affected networks. A node without UDP support does not gain a fallback.
 

@@ -9,13 +9,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.designsystem.rv.RvPullLook
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.NetworkState
-import dev.doona.android.engine.NetworkTransport
-import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.report.CrashOffer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.CoroutineContext
@@ -55,8 +52,7 @@ internal class ActivityCrashOffer(val shown: () -> Unit, val dismiss: () -> Unit
 /**
  * The 活動 entry: builds the ViewModel with [crashOffer]'s offer (none without one), the default [network] (the app's
  * `NetworkStateSource.state`) and what the user refused on the way to connecting ([refusals], which `MainActivity`
- * sets), and shows [ActivityPage]. [nav] false leaves the page's floating nav out, only for the old overload below,
- * whose tab frame draws its own; the routing hand-off removes it with that overload.
+ * sets), and shows [ActivityPage].
  */
 @Composable
 internal fun ActivityRoute(
@@ -67,13 +63,12 @@ internal fun ActivityRoute(
     onConnect: () -> Unit,
     routes: ActivityRoutes,
     pull: RvPullLook = RvPullLook.None,
-    nav: Boolean = true,
 ) {
     val offered = remember(crashOffer) { crashOffer?.offered ?: MutableStateFlow(false) }
     val online = remember(network) { steadyOnline(network.map { it.online }) }
     val viewModel: ActivityViewModel = viewModel(factory = ActivityViewModel.factory(engine, offered, online, refusals))
     val crash = remember(crashOffer) { crashOffer?.let { ActivityCrashOffer(it::shown, it::dismiss) } }
-    ActivityPage(viewModel, crash, onConnect, routes, pull, nav)
+    ActivityPage(viewModel, crash, onConnect, routes, pull)
 }
 
 /**
@@ -81,10 +76,10 @@ internal fun ActivityRoute(
  * ([pull]) covers it. Connecting needs the activity for the VPN consent, so it goes straight to [onConnect], as a
  * notice's 重新連線 and 重試 do; every other notice action leads where its cause can be mended
  * ([RvActivityNotice.remedy]). A failed action's banner, with its 重試, comes before the notice. [crash]: the crash offer
- * the crash notice marks shown and 匯出報告 dismisses. [nav]: see [ActivityRoute].
+ * the crash notice marks shown and 匯出報告 dismisses.
  */
 @Composable
-internal fun ActivityPage(viewModel: ActivityViewModel, crash: ActivityCrashOffer?, onConnect: () -> Unit, routes: ActivityRoutes, pull: RvPullLook = RvPullLook.None, nav: Boolean = true) {
+internal fun ActivityPage(viewModel: ActivityViewModel, crash: ActivityCrashOffer?, onConnect: () -> Unit, routes: ActivityRoutes, pull: RvPullLook = RvPullLook.None) {
     val live by viewModel.ui.collectAsStateWithLifecycle()
     val ui = rememberHeldWhileCovered(pull) { live }
     val onAction = viewModel::onAction
@@ -112,41 +107,7 @@ internal fun ActivityPage(viewModel: ActivityViewModel, crash: ActivityCrashOffe
         loading = ui.loading,
         rules = ui.rules,
         cards = ui.cards,
-        nav = nav,
     )
-}
-
-/**
- * The old route's signature, which `DoonaApp` still calls inside its old tab frame: the RV page with only a rule row's
- * group ([onOpenGroup]) wired, and without its own floating nav, since the frame draws one. The orchestrator's routing
- * hand-off replaces the call with the [ActivityRoute] above and removes this overload.
- */
-@Composable
-fun ActivityRoute(engine: Engine, onConnect: () -> Unit, onOpenGroup: (String) -> Unit) {
-    val routes = remember(onOpenGroup) {
-        ActivityRoutes(
-            traffic = NOT_WIRED,
-            stats = NOT_WIRED,
-            search = NOT_WIRED,
-            nodes = NOT_WIRED,
-            node = NOT_WIRED,
-            tab = {},
-            mode = NOT_WIRED,
-            rule = onOpenGroup,
-            rules = NOT_WIRED,
-            subscriptions = NOT_WIRED,
-            more = NOT_WIRED,
-            addSubscription = NOT_WIRED,
-            perApp = NOT_WIRED,
-            checkUpdate = NOT_WIRED,
-            exportReport = NOT_WIRED,
-            networkSettings = NOT_WIRED,
-            notifySettings = NOT_WIRED,
-            vpnSettings = NOT_WIRED,
-        )
-    }
-    // Online, as far as it knows: the old frame has no network state to give, and no refusal reaches this page.
-    ActivityRoute(engine, crashOffer = null, flowOf(NetworkState(NetworkTransport.Other)), ConnectRefusals(), onConnect, routes, nav = false)
 }
 
 private fun pageRoutes(routes: ActivityRoutes, test: () -> Unit) = RvActivityRoutes(

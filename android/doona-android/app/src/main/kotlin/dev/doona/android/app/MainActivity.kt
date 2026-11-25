@@ -68,6 +68,10 @@ class MainActivity : ComponentActivity() {
                     imports = container.imports,
                     version = version,
                     localNetwork = localNetwork,
+                    crashOffer = container.crashOffer,
+                    network = container.networkState.state,
+                    refusals = container.connectRefusals,
+                    onSystemSettings = ::openSystemSettings,
                 )
             }
         }
@@ -152,6 +156,16 @@ class MainActivity : ComponentActivity() {
     /** The app's page in the system settings, where a refused permission can still be allowed. */
     private fun openAppSettings() {
         startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
+    }
+
+    /** One of the system's settings pages that 活動's notices open. */
+    private fun openSystemSettings(page: SystemSettings) {
+        val intent = when (page) {
+            SystemSettings.Vpn -> Intent(Settings.ACTION_VPN_SETTINGS)
+            SystemSettings.Network -> Intent(Settings.ACTION_WIRELESS_SETTINGS)
+            SystemSettings.Notifications -> Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+        }
+        startActivity(intent)
     }
 
     companion object {

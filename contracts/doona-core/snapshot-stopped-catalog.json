@@ -40,10 +40,7 @@
             "failed": false,
             "error": null,
             "isGroup": true,
-            "subscriptionId": null,
-            "region": null,
-            "regionCentroid": null,
-            "city": null
+            "subscriptionId": null
           },
           {
             "id": "g-HK",
@@ -52,10 +49,7 @@
             "failed": false,
             "error": null,
             "isGroup": true,
-            "subscriptionId": null,
-            "region": null,
-            "regionCentroid": null,
-            "city": null
+            "subscriptionId": null
           },
           {
             "id": "n-7f3a19c2",
@@ -64,13 +58,7 @@
             "failed": false,
             "error": null,
             "isGroup": false,
-            "subscriptionId": "s1",
-            "region": "HK",
-            "regionCentroid": {
-              "lat": 22.4,
-              "lon": 114.11
-            },
-            "city": null
+            "subscriptionId": "s1"
           },
           {
             "id": "n-0c41be77",
@@ -79,13 +67,7 @@
             "failed": true,
             "error": "local_network",
             "isGroup": false,
-            "subscriptionId": "s1",
-            "region": "HK",
-            "regionCentroid": {
-              "lat": 22.4,
-              "lon": 114.11
-            },
-            "city": null
+            "subscriptionId": "s1"
           }
         ]
       },
@@ -109,13 +91,7 @@
             "failed": false,
             "error": null,
             "isGroup": false,
-            "subscriptionId": "s1",
-            "region": "HK",
-            "regionCentroid": {
-              "lat": 22.4,
-              "lon": 114.11
-            },
-            "city": null
+            "subscriptionId": "s1"
           },
           {
             "id": "n-0c41be77",
@@ -124,13 +100,7 @@
             "failed": true,
             "error": "local_network",
             "isGroup": false,
-            "subscriptionId": "s1",
-            "region": "HK",
-            "regionCentroid": {
-              "lat": 22.4,
-              "lon": 114.11
-            },
-            "city": null
+            "subscriptionId": "s1"
           }
         ]
       },
@@ -154,10 +124,7 @@
             "failed": false,
             "error": null,
             "isGroup": true,
-            "subscriptionId": null,
-            "region": null,
-            "regionCentroid": null,
-            "city": null
+            "subscriptionId": null
           },
           {
             "id": "g-Auto",
@@ -166,10 +133,7 @@
             "failed": false,
             "error": null,
             "isGroup": true,
-            "subscriptionId": null,
-            "region": null,
-            "regionCentroid": null,
-            "city": null
+            "subscriptionId": null
           },
           {
             "id": "g-HK",
@@ -178,10 +142,7 @@
             "failed": false,
             "error": null,
             "isGroup": true,
-            "subscriptionId": null,
-            "region": null,
-            "regionCentroid": null,
-            "city": null
+            "subscriptionId": null
           },
           {
             "id": "n-7f3a19c2",
@@ -190,13 +151,7 @@
             "failed": false,
             "error": null,
             "isGroup": false,
-            "subscriptionId": "s1",
-            "region": "HK",
-            "regionCentroid": {
-              "lat": 22.4,
-              "lon": 114.11
-            },
-            "city": null
+            "subscriptionId": "s1"
           },
           {
             "id": "n-0c41be77",
@@ -205,13 +160,7 @@
             "failed": true,
             "error": "local_network",
             "isGroup": false,
-            "subscriptionId": "s1",
-            "region": "HK",
-            "regionCentroid": {
-              "lat": 22.4,
-              "lon": 114.11
-            },
-            "city": null
+            "subscriptionId": "s1"
           }
         ]
       },
@@ -235,10 +184,7 @@
             "failed": false,
             "error": null,
             "isGroup": true,
-            "subscriptionId": null,
-            "region": null,
-            "regionCentroid": null,
-            "city": null
+            "subscriptionId": null
           },
           {
             "id": "g-Auto",
@@ -247,10 +193,7 @@
             "failed": false,
             "error": null,
             "isGroup": true,
-            "subscriptionId": null,
-            "region": null,
-            "regionCentroid": null,
-            "city": null
+            "subscriptionId": null
           },
           {
             "id": "g-HK",
@@ -259,10 +202,7 @@
             "failed": false,
             "error": null,
             "isGroup": true,
-            "subscriptionId": null,
-            "region": null,
-            "regionCentroid": null,
-            "city": null
+            "subscriptionId": null
           },
           {
             "id": "n-7f3a19c2",
@@ -271,13 +211,7 @@
             "failed": false,
             "error": null,
             "isGroup": false,
-            "subscriptionId": "s1",
-            "region": "HK",
-            "regionCentroid": {
-              "lat": 22.4,
-              "lon": 114.11
-            },
-            "city": null
+            "subscriptionId": "s1"
           },
           {
             "id": "n-0c41be77",
@@ -286,13 +220,7 @@
             "failed": true,
             "error": "local_network",
             "isGroup": false,
-            "subscriptionId": "s1",
-            "region": "HK",
-            "regionCentroid": {
-              "lat": 22.4,
-              "lon": 114.11
-            },
-            "city": null
+            "subscriptionId": "s1"
           }
         ]
       },
@@ -316,13 +244,7 @@
             "failed": false,
             "error": null,
             "isGroup": false,
-            "subscriptionId": "s1",
-            "region": "HK",
-            "regionCentroid": {
-              "lat": 22.4,
-              "lon": 114.11
-            },
-            "city": null
+            "subscriptionId": "s1"
           },
           {
             "id": "n-0c41be77",
@@ -331,13 +253,7 @@
             "failed": true,
             "error": "local_network",
             "isGroup": false,
-            "subscriptionId": "s1",
-            "region": "HK",
-            "regionCentroid": {
-              "lat": 22.4,
-              "lon": 114.11
-            },
-            "city": null
+            "subscriptionId": "s1"
           }
         ]
       }

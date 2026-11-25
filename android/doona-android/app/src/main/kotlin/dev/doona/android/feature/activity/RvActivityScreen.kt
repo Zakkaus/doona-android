@@ -62,8 +62,7 @@ import dev.doona.android.feature.model.fastest
  * place, as on 策略. While [loading] (before the engine is ready)
  * the hero's three lines and the cards are skeletons of themselves ([RvSkeletonHero], [ActivitySkeleton]), and the
  * content fades in over them in place; the map, the actions, the bar and the nav are there from the start. [navFade] (a
- * sample for the owner, off by default) lays [RvNavFade] under the nav. Without [nav] the page leaves its floating nav
- * out, for the old tab frame that draws its own; the routing hand-off removes it with that frame.
+ * sample for the owner, off by default) lays [RvNavFade] under the nav.
  */
 @Composable
 internal fun RvActivityScreen(
@@ -81,7 +80,6 @@ internal fun RvActivityScreen(
     navFade: Boolean = false,
     rules: List<RvActivityRule>,
     cards: RvActivityCards,
-    nav: Boolean = true,
 ) {
     val mode = state.mode
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
@@ -128,7 +126,7 @@ internal fun RvActivityScreen(
             }
             RvTopBar(glass, insets, rvShade(scroll), onSearch = routes.search, onStats = routes.stats, Modifier.align(Alignment.TopCenter), pull, routes.subscriptions)
             if (navFade) RvNavFade(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(rvNavMiddle(insets)))
-            if (nav) RvFloatingNav(RV_NAV_ACTIVITY, routes.tab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter))
+            RvFloatingNav(RV_NAV_ACTIVITY, routes.tab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter))
         }
     }
 }
