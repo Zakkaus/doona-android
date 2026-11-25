@@ -62,6 +62,7 @@ import dev.doona.android.designsystem.rv.latencyText
 import dev.doona.android.designsystem.rv.rvRaisedReach
 import dev.doona.android.designsystem.rv.rvRowPress
 import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
+import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvPolicyGroup
@@ -156,7 +157,7 @@ internal fun RvPolicyScreen(
 }
 
 /**
- * What 策略 shows of the profile: the main node's group, every other group, the rules the card lists and how many the
+ * What 策略 shows of the profile: the main node's group (null when the profile has none), every other group, the rules the card lists and how many the
  * profile has, the nodes and subscriptions 全域 lists, and now, for the subscriptions' end dates. The lists are copied
  * on construction, so a caller's mutable list cannot change the profile afterwards, and two profiles that list the same
  * nodes and subscriptions are equal in those.
@@ -164,7 +165,7 @@ internal fun RvPolicyScreen(
 @ConsistentCopyVisibility
 @Immutable
 internal data class RvPolicyProfile private constructor(
-    val main: RvPolicyGroup,
+    val main: RvPolicyGroup?,
     val groups: List<RvPolicyGroup>,
     val rules: List<RvPolicyRule>,
     val ruleCount: Int,
@@ -174,7 +175,7 @@ internal data class RvPolicyProfile private constructor(
 ) {
     companion object {
         operator fun invoke(
-            main: RvPolicyGroup,
+            main: RvPolicyGroup?,
             groups: List<RvPolicyGroup>,
             rules: List<RvPolicyRule>,
             ruleCount: Int,
@@ -205,8 +206,8 @@ private fun PolicyContent(state: RvPolicyState, onChange: (RvPolicyState) -> Uni
     RvGutter {
         ModeCard(state.mode) { onChange(state.copy(mode = it)) }
         if (state.mode == RvRouteMode.Rule) {
-            MainCard(state.group(profile.main), routes.mainNode)
-            GroupsCard(state, profile.groups, routes.group)
+            profile.main?.let { MainCard(state.group(it), routes.mainNode) }
+            if (profile.groups.isNotEmpty()) GroupsCard(state, profile.groups, routes.group)
             RulesCard(profile, routes.rules)
             OptionsCard(state, onChange, routes, configRev)
         }
@@ -268,26 +269,35 @@ private fun PolicySkeleton(state: RvPolicyState, profile: RvPolicyProfile?) {
     }
 }
 
-/** The main node (規則): the final group's choice, flagged as the node in use; the card opens the main node's picker. */
+/**
+ * The main node (規則): the final group's choice, flagged as the node in use; the card opens the main node's picker. A
+ * group whose choice leads to no node stands in its place, under its kind's glyph.
+ */
 @Composable
 private fun MainCard(main: RvPolicyGroup, onOpen: () -> Unit) {
     val node = main.selected
     RvCard {
         RvCardHeader(stringResource(R.string.rv_main_node), onClick = onOpen)
-        RvRow(
-            { RvFlag(node.place.flag, RvSize.rowDisc, current = true) },
-            node.name,
-            mainLine(main),
-            onClick = onOpen,
-            titleKeepWords = false,
-        ) { RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut) }
+        if (node == null) {
+            RvRow({ RvIconDisc(main.kind.glyph, current = true) }, main.name.text(), mainLine(main), onClick = onOpen, titleKeepWords = false)
+        } else {
+            RvRow(
+                { RvFlag(node.place.flag, RvSize.rowDisc, current = true) },
+                node.name,
+                mainLine(main),
+                onClick = onOpen,
+                titleKeepWords = false,
+            ) { RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut) }
+        }
     }
 }
 
 /** The main node's line under its name: the group's kind, the node's protocol and its place. */
 @Composable
-private fun mainLine(main: RvPolicyGroup): String =
-    listOf(stringResource(main.kind.label), main.selected.protocol, stringResource(main.selected.place.label)).joinToString(SEPARATOR)
+private fun mainLine(main: RvPolicyGroup): String {
+    val node = main.selected ?: return stringResource(main.kind.label)
+    return listOf(stringResource(main.kind.label), node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR)
+}
 
 /**
  * 全域's node picker: the node list's order (the search is the tab bar's), then every subscription's nodes (or every
@@ -295,10 +305,10 @@ private fun mainLine(main: RvPolicyGroup): String =
  */
 @Composable
 private fun GlobalPicker(state: RvPolicyState, profile: RvPolicyProfile, onChange: (RvPolicyState) -> Unit) {
-    val main = state.group(profile.main)
+    val main = profile.main?.let(state::group)
     val groups = remember(state.nodeSort, profile.nodes, profile.subscriptions) { rvNodeGroups(profile.nodes, profile.subscriptions, state.nodeSort) }
     RvControlRow({ RvNodeListControls(state.nodeSort, { onChange(state.copy(nodeSort = it)) }, onSearch = null) })
-    RvNodeGroups(groups, main.selectedId, state.nodeSort, profile.nowEpochMs) { onChange(state.choose(main.id, it)) }
+    RvNodeGroups(groups, main?.selected?.id.orEmpty(), state.nodeSort, profile.nowEpochMs) { id -> main?.let { onChange(state.choose(it.id, id)) } }
 }
 
 /** Every other group: its kind's glyph, its name over how it picks and how many nodes it has, and the node it uses. */
@@ -312,23 +322,23 @@ private fun GroupsCard(state: RvPolicyState, groups: List<RvPolicyGroup>, onOpen
 
 @Composable
 private fun GroupRow(group: RvPolicyGroup, onOpen: (String) -> Unit) {
-    val node = group.selected
-    RvRow(
-        { RvIconDisc(group.kind.glyph) },
-        group.name.text(),
-        groupLine(group),
-        Modifier.rvRowPress(Role.Button, { onOpen(group.id) }),
-        titleEnd = { RvText(node.name, Rv.type.rowValue, align = TextAlign.End, maxLines = RV_ROW_TITLE_LINES, keepWords = false) },
-        subtitleEnd = { RvText(latencyText(node.latencyMs), Rv.type.rowSub, color = latencyColor(node.latencyMs), align = TextAlign.End) },
-        trailing = { RvChevron() },
-        titleKeepWords = false,
-    )
+    RvGroupRow(group.kind.glyph, group.name.text(), groupLine(group), group.selected, Modifier.rvRowPress(Role.Button, { onOpen(group.id) }), trailing = { RvChevron() })
 }
 
-/** A group's line under its name: how it picks and how many nodes it has. */
+/**
+ * A group's line under its name: how it picks ([kind]), how many nodes it has and, when groups are among its members,
+ * how many. A group of groups alone leaves the nodes out.
+ */
 @Composable
-private fun groupLine(group: RvPolicyGroup): String =
-    stringResource(group.kind.label) + SEPARATOR + pluralStringResource(R.plurals.rv_policy_node_count, group.members.size, group.members.size)
+internal fun groupLine(group: RvPolicyGroup, kind: RvGroupKind = group.kind): String {
+    val nodes = group.members.size
+    val groups = group.groups.size
+    return listOfNotNull(
+        stringResource(kind.label),
+        pluralStringResource(R.plurals.rv_policy_node_count, nodes, nodes).takeIf { nodes > 0 || groups == 0 },
+        pluralStringResource(R.plurals.rv_policy_group_count, groups, groups).takeIf { groups > 0 },
+    ).joinToString(SEPARATOR)
+}
 
 /**
  * The rules (規則 only): how they are tried, then each one as what it matches over its kind, where the traffic ends

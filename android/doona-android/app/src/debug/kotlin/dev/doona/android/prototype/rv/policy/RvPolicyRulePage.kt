@@ -94,7 +94,7 @@ private fun ConnectionCard(connection: RvConnection) {
         RvStatRow(stringResource(R.string.rv_policy_target), connection.host + PORT + connection.port, valueKeepWords = false)
         RvStatRow(stringResource(R.string.rv_policy_app), connection.app, valueKeepWords = false)
         RvStatRow(stringResource(R.string.rv_policy_matched), connection.rule.match.title(), valueKeepWords = false)
-        RvStatRow(stringResource(R.string.rv_policy_via), group.name.text() + SEPARATOR + group.selected.name, valueKeepWords = false)
+        RvStatRow(stringResource(R.string.rv_policy_via), group.name.text() + SEPARATOR + group.selected!!.name, valueKeepWords = false)
     }
 }
 

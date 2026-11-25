@@ -65,6 +65,10 @@ class AppRvPolicyShotTest {
     @Config(qualifiers = WHOLE_RULE_EN)
     fun ruleEnLight() = shot("policy-en", dark = false, whole = true) { Page(::rvSampleEngine) }
 
+    /** Groups as a user writes them in honk by hand ([honkGroupsEngine]): no main group, nested groups, a fallback, an empty group. */
+    @Test
+    fun honkGroupsLight() = shot("policy-honk", dark = false) { Page(::honkGroupsEngine) }
+
     @Test
     fun loadingLight() = shot("policy-loading", dark = false) { Page(::notReady) }
 

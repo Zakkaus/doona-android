@@ -13,6 +13,10 @@
         <item quantity="one">%1$d node</item>
         <item quantity="other">%1$d nodes</item>
     </plurals>
+    <plurals name="rv_policy_group_count">
+        <item quantity="one">%1$d group</item>
+        <item quantity="other">%1$d groups</item>
+    </plurals>
     <string name="rv_template_cn_direct_line">Mainland China sites connect directly</string>
     <string name="rv_policy_rules">Routing rules</string>
     <string name="rv_policy_rules_order">Rules are checked from the top; the first match applies</string>

@@ -77,6 +77,10 @@ class AppRvGroupShotTest {
     @Config(qualifiers = WHOLE_APART)
     fun apartDark() = shot("group-apart", dark = true, whole = true) { Page(::apart) }
 
+    /** A selector over groups and nodes as a user writes it in honk by hand ([honkGroupsEngine]): its groups stand as rows. */
+    @Test
+    fun honkGroupsLight() = shot("group-honk", dark = false) { Page(::honkGroupsEngine, HONK_EXIT) }
+
     @Test
     fun loadingLight() = shot("group-loading", dark = false) { Page(::notReady) }
 
@@ -147,9 +151,9 @@ class AppRvGroupShotTest {
 
     /** The route on a view model with the sample's clock, reading on the test's thread. */
     @Composable
-    private fun Page(engine: () -> Engine) {
-        val vm = remember { GroupViewModel(engine(), STREAMING, clock = { SAMPLE_NOW }, reads = Dispatchers.Unconfined) }
-        GroupRoute(vm, STREAMING, onBack = {})
+    private fun Page(engine: () -> Engine, groupId: String = STREAMING) {
+        val vm = remember { GroupViewModel(engine(), groupId, clock = { SAMPLE_NOW }, reads = Dispatchers.Unconfined) }
+        GroupRoute(vm, groupId, onBack = {})
     }
 
     /** The sample engine with UDP on another node than TCP, so the switch starts on. */

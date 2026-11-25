@@ -1,5 +1,6 @@
 package dev.doona.android.feature.policies
 
+import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -11,6 +12,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
+import dev.doona.android.designsystem.rv.RV_ROW_TITLE_LINES
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvFlag
@@ -21,9 +23,12 @@ import dev.doona.android.designsystem.rv.RvSeeAll
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.SEPARATOR
+import dev.doona.android.designsystem.rv.latencyColor
+import dev.doona.android.designsystem.rv.latencyText
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.feature.model.RV_DIRECT
+import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvRuleMatch
@@ -31,12 +36,17 @@ import dev.doona.android.feature.model.RvRuleState
 import dev.doona.android.feature.model.text
 
 /**
- * Where a rule or a picked target sends traffic, as 活動's rule rows draw it: the flag of the node the group uses, or
- * 直連's straight arrow.
+ * Where a rule or a picked target sends traffic, as 活動's rule rows draw it: the flag of the node the group uses (its
+ * kind's glyph when its choice leads to no node), or 直連's straight arrow.
  */
 @Composable
 internal fun RvPolicyTarget(group: RvPolicyGroup?) {
-    if (group == null) RvIconDisc(R.drawable.rv_sym_arrow_right_alt) else RvFlag(group.selected.place.flag, RvSize.rowDisc)
+    val node = group?.selected
+    when {
+        group == null -> RvIconDisc(R.drawable.rv_sym_arrow_right_alt)
+        node == null -> RvIconDisc(group.kind.glyph)
+        else -> RvFlag(node.place.flag, RvSize.rowDisc)
+    }
 }
 
 /** What a rule matches, as its row's title. */
@@ -116,7 +126,7 @@ private fun Target(group: RvPolicyGroup?, selected: Boolean, onSelect: () -> Uni
     RvRow(
         { RvPolicyTarget(group) },
         group?.name?.text() ?: stringResource(R.string.mode_direct),
-        group?.selected?.name ?: stringResource(R.string.rv_policy_no_proxy),
+        if (group == null) stringResource(R.string.rv_policy_no_proxy) else group.selected?.name ?: stringResource(group.kind.label),
         pick,
         titleKeepWords = false,
         subtitleKeepWords = false,
@@ -129,3 +139,30 @@ private const val TARGETS = 4
 
 private const val GEOIP = "GEOIP"
 private const val GEOSITE = "GEOSITE"
+
+/**
+ * A group as a row, on 策略's groups card and among a group page's members: its kind's [glyph] (flagged while [current]),
+ * its [name] over its [line], and at the end the [node] its choice ends on with that node's latency; nothing there when
+ * the choice leads to no node.
+ */
+@Composable
+internal fun RvGroupRow(
+    @DrawableRes glyph: Int,
+    name: String,
+    line: String,
+    node: RvNode?,
+    modifier: Modifier,
+    current: Boolean = false,
+    trailing: (@Composable () -> Unit)? = null,
+) {
+    RvRow(
+        { RvIconDisc(glyph, current = current) },
+        name,
+        line,
+        modifier,
+        titleEnd = node?.let { { RvText(it.name, Rv.type.rowValue, align = TextAlign.End, maxLines = RV_ROW_TITLE_LINES, keepWords = false) } },
+        subtitleEnd = node?.let { { RvText(latencyText(it.latencyMs), Rv.type.rowSub, color = latencyColor(it.latencyMs), align = TextAlign.End) } },
+        trailing = trailing,
+        titleKeepWords = false,
+    )
+}

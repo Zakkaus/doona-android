@@ -12,6 +12,9 @@
     <plurals name="rv_policy_node_count">
         <item quantity="other">%1$d 个节点</item>
     </plurals>
+    <plurals name="rv_policy_group_count">
+        <item quantity="other">%1$d 个策略组</item>
+    </plurals>
     <string name="rv_template_cn_direct_line">中国大陆网站直接连接</string>
     <string name="rv_policy_rules">分流规则</string>
     <string name="rv_policy_rules_order">由上而下匹配，第一条匹配的规则生效</string>

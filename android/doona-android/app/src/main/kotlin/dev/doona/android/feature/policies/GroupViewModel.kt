@@ -60,10 +60,10 @@ internal class GroupViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), current())
 
     /**
-     * A tap on [nodeId] chooses it for the network 套用到 names while the switch is on, else for both. A Score group picks
-     * each network's node itself, so a tap there chooses nothing.
+     * A tap on [memberId], a node or a member group, chooses it for the network 套用到 names while the switch is on, else
+     * for both. A Score group picks each network's node itself, so a tap there chooses nothing.
      */
-    fun onTap(nodeId: String) {
+    fun onTap(memberId: String) {
         val catalog = engine.catalog.value ?: return
         val groups = catalog.groups.associateBy { it.id }
         val group = groups[groupId]?.takeIf { it.kind != GroupKind.Score } ?: return
@@ -74,7 +74,7 @@ internal class GroupViewModel(
             shown.apply == RvApplyTo.Udp -> Network.Udp
             else -> null
         }
-        val member = memberFor(group, nodeId, groups)
+        val member = memberFor(group, memberId, groups)
         perform(GroupAction.Select) { engine.select(groupId, member, network) }
     }
 
@@ -120,19 +120,21 @@ internal class GroupViewModel(
         val groups = catalog.groups.associateBy { it.id }
         val group = groups[groupId] ?: return Read.NONE
         seedApart(group)
-        val leaves = leafNodes(group, groups)
-        val infos = engine.nodes(leaves.map { it.id }).getOrElse { return null }.associateBy { it.id }
+        val own = group.members.filterNot { it.isGroup }
+        val shown = (own + leafNodes(group, groups)).distinctBy { it.id }
+        val infos = engine.nodes(shown.map { it.id }).getOrElse { return null }.associateBy { it.id }
         val names = catalog.subscriptions.associate { it.id to it.name }
-        val nodes = leaves.associate { it.id to rvNode(it, infos[it.id], it.subscriptionId?.let(names::get).orEmpty(), places) }
-        val mapped = rvPolicyGroup(group, groups, nodes) ?: return Read.NONE
-        val held = leaves.mapNotNullTo(mutableSetOf()) { it.subscriptionId }
+        val nodes = shown.associate { it.id to rvNode(it, infos[it.id], it.subscriptionId?.let(names::get).orEmpty(), places) }
+        val mapped = rvPolicyGroup(group, groups, nodes)
+        val members = mapped.members.map { it.id } + mapped.groups.map { it.id }
+        val held = own.mapNotNullTo(mutableSetOf()) { it.subscriptionId }
         val score = if (group.kind == GroupKind.Score) {
             engine.scoreState().map { state -> state.groups.firstOrNull { it.id == groupId } }.getOrElse { read.value?.score }
         } else {
             null
         }
-        val tcp = selectedLeaf(group, group.tcp.selectedId, groups)?.id ?: mapped.selectedId
-        val udp = selectedLeaf(group, group.udp.selectedId, groups)?.id ?: tcp
+        val tcp = mapped.selectedId
+        val udp = group.udp.selectedId?.takeIf { it in members } ?: tcp
         return Read(
             group = mapped,
             subscriptions = catalog.subscriptions.filter { it.id in held }.map(::rvSubscription),
@@ -156,7 +158,10 @@ internal class GroupViewModel(
     /** The 分開選擇 switch and the network 套用到 names: the page's own. */
     private data class Local(val apart: Boolean, val apply: RvApplyTo)
 
-    /** One catalog read: [group] is null when the catalog has no such group or it leads to no node. */
+    /**
+     * One catalog read: [group] is null when the catalog has no such group. [tcpId] and [udpId] name the member each
+     * network uses, a node or a group.
+     */
     private class Read(
         val group: RvPolicyGroup?,
         val subscriptions: List<RvSubscription>,

@@ -5,7 +5,11 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.performClick
 import dev.doona.android.designsystem.rv.rvShownName
+import dev.doona.android.feature.model.RvGroupKind
+import dev.doona.android.feature.model.RvLabel
+import dev.doona.android.feature.model.RvMemberGroup
 import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.rvContent
@@ -127,6 +131,22 @@ class RvGroupPageTest {
         page(sample, apart = false, actions = RvGroupActions(tap = { taps += it }))
         compose.onNode(hasText(node(sample, PLAIN_TWO)), useUnmergedTree = true).performClick()
         assertEquals(listOf(sample.group.members[PLAIN_TWO].id), taps)
+    }
+
+    @Test
+    fun `a group among the members stands as a row over its kind, with the node it ends on, and a tap hands its id`() {
+        val taps = mutableListOf<String>()
+        val sample = RvGroupFullSample.two
+        val inner = sample.group.members[PLAIN_TWO]
+        val group = RvPolicyGroup(sample.group.id, sample.group.name, sample.group.kind, sample.group.members, sample.tcpId, listOf(RvMemberGroup("g-快", RvLabel.Text("快"), RvGroupKind.Auto, inner)))
+        val choice = RvApplyChoice(sample.tcpId, sample.tcpId, apart = false)
+        compose.rvContent(dark = false) {
+            RvGroupPage(RvGroupContent(group, sample.subscriptions, choice, RvApplyTo.Tcp, false, RvData.nowEpochMs), RvGroupActions(tap = { taps += it }))
+        }
+        assertEquals(1, shown("快"))
+        assertTrue(shown(inner.name) >= 1)
+        compose.onNode(hasText("快"), useUnmergedTree = true).performClick()
+        assertEquals(listOf("g-快"), taps)
     }
 
     @Test

@@ -31,7 +31,8 @@ import dev.doona.android.feature.messageRes
  * started. A group removed while its page is open, such as by a subscription update, leaves the page; before the engine
  * has loaded, as after process death, the group is only not read yet and the page is a skeleton under its name.
  * [onNodeDetail] opens a node's detail (a wiring point: the 節點 lane's page). [onOpenGroup] is what DoonaApp still
- * passes; the page lists a nested group's nodes in place, so it opens none (p4-handoff-doonaapp.patch drops it).
+ * passes until p4-handoff-doonaapp.patch drops it: a member group is a row a tap chooses, and its own page opens from
+ * 策略's groups card, so this page opens none.
  */
 @Composable
 fun GroupRoute(

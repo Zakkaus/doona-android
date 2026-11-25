@@ -83,7 +83,7 @@ internal fun RvGroupSamplePage(
             titleBlock,
             insets,
             caption = { RvGroupCaption(group) },
-            control = if (current == null) ({ RvGroupChip(group.selected) }) else null,
+            control = if (current == null) ({ RvGroupChip(group.selected!!) }) else null,
         )
         RvGutter {
             if (current != null) {

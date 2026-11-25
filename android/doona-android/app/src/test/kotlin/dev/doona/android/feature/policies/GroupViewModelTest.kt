@@ -191,6 +191,32 @@ class GroupViewModelTest {
         assertNull(state.choice)
     }
 
+    @Test
+    fun `a group among the members is listed as one, and a tap chooses it`() = runTest {
+        val nodes = listOf("n1", "n2").map { Member(it, "Node $it", latencyMs = 40, subscriptionId = "s1") }
+        val fast = Group("g-快", "快", GroupKind.UrlTest, nodes, selectedId = "n2")
+        val exit = Group("g-出口", "出口", GroupKind.Selector, listOf(Member("g-快", "快", isGroup = true), nodes[0]), selectedId = "n1")
+        val engine = Recording(base = FakeEngine(listOf(exit, fast)))
+        val vm = collected(engine, "g-出口")
+        val group = vm.uiState.value.group!!
+        assertEquals(listOf("n1"), group.members.map { it.id })
+        assertEquals(listOf("g-快"), group.groups.map { it.id })
+        assertEquals("n2", group.groups.single().node?.id)
+        vm.onTap("g-快")
+        assertEquals(listOf("select g-出口 g-快 null"), engine.calls)
+        assertEquals("g-快", vm.uiState.value.choice!!.tcpId)
+        assertEquals("n2", vm.uiState.value.group!!.selected?.id)
+    }
+
+    @Test
+    fun `a group with no member still has a page`() = runTest {
+        val engine = Recording(base = FakeEngine(listOf(Group("g-空", "空", GroupKind.Selector, emptyList(), selectedId = null))))
+        val state = collected(engine, "g-空").uiState.value
+        assertFalse(state.loading)
+        assertEquals("g-空", state.group?.id)
+        assertNull(state.group?.selected)
+    }
+
     private companion object {
         const val SELECTOR = "g-Streaming"
         const val SCORE = "g-Score"

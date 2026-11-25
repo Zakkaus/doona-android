@@ -88,7 +88,7 @@ internal object RvNetworkSample {
     val asked: RvNode = group.byLatency.first { !apart.chosen(it.id) }
 
     val rules: List<RvRuleOutbound> = rulesWithUdp(UDP_NODE)
-    val rulesOneRegion: List<RvRuleOutbound> = rulesWithUdp(group.members.first { it.place == group.selected.place && it.id != group.selectedId }.id)
+    val rulesOneRegion: List<RvRuleOutbound> = rulesWithUdp(group.members.first { it.place == group.selected!!.place && it.id != group.selectedId }.id)
 
     private fun rulesWithUdp(udp: String) = RvData.ruleOutbounds.map {
         if (RvLabel.Res(it.group) == group.name) RvRuleOutbound(it.group, it.nodeId, it.bytes, udp) else it

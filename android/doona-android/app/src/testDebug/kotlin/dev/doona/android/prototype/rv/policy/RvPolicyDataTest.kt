@@ -15,8 +15,8 @@ import java.io.File
 class RvPolicyDataTest {
     @Test
     fun theMainNodeIsTheNodeInUse() {
-        assertEquals(RvData.CURRENT_ID, RvPolicyData.main.selected.id)
-        assertEquals("Hong Kong 02 IPLC", RvPolicyData.main.selected.name)
+        assertEquals(RvData.CURRENT_ID, RvPolicyData.main.selected?.id)
+        assertEquals("Hong Kong 02 IPLC", RvPolicyData.main.selected?.name)
         assertEquals(RvData.nodes.size, RvPolicyData.main.members.size)
     }
 
@@ -26,8 +26,8 @@ class RvPolicyDataTest {
             assertEquals(RvData.ruleOutbounds.first { it.group == name }.nodeId, group.selectedId)
             assertEquals(RvLabel.Res(name), group.name)
         }
-        assertEquals("Taipei 04", RvPolicyData.streaming.selected.name)
-        assertEquals("Tokyo 02", RvPolicyData.ai.selected.name)
+        assertEquals("Taipei 04", RvPolicyData.streaming.selected?.name)
+        assertEquals("Tokyo 02", RvPolicyData.ai.selected?.name)
     }
 
     @Test
@@ -35,8 +35,8 @@ class RvPolicyDataTest {
         val auto = RvPolicyData.groups.filter { it.kind == RvGroupKind.Auto }
         assertEquals(5, auto.size)
         auto.forEach { assertEquals(it.byLatency.first().id, it.selectedId) }
-        assertEquals("Taipei 04", RvPolicyData.auto.selected.name)
-        assertEquals(26, RvPolicyData.auto.selected.latencyMs)
+        assertEquals("Taipei 04", RvPolicyData.auto.selected?.name)
+        assertEquals(26, RvPolicyData.auto.selected?.latencyMs)
     }
 
     @Test

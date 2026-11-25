@@ -131,13 +131,13 @@ class PoliciesViewModelTest {
     fun `choosing the main node selects it in the main group on both networks`() = runTest {
         val engine = Recording()
         val vm = collected(engine)
-        val main = vm.uiState.value.profile!!.main
+        val main = vm.uiState.value.profile!!.main!!
         val other = main.members.first { it.id != main.selectedId }.id
         vm.onChange(vm.uiState.value.state.choose(main.id, main.selectedId))
         assertEquals(emptyList<String>(), engine.calls)
         vm.onChange(vm.uiState.value.state.choose(main.id, other))
         assertEquals(listOf("select g-Proxy $other null"), engine.calls)
-        assertEquals(other, vm.uiState.value.profile!!.main.selectedId)
+        assertEquals(other, vm.uiState.value.profile!!.main!!.selectedId)
     }
 
     @Test
@@ -205,7 +205,7 @@ class PoliciesViewModelTest {
         val engine = Recording()
         val vm = collected(engine)
         assertEquals(1, engine.ruleReads)
-        val main = vm.uiState.value.profile!!.main
+        val main = vm.uiState.value.profile!!.main!!
         vm.onChange(vm.uiState.value.state.choose(main.id, main.members.first { it.id != main.selectedId }.id))
         assertEquals(1, engine.ruleReads)
         engine.revision.value = 2L

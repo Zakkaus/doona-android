@@ -88,7 +88,7 @@ class RvLargeTextTest {
         val group = connection.rule.group ?: RvPolicyData.main
         large { RvPolicyRulePage(connection, RvQuickRule(), onChange = {}, onBack = {}, onApply = {}) }
         val labels = listOf(R.string.rv_policy_target, R.string.rv_policy_app, R.string.rv_policy_matched, R.string.rv_policy_via).map(::rvText)
-        val values = listOf(connection.host + ":" + connection.port, connection.app, rvText((group.name as RvLabel.Res).id) + SEPARATOR + group.selected.name)
+        val values = listOf(connection.host + ":" + connection.port, connection.app, rvText((group.name as RvLabel.Res).id) + SEPARATOR + group.selected?.name)
         (labels + values).forEach(::assertWhole)
     }
 
@@ -103,7 +103,7 @@ class RvLargeTextTest {
     @Test
     fun policyMainNodeIsWhole() {
         large { RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Rule), onChange = {}) }
-        assertWhole(RvPolicyData.main.selected.name)
+        assertWhole(RvPolicyData.main.selected!!.name)
     }
 
     /** The pull-down picker (X3): each node it shows has its whole name beside its latency and info mark. */

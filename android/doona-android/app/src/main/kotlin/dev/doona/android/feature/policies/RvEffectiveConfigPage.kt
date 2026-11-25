@@ -112,7 +112,7 @@ private fun ModeCard(policy: RvPolicyState, main: RvPolicyGroup) {
     }
     RvCard {
         RvStatRow(stringResource(R.string.rv_effective_mode), stringResource(mode))
-        RvStatRow(stringResource(R.string.rv_main_node), policy.group(main).selected.name, valueKeepWords = false)
+        RvStatRow(stringResource(R.string.rv_main_node), policy.group(main).selected?.name.orEmpty(), valueKeepWords = false)
     }
 }
 
@@ -128,7 +128,7 @@ private fun GroupsCard(policy: RvPolicyState, groups: List<RvPolicyGroup>) {
                 { RvIconDisc(group.kind.glyph) },
                 group.name.text(),
                 members,
-                titleEnd = { RvText(group.selected.name, Rv.type.rowValue, align = TextAlign.End) },
+                titleEnd = group.selected?.let { node -> { RvText(node.name, Rv.type.rowValue, align = TextAlign.End) } },
                 titleKeepWords = false,
                 subtitleKeepWords = false,
             )

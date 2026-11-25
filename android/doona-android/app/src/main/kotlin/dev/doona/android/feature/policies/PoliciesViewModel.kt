@@ -119,7 +119,7 @@ internal class PoliciesViewModel(
         retry?.invoke()
     }
 
-    /** The profile of [catalog], or null when a read failed or the main group cannot be drawn. */
+    /** The profile of [catalog], or null when a read failed. */
     private suspend fun read(catalog: Catalog): RvPolicyProfile? {
         val ids = catalog.groups.flatMap { it.members }.filterNot { it.isGroup }.map { it.id }.distinct()
         val infos = engine.nodes(ids).getOrElse { return null }.associateBy { it.id }

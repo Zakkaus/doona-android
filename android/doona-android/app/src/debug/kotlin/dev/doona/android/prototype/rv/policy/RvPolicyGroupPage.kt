@@ -97,7 +97,7 @@ internal fun RvPolicyGroupPage(
         onBack = onBack,
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_test_group), onTest) },
     ) { titleBlock ->
-        val node = group.selected
+        val node = group.selected!!
         RvPageHeader(
             name,
             titleBlock,

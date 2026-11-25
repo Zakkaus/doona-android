@@ -18,6 +18,7 @@ import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvMatchKind
+import dev.doona.android.feature.model.RvMemberGroup
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvRuleMatch
 import dev.doona.android.feature.model.RvRuleState
@@ -38,10 +39,10 @@ class PolicyMappingTest {
         RuleRow("r-$kindName-$sample", 0, kind, kindName, sample, count, target)
 
     @Test
-    fun `automatic kinds read as one, Score as its own`() {
+    fun `each kind reads as its own`() {
         assertEquals(RvGroupKind.Select, rvGroupKind(GroupKind.Selector))
         assertEquals(RvGroupKind.Auto, rvGroupKind(GroupKind.UrlTest))
-        assertEquals(RvGroupKind.Auto, rvGroupKind(GroupKind.Fallback))
+        assertEquals(RvGroupKind.Fallback, rvGroupKind(GroupKind.Fallback))
         assertEquals(RvGroupKind.Score, rvGroupKind(GroupKind.Score))
     }
 
@@ -98,18 +99,34 @@ class PolicyMappingTest {
     }
 
     @Test
-    fun `a nested group stands as its leaf node, once, and an unknown selection falls back to the first`() {
-        val inner = Group("g-In", "In", GroupKind.UrlTest, listOf(node("n1"), node("n2")), selectedId = "n2")
+    fun `a nested group is a member of its own, ending on its choice's node, and an unknown selection falls back to the first`() {
+        val inner = Group("g-In", "In", GroupKind.Fallback, listOf(node("n1"), node("n2")), selectedId = "n2")
         val innerMember = Member("g-In", "In", isGroup = true)
-        val outer = Group("g-Out", "Out", GroupKind.Selector, listOf(innerMember, node("n1"), node("n2"), node("n3")), selectedId = "n-gone")
+        val outer = Group("g-Out", "Out", GroupKind.Selector, listOf(innerMember, node("n1"), node("n3")), selectedId = "n-gone")
         val groups = listOf(inner, outer).associateBy { it.id }
         val all = nodes(node("n1"), node("n2"), node("n3"))
-        val mapped = rvPolicyGroup(outer, groups, all)!!
-        assertEquals(listOf("n2", "n1", "n3"), mapped.members.map { it.id })
-        assertEquals("n2", mapped.selectedId)
+        val mapped = rvPolicyGroup(outer, groups, all)
+        assertEquals(listOf("n1", "n3"), mapped.members.map { it.id })
+        assertEquals(listOf(RvMemberGroup("g-In", RvLabel.Text("In"), RvGroupKind.Fallback, all.getValue("n2"))), mapped.groups)
+        assertEquals("n1", mapped.selectedId)
         assertEquals(RvLabel.Text("Out"), mapped.name)
-        assertEquals("n2", rvPolicyGroup(outer.copy(tcp = Group.Selection("g-In", true)), groups, all)!!.selectedId)
-        assertEquals("n3", rvPolicyGroup(outer.copy(tcp = Group.Selection("n3", true)), groups, all)!!.selectedId)
+        val throughInner = rvPolicyGroup(outer.copy(tcp = Group.Selection("g-In", true)), groups, all)
+        assertEquals("g-In", throughInner.selectedId)
+        assertEquals("n2", throughInner.selected?.id)
+        assertEquals("n2", throughInner.nodeOf("g-In")?.id)
+        assertEquals("n3", rvPolicyGroup(outer.copy(tcp = Group.Selection("n3", true)), groups, all).selected?.id)
+    }
+
+    @Test
+    fun `a group of groups alone has no node members and uses its first group`() {
+        val hk = Group("g-香港", "香港", GroupKind.UrlTest, listOf(node("n1")), selectedId = "n1")
+        val jp = Group("g-日本", "日本", GroupKind.UrlTest, listOf(node("n2")), selectedId = "n2")
+        val outer = Group("g-出口", "出口", GroupKind.Selector, listOf(Member("g-香港", "香港", isGroup = true), Member("g-日本", "日本", isGroup = true)), selectedId = null)
+        val mapped = rvPolicyGroup(outer, listOf(hk, jp, outer).associateBy { it.id }, nodes(node("n1"), node("n2")))
+        assertEquals(emptyList<String>(), mapped.members.map { it.id })
+        assertEquals(listOf("g-香港", "g-日本"), mapped.groups.map { it.id })
+        assertEquals("g-香港", mapped.selectedId)
+        assertEquals("n1", mapped.selected?.id)
     }
 
     @Test
@@ -122,10 +139,16 @@ class PolicyMappingTest {
     }
 
     @Test
-    fun `a group that leads to no node cannot be drawn`() {
-        assertNull(rvPolicyGroup(Group("g-E", "E", GroupKind.Selector, emptyList(), selectedId = null), emptyMap(), emptyMap()))
-        val dangling = Group("g-D", "D", GroupKind.Selector, listOf(Member("g-Gone", "Gone", isGroup = true)), selectedId = "g-Gone")
-        assertNull(rvPolicyGroup(dangling, mapOf(dangling.id to dangling), emptyMap()))
+    fun `a group that leads to no node is drawn with no node in use`() {
+        val empty = rvPolicyGroup(Group("g-E", "E", GroupKind.Selector, emptyList(), selectedId = null), emptyMap(), emptyMap())
+        assertEquals(emptyList<RvMemberGroup>(), empty.groups)
+        assertNull(empty.selected)
+        val inner = Group("g-Empty", "Empty", GroupKind.UrlTest, emptyList(), selectedId = null)
+        val outer = Group("g-D", "D", GroupKind.Selector, listOf(Member("g-Empty", "Empty", isGroup = true), Member("g-Gone", "Gone", isGroup = true)), selectedId = "g-Empty")
+        val mapped = rvPolicyGroup(outer, listOf(inner, outer).associateBy { it.id }, emptyMap())
+        assertEquals(listOf(RvMemberGroup("g-Empty", RvLabel.Text("Empty"), RvGroupKind.Auto, null)), mapped.groups)
+        assertEquals("g-Empty", mapped.selectedId)
+        assertNull(mapped.selected)
     }
 
     @Test
@@ -177,7 +200,7 @@ class PolicyMappingTest {
         val reject = RuleRow("r-ads", 0, RuleKind.DomainSuffix, "DomainSuffix", "ads.example", 1, RuleTarget.Reject)
         val rows = listOf(reject) + RvSampleRules.rows
         val profile = rvPolicyProfile(catalog, emptyMap(), rows, 15, mapOf("r-streaming" to 7L, "r-cn" to 3L), 99L, RV_UNKNOWN_PLACES)!!
-        assertEquals("g-Proxy", profile.main.id)
+        assertEquals("g-Proxy", profile.main?.id)
         assertEquals(catalog.groups.map { it.id }.drop(1), profile.groups.map { it.id })
         assertEquals(RV_POLICY_CARD_RULES, profile.rules.size)
         assertEquals(listOf(7L, 0L, 3L, 0L, 0L), profile.rules.map { it.bytes })
@@ -191,9 +214,33 @@ class PolicyMappingTest {
     }
 
     @Test
-    fun `no profile when the main group cannot be drawn`() {
+    fun `a profile without the main group lists every group, and an empty main group stays the main one`() {
         val catalog = rvSampleEngine().catalog.value!!
+        val renamed = catalog.copy(mainGroupId = "g-Gone")
+        val profile = rvPolicyProfile(renamed, emptyMap(), emptyList(), 0, emptyMap(), 0L, RV_UNKNOWN_PLACES)
+        assertNull(profile.main)
+        assertEquals(catalog.groups.map { it.id }, profile.groups.map { it.id })
         val empty = catalog.copy(groups = catalog.groups.map { if (it.id == catalog.mainGroupId) it.copy(members = emptyList()) else it })
-        assertNull(rvPolicyProfile(empty, emptyMap(), emptyList(), 0, emptyMap(), 0L, RV_UNKNOWN_PLACES))
+        val main = rvPolicyProfile(empty, emptyMap(), emptyList(), 0, emptyMap(), 0L, RV_UNKNOWN_PLACES).main
+        assertEquals(catalog.mainGroupId, main?.id)
+        assertNull(main?.selected)
+    }
+
+    @Test
+    fun `groups named and nested as the user wrote them, with no Proxy, map as written`() {
+        val a = node("a1")
+        val b = node("b1")
+        val fast = Group("g-快", "快", GroupKind.UrlTest, listOf(a, b), selectedId = "b1")
+        val exit = Group("g-出口", "出口", GroupKind.Selector, listOf(Member("g-快", "快", isGroup = true), a), selectedId = "g-快")
+        val backup = Group("g-備援", "備援", GroupKind.Fallback, listOf(b, a), selectedId = "b1")
+        val catalog = rvSampleEngine().catalog.value!!.copy(groups = listOf(backup, exit, fast), mainGroupId = "g-出口", subscriptions = emptyList())
+        val rows = listOf(RuleRow("r1", 0, RuleKind.DomainSuffix, "DomainSuffix", "example.com", 1, RuleTarget.Group("g-備援")))
+        val profile = rvPolicyProfile(catalog, emptyMap(), rows, 1, emptyMap(), 0L, RV_UNKNOWN_PLACES)
+        assertEquals("g-出口", profile.main?.id)
+        assertEquals("b1", profile.main?.selected?.id)
+        assertEquals(listOf("g-備援", "g-快"), profile.groups.map { it.id })
+        assertEquals(RvGroupKind.Fallback, profile.groups.first().kind)
+        assertEquals("g-備援", profile.rules.single().group?.id)
+        assertEquals(listOf("a1", "b1"), profile.nodes.map { it.id }.sorted())
     }
 }

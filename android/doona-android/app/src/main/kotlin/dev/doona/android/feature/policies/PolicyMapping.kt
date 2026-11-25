@@ -18,6 +18,7 @@ import dev.doona.android.feature.model.RvCity
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvMatchKind
+import dev.doona.android.feature.model.RvMemberGroup
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyRule
@@ -73,10 +74,10 @@ internal fun rvNode(member: Member, info: NodeInfo?, subscription: String, place
     )
 }
 
-/** The pages know two automatic kinds as one: url-test and fallback both pick for the user, so both read as 自動. */
 internal fun rvGroupKind(kind: GroupKind): RvGroupKind = when (kind) {
     GroupKind.Selector -> RvGroupKind.Select
-    GroupKind.UrlTest, GroupKind.Fallback -> RvGroupKind.Auto
+    GroupKind.UrlTest -> RvGroupKind.Auto
+    GroupKind.Fallback -> RvGroupKind.Fallback
     GroupKind.Score -> RvGroupKind.Score
 }
 
@@ -122,10 +123,6 @@ internal fun rvSubscription(subscription: Subscription): RvSubscription = RvSubs
 internal fun leafNodes(group: Group, groups: Map<String, Group>): List<Member> =
     group.members.mapNotNull { leafOf(it, groups) }.distinctBy { it.id }
 
-/** The node a selection of [group] ends on: the selected member's leaf, or null when the selection names no member. */
-internal fun selectedLeaf(group: Group, selectedId: String?, groups: Map<String, Group>): Member? =
-    group.members.firstOrNull { it.id == selectedId }?.let { leafOf(it, groups) }
-
 /**
  * The member of [group] to select so that it carries [nodeId]: the node itself when it is a member, else the first nested
  * group whose selection ends on it. The pages list nested groups by their leaf node, so a tap names a node that may only
@@ -137,15 +134,19 @@ internal fun memberFor(group: Group, nodeId: String, groups: Map<String, Group>)
         ?: nodeId
 
 /**
- * A group as the pages show it, its name as the profile gives it. Its members are [leafNodes]; it uses the node its TCP
- * selection ends on, or its first member when that is unknown, since [RvPolicyGroup] requires a member. Null when the
- * group leads to no node at all, which the pages cannot draw. [nodes] holds every node by id.
+ * A group as the pages show it, its name as the profile gives it: its node members, then the groups among its members,
+ * each with the node its choice ends on (a member naming no group in [groups] is left out). It uses the member its TCP
+ * selection names, or its first member when that names none. A group with no member at all is drawn too: honk allows it.
+ * [nodes] holds every node by id.
  */
-internal fun rvPolicyGroup(group: Group, groups: Map<String, Group>, nodes: Map<String, RvNode>): RvPolicyGroup? {
-    val members = leafNodes(group, groups).mapNotNull { nodes[it.id] }
-    if (members.isEmpty()) return null
-    val selected = selectedLeaf(group, group.tcp.selectedId, groups)?.id?.takeIf { id -> members.any { it.id == id } } ?: members.first().id
-    return RvPolicyGroup(group.id, RvLabel.Text(group.name), rvGroupKind(group.kind), members, selected)
+internal fun rvPolicyGroup(group: Group, groups: Map<String, Group>, nodes: Map<String, RvNode>): RvPolicyGroup {
+    val members = group.members.filterNot { it.isGroup }.mapNotNull { nodes[it.id] }.distinctBy { it.id }
+    val nested = group.members.filter { it.isGroup }.distinctBy { it.id }.mapNotNull { member ->
+        groups[member.id]?.let { RvMemberGroup(it.id, RvLabel.Text(it.name), rvGroupKind(it.kind), leafOf(member, groups)?.let { leaf -> nodes[leaf.id] }) }
+    }
+    val ids = members.map { it.id } + nested.map { it.id }
+    val selected = group.tcp.selectedId?.takeIf { it in ids } ?: ids.firstOrNull().orEmpty()
+    return RvPolicyGroup(group.id, RvLabel.Text(group.name), rvGroupKind(group.kind), members, selected, nested)
 }
 
 /**
@@ -170,8 +171,8 @@ internal fun rvRuleMatch(row: RuleRow): RvRuleMatch {
 
 /**
  * A rule as 策略 lists it, with [bytes] routed today. Null for a row that refuses its flows: [RvPolicyRule] has no place
- * for 拒絕, and its null group means 直連, so showing the row would say the opposite of what it does. A group the pages
- * cannot draw ([groups] lacks it) also shows as null. All of a row's lines skipped is Skipped; part of them still routes.
+ * for 拒絕, and its null group means 直連, so showing the row would say the opposite of what it does. A group missing
+ * from [groups] also shows as null. All of a row's lines skipped is Skipped; part of them still routes.
  */
 internal fun rvPolicyRule(row: RuleRow, groups: Map<String, RvPolicyGroup>, bytes: Long): RvPolicyRule? {
     val group = when (val target = row.target) {
@@ -195,8 +196,9 @@ internal fun rvNodes(catalog: Catalog, infos: Map<String, NodeInfo>, places: RvN
 
 /**
  * 策略's profile from the catalog, the nodes' details [infos], the card's [rules] (the source has [ruleTotal]) and today's
- * bytes per rule id [byRule]. Null when the main group cannot be drawn. The card lists the first [RV_POLICY_CARD_RULES]
- * rows that do not refuse their flows; the other groups keep the catalog's order.
+ * bytes per rule id [byRule]. The main group is null when no group has the catalog's main id: honk needs no such group.
+ * The card lists the first [RV_POLICY_CARD_RULES] rows that do not refuse their flows; the other groups keep the
+ * catalog's order.
  */
 internal fun rvPolicyProfile(
     catalog: Catalog,
@@ -206,15 +208,15 @@ internal fun rvPolicyProfile(
     byRule: Map<String, Long>,
     nowEpochMs: Long,
     places: RvNodePlaces,
-): RvPolicyProfile? {
+): RvPolicyProfile {
     val nodes = rvNodes(catalog, infos, places)
     val byId = catalog.groups.associateBy { it.id }
-    val mapped = catalog.groups.mapNotNull { rvPolicyGroup(it, byId, nodes) }.associateBy { it.id }
-    val main = mapped[catalog.mainGroupId] ?: return null
+    val mapped = catalog.groups.map { rvPolicyGroup(it, byId, nodes) }.associateBy { it.id }
+    val main = mapped[catalog.mainGroupId]
     val routed = rules.filterNot { it.target == RuleTarget.Reject }
     return RvPolicyProfile(
         main = main,
-        groups = mapped.values.filter { it.id != main.id },
+        groups = mapped.values.filter { it.id != main?.id },
         rules = routed.take(RV_POLICY_CARD_RULES).mapNotNull { rvPolicyRule(it, mapped, byRule[it.id] ?: 0L) },
         ruleCount = ruleTotal,
         nodes = nodes.values.toList(),

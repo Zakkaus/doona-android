@@ -14,7 +14,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
@@ -39,7 +38,9 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rvMarkName
+import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.designsystem.rv.rvShownName
+import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvPolicyGroup
@@ -113,6 +114,7 @@ internal fun RvGroupPage(
         RvGutter(banner = banner) {
             NetworkCard(group, choice) { actions.apart(!it.apart) }
             if (choice.apart && !content.score) ApplyCard(content.apply, actions.apply)
+            if (group.groups.isNotEmpty()) MemberGroupsCard(group, choice, content.score, actions.tap)
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
             RvSearchSlot { RvSearchField(null, typed, { typed = it }, it) }
@@ -142,17 +144,43 @@ internal fun RvGroupPage(
                 )
             }
         }
-        if (matching.isEmpty()) {
+        if (group.members.isNotEmpty() && matching.isEmpty()) {
             RvGutter { RvEmptyCaption(stringResource(R.string.rv_group_no_match), stringResource(R.string.rv_conn_none_line)) }
         }
     }
 }
 
-/** The line under the title: how the group picks and how many nodes it has. A Score group is named as the templates name it. */
+/**
+ * The line under the title: how the group picks and how many nodes and groups it has, as 策略's group row says it. A Score
+ * group ([score]) is named as the templates name it.
+ */
 @Composable
 private fun Caption(group: RvPolicyGroup, score: Boolean) {
-    val count = pluralStringResource(R.plurals.rv_policy_node_count, group.members.size, group.members.size)
-    if (score) RvCaption(stringResource(R.string.policy_kind_score) + SEPARATOR + count, R.drawable.rv_sym_bolt) else RvCaption(stringResource(group.kind.label) + SEPARATOR + count, group.kind.glyph)
+    val kind = if (score) RvGroupKind.Score else group.kind
+    RvCaption(groupLine(group, kind), kind.glyph)
+}
+
+/**
+ * The groups among the members (honk lets a group list groups), above the search, which filters nodes: each under its
+ * kind's glyph, flagged while chosen, its name over the networks that chose it and how it picks, and the node its own
+ * choice ends on with that node's latency. A tap chooses the group as a tap on a node chooses the node.
+ */
+@Composable
+private fun MemberGroupsCard(group: RvPolicyGroup, choice: RvApplyChoice, score: Boolean, onTap: (String) -> Unit) {
+    RvCard {
+        RvCardHeader(stringResource(R.string.rv_policy_groups))
+        group.groups.forEach { member ->
+            val chosen = choice.chosen(member.id)
+            RvGroupRow(
+                member.kind.glyph,
+                member.name.text(),
+                listOfNotNull(lead(choice, member.id, score), stringResource(member.kind.label)).joinToString(SEPARATOR),
+                member.node,
+                Modifier.rvRowSelect(chosen, { onTap(member.id) }),
+                current = chosen,
+            )
+        }
+    }
 }
 
 /** A node of a section: the picker's row, its name's emoji drawn as our icons, [mark] before its line. */
@@ -193,7 +221,7 @@ private fun lead(choice: RvApplyChoice, id: String, score: Boolean): String? {
 /** 目前使用中: the switch 分開選擇 TCP/UDP, then a row for each network, its line beginning with the network. */
 @Composable
 internal fun NetworkCard(group: RvPolicyGroup, choice: RvApplyChoice, onApart: (RvApplyChoice) -> Unit) {
-    val node = { id: String -> group.members.firstOrNull { it.id == id } }
+    val node = group::nodeOf
     RvCard {
         RvCardHeader(stringResource(R.string.rv_nodes_in_use))
         RvSwitchRow(R.drawable.rv_sym_account_tree, stringResource(R.string.rv_group_apart), choice.apart, onChange = { onApart(choice) })
