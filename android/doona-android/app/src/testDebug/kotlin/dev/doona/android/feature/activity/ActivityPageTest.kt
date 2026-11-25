@@ -97,7 +97,8 @@ class ActivityPageTest {
         // The failure stands before the page's first frame, so its banner holds the notice's place from the start.
         model.onAction(ActivityAction.TestLatency)
         compose.rvContent(dark = false) {
-            ActivityPage(model, ActivityCrashOffer({ shown.incrementAndGet() }, { dismissed.incrementAndGet() }), onConnect = {}, routes = activityTestRoutes(opened))
+            // On Unconfined the disk hop runs inside the page's effect, so once the page is idle any shown() it would make is made.
+            ActivityPage(model, ActivityCrashOffer({ shown.incrementAndGet() }, { dismissed.incrementAndGet() }, Dispatchers.Unconfined), onConnect = {}, routes = activityTestRoutes(opened))
         }
         compose.waitForIdle()
         compose.onNodeWithText(rvText(R.string.rv_failed_test_latency)).assertExists()

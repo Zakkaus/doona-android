@@ -13,6 +13,7 @@ import dev.doona.android.report.CrashOffer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.CoroutineContext
 
 /**
  * Where 活動 leads, the shell's to give: the page's own routes ([RvActivityRoutes] without the latency test, which the
@@ -42,9 +43,9 @@ internal class ActivityRoutes(
 
 /**
  * What 活動 does with the crash offer: [shown] once its notice reached the screen (it writes the disk, so the page calls
- * it off the main thread), [dismiss] on 匯出報告. [ActivityRoute] takes them from `CrashOffer`.
+ * it on [disk], off the main thread), [dismiss] on 匯出報告. [ActivityRoute] takes them from `CrashOffer`.
  */
-internal class ActivityCrashOffer(val shown: () -> Unit, val dismiss: () -> Unit)
+internal class ActivityCrashOffer(val shown: () -> Unit, val dismiss: () -> Unit, val disk: CoroutineContext = Dispatchers.IO)
 
 /**
  * The 活動 entry: builds the ViewModel with [crashOffer]'s offer (none without one) and shows [ActivityPage]. [nav] false
@@ -71,11 +72,11 @@ internal fun ActivityPage(viewModel: ActivityViewModel, crash: ActivityCrashOffe
     val live by viewModel.ui.collectAsStateWithLifecycle()
     val ui = rememberHeldWhileCovered(pull) { live }
     val onAction = viewModel::onAction
-    val page = remember(routes, onAction) { pageRoutes(routes) { onAction(ActivityAction.TestLatency) } }
+    val page = remember(routes, viewModel) { pageRoutes(routes) { viewModel.onAction(ActivityAction.TestLatency) } }
     if (ui.failure == null && ui.notice == RvActivityNotice.Crash && crash != null) {
         // The offer reached the screen: it is not made again for this crash, even if the user leaves without exporting.
         // A failed action's banner takes the notice's place, so the offer is not shown while one stands.
-        LaunchedEffect(crash) { withContext(Dispatchers.IO) { crash.shown() } }
+        LaunchedEffect(crash) { withContext(crash.disk) { crash.shown() } }
     }
     val failure = ui.failure
     val banner = when {
@@ -158,12 +159,10 @@ private fun remedy(remedy: ActivityRemedy, routes: ActivityRoutes, onConnect: ()
 
     ActivityRemedy.Retest -> ({ onAction(ActivityAction.TestLatency) })
 
-    ActivityRemedy.ExportReport -> (
-        {
-            crash?.dismiss()
-            routes.exportReport()
-        }
-        )
+    ActivityRemedy.ExportReport -> fun() {
+        crash?.dismiss()
+        routes.exportReport()
+    }
 
     ActivityRemedy.NetworkSettings -> routes.networkSettings
 
