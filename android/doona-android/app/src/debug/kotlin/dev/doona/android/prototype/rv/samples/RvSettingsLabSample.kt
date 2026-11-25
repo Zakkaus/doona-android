@@ -55,16 +55,15 @@ import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvGeoData
 import dev.doona.android.feature.model.RvPerApp
 import dev.doona.android.feature.model.RvSettingsState
+import dev.doona.android.feature.settings.RvAboutEntry
+import dev.doona.android.feature.settings.RvGeoDataRow
+import dev.doona.android.feature.settings.RvUpdate
+import dev.doona.android.feature.settings.RvUpdateRow
+import dev.doona.android.feature.settings.rvUpdateActionLabel
+import dev.doona.android.feature.settings.rvUpdateLabel
+import dev.doona.android.feature.settings.rvUpdateNotice
 import dev.doona.android.prototype.rv.settings.RV_SAMPLE_GEO_SHIPPED_MS
-import dev.doona.android.prototype.rv.settings.RvAboutEntry
-import dev.doona.android.prototype.rv.settings.RvGeoDataRow
-import dev.doona.android.prototype.rv.settings.RvSettingsRoutes
-import dev.doona.android.prototype.rv.settings.RvUpdate
-import dev.doona.android.prototype.rv.settings.RvUpdateRow
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
-import dev.doona.android.prototype.rv.settings.rvUpdateActionLabel
-import dev.doona.android.prototype.rv.settings.rvUpdateLabel
-import dev.doona.android.prototype.rv.settings.rvUpdateNotice
 
 /**
  * 設定 as [dev.doona.android.prototype.rv.settings.RvSettingsScreen] draws it, with one row more: 實驗室, a navigation row

@@ -7,6 +7,10 @@ import dev.doona.android.feature.model.RvGeoData
 import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.model.RvThemeMode
 import dev.doona.android.feature.report.RvReportPreview
+import dev.doona.android.feature.settings.RvAboutVersions
+import dev.doona.android.feature.settings.RvSettingsRoutes
+import dev.doona.android.feature.settings.RvSettingsScreen
+import dev.doona.android.feature.settings.RvUpdate
 import dev.doona.android.prototype.rv.data.RvData
 
 internal fun rvSampleAppearance() = RvAppearance(RvThemeMode.System, followWallpaper = false, accent = 0)
@@ -40,7 +44,7 @@ internal fun RvSettingsScreenSample(
     onChange: (RvSettingsState) -> Unit,
     onOpenTheme: () -> Unit,
     onTab: (Int) -> Unit = {},
-    routes: RvSettingsRoutes = RvSettingsRoutes(),
+    routes: RvSettingsRoutes = rvSettingsRoutes(),
     configRev: Int? = null,
     update: RvUpdate = RvUpdate.Idle,
 ) = RvSettingsScreen(state, onChange, onOpenTheme, onTab, routes, configRev, RvGeoData(RV_SAMPLE_GEO_SHIPPED_MS), update)

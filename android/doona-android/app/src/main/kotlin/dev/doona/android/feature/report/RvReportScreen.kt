@@ -1,7 +1,5 @@
-package dev.doona.android.prototype.rv.settings
+package dev.doona.android.feature.report
 
-import android.content.res.Configuration
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -11,14 +9,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.Rv
@@ -37,18 +30,13 @@ import dev.doona.android.designsystem.rv.RvSettingsSpace
 import dev.doona.android.designsystem.rv.RvSettingsSwitchRow
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
-import dev.doona.android.designsystem.rv.RvTheme
-import dev.doona.android.designsystem.rv.rvSystemScheme
-import dev.doona.android.feature.NOT_WIRED
-import dev.doona.android.feature.report.RvRedaction
-import dev.doona.android.feature.report.RvReportBuild
-import dev.doona.android.feature.report.RvReportPreview
+import dev.doona.android.designsystem.rv.SEPARATOR
 
 /** What the report page's actions do: open the prefilled issue, hand the file to the share sheet, write it again. */
 internal class RvReportActions(
-    val github: () -> Unit = NOT_WIRED,
-    val share: () -> Unit = NOT_WIRED,
-    val retry: () -> Unit = NOT_WIRED,
+    val github: () -> Unit,
+    val share: () -> Unit,
+    val retry: () -> Unit,
 )
 
 /**
@@ -69,7 +57,7 @@ internal fun RvReportScreen(
     redaction: RvRedaction,
     onRedaction: (RvRedaction) -> Unit,
     onBack: () -> Unit,
-    actions: RvReportActions = RvReportActions(),
+    actions: RvReportActions,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_report_title)
@@ -157,16 +145,4 @@ private fun failure(build: RvReportBuild, onRetry: () -> Unit): RvNotice? = if (
     RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_report_failed), stringResource(R.string.rv_report_failed_reason), stringResource(R.string.rv_retry), onRetry)
 } else {
     null
-}
-
-/** The parts of one value line; the library keeps each part whole when the line wraps. */
-private const val SEPARATOR = " · "
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvReportScreenPreview() {
-    val dark = isSystemInDarkTheme()
-    var redaction by remember { mutableStateOf(RvRedaction()) }
-    RvTheme(rvSystemScheme(dark), dark) { RvReportScreen(RvReportBuild.Ready(redaction), rvSampleReport, redaction, { redaction = it }, onBack = {}) }
 }

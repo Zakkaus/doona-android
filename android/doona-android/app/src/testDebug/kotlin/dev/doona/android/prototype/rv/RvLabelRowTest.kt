@@ -17,9 +17,8 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RV_NAV
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.RvTypeScale
-import dev.doona.android.prototype.rv.settings.RvSettingsScreen
+import dev.doona.android.feature.settings.RvUpdate
 import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
-import dev.doona.android.prototype.rv.settings.RvUpdate
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

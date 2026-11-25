@@ -29,6 +29,8 @@ import dev.doona.android.designsystem.rv.RvSettingsSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.feature.model.RvGeoData
 import dev.doona.android.feature.model.RvGeoUpdate
+import dev.doona.android.feature.settings.RvSettingsRoutes
+import dev.doona.android.feature.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed
@@ -278,7 +280,7 @@ class RvGeoDataShotTest {
 
     @Composable
     private fun Page(data: RvGeoData, onUpdate: () -> Unit = {}) =
-        RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(geoUpdate = onUpdate), geoData = data)
+        RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = rvSettingsRoutes(geoUpdate = onUpdate), geoData = data)
 
     @Composable
     private fun Themed(content: @Composable () -> Unit) = RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content)

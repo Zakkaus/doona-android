@@ -22,6 +22,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvInfoContent
 import dev.doona.android.designsystem.rv.RvSheetLayout
 import dev.doona.android.feature.model.RvSettingsState
+import dev.doona.android.feature.settings.RvSettingsRoutes
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.assertWhole
@@ -124,7 +125,7 @@ class RvSettingsTileTest {
     private fun answering(code: Int, start: RvSettingsState = rvSampleSettings().copy(tileAdded = false)): HostState {
         val host = HostState(start)
         compose.rvContent(dark = false) {
-            val routes = RvSettingsRoutes(addTile = { host.state = host.state.afterTileRequest(quickTileResult(code)) })
+            val routes = rvSettingsRoutes(addTile = { host.state = host.state.afterTileRequest(quickTileResult(code)) })
             RvSettingsScreenSample(host.state, onChange = { host.state = it }, onOpenTheme = {}, routes = routes)
         }
         return host

@@ -1,9 +1,8 @@
-package dev.doona.android.prototype.rv.settings
+package dev.doona.android.feature.settings
 
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R

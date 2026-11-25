@@ -28,6 +28,10 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.feature.settings.RvSettingsRoutes
+import dev.doona.android.feature.settings.RvUpdate
+import dev.doona.android.feature.settings.RvUpdateRow
+import dev.doona.android.feature.settings.rvUpdateLabel
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed
@@ -169,7 +173,7 @@ class RvUpdateShotTest {
     @Test
     fun aNewerReleaseOpensItsPage() {
         var opened = 0
-        compose.setContent { Themed { Page(NEW, RvSettingsRoutes(release = { opened++ })) } }
+        compose.setContent { Themed { Page(NEW, rvSettingsRoutes(release = { opened++ })) } }
         compose.onNodeWithText(text(R.string.rv_update_new, RV_SAMPLE_RELEASE)).assertExists()
         compose.onNodeWithText(rvText(R.string.rv_update_view)).performClick()
         assertEquals(1, opened)
@@ -179,7 +183,7 @@ class RvUpdateShotTest {
     @Test
     fun aFailedCheckIsToldOnItsRowOnlyAndRetried() {
         var checks = 0
-        compose.setContent { Themed { Page(RvUpdate.Failed, RvSettingsRoutes(checkUpdate = { checks++ })) } }
+        compose.setContent { Themed { Page(RvUpdate.Failed, rvSettingsRoutes(checkUpdate = { checks++ })) } }
         compose.onNode(line("${rvText(R.string.rv_settings_version_value)} · ${rvText(R.string.rv_update_failed)}"), useUnmergedTree = true).assertExists()
         compose.onNodeWithText(rvText(R.string.rv_update_failed)).assertDoesNotExist()
         compose.onNodeWithText(rvText(R.string.rv_retry)).performScrollTo().performClick()
@@ -198,7 +202,7 @@ class RvUpdateShotTest {
     @Test
     fun theHeroActionIsOneNamedButton() {
         var checks = 0
-        compose.setContent { Themed { Page(RvUpdate.Idle, RvSettingsRoutes(checkUpdate = { checks++ })) } }
+        compose.setContent { Themed { Page(RvUpdate.Idle, rvSettingsRoutes(checkUpdate = { checks++ })) } }
         val hero = compose.onAllNodesWithText(rvText(R.string.rv_settings_check_update)).onFirst()
         hero.assertHasClickAction().assert(IS_BUTTON).assertIsEnabled()
         // No click node a screen reader finds is left without a name, as the disc alone was.
@@ -213,7 +217,7 @@ class RvUpdateShotTest {
     @Test
     fun aCheckUnderWayTakesNoSecondOnThePage() {
         var checks = 0
-        compose.setContent { Themed { Page(RvUpdate.Checking, RvSettingsRoutes(checkUpdate = { checks++ })) } }
+        compose.setContent { Themed { Page(RvUpdate.Checking, rvSettingsRoutes(checkUpdate = { checks++ })) } }
         val hero = compose.onAllNodesWithText(rvText(R.string.rv_settings_check_update)).onFirst().assertIsNotEnabled()
         hero.performClick()
         hero.performSemanticsAction(SemanticsActions.OnClick)
@@ -252,7 +256,7 @@ class RvUpdateShotTest {
     }
 
     @Composable
-    private fun Page(update: RvUpdate, routes: RvSettingsRoutes = RvSettingsRoutes()) =
+    private fun Page(update: RvUpdate, routes: RvSettingsRoutes = rvSettingsRoutes()) =
         RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = routes, update = update)
 
     @Composable

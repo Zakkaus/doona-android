@@ -7,6 +7,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.feature.model.RvPolicyState
+import dev.doona.android.feature.settings.RvSettingsRoutes
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed
@@ -17,10 +18,9 @@ import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.seedColorScheme
-import dev.doona.android.prototype.rv.settings.RvSettingsRoutes
-import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
+import dev.doona.android.prototype.rv.settings.rvSettingsRoutes
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -87,7 +87,7 @@ class RvConfigEntryShotTest {
     fun settingsLinkOpensTheOverview() {
         var opened = false
         compose.setContent {
-            Themed { RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(config = { opened = true }), configRev = RvConfigData.REV) }
+            Themed { RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = rvSettingsRoutes(config = { opened = true }), configRev = RvConfigData.REV) }
         }
         compose.onNodeWithText(CONFIG).performScrollTo().performClick()
         assertTrue(opened)

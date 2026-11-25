@@ -47,6 +47,12 @@ import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.model.fastest
 import dev.doona.android.feature.nodes.ui.LocalRvRowActions
 import dev.doona.android.feature.nodes.ui.RvRowActions
+import dev.doona.android.feature.settings.RvLanguageScreen
+import dev.doona.android.feature.settings.RvLicenseText
+import dev.doona.android.feature.settings.RvLicensesScreen
+import dev.doona.android.feature.settings.RvSettingsRoutes
+import dev.doona.android.feature.settings.rvLicenseEntries
+import dev.doona.android.feature.settings.rvSystemLanguage
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
 import dev.doona.android.prototype.rv.connections.RvConnectionsPage
 import dev.doona.android.prototype.rv.connections.RvConnectionsRoutes
@@ -62,25 +68,19 @@ import dev.doona.android.prototype.rv.policy.RvPolicyPreview
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewRoutes
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewState
 import dev.doona.android.prototype.rv.settings.RvDnsScreen
-import dev.doona.android.prototype.rv.settings.RvLanguageScreen
-import dev.doona.android.prototype.rv.settings.RvLicenseText
-import dev.doona.android.prototype.rv.settings.RvLicensesScreen
 import dev.doona.android.prototype.rv.settings.RvPerAppActions
 import dev.doona.android.prototype.rv.settings.RvPerAppScreen
 import dev.doona.android.prototype.rv.settings.RvReportSample
 import dev.doona.android.prototype.rv.settings.RvSave
 import dev.doona.android.prototype.rv.settings.RvSettingsPreview
 import dev.doona.android.prototype.rv.settings.RvSettingsPreviewRoutes
-import dev.doona.android.prototype.rv.settings.RvSettingsRoutes
-import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
 import dev.doona.android.prototype.rv.settings.previewDark
-import dev.doona.android.prototype.rv.settings.rvLicenseEntries
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.settings.rvQuickTile
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
-import dev.doona.android.prototype.rv.settings.rvSystemLanguage
+import dev.doona.android.prototype.rv.settings.rvSettingsRoutes
 import dev.doona.android.prototype.rv.settings.rvUpdateSample
 import dev.doona.android.prototype.rv.settings.scheme
 import dev.doona.android.prototype.rv.states.RvActivityNotice
@@ -279,7 +279,7 @@ private fun SettingsPage(settings: RvSettingsState, onSettings: (RvSettingsState
     val context = LocalContext.current
     val tile = rvQuickTile(settings, onSettings)
     val update = rvUpdateSample(outcome)
-    val routes = RvSettingsRoutes(
+    val routes = rvSettingsRoutes(
         alwaysOn = { context.startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) },
         addTile = tile.add,
         perApp = { pages.push(PERAPP) },

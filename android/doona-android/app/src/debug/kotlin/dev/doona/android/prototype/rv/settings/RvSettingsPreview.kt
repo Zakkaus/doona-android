@@ -8,10 +8,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.report.RvRedaction
+import dev.doona.android.feature.report.RvReportActions
 import dev.doona.android.feature.report.RvReportBuild
+import dev.doona.android.feature.report.RvReportScreen
 import dev.doona.android.feature.settings.RV_DEBUG_HOURS
+import dev.doona.android.feature.settings.RvAboutRoutes
+import dev.doona.android.feature.settings.RvAboutScreen
+import dev.doona.android.feature.settings.RvIntervalScreen
 import dev.doona.android.feature.settings.RvLogLevel
+import dev.doona.android.feature.settings.RvLogLevelScreen
+import dev.doona.android.feature.settings.RvUpdate
 import dev.doona.android.prototype.rv.LICENSES
 import dev.doona.android.prototype.rv.REPORT
 import dev.doona.android.prototype.rv.data.RvData
@@ -35,11 +43,11 @@ internal object RvSettingsPreviewRoutes {
 @Composable
 internal fun RvSettingsPreview(route: String, push: (String) -> Unit, pop: () -> Unit) {
     when (route.substringBefore(':')) {
-        RvSettingsPreviewRoutes.ABOUT -> RvAboutScreen(rvSampleVersions, onBack = pop, routes = RvAboutRoutes(report = { push(REPORT) }, licenses = { push(LICENSES) }))
+        RvSettingsPreviewRoutes.ABOUT -> RvAboutScreen(rvSampleVersions, onBack = pop, routes = rvAboutRoutes(report = { push(REPORT) }, licenses = { push(LICENSES) }))
 
         RvSettingsPreviewRoutes.INTERVAL -> {
             var hours by rememberSaveable { mutableIntStateOf(RvData.UPDATE_HOURS) }
-            RvIntervalScreen(hours, { hours = it }, onBack = pop)
+            RvIntervalScreen(hours, { hours = it }, onBack = pop, onCustom = NOT_WIRED)
         }
 
         else -> LogLevelSample(pop)
@@ -107,7 +115,7 @@ internal fun RvReportSample(failed: Boolean, pop: () -> Unit) {
         delay(RV_BUILD_MS)
         build = RvReportBuild.Ready(wanted)
     }
-    val actions = RvReportActions(retry = { build = RvReportBuild.Building })
+    val actions = rvReportActions(retry = { build = RvReportBuild.Building })
     val turn = { next: RvRedaction ->
         redaction = next
         build = RvReportBuild.Building

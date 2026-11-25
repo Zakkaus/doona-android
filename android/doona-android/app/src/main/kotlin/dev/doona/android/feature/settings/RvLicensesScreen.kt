@@ -1,8 +1,6 @@
-package dev.doona.android.prototype.rv.settings
+package dev.doona.android.feature.settings
 
-import android.content.res.Configuration
 import androidx.annotation.StringRes
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -15,7 +13,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.Rv
@@ -27,8 +24,6 @@ import dev.doona.android.designsystem.rv.RvSettingsNavRow
 import dev.doona.android.designsystem.rv.RvSettingsSpace
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvText
-import dev.doona.android.designsystem.rv.RvTheme
-import dev.doona.android.designsystem.rv.rvSystemScheme
 
 /**
  * An entry of the licences page: its [name], its licence (a component's SPDX expression), and its text, the asset
@@ -137,11 +132,3 @@ private fun String.isRule() = all { it == '-' || it == '=' || it == '*' || it ==
 
 private val BLANK_LINE = Regex("\n[ \t]*\n")
 private val LIST_ITEM = Regex("""^([*•-] |\([a-z0-9]+\) |[0-9]+\. |[a-z]\) )""")
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvLicensesScreenPreview() {
-    val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvLicensesScreen(onOpen = {}, onBack = {}) }
-}

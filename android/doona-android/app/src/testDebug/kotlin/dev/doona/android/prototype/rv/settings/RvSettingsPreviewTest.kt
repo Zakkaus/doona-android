@@ -22,6 +22,8 @@ import androidx.compose.ui.test.performSemanticsAction
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.feature.settings.RV_DEBUG_HOURS
+import dev.doona.android.feature.settings.RV_INTERVAL_HOURS
+import dev.doona.android.feature.settings.RvSettingsRoutes
 import dev.doona.android.prototype.rv.REPORT
 import dev.doona.android.prototype.rv.RvMotionOptions
 import dev.doona.android.prototype.rv.RvPreviewApp
@@ -79,7 +81,7 @@ class RvSettingsPreviewTest {
         compose.setContent {
             val sample = rvUpdateSample("new")
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
-                RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(checkUpdate = sample.check), update = sample.update)
+                RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = rvSettingsRoutes(checkUpdate = sample.check), update = sample.update)
             }
         }
         compose.mainClock.autoAdvance = false

@@ -13,6 +13,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvSettingsSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.feature.model.RvDnsUpstream
+import dev.doona.android.feature.settings.RvSettingsRoutes
 import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
@@ -95,7 +96,7 @@ class RvSettingsShotTest {
         var opened = 0
         compose.setContent {
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
-                RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(report = { opened++ }))
+                RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = rvSettingsRoutes(report = { opened++ }))
             }
         }
         compose.onNodeWithText(rvText(R.string.rv_report_title)).performClick()
@@ -109,7 +110,7 @@ class RvSettingsShotTest {
         var about = 0
         compose.setContent {
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
-                RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(perApp = { perApp++ }, about = { about++ }))
+                RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = rvSettingsRoutes(perApp = { perApp++ }, about = { about++ }))
             }
         }
         compose.onNodeWithText(rvText(R.string.rv_settings_per_app)).performClick()

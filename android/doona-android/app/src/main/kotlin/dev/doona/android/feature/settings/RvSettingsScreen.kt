@@ -1,7 +1,5 @@
-package dev.doona.android.prototype.rv.settings
+package dev.doona.android.feature.settings
 
-import android.content.res.Configuration
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,8 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,7 +22,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RV_NAV_SETTINGS
@@ -49,13 +44,10 @@ import dev.doona.android.designsystem.rv.RvSettingsSpace
 import dev.doona.android.designsystem.rv.RvSettingsSwitchRow
 import dev.doona.android.designsystem.rv.RvSettingsText
 import dev.doona.android.designsystem.rv.RvSpace
-import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvActionRowFit
 import dev.doona.android.designsystem.rv.rvBarHeight
 import dev.doona.android.designsystem.rv.rvDotMap
 import dev.doona.android.designsystem.rv.rvHeroArt
-import dev.doona.android.designsystem.rv.rvSystemScheme
-import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvGeoData
 import dev.doona.android.feature.model.RvPerApp
@@ -80,7 +72,7 @@ internal fun RvSettingsScreen(
     onChange: (RvSettingsState) -> Unit,
     onOpenTheme: () -> Unit,
     onTab: (Int) -> Unit = {},
-    routes: RvSettingsRoutes = RvSettingsRoutes(),
+    routes: RvSettingsRoutes,
     configRev: Int? = null,
     geoData: RvGeoData,
     update: RvUpdate = RvUpdate.Idle,
@@ -102,7 +94,7 @@ internal fun RvSettingsScreen(
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
             ConnectionGroup(state, onChange, routes)
-            SubscriptionGroup(state, onChange)
+            SubscriptionGroup(state, onChange, routes.interval)
             AppearanceGroup(state, onOpenTheme, routes.language)
             AdvancedGroup(state, routes, configRev)
             RvUpdateGroup(version, update, routes.checkUpdate, geoData, routes.geoUpdate)
@@ -157,18 +149,19 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, routes: RvSettingsR
  * language page ([language]). The app downloads nothing: the release opens in the browser.
  */
 internal class RvSettingsRoutes(
-    val alwaysOn: () -> Unit = NOT_WIRED,
-    val addTile: () -> Unit = NOT_WIRED,
-    val perApp: () -> Unit = NOT_WIRED,
-    val dns: () -> Unit = NOT_WIRED,
-    val effectiveConfig: () -> Unit = NOT_WIRED,
-    val report: () -> Unit = NOT_WIRED,
-    val about: () -> Unit = NOT_WIRED,
-    val config: () -> Unit = NOT_WIRED,
-    val geoUpdate: () -> Unit = NOT_WIRED,
-    val checkUpdate: () -> Unit = NOT_WIRED,
-    val release: () -> Unit = NOT_WIRED,
-    val language: () -> Unit = NOT_WIRED,
+    val alwaysOn: () -> Unit,
+    val addTile: () -> Unit,
+    val perApp: () -> Unit,
+    val dns: () -> Unit,
+    val effectiveConfig: () -> Unit,
+    val report: () -> Unit,
+    val about: () -> Unit,
+    val config: () -> Unit,
+    val geoUpdate: () -> Unit,
+    val checkUpdate: () -> Unit,
+    val release: () -> Unit,
+    val language: () -> Unit,
+    val interval: () -> Unit,
 )
 
 /**
@@ -203,14 +196,14 @@ private fun ConnectionGroup(state: RvSettingsState, onChange: (RvSettingsState) 
 }
 
 @Composable
-private fun SubscriptionGroup(state: RvSettingsState, onChange: (RvSettingsState) -> Unit) {
+private fun SubscriptionGroup(state: RvSettingsState, onChange: (RvSettingsState) -> Unit, onOpenInterval: () -> Unit) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_subscription))
     RvSettingsCard {
         RvSettingsSwitchRow(stringResource(R.string.rv_settings_auto_update), R.drawable.rv_sym_rss_feed, state.autoUpdate, { onChange(state.copy(autoUpdate = it)) })
         RvSettingsNavRow(
             stringResource(R.string.rv_settings_update_interval),
             R.drawable.rv_sym_schedule,
-            NOT_WIRED,
+            onOpenInterval,
             stringResource(R.string.rv_settings_update_interval_value, state.updateHours),
         )
     }
@@ -248,13 +241,4 @@ private fun perAppValue(perApp: RvPerApp): String = when (perApp.policy) {
     RvAppPolicy.All -> stringResource(R.string.perapp_policy_all)
     RvAppPolicy.Only -> stringResource(R.string.rv_settings_per_app_value, perApp.packages.size)
     RvAppPolicy.Except -> stringResource(R.string.rv_settings_per_app_except, perApp.packages.size)
-}
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvSettingsScreenPreview() {
-    val dark = isSystemInDarkTheme()
-    var state by remember { mutableStateOf(rvSampleSettings()) }
-    RvTheme(rvSystemScheme(dark), dark) { RvSettingsScreenSample(state, onChange = { state = it }, onOpenTheme = {}) }
 }

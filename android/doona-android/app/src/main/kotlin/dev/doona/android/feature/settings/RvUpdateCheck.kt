@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.settings
+package dev.doona.android.feature.settings
 
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.width

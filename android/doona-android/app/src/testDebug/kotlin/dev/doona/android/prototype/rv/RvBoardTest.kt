@@ -14,6 +14,7 @@ import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvSheetLayout
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.settings.RvAboutScreen
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
@@ -21,7 +22,7 @@ import dev.doona.android.prototype.rv.nodes.sampleNodesPage
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
-import dev.doona.android.prototype.rv.settings.RvAboutScreen
+import dev.doona.android.prototype.rv.settings.rvAboutRoutes
 import dev.doona.android.prototype.rv.settings.rvSampleVersions
 import dev.doona.android.prototype.rv.subs.RvSubAdd
 import dev.doona.android.prototype.rv.subs.RvSubAddSample
@@ -64,7 +65,7 @@ class RvBoardTest {
     /** 關於 fits its window: one capture, a pushed page, its cards 16 dp apart and every gap a token. */
     @Test
     fun aPushedPageIsOneWindowWithItsRulers() {
-        val dir = capture("about") { RvAboutScreen(rvSampleVersions, onBack = {}) }
+        val dir = capture("about") { RvAboutScreen(rvSampleVersions, onBack = {}, routes = rvAboutRoutes()) }
         assertTrue(File(dir, "about-light-1.png").isFile)
         assertFalse("關於 does not scroll", File(dir, "about-light-2.json").exists())
         val page = json(dir, "about-light-1")
@@ -120,7 +121,7 @@ class RvBoardTest {
     @Test
     fun onlyLightAndDarkAreCaptured() {
         val dir = folder.newFolder("fs")
-        compose.rvContent(dark = false) { RvAboutScreen(rvSampleVersions, onBack = {}) }
+        compose.rvContent(dark = false) { RvAboutScreen(rvSampleVersions, onBack = {}, routes = rvAboutRoutes()) }
         compose.rvBoard("about", "fs200", dir)
         assertTrue(dir.list().isNullOrEmpty())
     }

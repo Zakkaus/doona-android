@@ -1,7 +1,5 @@
-package dev.doona.android.prototype.rv.settings
+package dev.doona.android.feature.settings
 
-import android.content.res.Configuration
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -12,7 +10,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvLargeTitle
@@ -23,9 +20,6 @@ import dev.doona.android.designsystem.rv.RvSettingsNavRow
 import dev.doona.android.designsystem.rv.RvSettingsRow
 import dev.doona.android.designsystem.rv.RvSettingsSection
 import dev.doona.android.designsystem.rv.RvSettingsSpace
-import dev.doona.android.designsystem.rv.RvTheme
-import dev.doona.android.designsystem.rv.rvSystemScheme
-import dev.doona.android.feature.NOT_WIRED
 
 /**
  * The versions 關於 names: the app's, and the honk revision its proxy engine is built on, short. The core is not named:
@@ -36,10 +30,10 @@ internal data class RvAboutVersions(val app: String, val honk: String)
 
 /** Where 關於 leads: the repository in the browser, 回報問題, the licences and the privacy page. */
 internal class RvAboutRoutes(
-    val github: () -> Unit = NOT_WIRED,
-    val report: () -> Unit = NOT_WIRED,
-    val licenses: () -> Unit = NOT_WIRED,
-    val privacy: () -> Unit = NOT_WIRED,
+    val github: () -> Unit,
+    val report: () -> Unit,
+    val licenses: () -> Unit,
+    val privacy: () -> Unit,
 )
 
 /** 設定's 關於 group, its last: 關於 doona over the app's [version], which opens [RvAboutScreen]. */
@@ -58,7 +52,7 @@ internal fun RvAboutEntry(version: String, onOpen: () -> Unit) {
  * 檢查更新 is on 設定 itself ([RvAboutEntry]).
  */
 @Composable
-internal fun RvAboutScreen(versions: RvAboutVersions, onBack: () -> Unit, routes: RvAboutRoutes = RvAboutRoutes()) {
+internal fun RvAboutScreen(versions: RvAboutVersions, onBack: () -> Unit, routes: RvAboutRoutes) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_about_title)
     RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
@@ -78,12 +72,4 @@ internal fun RvAboutScreen(versions: RvAboutVersions, onBack: () -> Unit, routes
             }
         }
     }
-}
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvAboutScreenPreview() {
-    val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvAboutScreen(rvSampleVersions, onBack = {}) }
 }
