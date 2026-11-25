@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use honk_config::Config;
 use honk_config::diagnostic::DiagnosticSources;
 use honk_config::node::Group;
+use honk_config::parser::LoadedConfig;
 use honk_config::parser::cursor::{Document, Segment};
 use honk_config::parser::lexer::Source;
 use honk_config::parser::source_edit::{append_node_source, source_indices};
@@ -92,6 +93,16 @@ fn append_line(text: &str, path: &Path, name: &str, line: &str) -> Option<String
         out.replace_range(at..close, &format!("{nl}{pad}{line}{nl}{header}"));
     }
     Some(out)
+}
+
+/// The entry text with the node appended, unless the tree already declares the name or honk
+/// refuses the name or link.
+fn appended_entry(before: &LoadedConfig, name: &str, link: &str) -> Result<String, AddNodeError> {
+    let config = &before.config;
+    if config.nodes.iter().any(|n| n.name == name) || config.groups.iter().any(|g| g.name == name) {
+        return Err(AddNodeError::Node);
+    }
+    append_node_source(&before.sources[0], name, link).map_err(|_| AddNodeError::Node)
 }
 
 /// Whether `group` holds exactly its old members plus `name`, through the same subgroups.
@@ -180,14 +191,8 @@ impl HonkStore {
         };
         let before = loaded(&tree, &raw)?;
         let config = &before.config;
-        if config.nodes.iter().any(|n| n.name == name)
-            || config.groups.iter().any(|g| g.name == name)
-        {
-            return Err(AddNodeError::Node);
-        }
+        let appended = appended_entry(&before, name, link)?;
         let (owners, _) = source_indices(&before.sources).map_err(|_| raw())?;
-        let appended =
-            append_node_source(&before.sources[0], name, link).map_err(|_| AddNodeError::Node)?;
         let mut edited = Edited {
             tree: &tree,
             root: root.clone(),
