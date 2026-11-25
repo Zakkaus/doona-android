@@ -4,8 +4,8 @@ use std::fs;
 use std::path::Path;
 
 use common::TempDir;
-use doonacore::honkconf::HonkStore;
 use doonacore::honkconf::edit::{Edit, FormEdit, Match, RuleForm, RuleRow};
+use doonacore::honkconf::{Capabilities, HonkStore};
 
 const ENTRY: &str = "config.dae";
 const RULE: &str = "  domain(suffix: example.org) -> direct\n";
@@ -30,7 +30,7 @@ impl Store {
         store
             .edit(draft, Path::new(ENTRY), &routing(rules))
             .unwrap();
-        store.apply(draft).unwrap();
+        store.apply(draft, &Capabilities::linked()).unwrap();
         Self { store, data }
     }
 
@@ -45,7 +45,7 @@ impl Store {
     /// The applied rows' meters in source order.
     fn apply(&mut self, draft: u64) -> Vec<(RuleRow, String)> {
         let rows = self.rows(draft);
-        let rev = self.store.apply(draft).unwrap();
+        let rev = self.store.apply(draft, &Capabilities::linked()).unwrap();
         let meters = &self.store.revision_meters(rev).unwrap()[Path::new(ENTRY)];
         assert_eq!(meters.len(), rows.len());
         rows.into_iter()

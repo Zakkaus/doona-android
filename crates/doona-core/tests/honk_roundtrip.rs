@@ -4,8 +4,8 @@ use std::fs;
 use std::path::Path;
 
 use common::TempDir;
-use doonacore::honkconf::HonkStore;
 use doonacore::honkconf::bundle::{ExportError, ExportIssue, ExportMode, HonkBundle};
+use doonacore::honkconf::{Capabilities, HonkStore};
 use honk_config::Config;
 use honk_config::parser::{LoadedConfig, SourceLimits};
 
@@ -31,7 +31,7 @@ fn apply(store: &mut HonkStore, files: &[(&str, &str)]) -> u64 {
         write(import.path(), Path::new(name), text);
     }
     let draft = store.import(&import.path().join(files[0].0)).unwrap();
-    store.apply(draft).unwrap()
+    store.apply(draft, &Capabilities::linked()).unwrap()
 }
 
 // Exclude only metadata generated on each stock parse of this native fixture.
@@ -89,7 +89,7 @@ fn moved_tree_preserves_authored_config_include_order_and_bytes() {
     let data = TempDir::new("bundle-store");
     let mut store = HonkStore::open(data.path()).unwrap();
     let draft = store.import(&entry).unwrap();
-    let rev = store.apply(draft).unwrap();
+    let rev = store.apply(draft, &Capabilities::linked()).unwrap();
     drop(original);
     apply(&mut store, &[("other.dae", "routing { fallback: block }")]);
     for mode in [ExportMode::Archive, ExportMode::Portable] {
