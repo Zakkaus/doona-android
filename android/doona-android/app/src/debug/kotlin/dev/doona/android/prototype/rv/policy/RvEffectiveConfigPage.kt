@@ -188,5 +188,5 @@ private const val MEMBERS_SHOWN = 2
 @Composable
 private fun RvEffectiveConfigPagePreview() {
     val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvEffectiveConfigPage(RvPolicyState(), rvSampleSettings(), onBack = {}) }
+    RvTheme(rvSystemScheme(dark), dark) { RvEffectiveConfigPageSample(RvPolicyState(), rvSampleSettings(), onBack = {}) }
 }

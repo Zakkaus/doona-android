@@ -66,7 +66,7 @@ class RvStartFailedShotTest {
 
     /** `no_nodes` is the core's answer in Global, so that page says 全域; the others show the sample's 規則. */
     @Composable
-    private fun Activity(notice: RvActivityNotice) = RvActivityScreen(
+    private fun Activity(notice: RvActivityNotice) = RvActivityScreenSample(
         rvNoticeActivity(notice),
         onAction = {},
         onConnect = {},

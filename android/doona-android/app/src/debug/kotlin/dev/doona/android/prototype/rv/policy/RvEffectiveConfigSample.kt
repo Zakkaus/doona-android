@@ -18,5 +18,5 @@ import dev.doona.android.share.rememberEffectiveConfigActions
 internal fun RvEffectiveConfigSample(policy: RvPolicyState, settings: RvSettingsState, onBack: () -> Unit, onRules: () -> Unit) {
     val text by produceState<String?>(null) { value = rvSampleEngine().effectiveConfig().getOrNull()?.text }
     val actions = rememberEffectiveConfigActions(stringResource(R.string.rv_effective_title), text)
-    RvEffectiveConfigPage(policy, settings, onBack = onBack, onRules = onRules, onCopy = actions.copy, onExport = actions.export)
+    RvEffectiveConfigPageSample(policy, settings, onBack = onBack, onRules = onRules, onCopy = actions.copy, onExport = actions.export)
 }

@@ -25,6 +25,7 @@ import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.prototype.rv.connections.RvConnectionsPage
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
+import dev.doona.android.prototype.rv.nodes.RvNodePickerSample
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.settings.RvPerAppActions
 import dev.doona.android.prototype.rv.settings.RvPerAppScreen
@@ -137,10 +138,10 @@ class RvSearchKeyboardShotTest {
     }
 
     @Composable
-    private fun Search() = RvNodePicker(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {}, searchPage = true)
+    private fun Search() = RvNodePickerSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {}, searchPage = true)
 
     @Composable
-    private fun PullDown() = RvNodePicker(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {})
+    private fun PullDown() = RvNodePickerSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {})
 
     /** 連線 as its pill opens the search: the field empty, every connection still listed. */
     @Composable

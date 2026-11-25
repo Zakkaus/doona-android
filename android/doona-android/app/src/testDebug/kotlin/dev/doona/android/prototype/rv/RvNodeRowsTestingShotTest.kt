@@ -7,6 +7,7 @@ import dev.doona.android.designsystem.rv.LocalRvTesting
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RvNodePickerPage
+import dev.doona.android.prototype.rv.nodes.RvNodePickerPageSample
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyGroupPage
 import org.junit.After
@@ -68,7 +69,7 @@ class RvNodeRowsTestingShotTest {
 
     @Composable
     private fun Picker() = CompositionLocalProvider(LocalRvTesting provides true) {
-        RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Latency, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
+        RvNodePickerPageSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, RvNodeSort.Latency, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
     }
 
     @Composable

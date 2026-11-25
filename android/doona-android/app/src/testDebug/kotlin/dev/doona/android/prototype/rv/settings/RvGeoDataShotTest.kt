@@ -238,7 +238,7 @@ class RvGeoDataShotTest {
     @Test
     @Config(qualifiers = WHOLE)
     fun theRowIsInUpdatesUnderTheCheckBeforeAbout() {
-        compose.setContent { Themed { RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}) } }
+        compose.setContent { Themed { RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}) } }
         // 更新 is both the group's title and the row's button, 檢查更新 both the hero's action and a row: a title is read
         // inside its section part, a row's title inside its row.
         val section = listOf(R.string.rv_settings_group_advanced, R.string.rv_settings_group_updates, R.string.rv_settings_group_about)

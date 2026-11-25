@@ -23,7 +23,7 @@ internal val rvSamplePolicyProfile = RvPolicyProfile(
 
 /** 策略 on the sample: the page with [rvSamplePolicyProfile]. The page itself takes the profile as a parameter. */
 @Composable
-internal fun RvPolicyScreen(
+internal fun RvPolicyScreenSample(
     state: RvPolicyState,
     onChange: (RvPolicyState) -> Unit,
     routes: RvPolicyRoutes = RvPolicyRoutes(),
@@ -47,7 +47,7 @@ internal val rvSampleEffectiveConfig = RvEffectiveConfig(
 
 /** 生效設定 on the sample: the page with [rvSampleEffectiveConfig]. The page itself takes it as a parameter. */
 @Composable
-internal fun RvEffectiveConfigPage(
+internal fun RvEffectiveConfigPageSample(
     policy: RvPolicyState,
     settings: RvSettingsState,
     onBack: () -> Unit,
@@ -60,7 +60,7 @@ internal fun RvEffectiveConfigPage(
 
 /** 範本 on the sample: the page with every template [RvTemplateData] has. The page itself takes the list as a parameter. */
 @Composable
-internal fun RvTemplatePage(current: RvTemplate, selected: RvTemplate, onSelect: (RvTemplate) -> Unit, onBack: () -> Unit, onReview: () -> Unit) =
+internal fun RvTemplatePageSample(current: RvTemplate, selected: RvTemplate, onSelect: (RvTemplate) -> Unit, onBack: () -> Unit, onReview: () -> Unit) =
     RvTemplatePage(current, selected, onSelect, onBack, onReview, RvTemplateData.all)
 
 /**

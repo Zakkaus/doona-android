@@ -18,6 +18,7 @@ import dev.doona.android.designsystem.rv.RV_NAV
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.RvTypeScale
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
+import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
 import dev.doona.android.prototype.rv.settings.RvUpdate
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import org.junit.Assert.assertEquals
@@ -46,7 +47,7 @@ class RvLabelRowTest {
 
     @Test
     fun activitysActionsAndTabsAreEachOneSmallerSize() {
-        compose.setContent { Themed { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) } }
+        compose.setContent { Themed { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}) } }
         // 活動's outbound card repeats Outbound mode; the action row is above it, the nav below everything.
         val actions = assertOneSize("活動's actions", listOf(R.string.rv_disconnect, R.string.rv_action_mode, R.string.rv_action_latency, R.string.rv_more), top = true)
         // Disconnect is the longest left: the row measured 11.25 sp with the full wordings, 14.75 sp with Mode, 15.75 sp with Latency.
@@ -59,7 +60,7 @@ class RvLabelRowTest {
     /** Export and Updates keep the full size (9.75 sp with Check for updates beside Export). */
     @Test
     fun settingsTwoActionsAreOneSizeAtTheFullSize() {
-        compose.setContent { Themed { RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}) } }
+        compose.setContent { Themed { RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}) } }
         val actions = assertOneSize("設定's actions", listOf(R.string.rv_settings_export_diagnostics, R.string.rv_settings_check_update_short), top = true)
         assertEquals("設定's actions: $actions", RvTypeScale.action.size.toFloat(), actions.value, 0.01f)
     }
@@ -67,7 +68,7 @@ class RvLabelRowTest {
     /** With nothing newer the action says Up to date, as before, and the row keeps the full size too. */
     @Test
     fun settingsLatestStateKeepsItsWordAtTheFullSize() {
-        compose.setContent { Themed { RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}, update = RvUpdate.Latest) } }
+        compose.setContent { Themed { RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, update = RvUpdate.Latest) } }
         val actions = assertOneSize("設定's actions", listOf(R.string.rv_settings_export_diagnostics, R.string.rv_update_latest), top = true)
         assertEquals("設定's actions: $actions", RvTypeScale.action.size.toFloat(), actions.value, 0.01f)
         compose.onAllNodes(hasText(rvText(R.string.rv_settings_check_update_short)) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)).assertCountIs(0, "Updates is the idle word only")
@@ -77,7 +78,7 @@ class RvLabelRowTest {
     /** A screen reader finds the full wording on each shortened action, and the row and the card still say it. */
     @Test
     fun theShortenedActionsAreNamedByTheirFullWording() {
-        compose.setContent { Themed { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) } }
+        compose.setContent { Themed { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}) } }
         assertEquals(listOf(rvText(R.string.act_mode)), button(R.string.rv_action_mode).config[SemanticsProperties.ContentDescription])
         assertEquals(listOf(rvText(R.string.rv_test_latency)), button(R.string.rv_action_latency).config[SemanticsProperties.ContentDescription])
         assertNull("Disconnect names itself", button(R.string.rv_disconnect).config.getOrNull(SemanticsProperties.ContentDescription))
@@ -88,7 +89,7 @@ class RvLabelRowTest {
 
     @Test
     fun theUpdateActionIsNamedByCheckForUpdates() {
-        compose.setContent { Themed { RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}) } }
+        compose.setContent { Themed { RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}) } }
         assertEquals(listOf(rvText(R.string.rv_settings_check_update)), button(R.string.rv_settings_check_update_short).config[SemanticsProperties.ContentDescription])
         compose.onAllNodesWithText(rvText(R.string.rv_settings_check_update)).assertCountIs(1, "Check for updates, once: 關於's row")
     }

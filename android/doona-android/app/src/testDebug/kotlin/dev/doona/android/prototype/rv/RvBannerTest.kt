@@ -15,7 +15,9 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
+import dev.doona.android.prototype.rv.nodes.RvNodePickerSample
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
+import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.settings.RvPerAppActions
 import dev.doona.android.prototype.rv.settings.RvPerAppScreen
 import dev.doona.android.prototype.rv.settings.RvSave
@@ -28,9 +30,11 @@ import dev.doona.android.prototype.rv.subs.RvAddFailure
 import dev.doona.android.prototype.rv.subs.RvAddPhase
 import dev.doona.android.prototype.rv.subs.RvAddState
 import dev.doona.android.prototype.rv.subs.RvSubAdd
+import dev.doona.android.prototype.rv.subs.RvSubAddSample
 import dev.doona.android.prototype.rv.subs.RvSubsActions
 import dev.doona.android.prototype.rv.subs.RvSubsPage
 import dev.doona.android.prototype.rv.subs.RvSubsState
+import dev.doona.android.prototype.rv.subs.rvSubsStateSample
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -125,11 +129,11 @@ class RvBannerTest {
     @Composable
     private fun Page(page: String, banner: Boolean) {
         when (page) {
-            ACTIVITY -> RvActivityScreen(rvIdleActivity(), onAction = {}, onConnect = {}, banner = if (banner) rvActivityBanner(RvActivityNotice.VpnTaken) {} else null)
+            ACTIVITY -> RvActivityScreenSample(rvIdleActivity(), onAction = {}, onConnect = {}, banner = if (banner) rvActivityBanner(RvActivityNotice.VpnTaken) {} else null)
 
-            POLICY -> RvPolicyScreen(RvPolicyState(), onChange = {}, banner = failed(banner, RvActionFailed.SwitchMode, R.string.error_busy))
+            POLICY -> RvPolicyScreenSample(RvPolicyState(), onChange = {}, banner = failed(banner, RvActionFailed.SwitchMode, R.string.error_busy))
 
-            PICKER -> RvNodePicker(
+            PICKER -> RvNodePickerSample(
                 RvData.nodes,
                 RvData.subscriptions,
                 RvData.CURRENT_ID,
@@ -139,9 +143,9 @@ class RvBannerTest {
                 banner = failed(banner, RvActionFailed.SwitchNode, R.string.error_internal),
             )
 
-            SUBS -> RvSubsPage(RvSubsState(failedId = if (banner) RvData.subscriptions.first().id else null), RvSubsActions())
+            SUBS -> RvSubsPage(rvSubsStateSample(failedId = if (banner) RvData.subscriptions.first().id else null), RvSubsActions())
 
-            SUB_ADD -> RvSubAdd(RvAddState(phase = if (banner) RvAddPhase.Failed(RvAddFailure.Unreachable) else RvAddPhase.Editing), {}, onPaste = {}, onImport = {}, onBack = {})
+            SUB_ADD -> RvSubAddSample(RvAddState(phase = if (banner) RvAddPhase.Failed(RvAddFailure.Unreachable) else RvAddPhase.Editing), {}, onPaste = {}, onImport = {}, onBack = {})
 
             else -> RvPerAppScreen(rvPerAppSample("").copy(save = if (banner) RvSave.Failed else RvSave.Idle), RvPerAppActions(), onBack = {})
         }

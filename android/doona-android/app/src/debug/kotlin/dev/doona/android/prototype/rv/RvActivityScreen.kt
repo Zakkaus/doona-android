@@ -578,5 +578,5 @@ private val RvRouteMode.label: Int
 @Composable
 private fun RvActivityScreenPreview() {
     val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
+    RvTheme(rvSystemScheme(dark), dark) { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}) }
 }

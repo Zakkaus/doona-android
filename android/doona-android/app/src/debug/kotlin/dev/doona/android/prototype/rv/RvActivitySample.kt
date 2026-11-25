@@ -68,7 +68,7 @@ internal val rvSampleActivityCards = RvActivityCards(
  * caller gives its own. The page itself takes them all as parameters; the sandbox, its previews and tests call this.
  */
 @Composable
-internal fun RvActivityScreen(
+internal fun RvActivityScreenSample(
     state: ActivityUiState,
     onAction: (ActivityAction) -> Unit,
     onConnect: () -> Unit,

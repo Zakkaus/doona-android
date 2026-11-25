@@ -31,6 +31,7 @@ import dev.doona.android.prototype.rv.nodes.sampleNodesPage
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyGroupPage
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
+import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.policy.RvRulesPage
 import dev.doona.android.prototype.rv.policy.RvServiceRulesPage
 import dev.doona.android.prototype.rv.settings.RvAboutScreen
@@ -44,6 +45,7 @@ import dev.doona.android.prototype.rv.settings.RvRedaction
 import dev.doona.android.prototype.rv.settings.RvReportBuild
 import dev.doona.android.prototype.rv.settings.RvReportScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
+import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
 import dev.doona.android.prototype.rv.settings.rvPerAppLookSample
 import dev.doona.android.prototype.rv.settings.rvSampleReport
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
@@ -54,10 +56,12 @@ import dev.doona.android.prototype.rv.states.rvNoticeActivity
 import dev.doona.android.prototype.rv.stats.RvStatsScreen
 import dev.doona.android.prototype.rv.stats.rvStatsSample
 import dev.doona.android.prototype.rv.subs.RvSubDetail
+import dev.doona.android.prototype.rv.subs.RvSubDetailSample
 import dev.doona.android.prototype.rv.subs.RvSubDetailState
 import dev.doona.android.prototype.rv.subs.RvSubsActions
 import dev.doona.android.prototype.rv.subs.RvSubsPage
 import dev.doona.android.prototype.rv.subs.RvSubsState
+import dev.doona.android.prototype.rv.subs.rvSubsStateSample
 import dev.doona.android.testing.GestureBar
 import dev.doona.android.testing.StatusBar
 import org.junit.Assert.assertEquals
@@ -87,12 +91,12 @@ class RvPageEndTest {
     @Test
     fun activityEndsAboveTheNavInEveryState() = endsClear(
         listOf(
-            Page("活動") { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) },
-            Page("活動 loading") { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, loading = true) },
-            Page("活動 direct") { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, mode = RvRouteMode.Direct) },
+            Page("活動") { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}) },
+            Page("活動 loading") { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}, loading = true) },
+            Page("活動 direct") { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}, mode = RvRouteMode.Direct) },
         ) + RvActivityNotice.entries.map { notice ->
             Page("活動 ${notice.route}") {
-                RvActivityScreen(
+                RvActivityScreenSample(
                     rvNoticeActivity(notice),
                     onAction = {},
                     onConnect = {},
@@ -105,14 +109,14 @@ class RvPageEndTest {
     )
 
     @Test
-    fun policyEndsAboveTheNavInEveryMode() = endsClear(RvRouteMode.entries.map { mode -> Page("策略 $mode") { RvPolicyScreen(RvPolicyState(mode = mode), onChange = {}) } })
+    fun policyEndsAboveTheNavInEveryMode() = endsClear(RvRouteMode.entries.map { mode -> Page("策略 $mode") { RvPolicyScreenSample(RvPolicyState(mode = mode), onChange = {}) } })
 
     @Test
     fun connectionsAndSettingsEndAboveTheNav() = endsClear(
         listOf(
             Page("連線") { RvConnectionsPage(RvPolicyData.connections) },
             Page("連線 disconnected") { RvConnectionsPage(RvPolicyData.connections, connected = false) },
-            Page("設定") { RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}) },
+            Page("設定") { RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}) },
         ),
     )
 
@@ -133,8 +137,8 @@ class RvPageEndTest {
     fun pagesWithAPinnedActionEndAboveIt() = endsClear(
         listOf(
             Page("節點詳情") { RvNodeDetail(RvData.nodes.first(), current = false, rvTestTimes(), onBack = {}, onUse = {}, onTest = {}) },
-            Page("訂閱") { RvSubsPage(RvSubsState(), RvSubsActions()) },
-            Page("訂閱詳情") { RvSubDetail(RvData.subscriptions.first(), RvSubDetailState(), {}, onBack = {}, onUpdate = {}) },
+            Page("訂閱") { RvSubsPage(rvSubsStateSample(), RvSubsActions()) },
+            Page("訂閱詳情") { RvSubDetailSample(RvData.subscriptions.first(), RvSubDetailState(), {}, onBack = {}, onUpdate = {}) },
             Page("依 App") { RvPerAppScreen(rvPerAppLookSample(""), RvPerAppActions(), onBack = {}) },
             Page("回報問題") { RvReportScreen(RvReportBuild.Ready(RvRedaction()), rvSampleReport, RvRedaction(), {}, onBack = {}) },
             Page("規則") { RvRulesPage(RvPolicyData.allRules, emptyList(), editing = false, onBack = {}) },

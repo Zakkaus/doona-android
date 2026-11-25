@@ -31,6 +31,7 @@ This setting does not change Android's bootstrap resolvers for node hostnames.
 ./gradlew recordRoborazziDebug -Ddoona.shots=<dir>    # the same renders in <dir>, to look at without touching the goldens
 tools/check-tokens.sh                                 # no dp, sp, colour or alpha literal outside designsystem/tokens (bar a component's own Defaults object)
 tools/check-layers.sh                                 # material3 and tokens stay in designsystem/; feature/ and the RV pages build no interactive element
+tools/check-samples.sh                                # src/main names no sample, `*Sample` binding or RvData that only src/debug declares
 ```
 
 To reproduce the pull request APK, run `./gradlew assembleRelease -Pdoona.coreProfile=ci-release`.

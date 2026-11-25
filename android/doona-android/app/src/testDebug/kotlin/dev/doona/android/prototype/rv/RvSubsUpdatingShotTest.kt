@@ -7,6 +7,7 @@ import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.subs.RvSubsActions
 import dev.doona.android.prototype.rv.subs.RvSubsPage
 import dev.doona.android.prototype.rv.subs.RvSubsState
+import dev.doona.android.prototype.rv.subs.rvSubsStateSample
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
@@ -44,7 +45,7 @@ class RvSubsUpdatingShotTest {
     private fun shot(dark: Boolean, fontScale: Float = 1f) {
         rvAnimatorScale(0f)
         compose.rvShot("subs-updating", dark, fontScale = fontScale) {
-            CompositionLocalProvider(LocalRvUpdating provides setOf(RvData.subscriptions.first().id)) { RvSubsPage(RvSubsState(), RvSubsActions()) }
+            CompositionLocalProvider(LocalRvUpdating provides setOf(RvData.subscriptions.first().id)) { RvSubsPage(rvSubsStateSample(), RvSubsActions()) }
         }
     }
 }

@@ -43,10 +43,10 @@ class RvShotTest {
     fun activityGlobalDark() = compose.rvShot("activity-global", dark = true) { Global() }
 
     @Test
-    fun activityIdleLight() = compose.rvShot("activity-idle", dark = false) { RvActivityScreen(rvIdleActivity(), onAction = {}, onConnect = {}) }
+    fun activityIdleLight() = compose.rvShot("activity-idle", dark = false) { RvActivityScreenSample(rvIdleActivity(), onAction = {}, onConnect = {}) }
 
     @Test
-    fun activityIdleDark() = compose.rvShot("activity-idle", dark = true) { RvActivityScreen(rvIdleActivity(), onAction = {}, onConnect = {}) }
+    fun activityIdleDark() = compose.rvShot("activity-idle", dark = true) { RvActivityScreenSample(rvIdleActivity(), onAction = {}, onConnect = {}) }
 
     @Test
     fun activityScrolledLight() = activity("activity-scrolled", dark = false) { rvScrollBy(SCROLLED_DP) }
@@ -110,10 +110,10 @@ class RvShotTest {
         fontScale: Float = 1f,
         nodeId: String = RvData.CURRENT_ID,
         before: ComposeContentTestRule.() -> Unit = {},
-    ) = compose.rvShot(screen, dark, before, fontScale) { RvActivityScreen(rvSampleActivity(nodeId), onAction = {}, onConnect = {}) }
+    ) = compose.rvShot(screen, dark, before, fontScale) { RvActivityScreenSample(rvSampleActivity(nodeId), onAction = {}, onConnect = {}) }
 
     @Composable
-    private fun Global() = RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, mode = RvRouteMode.Global)
+    private fun Global() = RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}, mode = RvRouteMode.Global)
 
     private fun traffic(screen: String, dark: Boolean, scrub: Int? = null, fontScale: Float = 1f) =
         compose.rvShot(screen, dark, fontScale = fontScale) { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}, initialScrub = scrub) }

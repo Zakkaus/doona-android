@@ -156,6 +156,7 @@ jobs:
           set -euo pipefail
           tools/check-tokens.sh
           tools/check-layers.sh
+          tools/check-samples.sh
       - name: Check Kotlin format, lint, run the JVM tests and the screenshots
         working-directory: android/doona-android
         # The release job builds the native library and bundles Geo data; JVM checks need neither.

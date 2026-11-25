@@ -200,6 +200,6 @@ private fun RvNodePickerPagePreview() {
     var current by remember { mutableStateOf(RvData.CURRENT_ID) }
     var sort by remember { mutableStateOf(RvNodeSort.Latency) }
     RvTheme(rvSystemScheme(dark), dark) {
-        RvNodePickerPage(RvData.nodes, RvData.subscriptions, current, sort, { sort = it }, { current = it }, onBack = {}, onTest = {}, onSearch = {})
+        RvNodePickerPageSample(RvData.nodes, RvData.subscriptions, current, sort, { sort = it }, { current = it }, onBack = {}, onTest = {}, onSearch = {})
     }
 }

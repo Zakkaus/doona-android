@@ -395,5 +395,5 @@ private val RvRouteMode.line: Int
 private fun RvPolicyScreenPreview() {
     val dark = isSystemInDarkTheme()
     var state by remember { mutableStateOf(RvPolicyState()) }
-    RvTheme(rvSystemScheme(dark), dark) { RvPolicyScreen(state, { state = it }) }
+    RvTheme(rvSystemScheme(dark), dark) { RvPolicyScreenSample(state, { state = it }) }
 }

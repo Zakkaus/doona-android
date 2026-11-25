@@ -49,7 +49,7 @@ class RvEffectiveConfigActionsTest {
         var copied = 0
         var exported = 0
         compose.rvContent(dark = false) {
-            RvEffectiveConfigPage(RvPolicyState(), rvSampleSettings(), onBack = {}, onCopy = { copied++ }, onExport = { exported++ })
+            RvEffectiveConfigPageSample(RvPolicyState(), rvSampleSettings(), onBack = {}, onCopy = { copied++ }, onExport = { exported++ })
         }
         tap(R.string.rv_effective_copy)
         assertEquals(1 to 0, copied to exported)

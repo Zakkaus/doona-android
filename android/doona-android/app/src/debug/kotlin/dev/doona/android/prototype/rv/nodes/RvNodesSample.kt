@@ -18,7 +18,7 @@ internal const val RV_NODES_DETAIL = "sg-03"
 
 /** The pull-down picker on the sample: the subscriptions' end dates as of [RvData]'s now. The page takes it as a parameter. */
 @Composable
-internal fun RvNodePicker(
+internal fun RvNodePickerSample(
     nodes: List<RvNode>,
     subscriptions: List<RvSubscription>,
     currentId: String,
@@ -35,7 +35,7 @@ internal fun RvNodePicker(
 
 /** The main node's picker on the sample: the subscriptions' end dates as of [RvData]'s now. The page takes it as a parameter. */
 @Composable
-internal fun RvNodePickerPage(
+internal fun RvNodePickerPageSample(
     nodes: List<RvNode>,
     subscriptions: List<RvSubscription>,
     currentId: String,

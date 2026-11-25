@@ -62,6 +62,6 @@ class RvActivityStateShotTest {
 
     private fun shot(name: String, state: ActivityUiState, dark: Boolean = false, fontScale: Float = 1f) {
         if (state.status == Status.Starting || state.status == Status.Stopping) rvAnimatorScale(0f)
-        compose.rvShot(name, dark, fontScale = fontScale) { RvActivityScreen(state, onAction = {}, onConnect = {}) }
+        compose.rvShot(name, dark, fontScale = fontScale) { RvActivityScreenSample(state, onAction = {}, onConnect = {}) }
     }
 }

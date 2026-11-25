@@ -30,6 +30,7 @@ import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvChrome
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.RvActivityScreen
+import dev.doona.android.prototype.rv.RvActivityScreenSample
 import dev.doona.android.prototype.rv.rvSampleActivity
 
 /** One accent: its name for a screen reader and its primary in the light theme. */
@@ -108,7 +109,7 @@ internal fun RvThemePreview(appearance: RvAppearance, light: ColorScheme, dark: 
                     },
             ) {
                 CompositionLocalProvider(LocalFrameInsets provides WindowInsets(top = size.previewStatus)) {
-                    RvTheme(scheme, isDark) { RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}) }
+                    RvTheme(scheme, isDark) { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}) }
                 }
             }
             // Above the page, so no tap or drag reaches it.

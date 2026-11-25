@@ -30,7 +30,7 @@ internal val rvSampleReport = RvReportPreview("0.1.0", "Pixel 8 · Android 15", 
 
 /** 設定 on the sample: the GeoIP/GeoSite copy the APK ships. The page takes it as a parameter. */
 @Composable
-internal fun RvSettingsScreen(
+internal fun RvSettingsScreenSample(
     state: RvSettingsState,
     onChange: (RvSettingsState) -> Unit,
     onOpenTheme: () -> Unit,

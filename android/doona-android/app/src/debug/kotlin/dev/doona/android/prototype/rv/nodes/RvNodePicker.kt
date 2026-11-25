@@ -385,5 +385,5 @@ private const val TRACE_FOCUS = "RvSearchFocus"
 @Composable
 private fun RvNodePickerPreview() {
     val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvNodePicker(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {}) }
+    RvTheme(rvSystemScheme(dark), dark) { RvNodePickerSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {}) }
 }

@@ -25,6 +25,7 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
+import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.settings.RvPerAppActions
 import dev.doona.android.prototype.rv.settings.RvPerAppLook
 import dev.doona.android.prototype.rv.settings.RvPerAppScreen
@@ -33,6 +34,7 @@ import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.subs.RvSubsActions
 import dev.doona.android.prototype.rv.subs.RvSubsPage
 import dev.doona.android.prototype.rv.subs.RvSubsState
+import dev.doona.android.prototype.rv.subs.rvSubsStateSample
 import dev.doona.android.testing.drawFully
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -63,11 +65,11 @@ internal object RvSkeletonPages {
 @Composable
 internal fun RvSkeletonPage(page: String, loading: Boolean) {
     when (page) {
-        RvSkeletonPages.ACTIVITY -> RvActivityScreen(rvIdleActivity(), onAction = {}, onConnect = {}, loading = loading)
-        RvSkeletonPages.POLICY -> RvPolicyScreen(RvPolicyState(), onChange = {}, loading = loading)
-        RvSkeletonPages.POLICY_GLOBAL -> RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Global), onChange = {}, loading = loading)
-        RvSkeletonPages.POLICY_DIRECT -> RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Direct), onChange = {}, loading = loading)
-        RvSkeletonPages.SUBS -> RvSubsPage(RvSubsState(), RvSubsActions(), loading = loading)
+        RvSkeletonPages.ACTIVITY -> RvActivityScreenSample(rvIdleActivity(), onAction = {}, onConnect = {}, loading = loading)
+        RvSkeletonPages.POLICY -> RvPolicyScreenSample(RvPolicyState(), onChange = {}, loading = loading)
+        RvSkeletonPages.POLICY_GLOBAL -> RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Global), onChange = {}, loading = loading)
+        RvSkeletonPages.POLICY_DIRECT -> RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Direct), onChange = {}, loading = loading)
+        RvSkeletonPages.SUBS -> RvSubsPage(rvSubsStateSample(), RvSubsActions(), loading = loading)
         RvSkeletonPages.PER_APP_V1 -> RvPerAppScreen(rvPerAppLookSample(if (loading) "loading" else ""), RvPerAppActions(), onBack = {}, look = RvPerAppLook.Checks)
         else -> RvPerAppScreen(rvPerAppSample(if (loading) "loading" else ""), RvPerAppActions(), onBack = {})
     }

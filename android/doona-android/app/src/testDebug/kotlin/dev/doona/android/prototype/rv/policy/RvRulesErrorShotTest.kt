@@ -82,10 +82,10 @@ class RvRulesErrorShotTest {
     private fun Rules(banner: RvNotice) = RvRulesPage(RvPolicyData.allRules, emptyList(), editing = false, onBack = {}, banner = banner)
 
     @Composable
-    private fun Truncated() = RvEffectiveConfigPage(RvPolicyState(), rvSampleSettings(), onBack = {}, truncated = true)
+    private fun Truncated() = RvEffectiveConfigPageSample(RvPolicyState(), rvSampleSettings(), onBack = {}, truncated = true)
 
     @Composable
-    private fun Failed() = RvEffectiveConfigPage(
+    private fun Failed() = RvEffectiveConfigPageSample(
         RvPolicyState(),
         rvSampleSettings(),
         onBack = {},

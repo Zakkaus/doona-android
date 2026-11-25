@@ -5,7 +5,7 @@ import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.prototype.rv.data.RvData
 
 /** 訂閱's state on the sample: [RvData]'s subscriptions unless the caller gives its own, their end dates as of its now. */
-internal fun RvSubsState(
+internal fun rvSubsStateSample(
     subscriptions: List<RvSubscription> = RvData.subscriptions,
     failedId: String? = null,
     deletingId: String? = null,
@@ -13,7 +13,7 @@ internal fun RvSubsState(
 
 /** A subscription's page on the sample: the interval [RvData] refreshes at. The page takes it as a parameter. */
 @Composable
-internal fun RvSubDetail(
+internal fun RvSubDetailSample(
     sub: RvSubscription,
     state: RvSubDetailState,
     onChange: (RvSubDetailState) -> Unit,
@@ -24,7 +24,7 @@ internal fun RvSubDetail(
 
 /** 新增訂閱 on the sample: what came in counted over [RvData]'s nodes. The page takes them as a parameter. */
 @Composable
-internal fun RvSubAdd(
+internal fun RvSubAddSample(
     state: RvAddState,
     onChange: (RvAddState) -> Unit,
     onPaste: () -> Unit,

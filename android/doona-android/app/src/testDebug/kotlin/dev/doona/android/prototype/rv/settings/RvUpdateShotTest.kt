@@ -253,7 +253,7 @@ class RvUpdateShotTest {
 
     @Composable
     private fun Page(update: RvUpdate, routes: RvSettingsRoutes = RvSettingsRoutes()) =
-        RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = routes, update = update)
+        RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = routes, update = update)
 
     @Composable
     private fun Row(update: RvUpdate, onCheck: () -> Unit) = Column { RvUpdateRow(update, rvText(R.string.rv_settings_version_value), onCheck) }

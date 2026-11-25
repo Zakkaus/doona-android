@@ -247,5 +247,5 @@ private fun perAppValue(perApp: RvPerApp): String = when (perApp.policy) {
 private fun RvSettingsScreenPreview() {
     val dark = isSystemInDarkTheme()
     var state by remember { mutableStateOf(rvSampleSettings()) }
-    RvTheme(rvSystemScheme(dark), dark) { RvSettingsScreen(state, onChange = { state = it }, onOpenTheme = {}) }
+    RvTheme(rvSystemScheme(dark), dark) { RvSettingsScreenSample(state, onChange = { state = it }, onOpenTheme = {}) }
 }

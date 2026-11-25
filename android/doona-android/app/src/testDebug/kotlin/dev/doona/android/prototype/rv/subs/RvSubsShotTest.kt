@@ -22,6 +22,7 @@ import dev.doona.android.designsystem.rv.RvMenuPanel
 import dev.doona.android.designsystem.rv.RvSheetLayout
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.RvActivityScreen
+import dev.doona.android.prototype.rv.RvActivityScreenSample
 import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
@@ -62,9 +63,9 @@ class RvSubsShotTest {
 
     @Test fun listDark() = shot("subs", true) { List() }
 
-    @Test fun failedLight() = shot("subs-failed", false) { List(RvSubsState(failedId = HARBOR.id)) }
+    @Test fun failedLight() = shot("subs-failed", false) { List(rvSubsStateSample(failedId = HARBOR.id)) }
 
-    @Test fun failedDark() = shot("subs-failed", true) { List(RvSubsState(failedId = HARBOR.id)) }
+    @Test fun failedDark() = shot("subs-failed", true) { List(rvSubsStateSample(failedId = HARBOR.id)) }
 
     @Test fun menuLight() = shot("subs-menu", false, whole = false) { Menu() }
 
@@ -132,7 +133,7 @@ class RvSubsShotTest {
         var imports = 0
         compose.setContent {
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
-                RvSubAdd(state, { state = it }, onPaste = { state = state.copy(link = "https://x.example/s") }, onImport = { imports++ }, onBack = {})
+                RvSubAddSample(state, { state = it }, onPaste = { state = state.copy(link = "https://x.example/s") }, onImport = { imports++ }, onBack = {})
             }
         }
         compose.onNodeWithText(IMPORT).performClick()
@@ -147,7 +148,7 @@ class RvSubsShotTest {
         val saved = mutableListOf<String?>()
         compose.setContent {
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
-                RvSubDetail(HARBOR.copy(userAgent = OWN_AGENT), state, { state = it }, onBack = {}, onUpdate = {}, onUserAgent = { saved += it })
+                RvSubDetailSample(HARBOR.copy(userAgent = OWN_AGENT), state, { state = it }, onBack = {}, onUpdate = {}, onUserAgent = { saved += it })
             }
         }
         compose.onNodeWithText(OWN_AGENT).performClick()
@@ -175,13 +176,13 @@ class RvSubsShotTest {
         compose.rvShot(name, dark, before = { if (whole) assertWhole() }, content = content)
 
     @Composable
-    private fun List(state: RvSubsState = RvSubsState()) = RvSubsPage(state, RvSubsActions())
+    private fun List(state: RvSubsState = rvSubsStateSample()) = RvSubsPage(state, RvSubsActions())
 
     @Composable
-    private fun Detail() = RvSubDetail(HARBOR, RvSubDetailState(), {}, onBack = {}, onUpdate = {})
+    private fun Detail() = RvSubDetailSample(HARBOR, RvSubDetailState(), {}, onBack = {}, onUpdate = {})
 
     @Composable
-    private fun Add(phase: String) = RvSubAdd(rvAddSample(phase), {}, onPaste = {}, onImport = {}, onBack = {})
+    private fun Add(phase: String) = RvSubAddSample(rvAddSample(phase), {}, onPaste = {}, onImport = {}, onBack = {})
 
     /** The list with the menu where a finger held Harbor Cloud's card, as the popup places it. */
     @Composable
@@ -229,7 +230,7 @@ class RvSubsShotTest {
     @Composable
     private fun Import() {
         Box(Modifier.fillMaxSize()) {
-            RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {})
+            RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {})
             Sheet(stringResource(R.string.rv_import_title, HARBOR.name), stringResource(R.string.rv_import_body, HARBOR.host), stringResource(R.string.rv_import_add), titleKeepWords = false, bodyKeepWords = false)
         }
     }

@@ -137,11 +137,11 @@ class RvNodeListShotTest {
                 else -> node
             }.copy(subscription = sub.name)
         }
-        RvNodePickerPage(nodes, listOf(sub), RvData.CURRENT_ID, sort, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
+        RvNodePickerPageSample(nodes, listOf(sub), RvData.CURRENT_ID, sort, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
     }
 
     @Composable
-    private fun Picker(sort: RvNodeSort) = RvNodePickerPage(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, sort, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
+    private fun Picker(sort: RvNodeSort) = RvNodePickerPageSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, sort, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
 
     private companion object {
         /** Scrolled this far, 臺灣's card ends under the bar and 香港's follows in full. */

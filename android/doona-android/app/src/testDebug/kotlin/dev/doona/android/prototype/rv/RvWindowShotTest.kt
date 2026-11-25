@@ -34,7 +34,9 @@ import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
 import dev.doona.android.prototype.rv.policy.RvPolicyScreen
+import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
+import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import dev.doona.android.testing.GestureBar
 import dev.doona.android.testing.StatusBar
@@ -159,13 +161,13 @@ class RvWindowShotTest {
     }
 
     @Composable
-    private fun Activity() = RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {})
+    private fun Activity() = RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {})
 
     @Composable
-    private fun Policy() = RvPolicyScreen(RvPolicyState(mode = RvRouteMode.Rule), onChange = {})
+    private fun Policy() = RvPolicyScreenSample(RvPolicyState(mode = RvRouteMode.Rule), onChange = {})
 
     @Composable
-    private fun Settings() = RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {})
+    private fun Settings() = RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {})
 
     @Composable
     private fun Nodes() = RvNodesPage(sampleNodesPage(), onBack = {}, onFilter = {}, onOpen = {}, onAllNodes = {})

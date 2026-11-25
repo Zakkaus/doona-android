@@ -51,6 +51,7 @@ import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.gallery.RvGalleryScreen
 import dev.doona.android.prototype.rv.nodes.RvNodeDetail
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
+import dev.doona.android.prototype.rv.nodes.RvNodePickerSample
 import dev.doona.android.prototype.rv.nodes.RvNodesPage
 import dev.doona.android.prototype.rv.nodes.RvNodesPageState
 import dev.doona.android.prototype.rv.policy.RvPolicyData
@@ -69,6 +70,7 @@ import dev.doona.android.prototype.rv.settings.RvSettingsPreview
 import dev.doona.android.prototype.rv.settings.RvSettingsPreviewRoutes
 import dev.doona.android.prototype.rv.settings.RvSettingsRoutes
 import dev.doona.android.prototype.rv.settings.RvSettingsScreen
+import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
 import dev.doona.android.prototype.rv.settings.RvSettingsState
 import dev.doona.android.prototype.rv.settings.RvThemeScreen
 import dev.doona.android.prototype.rv.settings.previewDark
@@ -204,7 +206,7 @@ private fun RvSamplePage(
         STATS -> RvStatsScreen(rvStatsSample(), onBack = pages.pop)
 
         // The search page: the node picker, its field the search pill's; a picked node becomes the main one.
-        SEARCH -> RvNodePicker(
+        SEARCH -> RvNodePickerSample(
             run.nodes,
             RvData.subscriptions,
             run.currentId,
@@ -285,7 +287,7 @@ private fun SettingsPage(settings: RvSettingsState, onSettings: (RvSettingsState
         checkUpdate = update.check,
         language = { pages.push(RvSettingsPreviewRoutes.LANGUAGE) },
     )
-    RvSettingsScreen(settings.copy(tileAdded = tile.added), onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab, routes = routes, update = update.update)
+    RvSettingsScreenSample(settings.copy(tileAdded = tile.added), onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab, routes = routes, update = update.update)
 }
 
 /** 設定's 依 App, and 授權條款 with each licence's text (`license:<n>`). */
@@ -363,14 +365,14 @@ private fun ActivityPage(route: String, run: RvSampleRun, options: RvMotionOptio
         pull,
         activity = { look ->
             val onAction: (ActivityAction) -> Unit = { if (it == ActivityAction.Disconnect) run.disconnect() }
-            RvActivityScreen(run.activity(rememberShownSecond({ run.second }, look)), onAction, run.asks::connect, routes, nodes = run.nodes, subscriptions = run.subscriptions, pull = look, hero = options.hero)
+            RvActivityScreenSample(run.activity(rememberShownSecond({ run.second }, look)), onAction, run.asks::connect, routes, nodes = run.nodes, subscriptions = run.subscriptions, pull = look, hero = options.hero)
         },
         picker = { motion ->
             val pick: (String) -> Unit = {
                 run.currentId = it
                 motion.close()
             }
-            RvNodePicker(run.nodes, RvData.subscriptions, run.currentId, pick, onDetail = { pages.push("$NODE:$it") }, onClose = motion.close, section = motion.section, stretch = motion.stretch)
+            RvNodePickerSample(run.nodes, RvData.subscriptions, run.currentId, pick, onDetail = { pages.push("$NODE:$it") }, onClose = motion.close, section = motion.section, stretch = motion.stretch)
         },
     )
     if (name == RvSubsRoutes.IMPORT) ImportSheet(pages)
@@ -385,7 +387,7 @@ private fun NoticeActivity(notice: RvActivityNotice, routes: RvActivityRoutes, p
     val add = { pages.push(RvSubsRoutes.ADD) }
     val onNotice = if (notice == RvActivityNotice.Crash) ({ pages.push(REPORT) }) else pages.pop
     val empty = notice == RvActivityNotice.NoSubscription
-    RvActivityScreen(rvNoticeActivity(notice), onAction = {}, onConnect = {}, routes, banner = rvActivityBanner(notice, onNotice), noSubscription = if (empty) add else null)
+    RvActivityScreenSample(rvNoticeActivity(notice), onAction = {}, onConnect = {}, routes, banner = rvActivityBanner(notice, onNotice), noSubscription = if (empty) add else null)
 }
 
 /** A deep link's question over 活動 (`sub-import`): 加入 opens the add page, which imports it. */

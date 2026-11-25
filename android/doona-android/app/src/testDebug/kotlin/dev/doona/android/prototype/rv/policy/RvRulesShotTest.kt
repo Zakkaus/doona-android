@@ -142,14 +142,14 @@ class RvRulesShotTest {
     private fun Edit(draft: RvRuleDraft) = RvRuleEditPage(draft, onChange = {}, onBack = {}, onApply = {}, onDelete = {})
 
     @Composable
-    private fun Effective() = RvEffectiveConfigPage(RvPolicyState(), rvSampleSettings(), onBack = {})
+    private fun Effective() = RvEffectiveConfigPageSample(RvPolicyState(), rvSampleSettings(), onBack = {})
 
     @Composable
     private fun Rules(pending: List<RvPolicyRule> = emptyList(), editing: Boolean = false) =
         RvRulesPage(RvPolicyData.allRules, pending, editing, onBack = {})
 
     @Composable
-    private fun Template() = RvTemplatePage(RvTemplateData.cnDirect, RvTemplateData.services, onSelect = {}, onBack = {}, onReview = {})
+    private fun Template() = RvTemplatePageSample(RvTemplateData.cnDirect, RvTemplateData.services, onSelect = {}, onBack = {}, onReview = {})
 
     @Composable
     private fun Impact() = RvTemplateImpactPage(RvTemplateData.impact, onBack = {}, onApply = {})

@@ -149,7 +149,7 @@ private fun ImpactRuleRow(rule: RvImpactRule) {
 private fun RvTemplatePagePreview() {
     val dark = isSystemInDarkTheme()
     var selected by remember { mutableStateOf(RvTemplateData.cnDirect) }
-    RvTheme(rvSystemScheme(dark), dark) { RvTemplatePage(RvTemplateData.cnDirect, selected, { selected = it }, onBack = {}, onReview = {}) }
+    RvTheme(rvSystemScheme(dark), dark) { RvTemplatePageSample(RvTemplateData.cnDirect, selected, { selected = it }, onBack = {}, onReview = {}) }
 }
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
