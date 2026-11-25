@@ -159,13 +159,13 @@ private fun rowText(words: RowWords, code: Boolean, titleLines: Int, error: Bool
             if (code) {
                 RvCodeText(title, Rv.type.rowTitle, maxLines = titleLines)
             } else {
-                RvText(title, Rv.type.rowTitle, rvWhole(titleLines, words.titleWhole), maxLines = titleLines, lineBox = true, keepWords = words.titleKeepWords)
+                RvText(title, Rv.type.rowTitle, rvWhole(words.titleWhole), maxLines = titleLines, lineBox = true, keepWords = words.titleKeepWords)
             }
             val hue = if (error) Rv.colors.error else Rv.colors.textSecondary
             words.subtitle?.let {
                 // R12 (owner, q-s1125c-titlegap): the subtitle stands its gap under the title, as in every row.
                 Spacer(Modifier.height(RvSpace.titleToSubtitle))
-                RvText(it, Rv.type.rowSub, rvWhole(words.subtitleLines, words.subtitleWhole), color = hue, maxLines = words.subtitleLines, lineBox = true, keepWords = words.subtitleKeepWords)
+                RvText(it, Rv.type.rowSub, rvWhole(words.subtitleWhole), color = hue, maxLines = words.subtitleLines, lineBox = true, keepWords = words.subtitleKeepWords)
             }
         }
         ends.action?.let {

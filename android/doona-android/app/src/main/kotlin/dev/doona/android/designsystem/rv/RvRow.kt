@@ -465,14 +465,14 @@ private class RowText(val text: String, val style: TextStyle, val lines: Int, va
     /** The text in its role's Latin line box, as the row shows it. */
     @Composable
     fun Shown(color: Color = Rv.colors.text, overflow: TextOverflow = TextOverflow.Ellipsis) =
-        RvText(text, style, rvWhole(lines, whole), color = color, maxLines = lines, overflow = overflow, lineBox = true, keepWords = keepWords)
+        RvText(text, style, rvWhole(whole), color = color, maxLines = lines, overflow = overflow, lineBox = true, keepWords = keepWords)
 }
 
-/** A row text of [lines] lines tagged [RvRowPart.WHOLE] with [whole]'s id where it has no limit by that exception. */
-internal fun rvWhole(lines: Int, whole: RvWhole?): Modifier = whole?.let {
-    rvRequireWhole(it, lines)
-    Modifier.testTag("${RvRowPart.WHOLE}:${it.id}")
-} ?: Modifier
+/**
+ * A row text tagged [RvRowPart.WHOLE] with [whole]'s id where it has no limit by that exception. The row checks the
+ * exception against the text's lines once, on entry ([rvRequireWhole]).
+ */
+internal fun rvWhole(whole: RvWhole?): Modifier = whole?.let { Modifier.testTag("${RvRowPart.WHOLE}:${it.id}") } ?: Modifier
 
 /**
  * A text given an exception [whole] takes [Int.MAX_VALUE] lines; one of [lines] lines would be cut all the same, so the
