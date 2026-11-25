@@ -35,12 +35,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import dev.doona.android.R
 
 /**
  * Revolut's modal sheet (measured §2): 8 dp in from the screen's sides and 10 dp above its bottom edge, about 41 dp round,
@@ -108,13 +111,15 @@ internal fun RvSheetLayout(progress: () -> Float, onDismiss: () -> Unit, label: 
     val fling = with(density) { RvSheetSize.fling.toPx() }
     val bottom = with(density) { RvSheetSize.bottom.toPx() }
     val drags = rememberDraggableState { drag = (drag + it).coerceAtLeast(0f) }
+    // What the scrim does is close the sheet, whatever the sheet is about: it must not read as its title (S2).
+    val dismiss = stringResource(R.string.ui_dismiss)
     Box(Modifier.fillMaxSize()) {
         Box(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = progress() }
                 .background(Rv.colors.sheetScrim)
-                .clickable(interactionSource = null, indication = null, onClickLabel = label, onClick = onDismiss),
+                .clickable(interactionSource = null, indication = null, onClickLabel = dismiss, role = Role.Button, onClick = onDismiss),
         )
         RvSheetPanel(
             Modifier
