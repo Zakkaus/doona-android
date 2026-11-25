@@ -151,4 +151,8 @@
     <string name="rv_score_faster">較快</string>
     <string name="rv_score_similar">相當</string>
     <string name="rv_score_slower">較慢</string>
+    <string name="rv_network_apart">分開選擇 TCP 與 UDP</string>
+    <string name="rv_network_both">TCP 與 UDP</string>
+    <string name="rv_score_udp_unsupported">%1$s 不支援 UDP</string>
+    <string name="rv_score_udp_failed">UDP 測試未通過</string>
 </resources>

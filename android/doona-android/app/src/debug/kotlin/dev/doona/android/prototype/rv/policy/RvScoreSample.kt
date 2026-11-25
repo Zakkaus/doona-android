@@ -16,6 +16,10 @@ import dev.doona.android.prototype.rv.data.RvNode
  * - [evaluating]: both networks provisional, TCP with a trial in flight, UDP with every test its ordinary connections
  *   have earned spent (honk's `budget` wait: one test per 16 ordinary connections);
  * - [empty]: every node failed its last test, so no candidate is eligible and nothing is chosen.
+ *
+ * With honk's network mode (a sample, [RvScoreJoint]): [joint] UDP on TCP's node ([agreed]); [jointUnsupported] and
+ * [jointFailed] UDP on the second node because TCP's cannot carry UDP or UDP's test there did not pass ([chosen]);
+ * [separate] the networks chosen apart ([chosen]).
  */
 internal object RvScoreSample {
     private val region: RvPolicyGroup = RvPolicyData.group("hk")
@@ -52,6 +56,11 @@ internal object RvScoreSample {
         tcp = network(nodes[0], PROVISIONAL, "inFlight", ScoreCoverage(nodes.size, EVALUATED, EVALUATED - 1), listOf(challenger(nodes[1], "equivalent"))),
         udp = network(nodes[0], PROVISIONAL, "budget", ScoreCoverage(nodes.size, EVALUATED, EVALUATED), emptyList()),
     )
+
+    val joint = RvScoreJoint(separate = false)
+    val jointUnsupported = RvScoreJoint(separate = false, RvUdpFallback.Unsupported)
+    val jointFailed = RvScoreJoint(separate = false, RvUdpFallback.Failed)
+    val separate = RvScoreJoint(separate = true)
 
     val empty: ScoreGroup = ScoreGroup(GROUP, region.members.map { it.id }, tcp = nothing(), udp = nothing())
 

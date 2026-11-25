@@ -61,10 +61,19 @@ import dev.doona.android.prototype.rv.nodes.latencyText
  * 測試此組 floats at the bottom as the page's primary button.
  * A Score group ([score], what honk's `scoreState` reports for it) picks per network: in place of the status chip, a card
  * for TCP and one for UDP say what each chose and how the challengers compare ([RvScoreCard]); the chosen rows' line
- * begins with the networks that chose them.
+ * begins with the networks that chose them. With [joint] (a sample of honk's network mode) the cards follow it
+ * ([RvScoreJointCards]), and the switch 分開選擇 TCP 與 UDP calls [onSeparate].
  */
 @Composable
-internal fun RvPolicyGroupPage(group: RvPolicyGroup, onBack: () -> Unit, onSelect: (String) -> Unit, onTest: () -> Unit, score: ScoreGroup? = null) {
+internal fun RvPolicyGroupPage(
+    group: RvPolicyGroup,
+    onBack: () -> Unit,
+    onSelect: (String) -> Unit,
+    onTest: () -> Unit,
+    score: ScoreGroup? = null,
+    joint: RvScoreJoint? = null,
+    onSeparate: (Boolean) -> Unit = {},
+) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val name = stringResource(group.name)
     RvScrollPage(
@@ -86,7 +95,9 @@ internal fun RvPolicyGroupPage(group: RvPolicyGroup, onBack: () -> Unit, onSelec
             },
         )
         RvGutter {
-            if (score != null) {
+            if (score != null && joint != null) {
+                RvScoreJointCards(score, joint, group.members, onSeparate)
+            } else if (score != null) {
                 RvScoreCard(stringResource(R.string.ui_tcp), score.tcp, group.members)
                 RvScoreCard(stringResource(R.string.ui_udp), score.udp, group.members)
             }

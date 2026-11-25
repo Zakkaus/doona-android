@@ -405,6 +405,26 @@
   "screen": "policy-group-score-empty"
  },
  {
+  "page": "策略組",
+  "state": "Score 合併：同一節點",
+  "screen": "policy-group-score-joint"
+ },
+ {
+  "page": "策略組",
+  "state": "Score 合併：節點不支援 UDP",
+  "screen": "policy-group-score-joint-unsupported"
+ },
+ {
+  "page": "策略組",
+  "state": "Score 合併：UDP 測試未通過",
+  "screen": "policy-group-score-joint-failed"
+ },
+ {
+  "page": "策略組",
+  "state": "Score 分開",
+  "screen": "policy-group-score-separate"
+ },
+ {
   "page": "選擇節點",
   "state": "正常",
   "screen": "policy-picker"
