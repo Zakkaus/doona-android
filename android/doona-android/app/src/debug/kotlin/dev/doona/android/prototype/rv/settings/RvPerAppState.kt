@@ -1,23 +1,12 @@
 package dev.doona.android.prototype.rv.settings
 
-import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
-import dev.doona.android.R
-
-/** Which apps the tunnel takes (the engine's `AppPolicy`): all of them, only the checked ones, or all but those. */
-internal enum class RvAppPolicy(@StringRes val label: Int) {
-    All(R.string.perapp_policy_all),
-    Only(R.string.perapp_policy_only),
-    Except(R.string.perapp_policy_except),
-}
+import dev.doona.android.feature.model.RvAppPolicy
+import dev.doona.android.feature.model.RvPerApp
 
 /** An app the phone can launch: its name and its package. */
 @Immutable
 internal data class RvApp(val label: String, val packageName: String)
-
-/** A per-app setting: the [policy] and the checked [packages], which it keeps even for an app no longer installed. */
-@Immutable
-internal data class RvPerApp(val policy: RvAppPolicy, val packages: Set<String>)
 
 /** Where a save stands: none running, writing the setting and rebuilding the tunnel, or the write failed. */
 internal enum class RvSave { Idle, Saving, Failed }

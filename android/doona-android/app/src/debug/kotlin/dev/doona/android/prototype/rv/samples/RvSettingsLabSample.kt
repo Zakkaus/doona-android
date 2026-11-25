@@ -45,12 +45,13 @@ import dev.doona.android.designsystem.rv.rvBarHeight
 import dev.doona.android.designsystem.rv.rvDotMap
 import dev.doona.android.designsystem.rv.rvHeroArt
 import dev.doona.android.feature.NOT_WIRED
+import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvGeoData
+import dev.doona.android.feature.model.RvPerApp
+import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.prototype.rv.settings.RV_SAMPLE_GEO_SHIPPED_MS
 import dev.doona.android.prototype.rv.settings.RvAboutEntry
-import dev.doona.android.prototype.rv.settings.RvAppPolicy
 import dev.doona.android.prototype.rv.settings.RvGeoDataRow
-import dev.doona.android.prototype.rv.settings.RvPerApp
 import dev.doona.android.prototype.rv.settings.RvSettingsAlpha
 import dev.doona.android.prototype.rv.settings.RvSettingsCard
 import dev.doona.android.prototype.rv.settings.RvSettingsNavRow
@@ -58,7 +59,6 @@ import dev.doona.android.prototype.rv.settings.RvSettingsRoutes
 import dev.doona.android.prototype.rv.settings.RvSettingsSection
 import dev.doona.android.prototype.rv.settings.RvSettingsSize
 import dev.doona.android.prototype.rv.settings.RvSettingsSpace
-import dev.doona.android.prototype.rv.settings.RvSettingsState
 import dev.doona.android.prototype.rv.settings.RvSettingsSwitchRow
 import dev.doona.android.prototype.rv.settings.RvSettingsText
 import dev.doona.android.prototype.rv.settings.RvUpdate

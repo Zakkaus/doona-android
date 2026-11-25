@@ -50,6 +50,7 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvRowToggle
 import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.model.RvAppPolicy
 
 /** What the 依 App page does: pick a policy, check an app, search, save, and rebuild the tunnel after a failed one. */
 internal class RvPerAppActions(
