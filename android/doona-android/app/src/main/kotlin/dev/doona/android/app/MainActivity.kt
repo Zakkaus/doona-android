@@ -120,23 +120,27 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // The flag is set only after launch() returned: a launch that throws (no activity for the request, a launcher that is
-    // no longer registered) leaves it clear, so the activity survives and the next status explains again.
+    // A launch that throws (no activity for the request, a launcher that is no longer registered) must not end the
+    // activity or leave the dialog counted as open: the ask is given up and the next status explains again.
     private fun launchNotificationDialog() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return asks.notifyLaunchFailed()
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return asks.notifyNotAsked()
         try {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         } catch (e: RuntimeException) {
             VpnLog.warn("permissions: notification dialog not opened (${e.javaClass.simpleName})")
-            return asks.notifyLaunchFailed()
+            asks.notifyNotAsked()
         }
-        asks.notifyLaunched()
     }
 
     // The consent may have been given meanwhile (another app's prompt, the tile), so the dialog is looked up again.
     private fun requestVpnConsent() {
         val consent = VpnService.prepare(this) ?: return onPermissionStep(asks.consentAnswered(given = true))
-        vpnConsent.launch(consent)
+        try {
+            vpnConsent.launch(consent)
+        } catch (e: RuntimeException) {
+            VpnLog.warn("permissions: consent dialog not opened (${e.javaClass.simpleName})")
+            asks.consentLaunchFailed()
+        }
     }
 
     /**
@@ -154,7 +158,7 @@ class MainActivity : ComponentActivity() {
         }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                combine(engine.status, asks.unrecorded) { status, _ -> status is Status.Running }.collect { running ->
+                combine(engine.status, asks.unrecorded, asks.showing) { status, _, _ -> status is Status.Running }.collect { running ->
                     try {
                         asks.onStatus(running, notify, settings::recordNotifyAsked)
                     } catch (e: IOException) {

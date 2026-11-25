@@ -148,7 +148,6 @@ class PermissionAsksTest {
     fun theSystemsDialogIsNotExplainedOverAndItsAnswerIsStored() {
         status(running = true)
         assertEquals(PermissionStep.AskNotify, asks.confirm())
-        asks.notifyLaunched()
         status(running = true)
         assertNull("not explained again while the system's dialog is open", asks.showing.value)
         assertEquals(0, records)
@@ -164,7 +163,6 @@ class PermissionAsksTest {
     fun theSystemsDialogsAnswerInANewProcessClearsTheOpenFlag() {
         status(running = true)
         asks.confirm()
-        asks.notifyLaunched()
         val handle = SavedStateHandle(saved.keys().associateWith { saved.get<Any?>(it) })
         assertEquals("open while the dialog is up", true, handle.get<Boolean>("notify_open"))
         PermissionAsks(handle).notifyAnswered(granted = true)
@@ -175,7 +173,9 @@ class PermissionAsksTest {
     fun aDialogThatFailedToLaunchIsExplainedAgainByTheNextStatus() {
         status(running = true)
         assertEquals(PermissionStep.AskNotify, asks.confirm())
-        // launch() threw, so notifyLaunched() was never reached.
+        status(running = true)
+        assertNull("counted open until the activity says otherwise", asks.showing.value)
+        asks.notifyNotAsked()
         status(running = true)
         assertEquals(Permission.Notify, asks.showing.value)
         assertEquals(0, records)
@@ -247,6 +247,8 @@ class PermissionAsksTest {
         status(running = true)
         assertNull("not over the consent's dialog", asks.showing.value)
         assertEquals(PermissionStep.Connect, asks.consentAnswered(given = true))
+        assertNull("not before the status that follows the connect", asks.showing.value)
+        status(running = true)
         assertEquals("the connection is up and the consent answered", Permission.Notify, asks.showing.value)
     }
 
@@ -255,7 +257,46 @@ class PermissionAsksTest {
         asks.connect(consentNeeded = true)
         status(running = true)
         asks.close()
+        assertNull("only a status lets the notification show", asks.showing.value)
+        status(running = true)
         assertEquals(Permission.Notify, asks.showing.value)
+    }
+
+    @Test
+    fun aWaitingNotificationGrantedMeanwhileIsDropped() {
+        asks.connect(consentNeeded = true)
+        status(running = true)
+        granted = true
+        asks.close()
+        status(running = true)
+        assertNull("granted elsewhere meanwhile", asks.showing.value)
+        granted = false
+        asks.connect(consentNeeded = true)
+        asks.close()
+        status(running = true)
+        assertEquals("needed again", Permission.Notify, asks.showing.value)
+    }
+
+    @Test
+    fun aConsentDialogThatCouldNotOpenEndsTheConnectAndShowsNothingOverIt() {
+        asks.connect(consentNeeded = true)
+        assertEquals(PermissionStep.AskConsent, asks.confirm())
+        assertEquals("pending until it opens", PermissionStep.Wait, asks.connect(consentNeeded = true))
+        asks.consentLaunchFailed()
+        assertNull(asks.showing.value)
+        assertEquals("the next 連線 explains again", PermissionStep.Wait, asks.connect(consentNeeded = true))
+        assertEquals(Permission.Vpn, asks.showing.value)
+    }
+
+    @Test
+    fun theSystemsDialogCountsAsOpenFromConfirmEvenInANewProcess() {
+        status(running = true)
+        assertEquals(PermissionStep.AskNotify, asks.confirm())
+        val restored = afterProcessDeath()
+        status(running = true, on = restored)
+        assertNull("the dialog may be up already", restored.showing.value)
+        restored.connect(consentNeeded = true)
+        assertNull("nor the VPN's over it", restored.showing.value)
     }
 
     @Test
@@ -264,7 +305,6 @@ class PermissionAsksTest {
         assertEquals("a 連線 from the tile", PermissionStep.Wait, asks.connect(consentNeeded = true))
         assertEquals(PermissionStep.AskNotify, asks.confirm())
         assertNull("not over the system's dialog that is about to open", asks.showing.value)
-        asks.notifyLaunched()
         assertNull(asks.showing.value)
         status(running = true)
         assertNull("nor on a status", asks.showing.value)
@@ -277,7 +317,6 @@ class PermissionAsksTest {
     fun aConnectWhileTheNotificationsDialogIsOpenWaitsForItsAnswer() {
         status(running = true)
         asks.confirm()
-        asks.notifyLaunched()
         assertEquals(PermissionStep.Wait, asks.connect(consentNeeded = true))
         assertNull(asks.showing.value)
         assertNull("nor in a new process", afterProcessDeath().showing.value)
@@ -291,7 +330,7 @@ class PermissionAsksTest {
         status(running = true)
         asks.connect(consentNeeded = true)
         assertEquals(PermissionStep.AskNotify, asks.confirm())
-        asks.notifyLaunchFailed()
+        asks.notifyNotAsked()
         assertEquals(Permission.Vpn, asks.showing.value)
         asks.close()
         status(running = true)
@@ -305,7 +344,6 @@ class PermissionAsksTest {
         asks.connect(consentNeeded = true)
         assertEquals(PermissionStep.AskNotify, asks.confirm())
         assertNull("not under the system's dialog", asks.showing.value)
-        asks.notifyLaunched()
         asks.notifyAnswered(granted = true)
         assertEquals(Permission.Vpn, asks.showing.value)
         asks.dismiss()

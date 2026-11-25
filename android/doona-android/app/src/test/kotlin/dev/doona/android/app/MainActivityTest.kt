@@ -16,6 +16,7 @@ import dev.doona.android.data.settings.MemoryPreferences
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.permissions.Permission
+import dev.doona.android.feature.permissions.PermissionStep
 import dev.doona.android.feature.permissions.PermissionViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -238,6 +239,21 @@ class MainActivityTest {
         activity.onPermissionStep(step)
         runBlocking { asks.onStatus(running = true, notify = { true }) {} }
         assertEquals("the flag was not set, so the next status explains again", Permission.Notify, asks.showing.value)
+    }
+
+    @Test
+    fun `a consent dialog that cannot be launched leaves the app running and the next connect explains again`() {
+        ShadowVpnService.setPrepareResult(Intent("dev.doona.test.CONSENT"))
+        val controller = Robolectric.buildActivity(MainActivity::class.java, connect).setup()
+        val activity = controller.get()
+        val asks = activity.asks()
+        assertEquals(Permission.Vpn, asks.showing.value)
+        val step = asks.confirm()
+        // A destroyed activity's launcher is unregistered, so launch() throws.
+        controller.pause().stop().destroy()
+        activity.onPermissionStep(step)
+        assertEquals("the 連線 ended, so the next one explains again", PermissionStep.Wait, asks.connect(consentNeeded = true))
+        assertEquals(Permission.Vpn, asks.showing.value)
     }
 
     @Test

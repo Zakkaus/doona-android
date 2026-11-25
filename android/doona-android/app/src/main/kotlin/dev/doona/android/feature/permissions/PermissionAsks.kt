@@ -28,15 +28,16 @@ fun interface NotifyState {
  * stored it, so neither an activity that dies before the explanation shows nor one that dies before the store loses it.
  *
  * [showing] is the explanation on screen. One that is wanted while another shows, or while a system dialog is open
- * (the consent's, or the notification's from [notifyLaunched] to [notifyAnswered]), waits, and [advance], called when
- * a sheet closes and by every answer and status, is the only place that shows a waiting one: the VPN's when nothing
- * else is open, the notification's once a connection is [running] and no consent is pending. So a 連線 from the tile
- * does not take the notification's explanation away, and neither explanation meets the other's system dialog; a
- * consent that is refused leaves the notification unasked. [refused] is the last refusal, the explanation's 取消 or
+ * (the consent's from [confirm] to [consentAnswered], the notification's from [confirm] to [notifyAnswered]; saved
+ * before the activity launches them, so a recreated activity counts them open), waits, and [advance], called when a
+ * sheet closes and by every answer and status, is the only place that shows a waiting one: the VPN's when nothing
+ * else is open, the notification's only from [onStatus] with a connection running, no consent pending, and the
+ * permission still unasked. So a 連線 from the tile does not take the notification's explanation away, neither
+ * explanation meets the other's system dialog, and a consent that is refused leaves the notification unasked. [refused] is the last refusal, the explanation's 取消 or
  * 暫時不要 or a no in the system's dialog, which 活動 tells (`RvActivityNotice.ConsentDenied`, `NotifyDenied`) until
  * the next connection starts or [clearRefusal]; back or a tap above the explanation ([close]) refuses nothing. A
- * pending request ([connect] to the consent's answer) is joined by a repeated tap or a redelivered intent. Everything
- * but [running] is saved with the activity, because a pending result is delivered to the recreated one.
+ * pending request ([connect] to the consent's answer) is joined by a repeated tap or a redelivered intent. All of it is
+ * saved with the activity, because a pending result is delivered to the recreated one.
  */
 class PermissionAsks(private val saved: SavedStateHandle) {
     val showing: StateFlow<Permission?> = saved.getStateFlow(KEY_SHOWING, null)
@@ -46,9 +47,6 @@ class PermissionAsks(private val saved: SavedStateHandle) {
     /** The notification was answered and the answer is not stored yet; [onStatus] stores it, and retries until it can. */
     val unrecorded: StateFlow<Boolean> = saved.getStateFlow(KEY_UNRECORDED, false)
 
-    /** The last status [onStatus] saw; a new process learns it again from the first status. */
-    private var running = false
-
     private var connecting by flag(KEY_CONNECTING)
 
     /** A VPN explanation is wanted and waits for [advance]. */
@@ -57,10 +55,10 @@ class PermissionAsks(private val saved: SavedStateHandle) {
     /** The notification explanation is wanted and waits for [advance]. */
     private var notifyWaits by flag(KEY_NOTIFY_WAITS)
 
-    /** The system's consent dialog is open: from [confirm] to [consentAnswered]. */
+    /** The system's consent dialog is open (or about to be): from [confirm] to [consentAnswered] or [consentLaunchFailed]. */
     private var consentOpen by flag(KEY_CONSENT_OPEN)
 
-    /** The system's notification dialog is open: its answer comes back to this or a recreated activity. */
+    /** The system's notification dialog is open (or about to be): from [confirm] to [notifyAnswered] or [notifyNotAsked]. */
     private var notifyOpen by flag(KEY_NOTIFY_OPEN)
 
     private fun flag(key: String) = object : ReadWriteProperty<Any?, Boolean> {
@@ -83,17 +81,20 @@ class PermissionAsks(private val saved: SavedStateHandle) {
     }
 
     /**
-     * The explanation's 繼續: the system's dialog for the permission explained. The activity opens it at once, so nothing
-     * is promoted here; [notifyLaunched] marks the notification's dialog open, or [notifyLaunchFailed] gives up on it.
+     * The explanation's 繼續: the system's dialog for the permission explained. It counts as open from here, so a
+     * recreated activity does not show anything over it; the activity opens it at once, and tells if it cannot
+     * ([consentLaunchFailed], [notifyNotAsked]). Nothing is promoted here.
      */
     fun confirm(): PermissionStep = when (showing.value) {
+        // The flag is set before the sheet leaves: the activity's collector runs on the main thread as [showing] changes.
         Permission.Vpn -> {
-            saved[KEY_SHOWING] = null
             consentOpen = true
+            saved[KEY_SHOWING] = null
             PermissionStep.AskConsent
         }
 
         Permission.Notify -> {
+            notifyOpen = true
             saved[KEY_SHOWING] = null
             PermissionStep.AskNotify
         }
@@ -131,13 +132,16 @@ class PermissionAsks(private val saved: SavedStateHandle) {
         return if (given) PermissionStep.Connect else PermissionStep.Wait
     }
 
-    /** The activity launched the system's notification dialog. A launch that throws never gets here ([notifyLaunchFailed]). */
-    fun notifyLaunched() {
-        notifyOpen = true
+    /** The system's consent dialog could not be opened: the 連線 ends, nothing was asked. */
+    fun consentLaunchFailed() {
+        connecting = false
+        consentOpen = false
+        advance()
     }
 
-    /** The system's notification dialog could not be opened: nothing was asked, the next status explains again. */
-    fun notifyLaunchFailed() {
+    /** The system's notification dialog was not opened (it could not be, or the Android version has none): nothing was asked. */
+    fun notifyNotAsked() {
+        notifyOpen = false
         advance()
     }
 
@@ -152,28 +156,29 @@ class PermissionAsks(private val saved: SavedStateHandle) {
     /**
      * Each status the activity sees while shown, and each new answer. An answer not yet stored is recorded as asked by
      * [record] first; if that throws, it stays [unrecorded] and the next call tries again. Once a connection is
-     * [running], the notification is wanted if it [NotifyState.needsAsking] and is not already on its way.
+     * [running], the notification is wanted if it [NotifyState.needsAsking], asked again here for one that waits, and is
+     * not already on its way. This is the only call that lets a waiting notification show, so it never shows before the
+     * status that follows a connect or a consent.
      *
      * A 連線 may land while the flag is read (the tile, on the main thread); the notification then waits behind its
      * explanation. A consent needed while a connection runs does not happen (a tile tap while running disconnects), so
      * there is no case of the notification meeting the consent's dialog here; [advance] holds it back all the same.
      */
     suspend fun onStatus(running: Boolean, notify: NotifyState, record: suspend () -> Unit) {
-        this.running = running
         if (unrecorded.value) {
             record()
             saved[KEY_UNRECORDED] = false
         }
-        val onItsWay = showing.value == Permission.Notify || notifyWaits || notifyOpen || unrecorded.value
-        if (running && !onItsWay && notify.needsAsking()) notifyWaits = true
-        advance()
+        val onItsWay = showing.value == Permission.Notify || notifyOpen || unrecorded.value
+        if (running && !onItsWay) notifyWaits = notify.needsAsking()
+        advance(notifyReady = running)
     }
 
     /**
      * The only place that shows a waiting explanation, and only while no system dialog is open and nothing shows: the
-     * VPN's, or the notification's once a connection is up and no consent is pending.
+     * VPN's, or, with [notifyReady] (a status with a connection up) and no consent pending, the notification's.
      */
-    private fun advance() {
+    private fun advance(notifyReady: Boolean = false) {
         if (showing.value != null || notifyOpen || consentOpen) return
         when {
             vpnWaits -> {
@@ -181,7 +186,7 @@ class PermissionAsks(private val saved: SavedStateHandle) {
                 saved[KEY_SHOWING] = Permission.Vpn
             }
 
-            notifyWaits && running && !connecting -> {
+            notifyReady && notifyWaits && !connecting -> {
                 notifyWaits = false
                 saved[KEY_SHOWING] = Permission.Notify
             }
