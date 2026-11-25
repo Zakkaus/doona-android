@@ -247,23 +247,69 @@ def geo(apk):
         add('data', name, p['version'], lic, p['source'], texts, note)
 
 
+BRAND_SOURCES = {
+    'Simple Icons': ('16.38.1', 'CC0-1.0', 'https://simpleicons.org', []),
+    'Bootstrap Icons': ('1.13.2', 'MIT', 'https://icons.getbootstrap.com', [APP / 'app/src/debug/assets/licenses/bootstrap-icons-MIT.txt']),
+    'Wikimedia Commons': ('PD-textlogo', 'LicenseRef-Public-domain', 'https://commons.wikimedia.org', []),
+    'GitHub': ('github.com/logos', 'LicenseRef-GitHub-logos', 'https://github.com/logos', []),
+}
+
+
+def brand_marks(main):
+    """Classify the brand marks by BRAND_ICONS.md's tables; credit the sources whose marks release code draws."""
+    table, source = {}, None
+    for line in (main / 'BRAND_ICONS.md').read_text().splitlines():
+        if line.startswith('## '):
+            source = line[3:].strip()
+        elif m := re.match(r'^\| (rv_\w+) \|', line):
+            if source not in BRAND_SOURCES or m[1] in table:
+                raise SystemExit(f'BRAND_ICONS.md: {m[1]} under {source!r}')
+            table[m[1]] = source
+    marks = set((main / 'res/drawable').glob('rv_brand_*.xml')) | {p for p in (main / 'res/drawable').glob('rv_*.xml') if p.stem in table}
+    unlisted = sorted(p.stem for p in marks if p.stem not in table)
+    if unlisted:
+        raise SystemExit(f'Classify artwork or data: list {", ".join(unlisted)} in BRAND_ICONS.md with its source')
+    # Release resource shrinking keeps only the marks main code names; the rest serve debug pages.
+    drawn = {m for p in (main / 'kotlin').rglob('*.kt') for m in re.findall(r'R\.drawable\.(rv_\w+)', p.read_text())}
+    for name, (v, lic, src, texts) in BRAND_SOURCES.items():
+        shipped = sorted(m for m in drawn if table.get(m) == name)
+        if shipped:
+            add('artwork', f'{name} brand marks', v, lic, src, texts,
+                'The brand marks are trademarks of their owners, shown only to name a service or group; their use implies '
+                "no affiliation with or endorsement by those owners, and doona's licence does not cover them. "
+                'Marks: ' + ', '.join(shipped) + '. Provenance: app/src/main/BRAND_ICONS.md.')
+    return marks
+
+
+def first_comment(path):
+    m = re.search(r'<!--(.*?)-->', path.read_text(), re.S)
+    return ' '.join(m[1].split()) if m else ''
+
+
 def assets():
     main = APP / 'app/src/main'
-    owned = {'ic_duck.xml', 'ic_launcher_foreground.xml', 'ic_launcher_monochrome.xml', 'ic_launcher.xml'}
+    # doona's own artwork: the launcher icon, the shortcut discs around its glyphs, and the analytics bars.
+    owned = {'ic_duck.xml', 'ic_launcher_foreground.xml', 'ic_launcher_monochrome.xml', 'ic_launcher.xml',
+             'rv_ic_analytics.xml', 'rv_shortcut_nodes.xml', 'rv_shortcut_power.xml'}
     paths = {p for module in ('app', 'icons', 'flags') for variant in ('main', 'release')
              for p in (APP / module / 'src' / variant / 'res').glob('*/*')
              if p.parent.name.split('-')[0] in {'drawable', 'font', 'mipmap', 'raw'}}
     sets = [
-        ('app/src/main/res/font/inter_*.ttf', 'Inter', '4.001', 'OFL-1.1', 'https://github.com/rsms/inter', [SOURCES / 'inter-OFL.txt'], 'Latin subset, fixed weights and optical sizes.'),
+        ('app/src/main/res/font/*inter_*.ttf', 'Inter', '4.001', 'OFL-1.1', 'https://github.com/rsms/inter', [SOURCES / 'inter-OFL.txt'], 'Latin subset, fixed weights and optical sizes.'),
         ('app/src/main/res/font/noto_sans_tc_*.ttf', 'Noto Sans TC', '@fontsource-variable/noto-sans-tc 5.3.0', 'OFL-1.1', 'https://fontsource.org/fonts/noto-sans-tc', [SOURCES / 'noto-sans-tc-OFL.txt'], 'Subset and fixed-weight instances. Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name \'Source\'.'),
         ('icons/src/main/res/drawable/sym_*.xml', 'Material Symbols Rounded', '10ecc14790612ca8fd164e3f4ffe9c16fc50d5b7', 'Apache-2.0', 'https://github.com/google/material-design-icons', [APP / 'icons/LICENSE', APP / 'icons/NOTICE'], ''),
         ('flags/src/main/res/drawable/flag_*.xml', 'circle-flags', '379588b5da95482d6bbf10bd45644a35b0609ea6', 'MIT', 'https://github.com/HatScripts/circle-flags', [APP / 'flags/LICENSE', APP / 'flags/NOTICE'], ''),
     ]
+    # The app's own copies of set glyphs (rv_sym_*, rv_flag_*, ...) name their set in their first comment.
+    headed = {'Material Symbols Rounded': 'Material Symbols Rounded "', 'circle-flags': 'HatScripts circle-flags '}
     for glob, name, v, lic, src, texts, note in sets:
         matches = set(APP.glob(glob))
+        if name in headed:
+            matches |= {p for p in (main / 'res/drawable').glob('rv_*.xml') if headed[name] in first_comment(p)}
         if matches:
             add('artwork', name, v, lic, src, texts, note)
             paths -= matches
+    paths -= brand_marks(main)
     for p in sorted(paths):
         if p.name not in owned or main not in p.parents:
             raise SystemExit(f'Classify artwork or data: {p.relative_to(APP)}')
