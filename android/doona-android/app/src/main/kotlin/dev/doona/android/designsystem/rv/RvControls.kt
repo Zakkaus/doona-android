@@ -81,7 +81,6 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.roundToIntRect
 import dev.doona.android.R
-import dev.doona.android.feature.NOT_WIRED
 
 // The sample's controls, one of each: range chip, segmented control, chart tool disc, value pill, primary button, text
 // field, switch and radio.
@@ -294,14 +293,15 @@ private fun Modifier.exactSize(width: Int, height: Int): Modifier = layout { mea
 }
 
 /**
- * The chart's two tool discs at the end of the range row (measured §8): 35 dp, 8 dp apart. Each keeps a 48 dp target,
- * so the two targets overlap by a few dp between the discs and stick out [rvToolOverhang] past the outer edge.
+ * The chart's two tool discs at the end of the range row (measured §8): 35 dp, 8 dp apart, [first] calling [onFirst]
+ * and [second] [onSecond]. Each keeps a 48 dp target, so the two targets overlap by a few dp between the discs and
+ * stick out [rvToolOverhang] past the outer edge.
  */
 @Composable
-internal fun RvChartTools(first: Pair<Int, String>, second: Pair<Int, String>) {
+internal fun RvChartTools(first: Pair<Int, String>, second: Pair<Int, String>, onFirst: () -> Unit, onSecond: () -> Unit) {
     Box(Modifier.width(RvChartSize.roundButton * 2 + RvChartSize.roundGap + rvToolOverhang * 2)) {
-        Box(Modifier.align(Alignment.CenterStart)) { RvRoundButton(first.first, first.second, NOT_WIRED) }
-        Box(Modifier.align(Alignment.CenterEnd)) { RvRoundButton(second.first, second.second, NOT_WIRED) }
+        Box(Modifier.align(Alignment.CenterStart)) { RvRoundButton(first.first, first.second, onFirst) }
+        Box(Modifier.align(Alignment.CenterEnd)) { RvRoundButton(second.first, second.second, onSecond) }
     }
 }
 
