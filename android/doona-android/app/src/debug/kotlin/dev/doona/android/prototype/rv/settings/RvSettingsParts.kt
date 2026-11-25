@@ -48,10 +48,10 @@ import dev.doona.android.designsystem.rv.RvSwitch
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvWhole
 import dev.doona.android.designsystem.rv.rvOneLine
+import dev.doona.android.designsystem.rv.rvRequireWhole
 import dev.doona.android.designsystem.rv.rvRowPress
 import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.designsystem.rv.rvRowToggle
-import dev.doona.android.designsystem.rv.rvRequireWhole
 import dev.doona.android.designsystem.rv.rvWhole
 import dev.doona.android.designsystem.rv.scripted
 
