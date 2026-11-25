@@ -355,20 +355,6 @@ internal data class MemberDto(
 }
 
 @Serializable
-internal data class CoordinatesDto(val lat: Double, val lon: Double)
-
-/** A city a node's name names: its id, its names when the core has them, and where it is. */
-@Serializable
-internal data class CityDto(val id: String, val names: CityNamesDto? = null, val lat: Double, val lon: Double)
-
-@Serializable
-internal data class CityNamesDto(
-    val en: String,
-    @SerialName("zh-TW") val zhTw: String,
-    @SerialName("zh-CN") val zhCn: String,
-)
-
-@Serializable
 internal data class SubscriptionDto(
     val id: String,
     val name: String,
