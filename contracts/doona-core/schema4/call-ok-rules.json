@@ -1,0 +1,63 @@
+{
+  "ok": {
+    "generation": 15,
+    "list": "traffic",
+    "total": 3,
+    "rows": [
+      {
+        "id": "r-bcd21d2c53a25096",
+        "index": 0,
+        "source": {
+          "file": "f1",
+          "line": 21,
+          "bytes": [
+            288,
+            323
+          ]
+        },
+        "action": "direct",
+        "target": "direct",
+        "must": true,
+        "paused": false,
+        "fallback": false,
+        "reasons": []
+      },
+      {
+        "id": "r-a5a7859d51595d08",
+        "index": 1,
+        "source": {
+          "file": "f1",
+          "line": 22,
+          "bytes": [
+            328,
+            363
+          ]
+        },
+        "action": "group",
+        "target": "g-Main",
+        "must": false,
+        "paused": false,
+        "fallback": false,
+        "reasons": []
+      },
+      {
+        "id": "r-8d066c6f0b6552cd",
+        "index": 2,
+        "source": {
+          "file": "f1",
+          "line": 23,
+          "bytes": [
+            368,
+            382
+          ]
+        },
+        "action": "group",
+        "target": "g-Main",
+        "must": false,
+        "paused": false,
+        "fallback": true,
+        "reasons": []
+      }
+    ]
+  }
+}

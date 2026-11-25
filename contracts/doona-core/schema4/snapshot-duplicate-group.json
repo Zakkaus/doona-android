@@ -1,0 +1,107 @@
+{
+  "revision": 12,
+  "running": false,
+  "generation": 0,
+  "sinceEpochMs": null,
+  "error": null,
+  "warning": null,
+  "traffic": {
+    "upTotal": 0,
+    "downTotal": 0,
+    "activeFlows": 0,
+    "upPeak": 0,
+    "downPeak": 0
+  },
+  "today": {
+    "upTotal": 0,
+    "downTotal": 0,
+    "yesterdayByNow": null
+  },
+  "catalog": {
+    "mode": "Rule",
+    "globalTargetId": null,
+    "groups": [
+      {
+        "id": "g-Main",
+        "name": "Main",
+        "kind": "Fallback",
+        "selectedId": "n-b91256dabac65282",
+        "tcpSelectedId": "n-b91256dabac65282",
+        "udpSelectedId": "n-b91256dabac65282",
+        "networksDiffer": false,
+        "pinned": false,
+        "tcpPinned": false,
+        "udpPinned": false,
+        "testing": false,
+        "members": [
+          {
+            "id": "n-b91256dabac65282",
+            "name": "lab",
+            "latencyMs": null,
+            "failed": false,
+            "error": null,
+            "isGroup": false,
+            "subscriptionId": null,
+            "region": null,
+            "regionCentroid": null,
+            "city": null
+          }
+        ],
+        "default": null,
+        "final": null,
+        "exit": null,
+        "implicitAll": false,
+        "source": {
+          "file": "f1",
+          "line": 11
+        }
+      }
+    ],
+    "nodes": [
+      {
+        "id": "n-5c1e0a7b93d24f10",
+        "name": "home",
+        "latencyMs": null,
+        "failed": false,
+        "error": null,
+        "subscriptionId": null,
+        "source": "static",
+        "region": null,
+        "regionCentroid": null,
+        "city": null
+      },
+      {
+        "id": "n-b91256dabac65282",
+        "name": "lab",
+        "latencyMs": null,
+        "failed": false,
+        "error": null,
+        "subscriptionId": null,
+        "source": "static",
+        "region": null,
+        "regionCentroid": null,
+        "city": null
+      }
+    ],
+    "subscriptions": [],
+    "config": {
+      "rev": 4,
+      "generation": 7,
+      "summary": {
+        "subscriptions": 0,
+        "nodes": 2,
+        "groups": 2,
+        "trafficRules": 0,
+        "dnsRequestRules": 0,
+        "dnsResponseRules": 0
+      },
+      "skipped": 0,
+      "constrained": 0,
+      "blockAds": "absent",
+      "fallback": {
+        "target": "g-Main",
+        "must": false
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "ok": {
+    "draft": "d4",
+    "version": 2,
+    "parsed": true,
+    "validated": true,
+    "summary": {
+      "subscriptions": 0,
+      "nodes": 2,
+      "groups": 2,
+      "trafficRules": 0,
+      "dnsRequestRules": 0,
+      "dnsResponseRules": 0
+    },
+    "diagnostics": [
+      {
+        "phase": "assemble",
+        "code": "duplicate_group",
+        "severity": "warning",
+        "source": "f1",
+        "line": 7,
+        "column": 5
+      }
+    ],
+    "support": {
+      "complete": true,
+      "skipped": 0,
+      "constrained": 0,
+      "records": []
+    },
+    "diff": []
+  }
+}

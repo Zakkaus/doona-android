@@ -1,0 +1,12 @@
+{
+  "draft": "d4",
+  "version": 2,
+  "source": "f1",
+  "op": {
+    "kind": "addStaticNode",
+    "link": "socks5://192.0.2.1:1080#example",
+    "groups": [
+      "g-Main"
+    ]
+  }
+}

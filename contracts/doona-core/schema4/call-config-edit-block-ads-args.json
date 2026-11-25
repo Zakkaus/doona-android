@@ -1,0 +1,9 @@
+{
+  "draft": "d4",
+  "version": 1,
+  "source": "f1",
+  "op": {
+    "kind": "setBlockAds",
+    "enabled": true
+  }
+}

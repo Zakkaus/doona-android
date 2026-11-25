@@ -1,0 +1,30 @@
+subscription {
+    office: 'https://example.invalid/sub?token=REDACTED'
+}
+
+group {
+    Proxy {
+        filter: subtag(office) && name(keyword: 'HK')
+        policy: fallback
+    }
+    Auto {
+        filter: subtag(office) && name(keyword: 'HK')
+        policy: select
+    }
+    Streaming {
+        filter: subtag(office) && name(keyword: 'HK')
+        policy: roundrobin
+    }
+    AI {
+        filter: subtag(office) && name(keyword: 'HK')
+        policy: score
+    }
+    🇯🇵 日本 自動 {
+        filter: subtag(office) && name(keyword: 'JP')
+        policy: min_moving_avg
+    }
+}
+
+routing {
+    fallback: direct
+}

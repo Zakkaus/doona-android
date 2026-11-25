@@ -1,0 +1,24 @@
+subscription {
+    office: 'https://example.invalid/sub?token=REDACTED'
+}
+
+node {
+    home: 'socks5://192.0.2.10:1080'
+}
+
+group {
+    Main {
+        policy: select
+        default: home
+    }
+    Fast {
+        filter: subtag(office)
+        policy: min_moving_avg
+    }
+}
+
+routing {
+    dip(geoip: private) -> direct(must)
+    domain(suffix: example.org) -> Main
+    fallback: Main
+}

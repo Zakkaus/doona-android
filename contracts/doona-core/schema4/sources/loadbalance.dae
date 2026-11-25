@@ -1,0 +1,18 @@
+subscription {
+    office: 'https://example.invalid/sub?token=REDACTED'
+}
+
+group {
+    spread {
+        filter: subtag(office) && name(keyword: 'HK')
+        policy: roundrobin
+    }
+    spread-pinned {
+        filter: subtag(office) && name(keyword: 'HK')
+        policy: loadbalance
+    }
+}
+
+routing {
+    fallback: spread
+}

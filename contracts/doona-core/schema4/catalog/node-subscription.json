@@ -1,0 +1,12 @@
+{
+  "id": "n-0c41be7742aa9d03",
+  "name": "HK-01",
+  "latencyMs": 41,
+  "failed": false,
+  "error": null,
+  "subscriptionId": "s1",
+  "source": "subscription",
+  "region": null,
+  "regionCentroid": null,
+  "city": null
+}
