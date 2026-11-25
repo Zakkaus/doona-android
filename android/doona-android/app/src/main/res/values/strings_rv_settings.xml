@@ -30,7 +30,7 @@
     <string name="rv_settings_group_updates">Updates</string>
     <string name="rv_settings_lab">Lab</string>
     <string name="rv_lab_performance">Performance mode</string>
-    <string name="rv_lab_performance_sub">Uses more CPU and battery for speed. Takes effect next time the app opens.</string>
+    <string name="rv_lab_performance_sub">Uses more battery for more speed</string>
     <string name="rv_lab_footnote">These options may change or go away.</string>
     <string name="rv_settings_group_about">About</string>
     <string name="rv_settings_version">Version</string>

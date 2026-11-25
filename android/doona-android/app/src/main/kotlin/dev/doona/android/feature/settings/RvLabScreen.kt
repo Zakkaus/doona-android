@@ -22,8 +22,9 @@ import dev.doona.android.designsystem.rv.RvSpace
 /**
  * 實驗室 (owner, 2026-11-25 15:45: experimental options go on a page of their own in 設定), as sample s1125-lab-page
  * draws it: the large title, a card of switch rows, and a footnote that the options may change or go away. Its one item
- * is 效能模式 ([performance], turned by [onPerformance]), which the core reads when it starts, so its subtitle says it
- * takes effect the next time the app opens (owner, 2026-11-25 15:20).
+ * is 效能模式 ([performance], turned by [onPerformance]), which the core reads when it starts (owner, 2026-11-25 15:20); its
+ * subtitle gives the cost and the gain, and that it takes effect after a restart is rv_lab_restart_hint's, for a prompt
+ * after the switch turns (no library part for that prompt yet: STATE q-p6a-labprompt).
  */
 @Composable
 internal fun RvLabScreen(performance: Boolean, onPerformance: (Boolean) -> Unit, onBack: () -> Unit) {

@@ -28,7 +28,7 @@
     <string name="rv_settings_group_updates">更新</string>
     <string name="rv_settings_lab">实验室</string>
     <string name="rv_lab_performance">性能模式</string>
-    <string name="rv_lab_performance_sub">用更多 CPU 和电量换取速度；下次打开 App 生效</string>
+    <string name="rv_lab_performance_sub">较耗电，速度较快</string>
     <string name="rv_lab_footnote">这些选项可能变动或移除。</string>
     <string name="rv_settings_group_about">关于</string>
     <string name="rv_settings_version">版本</string>
