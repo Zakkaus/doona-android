@@ -61,9 +61,9 @@ class PermissionPromptsTest {
     fun aTapAboveTheVpnExplanationClosesItWithoutARefusal() {
         asks.connect(consentNeeded = true)
         show()
-        val title = text(R.string.rv_perm_vpn_title)
+        val dismiss = text(R.string.ui_dismiss)
         // The scrim's own action: a touch at its centre would land on the sheet's card in Robolectric's small window.
-        compose.onNode(SemanticsMatcher("the scrim") { it.config.getOrNull(SemanticsActions.OnClick)?.label == title })
+        compose.onNode(SemanticsMatcher("the scrim") { it.config.getOrNull(SemanticsActions.OnClick)?.label == dismiss })
             .performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()
         assertEquals(emptyList<PermissionStep>(), steps)
