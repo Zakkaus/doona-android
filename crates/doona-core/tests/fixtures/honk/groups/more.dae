@@ -1,0 +1,8 @@
+group {
+  Spare {
+    filter: name(jp)
+    policy: loadbalance
+    exit: lonely
+    final: lonely
+  }
+}

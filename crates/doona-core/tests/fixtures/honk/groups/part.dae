@@ -1,0 +1,4 @@
+# A partial include: one group block and nothing else.
+group {
+  Part { filter: name(a) }
+}

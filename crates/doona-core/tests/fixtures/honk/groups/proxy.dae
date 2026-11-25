@@ -1,0 +1,13 @@
+# A group the user named Proxy is an ordinary group: authored policy, members and position.
+node {
+  a: 'trojan://secret@192.0.2.1:443#a'
+  b: 'trojan://secret@192.0.2.2:443#b'
+}
+group {
+  Auto { policy: urltest }
+  Proxy {
+    filter: name(b)
+    policy: fallback
+  }
+}
+routing { fallback: Auto }

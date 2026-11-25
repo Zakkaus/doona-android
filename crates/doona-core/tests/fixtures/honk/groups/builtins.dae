@@ -1,0 +1,9 @@
+# An unfiltered group takes every proxy node and never a built-in; a literal name admits one.
+node {
+  a: 'trojan://secret@192.0.2.1:443#a'
+}
+group {
+  Everything { policy: select }
+  Home { filter: name(a, direct) }
+}
+routing { fallback: Everything }

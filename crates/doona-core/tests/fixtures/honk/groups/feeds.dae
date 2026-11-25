@@ -1,0 +1,21 @@
+# Fetched nodes join groups through subtag(); a static node can stay outside every group.
+node {
+  lonely: 'trojan://secret@192.0.2.9:443#lonely'
+}
+subscription {
+  office: 'https://example.org/feed'
+}
+group {
+  Office {
+    filter: subtag(office)
+    default: hk
+    final: direct
+  }
+  Quick {
+    filter: subtag(office)
+    policy: urltest
+    final: Office
+  }
+}
+include { more.dae }
+routing { fallback: Office }
