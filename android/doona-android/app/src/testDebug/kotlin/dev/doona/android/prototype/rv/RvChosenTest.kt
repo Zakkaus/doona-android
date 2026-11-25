@@ -108,22 +108,27 @@ class RvChosenTest {
         assertEquals(listOf(0, 0, 1), options.map { checks(it) })
     }
 
+    /** Where each range chip stands: its frame's left edge and width, in px. */
+    private fun chips(tag: String = RvPart.FRAME): List<Pair<Float, Float>> =
+        compose.onAllNodesWithTag(tag, useUnmergedTree = true).fetchSemanticsNodes().map { it.boundsInRoot.let { b -> b.left to b.width } }
+
     @Test
     fun theChosenRangeChipIsBoldAfterACheckAndOnlyItsCheckMovesThePills() {
         var chosen by mutableIntStateOf(1)
         compose.rvContent(dark = false) { RvRangeRow(ranges, chosen, { chosen = it }) }
-        val before = compose.onAllNodesWithTag(RvPart.FRAME, useUnmergedTree = true).fetchSemanticsNodes().map { it.boundsInRoot.width }
+        val before = chips()
         assertEquals(ranges.size, before.size)
         assertEquals(FontWeight.Bold, weightOf(ranges[1]))
         assertNotEquals("the others are not bold", FontWeight.Bold, weightOf(ranges[0]))
         assertEquals(listOf(0, 1, 0, 0, 0), ranges.map { checks(it) })
         compose.runOnIdle { chosen = 4 }
         compose.waitForIdle()
-        val after = compose.onAllNodesWithTag(RvPart.FRAME, useUnmergedTree = true).fetchSemanticsNodes().map { it.boundsInRoot.width }
+        val after = chips()
         assertEquals(listOf(0, 0, 0, 0, 1), ranges.map { checks(it) })
         // Every chip is as wide as its bold label, so the weight changes no width; only the check's room moves.
         val room = with(compose.density) { rvCheckReserve.toPx() }
-        val expected = before.mapIndexed { i, w ->
+        val gap = with(compose.density) { RvChartSize.rangeGap.toPx() }
+        val widths = before.mapIndexed { i, (_, w) ->
             w + room * (
                 if (i == 4) {
                     1
@@ -134,7 +139,19 @@ class RvChosenTest {
                 }
                 )
         }
-        expected.zip(after).forEach { (e, a) -> assertEquals("a chip's width changes by the check's room only", e, a, 1f) }
+        widths.zip(after).forEach { (e, a) -> assertEquals("a chip's width changes by the check's room only", e, a.second, 1f) }
+        // The chips stand a gap apart, the first where it stood; the old choice narrows by the check's room, so every
+        // chip after it moves left by it, up to and including the new one, which widens to the right (24 dp, the open
+        // owner question of a11y-fix2: only the chosen chip reserves the check's room).
+        assertEquals("the first chip stays", before[0].first, after[0].first, 1f)
+        listOf(before, after).forEach { row ->
+            row.zipWithNext().forEach { (a, b) -> assertEquals("the chips are a gap apart", a.first + a.second + gap, b.first, 1f) }
+        }
+        before.forEachIndexed { i, (x, _) ->
+            val moved = if (i in 2..4) room else 0f
+            assertEquals("chip $i stands ${moved / compose.density.density} dp left of where it stood", x - moved, after[i].first, 1f)
+        }
+        assertEquals("the new choice's right edge stays", before[4].first + before[4].second, after[4].first + after[4].second, 1f)
     }
 
     /**
