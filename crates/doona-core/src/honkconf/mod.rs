@@ -4,7 +4,9 @@
 //! The capture family is IPv4. A requested non-Chrome `global.utls_imitate` is an
 //! `unsupported_option`: honk's uTLS implementation can only use the Chrome profile.
 //! Hosts companions are resolved under the imported entry directory, not the Linux
-//! `global.data_dir`. No full honk GeoIP/GEOSITE snapshot is linked into this runtime.
+//! `global.data_dir`. No full honk GeoIP/GEOSITE snapshot is linked into this runtime, so
+//! [`HonkConfig::unsupported`] treats every label as missing; [`HonkConfig::support`] takes the
+//! installed generation and the captured routes from the caller.
 
 pub mod assets;
 #[cfg(test)]
@@ -14,12 +16,13 @@ mod declarations;
 mod draft;
 pub mod edit;
 pub mod meters;
-mod rules;
 mod staged;
 mod store;
+pub mod support;
 
 pub use draft::Draft;
 pub use store::{HonkStore, StoreError};
+pub use support::{Capabilities, Geo, GeoCatalog, Ingress, Label, Support};
 
 use std::borrow::Cow;
 use std::collections::HashSet;
@@ -29,6 +32,7 @@ use std::path::Path;
 use honk_config::Config;
 use honk_config::diagnostic::{DetailedDiagnostic, SettingPath, SourceRef};
 use honk_config::error::{DetailedConfigError, ErrorCategory};
+use honk_config::parser::source_edit::RuleSourceIndex;
 use honk_config::parser::{LoadedConfig, SourceSnapshot};
 
 /// Import failures. Capability findings on an admitted document are not parse errors.
@@ -106,6 +110,12 @@ pub enum Disposition {
     Limited,
     /// An include was refused: its declarations are unknown and Apply must be blocked.
     Incomplete,
+    /// The installed geodata lacks a label this rule names: the configuration cannot run
+    /// until the data provides it. The rule is never skipped (owner decision, 2026-11-24).
+    Blocked,
+    /// A terminal fallback the runtime cannot honour: flows or queries reaching it fail.
+    /// Nothing replaces it, least of all a direct dial.
+    Refuse,
 }
 
 /// One affected declaration, regardless of how many capabilities it needs.
@@ -123,7 +133,8 @@ pub struct Unsupported {
     pub locations: Vec<Location>,
 }
 
-/// Rule-family scope and counts at import, not runtime packet counters.
+/// Rule-family scope and inventory at import, not runtime packet counters. Capability counts
+/// depend on platform facts and live in [`Support`].
 #[derive(Debug, PartialEq, Eq)]
 pub struct Summary {
     /// IP families admitted by the current Android ingress.
@@ -142,8 +153,6 @@ pub struct Summary {
     pub dns_request_rules: usize,
     /// Response rules, excluding the fallback.
     pub dns_response_rules: usize,
-    /// Number of affected declarations, not the sum of their reasons.
-    pub unsupported: usize,
 }
 
 /// Validated native configuration and its read-only Android capability report.
@@ -151,7 +160,10 @@ pub struct Summary {
 pub struct HonkConfig {
     loaded: LoadedConfig,
     diagnostics: Vec<DetailedDiagnostic>,
-    unsupported: Vec<Unsupported>,
+    /// Settings, nodes and refused includes: facts of the source alone.
+    declared: Vec<Unsupported>,
+    /// Rule and fallback spans, for records that also depend on platform inputs.
+    index: RuleSourceIndex,
 }
 
 impl HonkConfig {
@@ -167,14 +179,19 @@ impl HonkConfig {
     pub fn sources(&self) -> &[SourceSnapshot] {
         &self.loaded.sources
     }
-    /// One record per affected declaration, not per reason or packet. The TUN admits IPv4 only.
+    /// One record per affected declaration, not per reason or packet, against
+    /// [`Capabilities::linked`]: the TUN admits IPv4 only and no geodata is linked.
     pub fn unsupported(&self) -> Vec<Unsupported> {
-        self.unsupported.clone()
+        self.support(&Capabilities::linked()).records
+    }
+    /// The §9 report for this source against the platform's ingress and asset facts.
+    pub fn support(&self, caps: &Capabilities<'_>) -> Support {
+        support::project(self.config(), &self.index, &self.declared, caps)
     }
     /// False for an incomplete include tree. Skipping a hosts source does not hide declarations.
     pub fn complete(&self) -> bool {
         !self
-            .unsupported
+            .declared
             .iter()
             .any(|r| r.disposition == Disposition::Incomplete)
     }
@@ -191,7 +208,6 @@ impl HonkConfig {
             dns_upstreams: cfg.dns.upstream.len(),
             dns_request_rules: dns.request.rules.len(),
             dns_response_rules: dns.response.rules.len(),
-            unsupported: self.unsupported.len(),
         }
     }
 }
