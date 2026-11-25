@@ -209,19 +209,24 @@ class RvGeoDataShotTest {
     }
 
     /**
-     * The action centres on its whole row, title and subtitle together (owner-fix3 item 26), is the library's 40 dp
-     * in-card button, and ends at the row's inset, where the other rows' chevron boxes end: 更新, then 重試.
+     * The action stands as the row's disc: its top on the title's top (Revolut's settings rows, rowalign-1125), so it
+     * stays inside the row's 16 dp text inset (owner-fix3 item 26); it is the library's 40 dp in-card button and ends at
+     * the row's inset, where the other rows' chevron boxes end: 更新, then 重試.
      */
     @Test
     @Config(qualifiers = WHOLE)
-    fun theActionCentresOnItsRowAndEndsAtTheRowsInset() {
+    fun theActionTopsTheTitleAsTheDiscAndEndsAtTheRowsInset() {
         var shown by mutableStateOf(IDLE)
         compose.setContent { Themed { Page(shown) } }
+        val name = rvText(R.string.rv_settings_geodata)
         listOf(IDLE to R.string.rv_menu_update, FAILED to R.string.rv_retry).forEach { (data, label) ->
             compose.runOnIdle { shown = data }
-            val row = compose.onNode(hasTestTag(RvPart.ROW) and hasAnyDescendant(hasText(rvText(R.string.rv_settings_geodata))), useUnmergedTree = true).getBoundsInRoot()
+            val row = compose.onNode(hasTestTag(RvPart.ROW) and hasAnyDescendant(hasText(name)), useUnmergedTree = true).getBoundsInRoot()
+            val title = compose.onNode(hasText(name) and hasAnyAncestor(hasTestTag(RvPart.ROW)), useUnmergedTree = true).getBoundsInRoot()
+            val disc = compose.onNode(hasTestTag(RvPart.DISC) and hasAnyAncestor(hasTestTag(RvPart.ROW) and hasAnyDescendant(hasText(name))), useUnmergedTree = true).getBoundsInRoot()
             val button = compose.onNode(hasText(rvText(label)) and hasClickAction()).getBoundsInRoot()
-            assertEquals("$label centre", ((row.top + row.bottom) / 2).value, ((button.top + button.bottom) / 2).value, HALF_DP)
+            assertEquals("$label top", title.top.value, button.top.value, HALF_DP)
+            assertEquals("$label top as the disc's", disc.top.value, button.top.value, HALF_DP)
             assertEquals("$label end", (row.right - RvSettingsSpace.rowInset).value, button.right.value, HALF_DP)
             assertEquals("$label height", RvControlSize.secondary.value, (button.bottom - button.top).value, HALF_DP)
         }

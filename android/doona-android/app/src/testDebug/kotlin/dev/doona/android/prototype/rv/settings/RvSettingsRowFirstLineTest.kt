@@ -1,12 +1,14 @@
 package dev.doona.android.prototype.rv.settings
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.text.TextLayoutResult
 import dev.doona.android.R
@@ -24,8 +26,9 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * A settings row whose description runs to three lines keeps both ends on the title's first line, as Revolut's settings
- * rows do: the leading disc's centre is the trailing control's, on the title's first line.
+ * A settings row's leading disc stands as Revolut's settings icon does: on the row's centre in a row of one line, its top
+ * on the title's top in a row with a subtitle of one or more lines (Appearance and Language cards), and the trailing
+ * control stays on the title's first line.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -35,37 +38,55 @@ class RvSettingsRowFirstLineTest {
     val compose = createComposeRule()
 
     @Test
-    fun bothEndsCentreOnTheFirstLine() {
+    fun theDiscCentresOnARowOfOneLineAndTopsTheTitleOfALongerOne() {
         compose.setContent {
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
-                RvSettingsRow(TITLE, icon = R.drawable.rv_sym_settings, subtitle = DESCRIPTION) { Box(Modifier.size(RvSize.actionGlyph).testTag(END)) }
+                Column {
+                    ROWS.forEachIndexed { i, (title, subtitle) ->
+                        RvSettingsRow(title, icon = R.drawable.rv_sym_settings, subtitle = subtitle) { Box(Modifier.size(RvSize.actionGlyph).testTag("$END$i")) }
+                    }
+                }
             }
         }
-        val subtitle = compose.onNodeWithText(DESCRIPTION, useUnmergedTree = true).fetchSemanticsNode()
-        assertEquals("the description wraps to three lines", 3, layout(subtitle).lineCount)
-        val title = compose.onNodeWithText(TITLE, useUnmergedTree = true).fetchSemanticsNode()
-        val first = layout(title)
-        val line = title.positionInRoot.y + (first.getLineTop(0) + first.getLineBottom(0)) / 2
-        val disc = compose.onNodeWithTag(RvPart.DISC, useUnmergedTree = true).fetchSemanticsNode()
-        val end = compose.onNodeWithTag(END, useUnmergedTree = true).fetchSemanticsNode()
-        val discCentre = disc.positionInRoot.y + disc.size.height / 2f
-        val endCentre = end.positionInRoot.y + end.size.height / 2f
-        assertEquals("disc and end share one centre", endCentre, discCentre, 0.5f)
-        // Both centre in the first line's box, a one-line row's 26 dp at 1.0 (rvOneLine where the title's line is
-        // taller): 1.5 dp under the centre of the title's own 23 dp line, as the end has sat since it moved there.
-        assertEquals("disc centre on the first line", line, discCentre, FIRST_LINE_SLACK * disc.layoutInfo.density.density)
+        val discs = compose.onAllNodesWithTag(RvPart.DISC, useUnmergedTree = true).fetchSemanticsNodes()
+        val rows = compose.onAllNodesWithTag(RvPart.ROW, useUnmergedTree = true).fetchSemanticsNodes()
+        ROWS.forEachIndexed { i, (title, subtitle) ->
+            val text = compose.onNodeWithText(title, useUnmergedTree = true).fetchSemanticsNode()
+            val lines = 1 + (subtitle?.let { layout(compose.onNodeWithText(it, useUnmergedTree = true).fetchSemanticsNode()).lineCount } ?: 0)
+            assertEquals("$title: the row's lines", i + 1, lines)
+            val disc = discs[i]
+            val slack = SLACK * disc.layoutInfo.density.density
+            if (subtitle == null) {
+                val row = rows[i]
+                assertEquals("$title: disc centre on the row's", centre(row), centre(disc), slack)
+            } else {
+                assertEquals("$title: disc top on the title's", text.positionInRoot.y, disc.positionInRoot.y, slack)
+            }
+            val first = layout(text)
+            val line = text.positionInRoot.y + (first.getLineTop(0) + first.getLineBottom(0)) / 2
+            val end = compose.onAllNodesWithTag("$END$i", useUnmergedTree = true).fetchSemanticsNodes().single()
+            // The end centres in the first line's box (a one-line row's 26 dp at 1.0), 1.5 dp under the title line's centre.
+            assertEquals("$title: end on the first line", line, centre(end), FIRST_LINE_SLACK * disc.layoutInfo.density.density)
+        }
     }
 
-    private fun layout(node: androidx.compose.ui.semantics.SemanticsNode): TextLayoutResult {
+    private fun centre(node: SemanticsNode) = node.positionInRoot.y + node.size.height / 2f
+
+    private fun layout(node: SemanticsNode): TextLayoutResult {
         val layouts = mutableListOf<TextLayoutResult>()
         node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
         return layouts.single()
     }
 
     private companion object {
-        const val TITLE = "永久連線"
-        const val DESCRIPTION = "在系統的 VPN 設定中開啟永久連線，手機開機後就會自動連線；封鎖未使用 VPN 的連線時，doona 無法連到任何節點，會改為回報失敗。"
+        val ROWS = listOf(
+            "語言" to null,
+            "永久連線" to "開機後自動連線",
+            "斷線時通知" to "在系統的 VPN 設定中開啟永久連線，手機開機後就會自動連線。",
+            "依 App" to "在系統的 VPN 設定中開啟永久連線，手機開機後就會自動連線；封鎖未使用 VPN 的連線時，doona 無法連到任何節點，會改為回報失敗。",
+        )
         const val END = "end"
+        const val SLACK = 1f
         const val FIRST_LINE_SLACK = 1.5f
     }
 }
