@@ -14,7 +14,9 @@ import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.RvWhole
+import dev.doona.android.designsystem.rv.rvRequireWhole
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -145,10 +147,37 @@ class RvRowRulesTest {
         assertEquals(listOf("R14"), rvRowBreaks(listOf(row)).filter { it.rule == "R14" }.map { it.rule })
     }
 
+    /** An exception on a row whose texts all have a limit would do nothing: an error, not a silent no-op. */
+    @Test
+    fun aWholeOnARowWithNoUnlimitedTextIsAnError() {
+        val error = assertThrows(IllegalArgumentException::class.java) {
+            compose.setContent {
+                RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
+                    RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, LONG, null, whole = RvWhole.RevisionName)
+                }
+            }
+            compose.waitForIdle()
+        }
+        assertTrue(error.message.orEmpty(), "RevisionName" in error.message.orEmpty())
+        rvRequireWhole(RvWhole.RevisionName, 2, Int.MAX_VALUE)
+        rvRequireWhole(null, 2, 3)
+        assertThrows(IllegalArgumentException::class.java) { rvRequireWhole(RvWhole.RevisionName, 2, 3) }
+    }
+
     @Test
     fun everyWholeExceptionIsARowOfLayoutRules() {
         assertTrue("LAYOUT-RULES.md's Exceptions read", RV_LAYOUT_EXCEPTIONS.isNotEmpty())
         RvWhole.entries.forEach { assertTrue("${it.id} is a row of LAYOUT-RULES.md's Exceptions", it.id in RV_LAYOUT_EXCEPTIONS) }
+    }
+
+    /** A row of the Exceptions table is read however it is spaced: `|q-...` with no space was missed. */
+    @Test
+    fun anExceptionRowIsReadHoweverItIsSpaced() {
+        val table = listOf(
+            "## Exceptions", "", "| Id | Exception |", "|---|---|", "| :-- | --: |",
+            "| q-spaced (owner) | a |", "|q-tight|b|", "  |  q-indented  | c |", "|q-alone (owner)|", "", "## Next", "| q-after | d |",
+        )
+        assertEquals(setOf("q-spaced", "q-tight", "q-indented", "q-alone"), rvExceptionIds(table))
     }
 
     @Test

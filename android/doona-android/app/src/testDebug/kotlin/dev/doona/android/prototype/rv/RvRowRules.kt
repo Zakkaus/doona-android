@@ -475,8 +475,16 @@ private val CONTROLS = setOf(RvRowPart.SWITCH, RvRowPart.RADIO, RvRowPart.CHECK)
 internal const val RV_LAYOUT_RULES = "../docs/LAYOUT-RULES.md"
 
 /** The ids of LAYOUT-RULES.md's Exceptions table: each row's first word (`q-s1125c-vname`). */
-internal val RV_LAYOUT_EXCEPTIONS: Set<String> by lazy {
-    File(RV_LAYOUT_RULES).readLines().dropWhile { it.trim() != "## Exceptions" }.drop(1).takeWhile { !it.startsWith("## ") }
-        .filter { it.startsWith("| ") && !it.startsWith("| Id ") && !it.startsWith("|---") }
-        .map { it.removePrefix("| ").substringBefore(' ') }.toSet()
-}
+internal val RV_LAYOUT_EXCEPTIONS: Set<String> by lazy { rvExceptionIds(File(RV_LAYOUT_RULES).readLines()) }
+
+/**
+ * The ids of the Exceptions table in [lines]: the first word of each row's first cell, however the row is spaced
+ * (`| q-x |`, `|q-x|`, an indented row), the header (`Id`) and the separator (`|---|`, `| :-- |`) left out.
+ */
+internal fun rvExceptionIds(lines: List<String>): Set<String> =
+    lines.dropWhile { it.trim() != "## Exceptions" }.drop(1).takeWhile { !it.trimStart().startsWith("## ") }
+        .map { it.trim() }.filter { it.startsWith("|") }
+        .map { it.removePrefix("|").substringBefore('|').trim().substringBefore(' ') }
+        .filter { it.isNotEmpty() && it != "Id" && !TABLE_RULE.matches(it) }.toSet()
+
+private val TABLE_RULE = Regex(":?-+:?")

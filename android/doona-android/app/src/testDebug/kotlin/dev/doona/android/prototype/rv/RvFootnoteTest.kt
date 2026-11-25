@@ -27,7 +27,8 @@ import org.robolectric.annotation.GraphicsMode
  * The footnote check itself ([rvFootnoteRules], run on every golden): [RvFootnote] under a card is the card's text
  * column on both sides, in a page's gutter and in a settings column that insets the cards itself; a footnote-tagged
  * text set on the gutter (16 dp) is caught, and so is a box that starts at the column but runs to the card's end (the
- * 32..396 of 811cda31, owner q-s1125c-footgap 19:05 「我感覺向右歪了」). The tokens themselves are the column.
+ * 32..396 of 811cda31, owner q-s1125c-footgap 19:05 「我感覺向右歪了」). The tokens themselves are the column. A footnote
+ * that needs more than its three lines reads as cut.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -94,8 +95,28 @@ class RvFootnoteTest {
         assertEquals("footnote end = the card's text inset (q-s1125c-footgap 19:05)", RvSpace.rowPadding, RvSpace.footnoteEnd)
     }
 
+    /** A footnote that needs more than its three lines is cut, and the check says so; a [RvFootnote] `whole` is not. */
+    @Test
+    fun aFootnotePastItsThreeLinesIsCaughtAsCut() {
+        compose.setContent {
+            RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
+                Column {
+                    RvGutter { RvCard { RvText(CARD, Rv.type.rowTitle, Modifier.padding(RvSpace.rowPadding)) } }
+                    RvFootnote(LONG_NOTE)
+                    RvGutter { RvCard { RvText(CARD, Rv.type.rowTitle, Modifier.padding(RvSpace.rowPadding)) } }
+                    RvFootnote(LONG_NOTE, whole = true)
+                    RvGutter { RvCard { RvText(CARD, Rv.type.rowTitle, Modifier.padding(RvSpace.rowPadding)) } }
+                    RvFootnote(NOTE)
+                }
+            }
+        }
+        compose.waitForIdle()
+        assertEquals("cut, whole, short", listOf(true, false, false), rvFootnotes(compose.rvRowNodes()).map { it.cut })
+    }
+
     private companion object {
         const val CARD = "卡片"
         const val NOTE = "這些選項可能變動或移除。"
+        val LONG_NOTE = List(8) { NOTE }.joinToString("")
     }
 }

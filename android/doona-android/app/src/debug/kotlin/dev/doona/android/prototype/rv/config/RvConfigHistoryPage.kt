@@ -88,7 +88,7 @@ private fun RevisionRow(revision: RvRevision, head: Boolean, onRevision: (Int) -
             subtitle = rvConfigLine(if (name == null) listOf(time, origin) else listOf(time, origin, number)),
             titleLines = if (name == null) RV_ROW_TITLE_LINES else Int.MAX_VALUE,
             titleKeepWords = false,
-            whole = RvWhole.RevisionName,
+            whole = RvWhole.RevisionName.takeIf { name != null },
         ) { RvNavEnd(inUse) }
     }
 }

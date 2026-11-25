@@ -9,7 +9,7 @@ prototype/rv/nodes/RvNodeList.kt	RvText(steady, Rv.type.rowSub, color = Rv.color
 prototype/rv/policy/RvPolicyParts.kt	RvText(end ?: bytes, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a rule row's bytes at the row's end, inside the card
 prototype/rv/policy/RvPolicyScreen.kt	RvText(stringResource(R.string.rv_policy_rules_order), Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.rowPadding)	the rules card's line under its header, inside the card
 prototype/rv/policy/RvPolicyScreen.kt	RvText(value, Rv.type.rowSub, color = Rv.colors.textSecondary)	a policy row's value, inside the card
-prototype/rv/settings/RvSettingsParts.kt	RvText(it, Rv.type.rowSub, color = hue, maxLines = RV_ROW_SUBTITLE_LINES, lineBox = true, keepWords = words.subtitleKeep	a settings row's own subtitle (the library row), inside the card
+prototype/rv/settings/RvSettingsParts.kt	RvText(it, Rv.type.rowSub, rvWhole(words.subtitleLines, words.whole), color = hue, maxLines = words.subtitleLines, lineB	a settings row's own subtitle (the library row), inside the card
 prototype/rv/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_median, values.size), Rv.type.rowSub, color = Rv.colors.textSecondary)	a stat card's own line, inside the card
 prototype/rv/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_no_quota), Rv.type.rowSub, color = Rv.colors.textSecondary)	a stat card's own line, inside the card
 prototype/rv/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_quota_total, total.toString(), count), Rv.type.rowSub, color = Rv.colors.textSec	a stat card's own line, inside the card
