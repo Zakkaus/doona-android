@@ -18,10 +18,8 @@ import androidx.compose.animation.togetherWith
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.scene.Scene
-import androidx.navigationevent.NavigationEventTransitionState
 import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.designsystem.rv.RvMotionScale
-import kotlinx.coroutines.flow.Flow
 import kotlin.math.roundToInt
 
 // RV's page transitions (rv-gestures T1/T2, S1/S2, G7), shared by the app's NavDisplay ([RvNavHost]) and the design
@@ -122,35 +120,4 @@ internal fun AnimatedContentTransitionScope<Scene<NavKey>>.rvSceneMove(motion: R
 internal fun AnimatedContentTransitionScope<Scene<NavKey>>.rvSceneBack(motion: RvMotionScale, shift: Int, margin: Int, edge: Int): ContentTransform = when {
     motion.instant || initialState.rvTop() == NodeSearchKey -> rvSceneMove(motion, shift, forward = false)
     else -> rvBackPreview(motion, margin, edge)
-}
-
-/**
- * Tells [RvNavHost] which pop is a predictive back the system committed. NavDisplay asks its predictive spec only while
- * the gesture is under way; at the commit the gesture is over and it asks the pop spec, which must then go on with the
- * preview's move ([rvSceneBack]) from where the finger left it rather than switch to a plain pop's ([rvSceneMove]).
- */
-internal class RvBackCommit {
-    // The swipe edge of the back gesture under way, and the edge and resulting stack of the last committed one.
-    private var gesture: Int? = null
-    private var commit: Pair<Int, List<NavKey>>? = null
-
-    /** Follows the back gestures in [states] (the window's navigation events), while it runs. */
-    suspend fun follow(states: Flow<NavigationEventTransitionState>?) {
-        states?.collect { gesture = (it as? NavigationEventTransitionState.InProgress)?.latestEvent?.swipeEdge }
-    }
-
-    /** Sees the back stack after each change: a commit holds only for the pop it made. */
-    fun see(stack: List<NavKey>) {
-        if (stack != commit?.second) commit = null
-    }
-
-    /** Runs [pop], the back NavDisplay asked for: a commit if a back gesture was under way, else a plain back. */
-    fun back(stack: () -> List<NavKey>, pop: () -> Unit) {
-        val edge = gesture
-        pop()
-        commit = edge?.let { it to stack() }
-    }
-
-    /** The swipe edge of the committed gesture a pop to [stack] goes on from, or null for a plain pop. */
-    fun edge(stack: List<NavKey>): Int? = commit?.takeIf { it.second == stack }?.first
 }
