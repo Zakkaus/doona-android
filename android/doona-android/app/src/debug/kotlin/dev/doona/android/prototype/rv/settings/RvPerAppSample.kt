@@ -17,6 +17,7 @@ import dev.doona.android.feature.perapp.RvApp
 import dev.doona.android.feature.perapp.RvPerAppActions
 import dev.doona.android.feature.perapp.RvPerAppScreen
 import dev.doona.android.feature.perapp.RvPerAppState
+import dev.doona.android.feature.perapp.RvRebuildFix
 import dev.doona.android.feature.perapp.RvSave
 
 /**
@@ -32,6 +33,13 @@ internal object RvPerAppData {
     private val checked = listOf("Browser", "Chat", "Drive", "Mail", "Maps", "News", "Photos", "Podcasts", "Reader", "Translate", "Video", "Weather")
 
     val saved = RvPerApp(RvAppPolicy.Only, checked.mapTo(mutableSetOf()) { PACKAGE + it.lowercase() })
+
+    /**
+     * Two apps the phone listed once and no longer has, and the list of only them that a save stored: the tunnel found
+     * none of it installed (`rebuild-no-apps`).
+     */
+    val removed = listOf("Bus", "Taxi").map { RvApp(it, PACKAGE + it.lowercase()) }
+    val gone = RvPerApp(RvAppPolicy.Only, removed.mapTo(mutableSetOf()) { it.packageName })
 
     /** The two apps the except sample keeps out of the tunnel. */
     val except = RvPerApp(RvAppPolicy.Except, setOf(PACKAGE + "camera", PACKAGE + "video"))
@@ -74,8 +82,8 @@ internal fun rvPerAppSample(name: String, saved: RvPerApp = RvPerAppData.saved):
 
         "rebuild-failed" -> rvPerAppStateSample(RvPerAppData.except, rebuildFailed = true)
 
-        "rebuild-no-apps" -> rvPerAppStateSample(RvPerAppData.except, rebuildFailed = true)
-            .copy(rebuildNeedsList = true, rebuildReason = R.string.vpn_failure_no_allowed_apps)
+        "rebuild-no-apps" -> rvPerAppStateSample(RvPerAppData.gone, rebuildFailed = true)
+            .copy(rebuildReason = R.string.vpn_failure_no_allowed_apps, rebuildFix = RvRebuildFix.EditList)
 
         "read-failed" -> RvPerAppState(saved, installed = emptyList(), readFailed = true)
 

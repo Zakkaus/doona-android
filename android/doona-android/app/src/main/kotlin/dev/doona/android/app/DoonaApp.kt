@@ -1,5 +1,6 @@
 package dev.doona.android.app
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -8,11 +9,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
+import dev.doona.android.data.settings.UpdateCheck
 import dev.doona.android.designsystem.components.DoonaHubShell
 import dev.doona.android.designsystem.components.DoonaHubTab
 import dev.doona.android.designsystem.rv.RvFloatingNav
@@ -91,7 +94,7 @@ fun DoonaApp(
                     SettingsRoute(engine, version, onOpenPerApp = { backStack.push(PerAppKey) }, onOpenSubscriptions = { backStack.push(SubscriptionsKey) })
                 }
             }
-            entry<PerAppKey> { key -> PerAppRoute(engine, installedApps, onConnect, onBack = { backStack.pop(key) }) }
+            entry<PerAppKey> { key -> PerAppRoute(engine, installedApps, onConnect, rememberOpenReleases(), onBack = { backStack.pop(key) }) }
         }
     }
     localNetwork?.let { LocalNetworkPrompts(it) }
@@ -128,4 +131,11 @@ private fun OldTabFrame(tab: Tab, onTab: (Int) -> Unit, onReselect: () -> Boolea
         ) { content() }
         RvFloatingNav(tab.navId, onTab, glass, null, insets, Modifier.align(Alignment.BottomCenter), onReselect)
     }
+}
+
+/** 檢查更新 for a page in `feature/`, which may not reach `data/`: the releases page, opened from the app's activity. */
+@Composable
+private fun rememberOpenReleases(): () -> Unit {
+    val activity = LocalActivity.current
+    return remember<() -> Unit>(activity) { { activity?.let(UpdateCheck::openReleases) } }
 }

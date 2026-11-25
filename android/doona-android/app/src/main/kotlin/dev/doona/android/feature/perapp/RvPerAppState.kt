@@ -14,11 +14,25 @@ internal data class RvApp(val label: String, val packageName: String)
 internal enum class RvSave { Idle, Saving, Failed }
 
 /**
+ * The rebuild notice's one action, by what kept the tunnel down (活動's mapping, owner q-startfail, 2026-11-24): connect
+ * again, leave the notice for the list ([EditList], none of the listed apps installed), look for a doona that matches
+ * its core ([CheckUpdate]), or open the system's VPN settings to turn its lockdown off ([VpnSettings]).
+ */
+internal enum class RvRebuildFix(@StringRes val label: Int) {
+    Retry(R.string.rv_retry),
+    EditList(R.string.rv_edit_app_list),
+    CheckUpdate(R.string.rv_settings_check_update),
+
+    // 活動's label until 開啟 VPN 設定 has its own string (hand-off).
+    VpnSettings(R.string.rv_lan_open_settings),
+}
+
+/**
  * The 依 App page: the [saved] setting, the edits over it ([draft], null before the first), the phone's [installed]
  * apps (null while they are read), the search [query], the save, whether the last save was stored but the tunnel
- * could not be rebuilt with it ([rebuildFailed]; [rebuildNeedsList] when none of the listed apps is installed, which a
- * second try would repeat), and whether the phone could not list its apps ([readFailed], an empty [installed] then
- * being no claim that it has none). [saveReason], [rebuildReason] and [readReason] are the second lines of the notices.
+ * could not be rebuilt with it ([rebuildFailed], its notice's [rebuildFix] what can mend the cause), and whether the
+ * phone could not list its apps ([readFailed], an empty [installed] then being no claim that it has none). [saveReason]
+ * and [rebuildReason] are the second lines of the notices.
  */
 @Immutable
 internal data class RvPerAppState(
@@ -30,9 +44,8 @@ internal data class RvPerAppState(
     val rebuildFailed: Boolean = false,
     @StringRes val saveReason: Int = R.string.perapp_save_failed_reason,
     @StringRes val rebuildReason: Int = R.string.vpn_failure_start_failed,
-    val rebuildNeedsList: Boolean = false,
+    val rebuildFix: RvRebuildFix = RvRebuildFix.Retry,
     val readFailed: Boolean = false,
-    @StringRes val readReason: Int = R.string.error_internal,
 ) {
     /** What the page shows: the edits, or the setting as saved. */
     val edited: RvPerApp get() = draft ?: saved
@@ -55,6 +68,9 @@ internal data class RvPerAppState(
      * 儲存 stays off all the same.
      */
     val asksForApp: Boolean get() = needsApp && !installed.isNullOrEmpty()
+
+    /** The phone would not list its apps and none are known: nothing to search or check, which the notice says. */
+    val unread: Boolean get() = readFailed && installed.isNullOrEmpty()
 
     /** The edits differ from what is saved, they can be saved, and no save is running. */
     val canSave: Boolean get() = installed != null && edited != saved && !needsApp && save != RvSave.Saving

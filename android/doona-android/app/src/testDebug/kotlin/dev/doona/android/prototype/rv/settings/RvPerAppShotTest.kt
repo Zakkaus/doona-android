@@ -19,6 +19,7 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.perapp.RvPerAppActions
 import dev.doona.android.feature.perapp.RvPerAppScreen
+import dev.doona.android.feature.perapp.RvRebuildFix
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed
@@ -276,11 +277,36 @@ class RvPerAppShotTest {
     }
 
     @Test
+    fun aRebuildTheCoreRefusedAsksForAnUpdateNotARetry() = rebuildFix(RvRebuildFix.CheckUpdate, R.string.vpn_failure_incompatible_core)
+
+    @Test
+    fun aRebuildTheLockdownRefusedOpensTheVpnSettingsNotARetry() = rebuildFix(RvRebuildFix.VpnSettings, R.string.vpn_failure_lockdown_enabled)
+
+    /** The rebuild notice for [fix]: [reason] over [fix]'s action, no 重試, and its action runs alone. */
+    private fun rebuildFix(fix: RvRebuildFix, reason: Int) {
+        val ran = mutableListOf<String>()
+        val actions = RvPerAppActions(
+            reconnect = { ran += "reconnect" },
+            editList = { ran += "editList" },
+            checkUpdate = { ran += "checkUpdate" },
+            vpnSettings = { ran += "vpnSettings" },
+        )
+        val state = rvPerAppSample("rebuild-failed").copy(rebuildReason = reason, rebuildFix = fix)
+        compose.setContent { Themed { RvPerAppScreen(state, actions, onBack = {}) } }
+        compose.onNodeWithText(rvText(reason)).assertExists()
+        compose.onNodeWithText(rvText(R.string.rv_retry)).assertDoesNotExist()
+        compose.onNodeWithText(rvText(fix.label)).performClick()
+        val expected = if (fix == RvRebuildFix.CheckUpdate) "checkUpdate" else "vpnSettings"
+        assertEquals(listOf(expected), ran)
+    }
+
+    @Test
     fun appsThePhoneWouldNotListAreReadAgainAndNotCalledNone() {
         var reloads = 0
         compose.setContent { Themed { RvPerAppScreen(rvPerAppSample("read-failed"), RvPerAppActions(reload = { reloads++ }), onBack = {}) } }
         compose.onNodeWithText(rvText(R.string.perapp_no_apps)).assertDoesNotExist()
         compose.onNodeWithText(rvText(R.string.perapp_read_failed)).assertExists()
+        compose.onAllNodes(hasContentDescription(rvText(R.string.perapp_search))).assertCountEquals(0)
         compose.onNodeWithText(rvText(R.string.rv_retry)).performClick()
         assertEquals(1, reloads)
     }

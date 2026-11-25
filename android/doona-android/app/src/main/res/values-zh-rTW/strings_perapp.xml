@@ -10,7 +10,7 @@
     <string name="perapp_needs_app">至少要勾選一個 App 才能儲存。</string>
     <string name="perapp_save">儲存</string>
     <string name="perapp_save_failed_reason">設定沒有寫入，請再試一次。</string>
-    <string name="perapp_read_failed">無法讀取 App</string>
+    <string name="perapp_read_failed">無法讀取 App 清單</string>
     <string name="perapp_reconnect_note">VPN 已連線時，儲存會讓它重新連線，目前的連線會中斷。</string>
     <string name="perapp_search">搜尋 App</string>
     <string name="perapp_no_apps">沒有可勾選的 App</string>

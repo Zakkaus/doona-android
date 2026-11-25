@@ -260,14 +260,25 @@ private val BUSY = setOf("saving", "loading")
 private fun ComposeContentTestRule.appShot(state: String, golden: String, dark: Boolean, fontScale: Float) {
     rvAnimatorScale(if (state in BUSY) 0f else 1f)
     val fake = rvSampleEngine()
+    // The phone: the sample's apps, and for `rebuild-no-apps` the two it is about to lose.
+    val phone = PhoneApps(if (state == "rebuild-no-apps") sampleApps + removedApps else sampleApps)
     val saved = if (state == "all") RvPerAppData.saved.copy(policy = RvAppPolicy.All) else RvPerAppData.saved
     runBlocking { fake.setPerApp(saved.toEngine()) }
     val engine = SampleEngine(fake) { perApp ->
         when (state) {
             "saving" -> awaitCancellation()
+
             "save-failed" -> Result.failure(EngineException(ErrorCode.Internal))
+
             "rebuild-failed" -> setPerApp(perApp).let { Result.failure(RebuildFailedException(FailureReason.StartFailed)) }
-            "rebuild-no-apps" -> setPerApp(perApp).let { Result.failure(RebuildFailedException(FailureReason.NoAllowedApps)) }
+
+            "rebuild-no-apps" -> {
+                // Stored; the listed apps are removed as the tunnel comes back, so it finds none of them.
+                setPerApp(perApp)
+                phone.apps = sampleApps
+                Result.failure(RebuildFailedException(FailureReason.NoAllowedApps))
+            }
+
             else -> setPerApp(perApp)
         }
     }
@@ -275,13 +286,18 @@ private fun ComposeContentTestRule.appShot(state: String, golden: String, dark: 
         "loading" -> NeverApps
         "no-apps" -> FakeInstalledApps(emptyList())
         "read-failed" -> FailingApps
-        else -> FakeInstalledApps(sampleApps)
+        else -> phone
     }
     val vm = PerAppViewModel(engine, apps)
-    rvContent(dark, fontScale) { PerAppPage(vm, onConnect = {}, onBack = {}) }
+    rvContent(dark, fontScale) { PerAppPage(vm, onConnect = {}, PerAppSystem({}, {}), onBack = {}) }
     waitForIdle()
     vm.reach(state)
     waitForIdle()
+    if (state == "rebuild-no-apps") {
+        // The user comes back to the page, which reads the phone again: the removed apps are gone from the list.
+        vm.onAction(PerAppAction.Resume)
+        waitForIdle()
+    }
     drawFully()
     rvRowRules(golden)
     onRoot().captureToImage().asAndroidBitmap().captureRoboImage("$SHOTS/$golden.png")
@@ -308,11 +324,25 @@ private fun PerAppViewModel.reach(state: String) {
 
         "none-selected" -> checks(emptySet())
 
-        "saving", "save-failed", "rebuild-failed", "rebuild-no-apps" -> {
+        "saving", "save-failed", "rebuild-failed" -> {
             except()
             onAction(PerAppAction.Save)
         }
+
+        // Only the two apps that are about to go, saved.
+        "rebuild-no-apps" -> {
+            checks(RvPerAppData.gone.packages)
+            onAction(PerAppAction.Save)
+        }
     }
+}
+
+/** The apps the `rebuild-no-apps` phone lists until they are removed. */
+private val removedApps = RvPerAppData.removed.map { InstalledApp(it.packageName, it.label) }
+
+/** A phone whose [apps] may change between two reads. */
+private class PhoneApps(@Volatile var apps: List<InstalledApp>) : InstalledApps {
+    override suspend fun launchable(): List<InstalledApp> = apps
 }
 
 /** A phone that will not list its apps. */

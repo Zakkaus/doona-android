@@ -6,13 +6,11 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.engine.Engine
-import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.InstalledApp
 import dev.doona.android.engine.InstalledApps
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RebuildFailedException
-import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.model.RvAppPolicy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -40,6 +38,12 @@ internal sealed interface PerAppAction {
     /** 調整清單 on the rebuild notice when none of the listed apps is installed: the notice goes, and the list is there. */
     data object EditList : PerAppAction
 
+    /** 檢查更新 on the rebuild notice of a core this doona does not match: the notice goes, and the route opens the releases. */
+    data object CheckUpdate : PerAppAction
+
+    /** 開啟 VPN 設定 on the rebuild notice of the system's lockdown: the notice goes, and the route opens the VPN settings. */
+    data object VpnSettings : PerAppAction
+
     /** 重試 on the notice of apps the phone would not list: they are read again. */
     data object Reload : PerAppAction
 
@@ -62,8 +66,8 @@ internal class PerAppViewModel(private val engine: Engine, private val installed
         /** The last write failed: shown until a save succeeds or the edits come back to what is saved. */
         val saveFailed: Boolean = false,
         val rebuildFailure: FailureReason? = null,
-        /** The first read of the apps failed with this code; a later read that fails keeps the list it had instead. */
-        val readError: ErrorCode? = null,
+        /** The first read of the apps failed; a later read that fails keeps the list it had instead. */
+        val readFailed: Boolean = false,
     )
 
     private val local = MutableStateFlow(Local())
@@ -84,7 +88,7 @@ internal class PerAppViewModel(private val engine: Engine, private val installed
             is PerAppAction.Toggle -> edit { it.copy(packages = if (action.checked) it.packages + action.packageName else it.packages - action.packageName) }
             is PerAppAction.SetQuery -> local.update { it.copy(query = action.query) }
             PerAppAction.Save -> save()
-            PerAppAction.Reconnect, PerAppAction.EditList -> local.update { it.copy(rebuildFailure = null) }
+            PerAppAction.Reconnect, PerAppAction.EditList, PerAppAction.CheckUpdate, PerAppAction.VpnSettings -> local.update { it.copy(rebuildFailure = null) }
             PerAppAction.Reload, PerAppAction.Resume -> readApps()
         }
     }
@@ -143,17 +147,17 @@ internal class PerAppViewModel(private val engine: Engine, private val installed
      * shown only while nothing has loaded, with 重試 to read again; after that a failed refresh says nothing new.
      */
     private suspend fun loadApps(): List<InstalledApp> = try {
-        installedApps.launchable().also { local.update { it.copy(readError = null) } }
+        installedApps.launchable().also { local.update { it.copy(readFailed = false) } }
     } catch (e: CancellationException) {
         throw e
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         // No read has succeeded yet: the page's empty list is only this failure's.
-        if (installed.value == null || local.value.readError != null) local.update { it.copy(readError = e.errorCode()) }
+        if (installed.value == null || local.value.readFailed) local.update { it.copy(readFailed = true) }
         installed.value.orEmpty()
     }
 
     private fun state(saved: PerApp, loaded: Boolean, apps: List<InstalledApp>?, local: Local) =
-        rvPerAppState(saved, local.draft, apps, local.query, local.busy, local.saveFailed, loaded, local.rebuildFailure, local.readError)
+        rvPerAppState(saved, local.draft, apps, local.query, local.busy, local.saveFailed, loaded, local.rebuildFailure, local.readFailed)
 
     /** The engine's flows are StateFlows, so the first frame already shows real values. */
     private fun current() = state(engine.settings.value.perApp, engine.perAppLoaded.value, installed.value, local.value)

@@ -141,7 +141,7 @@ class PerAppViewModelTest {
             },
         )
         assertTrue(vm.state.readFailed)
-        assertEquals(R.string.error_internal, vm.state.readReason)
+        assertTrue("nothing to search or check", vm.state.unread)
         assertEquals(emptyList<RvApp>(), vm.state.installed)
         assertEquals(RvSave.Idle, vm.state.save)
         vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
@@ -289,11 +289,34 @@ class PerAppViewModelTest {
     }
 
     @Test
-    fun `the rebuild notice gives the reason the tunnel did not come back`() = runTest {
+    fun `the rebuild notice gives 活動's sentence for the reason the tunnel did not come back`() = runTest {
         val vm = collected(RebuildFails(reason = FailureReason.Revoked))
         vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
         vm.onAction(PerAppAction.Save)
-        assertEquals(R.string.vpn_drop_revoked, vm.state.rebuildReason)
+        assertEquals(R.string.rv_vpn_taken_reason, vm.state.rebuildReason)
+        assertEquals(RvRebuildFix.Retry, vm.state.rebuildFix)
+    }
+
+    @Test
+    fun `a core this doona does not match is sent to an update, not a retry, and the notice goes`() = runTest {
+        val vm = collected(RebuildFails(reason = FailureReason.IncompatibleCore))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
+        vm.onAction(PerAppAction.Save)
+        assertEquals(R.string.vpn_failure_incompatible_core, vm.state.rebuildReason)
+        assertEquals(RvRebuildFix.CheckUpdate, vm.state.rebuildFix)
+        vm.onAction(PerAppAction.CheckUpdate)
+        assertFalse(vm.state.rebuildFailed)
+    }
+
+    @Test
+    fun `the system's lockdown is sent to the VPN settings, not a retry, and the notice goes`() = runTest {
+        val vm = collected(RebuildFails(reason = FailureReason.LockdownEnabled))
+        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
+        vm.onAction(PerAppAction.Save)
+        assertEquals(R.string.vpn_failure_lockdown_enabled, vm.state.rebuildReason)
+        assertEquals(RvRebuildFix.VpnSettings, vm.state.rebuildFix)
+        vm.onAction(PerAppAction.VpnSettings)
+        assertFalse(vm.state.rebuildFailed)
     }
 
     @Test
@@ -304,7 +327,7 @@ class PerAppViewModelTest {
 
         val state = vm.state
         assertTrue(state.rebuildFailed)
-        assertTrue(state.rebuildNeedsList)
+        assertEquals(RvRebuildFix.EditList, state.rebuildFix)
         assertEquals("活動's sentence for the same cause", R.string.vpn_failure_no_allowed_apps, state.rebuildReason)
         vm.onAction(PerAppAction.EditList)
         assertFalse(vm.state.rebuildFailed)
@@ -316,7 +339,7 @@ class PerAppViewModelTest {
         vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Except))
         vm.onAction(PerAppAction.Save)
         assertTrue(vm.state.rebuildFailed)
-        assertFalse(vm.state.rebuildNeedsList)
+        assertEquals(RvRebuildFix.Retry, vm.state.rebuildFix)
     }
 
     @Test

@@ -46,7 +46,10 @@ import dev.doona.android.designsystem.rv.rvRowToggle
 import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
 import dev.doona.android.feature.model.RvAppPolicy
 
-/** What the 依 App page does: pick a policy, check an app, search, save, and rebuild the tunnel after a failed one. */
+/**
+ * What the 依 App page does: pick a policy, check an app, search, save, read the apps again, and mend a tunnel that did
+ * not come back after a save: reconnect, leave the notice for the list, check for an update, or open the VPN settings.
+ */
 internal class RvPerAppActions(
     val policy: (RvAppPolicy) -> Unit = {},
     val toggle: (String, Boolean) -> Unit = { _, _ -> },
@@ -55,6 +58,8 @@ internal class RvPerAppActions(
     val reconnect: () -> Unit = {},
     val editList: () -> Unit = {},
     val reload: () -> Unit = {},
+    val checkUpdate: () -> Unit = {},
+    val vpnSettings: () -> Unit = {},
 )
 
 /**
@@ -72,7 +77,7 @@ internal enum class RvPerAppLook { Today, Checks, Segmented }
  * its error ([RvFieldMessage]), and cannot be saved. 儲存 floats at the foot, enabled only when the edits can be saved, since a save rebuilds
  * the tunnel. A save under way, a failed one and a tunnel that would not come back after one show at the top: a busy
  * row, or the library's notice card with 重試. While the apps are read, their card is a skeleton of app rows, and the
- * apps fade in over it in place.
+ * apps fade in over it in place. Apps the phone would not list leave the search and the list out: the notice says so.
  */
 @Composable
 internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBack: () -> Unit, look: RvPerAppLook = RvPerAppLook.Today) {
@@ -98,7 +103,7 @@ internal fun RvPerAppScreen(state: RvPerAppState, actions: RvPerAppActions, onBa
                 Policies(state, actions, look)
                 if (state.asksForApp) RvFieldMessage(stringResource(R.string.rv_perapp_needs_app))
             }
-            if (listed) {
+            if (listed && !state.unread) {
                 RvSearchSlot { RvSearchField(null, state.query, actions.query, it, hint = hint) }
                 Apps(state, actions, look)
             }
@@ -120,29 +125,41 @@ private fun Policies(state: RvPerAppState, actions: RvPerAppActions, look: RvPer
 }
 
 /**
- * A failed save, one stored whose tunnel would not come back, or apps the phone would not list: errors, with 重試 saving,
- * reconnecting or reading again. A tunnel that found none of the listed apps installed gets 調整清單 instead, which
- * leaves the notice for the list, since connecting again would fail the same way (owner, q-startfail, 2026-11-24).
+ * A failed save, one stored whose tunnel would not come back, or apps the phone would not list: errors, with 重試 saving
+ * or reading again. The rebuild's action is what can mend its cause ([RvRebuildFix]; owner, q-startfail, 2026-11-24):
+ * 重試 reconnects only where a second try may get past it. The read's notice has a title and 重試 and no reason line:
+ * the title says all there is.
  */
 @Composable
 private fun failure(state: RvPerAppState, actions: RvPerAppActions): RvNotice? = when {
     state.save == RvSave.Saving -> null
     state.save == RvSave.Failed -> notice(R.string.rv_perapp_save_failed, state.saveReason, R.string.rv_retry, actions.save)
-    state.rebuildFailed && state.rebuildNeedsList -> notice(R.string.rv_perapp_rebuild_failed, state.rebuildReason, R.string.rv_edit_app_list, actions.editList)
-    state.rebuildFailed -> notice(R.string.rv_perapp_rebuild_failed, state.rebuildReason, R.string.rv_retry, actions.reconnect)
-    state.readFailed -> notice(R.string.perapp_read_failed, state.readReason, R.string.rv_retry, actions.reload)
+    state.rebuildFailed -> notice(R.string.rv_perapp_rebuild_failed, state.rebuildReason, state.rebuildFix.label, actions.fix(state.rebuildFix))
+    state.readFailed -> notice(R.string.perapp_read_failed, null, R.string.rv_retry, actions.reload)
     else -> null
 }
 
+/**
+ * The library's error notice. A null [reason] leaves the line empty, since [RvNotice] has no notice without one yet
+ * (library request in the lane's STATE); its empty line box still stands under the title until then.
+ */
 @Composable
-private fun notice(@StringRes title: Int, @StringRes reason: Int, @StringRes action: Int, onAction: () -> Unit) =
-    RvNotice(RvNoticeKind.Error, stringResource(title), stringResource(reason), stringResource(action), onAction)
+private fun notice(@StringRes title: Int, @StringRes reason: Int?, @StringRes action: Int, onAction: () -> Unit) =
+    RvNotice(RvNoticeKind.Error, stringResource(title), reason?.let { stringResource(it) }.orEmpty(), stringResource(action), onAction)
+
+/** What [fix] runs. */
+private fun RvPerAppActions.fix(fix: RvRebuildFix): () -> Unit = when (fix) {
+    RvRebuildFix.Retry -> reconnect
+    RvRebuildFix.EditList -> editList
+    RvRebuildFix.CheckUpdate -> checkUpdate
+    RvRebuildFix.VpnSettings -> vpnSettings
+}
 
 /**
- * The apps, or the empty caption when the search matches none or the phone has no app to launch; nothing when the
- * phone would not list its apps, which the notice above says. While they are read, a skeleton of their rows, which a
- * screen reader reads as the apps loading. The skeleton's card runs past the window's foot as the list does
- * ([rvSkeletonRowsToFill]); its rows stop above 儲存's room, as the list's last row clears it ([LocalRvContentFloor]).
+ * The apps, or the empty caption when the search matches none or the phone has no app to launch. While they are read,
+ * a skeleton of their rows, which a screen reader reads as the apps loading. The skeleton's card runs past the window's
+ * foot as the list does ([rvSkeletonRowsToFill]); its rows stop above 儲存's room, as the list's last row clears it
+ * ([LocalRvContentFloor]).
  */
 @Composable
 private fun Apps(state: RvPerAppState, actions: RvPerAppActions, look: RvPerAppLook) {
@@ -151,7 +168,6 @@ private fun Apps(state: RvPerAppState, actions: RvPerAppActions, look: RvPerAppL
     RvSkeletonFade(state.installed == null, { RvSkeletonCard(description = loading) { repeat(rows) { RvSkeletonRow(it) } } }) {
         val shown = state.shown
         when {
-            state.installed.isNullOrEmpty() && state.readFailed -> Unit
             state.installed.isNullOrEmpty() -> RvEmptyCaption(stringResource(R.string.perapp_no_apps), stringResource(R.string.perapp_no_apps_line))
             shown.isEmpty() -> RvEmptyCaption(stringResource(R.string.perapp_no_match), stringResource(R.string.rv_conn_none_line))
             else -> RvCard { shown.forEach { key(it.packageName) { AppRow(it, it.packageName in state.edited.packages, look) { on -> actions.toggle(it.packageName, on) } } } }

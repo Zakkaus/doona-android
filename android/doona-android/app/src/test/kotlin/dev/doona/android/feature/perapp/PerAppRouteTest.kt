@@ -43,7 +43,7 @@ class PerAppRouteTest {
                 return fake.setPerApp(perApp)
             }
         }
-        show { PerAppRoute(engine, FakeInstalledApps(), onConnect = {}, onBack = {}) }
+        show { PerAppRoute(engine, FakeInstalledApps(), onConnect = {}, onCheckUpdate = {}, onBack = {}) }
 
         compose.onNodeWithText("Only checked").performClick()
         compose.onNode(hasSetTextAction()).performTextInput("tele")
@@ -68,7 +68,7 @@ class PerAppRouteTest {
             }
         }
         var connects = 0
-        show { PerAppRoute(engine, FakeInstalledApps(), onConnect = { connects++ }, onBack = {}) }
+        show { PerAppRoute(engine, FakeInstalledApps(), onConnect = { connects++ }, onCheckUpdate = {}, onBack = {}) }
 
         compose.onNodeWithText("All but checked").performClick()
         compose.onNodeWithText("Save").performClick()
