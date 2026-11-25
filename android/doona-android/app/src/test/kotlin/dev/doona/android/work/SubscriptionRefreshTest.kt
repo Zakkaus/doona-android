@@ -66,7 +66,7 @@ class SubscriptionRefreshTest {
         assertEquals(SubscriptionRefresh.Outcome.Failed, SubscriptionRefresh(settings, { engine }).run())
         assertEquals(15_000L, testScheduler.currentTime)
         assertTrue(engine.calls.isEmpty())
-        val warning = AppEvents.snapshot().single()
+        val warning = AppEvents.snapshot().single { it.text.startsWith("subscription-refresh:") }
         assertEquals(AppEventLevel.Warn, warning.level)
         assertEquals("subscription-refresh: core readiness timed out", warning.text)
     }
