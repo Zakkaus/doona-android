@@ -6,9 +6,15 @@ use crate::dto::{ErrorCode, InitOptions};
 
 /// The worker threads of each runtime; flows are I/O bound and the phone has few big cores.
 pub(super) const WORKERS: usize = 2;
-/// Performance mode's: four SS2022 flows uploaded 26 Gbps instead of 20 on a desktop, one flow
-/// no faster (plans/v1 tput-results).
-const PERFORMANCE_WORKERS: usize = 4;
+
+/// Performance mode's: one per CPU core the process may run on, never fewer than [`WORKERS`]. More
+/// workers help only several flows at once: four SS2022 flows uploaded 26 Gbps with 4 instead of 20
+/// with 2 on a desktop, one flow no faster (plans/v1 tput-results).
+fn performance_workers() -> usize {
+    std::thread::available_parallelism()
+        .map_or(WORKERS, std::num::NonZeroUsize::get)
+        .max(WORKERS)
+}
 
 impl Core {
     /// The app's `init`: [`Core::new`] with the workers `options` asks for. Options that do not
@@ -19,7 +25,7 @@ impl Core {
             InitOptions::default()
         });
         let workers = if options.performance_mode {
-            PERFORMANCE_WORKERS
+            performance_workers()
         } else {
             WORKERS
         };
@@ -35,7 +41,7 @@ impl Core {
 
 #[cfg(test)]
 mod tests {
-    use super::Core;
+    use super::{Core, WORKERS, performance_workers};
     use crate::api::tests_catalog::path;
     use crate::testutil::TempDir;
 
@@ -54,8 +60,14 @@ mod tests {
     }
 
     #[test]
-    fn performance_mode_gives_both_runtimes_four() {
-        assert_eq!(workers(r#"{"performanceMode":true}"#), (4, Some(4)));
+    fn performance_mode_gives_both_runtimes_one_worker_per_core() {
+        let cores = std::thread::available_parallelism().map_or(1, |n| n.get());
+        let expected = cores.max(WORKERS);
+        assert_eq!(performance_workers(), expected);
+        assert_eq!(
+            workers(r#"{"performanceMode":true}"#),
+            (expected, Some(expected))
+        );
     }
 
     #[test]
