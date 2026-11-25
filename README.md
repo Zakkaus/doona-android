@@ -84,6 +84,10 @@ over wireless adb, so USB power does not charge the phone during the measurement
 [`android/scripts/README.md`](android/scripts/README.md) covers installing the APK, running a plan
 with `run.sh`, and turning the Perfetto trace into energy and wakeup figures with `analyze.py`.
 
+## Contributing
+
+Use the [support guide](.github/SUPPORT.md) for bug reports and [CONTRIBUTING.md](CONTRIBUTING.md) for pull requests.
+
 ## Related projects
 
 - [honk](https://github.com/daeuniverse/honk): the proxy engine. honk-netstack lives there.

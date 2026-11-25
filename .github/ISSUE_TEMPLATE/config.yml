@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Support guide / 支持指南
+    url: https://github.com/Zakkaus/doona-android/blob/main/.github/SUPPORT.md
+    about: Read the support guide before reporting an Android problem. / 报告 Android 问题前，请先阅读支持指南。
+  - name: Upstream honk problems / honk 上游问题
+    url: https://github.com/daeuniverse/honk/issues/new/choose
+    about: Report problems that also reproduce with honk outside the Android app. / 在 Android 应用之外使用 honk 也能复现的问题，请到 honk 仓库提交。
