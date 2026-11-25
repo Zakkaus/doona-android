@@ -13,7 +13,7 @@ pub mod score;
 mod selection;
 pub use selection::{Network, SelectArgs};
 mod start;
-pub use start::{DnsUpstreamsArgs, StartConfig};
+pub use start::{DnsUpstreamsArgs, InitOptions, StartConfig};
 
 /// Schema 3 admits catalog leaves without a subscription and adds the static editor commands.
 pub const SCHEMA: u32 = 3;
