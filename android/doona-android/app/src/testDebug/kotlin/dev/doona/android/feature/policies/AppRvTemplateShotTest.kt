@@ -246,11 +246,11 @@ class AppRvTemplateShotTest {
         const val WHOLE_EFFECTIVE_REREAD = "+h2600dp"
 
         /** The other pages' windows as tall as each page whole; measured by assertWhole. */
-        const val WHOLE_TEMPLATE_FS200 = "+h1099dp"
+        const val WHOLE_TEMPLATE_FS200 = "+h1109dp"
         const val WHOLE_TEMPLATE_EN = "en-w412dp-h915dp-notnight-xhdpi"
         const val WHOLE_IMPACT_FS200 = "+h915dp"
         const val WHOLE_IMPACT_EN = "en-w412dp-h915dp-notnight-xhdpi"
-        const val WHOLE_EFFECTIVE_FS200 = "+h3310dp"
+        const val WHOLE_EFFECTIVE_FS200 = "+h3326dp"
         const val WHOLE_EFFECTIVE_EN = "en-w412dp-h2600dp-notnight-xhdpi"
         const val PERCENT = 100
     }
