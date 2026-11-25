@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
@@ -160,16 +161,19 @@ internal fun RvFilterChip(label: String, onClick: () -> Unit, modifier: Modifier
  * A row of Revolut's range chips (measured §8), [labels] in order, the [selected] one raised, [RvChartSize.rangeGap]
  * apart: under a chart it picks the range; under a node list's search it picks the order. The labels take one size, the
  * largest at which the whole row fits its width ([rvChipRowFit]), and every pill grows with that size's line, keeping
- * [RvChartSize.rangeInset] above and below it, so at a large font size no label is cut or runs past its pill.
+ * [RvChartSize.rangeInset] above and below it, so at a large font size no label is cut or runs past its pill. The chosen
+ * chip's label is bold after a check ([RvChoiceLabel], [rvRangeFit]): every chip is as wide as its bold label, so the
+ * weight moves nothing, and the chosen one is wider by the check's room, so a choice moves the pills between the old and
+ * the new one by that room.
  */
 @Composable
 internal fun RvRangeRow(labels: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     var width by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
-    val style = rvChipRowFit(labels, Rv.type.action, RvChartSize.rangePad, RvChartSize.rangeGap, with(density) { width.toDp() })
-    val height = maxOf(RvChartSize.range, with(density) { style.lineHeight.toDp() } + RvChartSize.rangeInset * 2)
+    val fit = rvRangeFit(labels, with(density) { width.toDp() })
+    val height = maxOf(RvChartSize.range, with(density) { fit.style.lineHeight.toDp() } + RvChartSize.rangeInset * 2)
     Row(modifier.fillMaxWidth().onSizeChanged { width = it.width }.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(RvChartSize.rangeGap)) {
-        labels.forEachIndexed { i, label -> RvRangePill(label, i == selected, style, height) { onSelect(i) } }
+        labels.forEachIndexed { i, label -> RvRangePill(label, i == selected, fit, height) { onSelect(i) } }
     }
 }
 
@@ -179,17 +183,20 @@ internal fun RvRangeRow(labels: List<String>, selected: Int, onSelect: (Int) -> 
  * target reaches 48 dp through Compose's touch target expansion, which does not move the layout.
  */
 @Composable
-private fun RvRangePill(label: String, selected: Boolean, style: TextStyle, height: Dp, onClick: () -> Unit) {
+private fun RvRangePill(label: String, selected: Boolean, fit: RvRangeFit, height: Dp, onClick: () -> Unit) {
     val colors = Rv.colors
+    val bold = rvBoldWidth(label, fit.style)
     Box(
         Modifier
             .height(height)
             .testTag(RvPart.FRAME)
             .then(if (selected) Modifier.rvRaised(CircleShape) else Modifier.clip(CircleShape))
-            .selectable(selected, interactionSource = null, indication = rvPressIndication(), role = Role.Tab, onClick = onClick)
+            .selectable(selected, interactionSource = null, indication = rvPressIndication(CircleShape), role = Role.Tab, onClick = onClick)
             .padding(horizontal = RvChartSize.rangePad),
         contentAlignment = Alignment.Center,
-    ) { RvText(label, style, color = if (selected) colors.text else colors.textSecondary) }
+    ) {
+        RvChoiceLabel(label, selected, fit.style, Rv.type.action, if (selected) colors.text else colors.textSecondary, Modifier.widthIn(min = bold + fit.room(selected)), check = fit.check)
+    }
 }
 
 /** How far a raised chip's shadow reaches under it in this theme; dark draws no shadow (its pill is a lighter fill). */
@@ -209,8 +216,8 @@ internal fun Modifier.rvRaised(shape: Shape): Modifier {
  * Revolut's segmented control (measured §8) in the owner's look E (rv-fix-4e), the one slider of every page: a 40 dp
  * pill track, visible on any surface, [options] in equal parts, each after its glyph when [glyphs] gives one drawable
  * per option, the [selected] one on a raised pill 2 dp inside it (a soft shadow in light, a rim in dark). The labels
- * take one size ([rvSegmentStyle]) and the control grows with their line at a large font size ([rvSegmentHeight]), so
- * no label is cut. The track is the control's layout box, so what is above and below it measures from its visible edge
+ * take one size ([rvSegmentStyle]) and the control grows with the line of the full size at a large font size
+ * ([rvSegmentHeight]), so no label is cut; the labels' own fitted size, which a skeleton cannot know, never changes its height. The track is the control's layout box, so what is above and below it measures from its visible edge
  * (spacing audit row 4); each part's target reaches 48 dp through Compose's touch target expansion, which does not move
  * the layout. The press lights only its pill.
  */
@@ -222,7 +229,7 @@ internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -
     val slots = remember(options.size) { mutableStateListOf<IntRect?>().apply { repeat(options.size) { add(null) } } }
     var width by remember { mutableIntStateOf(0) }
     val style = rvSegmentStyle(options, glyphs.isNotEmpty(), width)
-    Box(modifier.fillMaxWidth().height(rvSegmentHeight(style)).onSizeChanged { width = it.width }.testTag(RvPart.SEGMENTED)) {
+    Box(modifier.fillMaxWidth().height(rvSegmentHeight(Rv.type.segment)).onSizeChanged { width = it.width }.testTag(RvPart.SEGMENTED)) {
         Box(Modifier.matchParentSize().clip(CircleShape).background(colors.segmentTrack))
         slots.getOrNull(selected)?.let { slot ->
             val x by animateIntAsState(slot.left, motion.tween(RvMotion.SLIDE_MS), label = "segment")
@@ -240,9 +247,9 @@ internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -
                         .padding(RvChartSize.segmentInset)
                         .onPlaced { placed -> placed.boundsInParent().roundToIntRect().let { if (slots[i] != it) slots[i] = it } }
                         .clip(CircleShape)
-                        .indication(source, rvPressIndication()),
+                        .indication(source, rvPressIndication(CircleShape)),
                     contentAlignment = Alignment.Center,
-                ) { RvSegmentLabel(label, glyphs.getOrNull(i), style, ink) }
+                ) { RvSegmentLabel(label, glyphs.getOrNull(i), i == selected, style, ink) }
             }
         }
     }
@@ -260,12 +267,17 @@ private fun rvSegmentStyle(options: List<String>, glyph: Boolean, width: Int): T
     if (width == 0 || options.isEmpty()) return style
     val pad = RvChartSize.segmentInset + RvChartSize.rangePad
     val column = with(LocalDensity.current) { (width / options.size).toDp() } - pad * 2
-    return rvRowFit(options, style, if (glyph) column - RvChartSize.segmentGlyph - RvChartSize.segmentGlyphGap else column)
+    // Fitted bold and after a check, as the chosen one is set, so a choice never cuts or wraps its label.
+    val room = column - rvCheckReserve
+    return rvRowFit(options, style.rvChosen(), if (glyph) room - RvChartSize.segmentGlyph - RvChartSize.segmentGlyphGap else room)
 }
 
 /**
  * The control's height for labels in [style]: [RvChartSize.segment], or the labels' line and the pill's inset above and
- * below it where that is more, as at font scale 2.0, so a label is never cut at the top or the bottom.
+ * below it where that is more, as at font scale 2.0, so a label is never cut at the top or the bottom. [RvSegmented] and
+ * its skeleton pass the full [Rv.type.segment], not the fitted size, which the skeleton cannot know without the labels:
+ * Android scales fonts non-linearly, so at 2.0 the full line is 36.5 dp and the control 40.5 dp, against 40.0 where the
+ * fitted labels were a step smaller (fs200 of 依 App, 策略's flow and the rule editor); at 1.0 and 1.15 it is 40.0.
  */
 @Composable
 internal fun rvSegmentHeight(style: TextStyle): Dp {
@@ -273,18 +285,10 @@ internal fun rvSegmentHeight(style: TextStyle): Dp {
     return maxOf(RvChartSize.segment, line + RvChartSize.segmentInset * 2)
 }
 
-/** A segment's label in [style] and [color], after its [glyph] when it has one. */
+/** A segment's label in [style] (the bold one) and [color], after its [glyph] when it has one; [chosen], bold after a check. */
 @Composable
-private fun RvSegmentLabel(text: String, @DrawableRes glyph: Int?, style: TextStyle, color: Color) {
-    if (glyph == null) {
-        RvText(text, style, color = color)
-        return
-    }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        RvGlyph(glyph, RvChartSize.segmentGlyph, color)
-        Spacer(Modifier.width(RvChartSize.segmentGlyphGap))
-        RvText(text, style, color = color)
-    }
+private fun RvSegmentLabel(text: String, @DrawableRes glyph: Int?, chosen: Boolean, style: TextStyle, color: Color) {
+    RvChoiceLabel(text, chosen, style, Rv.type.segment, color, glyph = glyph)
 }
 
 /** Exactly [width] by [height] pixels, so a part placed from another's measured bounds matches it to the pixel. */
@@ -329,6 +333,7 @@ internal fun RvPrimaryButton(
             .clip(CircleShape)
             .background(shown)
             .clickable(interactionSource = source, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
+            .indication(source, rvFocusIndication(CircleShape))
             .padding(horizontal = RvSpace.gutter, vertical = RvSpace.tight),
         contentAlignment = Alignment.Center,
     ) { RvText(label, Rv.type.button, color = colors.page, align = TextAlign.Center) }

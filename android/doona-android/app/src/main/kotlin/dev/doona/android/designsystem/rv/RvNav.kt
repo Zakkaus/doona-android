@@ -153,7 +153,7 @@ private fun NavItem(item: RvNavItem, selected: Boolean, shrink: () -> Float, lab
             .fillMaxHeight()
             .clip(CircleShape)
             .then(pill)
-            .selectable(selected, interactionSource = null, indication = rvPressIndication(), role = Role.Tab, onClick = onClick)
+            .selectable(selected, interactionSource = null, indication = rvPressIndication(CircleShape), role = Role.Tab, onClick = onClick)
             // The tab's one name, whether or not its label is composed: a collapsed bar draws icons only. A content
             // description is read in place of the text it merges with, so the name is not read twice.
             .semantics { contentDescription = label },

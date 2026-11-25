@@ -260,7 +260,7 @@ private fun PolicySkeleton(state: RvPolicyState, profile: RvPolicyProfile) {
         }
     }
     if (mode == RvRouteMode.Global) {
-        RvControlRow({ RvSkeletonChips(RvNodeSort.entries.map { stringResource(it.label) }, Modifier.padding(bottom = rvRaisedReach)) })
+        RvControlRow({ RvSkeletonChips(RvNodeSort.entries.map { stringResource(it.label) }, state.nodeSort.ordinal, Modifier.padding(bottom = rvRaisedReach)) })
         RvGutter {
             RvSkeletonCard {
                 // The first card is the first subscription's, but under 地區 the country of the fastest node's.

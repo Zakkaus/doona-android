@@ -144,6 +144,27 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Find the revision the components allowlist is held to
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          # GITHUB_ENV is job-scoped, so the base is found here, not in the `android` job. The checkout is one commit
+          # deep: fetch the base commit itself, which is all `git show <base>:<path>` needs.
+          base=
+          case "$EVENT_NAME" in
+            pull_request) base=$PR_BASE ;;
+            # A push may carry several commits: compare with the branch head before it, as check_limits does above.
+            push) [ -z "${BEFORE//0/}" ] || base=$BEFORE ;;
+          esac
+          if [ -n "$base" ]; then
+            git fetch --no-tags --depth=1 origin "$base"
+          else
+            echo "no base to hold the allowlist to"
+          fi
+          echo "RATCHET_BASE=$base" >> "$GITHUB_ENV"
       - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
@@ -155,6 +176,8 @@ jobs:
         run: |
           set -euo pipefail
           tools/check-tokens.sh
+          tools/check-components.sh ${RATCHET_BASE:+--base-rev "$RATCHET_BASE"}
+          tools/test-check-components.sh
           tools/check-layers.sh
           tools/check-samples.sh
       - name: Check Kotlin format, lint, run the JVM tests and the screenshots

@@ -29,6 +29,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +62,7 @@ import androidx.compose.ui.layout.MeasureScope
 import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -76,7 +78,6 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.constrainWidth
-import androidx.compose.ui.unit.dp
 
 // The skeleton: grey bars, discs and blocks in the places of the parts they stand for, while a page waits for its data.
 
@@ -239,17 +240,25 @@ internal fun RvSkeletonControlCard(caption: String? = null) {
 
 /**
  * [RvRangeRow]'s skeleton, a chip per label of [labels] (the page knows its orders before its data), [RvChartSize.rangeGap]
- * apart under one shimmer: each a pill of the chip's height at this font size, as wide as its label and its pads.
+ * apart under one shimmer: each a pill of the chip's height at this font size, as wide as its bold label and its pads, the
+ * [selected] one wider by the check's room, as [RvRangeRow] sets it. The page says which is selected (a row's chosen order
+ * is not always its first), so the pills stand where the real chips will and nothing jumps when the data arrives.
  */
 @Composable
-internal fun RvSkeletonChips(labels: List<String>, modifier: Modifier = Modifier) {
-    val style = Rv.type.action
+internal fun RvSkeletonChips(labels: List<String>, selected: Int, modifier: Modifier = Modifier) {
     val density = LocalDensity.current
+    var width by remember { mutableIntStateOf(0) }
+    // The row is set as RvRangeRow sets it in the same width, so each block stands where its chip does.
+    val fit = rvRangeFit(labels, with(density) { width.toDp() })
     val measurer = rememberTextMeasurer()
-    val widths = remember(labels, style, measurer) { labels.map { measurer.measure(scripted(it), style, maxLines = 1).size.width } }
-    val height = maxOf(RvChartSize.range, with(density) { style.lineHeight.toDp() } + RvChartSize.rangeInset * 2)
-    Row(modifier.rvShimmer(), horizontalArrangement = Arrangement.spacedBy(RvChartSize.rangeGap)) {
-        widths.forEach { RvSkeletonBlock(height, Modifier.width(with(density) { it.toDp() } + RvChartSize.rangePad * 2), CircleShape) }
+    val widths = remember(labels, fit.style, measurer) { labels.map { measurer.measure(scripted(it), fit.style, maxLines = 1).size.width } }
+    val height = maxOf(RvChartSize.range, with(density) { fit.style.lineHeight.toDp() } + RvChartSize.rangeInset * 2)
+    Box(modifier.fillMaxWidth().onSizeChanged { width = it.width }) {
+        Row(Modifier.rvShimmer(), horizontalArrangement = Arrangement.spacedBy(RvChartSize.rangeGap)) {
+            widths.forEachIndexed { i, w ->
+                RvSkeletonBlock(height, Modifier.width(with(density) { w.toDp() } + fit.room(i == selected) + RvChartSize.rangePad * 2), CircleShape)
+            }
+        }
     }
 }
 

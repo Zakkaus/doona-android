@@ -32,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -119,6 +120,10 @@ internal fun RvSheetLayout(progress: () -> Float, onDismiss: () -> Unit, label: 
                 .fillMaxSize()
                 .graphicsLayer { alpha = progress() }
                 .background(Rv.colors.sheetScrim)
+                // A tap outside the card, or a screen reader's click on the scrim, dismisses the sheet; a keyboard or a
+                // D-pad never stops here, so Tab starts on the sheet's own controls and back closes it. The
+                // scrim is the one clickable of the library without the focus outline (q-a11y-focus): it takes no focus.
+                .focusProperties { canFocus = false }
                 .clickable(interactionSource = null, indication = null, onClickLabel = dismiss, role = Role.Button, onClick = onDismiss),
         )
         RvSheetPanel(

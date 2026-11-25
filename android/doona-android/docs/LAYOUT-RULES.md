@@ -2,7 +2,7 @@
 
 # Layout rules (doona-android RV pages)
 
-Owner, 2026-11-25: 「規則要立住，不能每次說劃線就改一次。怎麼處理小字、多行單行、全部元件間距統一，都是要做好、看好的。」 Row alignment had been changed four times, each round by its own reading. This file fixes the values once and the gate (`RvRowRules`, `tools/check-scale.sh`, `tools/check-tokens.sh`) enforces them. A later brief cites a rule's id instead of restating its value.
+Owner, 2026-11-25: 「規則要立住，不能每次說劃線就改一次。怎麼處理小字、多行單行、全部元件間距統一，都是要做好、看好的。」 Row alignment had been changed four times, each round by its own reading. This file fixes the values once and the gate (`RvRowRules`, `tools/check-scale.sh`, `tools/check-tokens.sh`, `tools/check-components.sh`) enforces them. A later brief cites a rule's id instead of restating its value.
 
 All values are dp at font scale 1.0 on a 412 dp screen, in a card on the 16 dp gutter (card x 16..396, row content x 32..380). The gate's tolerance is 1 dp. At font scale above 1 only text boxes grow; paddings, discs and minimum heights do not.
 
