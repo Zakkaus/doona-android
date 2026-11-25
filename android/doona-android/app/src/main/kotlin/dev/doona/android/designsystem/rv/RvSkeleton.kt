@@ -143,6 +143,9 @@ internal enum class RvSkeletonText(val sample: String) {
 
     /** Han and Latin on one line: a state and its mode, an amount and its date. */
     Mixed("節 · 0"),
+
+    /** One thing becoming another, the arrow's font setting the line taller: 範本's source → its template. */
+    Change("節 → 節"),
 }
 
 /**
@@ -242,19 +245,19 @@ internal fun RvSkeletonSeeAll() {
 }
 
 /**
- * [RvStatRow]'s skeleton: its [label] (the page knows it before its data) on the row's start, its value's bar at the end,
- * in the row's one-line height and inset.
+ * [RvStatRow]'s skeleton: its [label] (the page knows it before its data) on the row's start, its value's bar at the end
+ * on the line of its [kind] of text, in the row's one-line height and inset.
  */
 @Composable
-internal fun RvSkeletonStatRow(label: String) {
+internal fun RvSkeletonStatRow(label: String, kind: RvSkeletonText = RvSkeletonText.Mixed) {
     Row(
-        Modifier.fillMaxWidth().heightIn(min = RvSize.rowOneLine).padding(horizontal = RvSpace.rowPadding),
+        Modifier.fillMaxWidth().testTag(RvPart.STAT).heightIn(min = RvSize.rowOneLine).padding(horizontal = RvSpace.rowPadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RvSkeletonLabel(label, Rv.type.statLabel, maxLines = RV_ROW_TITLE_LINES)
         Spacer(Modifier.width(RvSpace.trailingGap))
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-            RvSkeletonLine(Rv.type.stat, RvSkeletonSize.STAT, kind = RvSkeletonText.Mixed)
+            RvSkeletonLine(Rv.type.stat, RvSkeletonSize.STAT, kind = kind)
         }
     }
 }

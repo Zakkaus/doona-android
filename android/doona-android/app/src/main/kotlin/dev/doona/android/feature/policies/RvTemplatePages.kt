@@ -146,7 +146,7 @@ private fun ImpactSkeleton() {
     val stats = listOf(R.string.rv_template_added, R.string.rv_template_changed, R.string.rv_template_removed, R.string.rv_template_kept)
     RvGutter {
         RvSkeletonCard(description = template) {
-            RvSkeletonStatRow(template)
+            RvSkeletonStatRow(template, RvSkeletonText.Change)
             stats.forEach { RvSkeletonStatRow(stringResource(it)) }
         }
     }

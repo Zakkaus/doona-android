@@ -332,6 +332,9 @@ internal object RvPart {
     const val BLOCK = "rv-block"
     const val ROW = "rv-row"
 
+    /** A key stats row ([RvStatRow]) and its skeleton ([RvSkeletonStatRow]). */
+    const val STAT = "rv-stat"
+
     /** A settings row's leading disc, held on the title's first line as its end is. */
     const val DISC = "rv-disc"
 
@@ -459,7 +462,7 @@ internal fun RvStatRow(label: String, value: String, valueKeepWords: Boolean = t
             RvText(label, Rv.type.statLabel, color = Rv.colors.textSecondary, maxLines = RV_ROW_TITLE_LINES)
             RvText(value, Rv.type.stat, align = if (stacked) TextAlign.Start else TextAlign.End, maxLines = Int.MAX_VALUE, keepWords = valueKeepWords)
         },
-        Modifier.semantics(mergeDescendants = true) {}.fillMaxWidth().padding(horizontal = RvSpace.rowPadding),
+        Modifier.semantics(mergeDescendants = true) {}.testTag(RvPart.STAT).fillMaxWidth().padding(horizontal = RvSpace.rowPadding),
     ) { (labelPart, valuePart), constraints ->
         val width = constraints.maxWidth
         val oneLine = labelPart.maxIntrinsicWidth(Constraints.Infinity) + RvSpace.trailingGap.roundToPx() + valuePart.maxIntrinsicWidth(Constraints.Infinity) <= width
