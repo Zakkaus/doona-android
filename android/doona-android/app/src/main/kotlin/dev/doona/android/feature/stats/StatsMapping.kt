@@ -15,7 +15,6 @@ import dev.doona.android.feature.model.RvSplit
 import dev.doona.android.feature.model.RvSubscription
 import java.net.URI
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
 
 /** Everything the 統計 page reads from the engine at one instant; [usage] is null until the first read answers. */
@@ -60,7 +59,7 @@ private fun rvDay(day: DayUsage?, hours: Int): RvDay {
 /** The hours of the local day so far, the current one included. */
 private fun hoursSoFar(input: StatsInput): Int = Instant.ofEpochMilli(input.nowEpochMs).atZone(input.zone).hour + 1
 
-private fun localDate(input: StatsInput): String = LocalDate.ofInstant(Instant.ofEpochMilli(input.nowEpochMs), input.zone).toString()
+private fun localDate(input: StatsInput): String = Instant.ofEpochMilli(input.nowEpochMs).atZone(input.zone).toLocalDate().toString()
 
 /**
  * Bytes that left directly (route target `direct`) against the rest, which went through a proxy; `other` (route targets
