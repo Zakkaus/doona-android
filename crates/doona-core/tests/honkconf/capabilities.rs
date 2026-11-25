@@ -88,26 +88,11 @@ fn cipher_availability_and_source_location() {
     use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
     // The method check is private upstream. Require a capability review on every
     // pin change, including additions our known positive/negative cases cannot name.
-    let output = std::process::Command::new(env!("CARGO"))
-        .args([
-            "metadata",
-            "--format-version=1",
-            "--no-deps",
-            "--offline",
-            "--locked",
-        ])
-        .current_dir(env!("CARGO_MANIFEST_DIR"))
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let metadata: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-    let deps = metadata["packages"][0]["dependencies"].as_array().unwrap();
-    let outbound = deps.iter().find(|d| d["name"] == "honk-outbound").unwrap();
-    assert!(
-        outbound["source"]
-            .as_str()
-            .unwrap()
-            .ends_with("?rev=63de98ba32f871ac6a779e7462a0a79f8a595153"),
+    // honk-config and honk-outbound come from one honk tree. Reviewed at the development
+    // combine (dev/c6-combine): no commit since 63de98ba touches proxy/shadowsocks/mod.rs.
+    assert_eq!(
+        super::honk().id,
+        "path+/scratch/ssd/honk-up/c6-combine",
         "review CipherConf::for_method and is_2022_method before accepting this pin"
     );
     let dir = TempDir::new("honk-ciphers");

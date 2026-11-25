@@ -19,21 +19,38 @@ fn write(dir: &TempDir, name: &str, text: &str) -> PathBuf {
     path
 }
 
-const FETCH: &str =
-    "restore the pinned honk checkout with cargo fetch --locked from crates/doona-core";
-const PIN: &str = "63de98ba32f871ac6a779e7462a0a79f8a595153";
+const FETCH: &str = "restore the honk checkout with cargo fetch --locked from crates/doona-core";
 
-fn checkout() -> PathBuf {
-    let home = std::env::var_os("CARGO_HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(std::env::var_os("HOME").unwrap()).join(".cargo"));
-    let root = fs::read_dir(home.join("git/checkouts"))
-        .into_iter()
-        .flatten()
-        .flatten()
-        .map(|repo| repo.path().join(&PIN[..7]))
-        .find(|dir| dir.join("crates/honk-config/Cargo.toml").is_file())
-        .unwrap_or_else(|| panic!("missing honk {PIN}: {FETCH}"));
+/// The honk tree honk-config is built from, as cargo resolves it: a pinned Git checkout, or
+/// during development a local path. `id` names it in messages and pin reviews.
+pub(crate) struct Honk {
+    pub root: PathBuf,
+    pub id: String,
+}
+
+pub(crate) fn honk() -> Honk {
+    let output = std::process::Command::new(env!("CARGO"))
+        .args(["metadata", "--format-version=1", "--offline", "--locked"])
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .output()
+        .expect("cargo metadata");
+    assert!(output.status.success(), "cargo metadata failed: {FETCH}");
+    let metadata: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    let package = metadata["packages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["name"] == "honk-config")
+        .expect("honk-config in the dependency graph");
+    let manifest = PathBuf::from(package["manifest_path"].as_str().unwrap());
+    let root = manifest.ancestors().nth(3).unwrap().to_path_buf();
+    let Some(source) = package["source"].as_str() else {
+        return Honk {
+            id: format!("path+{}", root.display()),
+            root,
+        };
+    };
+    let rev = source.rsplit_once('#').map(|(_, rev)| rev).unwrap();
     let head = std::process::Command::new("git")
         .args(["rev-parse", "--verify", "HEAD"])
         .current_dir(&root)
@@ -42,10 +59,23 @@ fn checkout() -> PathBuf {
     assert!(head.status.success(), "unreadable honk HEAD: {FETCH}");
     assert_eq!(
         String::from_utf8(head.stdout).unwrap().trim(),
-        PIN,
+        rev,
         "wrong honk corpus: {FETCH}"
     );
-    root
+    Honk {
+        root,
+        id: source.to_owned(),
+    }
+}
+
+fn checkout() -> PathBuf {
+    let honk = honk();
+    assert!(
+        honk.root.join("crates/honk-config/Cargo.toml").is_file(),
+        "missing honk {}: {FETCH}",
+        honk.id
+    );
+    honk.root
 }
 
 #[test]
@@ -364,7 +394,12 @@ fn upstream_syntax_and_conformance_admission() {
                 fixture.display()
             );
         });
-        assert_eq!(cases, expected, "incomplete {dir} at 63de98b: {FETCH}");
+        assert_eq!(
+            cases,
+            expected,
+            "incomplete {dir} at {}: {FETCH}",
+            honk().id
+        );
     }
 }
 
