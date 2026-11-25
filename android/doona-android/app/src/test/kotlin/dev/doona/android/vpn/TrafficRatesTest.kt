@@ -37,5 +37,5 @@ class TrafficRatesTest {
         assertEquals(10L, traffic.upHistory.last())
     }
 
-    private fun sample(up: Long, down: Long, atMs: Long) = TrafficSample(TrafficDto(up, down, activeFlows = 0), atMs)
+    private fun sample(up: Long, down: Long, atMs: Long) = TrafficSample(TrafficDto(up, down, activeFlows = 0, upPeak = 0, downPeak = 0), atMs)
 }

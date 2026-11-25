@@ -66,15 +66,6 @@ internal object RvSampleNodes {
     )
     val groups = buildGroups()
 
-    /** [groups] and a group from a hand-edited honk config: the Fallback 我的串流 over the nested JP group and two US nodes. */
-    val userGroups: List<Group> = groups + userGroup()
-
-    private fun userGroup(): Group {
-        val jp = groups.first { it.id == "g-JP" }
-        val us = groups.first { it.id == "g-US" }.members.take(2)
-        return Group("g-我的串流", "我的串流", GroupKind.Fallback, listOf(Member(jp.id, jp.name, isGroup = true)) + us, jp.id)
-    }
-
     private fun buildGroups(): List<Group> {
         val members = samples.mapIndexed { index, sample ->
             val latency = sample.info.tests.last().ms
@@ -87,7 +78,8 @@ internal object RvSampleNodes {
             automatic("Auto", members),
             Group("g-Streaming", "Streaming", GroupKind.Selector, regions("HK", "TW", "JP", "SG", "US"), id("tw4")),
             Group("g-AI", "AI", GroupKind.Selector, regions("TW", "JP", "SG", "US"), id("jp2")),
-        ) + listOf("HK", "TW", "JP", "US").map { automatic(it, byRegion.getValue(it)) }
+        ) + listOf("HK", "TW", "JP", "US").map { automatic(it, byRegion.getValue(it)) } +
+            Group("g-Balance", "Balance", GroupKind.LoadBalance, regions("JP", "US"), id("jp2"))
     }
 
     private fun automatic(name: String, members: List<Member>) =

@@ -1,7 +1,6 @@
 package dev.doona.android.engine.fake
 
 import dev.doona.android.engine.AppPolicy
-import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Mode
@@ -17,27 +16,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RvSampleEngineTest {
-    /** 我的串流 is a Fallback over one nested group of [groups] and nodes that are no group, all of which [engine] knows. */
-    private suspend fun assertUserGroup(engine: FakeEngine, groups: List<Group>) {
-        val mine = groups.single { it.name == "我的串流" }
-        assertEquals(GroupKind.Fallback, mine.kind)
-        assertEquals(listOf(true, false, false), mine.members.map { it.isGroup })
-        assertTrue(groups.any { it.id == mine.members.first().id && it.id == mine.selectedId })
-        val nodes = mine.members.drop(1).map { it.id }
-        assertEquals(nodes, engine.nodes(nodes).getOrThrow().map { it.id })
-    }
-
     @Test
-    fun theUserGroupIsOptInAndTheDefaultsKeepTheTemplate() = runTest {
-        assertEquals(RvSampleNodes.groups, rvSampleEngine().groups.value)
-        val rv = rvSampleEngine(userGroup = true)
-        assertEquals(RvSampleNodes.groups, rv.groups.value.dropLast(1))
-        assertUserGroup(rv, rv.groups.value)
-
-        assertEquals(FakeEngine.TEMPLATE_GROUPS, FakeEngine().groups.value)
-        val fake = FakeEngine(FakeEngine.USER_GROUPS)
-        assertEquals(FakeEngine.TEMPLATE_GROUPS, fake.groups.value.dropLast(1))
-        assertUserGroup(fake, fake.groups.value)
+    fun theLoadBalanceGroupHoldsNodesTheEngineKnows() = runTest {
+        val engine = rvSampleEngine()
+        val balance = engine.groups.value.single { it.kind == GroupKind.LoadBalance }
+        val ids = balance.members.map { it.id }
+        assertTrue(balance.members.none { it.isGroup })
+        assertEquals(ids, engine.nodes(ids).getOrThrow().map { it.id })
     }
 
     @Test

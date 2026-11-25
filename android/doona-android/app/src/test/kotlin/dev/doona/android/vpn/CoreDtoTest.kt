@@ -19,9 +19,6 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -164,36 +161,6 @@ class CoreDtoTest {
         assertEquals(107374182400L, subscription.totalBytes)
         assertNull(subscription.error)
         assertNull(subscription.userAgent)
-    }
-
-    @Test
-    fun aKindTheAppDoesNotKnowKeepsItsNameAndTheRestOfTheCatalog() {
-        val json = fixture("snapshot-stopped-catalog.json").replaceFirst("\"kind\": \"Score\"", "\"kind\": \"LoadBalance\"")
-        val groups = checkNotNull(CoreJson.snapshot(json).catalog).groups.map(GroupDto::toGroup)
-        assertEquals(listOf("g-Proxy", "g-Auto", "g-Streaming", "g-AI", "g-HK"), groups.map { it.id })
-        assertEquals(GroupKind.Other("LoadBalance"), groups[1].kind)
-        assertFalse(groups[1].kind.manual)
-        assertEquals(listOf(GroupKind.Selector, GroupKind.Selector, GroupKind.Selector, GroupKind.Score), (groups - groups[1]).map { it.kind })
-        assertEquals(listOf(GroupKind.Selector, GroupKind.UrlTest, GroupKind.Score, GroupKind.Fallback), listOf("Selector", "UrlTest", "Score", "Fallback").map(GroupKind::of))
-    }
-
-    @Test
-    fun legacyCatalogSharesTheSelectionAcrossNetworks() {
-        val snapshot = Json.parseToJsonElement(fixture("snapshot-stopped-catalog.json")).jsonObject
-        val catalog = snapshot.getValue("catalog").jsonObject
-        val networkFields = setOf("tcpSelectedId", "udpSelectedId", "networksDiffer", "tcpPinned", "udpPinned")
-        val groups = catalog.getValue("groups").jsonArray.mapIndexed { index, element ->
-            val shared = element.jsonObject - networkFields
-            JsonObject(if (index == 0) shared + ("pinned" to JsonPrimitive(true)) else shared)
-        }
-        val legacyCatalog = JsonObject(catalog + ("groups" to JsonArray(groups)))
-        val legacySnapshot = JsonObject(snapshot + ("catalog" to legacyCatalog))
-
-        val group = checkNotNull(CoreJson.snapshot(legacySnapshot.toString()).catalog).toCatalog().groups.first()
-        val shared = Group.Selection("g-Auto", true)
-        assertEquals(shared, group.tcp)
-        assertEquals(shared, group.udp)
-        assertFalse(group.networksDiffer)
     }
 
     @Test
@@ -399,15 +366,6 @@ class CoreDtoTest {
                 CoreJson.result(reply, StaticNodeRowsDto.serializer())
             }
         }
-    }
-
-    @Test
-    fun anOlderSnapshotHasNoPeaksAndNoDay() {
-        val old = CoreJson.snapshot(
-            """{"revision":1,"running":false,"generation":0,"traffic":{"upTotal":0,"downTotal":0,"activeFlows":0}}""",
-        )
-        assertEquals(0L, old.traffic.upPeak)
-        assertEquals(TodayDto(), old.today)
     }
 
     @Test

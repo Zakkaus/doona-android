@@ -12,7 +12,6 @@ import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 
 private const val HONK_GIT = "https://github.com/daeuniverse/honk"
-private val tableHeader = Regex("""^\[\[?\s*([^\]]+?)\s*]]?$""")
 private val inlineDependency = Regex("""^(honk-[a-z0-9-]+)\s*=\s*\{(.*)}$""")
 private val gitKey = Regex("""\bgit\s*=\s*"([^"]*)"""")
 private val revKey = Regex("""\brev\s*=\s*"([^"]*)"""")
@@ -64,39 +63,16 @@ abstract class GenerateBuildInfo : DefaultTask() {
 }
 
 /**
- * The one revision every daeuniverse/honk dependency of the Cargo.toml [text] (named [source] in errors) pins, whether
- * written inline (`honk-config = { git = "…", rev = "…" }`) or as a `[dependencies.honk-config]` table. No such
- * dependency, one without a full 40-hex `rev`, or two different revisions fail the build.
+ * The one revision every inline `honk-x = { git = "…", rev = "…" }` dependency on daeuniverse/honk in the Cargo.toml
+ * [text] (named [source] in errors) pins. No such dependency, one without a full 40-hex `rev`, or two different
+ * revisions fail the build.
  */
 internal fun honkRevision(text: String, source: String): String {
     fun fail(reason: String): Nothing = throw GradleException("$source: $reason")
-    val dependencies = mutableListOf<Pair<String, String>>()
-    var table: String? = null
-    val body = StringBuilder()
-    fun closeTable() {
-        table?.let { dependencies += it to body.toString() }
-        table = null
-        body.clear()
-    }
-    for (line in text.lines().map(String::trim).filterNot { it.startsWith("#") }) {
-        val header = tableHeader.matchEntire(line)
-        val inline = inlineDependency.matchEntire(line)
-        when {
-            header != null -> {
-                closeTable()
-                val path = header.groupValues[1]
-                val name = path.substringAfterLast('.')
-                if (".dependencies." in ".$path" && name.startsWith("honk-")) table = name
-            }
-            table != null -> body.append(line).append('\n')
-            inline != null -> dependencies += inline.groupValues[1] to inline.groupValues[2]
-        }
-    }
-    closeTable()
-    val honk = dependencies.filter { (_, fields) -> gitKey.find(fields)?.groupValues?.get(1)?.removeSuffix(".git")?.trimEnd('/') == HONK_GIT }
-    if (honk.isEmpty()) {
-        fail("no honk-* dependency on $HONK_GIT, written as honk-x = { git, rev } or a [dependencies.honk-x] table")
-    }
+    val honk = text.lines().map(String::trim).filterNot { it.startsWith("#") }.mapNotNull(inlineDependency::matchEntire)
+        .map { it.groupValues[1] to it.groupValues[2] }
+        .filter { (_, fields) -> gitKey.find(fields)?.groupValues?.get(1) == HONK_GIT }
+    if (honk.isEmpty()) fail("no honk-* dependency on $HONK_GIT written as honk-x = { git, rev }")
     val revisions = honk.map { (name, fields) ->
         revKey.find(fields)?.groupValues?.get(1)?.takeIf(fullRevision::matches) ?: fail("$name pins no full 40-hex rev")
     }.toSet()

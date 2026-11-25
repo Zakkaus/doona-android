@@ -27,24 +27,6 @@ class HonkRevisionTest {
     }
 
     @Test
-    fun aDependencyTableIsRead() {
-        val toml = """
-            [dependencies.honk-config]
-            git = "$honk"
-            rev = "$a"
-            features = ["x"]
-
-            [[bin]]
-            name = "tool"
-            rev = "$b"
-
-            [dependencies]
-            honk-outbound = { git = "$honk", rev = "$a" }
-        """.trimIndent()
-        assertEquals(a, honkRevision(toml, "Cargo.toml"))
-    }
-
-    @Test
     fun noHonkDependencyFails() {
         val message = failure("[dependencies]\nhonk-netstack = { git = \"https://github.com/Glassyiris/honk\", rev = \"$b\" }")
         assertTrue(message, "no honk-* dependency on $honk" in message)
@@ -56,14 +38,12 @@ class HonkRevisionTest {
             val message = failure("[dependencies]\nhonk-config = { $fields }")
             assertTrue(message, "honk-config pins no full 40-hex rev" in message)
         }
-        val table = failure("[dependencies.honk-config]\ngit = \"$honk\"\n\n[dependencies]\nlog = \"0.4\"")
-        assertTrue(table, "honk-config pins no full 40-hex rev" in table)
     }
 
     @Test
     fun twoDifferentRevisionsFail() {
         val toml = "[dependencies]\nhonk-config = { git = \"$honk\", rev = \"$a\" }\n" +
-            "[dependencies.honk-outbound]\ngit = \"$honk\"\nrev = \"$b\""
+            "honk-outbound = { git = \"$honk\", rev = \"$b\" }"
         val message = failure(toml)
         assertTrue(message, "pin different revs" in message && a in message && b in message)
     }

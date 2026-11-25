@@ -10,22 +10,22 @@ import kotlinx.serialization.Serializable
 internal data class GroupDto(
     val id: String,
     val name: String,
-    /** The core's name for the kind; decoded by [GroupKind.of], so an unknown one keeps the rest of the catalog. */
-    val kind: String,
-    val selectedId: String? = null,
-    val tcpSelectedId: String? = selectedId,
-    val udpSelectedId: String? = selectedId,
+    val kind: GroupKind,
+    /** On the wire for the round-trip test; the app reads the per-network fields. */
+    val selectedId: String?,
+    val tcpSelectedId: String?,
+    val udpSelectedId: String?,
     val networksDiffer: Boolean = false,
     val pinned: Boolean,
-    val tcpPinned: Boolean = pinned,
-    val udpPinned: Boolean = pinned,
+    val tcpPinned: Boolean,
+    val udpPinned: Boolean,
     val testing: Boolean,
     val members: List<MemberDto>,
 ) {
     fun toGroup(): Group {
         val tcp = Group.Selection(tcpSelectedId, tcpPinned)
         val udp = Group.Selection(udpSelectedId, udpPinned)
-        return Group(id, name, GroupKind.of(kind), members.map(MemberDto::toMember), tcp, udp, testing)
+        return Group(id, name, kind, members.map(MemberDto::toMember), tcp, udp, testing)
     }
 }
 

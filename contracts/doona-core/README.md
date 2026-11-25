@@ -18,7 +18,6 @@ them in order, including ports. An invalid entry rejects the entire list.
 Duplicate endpoints (including equivalent IP spellings and implicit port 53), scoped addresses,
 link-local, unspecified, multicast and broadcast addresses are invalid. Explicitly selecting the
 defaults saves that choice. An invalid list on disk resets only DNS to the built-in defaults.
-The core records an `init` warning with detail `dnsUpstreamsReset` when it resets the list.
 In Rule and Global modes, a loopback upstream refers to the proxy server's loopback, not the device's.
 
 `renameSubscription` takes `{"id":"s1","name":"harbor"}` and returns the updated subscription.
