@@ -214,37 +214,59 @@ def maven():
     return native
 
 
+def geo_pins():
+    return json.loads((CORE / 'tools/geo-pins.json').read_text())['files']
+
+
+def geo_data(name, pin):
+    """Add the entry of one Geo DAT; its version and source are the pin's."""
+    if name == 'geoip.dat':
+        lic = 'CC-BY-SA-4.0 AND GPL-3.0-only AND LicenseRef-MaxMind-GeoLite'
+        note = ('This product includes GeoLite Data created by MaxMind, available from https://www.maxmind.com. '
+                'Loyalsoldier/geoip converts and augments the country data; MetaCubeX redistributes its DAT unchanged. '
+                'Under GeoLite EULA §6.1, disclosure requires prior notification and written consent from MaxMind '
+                'except as explicitly permitted by CC BY-SA 4.0. Permitted disclosures require the same or '
+                'substantially similar contractual duties downstream. Section 6.3 requires cessation of use and '
+                'destruction of old versions within 30 days after an updated database is released. '
+                'https://www.maxmind.com/en/geolite/eula')
+        texts = [SOURCES / 'geo-cc.txt', SOURCES / 'maxmind-eula.txt', GPL]
+    else:
+        lic = 'GPL-3.0-only AND GPL-2.0-only AND LGPL-2.1-only AND MIT AND WTFPL AND LicenseRef-Unlicensed-rules'
+        note = ('MetaCubeX compiles v2fly/domain-list-community with Loyalsoldier/domain-list-custom, its own '
+                'resouces/ directory and lists from mutable upstream branches: blackmatrix7/ios_rule_script, '
+                'gfwlist/gfwlist via cokebar/gfwlist2dnsmasq, felixonmars/dnsmasq-china-list, '
+                'crazy-max/WindowsSpyBlocker, https://gitea.com/XIU2/TrackersListCollection (GPL-3.0), and '
+                'biliintl.list and sharepoint.list from xishang0128/rules (no licence file). Build recipe: '
+                'https://github.com/MetaCubeX/meta-rules-dat/blob/4178770badecb1b349fbcd62c737e0d7a2079729/.github/workflows/run.yml.')
+        texts = [f for f in SOURCES.glob('geo-*.txt') if f.name != 'geo-cc.txt'] + [GPL]
+    add('data', name, pin['version'], lic, pin['source'], texts, note)
+
+
 def geo(apk):
     shipped = sorted(n.removeprefix('assets/geo/') for n in apk.namelist() if n.startswith('assets/geo/') and n.endswith('.dat'))
     if not shipped:
         return
-    pins = json.loads((CORE / 'tools/geo-pins.json').read_text())['files']
+    pins = geo_pins()
     for name in shipped:
-        p = pins[name]
-        if p['version'] != '5f22a3b3371d1a489fb3d0df25d00db049a6a603':
-            raise SystemExit(f'Review upstream inputs and redistribution terms for new {name} pin')
-        if hashlib.sha256(apk.read('assets/geo/' + name)).hexdigest() != p['sha256']:
-            raise SystemExit(f'APK {name} differs from reviewed pin')
-        if name == 'geoip.dat':
-            lic = 'CC-BY-SA-4.0 AND GPL-3.0-only AND LicenseRef-MaxMind-GeoLite'
-            note = ('This product includes GeoLite Data created by MaxMind, available from https://www.maxmind.com. '
-                    'Loyalsoldier/geoip converts and augments the country data; MetaCubeX redistributes its DAT unchanged. '
-                    'Under GeoLite EULA §6.1, disclosure requires prior notification and written consent from MaxMind '
-                    'except as explicitly permitted by CC BY-SA 4.0. Permitted disclosures require the same or '
-                    'substantially similar contractual duties downstream. Section 6.3 requires cessation of use and '
-                    'destruction of old versions within 30 days after an updated database is released. '
-                    'https://www.maxmind.com/en/geolite/eula')
-            texts = [SOURCES / 'geo-cc.txt', SOURCES / 'maxmind-eula.txt', GPL]
-        else:
-            lic = 'GPL-3.0-only AND GPL-2.0-only AND LGPL-2.1-only AND MIT AND WTFPL AND LicenseRef-Unlicensed-rules'
-            note = ('MetaCubeX compiles v2fly/domain-list-community with Loyalsoldier/domain-list-custom, its own '
-                    'resouces/ directory and lists from mutable upstream branches: blackmatrix7/ios_rule_script, '
-                    'gfwlist/gfwlist via cokebar/gfwlist2dnsmasq, felixonmars/dnsmasq-china-list, '
-                    'crazy-max/WindowsSpyBlocker, https://gitea.com/XIU2/TrackersListCollection (GPL-3.0), and '
-                    'biliintl.list and sharepoint.list from xishang0128/rules (no licence file). Build recipe: '
-                    'https://github.com/MetaCubeX/meta-rules-dat/blob/4178770badecb1b349fbcd62c737e0d7a2079729/.github/workflows/run.yml.')
-            texts = [f for f in SOURCES.glob('geo-*.txt') if f.name != 'geo-cc.txt'] + [GPL]
-        add('data', name, p['version'], lic, p['source'], texts, note)
+        if hashlib.sha256(apk.read('assets/geo/' + name)).hexdigest() != pins[name]['sha256']:
+            raise SystemExit(f'APK {name} differs from its pin')
+        geo_data(name, pins[name])
+
+
+def update_geo():
+    """Rewrite the committed notices for the current geo-pins.json, without an APK.
+
+    Every other component and its licence texts are read back from the committed index.
+    """
+    index = json.loads((OUT / 'index.json').read_bytes())
+    bundle = (OUT / 'notices.txt').read_bytes()
+    documents.update({key: bundle[start:start + length] for key, (start, length) in index['ranges'].items()})
+    pins = geo_pins()
+    components.extend(c for c in index['components'] if c['name'] not in pins)
+    for name, pin in pins.items():
+        geo_data(name, pin)
+    render(next(c['license'] for c in components if c['kind'] == 'project'))
+    check_or_write(None, True)
 
 
 def assets():
@@ -364,9 +386,15 @@ def check_or_write(apk_path, write):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--write', action='store_true', help='replace generated files instead of checking them')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--write', action='store_true', help='replace generated files instead of checking them')
+    mode.add_argument('--geo-pins', action='store_true',
+                      help='rewrite only the Geo entries of the generated files for geo-pins.json; needs no APK')
     parser.add_argument('--apk', type=Path, default=APP / 'app/build/outputs/apk/release/app-release.apk')
     args = parser.parse_args()
+    if args.geo_pins:
+        update_geo()
+        return
     project_license = cargo()
     native = maven()
     assets()

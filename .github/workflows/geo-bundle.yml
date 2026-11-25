@@ -24,11 +24,12 @@ jobs:
           ref: main
           persist-credentials: false
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
-      - name: Test the update tool and check the honk pin
+      - name: Test the update and notices tools and check the honk pin
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
           uv run --no-project --python '>=3.11' python -m unittest discover -s crates/doona-core/tools -p test_update_geo.py
+          uv run --no-project --python '>=3.11' python -m unittest discover -s android/doona-android/tools -p test_notices.py
           uv run --no-project --python '>=3.11' python - <<'PY'
           import tomllib
           from pathlib import Path
@@ -71,28 +72,6 @@ jobs:
             pins=$(jq -c . "$manifest")
             printf 'pins=%s\n' "$pins" >> "$GITHUB_OUTPUT"
           fi
-      # The release job rejects a Geo snapshot that notices.py has not reviewed. Run that check here,
-      # so that such pins fail this run and never reach main.
-      - name: Apply the release job's Geo licence review to new pins
-        if: steps.candidate.outputs.pins != ''
-        env:
-          PYTHONDONTWRITEBYTECODE: '1'
-        run: |
-          cp "$RUNNER_TEMP/geo-bundle/geo-manifest.json" crates/doona-core/tools/geo-pins.json
-          uv run --no-project --python '>=3.11' python - "$RUNNER_TEMP/geo-bundle" <<'PY'
-          import sys
-          from pathlib import Path
-          from types import SimpleNamespace
-
-          sys.path.insert(0, "android/doona-android/tools")
-          import notices
-
-          bundle = Path(sys.argv[1])
-          notices.geo(SimpleNamespace(
-              namelist=lambda: ["assets/geo/geoip.dat", "assets/geo/geosite.dat"],
-              read=lambda name: (bundle / Path(name).name).read_bytes(),
-          ))
-          PY
 
   update:
     needs: verify
@@ -120,15 +99,31 @@ jobs:
             echo 'Geo verifier inputs changed during verification. Dispatch the workflow again.' >&2
             exit 1
           fi
-          path=crates/doona-core/tools/geo-pins.json
-          jq . <<< "$PINS" > "$path"
-          # With no author or committer fields, GitHub signs the commit. The blob sha makes the
-          # write fail if the file changed after this checkout.
-          gh api -X PUT "repos/$GITHUB_REPOSITORY/contents/$path" \
-            -f branch=main \
-            -f sha="$(git rev-parse "HEAD:$path")" \
-            -f message="build(geo): update MetaCubeX pins to $(jq -r .release_date "$path")" \
-            -f content="$(base64 -w0 "$path")" \
-            --jq '.commit.sha'
+          pins_file=crates/doona-core/tools/geo-pins.json
+          index=android/doona-android/app/src/main/assets/licenses/index.json
+          files=("$pins_file" THIRD_PARTY_NOTICES.md "$index")
+          jq . <<< "$PINS" > "$pins_file"
+          # The licence data follows the pins; the release job compares it with a full rebuild.
+          python3 android/doona-android/tools/notices.py --geo-pins
+          others=$(git status --porcelain -- . "${files[@]/#/:(exclude)}")
+          if [ -n "$others" ]; then
+            printf 'The notices changed files that this commit leaves out:\n%s\n' "$others" >&2
+            exit 1
+          fi
+          # GitHub signs a commit made by this mutation. It fails if main has moved past
+          # expectedHeadOid. The file contents go through pipes: they exceed the argument limit.
+          for file in "${files[@]}"; do
+            jq -n --arg path "$file" --rawfile contents <(base64 -w0 "$file") '{$path, $contents}'
+          done | jq -s \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg head "$(git rev-parse HEAD)" \
+            --arg headline "build(geo): update MetaCubeX pins to $(jq -r .release_date "$pins_file")" \
+            '{query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid } } }",
+              variables: {input: {
+                branch: {repositoryNameWithOwner: $repository, branchName: "main"},
+                expectedHeadOid: $head,
+                message: {headline: $headline},
+                fileChanges: {additions: .}}}}' |
+            gh api graphql --input - --jq '.data.createCommitOnBranch.commit.oid'
           # A commit made with GITHUB_TOKEN starts no push workflow; a dispatch does start one.
           gh workflow run android.yml --repo "$GITHUB_REPOSITORY" --ref main

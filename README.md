@@ -59,11 +59,11 @@ uv run crates/doona-core/tools/update_geo.py --check "$bundle"
 (cd crates/doona-core/tools/geo-check && DAE_LOCATION_ASSET="$bundle" cargo run --locked -- tests/fixtures/required-labels.dae)
 ```
 
-[The weekly workflow](.github/workflows/geo-bundle.yml) verifies the newest release, commits the new
-`geo-pins.json` to `main` and dispatches the Android workflow, because a commit made with
+[The weekly workflow](.github/workflows/geo-bundle.yml) verifies the newest release and regenerates the
+Geo entries of the third-party notices. It commits `geo-pins.json`, `THIRD_PARTY_NOTICES.md` and the
+licence index to `main` in one commit, then dispatches the Android workflow, because a commit made with
 [`GITHUB_TOKEN` starts no push workflow](https://docs.github.com/en/actions/concepts/security/github_token#when-github_token-triggers-workflow-runs).
-A snapshot that [`notices.py`](android/doona-android/tools/notices.py) has not reviewed fails the run
-and leaves `main` unchanged. The schedule requires the workflow on the default branch.
+The schedule requires the workflow on the default branch.
 The build bundles the pinned DATs into the doona APK. The repository does not track them.
 
 CI fails a `v*` tag, and skips its release APK, when a pinned DAT differs from the newest MetaCubeX
