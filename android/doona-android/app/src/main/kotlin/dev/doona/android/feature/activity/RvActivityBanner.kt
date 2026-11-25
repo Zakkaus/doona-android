@@ -21,7 +21,7 @@ import dev.doona.android.feature.messageRes
 internal fun rvActivityBanner(notice: RvActivityNotice, onAction: () -> Unit): RvNotice? {
     val (kind, title, reason, action) = when (notice) {
         RvActivityNotice.NoSubscription -> return null
-        RvActivityNotice.NoNode -> Words(RvNoticeKind.Error, R.string.rv_no_node, R.string.rv_no_node_reason, R.string.rv_retest)
+        RvActivityNotice.NoNode -> Words(RvNoticeKind.Error, R.string.rv_latency_all_failed, R.string.rv_no_node_reason, R.string.rv_retest)
         RvActivityNotice.VpnTaken -> Words(RvNoticeKind.Warning, R.string.rv_vpn_taken, R.string.rv_vpn_taken_reason, R.string.rv_reconnect)
         RvActivityNotice.Offline -> Words(RvNoticeKind.Warning, R.string.rv_offline, R.string.rv_offline_reason, R.string.rv_network_settings)
         RvActivityNotice.CoreStopped -> Words(RvNoticeKind.Error, R.string.rv_core_stopped, R.string.rv_core_stopped_reason, R.string.rv_reconnect)

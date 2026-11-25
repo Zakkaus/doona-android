@@ -11,6 +11,7 @@
     <string name="rv_welcome_fast">高效能</string>
     <string name="rv_welcome_fast_sub">核心單一連線實測超過 20 Gbps（桌機測試）</string>
     <string name="rv_no_node">沒有可用的節點</string>
+    <string name="rv_latency_all_failed">延遲測試全部失敗</string>
     <string name="rv_no_node_reason">所有節點的延遲測試都失敗。請確認網路連線，或更新訂閱。</string>
     <string name="rv_retest">重新測試</string>
     <string name="rv_core_stopped">連線已中斷</string>
