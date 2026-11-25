@@ -66,6 +66,7 @@ internal fun RvBanner(notice: RvNotice, modifier: Modifier = Modifier) {
                 Spacer(Modifier.width(RvSpace.rowGap))
                 Column(Modifier.weight(1f)) {
                     RvText(notice.title, Rv.type.rowTitle, maxLines = BANNER_TITLE_LINES, keepWords = notice.titleKeepWords)
+                    Spacer(Modifier.height(RvSpace.titleToSubtitle))
                     RvText(notice.reason, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BANNER_REASON_LINES, keepWords = notice.reasonKeepWords)
                 }
             }

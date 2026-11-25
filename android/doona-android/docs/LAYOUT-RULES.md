@@ -10,6 +10,7 @@ All values are dp at font scale 1.0 on a 412 dp screen, in a card on the 16 dp g
 
 - **Revolut**: `plans/revolut-android-measured.md` (cited §N; uiautomator dumps and screenshots named in its evidence column) and the row measurements of 2026-11-25 in `plans/briefs/rowalign-1125.md` ("What Revolut does", from `07-set-interface`, `07-privacy`, `07-set-accessibility-b`, `07-set-appearance`). §N converts at 2.55 px/dp.
 - **Owner**: decisions on the review page, with the date and the review-page id: iconstyle (`5caf884d`, 2026-11-25), latinrow (`cdbc415f`, 2026-11-25), cjkbreak (`65d6e703`, 2026-11-25), rowfirstline rejected (2026-11-25), and the rules' own request (this file).
+- **Owner, s1125c** (2026-11-25 18:55, `plans/DECISIONS.md` 版面與元件): q-s1125c-titlegap (R12), q-s1125c-footgap (footnote), q-s1125c-switchgap (R17), q-s1125c-vname (Exceptions).
 - **Decided here** (2026-11-25, the owner's order to settle the rules without a further stop): D1–D4 below. Each follows Revolut's rule; the owner reviews them with the package.
 
 ## Table 0: every component, in dp
@@ -18,9 +19,9 @@ Icon alignment: **C** = centred on the row; **T** = top on the title's top (the 
 
 | Component | Icon alignment | Icon size, x | Text x | Title→subtitle | Trailing x, alignment | Row height 1-line / sub / wrapped | Pad above and below | Gap to next row / next card |
 |---|---|---|---|---|---|---|---|---|
-| List row, `RvRow` | C one line and wrapped; T with a subtitle | 40 disc, flag or app icon, x 32 | 88 (32 without icon) | 0 | right edge 380; value, chip, chevron: C; switch, radio, check: F | 58 / 82 / 32 + text (≥ 58) | 16 min, equal above and below | 0 / 16 |
-| Settings row, `RvSettingsRow` family | C one line and wrapped; T with a subtitle | 40 disc, x 32 | 88 (32 without icon) | 0 | right edge 380; value, chip, chevron, switch, radio, check: F with a subtitle, C without; in-card button 40: T with a subtitle, C without | 58 / 82 / 32 + text (≥ 58) | 16 min, equal above and below | 0 / 16 |
-| Notice, `RvBanner` | T | 40 disc (24 glyph), x 32 | 88 | 0 | none; the button stands under the text, 16 below, at x 88 | text + 32 | 16 / 16 | 16 below the card |
+| List row, `RvRow` | C one line and wrapped; T with a subtitle | 40 disc, flag or app icon, x 32 | 88 (32 without icon) | 2 (q-s1125c-titlegap) | right edge 380; value, chip, chevron: C; switch, radio, check: F | 58 / 82 / 32 + text (≥ 58) | 16 min, equal above and below | 0 / 16 |
+| Settings row, `RvSettingsRow` family | C one line and wrapped; T with a subtitle | 40 disc, x 32 | 88 (32 without icon) | 2 (q-s1125c-titlegap) | right edge 380; value, chip, chevron, switch, radio, check: F with a subtitle, C without; in-card button 40: T with a subtitle, C without | 58 / 82 / 32 + text (≥ 58) | 16 min, equal above and below | 0 / 16 |
+| Notice, `RvBanner` | T | 40 disc (24 glyph), x 32 | 88 | 2 (q-s1125c-titlegap) | none; the button stands under the text, 16 below, at x 88 | text + 32 | 16 / 16 | 16 below the card |
 | Menu item, `RvLongPressMenu` | C | 24 bare glyph, x 16 in the item | 56 | – | none | 50 | centred | 0 / – |
 | Section header | – | – | 16 (page gutter) | – | – | 24 box | 24 above, 12 below to the card | – |
 | Footnote | – | – | 32 (the card's text inset; owner note on 實驗室, 2026-11-25, replaces 16) | – | – | text | 12 above (to the card; was 8), 24 below | – |
@@ -58,7 +59,7 @@ Component code uses only these through tokens (`RvSpace`, `RvSettingsSpace`, a c
 | Row text above and below | `rowTextInset` | S4 |
 | Icon to text | `rowGap` | S4 |
 | Text to trailing part | `trailingGap` | S3 |
-| Title to subtitle | none (line boxes touch) | S0 |
+| Title to subtitle | `titleToSubtitle` | 2 dp, an exception (below); was S0, the line boxes touching |
 | Disc to label (round action) | `discToLabel` | S2 |
 | Between two stacked controls | `controlStack` | S3 |
 | Notice text to its button | `noticeToAction` | S4 |
@@ -70,6 +71,7 @@ Component code uses only these through tokens (`RvSpace`, `RvSettingsSpace`, a c
 Exceptions (token, value, source), also listed in `tools/check-scale.sh`:
 
 - `subGap` 6: a tile's value to its caption, no Revolut step; kept as it is on approved pages.
+- `titleToSubtitle` 2: a row's title to its subtitle. Owner, q-s1125c-titlegap (2026-11-25 18:55, chosen from samples at 0, 2 and 4 dp): 「帶小字的列，標題和小字之間 2 dp（原本 0 dp），全 App 一起改」. Revolut's line boxes touch (§7); ours are smaller (latinrow), so the owner asked for the 2 dp.
 - `emptyLine` 10, `barGap` 14, `controlGap` of `RvChrome` 10: Revolut's 10 dp between top-bar controls (§4) and the measured chart gaps (§10); not row spacing.
 - `headerTop` 152, `heroToActions` 64, `titleToActions` 40 (settings hero, measured against Revolut §5), `actionColumn` 96: page positions and sizes of the hero, not gaps.
 - `accentInset` 10: the theme page's 48 dp touch targets 10 in, so a 36 dp disc's edge sits 16 in.
@@ -97,7 +99,7 @@ A row is **one-line** (no subtitle, title on one line), **with subtitle**, or **
 
 | Id | Rule | Value | Source | Check |
 |---|---|---|---|---|
-| R1 | Row height | ≥ 58 one-line, ≥ 82 with a subtitle; otherwise text block + 32; never taller than its text, padding or trailing part need | §7 (148 px pitch; 82 dp 2-line) | gate R1 |
+| R1 | Row height | ≥ 58 one-line, ≥ 82 with a subtitle; otherwise text block (title, 2 dp, subtitle) + 32; never taller than its text, padding or trailing part need | §7 (148 px pitch; 82 dp 2-line) | gate R1 |
 | R4 | Leading visual | 40 dp disc with a 22 dp glyph, a 40 dp flag, or a 40 dp app icon; a notice's disc has a 24 dp glyph; never a bare glyph in a row | owner, iconstyle; Revolut money rows 40 dp (§7), settings bare 24 dp (§12.2) | gate R4 |
 | R5 | Leading x | row content starts 16 inside the card; the visual at its start | §7 Leading inset | gate R5 |
 | R6 | Text x | 16 after the leading visual (88), or at the row start without one | §7 Leading to text gap | gate R6 |
@@ -108,7 +110,7 @@ A row is **one-line** (no subtitle, title on one line), **with subtitle**, or **
 | R11 | Trailing, row with subtitle | switch, radio, check, and every trailing part of a settings row: centred on the title's first line; an in-card button as the disc, top = title top | §13.4 switch row, `07-privacy`, `07-set-accessibility-b` | gate R11 |
 | R11l | Trailing, list row with subtitle: value, chip, chevron | centred on the row, or, where the value stands on the title's line (a line-wise row), its top on the title's top | Revolut money and list rows centre the value and chevron (rowalign-1125 "What Revolut does") | gate R11l |
 | R11u | Trailing part under the text (a font size at which the title would not read beside it) | its top at the title's bottom (beside the subtitle) or at the text's bottom, its right edge at the content's end | `RvRow` under-end layout (`LocalRvEndSide`) | gate R11u |
-| R12 | Title to subtitle | 0 | §7 line boxes | gate R12 |
+| R12 | Title to subtitle | 2 (was 0, line boxes touching, §7) | owner, q-s1125c-titlegap (2026-11-25 18:55); every row with a subtitle: list, settings, notice, skeleton | gate R12; `RvRowRulesTest.aSubtitleTouchingItsTitleBreaksR12` (the old 0 breaks) |
 | R13 | Line boxes | one height per role in a golden, within 1 dp | owner, latinrow | gate R13 |
 | R14 | Lines | title ≤ 2, subtitle ≤ 3 | `07-set-interface`, `07-privacy` | gate R14 |
 | R16 | Trailing x | the part ends at the content's end (16 inside the card) | §13.4 (x 998 of 1039 px) | gate R16 |
@@ -132,7 +134,7 @@ The gate measures the unmerged semantics tree, so it measures what a part draws 
 |---|---|---|
 | A row that touches the window's top or bottom edge is **cut**: it goes on past the edge, so R1, R6 (no leading visual left), R8, R10, R11l/R11u, R13 and R18 skip it | those | its middle, height and padding are unknown; the title, the subtitle gap (R12) and the line count (R14) still hold |
 | The **trailing room** ([RvRowPart.END], the box `TextBesideEnd` lays an end out in, and a settings row's first-line box) is what R11, R11l, R11u, R16 and the row's height measure; R17 measures what shows | R10, R11*, R16, R1, R18 | a latency figure without its change, or a busy bar standing in for both, keeps the room it takes at rest on purpose (the row does not move when the result arrives) |
-| A **line end** (a figure on the title's or subtitle's line) and a **busy bar** are part of the text block; the title's end under the title, on a line of its own, is the whole gap between title and subtitle | R1, R12, R18 | RvRow puts an end that does not read well beside its text on a line of its own; R12's 0 is for the text, not for that line |
+| A **line end** (a figure on the title's or subtitle's line) and a **busy bar** are part of the text block; the title's end under the title, on a line of its own, stands between title and subtitle (then the 2 dp) | R1, R12, R18 | RvRow puts an end that does not read well beside its text on a line of its own; R12's 2 dp is for the text, not for that line |
 | A busy bar stands where its end stands: centred on the line of a line end, else on the room | R11l, R11u | `BusyAtEnd`, `InRoomOf` |
 | A control (switch, radio, check) that went **under** the text stands as any end under it: R11u | R11 | the catalogue's long-subtitle rows |
 | A **honk code** title ([RvRowPart.CODE]) keeps the code view's line boxes: no R11 against a role's first line, no R13 | R11, R13 | code is not set in a role |
@@ -161,7 +163,7 @@ Each earlier change that contradicts a rule. A change goes back to the rule, nev
 | library start, `RvRow` | every list page: 活動, 策略, 節點, 依 App, 連線, 組態, sheets, check rows | centres the disc on a row with a subtitle: 1.5 dp low at 1.0, more at larger fonts (1,855 breaks in the before list) | R9 |
 | library start, `RvSwitchRow`, `RvCheckRow` | 依 App, 連線, permission and sheet rows | centre the switch or check on a row with a subtitle (528 breaks) | R11 |
 | library start, `RvSettingsRow` | 設定, 關於, 回報問題 and their states | a one-line row's title sits at the top of its 26 dp first-line box: 1.5 dp above the centre, while the disc is centred (415 breaks, "above 16 below 19") | R18 |
-| library start, `RvBanner` | 活動 notices, 當機, 匯入錯誤, per-app errors | 2 dp between title and reason (`tight / 2`), the one title-to-subtitle gap that is not 0 (113 breaks) | R12 |
+| library start, `RvBanner` | 活動 notices, 當機, 匯入錯誤, per-app errors | 2 dp between title and reason (`tight / 2`), the one title-to-subtitle gap that is not 0 (113 breaks); set to 0 in `8d01f08a`, then every row got 2 dp (q-s1125c-titlegap) | R12 |
 | `cdbc415f` (latinrow) | all rows | gives mixed rows the Latin line box; rows differ by 0.5 dp (1 px) from CJK-only rows | R13 holds within 1 dp; kept |
 | node picker (`node-picker-action-failed-*`) | 節點 picker with a failed action | trailing part ends 13 dp short of the row's end | R16 (cause to be read in the code) |
 

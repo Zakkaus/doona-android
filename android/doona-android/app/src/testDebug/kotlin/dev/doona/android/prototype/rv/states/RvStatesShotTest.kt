@@ -56,15 +56,15 @@ class RvStatesShotTest {
     @Test fun welcomeDark() = shot("welcome", true, whole = true) { RvWelcome(onAdd = {}) }
 
     @Test
-    @Config(qualifiers = "+h935dp")
+    @Config(qualifiers = "+h943dp")
     fun welcomeFs115() = shot("welcome", false, whole = true, fontScale = RV_FS115) { RvWelcome(onAdd = {}) }
 
     @Test
-    @Config(qualifiers = "+h1266dp")
+    @Config(qualifiers = "+h1274dp")
     fun welcomeFs200() = shot("welcome", false, whole = true, fontScale = RV_FS200) { RvWelcome(onAdd = {}) }
 
     @Test
-    @Config(qualifiers = "+en-h965dp")
+    @Config(qualifiers = "+en-h973dp")
     fun welcomeEnglish() = shot("welcome-en", false, whole = true) { RvWelcome(onAdd = {}) }
 
     @Test

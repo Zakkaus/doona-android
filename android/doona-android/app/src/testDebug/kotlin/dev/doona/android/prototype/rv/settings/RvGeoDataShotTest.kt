@@ -287,9 +287,9 @@ class RvGeoDataShotTest {
          */
         const val WHOLE = "+h1768dp"
         const val WHOLE_FS115 = "+h1793dp"
-        const val FS200_IDLE = "+h2288dp"
-        const val FS200_UPDATING = "+h2285dp"
-        const val FS200_WRAPPED = "+h2329dp"
+        const val FS200_IDLE = "+h2303dp"
+        const val FS200_UPDATING = "+h2300dp"
+        const val FS200_WRAPPED = "+h2344dp"
 
         const val HALF_DP = 0.5f
 

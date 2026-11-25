@@ -144,7 +144,9 @@ private fun List<RvNode>.readRow(i: Int, kind: RvRowKind): RvRowRead? {
     // A row cut by its window (a scrolled page, a sheet's edge) is not a whole row: its disc is a sliver.
     if (lead != null && this[lead].box.let { minOf(it.width, it.height) < DISC - HALF && maxOf(it.width, it.height) > DISC - HALF }) return null
     val from = lead?.let { this[it].box.right - HALF } ?: this[i].box.left
-    val after = texts.filter { this[it].box.left >= from }.map { this[it] }
+    // A line's end that went under its text, as wide as the line, starts at the column's x: it is the line's end, not a subtitle.
+    val ofLines = inRow.filter { this[it].tag == RvRowPart.LINE_END }.flatMap { subtree(it) }.toSet()
+    val after = texts.filter { this[it].box.left >= from && it !in ofLines }.map { this[it] }
     if (after.isEmpty()) return null
     val left = after.minOf { it.box.left }
     val column = after.filter { abs(it.box.left - left) <= TOLERANCE }.sortedBy { it.box.top }
@@ -339,11 +341,11 @@ private fun RvRowRead.height(): RvRowBreak? {
 
 private fun RvNode.firstLineHeight() = line?.let { minOf(it.bottom - it.top, box.height) } ?: box.height
 
-/** R12: the subtitle starts where the title ends. */
+/** R12: the subtitle starts [TITLE_TO_SUBTITLE] under the title's end (owner, q-s1125c-titlegap; it was 0). */
 private fun RvRowRead.subtitleGap(): RvRowBreak? = subtitles.firstOrNull()?.let {
     // The title's own end went under it, on a line of its own between the two (RvRow, [RowLine]): the line is the gap.
     val between = lineEnds.any { e -> e.top >= title.box.bottom - TOLERANCE && e.bottom <= it.box.top + TOLERANCE }
-    if (between) null else off("R12", it.box.top - title.box.bottom)
+    if (between) null else off("R12", it.box.top - title.box.bottom - TITLE_TO_SUBTITLE)
 }
 
 /** R7: in one card (list or settings rows stacked edge to edge), rows with the same leading visual start their text at one x. */
@@ -442,6 +444,7 @@ private const val FIRST_LINE = 26f
 private const val TALL_END = 36f
 private const val LABEL = 24
 private const val GAP_TRAILING = 12f
+private const val TITLE_TO_SUBTITLE = 2f
 private const val TITLE_LINES = 2
 private const val SUBTITLE_LINES = 3
 private const val ONE_LINE = 58f

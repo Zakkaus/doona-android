@@ -22,6 +22,12 @@ internal object RvSpace {
     val rowGap = 16.dp
     val trailingGap = 12.dp
 
+    /**
+     * From a row's title to its subtitle, in every row with one (LAYOUT-RULES.md R12; owner, q-s1125c-titlegap,
+     * 2026-11-25 18:55: was 0, the line boxes touching).
+     */
+    val titleToSubtitle = 2.dp
+
     /** From a round action's disc to its label (measured §6: 8 dp). */
     val discToLabel = 8.dp
 

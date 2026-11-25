@@ -145,7 +145,7 @@ class RvSettingsShotTest {
          */
         const val LONG_PAGE = "+h1768dp"
         const val LONG_PAGE_FS115 = "+h1793dp"
-        const val LONG_PAGE_FS200 = "+h2288dp"
+        const val LONG_PAGE_FS200 = "+h2303dp"
 
         const val NEAR = 0.5f
 

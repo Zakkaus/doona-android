@@ -152,7 +152,11 @@ private fun rowText(words: RowWords, code: Boolean, titleLines: Int, error: Bool
                 RvText(title, Rv.type.rowTitle, maxLines = titleLines, lineBox = true, keepWords = words.titleKeepWords)
             }
             val hue = if (error) Rv.colors.error else Rv.colors.textSecondary
-            words.subtitle?.let { RvText(it, Rv.type.rowSub, color = hue, maxLines = RV_ROW_SUBTITLE_LINES, lineBox = true, keepWords = words.subtitleKeepWords) }
+            words.subtitle?.let {
+                // R12 (owner, q-s1125c-titlegap): the subtitle stands its gap under the title, as in every row.
+                Spacer(Modifier.height(RvSpace.titleToSubtitle))
+                RvText(it, Rv.type.rowSub, color = hue, maxLines = RV_ROW_SUBTITLE_LINES, lineBox = true, keepWords = words.subtitleKeepWords)
+            }
         }
         ends.action?.let {
             Spacer(Modifier.width(RvSettingsSpace.trailingGap))

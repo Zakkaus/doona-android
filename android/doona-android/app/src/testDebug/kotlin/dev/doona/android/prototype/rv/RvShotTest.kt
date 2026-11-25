@@ -129,8 +129,8 @@ class RvShotTest {
         const val FULL_PAGE = "+h1951dp"
 
         /** The same at 1.15× and 2.0×, where the page is taller. */
-        const val FULL_PAGE_FS115 = "+h2011dp"
-        const val FULL_PAGE_FS200 = "+h3118dp"
+        const val FULL_PAGE_FS115 = "+h2015dp"
+        const val FULL_PAGE_FS200 = "+h3133dp"
 
         /** The second the scrubbed golden holds a finger on: inside the sustained download. */
         const val SCRUB = 30

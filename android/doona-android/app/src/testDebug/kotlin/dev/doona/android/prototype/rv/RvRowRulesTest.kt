@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.unit.dp
 import dev.doona.android.R
@@ -70,6 +71,33 @@ class RvRowRulesTest {
     }
 
     @Test
+    fun aRowsSubtitleStandsTwoDpUnderItsTitle() {
+        compose.setContent {
+            RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
+                Column {
+                    Spacer(Modifier.height(EDGE.dp))
+                    RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, KEPT, SUBTITLE)
+                    Spacer(Modifier.height(EDGE.dp))
+                }
+            }
+        }
+        compose.waitForIdle()
+        val rows = rvRowsOf(compose.rvRowNodes())
+        val row = rows.single()
+        assertEquals("title to subtitle, dp (q-s1125c-titlegap)", 2f, row.subtitles.single().box.top - row.title.box.bottom, HALF)
+        assertEquals(emptyList<RvRowBreak>(), rvRowBreaks(rows).filter { it.rule == "R12" })
+    }
+
+    @Test
+    fun aSubtitleTouchingItsTitleBreaksR12() {
+        // The rows before q-s1125c-titlegap: the subtitle's line box started where the title's ended.
+        val title = RvNode(-1, Rect(32f, 119f, 380f, 142f), null, KEPT, RvFirstLine(0f, 23f, 1))
+        val subtitle = RvNode(-1, Rect(32f, 142f, 380f, 162.5f), null, SUBTITLE, RvFirstLine(0f, 20.5f, 1))
+        val row = RvRowRead(RvRowKind.List, Rect(16f, 100f, 396f, 182f), null, title, listOf(subtitle), null, emptySet(), null)
+        assertEquals(listOf(RvRowBreak("R12", KEPT, "-2.0")), rvRowBreaks(listOf(row)).filter { it.rule == "R12" })
+    }
+
+    @Test
     fun theAllowlistNamesGoldensThatExistOnceAndInOrder() {
         val lines = File(RV_ROW_RULES_ALLOWLIST).readLines().filter { it.isNotBlank() && !it.startsWith("#") }
         lines.forEach { line ->
@@ -82,6 +110,8 @@ class RvRowRulesTest {
 
     private companion object {
         const val KEPT = "Kept"
+        const val SUBTITLE = "Subtitle"
+        const val HALF = 0.5f
         const val MOVED = "Moved"
         const val MOVE = 4
         const val EDGE = 10
