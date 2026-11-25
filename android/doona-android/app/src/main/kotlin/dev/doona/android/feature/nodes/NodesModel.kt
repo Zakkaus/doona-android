@@ -1,0 +1,147 @@
+package dev.doona.android.feature.nodes
+
+import androidx.compose.runtime.Immutable
+import dev.doona.android.engine.Catalog
+import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.Group
+import dev.doona.android.engine.Member
+import dev.doona.android.engine.NodeInfo
+import dev.doona.android.engine.ScoreGroup
+import dev.doona.android.engine.Subscription
+import dev.doona.android.engine.SubscriptionFormat
+import dev.doona.android.feature.model.RV_TESTS
+import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvSubFormat
+import dev.doona.android.feature.model.RvSubscription
+import java.net.URI
+
+/**
+ * What the D30 picker, 節點, a node's page and search show, mapped once per catalog revision: every node once in the
+ * catalog's order ([nodes]), the subscriptions in theirs, the node the main group uses ([currentId], empty with none),
+ * when each node's kept tests ran ([testedAt], oldest first, as long as its history), and whether the main group's TCP and
+ * UDP choices differ ([split]). A static node has no subscription: its [RvNode.subscription] is empty, so no 訂閱
+ * section lists it.
+ */
+@Immutable
+internal data class NodesState(
+    val nodes: List<RvNode>,
+    val subscriptions: List<RvSubscription>,
+    val currentId: String,
+    val mainGroupId: String?,
+    val testedAt: Map<String, List<Long>>,
+    val split: Boolean,
+) {
+    /** One node by id, or null where the catalog no longer has it. */
+    fun node(id: String): RvNode? = nodes.firstOrNull { it.id == id }
+
+    companion object {
+        val Empty = NodesState(emptyList(), emptyList(), "", null, emptyMap(), split = false)
+    }
+}
+
+/** What the pages read from the ViewModel: the mapped [state], a latency test running, the last failed action, Score's choices. */
+@Immutable
+internal data class NodesUi(
+    val state: NodesState = NodesState.Empty,
+    val loaded: Boolean = false,
+    val testing: Boolean = false,
+    val failure: NodesFailure? = null,
+    val score: List<ScoreGroup> = emptyList(),
+)
+
+/** An action that failed: a node switch or a latency test, with the engine's reason. */
+@Immutable
+internal data class NodesFailure(val action: NodesAction, val code: ErrorCode)
+
+internal enum class NodesAction { Select, Test }
+
+/** The leaf node ids of [catalog], each once, in the catalog's order: what `nodes(ids)` reads. */
+internal fun leafIds(catalog: Catalog): List<String> = leafMembers(catalog).map { it.id }
+
+private fun leafMembers(catalog: Catalog): List<Member> = catalog.groups.asSequence().flatMap { it.members }.filterNot { it.isGroup }.distinctBy { it.id }.toList()
+
+/** [catalog] as the pages show it, with each node's details from [infos] and its place from [places]. */
+internal fun nodesState(catalog: Catalog?, infos: Map<String, NodeInfo>, places: NodePlaces): NodesState {
+    catalog ?: return NodesState.Empty
+    val names = catalog.subscriptions.associate { it.id to it.name }
+    val members = leafMembers(catalog)
+    val groups = catalog.groups.associateBy { it.id }
+    val main = groups[catalog.mainGroupId]
+    return NodesState(
+        nodes = members.map { rvNode(it, infos[it.id], it.subscriptionId?.let(names::get).orEmpty(), places) },
+        subscriptions = catalog.subscriptions.map(::rvSubscription),
+        currentId = main?.let { leafOf(it.tcp.selectedId, groups) }.orEmpty(),
+        mainGroupId = main?.id,
+        testedAt = members.associate { m -> m.id to infos[m.id]?.tests?.takeLast(RV_TESTS)?.map { it.atEpochMs }.orEmpty() },
+        split = main?.networksDiffer == true,
+    )
+}
+
+/**
+ * A node as the pages show it. The history is the core's last tests, oldest first; a node the core has no details for
+ * shows the catalog's last probe alone (a real probe, never one made up), so a probed node never reads as untested.
+ * The name stays the subscription's: only the rows draw its emoji as marks (q-emoji1).
+ */
+internal fun rvNode(member: Member, info: NodeInfo?, subscription: String, places: NodePlaces): RvNode {
+    val placed = places.of(member.name)
+    val history = when {
+        info != null -> info.tests.map { it.ms }.takeLast(RV_TESTS)
+        member.latencyMs != null || member.failed -> listOf(member.latencyMs)
+        else -> emptyList()
+    }
+    return RvNode(
+        id = member.id,
+        name = member.name,
+        short = placed.short,
+        place = placed.place,
+        city = placed.city,
+        protocol = info?.protocol?.let(::protocolName).orEmpty(),
+        host = info?.server.orEmpty(),
+        port = info?.port ?: 0,
+        transport = info?.transport.orEmpty(),
+        tls = info?.tls ?: false,
+        subscription = subscription,
+        history = history,
+    )
+}
+
+/** The node a selection [id] ends on: a node as itself, a nested group as its own selection's node. */
+private fun leafOf(id: String?, groups: Map<String, Group>, depth: Int = 0): String? {
+    id ?: return null
+    val group = groups[id] ?: return id
+    return if (depth < MAX_DEPTH) leafOf(group.tcp.selectedId, groups, depth + 1) else null
+}
+
+internal fun rvSubscription(subscription: Subscription): RvSubscription = RvSubscription(
+    id = subscription.id,
+    name = subscription.name,
+    nodes = subscription.nodes,
+    updatedAtEpochMs = subscription.updatedAtEpochMs ?: 0L,
+    usedBytes = subscription.usedBytes ?: 0L,
+    totalBytes = subscription.totalBytes ?: 0L,
+    expiresAtEpochMs = subscription.expiresAtEpochMs,
+    host = runCatching { URI(subscription.url).host }.getOrNull().orEmpty(),
+    format = when (subscription.format) {
+        SubscriptionFormat.Clash -> RvSubFormat.Clash
+        SubscriptionFormat.SingBox -> RvSubFormat.SingBox
+        SubscriptionFormat.Sip008 -> RvSubFormat.Sip008
+        SubscriptionFormat.ShareLinks, SubscriptionFormat.Base64, null -> RvSubFormat.Links
+    },
+    userAgent = subscription.userAgent,
+)
+
+/** A protocol as the pages name it (VLESS, Hysteria2), from the core's lower-case id; an id not listed is shown as sent. */
+internal fun protocolName(id: String): String = PROTOCOLS[id] ?: id
+
+private val PROTOCOLS = mapOf(
+    "vless" to "VLESS",
+    "vmess" to "VMess",
+    "trojan" to "Trojan",
+    "ss" to "Shadowsocks",
+    "shadowsocks" to "Shadowsocks",
+    "hysteria2" to "Hysteria2",
+    "tuic" to "TUIC",
+)
+
+/** Nested groups deeper than this are a cycle the core should never send; the selection then names no node. */
+private const val MAX_DEPTH = 8
