@@ -47,12 +47,15 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.feature.model.RvSubscription
-import dev.doona.android.prototype.rv.data.RvData
 
-/** What the subscriptions page shows: the subscriptions, the one whose last update failed, and the one asked to delete. */
+/**
+ * What the subscriptions page shows: the subscriptions, now (for their end dates), the one whose last update failed, and
+ * the one asked to delete.
+ */
 @Immutable
 internal data class RvSubsState(
-    val subscriptions: List<RvSubscription> = RvData.subscriptions,
+    val subscriptions: List<RvSubscription>,
+    val nowEpochMs: Long,
     val failedId: String? = null,
     val deletingId: String? = null,
 )
@@ -99,7 +102,7 @@ internal fun RvSubsPage(state: RvSubsState, actions: RvSubsActions, loading: Boo
                 )
             } else {
                 RvSkeletonCards(loading, { SubsSkeleton(state.subscriptions) }) {
-                    state.subscriptions.forEach { SubscriptionCard(it, actions) }
+                    state.subscriptions.forEach { SubscriptionCard(it, actions, state.nowEpochMs) }
                 }
             }
         }
@@ -130,7 +133,7 @@ internal fun rvFailedBanner(sub: RvSubscription, onRetry: () -> Unit) = RvNotice
 
 /** A subscription: its row, with a busy bar before the chevron while it updates ([LocalRvUpdating], as the node picker's row), then its use. */
 @Composable
-private fun SubscriptionCard(sub: RvSubscription, actions: RvSubsActions) {
+private fun SubscriptionCard(sub: RvSubscription, actions: RvSubsActions, nowEpochMs: Long) {
     val menu = rvSubscriptionMenu(onUpdate = { actions.update(sub.id) }, onEdit = { actions.open(sub.id) }, onDelete = { actions.delete(sub.id) })
     val updating = sub.id in LocalRvUpdating.current
     RvCard {
@@ -147,7 +150,7 @@ private fun SubscriptionCard(sub: RvSubscription, actions: RvSubsActions) {
                         RvChevron()
                     }
                 }
-                Usage(sub)
+                Usage(sub, nowEpochMs)
             }
         }
     }
@@ -171,12 +174,12 @@ private fun SubsSkeleton(subscriptions: List<RvSubscription>) {
 /** The subscription cards the skeleton shows: two, as Revolut's list skeleton shows two rows (revolut-UX §11). */
 private const val SKELETON_CARDS = 2
 
-/** Used of total at the start and the end date at the end, over the quota's bar (Revolut's goal card, #13). */
+/** Used of total at the start and the end date as of [nowEpochMs] at the end, over the quota's bar (Revolut's goal card, #13). */
 @Composable
-private fun Usage(sub: RvSubscription) {
+private fun Usage(sub: RvSubscription, nowEpochMs: Long) {
     val format = rememberRvFormat()
     val total = format.bytes(sub.totalBytes)
-    val ends = sub.expiresAtEpochMs?.let { stringResource(R.string.rv_expires, format.expiry(it, RvData.nowEpochMs)) } ?: stringResource(R.string.rv_subs_no_expiry)
+    val ends = sub.expiresAtEpochMs?.let { stringResource(R.string.rv_expires, format.expiry(it, nowEpochMs)) } ?: stringResource(R.string.rv_subs_no_expiry)
     Column(Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding)) {
         Row {
             RvText(stringResource(R.string.rv_subs_used, format.usedOf(sub.usedBytes, total), total.toString()), Rv.type.rowSub, Modifier.weight(1f), color = Rv.colors.textSecondary)

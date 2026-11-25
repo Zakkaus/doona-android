@@ -34,8 +34,8 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.designsystem.rv.rememberRvFormat
+import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSubscription
-import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.gallery.RV_LINK_PLACEHOLDER
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
 
@@ -77,7 +77,8 @@ internal data class RvAddState(
  * While importing, the fields rest
  * and a card shows the download over the bar; when done, a card says what came in (nodes, format, protocols) and 完成
  * returns; when it fails, the banner gives the reason and 重試, and the fields keep what was typed. A link on the local
- * network asks first ([RvLanSheet]); its confirmation runs [onLanConfirm].
+ * network asks first ([RvLanSheet]); its confirmation runs [onLanConfirm]. The protocols of what came in are counted over
+ * [nodes].
  */
 @Composable
 internal fun RvSubAdd(
@@ -87,6 +88,7 @@ internal fun RvSubAdd(
     onImport: () -> Unit,
     onBack: () -> Unit,
     onLanConfirm: () -> Unit = {},
+    nodes: List<RvNode>,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val phase = state.phase
@@ -105,7 +107,7 @@ internal fun RvSubAdd(
     ) { titleBlock ->
         RvLargeTitle(stringResource(R.string.rv_add_subscription), titleBlock, insets)
         RvGutter(banner = (phase as? RvAddPhase.Failed)?.let { failure(it.failure, onImport) }) {
-            if (phase is RvAddPhase.Done) Imported(phase.sub) else Form(state, onChange, onPaste)
+            if (phase is RvAddPhase.Done) Imported(phase.sub, nodes) else Form(state, onChange, onPaste)
         }
     }
     RvLanSheet(state.lan, onLanConfirm, onDismiss = { onChange(state.copy(lan = null)) })
@@ -159,8 +161,8 @@ private fun Progress(phase: RvAddPhase.Importing) {
  * first, as Revolut's Key stats.
  */
 @Composable
-private fun Imported(sub: RvSubscription) {
-    val protocols = RvData.nodes.filter { it.subscription == sub.name }.groupingBy { it.protocol }.eachCount().entries.sortedByDescending { it.value }
+private fun Imported(sub: RvSubscription, nodes: List<RvNode>) {
+    val protocols = nodes.filter { it.subscription == sub.name }.groupingBy { it.protocol }.eachCount().entries.sortedByDescending { it.value }
     RvCard {
         RvRow(
             { RvIconDisc(R.drawable.rv_nodes_ic_check_circle, Rv.colors.good) },
