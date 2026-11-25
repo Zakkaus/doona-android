@@ -47,7 +47,7 @@ class ActivityPageTest {
         val engine = rvSampleEngine()
         show(engine)
         val cases = listOf(
-            Status.Failed(FailureReason.NoAllowedApps) to (R.string.perapp_title to "perApp"),
+            Status.Failed(FailureReason.NoAllowedApps) to (R.string.rv_edit_app_list to "perApp"),
             Status.Failed(FailureReason.StartFailed, ErrorCode.NoNodes) to (R.string.rv_add_subscription to "addSubscription"),
             Status.Failed(FailureReason.IncompatibleCore) to (R.string.rv_settings_check_update to "checkUpdate"),
             Status.Failed(FailureReason.LockdownEnabled) to (R.string.rv_lan_open_settings to "vpnSettings"),

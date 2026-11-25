@@ -11,7 +11,7 @@ import dev.doona.android.feature.messageRes
 /**
  * The notice's banner, with one action ([onAction]): 重新測試, 重新連線, 網路設定 or 匯出報告; none with no subscription,
  * where 活動 shows the empty state instead. A failed start is titled 連線失敗, the reason the notification's
- * (`vpn_failure_*`), and its action what can mend it: 重試, 依 App, 檢查更新 or 新增訂閱. A refusal's action is the way
+ * (`vpn_failure_*`), and its action what can mend it: 重試, 調整清單, 檢查更新 or 新增訂閱. A refusal's action is the way
  * back: 重新連線 asks the system for the VPN consent again, 開啟設定 opens the app's notification settings. Its kind picks
  * its glyph: the core stopping, every node failing and a failed start are errors; another app's VPN, no network and a
  * refused VPN consent, outside doona, warnings; the crash's log and a refused notification permission, nothing broken
@@ -34,7 +34,7 @@ internal fun rvActivityBanner(notice: RvActivityNotice, onAction: () -> Unit): R
 
         RvActivityNotice.StartFailed -> started(R.string.vpn_failure_start_failed, R.string.rv_retry)
 
-        RvActivityNotice.StartNoApps -> started(R.string.vpn_failure_no_allowed_apps, R.string.perapp_title)
+        RvActivityNotice.StartNoApps -> started(R.string.vpn_failure_no_allowed_apps, R.string.rv_edit_app_list)
 
         RvActivityNotice.StartIncompatible -> started(R.string.vpn_failure_incompatible_core, R.string.rv_settings_check_update)
 
