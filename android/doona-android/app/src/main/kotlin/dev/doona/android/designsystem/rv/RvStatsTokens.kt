@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.stats
+package dev.doona.android.designsystem.rv
 
 import androidx.compose.ui.unit.dp
 
@@ -12,6 +12,9 @@ internal object RvStatsSpace {
     /** From a card's figure block to its chart, and between a legend's lines. */
     val chartGap = 16.dp
     val legendGap = 10.dp
+
+    /** Under the paged tiles, to their dots. */
+    val dotsGap = 10.dp
 
     /**
      * How much of the third paged tile shows at the screen's edge, so the row reads as one that scrolls (measured §2,
@@ -40,15 +43,6 @@ internal object RvStatsSize {
     val ring = 132.dp
     val ringStroke = 8.dp
     val ringGap = 2.dp
-
-    /**
-     * The latency dot chart, after Revolut's EPS chart, in node detail's grammar: dots small enough to keep a gap at a
-     * 5.6 dp pitch (47 nodes), the current node's dot a step larger (S04); its marker is the library's.
-     */
-    val latency = 156.dp
-    val latencyDot = 3.5.dp
-    val latencyDotSelected = 5.5.dp
-    val axisLabelGap = 8.dp
 
     /** Revolut's analyst bars: 8 dp rounded bars on a track, the figure after them. */
     val ratingBar = 8.dp

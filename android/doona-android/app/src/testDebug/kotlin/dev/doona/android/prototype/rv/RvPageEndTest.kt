@@ -53,7 +53,7 @@ import dev.doona.android.prototype.rv.settings.rvSampleReport
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import dev.doona.android.prototype.rv.settings.rvSampleVersions
 import dev.doona.android.prototype.rv.states.rvNoticeActivity
-import dev.doona.android.prototype.rv.stats.RvStatsScreen
+import dev.doona.android.prototype.rv.stats.RvStatsScreenSample
 import dev.doona.android.prototype.rv.stats.rvStatsSample
 import dev.doona.android.prototype.rv.subs.RvSubDetail
 import dev.doona.android.prototype.rv.subs.RvSubDetailSample
@@ -124,7 +124,7 @@ class RvPageEndTest {
     fun pushedPagesEndAboveTheNavigationBar() = endsClear(
         listOf(
             Page("節點") { RvNodesPage(sampleNodesPage(), onBack = {}, onFilter = {}, onOpen = {}, onAllNodes = {}) },
-            Page("統計") { RvStatsScreen(rvStatsSample(), onBack = {}) },
+            Page("統計") { RvStatsScreenSample(rvStatsSample()) },
             Page("流量") { RvTrafficScreen(rvSampleActivity(), RvData.session, onBack = {}) },
             Page("關於") { RvAboutScreen(rvSampleVersions, onBack = {}) },
             Page("日誌等級") { RvLogLevelScreen(RvLogLevel.Info, onSelect = {}, onBack = {}) },

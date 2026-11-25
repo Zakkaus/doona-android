@@ -66,7 +66,7 @@ import dev.doona.android.prototype.rv.settings.rvSampleAppearance
 import dev.doona.android.prototype.rv.settings.rvSampleReport
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import dev.doona.android.prototype.rv.settings.rvSampleVersions
-import dev.doona.android.prototype.rv.stats.RvStatsScreen
+import dev.doona.android.prototype.rv.stats.RvStatsScreenSample
 import dev.doona.android.prototype.rv.stats.rvStatsSample
 import dev.doona.android.testing.PhoneFrame
 import org.junit.Assert.assertEquals
@@ -177,7 +177,7 @@ class RvLayoutTest {
     }
 
     @Test
-    fun stats() = measure("stats", Top.Title) { RvStatsScreen(rvStatsSample(), onBack = {}) }
+    fun stats() = measure("stats", Top.Title) { RvStatsScreenSample(rvStatsSample()) }
 
     @Test
     fun settings() = measure("settings", Top.Hero) { RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}) }

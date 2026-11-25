@@ -58,16 +58,18 @@ internal fun RvLegendItem(color: Color, text: String, modifier: Modifier = Modif
  * The day from 00:00 to 24:00 across the canvas and the total × [RvUsageSize.HEADROOM] up it: download's running total as
  * a stepped band, upload's stacked on it, both at one alpha in their own hue, each with a thin line on its top edge, over
  * a hairline grid every 4 hours that the steps share. The steps stop at the current time, where a 5 dp dot on a halo
- * marks the total so far (S5-14). 活動's 今日用量 and 統計's 已用流量 both draw the day with it (N-11).
+ * marks the total so far (S5-14). 活動's 今日用量 and 統計's 已用流量 both draw the day with it (N-11). 統計's 本週 and 本月
+ * draw days the same way: [day]'s entries are then days, [slots] of them across the canvas, a grid line every
+ * [gridEvery], and [nowHour] is in days.
  */
 @Composable
-internal fun RvUsageChart(day: RvDay, nowHour: Float, modifier: Modifier) {
+internal fun RvUsageChart(day: RvDay, nowHour: Float, modifier: Modifier, slots: Int = RvUsageSize.HOURS, gridEvery: Int = RvUsageSize.GRID_HOURS) {
     val colors = Rv.colors
     Canvas(modifier) {
         // A day with no bytes yet keeps a top of one byte, so every step lies on the bottom rather than at 0 / 0.
         val high = (day.total * RvUsageSize.HEADROOM).coerceAtLeast(1f)
-        val chart = StepChart(size.width, size.height, high, nowHour)
-        hourGrid(colors.grid, chart)
+        val chart = StepChart(size.width, size.height, high, nowHour, slots)
+        hourGrid(colors.grid, chart, gridEvery)
         val downTop = chart.steps(day.down.runningSum())
         val totalTop = chart.steps(day.down.zip(day.up) { down, up -> down + up }.runningSum())
         drawPath(chart.band(totalTop, downTop), colors.up.band)
@@ -82,9 +84,9 @@ internal fun RvUsageChart(day: RvDay, nowHour: Float, modifier: Modifier) {
     }
 }
 
-/** Where an hour and a running total sit on a [width] x [height] canvas whose top is [high] bytes. */
-private class StepChart(val width: Float, val height: Float, val high: Float, val now: Float) {
-    fun x(hour: Float) = width * hour / RvUsageSize.HOURS
+/** Where an hour (of [slots]) and a running total sit on a [width] x [height] canvas whose top is [high] bytes. */
+private class StepChart(val width: Float, val height: Float, val high: Float, val now: Float, val slots: Int) {
+    fun x(hour: Float) = width * hour / slots
     private fun y(bytes: Long) = height * (1 - bytes / high)
 
     /** The top edge of a running total: level through each hour, rising at the hour's start, ending now. */
@@ -114,12 +116,12 @@ private class StepChart(val width: Float, val height: Float, val high: Float, va
 }
 
 /**
- * A hairline at every [RvUsageSize.GRID_HOURS] hours, where [chart] puts that hour, so the steps rise on the grid, each
- * fading out toward the bottom; and [RvUsageSize.GRID_ROWS] rows across the whole width.
+ * A hairline at every [every] hours (both edges included), where [chart] puts that hour, so the steps rise on the grid,
+ * each fading out toward the bottom; and [RvUsageSize.GRID_ROWS] rows across the whole width.
  */
-private fun DrawScope.hourGrid(color: Color, chart: StepChart) {
+private fun DrawScope.hourGrid(color: Color, chart: StepChart, every: Int) {
     val hairline = 1f
-    for (hour in 0..RvUsageSize.HOURS step RvUsageSize.GRID_HOURS) {
+    for (hour in ((0..chart.slots step every) + chart.slots).distinct()) {
         val x = chart.x(hour.toFloat()).coerceIn(hairline / 2, size.width - hairline / 2)
         drawLine(Brush.verticalGradient(listOf(color, Color.Transparent)), Offset(x, 0f), Offset(x, size.height), hairline)
     }

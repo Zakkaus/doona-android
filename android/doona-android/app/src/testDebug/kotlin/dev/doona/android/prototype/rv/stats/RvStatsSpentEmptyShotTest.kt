@@ -4,6 +4,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import dev.doona.android.R
+import dev.doona.android.feature.stats.RV_SPENT_CHART
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
@@ -23,7 +24,7 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * The 統計 page before the first byte of the day: 已用流量 draws its chart with the line along zero up to now (the owner's
  * pick A of owner-fix2 item 13), light, dark, fs115 and fs200 (`proto-rv-stats-empty-a-*`), in the window that holds the
- * whole page, as `proto-rv-stats-empty-v1-*` does. The tiles keep the default [RvStatsEmptyLook.Grid].
+ * whole page.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -41,11 +42,13 @@ class RvStatsSpentEmptyShotTest {
 
     @Test fun aFs115() = shot(dark = false, fontScale = RV_FS115)
 
-    @Test fun aFs200() = shot(dark = false, fontScale = RV_FS200)
+    @Test
+    @Config(qualifiers = FS200_WINDOW)
+    fun aFs200() = shot(dark = false, fontScale = RV_FS200)
 
     @Test
     fun aDrawsTheChartWithItsLine() {
-        compose.rvContent(dark = false) { RvStatsScreen(rvStatsQuiet(), onBack = {}) }
+        compose.rvContent(dark = false) { RvStatsScreenSample(rvStatsQuiet()) }
         compose.onAllNodes(hasTestTag(RV_SPENT_CHART), useUnmergedTree = true).assertCountIs(1, "the chart")
         val lines = compose.onAllNodes(hasText(rvText(R.string.rv_stats_nothing_today)), useUnmergedTree = true).fetchSemanticsNodes().size
         assertEquals("已用流量's line, then the two tiles'", TILES_AND_CARD, lines)
@@ -53,7 +56,7 @@ class RvStatsSpentEmptyShotTest {
 
     private fun shot(dark: Boolean, fontScale: Float = 1f) {
         compose.rvShot("stats-empty-a", dark, before = { assertWhole() }, fontScale = fontScale) {
-            RvStatsScreen(rvStatsQuiet(), onBack = {})
+            RvStatsScreenSample(rvStatsQuiet())
         }
     }
 
@@ -62,3 +65,6 @@ class RvStatsSpentEmptyShotTest {
         const val TILES_AND_CARD = 3
     }
 }
+
+/** At 2x text the page outgrows the class window: as tall as the page whole (measured 2100.5 dp with the page dots). */
+private const val FS200_WINDOW = "+h2101dp"

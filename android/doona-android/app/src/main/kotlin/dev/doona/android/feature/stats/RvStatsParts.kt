@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.stats
+package dev.doona.android.feature.stats
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Canvas
@@ -25,6 +25,7 @@ import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvFigure
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSpanText
+import dev.doona.android.designsystem.rv.RvStatsSize
 import dev.doona.android.designsystem.rv.scripted
 
 /** A card's figure: the number in [style], its unit in [unitStyle] on the same baseline. */
@@ -39,16 +40,17 @@ internal fun RvStatsFigure(figure: RvFigure, style: TextStyle = Rv.type.cardValu
 
 /** Revolut's delta: a filled triangle and the change in [color], then what it compares with in secondary ink. */
 @Composable
-internal fun RvStatsDelta(up: Boolean, change: String, against: String, color: Color) {
-    // The triangle and the hue show the direction; a screen reader is told it in words, with what it compares with.
-    val spoken = stringResource(if (up) R.string.rv_a11y_stat_up else R.string.rv_a11y_stat_down, change)
+internal fun RvStatsDelta(up: Boolean, change: String, against: RvStatsAgainst, color: Color) {
+    // The triangle and the hue show the direction; a screen reader is told it in words, for the period the line names.
+    val spoken = stringResource(if (up) against.up else against.down, change)
+    val line = stringResource(against.line)
     Row(verticalAlignment = Alignment.CenterVertically) {
         Triangle(up, color, RvStatsSize.delta)
         Spacer(Modifier.width(RvSpace.tight))
         val text = buildAnnotatedString {
             withStyle(SpanStyle(color = color)) { append(change) }
             append(" ")
-            append(scripted(against))
+            append(scripted(line))
         }
         RvSpanText(text, Rv.type.tileCaption.copy(color = Rv.colors.textSecondary), Modifier.semantics { contentDescription = spoken }, maxLines = 1)
     }
@@ -74,8 +76,5 @@ private fun Triangle(up: Boolean, color: Color, side: Dp) {
     }
 }
 
-/** A row of the tools card: its glyph, title and subtitle. */
-internal class RvStatsTool(@DrawableRes val icon: Int, val title: String, val subtitle: String)
-
-/** The tag on a card whose data the v0.1 core does not report, so the sample invents it. */
-internal const val RV_V02 = "v0.2"
+/** A row of the tools card: its glyph, title and subtitle, and what a tap does. */
+internal class RvStatsTool(@DrawableRes val icon: Int, val title: String, val subtitle: String, val onClick: () -> Unit)
