@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -31,6 +32,8 @@ class AppSettingsTest {
             settings.setThemeMode(ThemeMode.Dark)
             settings.setFollowWallpaper(true)
             settings.setAccent(ThemeAccent.Purple)
+            assertFalse(settings.performanceMode.first())
+            settings.setPerformanceMode(true)
             settings.setThemeMode(ThemeMode.Light)
             assertEquals(ThemeMode.Light, settings.themeMode.first())
         } finally {
@@ -43,6 +46,7 @@ class AppSettingsTest {
             assertEquals(SubscriptionUpdate(false, UpdateInterval.FortyEight), settings.subscriptionUpdate.first())
             assertEquals(GeoUpdateSchedule(GeoUpdateInterval.Daily, 1234L), settings.geoUpdateSchedule.first())
             assertEquals(ThemeAppearance(ThemeMode.Light, true, ThemeAccent.Purple), settings.appearance.first())
+            assertTrue(settings.performanceMode.first())
         } finally {
             reader.cancelAndJoin()
         }

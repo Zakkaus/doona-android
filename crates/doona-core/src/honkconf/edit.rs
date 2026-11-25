@@ -1,25 +1,33 @@
 //! Form edits are local to one entry-relative source in a private draft. A form that cannot
 //! prove ownership of its bytes returns their raw-editor location. Check and Apply remain separate.
 
+pub(super) mod carry;
 mod diff;
 mod fields;
+mod form;
 mod identity;
+mod literal;
 mod markers;
+mod shadow;
 
 use std::collections::HashSet;
 use std::ops::Range;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
+use honk_config::Config;
 use honk_config::parser::SourceSnapshot;
 use honk_config::parser::cursor::{Document, Segment};
 use honk_config::parser::lexer::{Source, Token};
 pub use honk_config::parser::source_edit::GroupField;
-use honk_config::parser::source_edit::{edit_group_source, source_indices};
+use honk_config::parser::source_edit::{RuleSourceIndex, edit_group_source, source_indices};
+use honk_config::routing::RoutingRule;
 
 use super::staged::Tree;
 use super::{HonkConfigError, HonkStore, StoreError};
+use carry::Carry;
 pub use diff::SourceChange;
+pub use form::{Earlier, FormEdit, FormError, Formed, RuleForm};
+pub use literal::Match;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum List {
@@ -111,12 +119,20 @@ pub enum EditError {
         path: PathBuf,
         bytes: Option<Range<usize>>,
     },
+    Form(FormError),
 }
 
 impl From<StoreError> for EditError {
     fn from(error: StoreError) -> Self {
         Self::Store(error)
     }
+}
+
+/// An active traffic rule of the whole tree, in honk's effective order.
+struct Placed {
+    source: usize,
+    bytes: Range<usize>,
+    rule: RoutingRule,
 }
 
 struct File {
@@ -126,6 +142,13 @@ struct File {
     upstreams: HashSet<String>,
     rows: Vec<RuleRow>,
     warnings: Vec<Range<usize>>,
+    /// Index of this file in `paths`, the tree's sources in merge order.
+    owner: usize,
+    paths: Vec<PathBuf>,
+    traffic: Vec<Placed>,
+    fallback_source: Option<usize>,
+    /// Every declared group name: the traffic targets besides the built-ins.
+    targets: HashSet<String>,
 }
 
 impl File {
@@ -138,29 +161,25 @@ impl File {
             other => other.into(),
         })?;
         let (groups, index) = source_indices(&loaded.sources).map_err(|_| raw())?;
-        let owner = loaded
-            .sources
+        let paths: Vec<PathBuf> = loaded.sources.iter().map(|s| s.path.clone()).collect();
+        let owner = paths.iter().position(|p| p == path).ok_or_else(raw)?;
+        let traffic = index
+            .rules
             .iter()
-            .position(|s| s.path == path)
-            .ok_or_else(raw)?;
+            .zip(&loaded.config.routing.rules)
+            .map(|(l, rule)| Placed {
+                source: l.source_index,
+                bytes: l.bytes.clone(),
+                rule: rule.clone(),
+            })
+            .collect();
+        let fallback_source = index.fallback.as_ref().map(|l| l.source_index);
         let mut source = loaded.sources.into_iter().nth(owner).unwrap();
         source.path = path
             .strip_prefix(tree.entry.parent().unwrap())
             .unwrap()
             .into();
-        let mut markers = markers::runs(&source).ok_or_else(raw)?;
-        let reserved = markers
-            .iter()
-            .filter(|r| r.list.is_some())
-            .map(|r| r.id.as_str())
-            .collect();
-        let mut rows =
-            identity::rows(&source, &loaded.config, index, owner, &reserved).ok_or_else(raw)?;
-        rows.extend(
-            markers
-                .extract_if(.., |run| run.list.is_some())
-                .filter_map(markers::Run::row),
-        );
+        let (rows, markers) = source_rows(&source, &loaded.config, index, owner).ok_or_else(raw)?;
         let mut upstreams = HashSet::new();
         let mut duplicates = HashSet::new();
         for u in loaded.config.dns.upstream {
@@ -179,11 +198,16 @@ impl File {
             stray_markers: markers,
             rows,
             warnings,
+            targets: groups.keys().cloned().collect(),
             groups: groups
                 .into_iter()
                 .filter_map(|(name, i)| (i == owner).then_some(name))
                 .collect(),
             upstreams,
+            owner,
+            paths,
+            traffic,
+            fallback_source,
         })
     }
 
@@ -231,6 +255,11 @@ impl File {
             }
             (only, None)
         };
+        self.slot(list, &block, target)
+    }
+
+    /// `target`, or else the end of `block` before its fallback, unless that is past a fallback.
+    fn slot(&self, list: List, block: &Segment<'_, '_>, target: Option<usize>) -> Option<usize> {
         let fallback = block
             .body()
             .into_iter()
@@ -291,8 +320,13 @@ impl File {
         list: List,
         before: Option<&str>,
         statement: &str,
-    ) -> Option<(String, Expected)> {
-        let at = self.position(list, before)?;
+    ) -> Option<(String, Expected, Carry)> {
+        let (out, bytes, carry) = self.insert_at(self.position(list, before)?, statement);
+        Some((out, Expected::Inserted(list, bytes), carry))
+    }
+
+    /// The text with `statement` on its own line at `at`, and the statement's bytes.
+    fn insert_at(&self, at: usize, statement: &str) -> (String, Range<usize>, Carry) {
         let text = &self.source.content;
         let start = line_start(text, at);
         let prefix = &text[start..at];
@@ -324,13 +358,11 @@ impl File {
             out.push_str(part);
         }
         let offset = insertion + lead.len() + indent.len();
-        Some((
-            out,
-            Expected::Inserted(list, offset..offset + statement.len()),
-        ))
+        let carry = Carry::splice(text.len(), insertion..insertion, out.len() - text.len());
+        (out, offset..offset + statement.len(), carry)
     }
 
-    fn move_rule(&self, row: &RuleRow, before: Option<&str>) -> Option<String> {
+    fn move_rule(&self, row: &RuleRow, before: Option<&str>) -> Option<(String, Carry)> {
         let text = &self.source.content;
         let range = self.lines(row)?;
         let target = self.position(row.list, before)?;
@@ -347,11 +379,12 @@ impl File {
         for part in [&text[..a], &text[b..c], &text[a..b], &text[c..]] {
             out.push_str(part);
         }
-        Some(out)
+        Some((out, Carry::swap(text.len(), a, b, c)))
     }
 
-    fn change(&self, edit: Edit<'_>) -> Option<(String, Expected)> {
+    fn change(&self, edit: Edit<'_>) -> Option<(String, Expected, Carry)> {
         let rule = |id| self.row(id).filter(|r| !r.fallback);
+        let text = &self.source.content;
         match edit {
             Edit::Insert {
                 list,
@@ -359,17 +392,25 @@ impl File {
                 statement,
             } => self.insert(list, before, statement),
             Edit::Resume(id) => self.resume(id),
-            Edit::Pause(id) => Some((self.pause(rule(id)?)?, Expected::Parsed)),
+            Edit::Pause(id) => {
+                let (out, carry) = self.pause(rule(id)?)?;
+                Some((out, Expected::Parsed, carry))
+            }
             Edit::Move { id, before } => {
-                Some((self.move_rule(rule(id)?, before)?, Expected::Parsed))
+                let (out, carry) = self.move_rule(rule(id)?, before)?;
+                Some((out, Expected::Parsed, carry))
             }
             Edit::Delete(id) => {
                 let range = self.lines(rule(id)?)?;
-                let mut out = self.source.content.to_string();
+                let carry = Carry::splice(text.len(), range.clone(), 0);
+                let mut out = text.to_string();
                 out.replace_range(range, "");
-                Some((out, Expected::Parsed))
+                Some((out, Expected::Parsed, carry))
             }
-            field => self.field(field).map(|out| (out, Expected::Field)),
+            field => self.field(field).map(|out| {
+                let carry = Carry::diff(text, &out);
+                (out, Expected::Field, carry)
+            }),
         }
     }
 
@@ -393,7 +434,7 @@ impl File {
         }
     }
 
-    fn pause(&self, row: &RuleRow) -> Option<String> {
+    fn pause(&self, row: &RuleRow) -> Option<(String, Carry)> {
         let text = &self.source.content;
         let span = self.lines(row)?;
         if row.paused || self.stray_markers.iter().any(|r| r.id == row.id) {
@@ -407,11 +448,13 @@ impl File {
             out.push_str(&marker);
             out.push_str(line);
         }
+        let paused = span.start..out.len();
         out.push_str(&text[span.end..]);
-        Some(out)
+        let carry = Carry::splice(text.len(), span, paused.len()).keep(row.bytes.clone(), paused);
+        Some((out, carry))
     }
 
-    fn resume(&self, id: &str) -> Option<(String, Expected)> {
+    fn resume(&self, id: &str) -> Option<(String, Expected, Carry)> {
         let run = self.row(id).filter(|r| r.paused)?;
         let text = &self.source.content;
         let mut out = String::with_capacity(text.len());
@@ -422,8 +465,32 @@ impl File {
         }
         let restored = run.bytes.start..out.len();
         out.push_str(&text[run.bytes.end..]);
-        Some((out, Expected::Restored(run.list, restored)))
+        let carry = Carry::splice(text.len(), run.bytes.clone(), restored.len())
+            .keep(run.bytes.clone(), restored.clone());
+        Some((out, Expected::Restored(run.list, restored), carry))
     }
+}
+
+/// The rows of `source`, whose path is entry-relative, and its marker runs that are not rows.
+fn source_rows(
+    source: &SourceSnapshot,
+    cfg: &Config,
+    index: RuleSourceIndex,
+    owner: usize,
+) -> Option<(Vec<RuleRow>, Vec<markers::Run>)> {
+    let mut markers = markers::runs(source)?;
+    let reserved = markers
+        .iter()
+        .filter(|r| r.list.is_some())
+        .map(|r| r.id.as_str())
+        .collect();
+    let mut rows = identity::rows(source, cfg, index, owner, &reserved)?;
+    rows.extend(
+        markers
+            .extract_if(.., |run| run.list.is_some())
+            .filter_map(markers::Run::row),
+    );
+    Some((rows, markers))
 }
 
 fn unquoted<'a>(
@@ -515,14 +582,14 @@ impl HonkStore {
         if field.chars().any(char::is_control) {
             return Err(raw());
         }
-        let (out, expected) = file.change(edit).ok_or_else(raw)?;
-        let content: Arc<str> = out.into();
-        tree.files.insert(absolute.clone(), content.clone());
+        let (out, expected, carry) = file.change(edit).ok_or_else(raw)?;
+        tree.files.insert(absolute.clone(), out.into());
         let candidate = File::parse(&tree, &absolute, &raw)?;
         if !expected.matches(&file.source.content, &candidate) {
             return Err(raw());
         }
-        self.write_edit(draft, &absolute, tree.entry.parent().unwrap(), &content)
+        let root = tree.entry.parent().unwrap();
+        self.write_steps(draft, &absolute, root, &file, &[(candidate, carry)])
             .map_err(EditError::from)
     }
 }

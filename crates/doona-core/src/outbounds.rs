@@ -43,10 +43,6 @@ use self::layers::layers;
 use self::routing::Table;
 pub(crate) use self::routing::{Leaf, NetworkLeaves, Routing, View};
 
-/// Threads of a carriers runtime: the protocol work of every proxied flow (TLS, QUIC, session
-/// framing) runs there.
-const WORKERS: usize = 2;
-
 pub struct Outbounds {
     proxies: Arc<ProxyRegistry>,
     table: RwLock<Arc<Table>>,
@@ -57,6 +53,9 @@ pub struct Outbounds {
     current: Mutex<Current>,
     /// The panics on the core's threads, the carriers' included (see `panics.rs`).
     panics: Arc<AtomicU64>,
+    /// Threads of each carriers runtime: the protocol work of every proxied flow (TLS, QUIC,
+    /// session framing) runs there.
+    workers: usize,
     #[cfg(test)]
     before_build: Mutex<Option<Box<dyn FnOnce() + Send>>>,
     /// The retirements of replaced registries under way, for tests to wait on.
@@ -128,10 +127,10 @@ pub(crate) struct Carriers {
 }
 
 impl Carriers {
-    fn new(panics: &Arc<AtomicU64>) -> io::Result<Carriers> {
+    fn new(panics: &Arc<AtomicU64>, workers: usize) -> io::Result<Carriers> {
         let counted = Arc::clone(panics);
         let runtime = tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(WORKERS)
+            .worker_threads(workers)
             .thread_name("doona-carrier")
             .on_thread_start(move || crate::panics::count_on_this_thread(&counted))
             .enable_all()
@@ -270,7 +269,7 @@ impl Ended {
 }
 
 impl Outbounds {
-    pub(crate) fn new(panics: Arc<AtomicU64>) -> Result<Outbounds, ErrorCode> {
+    pub(crate) fn new(panics: Arc<AtomicU64>, workers: usize) -> Result<Outbounds, ErrorCode> {
         let proxies = ProxyRegistry::default_resolver().map_err(|_| ErrorCode::Internal)?;
         Ok(Outbounds {
             proxies: Arc::new(proxies),
@@ -278,6 +277,7 @@ impl Outbounds {
             routings: AtomicU64::new(0),
             current: Mutex::default(),
             panics,
+            workers,
             #[cfg(test)]
             before_build: Mutex::default(),
             #[cfg(test)]
@@ -393,13 +393,21 @@ impl Outbounds {
         if let Some(carriers) = &current.carriers {
             return Some(Arc::clone(carriers));
         }
-        match Carriers::new(&self.panics) {
+        match Carriers::new(&self.panics, self.workers) {
             Ok(carriers) => Some(Arc::clone(current.carriers.insert(Arc::new(carriers)))),
             Err(e) => {
                 log::error!("outbounds: no runtime for the carriers ({:?})", e.kind());
                 None
             }
         }
+    }
+
+    /// The worker threads of the current carriers, made if there are none.
+    #[cfg(test)]
+    pub(crate) fn carrier_workers(&self) -> Option<usize> {
+        let carriers = self.carriers()?;
+        let runtime = read(&carriers.runtime);
+        Some(runtime.as_ref()?.metrics().num_workers())
     }
 
     fn is_current(&self, carriers: &Arc<Carriers>) -> bool {
