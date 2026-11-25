@@ -68,11 +68,11 @@ class RvLicensesShotTest {
     @Test fun brandMarksFs200() = compose.rvShot("license-brand-marks", dark = false, fontScale = RV_FS200) { BrandMarks() }
 
     @Test
-    @Config(qualifiers = "en")
+    @Config(qualifiers = "+en")
     fun brandMarksEnglish() = compose.rvShot("license-brand-marks-en", dark = false) { BrandMarks() }
 
     @Test
-    @Config(qualifiers = "zh-rCN")
+    @Config(qualifiers = "+zh-rCN")
     fun brandMarksSimplified() = compose.rvShot("license-brand-marks-zh-cn", dark = false) { BrandMarks() }
 
     @Test
