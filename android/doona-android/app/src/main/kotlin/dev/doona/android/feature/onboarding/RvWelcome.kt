@@ -33,8 +33,8 @@ import dev.doona.android.designsystem.rv.RvText
 
 /**
  * The first run: one page saying what doona does, and 新增訂閱. 活動's header, idle (the grey dot map, no place marked),
- * carries the mark, the large title and one line where 活動 has its hero; then a card of three rows, 訂閱, 規則 and VPN,
- * each with what it is, as 設定's rows without a chevron. The page itself asks for nothing.
+ * carries the mark, the large title and one line where 活動 has its hero; then a card of three rows, one strength each
+ * (its own core, TCP and UDP each picking a node, 10 Gbps), as 設定's rows without a chevron. The page asks for nothing.
  */
 @Composable
 internal fun RvWelcome(onAdd: () -> Unit) {
@@ -67,9 +67,9 @@ internal fun RvWelcome(onAdd: () -> Unit) {
         }
         RvGutter {
             RvCard {
-                RvRow({ RvIconDisc(R.drawable.rv_sym_rss_feed) }, stringResource(R.string.rv_subscriptions), stringResource(R.string.rv_welcome_subs_sub))
-                RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, stringResource(R.string.rv_welcome_rules), stringResource(R.string.rv_welcome_rules_sub))
-                RvRow({ RvIconDisc(R.drawable.rv_sym_power) }, stringResource(R.string.rv_welcome_vpn), stringResource(R.string.rv_welcome_vpn_sub))
+                RvRow({ RvIconDisc(R.drawable.rv_sym_memory) }, stringResource(R.string.rv_welcome_core), stringResource(R.string.rv_welcome_core_sub))
+                RvRow({ RvIconDisc(R.drawable.rv_sym_call_split) }, stringResource(R.string.rv_welcome_split), stringResource(R.string.rv_welcome_split_sub))
+                RvRow({ RvIconDisc(R.drawable.rv_sym_speed) }, stringResource(R.string.rv_welcome_speed), stringResource(R.string.rv_welcome_speed_sub))
             }
         }
     }

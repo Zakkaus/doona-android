@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="rv_welcome_title">欢迎使用 doona</string>
-    <string name="rv_welcome_line">doona 使用自研内核，不是又一个 Clash 客户端。TCP/UDP 可分别选择节点，转发速度可达 10\u00A0Gbps。</string>
-    <string name="rv_welcome_subs_sub">Clash、sing-box 和分享链接列表</string>
-    <string name="rv_welcome_rules">规则</string>
-    <string name="rv_welcome_rules_sub">每个连接按规则经由节点或直连</string>
-    <string name="rv_welcome_vpn">VPN</string>
-    <string name="rv_welcome_vpn_sub">应用的流量经由 doona 的 VPN</string>
+    <string name="rv_welcome_line">添加订阅后即可开始使用。</string>
+    <string name="rv_welcome_core">自研内核</string>
+    <string name="rv_welcome_core_sub">支持 Clash、sing-box 和分享链接</string>
+    <string name="rv_welcome_split">TCP、UDP 各选节点</string>
+    <string name="rv_welcome_split_sub">规则决定每个连接经由哪个节点或直连</string>
+    <string name="rv_welcome_speed">10\u00A0Gbps 转发</string>
+    <string name="rv_welcome_speed_sub">应用的流量经由 doona 的 VPN</string>
     <string name="rv_no_node">没有可用的节点</string>
     <string name="rv_no_node_reason">所有节点的延迟测试都失败。请确认网络连接，或更新订阅。</string>
     <string name="rv_retest">重新测试</string>

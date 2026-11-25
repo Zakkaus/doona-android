@@ -294,6 +294,10 @@ class AppRvSubsShotTest {
     @Config(qualifiers = RV_EN)
     fun welcomeEn() = shot("welcome", english = true) { Welcome() }
 
+    @Test
+    @Config(qualifiers = ZH_CN)
+    fun welcomeZhCn() = shot("welcome-zhcn") { Welcome() }
+
     private fun shot(
         name: String,
         dark: Boolean = false,
@@ -503,6 +507,7 @@ class AppRvSubsShotTest {
 
         /** The same page with the delete-failure banner over its stats, 175.5 dp taller (its reason takes two lines). */
         const val WHOLE_DETAIL_BANNER = "+h1263dp"
+        const val ZH_CN = "zh-rCN-w412dp-h915dp-notnight-xhdpi"
 
         /** The settings' default interval. */
         val TWELVE_HOURS = MutableStateFlow(12)

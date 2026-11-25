@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="rv_welcome_title">Welcome to doona</string>
-    <string name="rv_welcome_line">doona runs its own core, not another Clash client. TCP/UDP can each take their own node, at up to 10\u00A0Gbps.</string>
-    <string name="rv_welcome_subs_sub">Clash, sing-box and share-link lists</string>
-    <string name="rv_welcome_rules">Rules</string>
-    <string name="rv_welcome_rules_sub">Each connection goes through a node or direct</string>
-    <string name="rv_welcome_vpn">VPN</string>
-    <string name="rv_welcome_vpn_sub">Apps\' traffic goes through doona\'s VPN</string>
+    <string name="rv_welcome_line">Add a subscription to get started.</string>
+    <string name="rv_welcome_core">Its own core</string>
+    <string name="rv_welcome_core_sub">Clash, sing-box and share links</string>
+    <string name="rv_welcome_split">TCP and UDP each pick a node</string>
+    <string name="rv_welcome_split_sub">Rules pick a node or direct</string>
+    <string name="rv_welcome_speed">10\u00A0Gbps forwarding</string>
+    <string name="rv_welcome_speed_sub">Apps\' traffic via doona\'s VPN</string>
     <string name="rv_no_node">No node available</string>
     <string name="rv_no_node_reason">Every node failed its latency test. Check the network connection, or update the subscription.</string>
     <string name="rv_retest">Test again</string>
