@@ -26,6 +26,7 @@ import dev.doona.android.feature.permissions.PermissionPrompts
 import dev.doona.android.feature.permissions.PermissionStep
 import dev.doona.android.feature.permissions.PermissionViewModel
 import dev.doona.android.vpn.VpnLog
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.IOException
@@ -134,8 +135,9 @@ class MainActivity : ComponentActivity() {
 
     /**
      * While the activity is started, a connection that is up explains the notification permission, once ever: Android
-     * below 13 has none to ask for, and a granted one needs no asking. A settings file that cannot be read or written
-     * skips the question for that status instead of ending the app; the next status asks again.
+     * below 13 has none to ask for, and a granted one needs no asking. The user's answer is stored as soon as it is
+     * given. A settings file that cannot be read or written skips the question, or the store, instead of ending the app;
+     * the next status, or the next start, tries again.
      */
     private fun askNotifyOnceConnected() {
         val settings = AppSettings.get(application)
@@ -146,9 +148,9 @@ class MainActivity : ComponentActivity() {
         }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                engine.status.collect {
+                combine(engine.status, asks.unrecorded) { status, _ -> status is Status.Running }.collect { running ->
                     try {
-                        asks.onStatus(it is Status.Running, notify, settings::recordNotifyAsked)
+                        asks.onStatus(running, notify, settings::recordNotifyAsked)
                     } catch (e: IOException) {
                         VpnLog.warn("permissions: settings failed (${e.javaClass.simpleName})")
                     }

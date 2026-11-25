@@ -23,12 +23,15 @@ fun interface NotifyState {
  * two sentences ([PermissionSheet]), the VPN before the system's consent dialog, the notification once a connection is
  * up. Only a connection that needs the consent is explained, so a later 連線 with consent given connects at once; a
  * cancelled explanation asks nothing and shows again on the next 連線. The notification is asked once ever
- * ([NotifyState]): a refusal, in the explanation or in the system's dialog, does not come back.
+ * ([NotifyState]): a refusal, in the explanation or in the system's dialog, does not come back. It counts as asked once
+ * the user answers, in the explanation or in the system's dialog; [unrecorded] holds that answer until [onStatus] has
+ * stored it, so neither an activity that dies before the explanation shows nor one that dies before the store loses it.
  *
  * [showing] is the explanation on screen. [refused] is the last refusal in a system dialog, which 活動 tells
  * (`RvActivityNotice.ConsentDenied`, `NotifyDenied`) until the next connection starts or [clearRefusal]. A pending
  * request ([connect] to the consent's answer) is joined by a repeated tap or a redelivered intent. [showing] and the
- * pending request are saved with the activity, because a pending result is delivered to the recreated one.
+ * pending request are saved with the activity, because a pending result is delivered to the recreated one, and so are
+ * the notification's open dialog and its unrecorded answer.
  */
 class PermissionAsks(private val saved: SavedStateHandle) {
     val showing: StateFlow<Permission?> = saved.getStateFlow(KEY_SHOWING, null)
@@ -36,10 +39,20 @@ class PermissionAsks(private val saved: SavedStateHandle) {
     private val refusal = MutableStateFlow<Permission?>(null)
     val refused: StateFlow<Permission?> = refusal.asStateFlow()
 
+    /** The notification was answered and the answer is not stored yet; [onStatus] stores it, and retries until it can. */
+    val unrecorded: StateFlow<Boolean> = saved.getStateFlow(KEY_UNRECORDED, false)
+
     private var connecting: Boolean
         get() = saved[KEY_CONNECTING] ?: false
         set(value) {
             saved[KEY_CONNECTING] = value
+        }
+
+    /** The system's notification dialog is open: its answer comes back to this or a recreated activity. */
+    private var notifyOpen: Boolean
+        get() = saved[KEY_NOTIFY_OPEN] ?: false
+        set(value) {
+            saved[KEY_NOTIFY_OPEN] = value
         }
 
     /** 連線, from the UI or the app's own connect entry. [consentNeeded]: the system would show its consent dialog. */
@@ -60,6 +73,7 @@ class PermissionAsks(private val saved: SavedStateHandle) {
         }
 
         Permission.Notify -> {
+            notifyOpen = true
             saved[KEY_SHOWING] = null
             PermissionStep.AskNotify
         }
@@ -69,7 +83,11 @@ class PermissionAsks(private val saved: SavedStateHandle) {
 
     /** The explanation's other action, back, or a tap above it: nothing is asked, and a 連線 ends here. */
     fun dismiss() {
-        if (showing.value == Permission.Vpn) connecting = false
+        when (showing.value) {
+            Permission.Vpn -> connecting = false
+            Permission.Notify -> saved[KEY_UNRECORDED] = true
+            null -> Unit
+        }
         saved[KEY_SHOWING] = null
     }
 
@@ -83,18 +101,27 @@ class PermissionAsks(private val saved: SavedStateHandle) {
 
     /** The system's notification dialog answered. */
     fun notifyAnswered(granted: Boolean) {
+        notifyOpen = false
+        saved[KEY_UNRECORDED] = true
         if (!granted) refusal.value = Permission.Notify
     }
 
     /**
-     * Each status the activity sees while shown. Once a connection is [running], the notification is explained if it
-     * [NotifyState.needsAsking], and recorded as asked by [record] before the explanation shows, so it is asked once.
+     * Each status the activity sees while shown, and each new answer. An answer not yet stored is recorded as asked by
+     * [record] first; if that throws, it stays [unrecorded] and the next call tries again. Once a connection is
+     * [running], the notification is explained if it [NotifyState.needsAsking] and is not already on its way.
      */
     suspend fun onStatus(running: Boolean, notify: NotifyState, record: suspend () -> Unit) {
-        if (!running || showing.value != null || !notify.needsAsking()) return
-        record()
+        if (unrecorded.value) {
+            record()
+            saved[KEY_UNRECORDED] = false
+        }
+        if (!running || !free() || !notify.needsAsking() || !free()) return
         saved[KEY_SHOWING] = Permission.Notify
     }
+
+    /** Nothing is explained and the notification is neither asked nor waiting to be stored. */
+    private fun free() = showing.value == null && !notifyOpen && !unrecorded.value
 
     fun clearRefusal() {
         refusal.value = null
@@ -103,6 +130,8 @@ class PermissionAsks(private val saved: SavedStateHandle) {
     private companion object {
         const val KEY_SHOWING = "permission_showing"
         const val KEY_CONNECTING = "connecting"
+        const val KEY_NOTIFY_OPEN = "notify_open"
+        const val KEY_UNRECORDED = "notify_unrecorded"
     }
 }
 
