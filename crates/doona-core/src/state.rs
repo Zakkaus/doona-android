@@ -3,8 +3,6 @@
 //! Writes replace it atomically: a temp file is written and synced, then renamed over the old one.
 
 use crate::dto::{ErrorCode, Mode, RuleSourceSpec, SubscriptionFormat};
-use crate::rules::template;
-use crate::subscription::fetch;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs::{self, File};
@@ -30,8 +28,8 @@ pub struct State {
         skip_serializing_if = "Option::is_none"
     )]
     pub dns_upstreams: Option<Vec<std::net::SocketAddr>>,
-    /// Where Rule mode's rules come from; the template when absent or unreadable.
-    #[serde(default, deserialize_with = "rule_source")]
+    /// Where Rule mode's rules come from; the template when absent.
+    #[serde(default)]
     pub rule_source: RuleSourceSpec,
     #[serde(default)]
     pub subscriptions: Vec<StoredSubscription>,
@@ -83,23 +81,6 @@ fn dns_upstreams<'de, D: serde::Deserializer<'de>>(
     Ok(Some(servers.unwrap_or_default()))
 }
 
-/// A stored User-Agent. One the commands would refuse, which only a hand-edited file holds, reads
-/// as none, and the rest of the file stays usable.
-fn user_agent<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<String>, D::Error> {
-    let value = serde_json::Value::deserialize(d)?;
-    Ok(value.as_str().and_then(|a| fetch::user_agent(a).ok()))
-}
-
-/// A stored rule source. One this core cannot use, such as a later core's kind or template, reads
-/// as the default, and the rest of the file stays usable.
-fn rule_source<'de, D: serde::Deserializer<'de>>(d: D) -> Result<RuleSourceSpec, D::Error> {
-    let value = serde_json::Value::deserialize(d)?;
-    let spec = serde_json::from_value(value).ok();
-    Ok(spec
-        .filter(|RuleSourceSpec::Template { template, .. }| template == template::ID)
-        .unwrap_or_default())
-}
-
 impl Default for State {
     fn default() -> State {
         State {
@@ -142,7 +123,6 @@ pub struct StoredSubscription {
     pub document: Option<String>,
     /// The User-Agent its fetches send instead of the default, valid as `fetch::user_agent` takes
     /// it.
-    #[serde(deserialize_with = "user_agent")]
     pub user_agent: Option<String>,
 }
 
@@ -257,6 +237,7 @@ pub(crate) fn write_synced(path: &Path, bytes: &[u8]) -> io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::rules::template;
     use crate::testutil::TempDir;
 
     #[test]
@@ -329,24 +310,24 @@ mod tests {
     }
 
     #[test]
-    fn a_rule_source_this_core_cannot_use_reads_as_the_template_and_keeps_the_rest() {
+    fn a_rule_source_this_core_does_not_write_makes_the_file_unreadable() {
         let sub = r#"{"id":"s1","name":"a","url":"https://a.invalid/","format":"clash",
             "updatedAtEpochMs":5,"usedBytes":null,"totalBytes":null,"expiresAtEpochMs":null,
             "error":null,"links":[],"document":null,"userAgent":null}"#;
         for source in [
-            "",
             r#""ruleSource":{"kind":"subscription","subscriptionId":"s1","options":{}},"#,
-            r#""ruleSource":{"kind":"template","template":"later","options":{"blockQuic":true}},"#,
             r#""ruleSource":7,"#,
         ] {
             let dir = TempDir::new("state-rule-source");
             let text =
                 format!(r#"{{"stateVersion":1,"mode":"Rule",{source}"subscriptions":[{sub}]}}"#);
-            fs::write(dir.path().join(FILE), text).unwrap();
+            fs::write(dir.path().join(FILE), &text).unwrap();
             let (state, how) = Store::new(dir.path()).load().unwrap();
-            assert_eq!(how, Loaded::Read, "{source}");
-            assert_eq!(state.rule_source, RuleSourceSpec::default(), "{source}");
-            assert_eq!((state.mode, state.subscriptions.len()), (Mode::Rule, 1));
+            assert_eq!(
+                (how, state),
+                (Loaded::SetAside, State::default()),
+                "{source}"
+            );
         }
     }
 
@@ -397,37 +378,6 @@ mod tests {
             file["subscriptions"][1]["userAgent"],
             serde_json::Value::Null
         );
-    }
-
-    #[test]
-    fn a_user_agent_the_commands_would_refuse_reads_as_none_and_keeps_the_rest() {
-        let long = format!(r#""{}""#, "x".repeat(257));
-        for agent in [
-            r#""a\r\nX-Injected: 1""#,
-            r#""""#,
-            r#""   ""#,
-            r#""caf\u00e9""#,
-            long.as_str(),
-            "7",
-            "null",
-        ] {
-            let dir = TempDir::new("state-user-agent-unusable");
-            let text = format!(
-                r#"{{"stateVersion":1,"mode":"Direct","subscriptions":[{{"id":"s1","name":"a",
-                    "url":"https://a.invalid/","format":"clash","updatedAtEpochMs":5,
-                    "usedBytes":null,"totalBytes":null,"expiresAtEpochMs":null,"error":null,
-                    "links":[],"document":null,"userAgent":{agent}}}]}}"#
-            );
-            fs::write(dir.path().join(FILE), text).unwrap();
-            let (state, how) = Store::new(dir.path()).load().unwrap();
-            assert_eq!(how, Loaded::Read, "{agent}");
-            assert_eq!(state.mode, Mode::Direct);
-            let s1 = &state.subscriptions[0];
-            assert_eq!(
-                (s1.user_agent.as_deref(), s1.updated_at_epoch_ms),
-                (None, 5)
-            );
-        }
     }
 
     #[test]
