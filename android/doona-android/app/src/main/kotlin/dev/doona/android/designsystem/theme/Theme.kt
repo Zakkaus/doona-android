@@ -38,7 +38,6 @@ object DoonaTheme {
     val chrome = DoonaChrome
     val elevation = DoonaElevation
     val glass = DoonaGlass
-    val motion = DoonaMotion
 
     val insets: WindowInsets
         @Composable

@@ -137,8 +137,31 @@ internal object RvMotion {
     const val MENU_OUT_MS = 233
     const val MENU_FROM = 0.8f
 
-    /** The switch's thumb, as Material 3's (100 ms). */
-    const val SWITCH_MS = 100
+    /**
+     * Predictive back (Material 3's full-screen preview): while the finger moves, the page on top shrinks toward
+     * [BACK_SCALE] and moves away from the edge the swipe started at by a twentieth of its width less [backMargin], the
+     * page under it already in place; it fades only in the last [BACK_FADE] of the gesture's travel. [BACK_MS] is the
+     * whole move's length, which the finger seeks; once the system commits, the rest runs on, and a cancel runs it back.
+     */
+    const val BACK_MS = 300
+    const val BACK_SCALE = 0.9f
+    const val BACK_FADE = 0.35f
+    val backMargin = 8.dp
+
+    /**
+     * A row coming into a list or leaving it (an import, a delete, 查看全部) grows or shrinks to its height and fades in
+     * [ITEM_MS]; rows arriving together start [STAGGER_MS] apart, [STAGGER_ROWS] at most, so a long list still lands at once.
+     */
+    const val ITEM_MS = 300
+    const val STAGGER_ROWS = 4
+
+    /** A live number (a rate, a latency) rolls to its new value: up when it rose, down when it fell, in [ROLL_MS], by [ROLL_SHARE] of its height. */
+    const val ROLL_MS = 250
+    const val ROLL_SHARE = 0.5f
+
+    /** A drag dismisses a sheet past this share of its height, or when it lets go faster than [sheetFling] a second. */
+    const val SHEET_DISMISS_SHARE = 0.33f
+    val sheetFling = 1_000.dp
 
     /** Pull-down: the reveal (measured about 700 ms) and the way back (about 400 ms). */
     const val REVEAL_MS = 700
@@ -169,6 +192,9 @@ internal object RvMotion {
     const val BUSY_MS = 1_000
     const val BUSY_STILL = 0.5f
 
+    /** The old shell's busy spinner turns once in this period. */
+    const val SPINNER_MS = 1_000
+
     /** A long press opens after about 500 ms (measured), or later if the user set a longer delay. */
     const val LONG_PRESS_MS = 500L
 
@@ -198,6 +224,9 @@ internal object RvMotion {
     val reorderEdge = 64.dp
     val reorderScroll = 1_200.dp
 
+    /** A spring moving something in pixels is at rest within half a pixel. */
+    const val REST_PX = 0.5f
+
     /** A critically damped spring is within 1 % of its travel after this many radians (the root of (1 + x)e^-x = 0.01). */
     const val SETTLED_RADIANS = 6.64f
 
@@ -211,6 +240,21 @@ internal object RvMotion {
     /** What leaves: accelerating away (the menu's and the sheet's close). */
     val Accelerate: Easing = CubicBezierEasing(0.3f, 0f, 1f, 1f)
     val Standard: Easing = FastOutSlowInEasing
+
+    /** What arrives and settles (a row coming in, a number rolling): Material 3's emphasized decelerate. */
+    val Emphasized: Easing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
+}
+
+/**
+ * Material 3's spring speeds (md.sys.motion.spring, the standard scheme's stiffness): [spatial] for what moves or
+ * changes size, [effects] for colour and opacity. Fast for small parts (a switch, a button), Default for what covers
+ * part of the screen (a sheet), Slow for the whole screen. Every spring here is critically damped: Revolut overshoots
+ * nowhere (UX2, "no overshoot anywhere").
+ */
+internal enum class RvSpring(val spatial: Float, val effects: Float) {
+    Fast(1_400f, 3_800f),
+    Default(700f, 1_600f),
+    Slow(300f, 800f),
 }
 
 /**
@@ -232,6 +276,12 @@ internal class RvMotionScale(val instant: Boolean) {
         val omega = RvMotion.SETTLED_RADIANS * MS_PER_SECOND / ms
         return spring(Spring.DampingRatioNoBouncy, omega * omega, threshold)
     }
+
+    /** [RvSpring]'s spring for something that moves or changes size. */
+    fun <T> spatial(speed: RvSpring, threshold: T? = null): FiniteAnimationSpec<T> = if (instant) snap() else spring(Spring.DampingRatioNoBouncy, speed.spatial, threshold)
+
+    /** [RvSpring]'s spring for a colour or an opacity. */
+    fun <T> effects(speed: RvSpring): FiniteAnimationSpec<T> = if (instant) snap() else spring(Spring.DampingRatioNoBouncy, speed.effects)
 
     private companion object {
         const val MS_PER_SECOND = 1_000f
@@ -423,9 +473,10 @@ internal fun rememberRvGlide(values: List<Float>): RvGlide {
 /**
  * Moves the element to a new place in its parent over [RvMotion.MOVE_MS] instead of jumping, as a list re-sorted by
  * latency moves its rows (the item placement animation of a lazy list, for a plain column). Key the element by its item.
+ * While not [animate] (rows above it growing or shrinking, which already move it smoothly) it follows at once.
  */
 @Composable
-internal fun Modifier.rvMoves(): Modifier {
+internal fun Modifier.rvMoves(animate: Boolean = true): Modifier {
     val motion = Rv.motion
     val scope = rememberCoroutineScope()
     val offset = remember { Animatable(IntOffset.Zero, IntOffset.VectorConverter) }
@@ -434,7 +485,7 @@ internal fun Modifier.rvMoves(): Modifier {
         val now = coordinates.positionInParent().round()
         val before = at[0]
         at[0] = now
-        if (before != null && before != now && !motion.instant) {
+        if (before != null && before != now && animate && !motion.instant) {
             scope.launch {
                 offset.snapTo(offset.value + before - now)
                 offset.animateTo(IntOffset.Zero, motion.tween(RvMotion.MOVE_MS))

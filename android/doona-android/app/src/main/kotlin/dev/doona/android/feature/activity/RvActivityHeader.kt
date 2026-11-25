@@ -49,6 +49,7 @@ import dev.doona.android.designsystem.rv.RvHero
 import dev.doona.android.designsystem.rv.RvHeroSwipe
 import dev.doona.android.designsystem.rv.RvInline
 import dev.doona.android.designsystem.rv.RvMotion
+import dev.doona.android.designsystem.rv.RvRoll
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSkeletonFade
 import dev.doona.android.designsystem.rv.RvSkeletonHero
@@ -129,18 +130,17 @@ private fun HeroFigure(ticking: State<RvActivityState>, mode: RvRouteMode, modif
 private fun HeroLines(ticking: State<RvActivityState>, mode: RvRouteMode) {
     val state = ticking.value
     val format = rememberRvFormat()
-    val fade = Rv.motion.tween<Float>(RvMotion.FADE_MS)
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         RvFadeThrough("${stringResource(state.status.label)} · ${stringResource(mode.label)}", "caption", alignment = Alignment.TopCenter) { RvText(it, Rv.type.caption) }
         Spacer(Modifier.height(RvSpace.tight))
         val down = format.rate(state.downRate.toDouble())
-        Crossfade(down.number to down.unit, animationSpec = fade, label = "rate") { (number, unit) ->
+        RvRoll(down.number to down.unit, state.downRate.toDouble()) { (number, unit) ->
             val spoken = stringResource(R.string.rv_a11y_download, "$number $unit")
             RvHero(RvAmount(number, unit), Modifier.semantics { contentDescription = spoken })
         }
         Spacer(Modifier.height(RvSpace.subGap))
         // The hero is the download rate, so the line under it carries the other direction only (N-10).
-        Crossfade(format.rate(state.upRate.toDouble()).toString(), animationSpec = fade, label = "up") {
+        RvRoll(format.rate(state.upRate.toDouble()).toString(), state.upRate.toDouble()) {
             RvInline(R.drawable.rv_sym_arrow_upward, it, Rv.colors.textSecondary, Rv.type.sub, description = stringResource(R.string.rv_a11y_upload, it))
         }
     }

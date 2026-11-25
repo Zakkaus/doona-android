@@ -45,9 +45,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.max
+import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.designsystem.theme.DoonaElevation
 import dev.doona.android.designsystem.theme.DoonaGlassTint
-import dev.doona.android.designsystem.theme.DoonaMotion
 import dev.doona.android.designsystem.theme.DoonaTheme
 
 /** A destination of the floating nav: its filled [icon] and its [label]. */
@@ -71,7 +71,7 @@ fun DoonaFloatingNav(
     insets: WindowInsets = DoonaTheme.insets,
 ) {
     val chrome = DoonaTheme.chrome
-    val shrink by animateFloatAsState(if (collapsed) 1f else 0f, tween(DoonaMotion.NAV_COLLAPSE_MS), label = "nav")
+    val shrink by animateFloatAsState(if (collapsed) 1f else 0f, tween(RvMotion.NAV_MS), label = "nav")
     BoxWithConstraints(modifier.fillMaxWidth().padding(bottom = navBottom(insets)), contentAlignment = Alignment.BottomCenter) {
         val width = lerp(maxWidth - chrome.navInset * 2, chrome.navCollapsedWidth, shrink)
         val height = lerp(chrome.navHeight, chrome.navCollapsedHeight, shrink)

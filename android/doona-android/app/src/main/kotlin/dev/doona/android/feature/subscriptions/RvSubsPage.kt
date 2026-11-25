@@ -31,6 +31,7 @@ import dev.doona.android.designsystem.rv.RvGlass
 import dev.doona.android.designsystem.rv.RvGlassButton
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvIconDisc
+import dev.doona.android.designsystem.rv.RvItems
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvLongPressMenu
 import dev.doona.android.designsystem.rv.RvMenuItem
@@ -141,7 +142,7 @@ internal fun RvSubsPage(
                 )
             } else {
                 RvSkeletonCards(loading, { SubsSkeleton(state.subscriptions) }) {
-                    state.subscriptions.forEach { sub ->
+                    RvItems(state.subscriptions, { it.id }) { sub ->
                         SubscriptionCard(sub, actions, state.nowEpochMs, if (removable) RvRowRemove { actions.delete(sub.id) } else null)
                     }
                     if (removable) RvCard { RvAddRow(stringResource(R.string.rv_add_subscription), actions.add) }

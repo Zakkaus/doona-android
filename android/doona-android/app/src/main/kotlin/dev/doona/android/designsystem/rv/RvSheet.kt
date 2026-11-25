@@ -70,16 +70,13 @@ internal object RvSheetSize {
 
     /** From the sheet's side to the page's edge line: the gutter less the sheet's own inset. */
     val edge = RvSpace.gutter - inset
-
-    /** A drag dismisses the sheet past this share of its height, or when it lets go faster than [fling] a second. */
-    const val DISMISS_SHARE = 0.33f
-    val fling = 1_000.dp
 }
 
 /**
  * A modal sheet while [visible]: its own window, so a screen reader stays inside it, with the scrim drawn here (the
  * platform's dim is off). It rises in [RvMotion.MENU_MS] and falls in [RvMotion.MENU_OUT_MS] (the menu's measured
- * timings; Revolut's sheet was not timed). Back, a tap on the scrim, or a drag down past a third calls [onDismiss].
+ * timings; Revolut's sheet was not timed). Back, a tap on the scrim, or a drag down past [RvMotion.SHEET_DISMISS_SHARE]
+ * or let go faster than [RvMotion.sheetFling] calls [onDismiss].
  * [label] names the pane for a screen reader.
  */
 @Composable
@@ -101,15 +98,17 @@ internal fun RvSheet(visible: Boolean, onDismiss: () -> Unit, label: String, con
 
 /**
  * The sheet's scrim and its card at the bottom, [progress] of the way in (0 under the screen's edge, 1 in place); a tap
- * on the scrim calls [onDismiss], and the card follows a drag down. [RvSheet] draws it in its window; a golden draws it
- * over the page at 1.
+ * on the scrim calls [onDismiss]. The card follows a drag down and the scrim lightens with it, as far as the card has
+ * gone of its height; let go, it is dismissed or springs back ([RvSpring.Default]) from the finger's speed. [RvSheet]
+ * draws it in its window; a golden draws it over the page at 1.
  */
 @Composable
 internal fun RvSheetLayout(progress: () -> Float, onDismiss: () -> Unit, label: String, content: @Composable ColumnScope.() -> Unit) {
     val density = LocalDensity.current
     var drag by remember { mutableFloatStateOf(0f) }
     var height by remember { mutableFloatStateOf(0f) }
-    val fling = with(density) { RvSheetSize.fling.toPx() }
+    val motion = Rv.motion
+    val fling = with(density) { RvMotion.sheetFling.toPx() }
     val bottom = with(density) { RvSheetSize.bottom.toPx() }
     val drags = rememberDraggableState { drag = (drag + it).coerceAtLeast(0f) }
     // What the scrim does is close the sheet, whatever the sheet is about: it must not read as its title (S2).
@@ -118,7 +117,7 @@ internal fun RvSheetLayout(progress: () -> Float, onDismiss: () -> Unit, label: 
         Box(
             Modifier
                 .fillMaxSize()
-                .graphicsLayer { alpha = progress() }
+                .graphicsLayer { alpha = progress() * (1f - if (height > 0f) (drag / height).coerceAtMost(1f) else 0f) }
                 .background(Rv.colors.sheetScrim)
                 // A tap outside the card, or a screen reader's click on the scrim, dismisses the sheet; a keyboard or a
                 // D-pad never stops here, so Tab starts on the sheet's own controls and back closes it. The
@@ -138,7 +137,8 @@ internal fun RvSheetLayout(progress: () -> Float, onDismiss: () -> Unit, label: 
                     drags,
                     Orientation.Vertical,
                     onDragStopped = { velocity ->
-                        if (drag > height * RvSheetSize.DISMISS_SHARE || velocity > fling) onDismiss() else animate(drag, 0f) { value, _ -> drag = value }
+                        val away = velocity > fling || (drag > height * RvMotion.SHEET_DISMISS_SHARE && velocity > -fling)
+                        if (away) onDismiss() else animate(drag, 0f, velocity, motion.spatial(RvSpring.Default, RvMotion.REST_PX)) { value, _ -> drag = value }
                     },
                 )
                 .semantics { paneTitle = label },

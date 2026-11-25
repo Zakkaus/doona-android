@@ -1,7 +1,6 @@
 package dev.doona.android.designsystem.rv
 
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.Canvas
@@ -135,8 +134,8 @@ internal fun RvSparkTile(
                 }
             }
             Spacer(Modifier.height(RvSpace.tight))
-            // Each second's rate cross-fades in instead of jumping.
-            Crossfade(figure.whole to figure.unit, animationSpec = Rv.motion.tween(RvMotion.FADE_MS), label = "tile") { (whole, unit) ->
+            // Each second's rate rolls in instead of jumping.
+            RvRoll(figure.whole to figure.unit, values.lastOrNull()?.toDouble() ?: 0.0) { (whole, unit) ->
                 RvFigureText(RvFigure(whole, unit), type.tileValue, type.tileUnit, widest = widest)
             }
             RvText(note, type.tileCaption, color = Rv.colors.textSecondary, maxLines = Int.MAX_VALUE)

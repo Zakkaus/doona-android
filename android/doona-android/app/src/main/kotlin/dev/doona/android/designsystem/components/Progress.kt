@@ -20,7 +20,7 @@ import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
-import dev.doona.android.designsystem.theme.DoonaMotion
+import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.designsystem.theme.DoonaTheme
 
 /** Where a [DoonaProgress] sits: [Inline] is the size of an inline icon, on a line of text; [Small] is the touch icon's. */
@@ -43,13 +43,13 @@ fun DoonaProgress(modifier: Modifier = Modifier, size: DoonaProgressSize = Doona
 
 /**
  * The spinner in any [color] and [box] size, which a button's busy state uses in its label's colour: a round-ended arc
- * of three quarters of a turn, drawn with the spinner stroke and turning once in [DoonaMotion.SPINNER_TURN_MS]. A still frame, such as a
+ * of three quarters of a turn, drawn with the spinner stroke and turning once in [RvMotion.SPINNER_MS]. A still frame, such as a
  * screenshot, shows that arc where Material's indicator would show a dot.
  */
 @Composable
 internal fun Spinner(color: Color, box: Dp, modifier: Modifier = Modifier) {
     val stroke = DoonaTheme.size.spinnerStroke
-    val turn by rememberInfiniteTransition(label = "spinner").animateFloat(0f, FULL_TURN, infiniteRepeatable(tween(DoonaMotion.SPINNER_TURN_MS, easing = LinearEasing), RepeatMode.Restart), label = "turn")
+    val turn by rememberInfiniteTransition(label = "spinner").animateFloat(0f, FULL_TURN, infiniteRepeatable(tween(RvMotion.SPINNER_MS, easing = LinearEasing), RepeatMode.Restart), label = "turn")
     Canvas(modifier.size(box)) {
         val width = stroke.toPx()
         drawArc(

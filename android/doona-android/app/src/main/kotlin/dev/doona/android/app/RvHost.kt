@@ -38,7 +38,8 @@ import dev.doona.android.designsystem.rv.RvShared
  * such as one another version of the app saved, falls back to its tab's root ([keepRouted]) before anything shows:
  * the host composes nothing until an effect, outside composition, has cut the stack back once.
  *
- * Back pops the top page, following the finger while a predictive back gesture runs; a cancelled gesture runs the
+ * Back pops the top page; while a predictive back gesture runs the page shrinks and moves with the finger
+ * ([rvSceneBack]), and a cancelled gesture runs the
  * page back and pops nothing, a committed one pops once: a second back while the popped page still leaves pops
  * nothing, whether that page had been shown or was still coming in, as it is the one back would pop
  * ([RvTabMoves.shown]); a page pushed while it leaves is popped. On a tab root back pops to 活動, which is always
@@ -52,6 +53,7 @@ import dev.doona.android.designsystem.rv.RvShared
 internal fun RvNavHost(backStack: MutableList<NavKey>, modifier: Modifier = Modifier, entries: EntryProviderScope<NavKey>.() -> Unit) {
     val motion = Rv.motion
     val shift = with(LocalDensity.current) { RvMotion.axisShift.roundToPx() }
+    val margin = with(LocalDensity.current) { RvMotion.backMargin.roundToPx() }
     val provider = entryProvider(fallback = ::rvUnrouted, builder = entries)
     val routed: (NavKey) -> Boolean = { key -> RV_UNROUTED !in provider(key).metadata }
     // Checked once per stack, when it is created or restored; a key pushed later without an entry still fails.
@@ -75,7 +77,7 @@ internal fun RvNavHost(backStack: MutableList<NavKey>, modifier: Modifier = Modi
                 sharedTransitionScope = this,
                 transitionSpec = { rvSceneMove(motion, shift, forward = true) },
                 popTransitionSpec = { rvSceneMove(motion, shift, forward = false) },
-                predictivePopTransitionSpec = { rvSceneMove(motion, shift, forward = false) },
+                predictivePopTransitionSpec = { edge -> rvSceneBack(motion, shift, margin, edge) },
                 entryProvider = { key -> rvKeyed(key, provider(key)) },
             )
         }
