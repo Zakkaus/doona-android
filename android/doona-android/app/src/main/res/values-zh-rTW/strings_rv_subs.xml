@@ -60,6 +60,9 @@
     <plurals name="rv_addnode_skip_other">
         <item quantity="other">第 %2$s 行無法讀取，不會新增。</item>
     </plurals>
+    <plurals name="rv_addnode_skip_unread">
+        <item quantity="other">只讀取前 %2$d 行，其餘 %1$d 行不會新增。</item>
+    </plurals>
     <plurals name="rv_addnode_added">
         <item quantity="other">已新增 %1$d 個節點</item>
     </plurals>

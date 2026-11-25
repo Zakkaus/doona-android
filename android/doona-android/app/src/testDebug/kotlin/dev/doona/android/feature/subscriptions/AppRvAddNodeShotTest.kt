@@ -24,6 +24,7 @@ import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.rvShot
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
@@ -254,6 +255,36 @@ class AppRvAddNodeShotTest {
     @Config(qualifiers = DELETE_FAILED_EN)
     fun deleteFailedEn() = page("node-delete-failed", { confirmDelete() }, english = true) { Subs { seeded(fails = true) } }
 
+    // More lines than one add takes: the count, and how many lines past the cap are not read (round 2, fix 7).
+    @Test
+    @Config(qualifiers = ZH)
+    fun unreadLight() = sheet("addnode-unread", { paste(OVER_CAP) })
+
+    @Test
+    @Config(qualifiers = ZH)
+    fun unreadDark() = sheet("addnode-unread", { paste(OVER_CAP) }, dark = true)
+
+    @Test
+    @Config(qualifiers = ZH_927)
+    fun unreadFs200() = sheet("addnode-unread", { paste(OVER_CAP) }, fontScale = RV_FS200)
+
+    @Test
+    @Config(qualifiers = EN)
+    fun unreadEn() = sheet("addnode-unread", { paste(OVER_CAP) }, english = true)
+
+    // 新增 tapped while the core takes its time: the field and 新增 are held until it answers (round 2, fix 9).
+    @Test
+    @Config(qualifiers = ZH)
+    fun addingLight() = sheet("addnode-adding", { add(TOKYO) }, build = ::slow)
+
+    @Test
+    @Config(qualifiers = ZH)
+    fun addingDark() = sheet("addnode-adding", { add(TOKYO) }, dark = true, build = ::slow)
+
+    @Test
+    @Config(qualifiers = EN)
+    fun addingEn() = sheet("addnode-adding", { add(TOKYO) }, english = true, build = ::slow)
+
     /** A whole page: its own window, every row inside it. */
     private fun page(
         name: String,
@@ -350,6 +381,9 @@ class AppRvAddNodeShotTest {
 
     private fun failing() = engine().also { failingEngine = it }
 
+    /** An add that never answers. */
+    private fun slow() = engine().apply { addGate = CompletableDeferred() }
+
     /** The add refuses Singapore although the preview took it. */
     private fun refusing() = engine().apply { refused += SINGAPORE }
 
@@ -385,6 +419,9 @@ class AppRvAddNodeShotTest {
 
         /** samples5 round 2's paste: Shadowsocks 東京 03, Trojan 新加坡 05, VLESS 法蘭克福 01, then a line that is no link. */
         const val MANY = "ss://YWVzLTI1Ni1nY206c2FtcGxlLXBhc3M@198.51.100.7:8388#%E6%9D%B1%E4%BA%AC%2003\n$SINGAPORE\n$FRANKFURT\n$NOT_A_LINK"
+
+        /** Two lines past the cap, every one a link of its own. */
+        val OVER_CAP = (1..ADD_NODE_LINES + 2).joinToString("\n") { "vless://b831381d-6324-4d53-ad4f-8cda48b30811@203.0.113.24:${1000 + it}?security=tls#%E6%9D%B1%E4%BA%AC%20$it" }
 
         /** The regions the core reads from these names. */
         val REGIONS = mapOf("東京" to "JP", "新加坡" to "SG", "法蘭克福" to "DE")

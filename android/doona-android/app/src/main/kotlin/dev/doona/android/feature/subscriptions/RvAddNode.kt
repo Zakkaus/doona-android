@@ -10,6 +10,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RV_NODE_LINK_PLACEHOLDER
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvConfirmSheet
 import dev.doona.android.designsystem.rv.RvIconDisc
@@ -38,8 +39,8 @@ internal class RvInlineActions(
 /**
  * The card under the subscriptions (decision 2026-11-25 23:52, panel s1125f-addnode-pages). Before any node is added, one
  * row: 新增節點 over what it takes, which opens the sheet. Once one is, the card is the 組態內 source: the link disc over
- * its node count, its nodes (a tap or the info mark opens the node's page; a long press opens the node menu, with
- * 刪除節點), then 新增節點.
+ * its node count, its nodes (a tap, the info mark or the menu's 詳情 opens the node's page, 節點's `NodeKey` route, which
+ * reads the same catalog; a long press opens the node menu, with 刪除節點), then 新增節點.
  */
 @Composable
 internal fun RvInlineCard(nodes: List<RvNode>, actions: RvInlineActions) {
@@ -83,9 +84,10 @@ internal fun RvAddNodeSheet(sheet: RvAddNodeSheet?, actions: RvInlineActions) {
                     sheet?.text.orEmpty(),
                     actions.edit,
                     stringResource(R.string.rv_addnode_link),
-                    placeholder = LINK_PLACEHOLDER,
+                    placeholder = RV_NODE_LINK_PLACEHOLDER,
                     supporting = supporting(check),
                     error = error(check),
+                    enabled = sheet?.adding != true,
                     keyboard = KeyboardOptions(keyboardType = KeyboardType.Uri),
                     lines = LINK_LINES,
                 )
@@ -106,19 +108,20 @@ private fun supporting(check: RvAddNodeCheck): String? = when (check) {
 @Composable
 private fun error(check: RvAddNodeCheck): String? = when (check) {
     is RvAddNodeCheck.Refused ->
-        if (check.skipped.duplicate.isEmpty() && check.skipped.other.isEmpty()) stringResource(R.string.rv_addnode_invalid) else sentences(skippedLines(check.skipped))
+        if (check.skipped.duplicate.isEmpty() && check.skipped.other.isEmpty() && check.skipped.unread == 0) stringResource(R.string.rv_addnode_invalid) else sentences(skippedLines(check.skipped))
 
     is RvAddNodeCheck.Failed -> stringResource(check.code.messageRes())
 
     else -> null
 }
 
-/** One sentence per kind of skipped line: not a share link, already in 組態內, refused for another reason. */
+/** One sentence per kind of skipped line: not a share link, already in 組態內, refused for another reason, past the cap. */
 @Composable
 private fun skippedLines(skipped: RvSkipped): List<String> = listOfNotNull(
     lines(R.plurals.rv_addnode_skip_link, skipped.notLink),
     lines(R.plurals.rv_addnode_skip_duplicate, skipped.duplicate),
     lines(R.plurals.rv_addnode_skip_other, skipped.other),
+    if (skipped.unread == 0) null else pluralStringResource(R.plurals.rv_addnode_skip_unread, skipped.unread, skipped.unread, ADD_NODE_LINES),
 )
 
 @Composable
@@ -136,16 +139,16 @@ private fun listed(parts: List<String>): String {
 private fun sentences(parts: List<String>): String = parts.joinToString(if (LocalConfiguration.current.locales[0].language == "zh") "" else " ")
 
 /**
- * After an add: how many nodes it added and which groups took them, with 查看策略群組; Info when every line was added, a
- * warning that also counts the lines it did not add when some were not (the sheet said why before 新增; the reason keeps
- * to the groups, so it stays within the banner's lines at 2.0×).
+ * After an add: how many nodes it added and which groups took them, with 查看策略群組; Info when every line was added, an
+ * error that also counts the lines it did not add when some were not, as an action that partly failed (the sheet said why
+ * before 新增; the reason keeps to the groups, so it stays within the banner's lines at 2.0×).
  */
 @Composable
 internal fun rvAddedBanner(added: RvAddedNodes, onViewGroups: () -> Unit): RvNotice {
     val names = added.groups.map { groupLabel(it) }
     val skipped = added.skipped.count
     return RvNotice(
-        if (skipped == 0) RvNoticeKind.Info else RvNoticeKind.Warning,
+        if (skipped == 0) RvNoticeKind.Info else RvNoticeKind.Error,
         if (skipped == 0) {
             pluralStringResource(R.plurals.rv_addnode_added, added.count, added.count)
         } else {
@@ -194,5 +197,3 @@ internal fun RvNodeDeleteSheet(node: RvNode?, actions: RvInlineActions) = RvConf
 
 /** The link field's lines before it scrolls. */
 private const val LINK_LINES = 4
-
-private const val LINK_PLACEHOLDER = "vless://…"

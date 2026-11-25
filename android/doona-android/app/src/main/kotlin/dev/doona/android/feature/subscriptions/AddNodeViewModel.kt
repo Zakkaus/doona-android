@@ -56,14 +56,26 @@ internal class AddNodeViewModel(private val engine: Engine, private val clipboar
     val uiState: StateFlow<RvInlineState> = combine(nodes, local) { nodes, local -> RvInlineState(nodes, local.sheet, local.added, local.deletingId, local.deleteFailed) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), RvInlineState())
 
+    /** Which sheet is open: each [open] starts a new one, so an answer meant for a sheet since closed finds it gone. */
+    private var opened = 0
+
     /** Opens the sheet empty, asking only whether the clipboard may hold a link. A new add clears the last one's banner. */
-    fun open() = local.update { it.copy(sheet = RvAddNodeSheet(clipboard = clipboard.mayHoldText()), added = null, deleteFailed = null) }
+    fun open() {
+        previewing?.cancel()
+        opened++
+        local.update { it.copy(sheet = RvAddNodeSheet(clipboard = clipboard.mayHoldText()), added = null, deleteFailed = null) }
+    }
 
-    /** Closes the sheet; an add already sent still ends. */
-    fun close() = local.update { it.copy(sheet = null) }
+    /** Closes the sheet; an add already sent still ends, and only its banner shows. */
+    fun close() {
+        previewing?.cancel()
+        opened++
+        local.update { it.copy(sheet = null) }
+    }
 
-    /** The field as typed, then what the core says about it. */
+    /** The field as typed, then what the core says about it; left as it is while an add runs. */
     fun edit(text: String) {
+        if (local.value.sheet?.adding != false) return
         local.update { it.copy(sheet = it.sheet?.copy(text = text, check = RvAddNodeCheck.None)) }
         preview(text)
     }
@@ -80,20 +92,25 @@ internal class AddNodeViewModel(private val engine: Engine, private val clipboar
     fun add() {
         val sheet = local.value.sheet?.takeIf { it.check.addable && !it.adding } ?: return
         val lines = addNodeLines(sheet.text)
-        local.update { it.copy(sheet = it.sheet?.copy(adding = true)) }
+        val mine = opened
+
+        // The answer goes to the sheet that sent it; a sheet opened since is another add's.
+        fun sheetUpdate(change: (RvAddNodeSheet) -> RvAddNodeSheet?) = local.update { if (opened == mine) it.copy(sheet = it.sheet?.let(change)) else it }
+        sheetUpdate { it.copy(adding = true) }
         viewModelScope.launch {
             val results = engine.addStaticNodes(drafts(lines)).getOrElse { error ->
-                return@launch local.update { it.copy(sheet = it.sheet?.copy(adding = false, check = RvAddNodeCheck.Failed(error.errorCode()))) }
+                return@launch sheetUpdate { it.copy(adding = false, check = RvAddNodeCheck.Failed(error.errorCode())) }
             }
             val (taken, skipped) = sortRows(lines, results)
-            if (taken.isEmpty()) return@launch local.update { it.copy(sheet = it.sheet?.copy(adding = false, check = RvAddNodeCheck.Refused(skipped))) }
+            if (taken.isEmpty()) return@launch sheetUpdate { it.copy(adding = false, check = RvAddNodeCheck.Refused(skipped)) }
             // The lines the sheet already said it would skip are no news: only rows the preview took and the add refused count.
             val known = (sheet.check as? RvAddNodeCheck.Many)?.skipped ?: RvSkipped()
             val refused = RvSkipped(skipped.notLink - known.notLink.toSet(), skipped.duplicate - known.duplicate.toSet(), skipped.other - known.other.toSet())
             val ids = taken.mapTo(HashSet()) { it.id }
             val catalog = withTimeoutOrNull(CATALOG_MS) { engine.catalog.first { holds(it, ids) } } ?: engine.catalog.value
             val groups = catalog?.let { joinedGroups(it, ids) }.orEmpty()
-            local.update { it.copy(sheet = null, added = RvAddedNodes(taken.size, groups, refused)) }
+            // The nodes are in either way: the banner says so, but only this add's own sheet closes.
+            local.update { it.copy(sheet = if (opened == mine) null else it.sheet, added = RvAddedNodes(taken.size, groups, refused)) }
         }
     }
 
@@ -119,12 +136,13 @@ internal class AddNodeViewModel(private val engine: Engine, private val clipboar
     private fun preview(text: String) {
         previewing?.cancel()
         val lines = addNodeLines(text)
+        val unread = addNodeUnread(text)
         val links = lines.filter(AddNodeLine::linkLike)
         previewing = viewModelScope.launch {
             val check = if (links.isEmpty()) {
-                addNodeCheck(lines, emptyList())
+                addNodeCheck(lines, emptyList(), unread)
             } else {
-                engine.previewStaticNodes(drafts(lines)).fold({ addNodeCheck(lines, it) }, { RvAddNodeCheck.Failed(it.errorCode()) })
+                engine.previewStaticNodes(drafts(lines)).fold({ addNodeCheck(lines, it, unread) }, { RvAddNodeCheck.Failed(it.errorCode()) })
             }
             local.update { state -> state.copy(sheet = state.sheet?.takeIf { it.text == text }?.copy(check = check) ?: state.sheet) }
         }

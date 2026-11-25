@@ -133,7 +133,7 @@ internal object RvControlSize {
     val fieldRing = 1.dp
     val fieldTrailing = 4.dp
 
-    /** A field of several lines: its text this far from its top and bottom, half of [field] less the 26 dp field line. */
+    /** A field of several lines: its text this far from its top and bottom, so one line sits as in [field]: (52 − 26) / 2 for its 26 dp line. */
     val fieldInset = 13.dp
 }
 
@@ -586,3 +586,6 @@ internal fun RvRadio(selected: Boolean, modifier: Modifier = Modifier) {
 
 /** A link field's placeholder: the scheme a subscription link starts with. */
 internal const val RV_LINK_PLACEHOLDER = "https://"
+
+/** A node link field's placeholder: the scheme most share links start with. */
+internal const val RV_NODE_LINK_PLACEHOLDER = "vless://…"

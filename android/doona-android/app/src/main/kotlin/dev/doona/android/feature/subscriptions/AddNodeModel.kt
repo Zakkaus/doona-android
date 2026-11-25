@@ -21,12 +21,25 @@ internal data class AddNodeLine(val line: Int, val link: String) {
 
 /** The field's lines that hold something, at most [ADD_NODE_LINES] of them, as doona web's batch takes them. */
 internal fun addNodeLines(text: String): List<AddNodeLine> =
-    text.lines().mapIndexedNotNull { i, raw -> raw.trim().takeIf { it.isNotEmpty() }?.let { AddNodeLine(i + 1, it) } }.take(ADD_NODE_LINES)
+    filledLines(text).take(ADD_NODE_LINES)
 
-/** The lines that will not be added, by why: not a share link, already in 組態內, or refused by the core for another reason. */
+/** How many lines that hold something come after the first [ADD_NODE_LINES]: the add does not read them. */
+internal fun addNodeUnread(text: String): Int = (filledLines(text).size - ADD_NODE_LINES).coerceAtLeast(0)
+
+private fun filledLines(text: String): List<AddNodeLine> =
+    text.lines().mapIndexedNotNull { i, raw -> raw.trim().takeIf { it.isNotEmpty() }?.let { AddNodeLine(i + 1, it) } }
+
+/**
+ * The lines that will not be added, by why: not a share link, already in 組態內, refused by the core for another reason,
+ * and how many past the first [ADD_NODE_LINES] were not read ([unread]; [count] leaves them out, as they have no number).
+ */
 @Immutable
-internal data class RvSkipped(val notLink: List<Int> = emptyList(), val duplicate: List<Int> = emptyList(), val other: List<Int> = emptyList()) {
-    val none: Boolean get() = notLink.isEmpty() && duplicate.isEmpty() && other.isEmpty()
+internal data class RvSkipped(
+    val notLink: List<Int> = emptyList(),
+    val duplicate: List<Int> = emptyList(),
+    val other: List<Int> = emptyList(),
+    val unread: Int = 0,
+) {
     val count: Int get() = notLink.size + duplicate.size + other.size
 }
 
@@ -52,11 +65,13 @@ internal sealed interface RvAddNodeCheck {
 
 /**
  * The check of [lines] once the core has previewed the share links among them ([results], in the order of the lines that
- * look like links): one line the core takes is that node; otherwise the count of nodes it takes and the lines it skips.
+ * look like links): one line the core takes is that node; otherwise the count of nodes it takes and the lines it skips,
+ * with the [unread] lines past the cap.
  */
-internal fun addNodeCheck(lines: List<AddNodeLine>, results: List<StaticNodeResult>): RvAddNodeCheck {
+internal fun addNodeCheck(lines: List<AddNodeLine>, results: List<StaticNodeResult>, unread: Int = 0): RvAddNodeCheck {
     if (lines.isEmpty()) return RvAddNodeCheck.None
-    val (ready, skipped) = sortRows(lines, results)
+    val (ready, rows) = sortRows(lines, results)
+    val skipped = rows.copy(unread = unread)
     return when {
         ready.isEmpty() -> RvAddNodeCheck.Refused(skipped)
         lines.size == 1 -> RvAddNodeCheck.One(ready.single().name)

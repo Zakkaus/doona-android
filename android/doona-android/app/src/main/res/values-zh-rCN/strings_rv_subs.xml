@@ -60,6 +60,9 @@
     <plurals name="rv_addnode_skip_other">
         <item quantity="other">第 %2$s 行无法读取，不会添加。</item>
     </plurals>
+    <plurals name="rv_addnode_skip_unread">
+        <item quantity="other">只读取前 %2$d 行，其余 %1$d 行不会添加。</item>
+    </plurals>
     <plurals name="rv_addnode_added">
         <item quantity="other">已添加 %1$d 个节点</item>
     </plurals>
@@ -67,7 +70,7 @@
         <item quantity="other">已添加 %1$d 个节点，%2$d 个没有添加</item>
     </plurals>
     <string name="rv_list_sep">、</string>
-    <string name="rv_list_last">%1$s 与 %2$s</string>
+    <string name="rv_list_last">%1$s 和 %2$s</string>
     <string name="rv_addnode_joined">已加入%1$s组。</string>
     <string name="rv_addnode_view_groups">查看策略组</string>
     <string name="rv_node_delete">删除节点</string>

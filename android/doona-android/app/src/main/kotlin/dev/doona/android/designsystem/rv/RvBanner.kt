@@ -81,6 +81,12 @@ internal fun RvBanner(notice: RvNotice, modifier: Modifier = Modifier) {
 }
 
 /**
+ * The one banner a page shows when several want its place: the most serious by [RvNoticeKind]'s order (an error before
+ * a warning before an info); between two of a kind, the one listed first. Null when every one is null.
+ */
+internal fun rvFirstNotice(vararg notices: RvNotice?): RvNotice? = notices.filterNotNull().minByOrNull { it.kind.ordinal }
+
+/**
  * Where a page's banner sits, the same on every page: first in the page's body, right under its header (活動's hero
  * and actions, a large title, the tab's header, the picker's title and caption), so it takes the place of the first
  * card, on the gutter, [gapBelow] over what follows: [RvSpace.cardGap] before a card, [RvSpace.none] before a part that brings its

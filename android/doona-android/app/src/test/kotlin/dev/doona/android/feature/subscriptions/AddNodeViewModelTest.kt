@@ -2,7 +2,12 @@ package dev.doona.android.feature.subscriptions
 
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.Group
+import dev.doona.android.engine.GroupKind
+import dev.doona.android.engine.StaticNodeReason
+import dev.doona.android.engine.StaticNodeResult
 import dev.doona.android.engine.fake.rvSampleEngine
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -203,7 +208,82 @@ class AddNodeViewModelTest {
     @Test
     fun linesKeepTheirNumberAndAreTrimmed() {
         assertEquals(listOf(AddNodeLine(1, "a"), AddNodeLine(3, "ss://b")), addNodeLines(" a \n\n ss://b \n "))
-        assertEquals(ADD_NODE_LINES, addNodeLines((1..250).joinToString("\n") { "ss://h$it" }).size)
+        val text = (1..250).joinToString("\n\n") { "ss://h$it" }
+        assertEquals(ADD_NODE_LINES, addNodeLines(text).size)
+        assertEquals(50, addNodeUnread(text))
+        assertEquals(0, addNodeUnread("ss://a\n\n\n"))
+    }
+
+    @Test
+    fun linesPastTheCapAreCountedAsNotRead() = runTest {
+        val vm = model()
+        vm.open()
+        vm.edit((List(ADD_NODE_LINES) { "not a link" } + TOKYO + SINGAPORE).joinToString("\n"))
+        // Every line read is no link, and the two links past the cap are never sent.
+        assertEquals(RvAddNodeCheck.Refused(RvSkipped(notLink = (1..ADD_NODE_LINES).toList(), unread = 2)), vm.sheet.check)
+        vm.edit((listOf(TOKYO, SINGAPORE) + List(ADD_NODE_LINES) { "not a link" }).joinToString("\n"))
+        assertEquals(RvAddNodeCheck.Many(2, RvSkipped(notLink = (3..ADD_NODE_LINES).toList(), unread = 2)), vm.sheet.check)
+    }
+
+    @Test
+    fun anAddsLateResultLeavesASheetOpenedSince() = runTest {
+        val engine = engine().apply { addGate = CompletableDeferred() }
+        val vm = model(engine)
+        vm.open()
+        vm.edit(TOKYO)
+        vm.add()
+        assertTrue(vm.sheet.adding)
+        vm.edit("typed while adding")
+        assertEquals(TOKYO, vm.sheet.text)
+        vm.close()
+        vm.open()
+        vm.edit(SINGAPORE)
+        engine.addGate!!.complete(Unit)
+        // The first add's nodes are in and its banner shows, but the new sheet stays as the user left it.
+        val state = vm.uiState.value
+        assertEquals(SINGAPORE, state.sheet?.text)
+        assertFalse(state.sheet!!.adding)
+        assertEquals(RvAddNodeCheck.One("新加坡 05"), state.sheet.check)
+        assertEquals(1, state.added?.count)
+    }
+
+    @Test
+    fun anAddsLateFailureLeavesASheetOpenedSince() = runTest {
+        val engine = engine().apply { addGate = CompletableDeferred() }
+        val vm = model(engine)
+        vm.open()
+        vm.edit(TOKYO)
+        vm.add()
+        vm.close()
+        vm.open()
+        engine.failing = ErrorCode.Internal
+        engine.addGate!!.complete(Unit)
+        assertEquals(RvAddNodeSheet(), vm.sheet)
+        assertNull(vm.uiState.value.added)
+    }
+
+    @Test
+    fun theCoresReasonsSortTheSkippedLines() {
+        val lines = addNodeLines("a://1\nb://2\nc://3\nd://4\ne://5\nplain")
+        val results = listOf(
+            StaticNodeResult.Invalid(StaticNodeReason.Link),
+            StaticNodeResult.Invalid(StaticNodeReason.Protocol),
+            StaticNodeResult.Invalid(StaticNodeReason.Credentials),
+            StaticNodeResult.Unsupported(StaticNodeReason.Protocol),
+            StaticNodeResult.Duplicate("x"),
+        )
+        val (taken, skipped) = sortRows(lines, results)
+        assertTrue(taken.isEmpty())
+        // A link or protocol the core cannot read is no share link; any other reason, and an unsupported one, is other.
+        assertEquals(RvSkipped(notLink = listOf(1, 2, 6), duplicate = listOf(5), other = listOf(3, 4)), skipped)
+    }
+
+    @Test
+    fun aGroupTheUserWroteKeepsItsName() {
+        fun group(id: String, name: String) = Group(id, name, GroupKind.Selector, emptyList(), Group.Selection(null, pinned = false))
+        assertEquals(RvGroupName.Main, rvGroupName(group("main", "Proxy"), "main"))
+        assertEquals(RvGroupName.Named("Work"), rvGroupName(group("g9", "Work"), "main"))
+        assertEquals(RvGroupName.Auto, rvGroupName(group("g1", "Auto"), "main"))
     }
 
     private companion object {

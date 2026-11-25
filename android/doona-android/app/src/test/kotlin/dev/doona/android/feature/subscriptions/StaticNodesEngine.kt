@@ -11,6 +11,7 @@ import dev.doona.android.engine.StaticNodeReason
 import dev.doona.android.engine.StaticNodeResult
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeRuleMode
+import kotlinx.coroutines.CompletableDeferred
 import java.net.URI
 import java.net.URLDecoder
 
@@ -42,7 +43,11 @@ internal class StaticNodesEngine(
         return Result.success(links.map { link -> check(link) { name, protocol -> StaticNodeResult.Ready("preview-$name", name, protocol) } })
     }
 
+    /** While set, an add waits for it before it answers, as a slow core does. */
+    var addGate: CompletableDeferred<Unit>? = null
+
     override suspend fun addStaticNodes(rows: List<StaticNodeDraft>): Result<List<StaticNodeResult>> {
+        addGate?.await()
         failing?.let { return Result.failure(EngineException(it)) }
         val links = rows.map { (it as StaticNodeDraft.Link).link }
         val results = links.map { link ->

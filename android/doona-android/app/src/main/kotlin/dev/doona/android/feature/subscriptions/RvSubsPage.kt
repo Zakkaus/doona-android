@@ -47,6 +47,7 @@ import dev.doona.android.designsystem.rv.RvSkeletonText
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.rememberRvFormat
+import dev.doona.android.designsystem.rv.rvFirstNotice
 import dev.doona.android.feature.model.RvSubscription
 
 /**
@@ -109,7 +110,7 @@ internal fun RvSubsPage(
     }
     RvScrollPage(title, insets, onBack = actions.back, actions = updateAll, bottomAction = add) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
-        RvGutter(banner = banner.takeUnless { loading } ?: failed) {
+        RvGutter(banner = rvFirstNotice(failed, banner.takeUnless { loading })) {
             if (empty) {
                 RvEmptyState(
                     stringResource(R.string.rv_empty_subscription),

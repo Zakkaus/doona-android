@@ -68,6 +68,10 @@
         <item quantity="one">Line %2$s cannot be read and is skipped.</item>
         <item quantity="other">Lines %2$s cannot be read and are skipped.</item>
     </plurals>
+    <plurals name="rv_addnode_skip_unread">
+        <item quantity="one">Only the first %2$d lines are read; %1$d more line is skipped.</item>
+        <item quantity="other">Only the first %2$d lines are read; %1$d more lines are skipped.</item>
+    </plurals>
     <plurals name="rv_addnode_added">
         <item quantity="one">%1$d node added</item>
         <item quantity="other">%1$d nodes added</item>
