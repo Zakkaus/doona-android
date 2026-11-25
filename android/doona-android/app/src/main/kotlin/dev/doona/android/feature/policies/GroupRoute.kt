@@ -55,7 +55,7 @@ internal fun GroupRoute(viewModel: GroupViewModel, groupId: String, onBack: () -
     when {
         group != null && choice != null -> CompositionLocalProvider(LocalRvTesting provides ui.testing) {
             RvGroupPage(
-                RvGroupContent(group, ui.subscriptions, choice, ui.apply, ui.isScore, ui.nowEpochMs),
+                RvGroupContent(group, ui.subscriptions, choice, ui.apply, ui.isScore, ui.nowEpochMs, ui.score),
                 RvGroupActions(onBack, viewModel::onTap, onNodeDetail, viewModel::onApart, viewModel::onApply, viewModel::onTest),
                 banner = failure?.let { groupBanner(it, viewModel::retry) },
             )

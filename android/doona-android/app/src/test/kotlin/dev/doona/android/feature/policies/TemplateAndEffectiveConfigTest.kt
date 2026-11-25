@@ -172,6 +172,21 @@ class TemplateAndEffectiveConfigTest {
         assertNotNull(vm.uiState.value.config)
     }
 
+    @Test
+    fun `a later read that failed keeps the config shown and says so, and 重試 reads again`() = runTest {
+        val engine = Flaky(0)
+        val vm = collected(engine)
+        val shown = vm.uiState.value.config
+        assertNotNull(shown)
+        engine.failing = 1
+        engine.setPerApp(PerApp(packages = setOf("a")))
+        assertEquals(ErrorCode.Busy, vm.uiState.value.failure)
+        assertEquals(shown, vm.uiState.value.config)
+        vm.retry()
+        assertNull(vm.uiState.value.failure)
+        assertEquals(1, vm.uiState.value.config?.proxiedApps)
+    }
+
     private companion object {
         val MAIN = rvSampleEngine().catalog.value!!.mainGroupId
     }

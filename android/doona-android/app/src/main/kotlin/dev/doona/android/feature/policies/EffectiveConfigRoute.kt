@@ -15,7 +15,7 @@ import dev.doona.android.share.rememberEffectiveConfigActions
 
 /**
  * 檢視生效設定 (from 全部規則): builds the ViewModel and draws the page from its state while the screen is started. 複製
- * and 匯出 hand on the core's text; [onRules] opens 全部規則. A first read that failed shows its banner with 重試.
+ * and 匯出 hand on the core's text; [onRules] opens 全部規則. A read that failed shows its banner with 重試.
  */
 @Composable
 internal fun EffectiveConfigRoute(engine: Engine, onBack: () -> Unit, onRules: () -> Unit) {

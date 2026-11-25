@@ -189,6 +189,8 @@
     <string name="rv_group_by_name">By name</string>
     <string name="rv_group_by_region">By region</string>
     <string name="rv_group_no_match">No matching nodes</string>
+    <string name="rv_group_empty">This group has no nodes</string>
+    <string name="rv_group_empty_line">Add nodes to this group in the configuration.</string>
     <string name="rv_group_apart">Choose TCP/UDP apart</string>
     <string name="rv_policy_reject">Reject</string>
     <string name="rv_policy_target_missing">Group not found</string>

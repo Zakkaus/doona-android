@@ -8,13 +8,21 @@ import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.Network
 import dev.doona.android.engine.NodeInfo
+import dev.doona.android.engine.ScoreCounters
+import dev.doona.android.engine.ScoreCoverage
+import dev.doona.android.engine.ScoreGroup
+import dev.doona.android.engine.ScoreNetwork
+import dev.doona.android.engine.ScoreState
 import dev.doona.android.engine.fake.FakeEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -45,6 +53,13 @@ class GroupViewModelTest {
         var result: Result<Unit> = Result.success(Unit)
         val calls = mutableListOf<String>()
         var failNodes = false
+        var score: Result<ScoreState> = Result.success(ScoreState(0, listOf(evidence(2))))
+        var scoreReads = 0
+
+        override suspend fun scoreState(): Result<ScoreState> {
+            scoreReads++
+            return score
+        }
 
         override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> =
             if (failNodes) Result.failure(IllegalStateException("nodes")) else base.nodes(ids)
@@ -258,9 +273,63 @@ class GroupViewModelTest {
         assertNull(state.group?.selected)
     }
 
+    @Test
+    fun `a Score group shows what honk compared, and only a Score group reads it`() = runTest {
+        val engine = Recording()
+        assertNull(collected(engine).uiState.value.score)
+        assertEquals(0, engine.scoreReads)
+        val state = collected(engine, SCORE).uiState.value
+        assertEquals(evidence(2), state.score)
+    }
+
+    @Test
+    fun `a Score group's evidence is read again while its page is shown`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine, SCORE)
+        engine.score = Result.success(ScoreState(0, listOf(evidence(3))))
+        advanceTimeBy(GroupViewModel.SCORE_EVERY_MS + 1)
+        assertEquals(evidence(3), vm.uiState.value.score)
+    }
+
+    @Test
+    fun `a failed evidence read keeps what was compared and says so, and 重試 reads again`() = runTest {
+        val engine = Recording()
+        val vm = collected(engine, SCORE)
+        engine.score = Result.failure(EngineException(ErrorCode.Busy))
+        advanceTimeBy(GroupViewModel.SCORE_EVERY_MS + 1)
+        assertEquals(evidence(2), vm.uiState.value.score)
+        assertEquals(GroupFailure(GroupAction.Read, ErrorCode.Busy), vm.uiState.value.failure)
+        engine.score = Result.success(ScoreState(0, listOf(evidence(4))))
+        vm.retry()
+        assertEquals(evidence(4), vm.uiState.value.score)
+        assertNull(vm.uiState.value.failure)
+    }
+
+    @Test
+    fun `a page restored before the engine loaded waits for the group's read, not only for ready`() = runTest {
+        val base = FakeEngine(emptyList()).apply { ready.value = false }
+        val reads = StandardTestDispatcher(testScheduler)
+        val vm = GroupViewModel(base, SELECTOR, clock = { NOW }, reads = reads)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        runCurrent()
+        base.groups.value = Recording.groups("n1")
+        base.ready.value = true
+        // The read of the catalog that has the group has not run yet: the one before found no such group.
+        assertTrue("a page still loading, not one whose group is gone", vm.uiState.value.loading)
+        runCurrent()
+        assertFalse(vm.uiState.value.loading)
+        assertEquals(SELECTOR, vm.uiState.value.group?.id)
+    }
+
     private companion object {
         const val SELECTOR = "g-Streaming"
         const val SCORE = "g-Score"
         const val NOW = 1_764_000_000_000L
+
+        /** What honk compared in [SCORE]: TCP on n1 against n3, UDP on n2, [evaluated] of three compared on each. */
+        fun evidence(evaluated: Int) = ScoreGroup(SCORE, listOf("n1", "n2", "n3"), network("n1", evaluated), network("n2", evaluated))
+
+        private fun network(id: String, evaluated: Int) =
+            ScoreNetwork("Node $id", id, "observedUsable", "none", ScoreCoverage(3, evaluated, 0), emptyList(), ScoreCounters(0, 0, 0, 0))
     }
 }

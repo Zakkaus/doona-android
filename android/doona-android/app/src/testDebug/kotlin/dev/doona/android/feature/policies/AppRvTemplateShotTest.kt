@@ -13,11 +13,14 @@ import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.R
 import dev.doona.android.engine.Catalog
+import dev.doona.android.engine.EffectiveConfig
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.RuleOptions
 import dev.doona.android.engine.RuleTemplate
+import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
@@ -30,6 +33,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -76,6 +80,16 @@ class AppRvTemplateShotTest {
     @Config(qualifiers = WHOLE_EFFECTIVE)
     fun effectiveDark() = shot("effective-config", dark = true, whole = true) { Effective() }
 
+    /** A read after the first failed: the banner with 重試 over the configuration last read (DS 4). */
+    @Test
+    @Config(qualifiers = WHOLE_EFFECTIVE_REREAD)
+    fun effectiveRereadFailedLight() {
+        val engine = Rereading()
+        shot("effective-config-reread-failed", dark = false, whole = true, then = { runBlocking { engine.setPerApp(PerApp(packages = setOf("a"))) } }) {
+            Effective { engine }
+        }
+    }
+
     /** With the template in use 檢視變更 stays off; from a hand-written file it opens the review of the first template. */
     @Test
     fun theReviewOpensOnlyForAnotherTemplate() {
@@ -98,21 +112,31 @@ class AppRvTemplateShotTest {
     }
 
     @Composable
-    private fun Effective() {
-        val engine = remember { rvSampleEngine() }
+    private fun Effective(make: () -> Engine = ::rvSampleEngine) {
+        val engine = remember { make() }
         val vm = remember { EffectiveConfigViewModel(engine, reads = Dispatchers.Unconfined) }
         EffectiveConfigRoute(vm, onBack = {}, onRules = {})
     }
 
     private fun text(id: Int) = ApplicationProvider.getApplicationContext<Context>().getString(id)
 
-    private fun shot(screen: String, dark: Boolean, whole: Boolean = false, content: @Composable () -> Unit) {
+    private fun shot(screen: String, dark: Boolean, whole: Boolean = false, then: () -> Unit = {}, content: @Composable () -> Unit) {
         compose.rvContent(dark, content = content)
+        then()
+        compose.waitForIdle()
         if (whole) compose.assertWhole()
         compose.drawFully()
         val name = "app-rv-$screen-${if (dark) "dark" else "light"}"
         compose.rvRowRules(name)
         compose.onRoot().captureToImage().asAndroidBitmap().captureRoboImage("$SHOTS/$name.png")
+    }
+
+    /** The sample engine whose configuration reads once, then fails with Busy. */
+    private class Rereading(private val base: FakeEngine = rvSampleEngine()) : Engine by base {
+        private var reads = 0
+
+        override suspend fun effectiveConfig(): Result<EffectiveConfig> =
+            if (reads++ == 0) base.effectiveConfig() else Result.failure(EngineException(ErrorCode.Busy))
     }
 
     /** The sample engine with its rules from the configuration file, no template; it records the templates set. */
@@ -141,5 +165,6 @@ class AppRvTemplateShotTest {
 
         /** Taller than 生效設定 whole, as `proto-rv-effective-config-*`'s window (+h2106dp) and the app's longer rules need. */
         const val WHOLE_EFFECTIVE = "+h2600dp"
+        const val WHOLE_EFFECTIVE_REREAD = "+h2600dp"
     }
 }

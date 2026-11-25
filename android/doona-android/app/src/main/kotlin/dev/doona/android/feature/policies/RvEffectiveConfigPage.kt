@@ -45,8 +45,8 @@ import dev.doona.android.feature.model.text
  * with how it picks, its first members and the node it uses; 規則, counted as D34 counts them, with the way to the list;
  * DNS; 依 App; and 來源, the template and the subscriptions the nodes come from. It ends with 複製 and 匯出 (the text
  * carries no credentials, D21). When the core cut the text at 1 MiB ([truncated]) a line under the title says so; a
- * [banner] (the config could not be read) stands in place of the cards, in [RvGutter]'s slot. What the cards say is
- * [config]'s, which is null until the first read: the title stands alone.
+ * [banner] (the config could not be read) stands in [RvGutter]'s slot: in place of the cards before the first read,
+ * above them after it. What the cards say is [config]'s, which is null until the first read: the title stands alone.
  */
 @Composable
 internal fun RvEffectiveConfigPage(
@@ -67,28 +67,27 @@ internal fun RvEffectiveConfigPage(
         } else {
             RvLargeTitle(title, titleBlock, insets)
         }
-        val shown = config.takeIf { banner == null }
         RvGutter(banner = banner) {
-            shown?.let { ModeCard(policy, it.main) }
+            config?.let { ModeCard(policy, it.main) }
         }
-        if (shown != null) {
-            Section(R.string.rv_policy_groups) { GroupsCard(policy, listOfNotNull(shown.main) + shown.groups) }
-            Section(R.string.rv_policy_rules) { RulesCard(shown.rules, onRules) }
+        if (config != null) {
+            Section(R.string.rv_policy_groups) { GroupsCard(policy, listOfNotNull(config.main) + config.groups) }
+            Section(R.string.rv_policy_rules) { RulesCard(config.rules, onRules) }
             Section(R.string.rv_settings_dns) {
                 RvCard {
-                    RvStatRow(stringResource(R.string.rv_settings_dns_server), dnsLine(shown.dns), valueKeepWords = false)
-                    RvStatRow(stringResource(R.string.rv_effective_dns_via), shown.dnsVia.text())
+                    RvStatRow(stringResource(R.string.rv_settings_dns_server), dnsLine(config.dns), valueKeepWords = false)
+                    RvStatRow(stringResource(R.string.rv_effective_dns_via), config.dnsVia.text())
                     RvStatRow(stringResource(R.string.rv_policy_lan), stringResource(R.string.rv_effective_lan_value))
                 }
             }
             Section(R.string.rv_effective_per_app) {
                 RvCard {
-                    RvStatRow(stringResource(R.string.rv_effective_apps_in), pluralStringResource(R.plurals.rv_effective_apps, shown.proxiedApps, shown.proxiedApps))
+                    RvStatRow(stringResource(R.string.rv_effective_apps_in), pluralStringResource(R.plurals.rv_effective_apps, config.proxiedApps, config.proxiedApps))
                     RvStatRow(stringResource(R.string.rv_effective_apps_rest), stringResource(R.string.rv_effective_apps_rest_value))
                 }
             }
             Section(R.string.rv_effective_source) {
-                SourceCard(shown)
+                SourceCard(config)
                 RvCard {
                     RvRow({ RvIconDisc(R.drawable.rv_sym_content_copy) }, stringResource(R.string.rv_effective_copy), null, onClick = onCopy)
                     RvRow({ RvIconDisc(R.drawable.rv_sym_ios_share) }, stringResource(R.string.rv_effective_export), null, onClick = onExport)

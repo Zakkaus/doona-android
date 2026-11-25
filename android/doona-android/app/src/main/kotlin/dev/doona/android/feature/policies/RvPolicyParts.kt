@@ -12,13 +12,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
-import dev.doona.android.designsystem.rv.RV_ROW_TITLE_LINES
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvRadio
 import dev.doona.android.designsystem.rv.RvRow
+import dev.doona.android.designsystem.rv.RvRowEndName
 import dev.doona.android.designsystem.rv.RvSeeAll
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvText
@@ -100,7 +100,7 @@ internal fun RvRuleRow(rule: RvPolicyRule, modifier: Modifier = Modifier, end: S
         rule.match.title(),
         subtitle,
         modifier,
-        titleEnd = { RvText(rule.targetName(), Rv.type.rowValue, align = TextAlign.End) },
+        titleEnd = { RvRowEndName(rule.targetName()) },
         subtitleEnd = { RvText(end ?: bytes, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End) },
         titleKeepWords = false,
     )
@@ -183,7 +183,7 @@ internal fun RvGroupRow(
         name,
         line,
         modifier,
-        titleEnd = node?.let { { RvText(it.name, Rv.type.rowValue, align = TextAlign.End, maxLines = RV_ROW_TITLE_LINES, keepWords = false) } },
+        titleEnd = node?.let { { RvRowEndName(it.name) } },
         subtitleEnd = node?.let { { RvText(latencyText(it.latencyMs), Rv.type.rowSub, color = latencyColor(it.latencyMs), align = TextAlign.End) } },
         trailing = trailing,
         titleKeepWords = false,

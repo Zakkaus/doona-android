@@ -169,6 +169,8 @@
     <string name="rv_group_by_name">依名稱</string>
     <string name="rv_group_by_region">依地區</string>
     <string name="rv_group_no_match">找不到符合的節點</string>
+    <string name="rv_group_empty">這個群組沒有節點</string>
+    <string name="rv_group_empty_line">請在設定檔中為這個群組加入節點。</string>
     <string name="rv_group_apart">分開選擇 TCP/UDP</string>
     <string name="rv_policy_reject">拒絕</string>
     <string name="rv_policy_target_missing">找不到群組</string>

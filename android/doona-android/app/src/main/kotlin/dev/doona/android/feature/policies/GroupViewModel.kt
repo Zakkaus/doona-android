@@ -10,11 +10,13 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.Network
+import dev.doona.android.engine.ScoreGroup
 import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvSubscription
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -31,7 +33,8 @@ import kotlinx.coroutines.launch
  * A group's page: the group [groupId] with its nodes, the node each network uses, and the taps that choose them, as the
  * approved 套用到 sample has them ([RvApplyChoice]). Each new catalog is read on [reads] with the members' details; a
  * read that fails keeps what is shown and says so with 重試. [clock] is now, for the subscriptions' end dates; [places] places the nodes by name until 節點's mapper is wired. The 分開選擇 switch and 套用到 live here:
- * the engine only knows each network's node.
+ * the engine only knows each network's node. A Score group's evidence (`scoreState`) is read with each catalog and again
+ * every [scoreEveryMs], since it changes as Score compares without a new catalog.
  */
 internal class GroupViewModel(
     private val engine: Engine,
@@ -39,6 +42,7 @@ internal class GroupViewModel(
     private val clock: () -> Long = System::currentTimeMillis,
     private val places: RvNodePlaces = RV_UNKNOWN_PLACES,
     private val reads: CoroutineDispatcher = Dispatchers.Default,
+    private val scoreEveryMs: Long = SCORE_EVERY_MS,
 ) : ViewModel() {
     private val local = MutableStateFlow(Local(apart = false, apply = RvApplyTo.Tcp))
     private val failure = MutableStateFlow<GroupFailure?>(null)
@@ -57,6 +61,12 @@ internal class GroupViewModel(
         launch(reads) {
             combine(engine.catalog.filterNotNull().distinctUntilChanged(), again) { catalog, _ -> catalog }.collectLatest { catalog ->
                 read(catalog).onSuccess(::shown).onFailure(::unread)
+            }
+        }
+        launch(reads) {
+            while (true) {
+                delay(scoreEveryMs)
+                rescore()
             }
         }
         combine(engine.ready, engine.catalog, read, local, failure, ::groupUiState).collect { send(it) }
@@ -117,6 +127,14 @@ internal class GroupViewModel(
         failure.update { it?.takeIf { failed -> failed.action != GroupAction.Read } }
     }
 
+    /** Reads a Score group's evidence again over the group shown; a failure shows as a failed read does. */
+    private suspend fun rescore() {
+        if (read.value?.isScore != true) return
+        engine.scoreState().onSuccess { state ->
+            read.value?.let { shown(it.copy(score = state.groups.firstOrNull { group -> group.id == groupId })) }
+        }.onFailure(::unread)
+    }
+
     /** A read failed: it shows with 重試, over the group last read if there is one. */
     private fun unread(error: Throwable) {
         retry = { again.update { it + 1 } }
@@ -134,7 +152,7 @@ internal class GroupViewModel(
      */
     private suspend fun read(catalog: Catalog): Result<Read> {
         val groups = catalog.groups.associateBy { it.id }
-        val group = groups[groupId] ?: return Result.success(Read.NONE)
+        val group = groups[groupId] ?: return Result.success(Read.none(catalog))
         seedApart(group)
         val own = group.members.filterNot { it.isGroup }
         val shown = (own + leafNodes(group, groups)).distinctBy { it.id }
@@ -146,13 +164,17 @@ internal class GroupViewModel(
         val held = own.mapNotNullTo(mutableSetOf()) { it.subscriptionId }
         val tcp = mapped.selectedId
         val udp = group.udp.selectedId?.takeIf { it in members } ?: tcp
+        val isScore = group.kind == GroupKind.Score
+        val score = if (isScore) engine.scoreState().getOrElse { return Result.failure(it) }.groups.firstOrNull { it.id == groupId } else null
         return Result.success(
             Read(
+                from = catalog,
                 group = mapped,
                 subscriptions = catalog.subscriptions.filter { it.id in held }.map(::rvSubscription),
                 tcpId = tcp,
                 udpId = udp,
-                isScore = group.kind == GroupKind.Score,
+                isScore = isScore,
+                score = score,
                 nowEpochMs = clock(),
             ),
         )
@@ -172,34 +194,48 @@ internal class GroupViewModel(
 
     /**
      * One catalog read: [group] is null when the catalog has no such group. [tcpId] and [udpId] name the member each
-     * network uses, a node or a group.
+     * network uses, a node or a group. [score] is a Score group's evidence, null when honk reports none for it. [from]
+     * is the catalog it was read from.
      */
-    private class Read(
+    private data class Read(
+        val from: Catalog,
         val group: RvPolicyGroup?,
         val subscriptions: List<RvSubscription>,
         val tcpId: String,
         val udpId: String,
         val isScore: Boolean,
+        val score: ScoreGroup?,
         val nowEpochMs: Long,
     ) {
         companion object {
-            val NONE = Read(null, emptyList(), "", "", isScore = false, nowEpochMs = 0L)
+            fun none(from: Catalog) = Read(from, null, emptyList(), "", "", isScore = false, score = null, nowEpochMs = 0L)
         }
     }
 
+    /**
+     * Still loading until the group is read; a read that found no such group counts only for the catalog it read, since
+     * the engine can turn ready before the next catalog's read ends, and the page would leave a group that exists.
+     */
     private fun groupUiState(ready: Boolean, catalog: Catalog?, read: Read?, local: Local, failure: GroupFailure?) = GroupUiState(
-        loading = !ready || catalog == null || (read == null && failure?.action != GroupAction.Read),
+        loading = !ready ||
+            catalog == null ||
+            (read == null && failure?.action != GroupAction.Read) ||
+            (read != null && read.group == null && read.from != catalog),
         group = read?.group,
         subscriptions = read?.subscriptions.orEmpty(),
         choice = read?.takeIf { it.group != null }?.let { RvApplyChoice(it.tcpId, it.udpId, local.apart) },
         apply = local.apply,
         isScore = read?.isScore ?: false,
+        score = read?.score,
         nowEpochMs = read?.nowEpochMs ?: 0L,
         testing = catalog?.groups?.firstOrNull { it.id == groupId }?.testing ?: false,
         failure = failure,
     )
 
     companion object {
+        /** How often a Score group's evidence is read again while its page is shown. */
+        const val SCORE_EVERY_MS = 5_000L
+
         fun factory(engine: Engine, groupId: String): ViewModelProvider.Factory = viewModelFactory {
             initializer { GroupViewModel(engine, groupId) }
         }

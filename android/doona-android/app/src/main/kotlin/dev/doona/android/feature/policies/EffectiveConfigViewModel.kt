@@ -43,8 +43,8 @@ internal data class EffectiveConfigUiState(
 
 /**
  * 生效設定: the core's `effectiveConfig` with the catalog's groups, every rule of the source and how many apps 依 App
- * lists, read on [reads] whenever the catalog or the settings change. A read that fails keeps the configuration shown,
- * since no tap caused it; with none yet it shows its failure with 重試, which reads again.
+ * lists, read on [reads] whenever the catalog or the settings change. A read that fails shows its failure with 重試,
+ * which reads again, over the configuration last read if there is one, as 策略 and the group page do.
  */
 internal class EffectiveConfigViewModel(
     private val engine: Engine,
@@ -79,7 +79,7 @@ internal class EffectiveConfigViewModel(
     }
 
     private fun failed(error: Throwable): EffectiveConfigUiState =
-        read.value.takeIf { it.config != null } ?: EffectiveConfigUiState(failure = error.errorCode())
+        read.value.takeIf { it.config != null }?.copy(failure = error.errorCode()) ?: EffectiveConfigUiState(failure = error.errorCode())
 
     companion object {
         fun factory(engine: Engine): ViewModelProvider.Factory = viewModelFactory {

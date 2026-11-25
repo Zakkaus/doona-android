@@ -33,6 +33,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
@@ -187,6 +188,14 @@ private fun RowTextColumn(minHeight: Dp, modifier: Modifier, content: @Composabl
 
 /** [end] on a row's line: its text in its role's Latin line box ([LocalRvRowLine]). */
 private fun onLine(end: @Composable () -> Unit): @Composable () -> Unit = { CompositionLocalProvider(LocalRvRowLine provides true) { Box(Modifier.testTag(RvRowPart.LINE_END)) { end() } } }
+
+/**
+ * A name a user gave (a group's, a node's) as the end of a row's title line ([RvRow]'s `titleEnd`), in the row's value
+ * type at the line's end. It takes as many lines as a title ([RV_ROW_TITLE_LINES]) with the platform's breaks, as a name
+ * keeps them, so a name too long to stand beside its title wraps where it goes under the title rather than being cut.
+ */
+@Composable
+internal fun RvRowEndName(name: String) = RvText(name, Rv.type.rowValue, align = TextAlign.End, maxLines = RV_ROW_TITLE_LINES, keepWords = false)
 
 /** [end] keeping its room, neither drawn nor read out. */
 private fun hidden(end: @Composable () -> Unit): @Composable () -> Unit = { Box(Modifier.alpha(0f).clearAndSetSemantics {}) { end() } }

@@ -61,7 +61,10 @@ internal fun rvSampleEffectiveConfig(settings: RvSettingsState) = RvEffectiveCon
     proxiedApps = settings.proxiedApps,
 )
 
-/** 生效設定 on the sample: the page with [rvSampleEffectiveConfig]. The page itself takes it as a parameter. */
+/**
+ * 生效設定 on the sample: the page with [rvSampleEffectiveConfig], or with none under a [banner], which the samples show
+ * as the first read failing. The page itself takes it as a parameter.
+ */
 @Composable
 internal fun RvEffectiveConfigPageSample(
     policy: RvPolicyState,
@@ -72,7 +75,7 @@ internal fun RvEffectiveConfigPageSample(
     onExport: () -> Unit = {},
     truncated: Boolean = false,
     banner: RvNotice? = null,
-) = RvEffectiveConfigPage(policy, onBack, onRules, onCopy, onExport, truncated, banner, rvSampleEffectiveConfig(settings))
+) = RvEffectiveConfigPage(policy, onBack, onRules, onCopy, onExport, truncated, banner, rvSampleEffectiveConfig(settings).takeIf { banner == null })
 
 /** 範本 on the sample: the page with every template [RvTemplateData] has. The page itself takes the list as a parameter. */
 @Composable
