@@ -21,30 +21,17 @@ import dev.doona.android.feature.messageRes
 internal fun rvActivityBanner(notice: RvActivityNotice, onAction: () -> Unit): RvNotice? {
     val (kind, title, reason, action) = when (notice) {
         RvActivityNotice.NoSubscription -> return null
-
         RvActivityNotice.NoNode -> Words(RvNoticeKind.Error, R.string.rv_no_node, R.string.rv_no_node_reason, R.string.rv_retest)
-
         RvActivityNotice.VpnTaken -> Words(RvNoticeKind.Warning, R.string.rv_vpn_taken, R.string.rv_vpn_taken_reason, R.string.rv_reconnect)
-
         RvActivityNotice.Offline -> Words(RvNoticeKind.Warning, R.string.rv_offline, R.string.rv_offline_reason, R.string.rv_network_settings)
-
         RvActivityNotice.CoreStopped -> Words(RvNoticeKind.Error, R.string.rv_core_stopped, R.string.rv_core_stopped_reason, R.string.rv_reconnect)
-
         RvActivityNotice.Crash -> Words(RvNoticeKind.Info, R.string.rv_crash, R.string.rv_crash_reason, R.string.rv_crash_export)
-
         RvActivityNotice.StartFailed -> started(R.string.vpn_failure_start_failed, R.string.rv_retry)
-
         RvActivityNotice.StartNoApps -> started(R.string.vpn_failure_no_allowed_apps, R.string.rv_edit_app_list)
-
         RvActivityNotice.StartIncompatible -> started(R.string.vpn_failure_incompatible_core, R.string.rv_settings_check_update)
-
         RvActivityNotice.StartNoNodes -> started(R.string.first_no_nodes, R.string.rv_add_subscription)
-
-        // Until strings_rv_states.xml has 開啟 VPN 設定 (hand-off), the action reads 開啟設定.
-        RvActivityNotice.Lockdown -> started(R.string.vpn_failure_lockdown_enabled, R.string.rv_lan_open_settings)
-
+        RvActivityNotice.Lockdown -> started(R.string.vpn_failure_lockdown_enabled, R.string.rv_open_vpn_settings)
         RvActivityNotice.ConsentDenied -> Words(RvNoticeKind.Warning, R.string.rv_vpn_denied, R.string.rv_vpn_denied_reason, R.string.rv_reconnect)
-
         RvActivityNotice.NotifyDenied -> Words(RvNoticeKind.Info, R.string.rv_notify_denied, R.string.rv_notify_denied_reason, R.string.rv_lan_open_settings)
     }
     return RvNotice(kind, stringResource(title), stringResource(reason), stringResource(action), onAction)

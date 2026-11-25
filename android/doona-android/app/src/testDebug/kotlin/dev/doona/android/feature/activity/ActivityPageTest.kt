@@ -51,7 +51,7 @@ class ActivityPageTest {
             Status.Failed(FailureReason.NoAllowedApps) to (R.string.rv_edit_app_list to "perApp"),
             Status.Failed(FailureReason.StartFailed, ErrorCode.NoNodes) to (R.string.rv_add_subscription to "addSubscription"),
             Status.Failed(FailureReason.IncompatibleCore) to (R.string.rv_settings_check_update to "checkUpdate"),
-            Status.Failed(FailureReason.LockdownEnabled) to (R.string.rv_lan_open_settings to "vpnSettings"),
+            Status.Failed(FailureReason.LockdownEnabled) to (R.string.rv_open_vpn_settings to "vpnSettings"),
         )
         cases.forEach { (status, want) ->
             opened.clear()
