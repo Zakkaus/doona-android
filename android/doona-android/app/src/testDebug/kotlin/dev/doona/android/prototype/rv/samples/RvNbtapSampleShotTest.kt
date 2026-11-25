@@ -54,7 +54,7 @@ class RvNbtapSampleShotTest {
 
     @androidx.compose.runtime.Composable
     private fun Tap(control: Boolean) =
-        RvGroupSamplePage(group, apart, if (control) RvApplyTo.Both else null, rows = ROWS, more = RvMoreNodes.InPlace)
+        RvGroupSamplePage(group, apart, if (control) RvApplyTo.Both else null, rows = ROWS)
 
     private companion object {
         const val ROWS = 8

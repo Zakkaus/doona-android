@@ -174,7 +174,7 @@ internal fun RvNodePicker(
                 subscriptions.forEachIndexed { i, sub ->
                     val members = nodes.filter { it.subscription == sub.name }
                     val rows = RvRowsComposed(first, composed)
-                    Group(sub, members, matching, labels, currentId, searching = query.isNotBlank(), onPick, onDetail, rows, section(2 + i))
+                    RvNodeSection(sub, members, matching, labels, currentId, searching = query.isNotBlank(), onPick, onDetail, rows, section(2 + i))
                     first += 1 + members.size
                 }
                 Spacer(Modifier.windowInsetsBottomHeight(bottom))
@@ -190,159 +190,6 @@ internal fun RvNodePicker(
         }
     }
 }
-
-/**
- * One subscription: its 訂閱 row, then its nodes. The row opens and closes the group (always open while searching); the
- * group folds away when none of its nodes match.
- */
-@Composable
-private fun Group(
-    sub: RvSubscription,
-    members: List<RvNode>,
-    matching: Set<String>,
-    labels: Map<String, String>,
-    currentId: String,
-    searching: Boolean,
-    onPick: (String) -> Unit,
-    onDetail: (String) -> Unit,
-    rows: RvRowsComposed,
-    modifier: Modifier,
-) {
-    // Read here, so that as more rows are composed this group composes again, not the picker.
-    val limit = rows.composed() - rows.first
-    if (limit <= 0) return
-    val motion = Rv.motion
-    var open by rememberSaveable(sub.id) { mutableStateOf(true) }
-    val fold = motion.tween<Float>(RvMotion.MOVE_MS)
-    val size = motion.tween<IntSize>(RvMotion.MOVE_MS)
-    AnimatedVisibility(members.any { it.id in matching }, modifier, enter = fadeIn(fold) + expandVertically(size), exit = fadeOut(fold) + shrinkVertically(size)) {
-        Column(Modifier.padding(horizontal = RvSpace.gutter)) {
-            RvCard {
-                SubscriptionRow(sub, open || searching, enabled = !searching) { open = !open }
-                AnimatedVisibility(open || searching, enter = expandVertically(size), exit = shrinkVertically(size)) {
-                    Column {
-                        members.forEachIndexed { order, node ->
-                            // The group's 訂閱 row is its first row.
-                            if (1 + order >= limit) return@forEachIndexed
-                            key(node.id) {
-                                AnimatedVisibility(node.id in matching, enter = fadeIn(fold) + expandVertically(size), exit = fadeOut(fold) + shrinkVertically(size)) {
-                                    NodeRow(node, labels.getValue(node.id), node.id == currentId, order, onPick, onDetail)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            Spacer(Modifier.height(RvSpace.cardGap))
-        }
-    }
-}
-
-/**
- * 活動's 訂閱 row for [sub] (use, quota, end date, what is left), with a chevron that turns down while [open]; a long
- * press opens its menu (更新, 刪除, which asks first in [RvConfirmSheet]), and an update in progress shows a busy bar
- * where what is left would be.
- */
-@Composable
-private fun SubscriptionRow(sub: RvSubscription, open: Boolean, enabled: Boolean, onToggle: () -> Unit) {
-    val format = rememberRvFormat()
-    val total = format.bytes(sub.totalBytes)
-    val turn by animateFloatAsState(if (open) QUARTER_TURN else 0f, Rv.motion.tween(RvMotion.MOVE_MS), label = "chevron")
-    val toggle = Modifier.semantics {
-        if (!enabled) return@semantics
-        if (open) {
-            collapse {
-                onToggle()
-                true
-            }
-        } else {
-            expand {
-                onToggle()
-                true
-            }
-        }
-    }
-    val updating = sub.id in LocalRvUpdating.current
-    var deleting by remember { mutableStateOf(false) }
-    RvMenuAnchor(rvSubscriptionMenu(sub) { deleting = true }) { menu, actions ->
-        RvRow(
-            { RvIconDisc(R.drawable.rv_sym_rss_feed) },
-            sub.name,
-            stringResource(R.string.rv_subscription_usage, format.bytesIn(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, RvData.nowEpochMs) } ?: RV_NO_VALUE),
-            toggle.then(actions),
-            onClick = onToggle.takeIf { enabled },
-            onLongClick = menu,
-            titleKeepWords = false,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Crossfade(updating, animationSpec = Rv.motion.tween(RvMotion.FADE_MS), label = "update") { busy ->
-                    if (busy) RvBusy(Modifier.width(RvSize.busy)) else RvText(format.bytes(sub.leftBytes).toString(), Rv.type.rowValue, align = TextAlign.End)
-                }
-                Spacer(Modifier.width(RvSpace.trailingGap))
-                RvChevron(Modifier.rotate(turn))
-            }
-        }
-    }
-    val delete = LocalRvRowActions.current.deleteSubscription
-    RvConfirmSheet(
-        visible = deleting,
-        title = stringResource(R.string.rv_sub_delete_title, sub.name),
-        body = pluralStringResource(R.plurals.rv_sub_delete_body, sub.nodes, sub.nodes),
-        confirm = stringResource(R.string.rv_menu_delete),
-        dismiss = stringResource(R.string.rv_cancel),
-        onConfirm = {
-            deleting = false
-            delete?.invoke(sub.id)
-        },
-        onDismiss = { deleting = false },
-        titleKeepWords = false,
-    )
-}
-
-/**
- * 節點's row with an info mark at its end: a tap picks the node, the mark opens its page, and a long press opens its
- * menu (設為主節點, 測試延遲, 詳情, 複製分享連結), or its page where the sample offers no menus.
- */
-@Composable
-private fun NodeRow(node: RvNode, label: String, current: Boolean, order: Int, onPick: (String) -> Unit, onDetail: (String) -> Unit) {
-    val inUse = stringResource(R.string.rv_nodes_in_use)
-    val details = stringResource(R.string.rv_nodes_details)
-    // Each row is a layer of its own: a row composed after the others records itself, not the whole card again.
-    RvMenuAnchor(rvNodeMenu(node, current, onPick, onDetail), Modifier.graphicsLayer {}) { menu, actions ->
-        RvRow(
-            { RvFlag(node.place.flag, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
-            node.name,
-            node.protocol + SEPARATOR + label,
-            (if (current) Modifier.semantics { stateDescription = inUse } else Modifier).then(actions),
-            onClick = { onPick(node.id) },
-            onLongClick = menu ?: { onDetail(node.id) },
-            titleKeepWords = false,
-        ) { NodeTrailing(node, order, details, onDetail) }
-    }
-}
-
-/** The row's latency and change, then the info mark that opens the node's page, on the latency's line ([RvRowEnd]). */
-@Composable
-private fun NodeTrailing(node: RvNode, order: Int, details: String, onDetail: (String) -> Unit) {
-    RvRowEnd({ RvLatencyChange(node.latencyMs, node.changeMs, order = order, node = node.id) }) {
-        // The mark's 48 dp target reaches into the row's padding, so the glyph ends where every trailing ink ends.
-        Box(
-            Modifier
-                .offset(x = (RvSize.touch - RvSize.rowGlyph) / 2)
-                .size(RvSize.touch)
-                .rvPress(CircleShape, Role.Button, { onDetail(node.id) })
-                .semantics { contentDescription = details },
-            contentAlignment = Alignment.Center,
-        ) { RvGlyph(R.drawable.rv_sym_info, RvSize.rowGlyph, Rv.colors.control) }
-    }
-}
-
-/** Whether [query] (trimmed) is in the node's name, short code, protocol or place [label], ignoring case. */
-private fun RvNode.matches(query: String, label: String): Boolean =
-    query.isEmpty() || listOf(name, short, protocol, label).any { it.contains(query, ignoreCase = true) }
-
-/** The picker's rows a group starts at ([first], its 訂閱 row) and how many of them are [composed] so far. */
-private class RvRowsComposed(val first: Int, val composed: () -> Int)
 
 /**
  * How many of the picker's [total] rows (訂閱 rows and node rows, in order) are composed: shown, at first those that
@@ -373,7 +220,6 @@ private fun rememberRowsComposed(total: Int): () -> Int {
  * within its budget while the page or the sheet moves; four made each of those frames 13 to 20 ms.
  */
 private const val ROWS_PER_FRAME = 1
-private const val QUARTER_TURN = 90f
 private const val SEARCH_GESTURE = "search"
 private const val TRACE_FOCUS = "RvSearchFocus"
 

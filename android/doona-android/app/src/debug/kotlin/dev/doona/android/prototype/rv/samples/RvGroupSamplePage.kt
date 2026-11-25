@@ -46,15 +46,6 @@ import dev.doona.android.prototype.rv.nodes.latencyText
 import dev.doona.android.prototype.rv.policy.RvGroupKind
 import dev.doona.android.prototype.rv.policy.RvPolicyGroup
 
-/** What the nodes card ends with when the group has more nodes than it lists. */
-internal enum class RvMoreNodes {
-    /** The page as approved: 查看全部 N 個 opens the rest in place. */
-    InPlace,
-
-    /** Revolut's 'See all' row at the card's foot, 全部節點: it opens the node picker (nbmany). */
-    Picker,
-}
-
 /**
  * A selector group's page for the samples of nbtap and nbmany, built only from the library's parts and the policy page's
  * own grammar (`RvPolicyGroupPage`): the back disc and the group's name as the title, the kind and node count, the node in
@@ -63,7 +54,7 @@ internal enum class RvMoreNodes {
  * With [choice] given, 分開選擇 TCP 與 UDP stands in 目前使用中 as it does on the approved netsel-b page: the chip is
  * left out, a row for each network says its node. [applyTo] non-null adds the 套用到 control above the node list: it
  * only exists while the switch is on, and a tap on a node goes to the selected network, with no menu. [rows] nodes are
- * listed before [more].
+ * listed before 查看全部, which opens the rest in place.
  */
 @Composable
 internal fun RvGroupSamplePage(
@@ -71,7 +62,6 @@ internal fun RvGroupSamplePage(
     choice: RvApplyChoice?,
     applyTo: RvApplyTo?,
     rows: Int,
-    more: RvMoreNodes,
     modifier: Modifier = Modifier,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
@@ -84,27 +74,30 @@ internal fun RvGroupSamplePage(
             name,
             titleBlock,
             insets,
-            caption = { Caption(group) },
-            control = if (current == null) {
-                { RvStatusChip(R.drawable.rv_nodes_ic_check_circle, stringResource(R.string.rv_policy_selected, group.selected.name, latencyText(group.selected.latencyMs)), Rv.colors.positive) }
-            } else {
-                null
-            },
+            caption = { RvGroupCaption(group) },
+            control = if (current == null) ({ RvGroupChip(group.selected) }) else null,
         )
         RvGutter {
             if (current != null) {
                 NetworkCard(group, current) { state = it.apart(!it.apart) }
                 if (current.apart) apply?.let { selected -> ApplyCard(selected) { apply = it } }
             }
-            NodesCard(group, current, apply ?: RvApplyTo.Both, rows, more) { id, to -> state = state?.tapped(id, to) }
+            NodesCard(group, current, apply ?: RvApplyTo.Both, rows) { id, to -> state = state?.tapped(id, to) }
         }
     }
 }
 
+/** The line under a group page's title: its kind and how many nodes it has. */
 @Composable
-private fun Caption(group: RvPolicyGroup) {
+internal fun RvGroupCaption(group: RvPolicyGroup) {
     val count = pluralStringResource(R.plurals.rv_policy_node_count, group.members.size, group.members.size)
     RvCaption(stringResource(group.kind.label) + SEPARATOR + count, group.kind.glyph)
+}
+
+/** The group page's chip: the node in use and its latency. */
+@Composable
+internal fun RvGroupChip(node: RvNode) {
+    RvStatusChip(R.drawable.rv_nodes_ic_check_circle, stringResource(R.string.rv_policy_selected, node.name, latencyText(node.latencyMs)), Rv.colors.positive)
 }
 
 /** 目前使用中: the switch 分開選擇 TCP 與 UDP, then a row for each network, its line beginning with the network. */
@@ -147,20 +140,15 @@ private fun ApplyCard(selected: RvApplyTo, onSelect: (RvApplyTo) -> Unit) {
     }
 }
 
-/** The nodes, fastest first: [rows] of them, then [more]. A row's tap picks the node for [apply]'s network. */
+/** The nodes, fastest first: [rows] of them, then 查看全部. A row's tap picks the node for [apply]'s network. */
 @Composable
-private fun NodesCard(group: RvPolicyGroup, choice: RvApplyChoice?, apply: RvApplyTo, rows: Int, more: RvMoreNodes, onPick: (String, RvApplyTo) -> Unit) {
+private fun NodesCard(group: RvPolicyGroup, choice: RvApplyChoice?, apply: RvApplyTo, rows: Int, onPick: (String, RvApplyTo) -> Unit) {
     var all by remember { mutableStateOf(false) }
     val nodes = group.byLatency
     RvCard {
         RvCardHeader(stringResource(R.string.rv_policy_nodes))
         for (node in if (all) nodes else nodes.take(rows)) NodeRow(node, choice?.chosen(node.id) ?: (node.id == group.selectedId)) { onPick(node.id, apply) }
-        if (!all && nodes.size > rows) {
-            when (more) {
-                RvMoreNodes.InPlace -> RvSeeAll(pluralStringResource(R.plurals.rv_policy_see_all_nodes, nodes.size, nodes.size)) { all = true }
-                RvMoreNodes.Picker -> RvSeeAll(stringResource(R.string.rv_nodes_all)) {}
-            }
-        }
+        if (!all && nodes.size > rows) RvSeeAll(pluralStringResource(R.plurals.rv_policy_see_all_nodes, nodes.size, nodes.size)) { all = true }
     }
 }
 
