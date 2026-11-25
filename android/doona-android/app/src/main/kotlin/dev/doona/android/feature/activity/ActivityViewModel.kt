@@ -8,7 +8,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.Engine
-import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Mode
 import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.Settings
@@ -80,11 +79,11 @@ class ActivityViewModel internal constructor(
             activityCatalog(ActivityData(inputs.catalog, inputs.settings, inputs.usage, resolved, inputs.info, inputs.yesterdayByNow ?: 0L, now, hourOf(now, zone())), placeOf)
         }.flowOn(work)
 
-    private val flags = combine(engine.warning, engine.ready, crashOffered, failure) { warning, ready, crash, failed -> Flags(warning, ready, crash, failed) }
+    private val flags = combine(engine.ready, crashOffered, failure) { ready, crash, failed -> Flags(ready, crash, failed) }
 
     internal val ui: StateFlow<RvActivityUi> =
         combine(lists, engine.status, engine.traffic, flags) { lists, status, traffic, flags ->
-            activityModel(lists, status, traffic, flags.warning, flags.crash, flags.ready, flags.failure)
+            activityModel(lists, status, traffic, flags.crash, flags.ready, flags.failure)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initial(crashOffered.value))
 
     fun onAction(action: ActivityAction) {
@@ -112,12 +111,12 @@ class ActivityViewModel internal constructor(
         val empty = activityCatalog(data, placeOf).let {
             ActivityCatalog(it.mode, null, emptyList(), emptyList(), emptyList(), it.cards, allFailed = false, hasSubscriptions = true, mapped = false)
         }
-        return activityModel(empty, engine.status.value, engine.traffic.value, engine.warning.value, crashOffered, engine.ready.value, null)
+        return activityModel(empty, engine.status.value, engine.traffic.value, crashOffered, engine.ready.value, null)
     }
 
     private class ActivityInputs(val catalog: Catalog?, val settings: Settings, val yesterdayByNow: Long?, val usage: Usage?, val info: Map<String, NodeInfo>)
 
-    private class Flags(val warning: ErrorCode?, val ready: Boolean, val crash: Boolean, val failure: RvActivityFailure?)
+    private class Flags(val ready: Boolean, val crash: Boolean, val failure: RvActivityFailure?)
 
     companion object {
         /** How often 活動 reads today's usage while it is shown. */

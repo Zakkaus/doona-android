@@ -203,19 +203,18 @@ class ActivityModelTest {
         val failedOnly = Group("g-Main", "Main", GroupKind.Selector, listOf(n3), "n-3")
         val mapped = activityCatalog(data(catalog(groups = listOf(failedOnly))))
         assertTrue(mapped.allFailed)
-        assertEquals(RvActivityNotice.NoNode, activityModel(mapped, Status.Stopped, Traffic(), null, false, true, null).notice)
+        assertEquals(RvActivityNotice.NoNode, activityModel(mapped, Status.Stopped, Traffic(), false, true, null).notice)
         assertFalse(activityCatalog(data()).allFailed)
     }
 
     @Test
-    fun `the page model carries the live traffic, the local network warning, and waits while loading`() {
+    fun `the page model carries the live traffic and waits while loading`() {
         val traffic = Traffic(upRate = 3, downRate = 4, upHistory = listOf(1, 2), downHistory = listOf(5))
-        val ui = activityModel(activityCatalog(data()), Status.Running(0), traffic, ErrorCode.LocalNetwork, crashOffered = false, ready = true, failure = null)
+        val ui = activityModel(activityCatalog(data()), Status.Running(0), traffic, crashOffered = false, ready = true, failure = null)
         assertEquals(4L, ui.state.downRate)
         assertEquals(listOf(1f, 2f), ui.state.upHistory)
-        assertTrue(ui.localNetwork)
         assertFalse(ui.loading)
-        val loading = activityModel(activityCatalog(data()), Status.Failed(FailureReason.CoreStopped), traffic, null, false, ready = false, failure = null)
+        val loading = activityModel(activityCatalog(data()), Status.Failed(FailureReason.CoreStopped), traffic, false, ready = false, failure = null)
         assertTrue(loading.loading)
         assertNull(loading.notice)
     }

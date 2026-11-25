@@ -100,13 +100,12 @@ internal fun activityCatalog(data: ActivityData, placeOf: (String) -> RvPlace = 
 
 /**
  * 活動 as the page draws it: [catalog]'s lists under the live [status] and [traffic], with the one notice that applies
- * ([activityNotice]), a failed action's [failure], and whether the tunnel reported a failed local network connection.
+ * ([activityNotice]) and a failed action's [failure].
  */
 internal fun activityModel(
     catalog: ActivityCatalog,
     status: Status,
     traffic: Traffic,
-    warning: ErrorCode?,
     crashOffered: Boolean,
     ready: Boolean,
     failure: RvActivityFailure?,
@@ -129,7 +128,6 @@ internal fun activityModel(
         cards = catalog.cards,
         notice = if (loading) null else activityNotice(catalog.hasSubscriptions, status, crashOffered, catalog.allFailed),
         failure = failure,
-        localNetwork = warning == ErrorCode.LocalNetwork,
         loading = loading,
         hasSubscriptions = catalog.hasSubscriptions,
     )

@@ -117,9 +117,8 @@ internal enum class RvActivityAttempt { SwitchMode, TestLatency }
 
 /**
  * Everything 活動 shows: the header's [state], the lists its cards read ([nodes], [subscriptions], [rules] by bytes),
- * the [cards]' own values, the one [notice] that heads the cards, a failed action's [failure], whether a connection to
- * the local network failed ([localNetwork], which raises the LAN sheet), and whether the page still waits for its data
- * ([loading]).
+ * the [cards]' own values, the one [notice] that heads the cards, a failed action's [failure], and whether the page
+ * still waits for its data ([loading]).
  */
 @Immutable
 internal data class RvActivityUi(
@@ -130,7 +129,6 @@ internal data class RvActivityUi(
     val cards: RvActivityCards,
     val notice: RvActivityNotice?,
     val failure: RvActivityFailure?,
-    val localNetwork: Boolean,
     val loading: Boolean,
     val hasSubscriptions: Boolean,
 )
