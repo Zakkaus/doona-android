@@ -9,11 +9,15 @@ use honk_config::diagnostic::DiagnosticSources;
 use honk_config::parser::cursor::Document;
 use honk_config::parser::lexer::Source;
 
+use super::carry::Carry;
 use super::literal::{Literal, Match, is_invisible};
 use super::shadow::{Relation, relation};
 use super::{EditError, Expected, File, List, RuleRow};
 use crate::honkconf::staged::Tree;
 use crate::honkconf::{HonkStore, StoreError};
+
+/// The new text, the statement's bytes in it, and where the old bytes went.
+type Spliced = (String, Range<usize>, Carry);
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum FormError {
@@ -147,12 +151,17 @@ impl File {
         after.is_none_or(|byte| byte <= at).then_some(at)
     }
 
-    fn replace(&self, row: &RuleRow, statement: &str) -> Option<(String, Range<usize>)> {
+    fn replace(&self, row: &RuleRow, statement: &str) -> Option<Spliced> {
         self.rule_block(&self.document()?, row)?;
         let mut out = self.source.content.to_string();
         out.replace_range(row.bytes.clone(), statement);
         let start = row.bytes.start;
-        Some((out, start..start + statement.len()))
+        let carry = Carry::splice(
+            self.source.content.len(),
+            row.bytes.clone(),
+            statement.len(),
+        );
+        Some((out, start..start + statement.len(), carry))
     }
 }
 
@@ -246,37 +255,33 @@ fn resume(
     file: &File,
     id: &str,
     raw: &impl Fn() -> EditError,
-) -> Result<File, EditError> {
-    let (text, expected) = file.resume(id).ok_or_else(raw)?;
+) -> Result<(File, Carry), EditError> {
+    let (text, expected, carry) = file.resume(id).ok_or_else(raw)?;
     let resumed = reparse(tree, absolute, text, raw)?;
     if expected.matches(&file.source.content, &resumed) {
-        Ok(resumed)
+        Ok((resumed, carry))
     } else {
         Err(raw())
     }
 }
 
-/// The text to write: the candidate itself, or with its new rule commented out.
-fn written(
+/// The candidate with its new rule commented out.
+fn pause(
     tree: &mut Tree,
     absolute: &Path,
     candidate: &File,
     id: &str,
-    paused: bool,
     raw: &impl Fn() -> EditError,
-) -> Result<String, EditError> {
-    if !paused {
-        return Ok(candidate.source.content.to_string());
-    }
-    let text = candidate
+) -> Result<(File, Carry), EditError> {
+    let (text, carry) = candidate
         .row(id)
         .and_then(|row| candidate.pause(row))
         .ok_or_else(raw)?;
-    let paused = reparse(tree, absolute, text.clone(), raw)?;
+    let paused = reparse(tree, absolute, text, raw)?;
     if paused.traffic.len() + 1 == candidate.traffic.len()
         && paused.rows.iter().any(|r| r.paused && r.id == id)
     {
-        Ok(text)
+        Ok((paused, carry))
     } else {
         Err(raw())
     }
@@ -290,7 +295,7 @@ fn splice(
     before: Option<&str>,
     statement: &str,
     raw: &impl Fn() -> EditError,
-) -> Result<(usize, (String, Range<usize>)), EditError> {
+) -> Result<(usize, Spliced), EditError> {
     if let Some(old) = replaced {
         // A resumed statement starts where its paused run did.
         let row = base.rows.iter().find(|r| {
@@ -354,16 +359,22 @@ impl HonkStore {
             .filter(|row| row.paused)
             .map(|row| resume(&mut tree, &absolute, &file, &row.id, &raw))
             .transpose()?;
-        let base = resumed.as_ref().unwrap_or(&file);
+        let base = resumed.as_ref().map_or(&file, |(resumed, _)| resumed);
         let before = id.filter(|_| replaced.is_none());
-        let (at, (text, bytes)) = splice(base, replaced, before, &statement, &raw)?;
+        let (at, (text, bytes, carry)) = splice(base, replaced, before, &statement, &raw)?;
         let index = base.preceding(at);
         let candidate = reparse(&mut tree, &absolute, text, &raw)?;
         let id =
             read_back(base, &candidate, index, bytes, &literal, form.target).ok_or_else(raw)?;
         let earlier = earlier(&candidate, &candidate.traffic[..index], &literal, &root);
-        let content = written(&mut tree, &absolute, &candidate, &id, form.paused, &raw)?;
-        self.write_edit(draft, &absolute, &root, &content)?;
+        let paused = (form.paused)
+            .then(|| pause(&mut tree, &absolute, &candidate, &id, &raw))
+            .transpose()?;
+        let steps: Vec<_> = (resumed.into_iter())
+            .chain([(candidate, carry)])
+            .chain(paused)
+            .collect();
+        self.write_steps(draft, &absolute, &root, &file, &steps)?;
         Ok(Formed { path, id, earlier })
     }
 }

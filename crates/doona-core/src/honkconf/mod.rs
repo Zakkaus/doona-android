@@ -13,6 +13,7 @@ pub mod bundle;
 mod declarations;
 mod draft;
 pub mod edit;
+pub mod meters;
 mod rules;
 mod staged;
 mod store;

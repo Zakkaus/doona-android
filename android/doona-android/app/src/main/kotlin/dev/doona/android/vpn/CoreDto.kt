@@ -50,6 +50,10 @@ internal const val CORE_SCHEMA = 3
 @Serializable
 internal data class InitDto(val schema: Int)
 
+/** `init`'s options; the core builds its runtimes with them once per process. */
+@Serializable
+internal data class InitOptionsDto(val performanceMode: Boolean)
+
 @Serializable
 internal data class SnapshotDto(
     val revision: Long,

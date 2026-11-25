@@ -107,7 +107,7 @@ fn init_logging() {
 #[allow(deprecated)]
 const _: NativeMethod = native_method! {
     java_type = "dev.doona.android.vpn.NativeCore",
-    fn init(data_dir: JString) -> JString,
+    fn init(data_dir: JString, options_json: JString) -> JString,
     export = "Java_dev_doona_android_vpn_NativeCore_init",
     error_policy = ThrowInternal,
 };
@@ -116,15 +116,17 @@ fn init<'local>(
     env: &mut Env<'local>,
     _this: JObject<'local>,
     data_dir: JString<'local>,
+    options_json: JString<'local>,
 ) -> Result<JString<'local>> {
     if core().is_none() {
         let dir = data_dir.try_to_string(env)?;
+        let options = options_json.try_to_string(env)?;
         let _first = INIT.lock().unwrap_or_else(|e| e.into_inner());
         if core().is_none() {
             init_logging();
             // Before the runtime's threads exist, so it sees every panic.
             install_panic_hook();
-            match Core::new(&dir) {
+            match Core::init(&dir, &options) {
                 Ok(c) => {
                     // The panics of threads no runtime of the core runs: JNI callers, carriers.
                     crash::report_otherwise(&std::sync::Arc::downgrade(c.diag()));

@@ -527,7 +527,7 @@ class TunnelControllerTest {
         val events = CopyOnWriteArrayList<String>()
         val configs = CopyOnWriteArrayList<String>()
 
-        override fun init(dataDir: String) = """{"schema":$schema}"""
+        override fun init(dataDir: String, optionsJson: String) = """{"schema":$schema}"""
 
         override fun start(tunFd: Int, configJson: String) {
             startEntered.countDown()
