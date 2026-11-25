@@ -144,6 +144,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # A manual run holds the allowlist to HEAD^1, which this depth brings along.
+          fetch-depth: 2
       - name: Find the revision the components allowlist is held to
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -151,16 +153,18 @@ jobs:
           BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
-          # GITHUB_ENV is job-scoped, so the base is found here, not in the `android` job. The checkout is one commit
-          # deep: fetch the base commit itself, which is all `git show <base>:<path>` needs.
+          # GITHUB_ENV is job-scoped, so the base is found here, not in the `android` job. The checkout is two commits
+          # deep: a base outside it is fetched on its own, which is all `git show <base>:<path>` needs.
           base=
           case "$EVENT_NAME" in
             pull_request) base=$PR_BASE ;;
             # A push may carry several commits: compare with the branch head before it, as check_limits does above.
             push) [ -z "${BEFORE//0/}" ] || base=$BEFORE ;;
+            # workflow_dispatch and any other event: the commit before the one checked out.
+            *) base=$(git rev-parse --verify -q HEAD^1) || base= ;;
           esac
           if [ -n "$base" ]; then
-            git fetch --no-tags --depth=1 origin "$base"
+            git cat-file -e "$base^{commit}" 2>/dev/null || git fetch --no-tags --depth=1 origin "$base"
           else
             echo "no base to hold the allowlist to"
           fi
