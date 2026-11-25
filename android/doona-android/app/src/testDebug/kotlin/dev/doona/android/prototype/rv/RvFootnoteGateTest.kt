@@ -7,9 +7,10 @@ import java.io.File
 /**
  * The footnote's component gate (LAYOUT-RULES.md R20; owner, q-s1125c-footgap): a page draws a line of secondary text
  * in the footnote's role only through [dev.doona.android.designsystem.rv.RvFootnote]. Every text call of a page file
- * (`RvText`, `Text`, `BasicText`) in the secondary colour at the row subtitle's step, or a raw `Text`/`BasicText` in the
- * secondary colour, is listed in `rv-footnote-gate.txt` with why it is not a footnote (a value inside a card's row, a
- * centred header line); any other fails, and so does a listed one that is gone. The secondary colour is found by its
+ * (`RvText`, `Text`, `BasicText`, `RvInline`) in the secondary colour at the row subtitle's step, a raw `Text` or
+ * `BasicText` in the secondary colour, and every `RvCaption` (the library's secondary text at that step) is listed in
+ * `rv-footnote-gate.txt` with why it is not a footnote (a value inside a card's row, a centred header line, a page
+ * header's caption); any other fails, and so does a listed one that is gone. The secondary colour is found by its
  * name or through a local `val` of the file that holds it (`val secondary = Rv.colors.textSecondary`). Comments and
  * string literals are read as blanks, so a `{` or `(` in them neither opens a block nor a call.
  */
@@ -110,6 +111,19 @@ class RvFootnoteGateTest {
         assertEquals(listOf("RvText( note, // (see {below Rv.type.rowSub, color = Rv.colors.textSecondary, )"), found)
     }
 
+    /** The library's caption is secondary text at the row subtitle's step: a page that sets one under a card is caught. */
+    @Test
+    fun aCaptionUnderACardIsCaught() = caught(1, "@Composable\nfun Plant() {\n    RvCard { }\n    RvCaption(note)\n}\n")
+
+    /** An inline glyph and text in the secondary colour at that step is caught; in the text colour it is not. */
+    @Test
+    fun anInlineInTheSecondaryColourIsCaught() =
+        caught(
+            1,
+            "@Composable\nfun Plant() {\n    RvCard { }\n    RvInline(R.drawable.rv_sym_rule, note, Rv.colors.textSecondary, Rv.type.rowSub)\n" +
+                "    RvInline(R.drawable.rv_sym_rule, note, Rv.colors.text, Rv.type.rowSub)\n}\n",
+        )
+
     /** The calls [source] is caught on, each as the allowlist writes it (after the path). */
     private fun calls(source: String): List<String> {
         val plant = File.createTempFile("RvPlant", ".kt").apply {
@@ -138,13 +152,15 @@ internal fun rvFootnoteLike(file: File): List<String> {
     val source = file.readText()
     val code = rvCode(source)
     val colours = RvColourNames(code)
-    val calls = Regex("""\b(RvText|Text|BasicText)\(""").findAll(code).mapNotNull { m ->
+    val calls = Regex("""\b(RvText|Text|BasicText|RvInline|RvCaption)\(""").findAll(code).mapNotNull { m ->
         val close = closing(code, m.range.last)
         val args = arguments(code.substring(m.range.last + 1, close))
         val call = source.substring(m.range.first, close + 1).split(Regex("\\s+")).joinToString(" ")
         // An argument's value, never its name: `color = Rv.colors.text` is not the colour of an alias named `color`.
-        val secondary = args.any { colours.secondary(it.value, m.range.first) }
-        val role = args.any { "type.rowSub" in it.value } || m.groupValues[1] != "RvText"
+        // RvCaption is secondary text at the row subtitle's step whatever its arguments; RvInline and RvText take both.
+        val caption = m.groupValues[1] == "RvCaption"
+        val secondary = caption || args.any { colours.secondary(it.value, m.range.first) }
+        val role = caption || args.any { "type.rowSub" in it.value } || m.groupValues[1] in RAW_TEXT
         call.takeIf { secondary && role }
     }
     val path = file.path.substringAfter("kotlin/dev/doona/android/")
@@ -392,6 +408,9 @@ private fun arguments(inside: String): List<RvArgument> {
         if (named != null) RvArgument(named.groupValues[1], part.substring(named.range.last + 1)) else RvArgument(null, part)
     }
 }
+
+/** The platform's text calls: in the secondary colour they are in the footnote's role at any step. */
+private val RAW_TEXT = setOf("Text", "BasicText")
 
 private val NAMED = Regex("""^\s*(\w+)\s*=(?!=)""")
 
