@@ -15,6 +15,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.RV_LINK_PLACEHOLDER
 import dev.doona.android.designsystem.rv.RvAppDisc
 import dev.doona.android.designsystem.rv.RvBanner
 import dev.doona.android.designsystem.rv.RvCard
@@ -176,6 +177,5 @@ internal fun RvGallerySkeleton() {
     }
 }
 
-/** An invented subscription link (a reserved `.example` host) and the field's placeholder. */
+/** An invented subscription link (a reserved `.example` host). */
 internal const val RV_SAMPLE_LINK = "https://sub.harbor-cloud.example/api/v1/client/subscribe?token=8f3a6c"
-internal const val RV_LINK_PLACEHOLDER = "https://"

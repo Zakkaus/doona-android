@@ -1,10 +1,10 @@
 package dev.doona.android.prototype.rv.subs
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvConfirmSheet
+import dev.doona.android.designsystem.rv.RvPromptText
 
 /**
  * The local network prompts of main's flow (`feature/localnetwork`), in the sample's sheet: [Ask] says why before
@@ -12,10 +12,6 @@ import dev.doona.android.designsystem.rv.RvConfirmSheet
  * leads to the app's settings and never back to Android's dialog. The words are main's.
  */
 internal enum class RvLanPrompt { Ask, Denied }
-
-/** A prompt's words, shared by the sheet and its golden. */
-@Immutable
-internal data class RvPromptText(val title: String, val body: String, val confirm: String, val dismiss: String)
 
 @Composable
 internal fun RvLanPrompt.text(): RvPromptText = when (this) {

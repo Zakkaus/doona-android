@@ -15,6 +15,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.RV_LINK_PLACEHOLDER
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvBusy
@@ -32,6 +33,7 @@ import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvTextField
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.feature.model.RvSubscription
 
@@ -117,7 +119,7 @@ private fun Form(state: RvAddState, onChange: (RvAddState) -> Unit, onPaste: () 
             state.link,
             { onChange(state.copy(link = it.trim())) },
             stringResource(R.string.rv_add_link),
-            placeholder = LINK_PLACEHOLDER,
+            placeholder = RV_LINK_PLACEHOLDER,
             enabled = editable,
             keyboard = KeyboardOptions(keyboardType = KeyboardType.Uri),
         )
@@ -181,12 +183,6 @@ private fun failure(failure: RvAddFailure, onRetry: () -> Unit): RvNotice {
 }
 
 private const val HTTP = "http"
-
-/** The link field's placeholder: where every subscription link starts. */
-private const val LINK_PLACEHOLDER = "https://"
-
-/** Between the node count and the format on the done card. Stands in for the shared node separator until v1/parts moves it to main. */
-private const val SEPARATOR = " · "
 
 /** The core's download bound (`fetch.rs` `MAX_BODY`, 8 << 20). */
 internal const val RV_MAX_BODY = "8 MiB"

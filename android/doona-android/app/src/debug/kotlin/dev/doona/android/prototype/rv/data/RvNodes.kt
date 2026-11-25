@@ -4,20 +4,8 @@ import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.feature.model.RV_TESTS
 import dev.doona.android.feature.model.RvCity
 import dev.doona.android.feature.model.RvNode
-import java.net.URLEncoder
 import java.util.Random
 import kotlin.math.roundToInt
-
-/**
- * The node as a share link in the common URI form, `scheme://host:port?type=…&security=…#name`. The sample holds no
- * credentials, so the link carries the server's address and transport only; the app adds the subscription's user id.
- */
-internal fun RvNode.shareLink(): String {
-    val scheme = if (protocol == "Shadowsocks") "ss" else protocol.lowercase()
-    val type = if (transport == "WebSocket") "ws" else transport.lowercase()
-    val security = if (tls) "tls" else "none"
-    return "$scheme://$host:$port?type=$type&security=$security#" + URLEncoder.encode(name, "UTF-8").replace("+", "%20")
-}
 
 /**
  * The 48 nodes in 12 countries from the two subscriptions. Each node's tests come from its own seed: a base for its

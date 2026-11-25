@@ -20,13 +20,13 @@ import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvSecondaryButton
 import dev.doona.android.designsystem.rv.RvSectionTitle
+import dev.doona.android.designsystem.rv.RvSettingsNavRow
+import dev.doona.android.designsystem.rv.RvSettingsRow
+import dev.doona.android.designsystem.rv.RvSettingsSwitchRow
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.RvText
-import dev.doona.android.prototype.rv.settings.RvSettingsNavRow
-import dev.doona.android.prototype.rv.settings.RvSettingsRow
-import dev.doona.android.prototype.rv.settings.RvSettingsSwitchRow
 
 // The layout catalogue (docs/LAYOUT-RULES.md, Table 0): every row kind in every case, drawn by the library's own parts.
 

@@ -1,19 +1,16 @@
 package dev.doona.android.feature.onboarding
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -23,6 +20,7 @@ import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvDots
+import dev.doona.android.designsystem.rv.RvDuckMark
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvHeader
 import dev.doona.android.designsystem.rv.RvIconDisc
@@ -51,7 +49,7 @@ internal fun RvWelcome(onAdd: () -> Unit) {
             Spacer(Modifier.windowInsetsTopHeight(insets))
             Spacer(Modifier.height(RvSpace.headerTop))
             Column(titleBlock, horizontalAlignment = Alignment.CenterHorizontally) {
-                Image(painterResource(R.drawable.ic_duck), contentDescription = null, Modifier.size(RvSize.emptyGlyph))
+                RvDuckMark(RvSize.emptyGlyph)
                 Spacer(Modifier.height(RvSpace.rowGap))
                 RvText(stringResource(R.string.rv_welcome_title), Rv.type.largeTitle, Modifier.semantics { heading() })
             }
