@@ -1,6 +1,7 @@
 package dev.doona.android.app
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -120,13 +121,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // A launch that throws (no activity for the request, a launcher that is no longer registered) must not end the
-    // activity or leave the dialog counted as open: the ask is given up and the next status explains again.
+    // launch() throws ActivityNotFoundException when no activity can handle the request. That must not end the app or
+    // leave the dialog counted as open: the ask is given up and the next status explains again.
     private fun launchNotificationDialog() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return asks.notifyNotAsked()
         try {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        } catch (e: RuntimeException) {
+        } catch (e: ActivityNotFoundException) {
             VpnLog.warn("permissions: notification dialog not opened (${e.javaClass.simpleName})")
             asks.notifyNotAsked()
         }
@@ -137,7 +138,7 @@ class MainActivity : ComponentActivity() {
         val consent = VpnService.prepare(this) ?: return onPermissionStep(asks.consentAnswered(given = true))
         try {
             vpnConsent.launch(consent)
-        } catch (e: RuntimeException) {
+        } catch (e: ActivityNotFoundException) {
             VpnLog.warn("permissions: consent dialog not opened (${e.javaClass.simpleName})")
             asks.consentLaunchFailed()
         }

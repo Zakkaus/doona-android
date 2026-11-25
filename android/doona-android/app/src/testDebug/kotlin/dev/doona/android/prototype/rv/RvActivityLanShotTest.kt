@@ -19,8 +19,9 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * 活動 while connected, under the local network prompts a probe raises when a node or subscription on the local network
  * is reached: the ask before Android's dialog (`proto-rv-activity-lan-ask-*`) and the way to the app's settings after a
- * no (`-activity-lan-denied-*`); each light, dark, fs115 and fs200. The sheet is the one 新增訂閱 raises, drawn over the
- * page at its resting place as that page's goldens draw it.
+ * no (`-activity-lan-denied-*`); each light, dark, fs115 and fs200, and the ask light in English
+ * (`-activity-lan-ask-en-light`). The sheet is the one 新增訂閱 raises, drawn over the page at its resting place as
+ * that page's goldens draw it.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -39,6 +40,10 @@ class RvActivityLanShotTest {
     @Test fun askFs115() = shot("activity-lan-ask", LocalNetworkPrompt.Ask, fontScale = RV_FS115)
 
     @Test fun askFs200() = shot("activity-lan-ask", LocalNetworkPrompt.Ask, fontScale = RV_FS200)
+
+    @Test
+    @Config(qualifiers = RV_EN)
+    fun askEn() = shot("activity-lan-ask-en", LocalNetworkPrompt.Ask)
 
     @Test fun deniedLight() = shot("activity-lan-denied", LocalNetworkPrompt.Denied, dark = false)
 

@@ -234,8 +234,7 @@ class MainActivityTest {
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(Permission.Notify, asks.showing.value)
         val step = asks.confirm()
-        // A destroyed activity's launcher is unregistered, so launch() throws, as it does with no activity for the request.
-        controller.pause().stop().destroy()
+        shadowOf(app).checkActivities(true) // nothing handles the request, so launch() throws ActivityNotFoundException
         activity.onPermissionStep(step)
         runBlocking { asks.onStatus(running = true, notify = { true }) {} }
         assertEquals("the flag was not set, so the next status explains again", Permission.Notify, asks.showing.value)
@@ -249,8 +248,7 @@ class MainActivityTest {
         val asks = activity.asks()
         assertEquals(Permission.Vpn, asks.showing.value)
         val step = asks.confirm()
-        // A destroyed activity's launcher is unregistered, so launch() throws.
-        controller.pause().stop().destroy()
+        shadowOf(app).checkActivities(true) // nothing handles the consent request, so launch() throws
         activity.onPermissionStep(step)
         assertEquals("told as a refused consent", Permission.Vpn, asks.refused.value)
         assertEquals("the 連線 ended, so the next one explains again", PermissionStep.Wait, asks.connect(consentNeeded = true))
