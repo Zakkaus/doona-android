@@ -80,7 +80,7 @@
     <string name="first_heading">新增第一個訂閱</string>
     <string name="first_line_what">訂閱是提供節點的連結。</string>
     <string name="first_line_next">新增後會建立群組，即可連線。</string>
-    <string name="first_no_nodes">沒有節點，無法連線。請先新增訂閱。</string>
+    <string name="first_no_nodes">沒有可用的節點。</string>
     <string name="ui_dismiss">關閉</string>
     <string name="ui_clear">清除</string>
     <string name="ui_in_progress">處理中</string>
@@ -99,7 +99,7 @@
     <string name="error_too_large">訂閱內容太大</string>
     <string name="error_parse_failed">無法解析訂閱</string>
     <string name="error_no_nodes">訂閱中沒有節點</string>
-    <string name="error_busy">另一項變更正在進行，請稍後再試。</string>
+    <string name="error_busy">另一項變更正在套用。</string>
     <string name="error_internal">發生內部錯誤</string>
     <string name="error_local_network">無法連線至區域網路上的位址</string>
     <string name="error_dns_failed">DNS 查詢失敗</string>
@@ -108,7 +108,7 @@
     <string name="local_network_ask_continue">繼續</string>
     <string name="local_network_ask_not_now">暫不</string>
     <string name="local_network_denied_title">未允許存取區域網路</string>
-    <string name="local_network_denied_body">無法存取區域網路上的訂閱與節點。請在 App 設定中允許 doona 存取區域網路。</string>
+    <string name="local_network_denied_body">請在 App 設定中允許 doona 存取區域網路。</string>
     <string name="local_network_open_settings">開啟設定</string>
     <!-- What a screen reader says where the screen shows only a triangle, an arrow or a bar. -->
     <string name="rv_a11y_faster">變快 %1$s</string>

@@ -39,7 +39,7 @@
     <string name="rv_preview_label" translatable="false">doona RV sample</string>
     <string name="rv_mode_rule">Rules</string>
     <string name="rv_main_node">Main node</string>
-    <string name="rv_main_node_hint">Your pick becomes the main node</string>
+    <string name="rv_main_node_hint">Tap a node to make it the main node</string>
     <string name="rv_hero_all_traffic">All traffic</string>
     <string name="rv_hero_show">Show %1$s</string>
     <string name="rv_direct_note">All traffic connects directly, without a proxy</string>

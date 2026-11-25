@@ -446,7 +446,7 @@
  },
  {
   "page": "策略組",
-  "state": "Score 合併：UDP 測試未通過",
+  "state": "Score 合併：UDP 測試失敗",
   "screen": "policy-group-score-joint-failed"
  },
  {

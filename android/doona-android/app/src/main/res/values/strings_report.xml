@@ -2,5 +2,4 @@
 <!-- Diagnostic report (report/). -->
 <resources>
     <string name="report_share_title">Share diagnostic report</string>
-    <string name="report_redaction_hint">The more details you hide, the less likely we are to have enough information to answer.</string>
 </resources>

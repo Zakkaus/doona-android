@@ -23,5 +23,5 @@
     <string name="rv_conn_none_title">No connection matches</string>
     <string name="rv_conn_none_line">Try another keyword, or clear the search.</string>
     <string name="rv_conn_off_title">Not connected</string>
-    <string name="rv_conn_off_line">Once connected, each app\'s connections appear here</string>
+    <string name="rv_conn_off_line">Once connected, each app\'s connections appear here.</string>
 </resources>

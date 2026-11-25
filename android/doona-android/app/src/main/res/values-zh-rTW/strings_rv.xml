@@ -37,7 +37,7 @@
     <string name="rv_fastest_nodes">最快節點</string>
     <string name="rv_mode_rule">規則</string>
     <string name="rv_main_node">主節點</string>
-    <string name="rv_main_node_hint">選擇的節點會成為主節點</string>
+    <string name="rv_main_node_hint">點選節點即設為主節點</string>
     <string name="rv_hero_all_traffic">全部流量</string>
     <string name="rv_hero_show">顯示 %1$s</string>
     <string name="rv_direct_note">所有流量直接連線，不經代理</string>

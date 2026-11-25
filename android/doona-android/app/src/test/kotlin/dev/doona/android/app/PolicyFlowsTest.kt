@@ -132,14 +132,14 @@ class PolicyFlowsTest {
     fun `the hint to add a subscription shows only when the core had no node to start with`() {
         val engine = FakeEngine(subscriptions = emptyList(), status = Status.Failed(FailureReason.StartFailed, ErrorCode.NoNodes))
         show(engine)
-        compose.onNodeWithText("Could not connect: no nodes. Add a subscription first.").assertExists()
+        compose.onNodeWithText("No node available.").assertExists()
 
         compose.runOnIdle { engine.status.value = Status.Failed(FailureReason.StartFailed) }
-        compose.onNodeWithText("Could not connect: no nodes. Add a subscription first.").assertDoesNotExist()
+        compose.onNodeWithText("No node available.").assertDoesNotExist()
         compose.onNodeWithText("The VPN did not start").assertExists()
 
         compose.runOnIdle { engine.status.value = Status.Failed(FailureReason.StartFailed, ErrorCode.Internal) }
-        compose.onNodeWithText("Could not connect: no nodes. Add a subscription first.").assertDoesNotExist()
+        compose.onNodeWithText("No node available.").assertDoesNotExist()
         compose.onNodeWithText("The VPN did not start").assertExists()
     }
 

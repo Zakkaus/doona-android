@@ -66,4 +66,5 @@
     <string name="rv_perapp_save_failed">无法保存</string>
     <string name="rv_perapp_saving">正在保存…</string>
     <string name="rv_settings_per_app_except">不代理 %1$d 个应用</string>
+    <string name="rv_lab_restart_hint">重开应用后生效</string>
 </resources>

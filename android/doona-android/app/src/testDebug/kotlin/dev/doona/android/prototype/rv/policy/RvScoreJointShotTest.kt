@@ -122,7 +122,7 @@ class RvScoreJointShotTest {
     @Config(qualifiers = FAILED)
     fun failedSaysWhy() {
         compose.rvContent(dark = false) { Page(RvScoreSample.chosen, RvScoreSample.jointFailed) }
-        assertEquals(1, lines().count { it == "UDP 測試未通過" })
+        assertEquals(1, lines().count { it == "UDP 測試失敗" })
     }
 
     /** Separate: the switch on and both networks' cards, each with its comparison. */
