@@ -1,6 +1,6 @@
 //! The head rename publishes the revision, its entry name and the remaining draft pins together.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -33,6 +33,9 @@ pub enum StoreError {
         base: Option<u64>,
         head: Option<u64>,
     },
+    /// The draft was edited after the apply prepared it; reported as `conflict`, like
+    /// [`Self::Conflict`]. The draft keeps the edit.
+    DraftChanged { prepared: u64, current: u64 },
     /// A refused include leaves some declarations unknown.
     Incomplete,
     /// The report against the supplied facts holds a blocked rule or an unassessed input.
@@ -55,6 +58,7 @@ impl std::fmt::Display for StoreError {
             Self::Io(_) => "configuration storage I/O failed",
             Self::Config(e) => return e.fmt(f),
             Self::Conflict { .. } => "draft base is not the current revision",
+            Self::DraftChanged { .. } => "draft changed while it was being applied",
             Self::Incomplete => "configuration has a refused include",
             Self::NotRunnable(_) => "configuration has a blocked rule or an unassessed input",
             Self::InvalidEditPath => "invalid draft file path",
@@ -107,6 +111,7 @@ pub(super) struct Manifest {
 pub(super) struct Staged {
     pub entry: PathBuf,
     draft: u64,
+    version: u64,
     base: Option<u64>,
     rev: u64,
     revision: Revision,
@@ -120,6 +125,8 @@ pub struct HonkStore {
     pub(super) root: PathBuf,
     pub(super) manifest: Manifest,
     staged: Option<u64>,
+    /// Edits per draft in this process; an apply commits only the version it prepared.
+    pub(super) versions: HashMap<u64, u64>,
     _lock: File,
     #[cfg(test)]
     before_head_rename: fn(&Path) -> io::Result<()>,
@@ -145,6 +152,7 @@ impl HonkStore {
             root,
             manifest,
             staged: None,
+            versions: HashMap::new(),
             _lock: lock,
             #[cfg(test)]
             before_head_rename: |_| Ok(()),
@@ -259,6 +267,7 @@ impl HonkStore {
         let staged = Staged {
             entry: dir.join(&draft.entry),
             draft: id,
+            version: self.version(id),
             base: head,
             rev,
             revision: Revision {
@@ -271,7 +280,8 @@ impl HonkStore {
         Ok(staged)
     }
 
-    /// Compare and swap: publish `staged` only if head is still its base and its draft still exists.
+    /// Compare and swap: publish `staged` only if head is still its base and its draft still
+    /// exists at the version that was staged.
     pub(super) fn commit(&mut self, staged: Staged) -> Result<u64, StoreError> {
         self.staged = None;
         let head = self.head();
@@ -282,12 +292,23 @@ impl HonkStore {
             });
         }
         self.find(staged.draft)?;
+        let current = self.version(staged.draft);
+        if current != staged.version {
+            return Err(StoreError::DraftChanged {
+                prepared: staged.version,
+                current,
+            });
+        }
         let mut next = self.manifest.clone();
         next.last_meter = staged.last_meter;
         next.revisions.insert(staged.rev, staged.revision);
         next.drafts.retain(|d| d.id != staged.draft);
         self.publish(next)?;
         Ok(staged.rev)
+    }
+
+    fn version(&self, draft: u64) -> u64 {
+        self.versions.get(&draft).copied().unwrap_or(0)
     }
 
     /// Release a staged slot that will not be committed; the next cleanup removes it.

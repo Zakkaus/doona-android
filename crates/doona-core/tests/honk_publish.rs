@@ -255,6 +255,27 @@ fn changes_made_during_prepare_are_rechecked_before_the_rename() {
     ));
     assert_eq!(t.head(), (2, C.to_owned()));
 
+    // The same draft is edited while it is being prepared: the edit survives and commits next.
+    let b = t.draft(B);
+    let store = t.store.clone();
+    let edited = "# edited\nrouting { fallback: block }";
+    t.inputs.during(move || {
+        let mut store = store.lock().unwrap();
+        store.edit(b, Path::new("config.dae"), edited).unwrap();
+    });
+    assert!(matches!(
+        t.apply(b),
+        Err(PublishError::Store(StoreError::DraftChanged {
+            prepared: 1,
+            current: 2
+        }))
+    ));
+    assert_eq!(t.head(), (2, C.to_owned()));
+    let text = t.store.lock().unwrap().text(b, Path::new("config.dae"));
+    assert_eq!(&*text.unwrap(), edited);
+    assert_eq!(t.apply(b).unwrap().rev, 3);
+    assert_eq!(t.head(), (3, edited.to_owned()));
+
     // Another draft's edit runs store cleanup; the staged copy survives it.
     let b = t.draft(B);
     let other = t.draft(A);
@@ -267,11 +288,11 @@ fn changes_made_during_prepare_are_rechecked_before_the_rename() {
     assert_eq!(
         t.apply(b).unwrap(),
         Applied {
-            rev: 3,
+            rev: 4,
             generation: None
         }
     );
-    assert_eq!(t.head(), (3, B.to_owned()));
+    assert_eq!(t.head(), (4, B.to_owned()));
 }
 
 #[test]

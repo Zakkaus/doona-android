@@ -219,6 +219,7 @@ impl HonkStore {
         text: &str,
         carried: Option<Carried>,
     ) -> Result<(), StoreError> {
+        *self.versions.entry(id).or_default() += 1;
         // Select and record the new bytes' meters before replacing bytes: a crash must not
         // collect a draft containing the edit, and either bytes keep their meters.
         if carried.is_some() || self.current_draft().is_none_or(|d| d.id != id || !d.edited) {
