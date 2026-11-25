@@ -108,7 +108,7 @@ internal fun RvConnectionsPage(
 private fun SearchField(glass: RvGlass, query: String, routes: RvConnectionsRoutes, modifier: Modifier, hint: String) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(focus) { if (query.isEmpty()) focus.requestFocus() }
-    RvSearchField(glass, query, { routes.query(it) }, modifier, focus, hint)
+    RvSearchField(glass, query, { routes.query(it) }, modifier, focus, hint, onClose = { routes.query(null) })
 }
 
 /** The tunnel is off: nothing to list. 連線 is 活動's; the page does not repeat it. */

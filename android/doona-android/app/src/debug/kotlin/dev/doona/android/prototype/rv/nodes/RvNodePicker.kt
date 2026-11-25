@@ -185,7 +185,7 @@ internal fun RvNodePicker(
                     RvBackDisc(onClose)
                     Spacer(Modifier.width(RvChrome.controlGap - RvChrome.touchPad))
                     val field = Modifier.weight(1f).padding(end = RvSpace.gutter - RvChrome.touchPad)
-                    RvSearchField(glass, query, { query = it }, if (searchPage) field.rvSharedSearch() else field, focus)
+                    RvSearchField(glass, query, { query = it }, if (searchPage) field.rvSharedSearch() else field, focus, onClose = onClose.takeIf { searchPage })
                 }
             }
         }

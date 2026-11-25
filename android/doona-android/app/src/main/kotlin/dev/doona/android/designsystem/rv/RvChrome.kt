@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,8 +24,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,6 +50,8 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -50,6 +59,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.unit.Dp
@@ -250,6 +260,10 @@ private fun Modifier.barPill(pull: RvPullLook): Modifier {
  * typed in it and [hint], the pill's 搜尋節點 unless the list is another, as the placeholder; CJK runs set in Noto as
  * everywhere else. [focus], when given, can put the cursor (and the keyboard) in it. Without [glass], on a page over the
  * list it searches rather than on a bar ([RvSearchSlot]), it keeps the bar capsule's look at rest: one field everywhere.
+ * While [query] is not empty a clear button ([RvChrome.control] wide, its target 48 dp) stands at the field's end and empties
+ * it. The system takes the first back for the keyboard, so one back must end both: once the keyboard this field raised goes
+ * down, the field lets go of the focus and [onClose], when given, ends the page's search; the search key only hides the
+ * keyboard and keeps the results.
  */
 @Composable
 internal fun RvSearchField(
@@ -259,16 +273,20 @@ internal fun RvSearchField(
     modifier: Modifier = Modifier,
     focus: FocusRequester? = null,
     hint: String = stringResource(R.string.rv_search_nodes),
+    onClose: (() -> Unit)? = null,
 ) {
     // Its composition, the text field's first one included, is a section of its own in a Perfetto trace.
     Trace.beginSection(TRACE_FIELD)
     val colors = Rv.colors
+    val keyboard = LocalSoftwareKeyboardController.current
+    val search = remember { SearchKey() }
+    RvKeyboardBack(search, onClose)
     Row(
         modifier
             .then(if (glass != null) Modifier.minimumInteractiveComponentSize() else Modifier)
             .height(RvChrome.control)
             .rvControl(glass, CircleShape)
-            .padding(horizontal = RvChrome.searchInset),
+            .padding(start = RvChrome.searchInset),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(RvChrome.searchInset),
     ) {
@@ -279,6 +297,13 @@ internal fun RvSearchField(
             Modifier.weight(1f).then(focus?.let { Modifier.focusRequester(it) } ?: Modifier).semantics { contentDescription = hint },
             textStyle = Rv.type.search.copy(color = colors.text),
             singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(
+                onSearch = {
+                    search.kept = true
+                    keyboard?.hide()
+                },
+            ),
             cursorBrush = SolidColor(colors.positive),
             visualTransformation = { TransformedText(scripted(it.text), OffsetMapping.Identity) },
             decorationBox = { field ->
@@ -288,8 +313,53 @@ internal fun RvSearchField(
                 }
             },
         )
+        // The end's room: the clear button, or what the field's end padding was.
+        if (query.isEmpty()) {
+            Spacer(Modifier)
+        } else {
+            val label = stringResource(R.string.ui_clear)
+            Box(
+                Modifier.size(RvChrome.control).rvPress(CircleShape, Role.Button, onClick = { onQuery("") }).semantics { contentDescription = label },
+                contentAlignment = Alignment.Center,
+            ) { RvGlyph(R.drawable.rv_sym_close, RvChrome.searchGlyph, colors.textSecondary) }
+        }
     }
     Trace.endSection()
+}
+
+/** Whether the search key, not back, is what hides the keyboard: the results stay. */
+private class SearchKey {
+    var kept = false
+}
+
+/**
+ * Lets go of the focus and runs [onClose] once the keyboard that has been up goes down, unless the search key
+ * ([SearchKey.kept]) hid it: the system's first back ends the keyboard before the page sees it, so this makes that one back
+ * end the search as well.
+ */
+@Composable
+private fun RvKeyboardBack(search: SearchKey, onClose: (() -> Unit)?) {
+    val density = LocalDensity.current
+    val ime = WindowInsets.ime
+    val focus = LocalFocusManager.current
+    val close = rememberUpdatedState(onClose)
+    LaunchedEffect(search) {
+        var up = false
+        snapshotFlow { ime.getBottom(density) > 0 }.collect { visible ->
+            when {
+                visible -> {
+                    up = true
+                    search.kept = false
+                }
+
+                up -> {
+                    up = false
+                    focus.clearFocus()
+                    if (!search.kept) close.value?.invoke()
+                }
+            }
+        }
+    }
 }
 
 /**
