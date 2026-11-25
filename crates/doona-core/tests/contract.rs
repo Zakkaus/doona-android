@@ -244,21 +244,7 @@ fn snapshots() {
     let died = round_trip::<Snapshot>("snapshot-died.json");
     assert!(!died.running && died.error.is_some() && died.warning.is_none());
     assert_eq!(running.today.yesterday_by_now, Some(1_610_612_736));
-    // Before location hints, schema 3 omitted the three keys. The rest still round-trips.
-    let legacy = read("snapshot-stopped-catalog.json");
-    let stopped: Snapshot = serde_json::from_value(legacy.clone()).unwrap();
-    let mut encoded = serde_json::to_value(&stopped).unwrap();
-    for group in encoded["catalog"]["groups"].as_array_mut().unwrap() {
-        for member in group["members"].as_array_mut().unwrap() {
-            for key in ["region", "regionCentroid", "city"] {
-                assert_eq!(
-                    member.as_object_mut().unwrap().remove(key),
-                    Some(Value::Null)
-                );
-            }
-        }
-    }
-    assert_eq!(encoded, legacy);
+    let stopped = round_trip::<Snapshot>("snapshot-stopped-catalog.json");
     // No yesterday was kept.
     assert_eq!(stopped.today.yesterday_by_now, None);
     let catalog = stopped.catalog.unwrap();
@@ -269,6 +255,9 @@ fn snapshots() {
     let proxy = &catalog.groups[0];
     assert_eq!(proxy.members[2].name, proxy.members[3].name);
     assert_ne!(proxy.members[2].id, proxy.members[3].id);
+    // Location hints come from a node's name; a group has none.
+    assert_eq!(proxy.members[2].location.region.as_deref(), Some("HK"));
+    assert!(proxy.members[0].location.region.is_none() && proxy.members[0].location.city.is_none());
     // A node on the local network whose probe failed says why; the others carry no code.
     let lan = &proxy.members[3];
     assert!(lan.failed && lan.latency_ms.is_none());

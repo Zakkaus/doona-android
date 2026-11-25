@@ -346,11 +346,27 @@ internal data class MemberDto(
     val error: String? = null,
     val isGroup: Boolean,
     val subscriptionId: String? = null,
-    /** The ISO code the core reads from the name (`regions::locate`); its centroid and city are not read here. */
+    /** The ISO code the core reads from the name (`regions::locate`), the region's centroid, and a city the name names. */
     val region: String? = null,
+    val regionCentroid: CoordinatesDto? = null,
+    val city: CityDto? = null,
 ) {
     fun toMember() = Member(id, name, latencyMs, failed, isGroup, subscriptionId, error?.let(::errorCodeOf), region)
 }
+
+@Serializable
+internal data class CoordinatesDto(val lat: Double, val lon: Double)
+
+/** A city a node's name names: its id, its names when the core has them, and where it is. */
+@Serializable
+internal data class CityDto(val id: String, val names: CityNamesDto? = null, val lat: Double, val lon: Double)
+
+@Serializable
+internal data class CityNamesDto(
+    val en: String,
+    @SerialName("zh-TW") val zhTw: String,
+    @SerialName("zh-CN") val zhCn: String,
+)
 
 @Serializable
 internal data class SubscriptionDto(
