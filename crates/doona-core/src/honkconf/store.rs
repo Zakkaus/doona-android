@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use super::draft::Draft;
 use super::meters::RevisionMeters;
+use super::publish::Notice;
 use super::staged::Tree;
 use super::{Capabilities, HonkConfig, HonkConfigError, Support};
 use crate::state::{sync_dir, write_synced};
@@ -99,6 +100,17 @@ pub(super) struct Manifest {
     pub drafts: Vec<Draft>,
     pub last_draft: u64,
     last_meter: u64,
+    notice: Option<Notice>,
+}
+
+/// A revision tree copied for preparation. Head does not reach it until [`HonkStore::commit`].
+pub(super) struct Staged {
+    pub entry: PathBuf,
+    draft: u64,
+    base: Option<u64>,
+    rev: u64,
+    revision: Revision,
+    last_meter: u64,
 }
 
 /// One writer owns the app-private config directory. Share this handle between editors.
@@ -107,6 +119,7 @@ pub(super) struct Manifest {
 pub struct HonkStore {
     pub(super) root: PathBuf,
     pub(super) manifest: Manifest,
+    staged: Option<u64>,
     _lock: File,
     #[cfg(test)]
     before_head_rename: fn(&Path) -> io::Result<()>,
@@ -131,6 +144,7 @@ impl HonkStore {
         let mut store = Self {
             root,
             manifest,
+            staged: None,
             _lock: lock,
             #[cfg(test)]
             before_head_rename: |_| Ok(()),
@@ -184,6 +198,28 @@ impl HonkStore {
     /// The rename commits the revision. If the following directory sync fails, power loss
     /// can still roll it back; the old tree is retained until the new head is durable.
     pub fn apply(&mut self, id: u64, caps: &Capabilities<'_>) -> Result<u64, StoreError> {
+        let staged = self.stage_revision(id, caps)?;
+        self.commit(staged)
+    }
+
+    /// The refused start recorded by the publisher, until a start succeeds.
+    pub fn notice(&self) -> Option<&Notice> {
+        self.manifest.notice.as_ref()
+    }
+
+    pub(super) fn record_notice(&mut self, notice: Option<Notice>) -> io::Result<()> {
+        let mut next = self.manifest.clone();
+        next.notice = notice;
+        self.publish(next)
+    }
+
+    /// Validate the draft and copy its bytes into the next revision slot, which cleanup keeps
+    /// until [`Self::commit`] or [`Self::abandon`].
+    pub(super) fn stage_revision(
+        &mut self,
+        id: u64,
+        caps: &Capabilities<'_>,
+    ) -> Result<Staged, StoreError> {
         let draft = self.find(id)?;
         let head = self.head();
         if draft.base != head {
@@ -220,18 +256,43 @@ impl HonkStore {
         let rev = head.unwrap_or(0) + 1;
         let dir = self.root.join(REVISIONS).join(rev.to_string());
         tree.copy_to(&dir)?;
-        let mut next = self.manifest.clone();
-        next.last_meter = last_meter;
-        next.revisions.insert(
+        let staged = Staged {
+            entry: dir.join(&draft.entry),
+            draft: id,
+            base: head,
             rev,
-            Revision {
+            revision: Revision {
                 entry: draft.entry.clone(),
                 meters,
             },
-        );
-        next.drafts.retain(|d| d.id != id);
+            last_meter,
+        };
+        self.staged = Some(rev);
+        Ok(staged)
+    }
+
+    /// Compare and swap: publish `staged` only if head is still its base and its draft still exists.
+    pub(super) fn commit(&mut self, staged: Staged) -> Result<u64, StoreError> {
+        self.staged = None;
+        let head = self.head();
+        if head != staged.base {
+            return Err(StoreError::Conflict {
+                base: staged.base,
+                head,
+            });
+        }
+        self.find(staged.draft)?;
+        let mut next = self.manifest.clone();
+        next.last_meter = staged.last_meter;
+        next.revisions.insert(staged.rev, staged.revision);
+        next.drafts.retain(|d| d.id != staged.draft);
         self.publish(next)?;
-        Ok(rev)
+        Ok(staged.rev)
+    }
+
+    /// Release a staged slot that will not be committed; the next cleanup removes it.
+    pub(super) fn abandon(&mut self, _staged: Staged) {
+        self.staged = None;
     }
 
     pub(super) fn publish(&mut self, mut next: Manifest) -> io::Result<()> {
@@ -259,7 +320,7 @@ impl HonkStore {
             self.manifest.drafts.iter().any(|d| d.id == id)
         });
         sweep(&self.root.join(REVISIONS), |id| {
-            self.manifest.revisions.contains_key(&id)
+            self.manifest.revisions.contains_key(&id) || self.staged == Some(id)
         });
     }
 }
