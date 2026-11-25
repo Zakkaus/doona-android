@@ -104,7 +104,6 @@
         "nodes": 2,
         "groups": 1,
         "trafficRules": 0,
-        "dnsUpstreams": 0,
         "dnsRequestRules": 0,
         "dnsResponseRules": 0
       },

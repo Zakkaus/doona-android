@@ -414,7 +414,6 @@
         "nodes": 5,
         "groups": 5,
         "trafficRules": 0,
-        "dnsUpstreams": 0,
         "dnsRequestRules": 0,
         "dnsResponseRules": 0
       },

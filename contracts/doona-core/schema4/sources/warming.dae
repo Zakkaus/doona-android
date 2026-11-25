@@ -1,0 +1,18 @@
+subscription {
+    office: 'https://example.invalid/sub?token=REDACTED'
+}
+
+group {
+    fastest {
+        filter: subtag(office) && name(keyword: 'HK')
+        policy: min_moving_avg
+    }
+    scored {
+        filter: subtag(office)
+        policy: score
+    }
+}
+
+routing {
+    fallback: fastest
+}

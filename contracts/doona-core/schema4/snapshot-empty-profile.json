@@ -31,7 +31,6 @@
         "nodes": 0,
         "groups": 0,
         "trafficRules": 0,
-        "dnsUpstreams": 0,
         "dnsRequestRules": 0,
         "dnsResponseRules": 0
       },

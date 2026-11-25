@@ -37,7 +37,7 @@
           {
             "id": "n-0c41be7742aa9d03",
             "name": "HK-01",
-            "latencyMs": 41,
+            "latencyMs": null,
             "failed": false,
             "error": null,
             "isGroup": false,
@@ -49,7 +49,7 @@
           {
             "id": "n-7f3a19c2e5b80d46",
             "name": "HK-02",
-            "latencyMs": 52,
+            "latencyMs": null,
             "failed": false,
             "error": null,
             "isGroup": false,
@@ -65,7 +65,7 @@
         "implicitAll": false,
         "source": {
           "file": "f1",
-          "line": 16
+          "line": 6
         }
       },
       {
@@ -84,7 +84,7 @@
           {
             "id": "n-0c41be7742aa9d03",
             "name": "HK-01",
-            "latencyMs": 41,
+            "latencyMs": null,
             "failed": false,
             "error": null,
             "isGroup": false,
@@ -96,7 +96,7 @@
           {
             "id": "n-7f3a19c2e5b80d46",
             "name": "HK-02",
-            "latencyMs": 52,
+            "latencyMs": null,
             "failed": false,
             "error": null,
             "isGroup": false,
@@ -112,7 +112,7 @@
         "implicitAll": false,
         "source": {
           "file": "f1",
-          "line": 32
+          "line": 10
         }
       }
     ],
@@ -165,7 +165,6 @@
         "nodes": 2,
         "groups": 2,
         "trafficRules": 0,
-        "dnsUpstreams": 0,
         "dnsRequestRules": 0,
         "dnsResponseRules": 0
       },

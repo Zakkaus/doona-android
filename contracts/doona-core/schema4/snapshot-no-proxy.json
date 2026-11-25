@@ -189,7 +189,6 @@
         "nodes": 3,
         "groups": 2,
         "trafficRules": 2,
-        "dnsUpstreams": 0,
         "dnsRequestRules": 0,
         "dnsResponseRules": 0
       },

@@ -1,0 +1,16 @@
+node {
+    home: 'socks5://192.0.2.10:1080'
+    lab: 'socks5://192.0.2.11:1080'
+}
+
+group {
+    Main {
+        policy: select
+        default: gone
+        final: missing
+    }
+}
+
+routing {
+    fallback: Main
+}
