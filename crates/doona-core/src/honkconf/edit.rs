@@ -176,11 +176,9 @@ impl File {
             })
             .collect();
         let fallback_source = index.fallback.as_ref().map(|l| l.source_index);
-        let mut source = loaded.sources.into_iter().nth(owner).unwrap();
-        source.path = path
-            .strip_prefix(tree.entry.parent().unwrap())
-            .unwrap()
-            .into();
+        let mut source = (loaded.sources.into_iter().nth(owner))
+            .expect("owner is the position of path among the loaded sources");
+        source.path = ads::relative(tree, path);
         let (rows, markers) = source_rows(&source, &loaded.config, index, owner).ok_or_else(raw)?;
         let mut upstreams = HashSet::new();
         let mut duplicates = HashSet::new();
@@ -590,7 +588,7 @@ impl HonkStore {
         if !expected.matches(&file.source.content, &candidate) {
             return Err(raw());
         }
-        let root = tree.entry.parent().unwrap();
+        let root = ads::root(&tree);
         self.write_steps(draft, &absolute, root, &file, &[(candidate, carry)])
             .map_err(EditError::from)
     }
