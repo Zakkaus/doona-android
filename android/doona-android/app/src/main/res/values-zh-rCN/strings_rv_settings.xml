@@ -57,6 +57,9 @@
     <string name="rv_settings_dns_custom">自定义</string>
     <string name="rv_settings_dns_custom_sub">输入地址</string>
     <string name="rv_settings_dns_footer">规则和全局模式下，DNS 查询经由主节点发出。</string>
+    <string name="rv_settings_dns_custom_title">自定义 DNS 服务器</string>
+    <string name="rv_settings_dns_custom_hint">最多 4 个 IP 地址，以逗号分隔</string>
+    <string name="rv_settings_dns_custom_invalid">请输入 1 到 4 个 IP 地址，例如 1.1.1.1 或 1.1.1.1:53</string>
 
     <string name="rv_report_title">报告问题</string>
     <string name="rv_report_failed">无法导出诊断报告</string>

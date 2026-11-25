@@ -25,6 +25,10 @@ internal class FakeSettingsStore(
     override val performanceMode = MutableStateFlow(performanceMode)
     private val started = performanceMode
 
+    override suspend fun setAppearance(appearance: RvAppearance) {
+        this.appearance.value = appearance
+    }
+
     override fun languageTags(): String = languages
 
     override fun setLanguageTags(tags: String) {

@@ -13,17 +13,24 @@ import androidx.navigation3.runtime.NavKey
 import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.data.settings.LanguageSettings
 import dev.doona.android.data.settings.LogLevelController
+import dev.doona.android.data.settings.ThemeAccent
+import dev.doona.android.data.settings.ThemeAppearance
 import dev.doona.android.data.settings.ThemeMode
 import dev.doona.android.data.settings.UpdateCheck
 import dev.doona.android.data.settings.UpdateInterval
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
+import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.feature.NOT_WIRED
+import dev.doona.android.feature.activity.ActivityScreen
+import dev.doona.android.feature.activity.sampleActivityState
 import dev.doona.android.feature.model.RvAppearance
 import dev.doona.android.feature.model.RvThemeMode
 import dev.doona.android.feature.report.AppReportFacts
 import dev.doona.android.feature.report.ReportRoute
+import dev.doona.android.feature.settings.DnsRoute
 import dev.doona.android.feature.settings.IntervalRoute
 import dev.doona.android.feature.settings.LabRoute
 import dev.doona.android.feature.settings.LanguageRoute
@@ -34,10 +41,12 @@ import dev.doona.android.feature.settings.RvAboutScreen
 import dev.doona.android.feature.settings.RvAboutVersions
 import dev.doona.android.feature.settings.RvLicenseText
 import dev.doona.android.feature.settings.RvLicensesScreen
+import dev.doona.android.feature.settings.RvThemePreviewPage
 import dev.doona.android.feature.settings.SettingsNav
 import dev.doona.android.feature.settings.SettingsRoute
 import dev.doona.android.feature.settings.SettingsStore
 import dev.doona.android.feature.settings.SettingsSystem
+import dev.doona.android.feature.settings.ThemeRoute
 import dev.doona.android.feature.settings.TileAnswer
 import dev.doona.android.feature.settings.rvLicenseEntries
 import dev.doona.android.vpn.QuickTile
@@ -61,9 +70,9 @@ internal class AppSettingsStore(
     override val autoUpdate: Flow<Boolean> = settings.subscriptionUpdate.map { it.enabled }
     override val updateHours: Flow<Int> = settings.subscriptionUpdate.map { it.interval.hours }
     override val updateIntervals: List<Int> = UpdateInterval.entries.map { it.hours }
-    override val appearance: Flow<RvAppearance> = settings.appearance.map {
-        RvAppearance(rvThemeMode(it.mode), it.followWallpaper, it.accent.ordinal)
-    }
+    override val appearance: Flow<RvAppearance> = settings.appearance.map(::rvAppearance)
+
+    override suspend fun setAppearance(appearance: RvAppearance) = settings.setAppearance(themeAppearance(appearance))
     override val tileAdded: Flow<Boolean> = tile.added
 
     override fun languageTags(): String = LanguageSettings.languageTags(context)
@@ -84,12 +93,6 @@ internal class AppSettingsStore(
 
     override suspend fun setPerformanceMode(enabled: Boolean) = settings.setPerformanceMode(enabled)
 
-    private fun rvThemeMode(mode: ThemeMode) = when (mode) {
-        ThemeMode.System -> RvThemeMode.System
-        ThemeMode.Light -> RvThemeMode.Light
-        ThemeMode.Dark -> RvThemeMode.Dark
-    }
-
     companion object {
         /** `release_date` of `crates/doona-core/tools/geo-pins.json`: the GeoIP/GeoSite release the APK ships. */
         const val SHIPPED_GEO_DATE = "2026-11-23"
@@ -102,6 +105,28 @@ internal class AppSettingsStore(
         private var startedPerformance: Boolean? = null
     }
 }
+
+/** 主題's choices as the page shows them: the accent is the swatch's place, the scheme's own first. */
+internal fun rvAppearance(theme: ThemeAppearance) = RvAppearance(
+    when (theme.mode) {
+        ThemeMode.System -> RvThemeMode.System
+        ThemeMode.Light -> RvThemeMode.Light
+        ThemeMode.Dark -> RvThemeMode.Dark
+    },
+    theme.followWallpaper,
+    theme.accent.ordinal,
+)
+
+/** The page's choices as the store keeps them; [rvAppearance]'s inverse. */
+internal fun themeAppearance(appearance: RvAppearance) = ThemeAppearance(
+    when (appearance.mode) {
+        RvThemeMode.System -> ThemeMode.System
+        RvThemeMode.Light -> ThemeMode.Light
+        RvThemeMode.Dark -> ThemeMode.Dark
+    },
+    appearance.followWallpaper,
+    ThemeAccent.entries[appearance.accent],
+)
 
 /** What 設定 hands to Android from [activity]: its VPN settings, the releases and repository pages, and the quick settings [tile]'s request. */
 internal class ActivitySettingsSystem(private val activity: Activity, private val tile: QuickTile) : SettingsSystem {
@@ -138,6 +163,14 @@ internal class AppLogLevels(private val controller: LogLevelController) : LogLev
     override suspend fun set(level: LogLevel): Result<Unit> = controller.set(level)
 }
 
+/**
+ * What 主題's 預覽 draws in the app: the 活動 page the app shows today, on the sample's traffic, in the chosen scheme.
+ * The RV 活動 page replaces it once it leaves the debug sandbox (integ3).
+ */
+private val APP_THEME_PREVIEW: RvThemePreviewPage = { scheme, dark ->
+    DoonaTheme(dark, scheme) { ActivityScreen(sampleActivityState(), onAction = {}, onConnect = {}, onOpenGroup = {}) }
+}
+
 /** 檢查更新 in the app: GitHub's releases API, asked only when the user taps it. */
 internal val APP_RELEASES = ReleaseCheck { UpdateCheck.latestRelease() }
 
@@ -148,20 +181,20 @@ internal val APP_RELEASES = ReleaseCheck { UpdateCheck.latestRelease() }
 internal const val HONK_REVISION = "63de98b"
 
 /**
- * 設定 and the pages it opens, as the app's back stack entries: 回報問題, 關於, 語言, 更新間隔, 實驗室, 授權 and each
- * licence's text. 主題 and DNS stay in the debug sandbox (plan 1.2) and the effective config is P4's page, so their rows
- * open nothing here yet; 日誌等級 waits for the owner (q-p6a-logrow); 關於's 隱私 has no page to open (q-p6a-privacy).
+ * 設定 and the pages it opens, as the app's back stack entries: 回報問題, 關於, 主題, 語言, 更新間隔, 實驗室, DNS, 授權
+ * and each licence's text. The effective config is P4's page, so its row opens nothing here yet; 日誌等級 waits for the
+ * owner (q-p6a-logrow); 關於's 隱私 has no page to open (q-p6a-privacy).
  */
 internal fun EntryProviderScope<NavKey>.settingsEntries(backStack: MutableList<NavKey>, engine: Engine, version: String, onTab: (Int) -> Unit) {
     entry<SettingsKey> {
         val nav = remember(backStack) {
             SettingsNav(
                 perApp = { backStack.push(PerAppKey) },
-                dns = NOT_WIRED,
+                dns = { backStack.push(DnsKey) },
                 effectiveConfig = NOT_WIRED,
                 report = { backStack.push(ReportKey) },
                 about = { backStack.push(AboutKey) },
-                theme = NOT_WIRED,
+                theme = { backStack.push(ThemeKey) },
                 language = { backStack.push(LanguageKey) },
                 interval = { backStack.push(IntervalKey) },
                 lab = { backStack.push(LabKey) },
@@ -181,6 +214,10 @@ internal fun EntryProviderScope<NavKey>.settingsEntries(backStack: MutableList<N
         }
         RvAboutScreen(RvAboutVersions(version.ifBlank { RV_NO_VALUE }, HONK_REVISION), onBack = { backStack.pop(key) }, routes)
     }
+    entry<ThemeKey> { key ->
+        ThemeRoute(rememberSettingsStore(), rvSystemScheme(false), rvSystemScheme(true), APP_THEME_PREVIEW, onBack = { backStack.pop(key) })
+    }
+    entry<DnsKey> { key -> DnsRoute(engine, onBack = { backStack.pop(key) }) }
     entry<LanguageKey> { key -> LanguageRoute(rememberSettingsStore(), onBack = { backStack.pop(key) }) }
     // 自訂 has no page yet (plan 8: built, not hidden).
     entry<IntervalKey> { key -> IntervalRoute(rememberSettingsStore(), onCustom = NOT_WIRED, onBack = { backStack.pop(key) }) }

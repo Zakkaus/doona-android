@@ -13,7 +13,9 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvSettingsSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.feature.model.RvDnsUpstream
+import dev.doona.android.feature.settings.RvDnsScreen
 import dev.doona.android.feature.settings.RvSettingsRoutes
+import dev.doona.android.feature.settings.RvThemeScreen
 import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
@@ -139,7 +141,7 @@ class RvSettingsShotTest {
 
     @Composable
     private fun Theme() =
-        RvThemeScreen(rvSampleAppearance(), onChange = {}, light = seedColorScheme(Seed.Cyan.argb, false), dark = seedColorScheme(Seed.Cyan.argb, true), onBack = {})
+        RvThemeScreen(rvSampleAppearance(), onChange = {}, light = seedColorScheme(Seed.Cyan.argb, false), dark = seedColorScheme(Seed.Cyan.argb, true), previewPage = RV_SAMPLE_THEME_PREVIEW, onBack = {})
 
     private companion object {
         /**

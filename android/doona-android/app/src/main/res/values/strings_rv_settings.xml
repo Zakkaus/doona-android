@@ -64,6 +64,9 @@
     <string name="rv_settings_dns_custom">Custom</string>
     <string name="rv_settings_dns_custom_sub">Enter an address</string>
     <string name="rv_settings_dns_footer">In rule and global mode, DNS queries go through the main node.</string>
+    <string name="rv_settings_dns_custom_title">Custom DNS servers</string>
+    <string name="rv_settings_dns_custom_hint">Up to 4 IP addresses, separated by commas</string>
+    <string name="rv_settings_dns_custom_invalid">Enter 1 to 4 IP addresses, such as 1.1.1.1 or 1.1.1.1:53</string>
 
     <string name="rv_report_title">Report a problem</string>
     <string name="rv_report_failed">Could not export the diagnostic report</string>

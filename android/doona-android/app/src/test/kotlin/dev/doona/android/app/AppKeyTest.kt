@@ -16,7 +16,8 @@ class AppKeyTest {
     private val keys: List<AppKey> = listOf(
         ActivityKey, PoliciesKey, SettingsKey, TrafficKey, StatsKey, NodesKey, NodeSearchKey, NodeKey("n-1"), GroupKey("g-Proxy"),
         MainNodeChoiceKey, RulesKey, TemplateKey, TemplateImpactKey("t-1"), EffectiveConfigKey, SubscriptionsKey, SubAddKey,
-        SubDetailKey("s-1"), PerAppKey, ReportKey, AboutKey, LanguageKey, IntervalKey, LabKey, LicensesKey, LicenseTextKey("0"),
+        SubDetailKey("s-1"), PerAppKey, ReportKey, AboutKey, LanguageKey, IntervalKey, LabKey, ThemeKey, DnsKey, LicensesKey,
+        LicenseTextKey("0"),
     )
 
     @Test

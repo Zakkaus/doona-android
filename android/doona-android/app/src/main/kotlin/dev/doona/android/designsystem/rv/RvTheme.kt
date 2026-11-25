@@ -1,5 +1,6 @@
 package dev.doona.android.designsystem.rv
 
+import android.content.Context
 import android.os.Build
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.layout.WindowInsets
@@ -320,14 +321,15 @@ internal fun RvTheme(scheme: ColorScheme, dark: Boolean, content: @Composable ()
 
 /** The wallpaper's scheme on Android 12 and later; below that there is no wallpaper colour, so Material's baseline. */
 @Composable
-internal fun rvSystemScheme(dark: Boolean): ColorScheme {
-    val context = LocalContext.current
-    return when {
+internal fun rvSystemScheme(dark: Boolean): ColorScheme = rvSystemScheme(LocalContext.current, dark)
+
+/** [rvSystemScheme] for [context], outside composition, where a caller keeps the scheme it builds. */
+internal fun rvSystemScheme(context: Context, dark: Boolean): ColorScheme =
+    when {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         dark -> darkColorScheme()
         else -> lightColorScheme()
     }
-}
 
 /**
  * Insets of the status bar and the gesture bar. The app reads the window's; a screenshot frame that draws its own

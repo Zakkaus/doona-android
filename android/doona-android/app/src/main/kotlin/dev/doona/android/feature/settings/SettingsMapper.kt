@@ -67,7 +67,10 @@ internal fun rvDnsUpstream(servers: List<String>): RvDnsUpstream? {
 }
 
 /** The port a preset's servers answer on, which `dnsUpstreams` writes after each address. */
-private const val DNS_PORT = 53
+internal const val DNS_PORT = 53
+
+/** The server `setDnsUpstreams` saves for this preset: its address on [DNS_PORT]. */
+internal val RvDnsUpstream.server: String get() = "$address:$DNS_PORT"
 
 /**
  * What 檢查更新 found for the app's [current] version and the [latest] release tag (null: none published yet, so

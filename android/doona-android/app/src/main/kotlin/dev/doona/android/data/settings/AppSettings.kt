@@ -107,11 +107,14 @@ class AppSettings internal constructor(private val store: DataStore<Preferences>
 
     internal suspend fun recordGeoUpdateSuccess(epochMs: Long) = set(GEO_LAST_SUCCESS, epochMs)
 
-    suspend fun setThemeMode(mode: ThemeMode) = set(THEME_MODE, mode.name)
-
-    suspend fun setFollowWallpaper(enabled: Boolean) = set(FOLLOW_WALLPAPER, enabled)
-
-    suspend fun setAccent(accent: ThemeAccent) = set(ACCENT, accent.name)
+    /** Stores 主題's three choices in one edit, so [appearance] never shows a mix of the old and the new. */
+    suspend fun setAppearance(appearance: ThemeAppearance) {
+        store.edit {
+            it[THEME_MODE] = appearance.mode.name
+            it[FOLLOW_WALLPAPER] = appearance.followWallpaper
+            it[ACCENT] = appearance.accent.name
+        }
+    }
 
     suspend fun setPerformanceMode(enabled: Boolean) = set(PERFORMANCE_MODE, enabled)
 

@@ -1,7 +1,11 @@
 package dev.doona.android.feature.settings
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
@@ -10,7 +14,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import com.github.takahirom.roborazzi.captureRoboImage
+import dev.doona.android.R
 import dev.doona.android.data.settings.LogLevelController
+import dev.doona.android.designsystem.rv.RvSheetLayout
 import dev.doona.android.engine.AppPolicy
 import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.CrashFile
@@ -19,6 +25,7 @@ import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.PerApp
+import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvLanguage
@@ -31,12 +38,15 @@ import dev.doona.android.feature.report.RvReportScreen
 import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
+import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.rvAnimatorScale
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvRowRules
+import dev.doona.android.prototype.rv.seedColorScheme
 import dev.doona.android.prototype.rv.settings.RV_SAMPLE_GEO_SHIPPED_MS
+import dev.doona.android.prototype.rv.settings.RV_SAMPLE_THEME_PREVIEW
 import dev.doona.android.prototype.rv.settings.RvPerAppData
 import dev.doona.android.prototype.rv.settings.rvReportActions
 import dev.doona.android.prototype.rv.settings.rvSampleReport
@@ -215,6 +225,50 @@ class SettingsAppShotTest {
     @Test
     fun labRestartFs200() =
         compose.app("settings-lab-restart", fontScale = RV_FS200, whole = true, before = { turnPerformance() }) { LabRoute(FakeSettingsStore(), onBack = {}, onRestart = {}) }
+
+    @Test
+    @Config(qualifiers = THEME_PAGE)
+    fun themeLight() = compose.app("settings-theme", dark = false, whole = true) { Theme() }
+
+    @Test
+    @Config(qualifiers = THEME_PAGE)
+    fun themeDark() = compose.app("settings-theme", dark = true, whole = true) { Theme() }
+
+    @Test
+    @Config(qualifiers = THEME_PAGE_FS200)
+    fun themeFs200() = compose.app("settings-theme", fontScale = RV_FS200, whole = true) { Theme() }
+
+    @Test fun dnsLight() = compose.app("settings-dns", dark = false) { DnsRoute(FakeEngine(), onBack = {}) }
+
+    @Test fun dnsDark() = compose.app("settings-dns", dark = true) { DnsRoute(FakeEngine(), onBack = {}) }
+
+    @Test fun dnsFs200() = compose.app("settings-dns", fontScale = RV_FS200) { DnsRoute(FakeEngine(), onBack = {}) }
+
+    /** 自訂 open on the core's two servers, over the page. */
+    @Test fun dnsCustomLight() = compose.app("settings-dns-custom", dark = false) { DnsCustom(DnsUiState(SERVERS, true, TYPED)) }
+
+    @Test fun dnsCustomDark() = compose.app("settings-dns-custom", dark = true) { DnsCustom(DnsUiState(SERVERS, true, TYPED)) }
+
+    /** A name, which the core refuses: the sheet stays open and says what it takes. */
+    @Test
+    fun dnsCustomInvalidLight() = compose.app("settings-dns-custom-invalid", dark = false) { DnsCustom(DnsUiState(SERVERS, true, "dns.example", ErrorCode.InvalidArgument)) }
+
+    @Test
+    fun dnsCustomInvalidFs200() =
+        compose.app("settings-dns-custom-invalid", fontScale = RV_FS200) { DnsCustom(DnsUiState(SERVERS, true, "dns.example", ErrorCode.InvalidArgument)) }
+
+    /** The DNS page under 自訂's sheet, drawn open in the page's window as the other sheets' shots are. */
+    @Composable
+    private fun DnsCustom(state: DnsUiState) {
+        Box(Modifier.fillMaxSize()) {
+            RvDnsScreen(rvDnsUpstream(state.servers), onSelect = {}, onBack = {})
+            RvSheetLayout({ 1f }, {}, stringResource(R.string.rv_settings_dns_custom_title)) { RvDnsCustomContent(state, onText = {}, onSave = {}, onDismiss = {}) }
+        }
+    }
+
+    @Composable
+    private fun Theme() =
+        ThemeRoute(FakeSettingsStore(), seedColorScheme(Seed.Cyan.argb, false), seedColorScheme(Seed.Cyan.argb, true), RV_SAMPLE_THEME_PREVIEW, onBack = {})
 
     @Composable
     private fun Interval() = IntervalRoute(sampleStore(), onCustom = {}, onBack = {})
@@ -447,6 +501,14 @@ private fun noNav() = SettingsNav({}, {}, {}, {}, {}, {}, {}, {}, {})
 
 /** As tall as each page at each font size, as its approved golden (RvLabShotTest's approved 設定, RvReportShotTest). */
 private const val LONG_PAGE = "+h1826dp"
+
+/** 主題 whole: the window the page fills at 1× and 2×. */
+private const val THEME_PAGE = "+h975dp"
+private const val THEME_PAGE_FS200 = "+h1062dp"
+
+/** The core's servers in [FakeEngine], and 自訂 as it opens on them. */
+private val SERVERS = listOf("1.1.1.1:53", "8.8.8.8:53")
+private const val TYPED = "1.1.1.1, 8.8.8.8"
 private const val LONG_PAGE_FS115 = "+h1851dp"
 private const val LONG_PAGE_FS200 = "+h2373dp"
 

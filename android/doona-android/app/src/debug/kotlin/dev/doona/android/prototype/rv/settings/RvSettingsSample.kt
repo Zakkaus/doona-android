@@ -10,8 +10,14 @@ import dev.doona.android.feature.report.RvReportPreview
 import dev.doona.android.feature.settings.RvAboutVersions
 import dev.doona.android.feature.settings.RvSettingsRoutes
 import dev.doona.android.feature.settings.RvSettingsScreen
+import dev.doona.android.feature.settings.RvThemePreviewPage
 import dev.doona.android.feature.settings.RvUpdate
+import dev.doona.android.prototype.rv.RvActivityScreenSample
 import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.rvSampleActivity
+
+/** 主題's 預覽 in the sandbox and the tests: the RV 活動 page on the sample, as the approved screens show it. */
+internal val RV_SAMPLE_THEME_PREVIEW: RvThemePreviewPage = { _, _ -> RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}) }
 
 internal fun rvSampleAppearance() = RvAppearance(RvThemeMode.System, followWallpaper = false, accent = 0)
 

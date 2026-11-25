@@ -90,6 +90,12 @@ data object IntervalKey : AppKey
 data object LabKey : AppKey
 
 @Serializable
+data object ThemeKey : AppKey
+
+@Serializable
+data object DnsKey : AppKey
+
+@Serializable
 data object LicensesKey : AppKey
 
 /** One licence's text, by its place in 授權's list. */

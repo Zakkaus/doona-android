@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.settings
+package dev.doona.android.feature.settings
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.border
@@ -35,9 +35,6 @@ import dev.doona.android.designsystem.rv.RvSettingsSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.feature.model.RvAppearance
 import dev.doona.android.feature.model.RvThemeMode
-import dev.doona.android.prototype.rv.RvActivityScreen
-import dev.doona.android.prototype.rv.RvActivityScreenSample
-import dev.doona.android.prototype.rv.rvSampleActivity
 
 /** One accent: its name for a screen reader and its primary in the light theme. */
 internal class RvAccent(@StringRes val name: Int, val light: Color)
@@ -74,9 +71,9 @@ internal val RvAppearance.shownAccent: Int get() = if (followWallpaper) 0 else a
 internal fun RvAppearance.scheme(base: ColorScheme, dark: Boolean): ColorScheme =
     if (shownAccent == 0) base else base.withAccent(RV_ACCENTS[shownAccent - 1], dark)
 
-/** Whether the preview is dark: the page's own theme for 跟隨系統, else the chosen one. */
-internal fun RvAppearance.previewDark(pageDark: Boolean): Boolean = when (mode) {
-    RvThemeMode.System -> pageDark
+/** Whether these choices are dark when the system is [systemDark]: the system's for 跟隨系統, else the chosen mode. */
+internal fun RvAppearance.isDark(systemDark: Boolean): Boolean = when (mode) {
+    RvThemeMode.System -> systemDark
     RvThemeMode.Light -> false
     RvThemeMode.Dark -> true
 }
@@ -84,11 +81,11 @@ internal fun RvAppearance.previewDark(pageDark: Boolean): Boolean = when (mode) 
 /**
  * What the choices would look like, Revolut's Appearance preview: the top of the real 活動 page (its top bar, hero, dot
  * map and filled round actions, S8-12), scaled down in a phone-shaped panel in a card and wearing the chosen theme. It is
- * a picture: the screen reader hears 預覽 and a touch does nothing.
+ * a picture of [page]: the screen reader hears 預覽 and a touch does nothing.
  */
 @Composable
-internal fun RvThemePreview(appearance: RvAppearance, light: ColorScheme, dark: ColorScheme, modifier: Modifier = Modifier) {
-    val isDark = appearance.previewDark(Rv.colors.dark)
+internal fun RvThemePreview(appearance: RvAppearance, light: ColorScheme, dark: ColorScheme, page: RvThemePreviewPage, modifier: Modifier = Modifier) {
+    val isDark = appearance.isDark(Rv.colors.dark)
     val scheme = appearance.scheme(if (isDark) dark else light, isDark)
     val label = stringResource(R.string.rv_settings_preview)
     val size = RvSettingsSize
@@ -115,7 +112,7 @@ internal fun RvThemePreview(appearance: RvAppearance, light: ColorScheme, dark: 
                     },
             ) {
                 CompositionLocalProvider(LocalFrameInsets provides WindowInsets(top = size.previewStatus)) {
-                    RvTheme(scheme, isDark) { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}) }
+                    RvTheme(scheme, isDark) { page(scheme, isDark) }
                 }
             }
             // Above the page, so no tap or drag reaches it.
@@ -126,3 +123,6 @@ internal fun RvThemePreview(appearance: RvAppearance, light: ColorScheme, dark: 
 
 /** The preview shows the 活動 page at this share of its size. */
 private const val PREVIEW_SCALE = 0.6f
+
+/** The page the preview draws, scaled down, in the [scheme] the choices give and [dark] or not: 活動. */
+internal typealias RvThemePreviewPage = @Composable (scheme: ColorScheme, dark: Boolean) -> Unit

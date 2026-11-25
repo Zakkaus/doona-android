@@ -30,12 +30,9 @@ class AppSettingsTest {
             settings.setNotifyOnDrop(false)
             settings.setUpdateInterval(UpdateInterval.One)
             settings.setAutoUpdate(false)
-            settings.setThemeMode(ThemeMode.Dark)
-            settings.setFollowWallpaper(true)
-            settings.setAccent(ThemeAccent.Purple)
+            settings.setAppearance(ThemeAppearance(ThemeMode.Light, followWallpaper = true, accent = ThemeAccent.Purple))
             assertFalse(settings.performanceMode.first())
             settings.setPerformanceMode(true)
-            settings.setThemeMode(ThemeMode.Light)
             assertEquals(ThemeMode.Light, settings.themeMode.first())
         } finally {
             writer.cancelAndJoin()

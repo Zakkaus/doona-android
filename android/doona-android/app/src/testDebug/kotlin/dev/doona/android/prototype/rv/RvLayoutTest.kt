@@ -22,10 +22,12 @@ import dev.doona.android.feature.report.RvRedaction
 import dev.doona.android.feature.report.RvReportBuild
 import dev.doona.android.feature.report.RvReportScreen
 import dev.doona.android.feature.settings.RvAboutScreen
+import dev.doona.android.feature.settings.RvDnsScreen
 import dev.doona.android.feature.settings.RvIntervalScreen
 import dev.doona.android.feature.settings.RvLicensesScreen
 import dev.doona.android.feature.settings.RvLogLevel
 import dev.doona.android.feature.settings.RvLogLevelScreen
+import dev.doona.android.feature.settings.RvThemeScreen
 import dev.doona.android.feature.settings.RvUpdate
 import dev.doona.android.prototype.rv.config.RvConfigHistoryData
 import dev.doona.android.prototype.rv.config.RvConfigImportPage
@@ -56,11 +58,10 @@ import dev.doona.android.prototype.rv.policy.RvTemplateData
 import dev.doona.android.prototype.rv.policy.RvTemplateImpactPage
 import dev.doona.android.prototype.rv.policy.RvTemplatePage
 import dev.doona.android.prototype.rv.policy.RvTemplatePageSample
-import dev.doona.android.prototype.rv.settings.RvDnsScreen
+import dev.doona.android.prototype.rv.settings.RV_SAMPLE_THEME_PREVIEW
 import dev.doona.android.prototype.rv.settings.RvPerAppActions
 import dev.doona.android.prototype.rv.settings.RvPerAppScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
-import dev.doona.android.prototype.rv.settings.RvThemeScreen
 import dev.doona.android.prototype.rv.settings.rvAboutRoutes
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.settings.rvReportActions
@@ -186,7 +187,7 @@ class RvLayoutTest {
 
     @Test
     fun theme() = measure("settings-theme", Top.Title) {
-        RvThemeScreen(rvSampleAppearance(), onChange = {}, light = seedColorScheme(Seed.Cyan.argb, false), dark = seedColorScheme(Seed.Cyan.argb, true), onBack = {})
+        RvThemeScreen(rvSampleAppearance(), onChange = {}, light = seedColorScheme(Seed.Cyan.argb, false), dark = seedColorScheme(Seed.Cyan.argb, true), previewPage = RV_SAMPLE_THEME_PREVIEW, onBack = {})
     }
 
     @Test

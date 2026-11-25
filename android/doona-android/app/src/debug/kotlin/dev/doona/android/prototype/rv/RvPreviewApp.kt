@@ -49,13 +49,17 @@ import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.model.fastest
 import dev.doona.android.feature.nodes.ui.LocalRvRowActions
 import dev.doona.android.feature.nodes.ui.RvRowActions
+import dev.doona.android.feature.settings.RvDnsScreen
 import dev.doona.android.feature.settings.RvLanguageScreen
 import dev.doona.android.feature.settings.RvLicenseText
 import dev.doona.android.feature.settings.RvLicensesScreen
 import dev.doona.android.feature.settings.RvSettingsLoading
 import dev.doona.android.feature.settings.RvSettingsRoutes
+import dev.doona.android.feature.settings.RvThemeScreen
+import dev.doona.android.feature.settings.isDark
 import dev.doona.android.feature.settings.rvLicenseEntries
 import dev.doona.android.feature.settings.rvSystemLanguage
+import dev.doona.android.feature.settings.scheme
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
 import dev.doona.android.prototype.rv.connections.RvConnectionsPage
 import dev.doona.android.prototype.rv.connections.RvConnectionsRoutes
@@ -70,7 +74,7 @@ import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyPreview
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewRoutes
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewState
-import dev.doona.android.prototype.rv.settings.RvDnsScreen
+import dev.doona.android.prototype.rv.settings.RV_SAMPLE_THEME_PREVIEW
 import dev.doona.android.prototype.rv.settings.RvPerAppActions
 import dev.doona.android.prototype.rv.settings.RvPerAppScreen
 import dev.doona.android.prototype.rv.settings.RvReportSample
@@ -78,14 +82,11 @@ import dev.doona.android.prototype.rv.settings.RvSave
 import dev.doona.android.prototype.rv.settings.RvSettingsPreview
 import dev.doona.android.prototype.rv.settings.RvSettingsPreviewRoutes
 import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
-import dev.doona.android.prototype.rv.settings.RvThemeScreen
-import dev.doona.android.prototype.rv.settings.previewDark
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.settings.rvQuickTile
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import dev.doona.android.prototype.rv.settings.rvSettingsRoutes
 import dev.doona.android.prototype.rv.settings.rvUpdateSample
-import dev.doona.android.prototype.rv.settings.scheme
 import dev.doona.android.prototype.rv.states.RvActivityNotice
 import dev.doona.android.prototype.rv.states.RvPermission
 import dev.doona.android.prototype.rv.states.RvPermissionAsks
@@ -155,7 +156,7 @@ internal fun RvPreviewApp(options: RvMotionOptions = RvMotionOptions(), start: R
     // (API 35 and later) runs the app at its normal rate, 60 Hz. Ambient loops vote normal where they run (RvBusy, the
     // map's pulse); a frame where nothing moves votes nothing.
     Box(Modifier.fillMaxSize().preferredFrameRate(FrameRateCategory.High), propagateMinConstraints = true) {
-        RvLookFade(settings.appearance.previewDark(systemDark) to settings.appearance) { (dark, appearance) ->
+        RvLookFade(settings.appearance.isDark(systemDark) to settings.appearance) { (dark, appearance) ->
             RvTheme(appearance.scheme(rvSystemScheme(dark), dark), dark) {
                 RvSample(options, start, settings) { settings = it }
             }
@@ -236,7 +237,7 @@ private fun RvSamplePage(
 
         SETTINGS -> SettingsPage(settings, onSettings, pages, route.substringAfter(':', ""))
 
-        THEME -> RvThemeScreen(settings.appearance, { onSettings(settings.copy(appearance = it)) }, rvSystemScheme(false), rvSystemScheme(true), onBack = pages.pop)
+        THEME -> RvThemeScreen(settings.appearance, { onSettings(settings.copy(appearance = it)) }, rvSystemScheme(false), rvSystemScheme(true), RV_SAMPLE_THEME_PREVIEW, onBack = pages.pop)
 
         DNS -> RvDnsScreen(settings.dns, { onSettings(settings.copy(dns = it)) }, onBack = pages.pop)
 

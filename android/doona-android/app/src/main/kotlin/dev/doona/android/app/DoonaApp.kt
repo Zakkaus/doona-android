@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,7 +21,6 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rememberRvGlass
 import dev.doona.android.designsystem.rv.rvGlassSource
 import dev.doona.android.designsystem.rv.rvNavClearance
-import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.InstalledApps
@@ -93,14 +93,10 @@ fun DoonaApp(
     localNetwork?.let { LocalNetworkPrompts(it) }
 }
 
-/**
- * RV's tokens on the system scheme, for the floating nav and the host's motion, until MainActivity's theme provides
- * them (wire-p1b's AppTheme, which gives the old pages' [DoonaTheme] the same scheme); then this is a no-op to drop.
- */
+/** RV's tokens on the scheme the old pages' [DoonaTheme] wears ([AppTheme]'s, with 主題's choices), for every RV page. */
 @Composable
 private fun RvOverDoona(content: @Composable () -> Unit) {
-    val dark = DoonaTheme.colors.dark
-    RvTheme(rvSystemScheme(dark), dark, content)
+    RvTheme(MaterialTheme.colorScheme, DoonaTheme.colors.dark, content)
 }
 
 /**

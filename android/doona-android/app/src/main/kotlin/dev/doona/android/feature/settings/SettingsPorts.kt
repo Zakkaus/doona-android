@@ -23,6 +23,9 @@ internal interface SettingsStore {
     /** The theme page's choices; 設定 shows the mode on 主題's row. */
     val appearance: Flow<RvAppearance>
 
+    /** Stores the theme page's choices; the app's theme follows them. */
+    suspend fun setAppearance(appearance: RvAppearance)
+
     /** Whether the quick settings tile was recorded as added. */
     val tileAdded: Flow<Boolean>
 
