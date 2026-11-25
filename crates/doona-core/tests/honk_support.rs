@@ -63,23 +63,28 @@ struct Catalog {
     site: BTreeMap<&'static str, BTreeSet<&'static str>>,
 }
 
+/// Follows honk's rules: lowercase codes, one split at the first `@`, attributes by key
+/// without case. Fixture keys are lowercase.
 impl GeoCatalog for Catalog {
     fn geoip(&self, code: &str) -> Label {
-        if self.ip.contains(code) {
+        if self.ip.contains(code.to_ascii_lowercase().as_str()) {
             Label::Present
         } else {
             Label::MissingCategory
         }
     }
     fn geosite(&self, label: &str) -> Label {
-        let mut parts = label.split('@');
-        let Some(attrs) = self.site.get(parts.next().unwrap()) else {
+        let (code, attr) = label
+            .split_once('@')
+            .map_or((label, None), |(c, a)| (c, Some(a)));
+        let Some(attrs) = self.site.get(code.to_ascii_lowercase().as_str()) else {
             return Label::MissingCategory;
         };
-        if parts.all(|a| attrs.contains(a)) {
-            Label::Present
-        } else {
-            Label::MissingAttribute
+        match attr {
+            Some(attr) if !attrs.iter().any(|a| a.eq_ignore_ascii_case(attr)) => {
+                Label::MissingAttribute
+            }
+            _ => Label::Present,
         }
     }
 }
@@ -158,6 +163,26 @@ fn tun_prefix_is_captured() {
         [(
             "routing",
             "rule[2]",
+            vec!["lan_outside_capture"],
+            Disposition::Limited
+        )]
+    );
+}
+
+#[test]
+fn private_list_is_partly_captured() {
+    // honk's private list holds 100.64.0.0/10 and 198.18.0.0/15, which the TUN routes, and
+    // the D25 LAN ranges, which it does not.
+    let (ingress, geo) = (d25(), Catalog::default());
+    let doc = doc(
+        "routing {\n dip(geoip:private) -> direct\n !dip(geoip:private) -> direct\n fallback: direct\n}",
+    );
+    let report = doc.support(&caps(&ingress, &geo, 1));
+    assert_eq!(
+        rows(&report),
+        [(
+            "routing",
+            "rule[0]",
             vec!["lan_outside_capture"],
             Disposition::Limited
         )]

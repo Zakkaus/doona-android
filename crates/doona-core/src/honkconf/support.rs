@@ -37,7 +37,9 @@ fn mask(len: u8) -> u32 {
 }
 
 /// Whether one geodata label resolves in the installed data. The catalog owns honk's
-/// matching rules (case, `@` attributes); this projection only asks.
+/// matching rules; this projection only asks. honk lowercases codes, splits a GEOSITE label
+/// at its first `@` (so `cat@a@b` asks for the attribute `a@b`), compares attributes without
+/// case and by key presence, and reads `!attr` as a literal key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Label {
     Present,
@@ -150,6 +152,47 @@ pub(super) fn project(
             _ => None,
         },
         unassessed: out.unassessed,
+    }
+}
+
+/// honk's own `geoip:private` IPv4 ranges (honk-core `routing/geo.rs:584-603` at the pin); honk never
+/// reads the dat for this code. Its IPv6 ranges cannot reach the IPv4-only TUN.
+const PRIVATE_V4: [([u8; 4], u8); 15] = [
+    ([10, 0, 0, 0], 8),
+    ([100, 64, 0, 0], 10),
+    ([127, 0, 0, 0], 8),
+    ([169, 254, 0, 0], 16),
+    ([172, 16, 0, 0], 12),
+    ([192, 0, 0, 0], 24),
+    ([192, 0, 2, 0], 24),
+    ([192, 88, 99, 0], 24),
+    ([192, 168, 0, 0], 16),
+    ([198, 18, 0, 0], 15),
+    ([198, 51, 100, 0], 24),
+    ([203, 0, 113, 0], 24),
+    ([224, 0, 0, 0], 4),
+    ([240, 0, 0, 0], 4),
+    ([255, 255, 255, 255], 32),
+];
+
+/// Reachability of one rule's positive destination alternatives.
+#[derive(Default)]
+struct Scope {
+    reachable: bool,
+    unknown: bool,
+    v6: bool,
+    lan: bool,
+}
+
+impl Scope {
+    fn v4(&mut self, ingress: Option<&Ingress>, addr: Ipv4Addr, len: u8) {
+        let Some(ingress) = ingress else {
+            self.unknown = true;
+            return;
+        };
+        let reach = ingress.reach(addr, len);
+        self.reachable |= reach != Reach::None;
+        self.lan |= reach != Reach::All;
     }
 }
 
@@ -355,34 +398,39 @@ impl Findings<'_> {
 
     /// Positive destination alternatives: the rule survives while one can reach the TUN; a
     /// prefix only partly routed into it constrains the rule.
-    fn destinations(&mut self, cidrs: &[String], has_geoip: bool) {
-        let (mut reachable, mut unknown, mut v6, mut lan) = (has_geoip, false, false, false);
-        for network in cidrs.iter().filter_map(|s| decode_ip_or_cidr(s)) {
-            match (network.network.addr(), self.caps.ingress) {
-                (IpAddr::V6(_), _) => v6 = true,
-                (IpAddr::V4(_), None) => unknown = true,
-                (IpAddr::V4(addr), Some(ingress)) => {
-                    let reach = ingress.reach(addr, network.network.prefix_len());
-                    reachable |= reach != Reach::None;
-                    lan |= reach != Reach::All;
+    fn destinations(&mut self, cidrs: &[String], geo_ip: &[String]) {
+        let ingress = self.caps.ingress;
+        let mut scope = Scope::default();
+        for code in geo_ip {
+            if code.eq_ignore_ascii_case("private") {
+                for &(octets, len) in &PRIVATE_V4 {
+                    scope.v4(ingress, Ipv4Addr::from(octets), len);
                 }
+            } else {
+                scope.reachable = true;
             }
         }
-        if reachable || unknown {
+        for network in cidrs.iter().filter_map(|s| decode_ip_or_cidr(s)) {
+            match network.network.addr() {
+                IpAddr::V6(_) => scope.v6 = true,
+                IpAddr::V4(addr) => scope.v4(ingress, addr, network.network.prefix_len()),
+            }
+        }
+        if scope.reachable || scope.unknown {
             // Unknown routes leave a constraint open even when another alternative reaches the TUN.
-            self.unknown |= unknown;
-            if v6 {
+            self.unknown |= scope.unknown;
+            if scope.v6 {
                 self.add("ipv4_scope", None, false);
             }
-            if lan {
+            if scope.lan {
                 self.add("lan_outside_capture", None, false);
             }
             return;
         }
-        if v6 {
+        if scope.v6 {
             self.add("ipv6_ingress_only", None, true);
         }
-        if lan {
+        if scope.lan {
             self.add("lan_outside_capture", None, true);
         }
     }
@@ -437,7 +485,7 @@ impl Findings<'_> {
         for code in c.geo_ip.iter().chain(&c.not.geo_ip) {
             self.geoip(code);
         }
-        self.destinations(&c.ip, !c.geo_ip.is_empty());
+        self.destinations(&c.ip, &c.geo_ip);
         self.families(&c.source_ip, false);
         self.families(&c.not.ip, true);
         self.families(&c.not.source_ip, true);
