@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.os.Looper
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -187,6 +188,60 @@ class MainActivityTest {
             assertEquals(Permission.Notify, scenario.showing())
             assertFalse("stored once answered", runBlocking { settings.notifyAsked.first() })
             scenario.onActivity { it.asks().dismiss() }
+            assertTrue(runBlocking { settings.notifyAsked.first() })
+        }
+    }
+
+    @Test
+    fun `a connect from the tile waits behind the notification's explanation`() {
+        shadowOf(app).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        ShadowVpnService.setPrepareResult(null)
+        val controller = Robolectric.buildActivity(MainActivity::class.java, connect).setup()
+        val asks = controller.get().asks()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(Permission.Notify, asks.showing.value)
+        // The connection drops, and the tile, finding the consent gone, sends the app's connect entry.
+        app.container.engine.disconnect()
+        ShadowVpnService.setPrepareResult(Intent("dev.doona.test.CONSENT"))
+        controller.newIntent(connect)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(Permission.Notify, asks.showing.value)
+        asks.dismiss()
+        assertEquals(Permission.Vpn, asks.showing.value)
+        controller.close()
+    }
+
+    @Test
+    fun `settings that cannot be read leave the app running and the ask comes on the next connection`() {
+        shadowOf(app).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        ShadowVpnService.setPrepareResult(null)
+        prefs.failing = true
+        ActivityScenario.launch<MainActivity>(connect).use { scenario ->
+            assertEquals(Status.Running(sinceEpochMs = 0), app.container.engine.status.value)
+            assertNull(scenario.showing())
+            assertEquals(Lifecycle.State.RESUMED, scenario.state)
+
+            prefs.failing = false
+            app.container.engine.disconnect()
+            app.container.engine.connect()
+            assertEquals(Permission.Notify, scenario.showing())
+        }
+    }
+
+    @Test
+    fun `an answer that cannot be stored leaves the app running and is stored next time`() {
+        shadowOf(app).denyPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        ShadowVpnService.setPrepareResult(null)
+        ActivityScenario.launch<MainActivity>(connect).use { scenario ->
+            assertEquals(Permission.Notify, scenario.showing())
+            prefs.failing = true
+            scenario.onActivity { it.asks().dismiss() }
+            assertNull(scenario.showing())
+            assertEquals(Lifecycle.State.RESUMED, scenario.state)
+
+            prefs.failing = false
+            app.container.engine.disconnect()
+            assertNull("not explained again", scenario.showing())
             assertTrue(runBlocking { settings.notifyAsked.first() })
         }
     }
