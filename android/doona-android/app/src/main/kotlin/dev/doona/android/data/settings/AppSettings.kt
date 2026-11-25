@@ -1,6 +1,7 @@
 package dev.doona.android.data.settings
 
 import android.content.Context
+import androidx.annotation.VisibleForTesting
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.FileStorage
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
@@ -111,11 +112,28 @@ class AppSettings internal constructor(private val store: DataStore<Preferences>
         private val NOTIFY_ASKED = booleanPreferencesKey("notify_asked")
 
         private var instance: AppSettings? = null
+        private var owner: Context? = null
 
+        /**
+         * The settings of [context]'s application, one instance for it. Keyed by the application, so a new one, as
+         * each Robolectric test makes over its own files, gets its own store rather than the first test's.
+         */
         @Synchronized
         fun get(context: Context): AppSettings {
             val app = context.applicationContext
-            return instance ?: AppSettings(store { app.preferencesDataStoreFile("app_settings") }).also { instance = it }
+            instance?.takeIf { owner === app }?.let { return it }
+            return AppSettings(store { app.preferencesDataStoreFile("app_settings") }).also {
+                owner = app
+                instance = it
+            }
+        }
+
+        /** Makes [settings] the ones [get] returns for [context]'s application; tests give a store of their own. */
+        @VisibleForTesting
+        @Synchronized
+        internal fun use(context: Context, settings: AppSettings) {
+            owner = context.applicationContext
+            instance = settings
         }
 
         internal fun store(scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()), file: () -> File): DataStore<Preferences> =
