@@ -7,6 +7,7 @@
 //! so it never runs next to a scheduled fetch of that provider.
 
 use std::collections::BTreeMap;
+use std::collections::btree_map::Entry;
 
 use serde::{Deserialize, Serialize};
 
@@ -25,15 +26,33 @@ const RETRY_MS: i64 = 3_600_000;
 pub struct Schedule {
     pub enabled: bool,
     pub default_hours: u32,
-    #[serde(default)]
     progress: BTreeMap<String, Progress>,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+/// The outcomes of one provider's fetches of `url`. A provider whose id now names another feed
+/// (the id of a removed entry given to a new one, or an edited URL) starts again.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Progress {
+    url: String,
+    user_agent: Option<String>,
     last_success_ms: Option<i64>,
     last_failure_ms: Option<i64>,
+}
+
+impl Progress {
+    fn new(provider: &Provider) -> Progress {
+        Progress {
+            url: provider.url.clone(),
+            user_agent: provider.user_agent.clone(),
+            last_success_ms: None,
+            last_failure_ms: None,
+        }
+    }
+
+    fn is_for(&self, provider: &Provider) -> bool {
+        self.url == provider.url && self.user_agent == provider.user_agent
+    }
 }
 
 impl Default for Schedule {
@@ -60,7 +79,13 @@ pub struct Claims(BTreeMap<String, Key>);
 impl Claims {
     /// Takes `provider` for one fetch; false when it is already being fetched.
     pub fn claim(&mut self, provider: &Provider) -> bool {
-        self.0.insert(provider.id.clone(), key(provider)).is_none()
+        match self.0.entry(provider.id.clone()) {
+            Entry::Vacant(slot) => {
+                slot.insert(key(provider));
+                true
+            }
+            Entry::Occupied(_) => false,
+        }
     }
 }
 
@@ -79,7 +104,7 @@ pub struct Overview {
 #[serde(rename_all = "camelCase")]
 pub struct FeedSchedule {
     /// Zero is manual.
-    pub effective_interval_seconds: u64,
+    pub effective_interval_seconds: u32,
     pub interval_source: IntervalSource,
 }
 
@@ -149,43 +174,51 @@ impl Schedule {
         ok: bool,
         now: i64,
     ) -> bool {
-        let current = claims
-            .0
-            .remove(id)
-            .is_some_and(|claimed| providers.iter().any(|p| p.id == id && key(p) == claimed));
-        if current {
-            let progress = self.progress.entry(id.to_owned()).or_default();
-            *(if ok {
-                &mut progress.last_success_ms
-            } else {
-                &mut progress.last_failure_ms
-            }) = Some(now);
-        }
-        current
+        let claimed = claims.0.remove(id);
+        let Some(provider) = providers
+            .iter()
+            .find(|p| p.id == id && Some(key(p)) == claimed)
+        else {
+            return false;
+        };
+        let progress = self
+            .progress
+            .entry(id.to_owned())
+            .and_modify(|p| {
+                if !p.is_for(provider) {
+                    *p = Progress::new(provider);
+                }
+            })
+            .or_insert_with(|| Progress::new(provider));
+        *(if ok {
+            &mut progress.last_success_ms
+        } else {
+            &mut progress.last_failure_ms
+        }) = Some(now);
+        true
     }
 
-    fn interval(&self, provider: &Provider) -> (u64, IntervalSource) {
+    fn interval(&self, provider: &Provider) -> (u32, IntervalSource) {
         match provider.interval {
             Some(Authored { seconds, source }) => (seconds, source),
-            None => (u64::from(self.default_hours) * 3600, IntervalSource::Global),
+            None => (self.default_hours * 3600, IntervalSource::Global),
         }
     }
 
     /// When `provider` is next due, or none for a manual one.
     fn due_at(&self, provider: &Provider, now: i64) -> Option<i64> {
-        let interval = i64::try_from(self.interval(provider).0)
-            .ok()?
-            .checked_mul(1000)?;
+        let interval = i64::from(self.interval(provider).0) * 1000;
         if interval == 0 {
             return None;
         }
-        let progress = self.progress.get(&provider.id).copied().unwrap_or_default();
-        let by_success = progress
-            .last_success_ms
-            .map_or(now, |at| at.saturating_add(interval));
-        let retry = progress
-            .last_failure_ms
-            .filter(|failed| progress.last_success_ms.is_none_or(|ok| failed > &ok))
+        let (success, failure) = self
+            .progress
+            .get(&provider.id)
+            .filter(|p| p.is_for(provider))
+            .map_or((None, None), |p| (p.last_success_ms, p.last_failure_ms));
+        let by_success = success.map_or(now, |at| at.saturating_add(interval));
+        let retry = failure
+            .filter(|failed| success.is_none_or(|ok| failed > &ok))
             .map(|failed| failed.saturating_add(interval.min(RETRY_MS)));
         Some(by_success.max(retry.unwrap_or(by_success)))
     }

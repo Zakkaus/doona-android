@@ -1,0 +1,6 @@
+subscription {
+    huge: 'https://feeds.example.net/huge' {
+        interval: 10000000000s
+    }
+}
+routing { fallback: direct }

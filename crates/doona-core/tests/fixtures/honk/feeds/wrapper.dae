@@ -1,0 +1,23 @@
+assets {
+    subscription {
+        interval: 12h
+    }
+}
+subscription {
+    feeds {
+        a: 'https://feeds.example.net/a' {
+            interval: 6h
+        }
+        b: 'https://feeds.example.net/b'
+    }
+    quick: 'https://feeds.example.net/quick' {
+        interval: 30s {}
+    }
+    old: {
+        url: 'https://feeds.example.net/old'
+        nested {
+            interval: 2h
+        }
+    }
+}
+routing { fallback: direct }

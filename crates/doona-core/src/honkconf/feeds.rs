@@ -31,10 +31,11 @@ pub enum IntervalSource {
     Global,
 }
 
-/// An interval written in the source. Zero is honk's "manual": no scheduled fetch.
+/// An interval written in the source, saturated at `u32::MAX` seconds (about 136 years). Zero is
+/// honk's "manual": no scheduled fetch.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Authored {
-    pub seconds: u64,
+    pub seconds: u32,
     pub source: IntervalSource,
 }
 
@@ -63,7 +64,7 @@ pub fn providers(config: &HonkConfig) -> Vec<Provider> {
         .map(|sub| {
             let n = seen.entry(&sub.name).or_default();
             *n += 1;
-            let source = if own.contains(sub.name.as_str()) {
+            let source = if own.contains(&(sub.name.clone(), sub.url.clone())) {
                 Some(IntervalSource::Subscription)
             } else {
                 assets.then_some(IntervalSource::Assets)
@@ -77,7 +78,7 @@ pub fn providers(config: &HonkConfig) -> Vec<Provider> {
                 url: sub.url.clone(),
                 user_agent: sub.user_agent.clone(),
                 interval: source.map(|source| Authored {
-                    seconds: sub.update_interval,
+                    seconds: u32::try_from(sub.update_interval).unwrap_or(u32::MAX),
                     source,
                 }),
             }
@@ -85,51 +86,105 @@ pub fn providers(config: &HonkConfig) -> Vec<Provider> {
         .collect()
 }
 
-/// Tags of the entries that write `interval` themselves. honk merges that value with the assets
-/// default and keeps no trace of which one it read, so the entry's own lines are read again. Only
-/// the entry form `tag: 'url' { interval: … }` and the block form `tag { url: …; interval: … }`
-/// directly under `subscription` are read; a legacy wrapper around entries is not.
-fn authored_intervals(sources: &[SourceSnapshot]) -> BTreeSet<String> {
-    let mut tags = BTreeSet::new();
+/// The `(tag, url)` of every entry that writes `interval` itself. honk merges that value with the
+/// assets default and keeps no trace of which one it read, so the entry's lines are read again as
+/// honk reads them (`visit_subscription_segment`): a block headed `tag: 'url'` or `tag:` is one
+/// entry, its options being its own lines and those of the blocks nested in it; any other block
+/// is a wrapper whose blocks are entries. Two entries with the same tag and URL are not told
+/// apart.
+fn authored_intervals(sources: &[SourceSnapshot]) -> BTreeSet<(String, String)> {
+    let mut entries = BTreeSet::new();
     for snapshot in sources {
         let source = Source::new(&snapshot.content, snapshot.source.clone());
         let Ok(doc) = Document::parse(source, &mut Vec::new()) else {
             continue;
         };
         for section in doc.sections().filter(|s| s.header() == "subscription") {
-            for entry in section.body().into_iter().flatten() {
-                if writes_interval(&entry) {
-                    tags.insert(tag(entry.header()).to_owned());
-                }
-            }
+            visit(&section, &mut entries);
         }
     }
-    tags
+    entries
 }
 
-fn writes_interval(entry: &Segment<'_, '_>) -> bool {
-    entry
-        .body()
-        .into_iter()
-        .flatten()
-        .filter(|line| line.body().is_none())
-        .any(|line| {
-            line.header()
-                .split_once(':')
-                .is_some_and(|(key, _)| key.trim() == "interval")
-        })
-}
-
-/// The tag of an entry header: `office` of `office: 'https://…'`, quotes removed.
-fn tag(header: &str) -> &str {
-    let header = header.trim();
-    let quote = header.chars().next().filter(|c| matches!(c, '\'' | '"'));
-    match quote {
-        Some(q) => header[1..]
-            .split_once(q)
-            .map_or(&header[1..], |(tag, _)| tag),
-        None => header.split_once(':').map_or(header, |(tag, _)| tag.trim()),
+fn visit(segment: &Segment<'_, '_>, entries: &mut BTreeSet<(String, String)>) {
+    let Some((tag, header_url)) = entry_header(segment.header()) else {
+        for child in segment.body().into_iter().flatten() {
+            visit(&child, entries);
+        }
+        return;
+    };
+    let mut options = Options {
+        url: header_url.map(str::to_owned),
+        interval: false,
+    };
+    options.read(segment, header_url.is_none());
+    if let (true, Some(url)) = (options.interval, options.url) {
+        entries.insert((tag.to_owned(), url));
     }
+}
+
+/// What an entry's lines say about its URL and interval.
+struct Options {
+    url: Option<String>,
+    interval: bool,
+}
+
+impl Options {
+    /// `legacy` is the `tag:` form, whose URL is a `url:` line and whose nested entries are
+    /// options like any other block.
+    fn read(&mut self, block: &Segment<'_, '_>, legacy: bool) {
+        for line in block.body().into_iter().flatten() {
+            if !legacy
+                && split_header(line.header())
+                    .and_then(|(_, v)| whole_quoted(v))
+                    .is_some()
+            {
+                continue;
+            }
+            match line.header().split_once(':') {
+                Some((key, _)) if key.trim() == "interval" => self.interval = true,
+                Some((key, value)) if legacy && key.trim() == "url" => {
+                    let value = value.trim();
+                    self.url = Some(whole_quoted(value).unwrap_or(value).to_owned());
+                }
+                _ => {}
+            }
+            self.read(&line, legacy);
+        }
+    }
+}
+
+/// `(tag, url)` of `tag: 'url'`, or `(tag, None)` of `tag:`.
+fn entry_header(header: &str) -> Option<(&str, Option<&str>)> {
+    let (tag, value) = split_header(header)?;
+    if value.is_empty() {
+        return Some((tag, None));
+    }
+    Some((tag, Some(whole_quoted(value)?)))
+}
+
+/// `tag` and `value` of `tag: value`; the tag may be quoted.
+fn split_header(header: &str) -> Option<(&str, &str)> {
+    let header = header.trim();
+    let (tag, rest) = match header.chars().next() {
+        Some(quote @ ('\'' | '"')) => {
+            let (tag, rest) = header[1..].split_once(quote)?;
+            (tag, rest.trim_start().strip_prefix(':')?)
+        }
+        _ => {
+            let (tag, rest) = header.split_once(':')?;
+            (tag.trim(), rest)
+        }
+    };
+    Some((tag, rest.trim()))
+}
+
+/// The inside of a value that is one quoted string.
+fn whole_quoted(value: &str) -> Option<&str> {
+    let quote = value.chars().next().filter(|c| matches!(c, '\'' | '"'))?;
+    value[1..]
+        .strip_suffix(quote)
+        .filter(|inner| !inner.contains(quote))
 }
 
 /// A downloaded feed: its nodes and what the cache needs to read them again.

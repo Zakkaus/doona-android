@@ -1,7 +1,14 @@
+assets {
+    subscription {
+        interval: 3h
+    }
+}
 subscription {
     twin: 'https://feeds.example.net/one'
     other: 'https://feeds.example.net/other'
-    twin: 'https://feeds.example.net/two'
+    twin: 'https://feeds.example.net/two' {
+        interval: 2h
+    }
     twin: 'https://feeds.example.net/three'
 }
 routing { fallback: direct }

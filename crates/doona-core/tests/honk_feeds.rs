@@ -27,7 +27,7 @@ fn config(name: &str) -> HonkConfig {
     load(path).unwrap_or_else(|e| panic!("{name}: {e}"))
 }
 
-fn provider(id: &str, interval: Option<(u64, IntervalSource)>) -> Provider {
+fn provider(id: &str, interval: Option<(u32, IntervalSource)>) -> Provider {
     Provider {
         id: id.into(),
         name: id.into(),
@@ -93,21 +93,83 @@ fn an_interval_written_as_honks_default_is_still_the_entrys_own() {
 }
 
 #[test]
-fn entries_with_one_tag_get_distinct_ids_in_source_order() {
+fn entries_with_one_tag_get_distinct_ids_and_their_own_interval() {
     let providers = feeds::providers(&config("duplicates.dae"));
     let seen: Vec<_> = providers
         .iter()
-        .map(|p| (p.id.as_str(), p.url.rsplit('/').next().unwrap()))
+        .map(|p| {
+            let url = p.url.rsplit('/').next().unwrap();
+            (
+                p.id.as_str(),
+                url,
+                p.interval.map(|a| (a.seconds, a.source)),
+            )
+        })
         .collect();
     assert_eq!(
         seen,
         [
-            ("s-twin", "one"),
-            ("s-other", "other"),
-            ("s-twin#2", "two"),
-            ("s-twin#3", "three"),
+            ("s-twin", "one", Some((10_800, IntervalSource::Assets))),
+            ("s-other", "other", Some((10_800, IntervalSource::Assets))),
+            (
+                "s-twin#2",
+                "two",
+                Some((7_200, IntervalSource::Subscription))
+            ),
+            ("s-twin#3", "three", Some((10_800, IntervalSource::Assets))),
         ]
     );
+}
+
+#[test]
+fn every_form_honk_accepts_gives_the_entrys_own_interval() {
+    let providers = feeds::providers(&config("wrapper.dae"));
+    let seen: Vec<_> = providers
+        .iter()
+        .map(|p| (p.id.as_str(), p.interval.map(|a| (a.seconds, a.source))))
+        .collect();
+    assert_eq!(
+        seen,
+        [
+            ("s-a", Some((21_600, IntervalSource::Subscription))),
+            ("s-b", Some((43_200, IntervalSource::Assets))),
+            // honk reads `30s {` as an unsupported duration and falls back to 0.
+            ("s-quick", Some((0, IntervalSource::Subscription))),
+            ("s-old", Some((7_200, IntervalSource::Subscription))),
+        ]
+    );
+}
+
+#[test]
+fn an_interval_too_long_for_u32_saturates() {
+    let providers = feeds::providers(&config("huge.dae"));
+    let interval = providers[0].interval.unwrap();
+    assert_eq!(interval.seconds, u32::MAX);
+    let schedule = Schedule::default();
+    let mut claims = Claims::default();
+    let t0 = 1_000;
+    schedule.refresh_due(&mut claims, &providers, t0);
+    let mut schedule = schedule;
+    schedule.finish(&mut claims, &providers, "s-huge", true, t0);
+    let overview = schedule.overview(&claims, &providers, t0);
+    assert_eq!(
+        overview.next_refresh_at,
+        Some(t0 + i64::from(u32::MAX) * 1000)
+    );
+}
+
+#[test]
+fn an_include_without_sections_does_not_hide_the_entrys_intervals() {
+    let dir = TempDir::new("honk-feeds-include");
+    let main = dir.path().join("main.dae");
+    fs::write(
+        &main,
+        "include { empty.dae }\nsubscription {\n    a: 'https://feeds.example.net/a' {\n        interval: 1h\n    }\n}\nrouting { fallback: direct }",
+    )
+    .unwrap();
+    fs::write(dir.path().join("empty.dae"), "# nothing here\n").unwrap();
+    let providers = feeds::providers(&load(main).unwrap());
+    assert_eq!(providers[0].interval.unwrap().seconds, 3_600);
 }
 
 // Feeds.
@@ -324,11 +386,8 @@ fn off_stops_scheduled_fetches_but_a_manual_update_still_runs() {
 }
 
 #[test]
-fn a_manual_or_absurd_interval_is_never_scheduled() {
-    let providers = [
-        provider("s-m", Some((0, IntervalSource::Subscription))),
-        provider("s-huge", Some((u64::MAX, IntervalSource::Subscription))),
-    ];
+fn a_manual_interval_is_never_scheduled() {
+    let providers = [provider("s-m", Some((0, IntervalSource::Subscription)))];
     let schedule = Schedule::default();
     let mut claims = Claims::default();
     let due = schedule.refresh_due(&mut claims, &providers, 1);
@@ -389,6 +448,55 @@ fn a_late_result_for_a_removed_or_changed_provider_is_dropped() {
 }
 
 #[test]
+fn a_refused_claim_does_not_replace_the_fetch_in_flight() {
+    let original = provider("s-a", None);
+    let mut moved = original.clone();
+    moved.url = "https://feeds.example.net/moved".into();
+    let mut schedule = Schedule::default();
+    let mut claims = Claims::default();
+    assert!(claims.claim(&original));
+    assert!(
+        !claims.claim(&moved),
+        "a manual update of the edited URL joins the fetch"
+    );
+    // The body fetched from the old URL is not recorded under the new one.
+    assert!(!schedule.finish(&mut claims, std::slice::from_ref(&moved), "s-a", true, 1));
+}
+
+#[test]
+fn an_id_given_to_another_feed_does_not_inherit_the_old_progress() {
+    let old = provider("s-twin#2", None);
+    let mut replaced = old.clone();
+    replaced.url = "https://feeds.example.net/new".into();
+    let mut schedule = Schedule::default();
+    let mut claims = Claims::default();
+    let t0 = 20_000_000_000;
+    schedule.refresh_due(&mut claims, std::slice::from_ref(&old), t0);
+    assert!(schedule.finish(
+        &mut claims,
+        std::slice::from_ref(&old),
+        "s-twin#2",
+        true,
+        t0
+    ));
+
+    let due = schedule.refresh_due(&mut claims, std::slice::from_ref(&replaced), t0 + 1);
+    assert_eq!(due.claimed, [replaced.clone()]);
+    assert!(schedule.finish(
+        &mut claims,
+        std::slice::from_ref(&replaced),
+        "s-twin#2",
+        false,
+        t0 + 2
+    ));
+    let again = schedule.refresh_due(&mut claims, std::slice::from_ref(&replaced), t0 + 3);
+    assert!(
+        again.claimed.is_empty(),
+        "the new feed's own failure is remembered"
+    );
+}
+
+#[test]
 fn the_record_round_trips_as_camel_case_json() {
     let mut schedule = Schedule::default();
     let providers = [provider("s-a", None)];
@@ -398,7 +506,7 @@ fn the_record_round_trips_as_camel_case_json() {
     let text = serde_json::to_string(&schedule).unwrap();
     assert_eq!(
         text,
-        r#"{"enabled":true,"defaultHours":12,"progress":{"s-a":{"lastSuccessMs":42,"lastFailureMs":null}}}"#
+        r#"{"enabled":true,"defaultHours":12,"progress":{"s-a":{"url":"https://feeds.example.net/s-a","userAgent":null,"lastSuccessMs":42,"lastFailureMs":null}}}"#
     );
     assert_eq!(serde_json::from_str::<Schedule>(&text).unwrap(), schedule);
 }
