@@ -40,22 +40,26 @@ internal class ActivityRoutes(
     val vpnSettings: () -> Unit,
 )
 
-/** The 活動 entry: builds the ViewModel with [crashOffer]'s offer (none without one) and shows [ActivityPage]. */
+/**
+ * The 活動 entry: builds the ViewModel with [crashOffer]'s offer (none without one) and shows [ActivityPage]. [nav] false
+ * leaves the page's floating nav out, only for the old overload below, whose tab frame draws its own; the routing
+ * hand-off removes it with that overload.
+ */
 @Composable
-internal fun ActivityRoute(engine: Engine, crashOffer: CrashOffer?, onConnect: () -> Unit, routes: ActivityRoutes, pull: RvPullLook = RvPullLook.None) {
+internal fun ActivityRoute(engine: Engine, crashOffer: CrashOffer?, onConnect: () -> Unit, routes: ActivityRoutes, pull: RvPullLook = RvPullLook.None, nav: Boolean = true) {
     val offered = remember(crashOffer) { crashOffer?.offered ?: MutableStateFlow(false) }
     val viewModel: ActivityViewModel = viewModel(factory = ActivityViewModel.factory(engine, offered))
-    ActivityPage(viewModel, crashOffer, onConnect, routes, pull)
+    ActivityPage(viewModel, crashOffer, onConnect, routes, pull, nav)
 }
 
 /**
  * 活動 from [viewModel]: its page state, collected while the page is started and held while the pull or the picker
  * ([pull]) covers it. Connecting needs the activity for the VPN consent, so it goes straight to [onConnect], as a
  * notice's 重新連線 and 重試 do; every other notice action leads where its cause can be mended
- * ([RvActivityNotice.remedy]). A failed action's banner, with its 重試, comes before the notice.
+ * ([RvActivityNotice.remedy]). A failed action's banner, with its 重試, comes before the notice. [nav]: see [ActivityRoute].
  */
 @Composable
-internal fun ActivityPage(viewModel: ActivityViewModel, crashOffer: CrashOffer?, onConnect: () -> Unit, routes: ActivityRoutes, pull: RvPullLook = RvPullLook.None) {
+internal fun ActivityPage(viewModel: ActivityViewModel, crashOffer: CrashOffer?, onConnect: () -> Unit, routes: ActivityRoutes, pull: RvPullLook = RvPullLook.None, nav: Boolean = true) {
     val live by viewModel.ui.collectAsStateWithLifecycle()
     val ui = rememberHeldWhileCovered(pull) { live }
     val onAction = viewModel::onAction
@@ -83,13 +87,14 @@ internal fun ActivityPage(viewModel: ActivityViewModel, crashOffer: CrashOffer?,
         loading = ui.loading,
         rules = ui.rules,
         cards = ui.cards,
+        nav = nav,
     )
 }
 
 /**
  * The old route's signature, which `DoonaApp` still calls inside its old tab frame: the RV page with only a rule row's
- * group ([onOpenGroup]) wired. The orchestrator's routing hand-off replaces the call with the [ActivityRoute] above and
- * removes this overload.
+ * group ([onOpenGroup]) wired, and without its own floating nav, since the frame draws one. The orchestrator's routing
+ * hand-off replaces the call with the [ActivityRoute] above and removes this overload.
  */
 @Composable
 fun ActivityRoute(engine: Engine, onConnect: () -> Unit, onOpenGroup: (String) -> Unit) {
@@ -115,7 +120,7 @@ fun ActivityRoute(engine: Engine, onConnect: () -> Unit, onOpenGroup: (String) -
             vpnSettings = NOT_WIRED,
         )
     }
-    ActivityRoute(engine, crashOffer = null, onConnect, routes)
+    ActivityRoute(engine, crashOffer = null, onConnect, routes, nav = false)
 }
 
 private fun pageRoutes(routes: ActivityRoutes, test: () -> Unit) = RvActivityRoutes(
