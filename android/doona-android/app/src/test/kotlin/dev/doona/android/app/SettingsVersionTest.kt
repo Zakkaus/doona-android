@@ -23,11 +23,19 @@ class SettingsVersionTest {
         }
     }
 
+    /**
+     * 設定 waits for the app's settings file, which DataStore reads off the main thread where the test's idling does not
+     * see it, so each check first waits for the page.
+     */
+    private fun waitForCount(text: String, count: Int) =
+        compose.waitUntil(PAGE_TIMEOUT_MS) { compose.onAllNodesWithText(text).fetchSemanticsNodes().size == count }
+
     @Test
     fun `the settings show the version the shell passes`() {
         // The package manager of this test app says 0.1; the shell's value is the one shown.
         settings("9.9.9")
         // 檢查更新 and 關於 both name it (the approved page).
+        waitForCount("9.9.9", 2)
         compose.onAllNodesWithText("9.9.9").assertCountEquals(2)
         compose.onNodeWithText("0.1").assertDoesNotExist()
     }
@@ -35,6 +43,11 @@ class SettingsVersionTest {
     @Test
     fun `a shell that knows no version shows a dash`() {
         settings("")
+        waitForCount("—", 2)
         compose.onAllNodesWithText("—").assertCountEquals(2)
+    }
+
+    private companion object {
+        const val PAGE_TIMEOUT_MS = 5_000L
     }
 }
