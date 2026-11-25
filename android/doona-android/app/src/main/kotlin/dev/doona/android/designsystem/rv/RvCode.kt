@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
@@ -179,10 +180,11 @@ internal fun RvCodeText(code: String, style: TextStyle, modifier: Modifier = Mod
     val shown = style.rvCodeStyle().copy(color = Rv.colors.text)
     val space = rvSpaceWidth(shown, rememberTextMeasurer())
     val lines = remember(code) { rvCodeLines(code) }
+    val tagged = modifier.testTag(RvRowPart.CODE)
     if (lines.size == 1) {
-        CodeLine(lines.single(), shown, space, colors, modifier, maxLines)
+        CodeLine(lines.single(), shown, space, colors, tagged, maxLines)
     } else {
-        Column(modifier) { lines.forEach { CodeLine(it, shown, space, colors, Modifier, maxLines) } }
+        Column(tagged) { lines.forEach { CodeLine(it, shown, space, colors, Modifier, maxLines) } }
     }
 }
 

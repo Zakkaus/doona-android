@@ -37,7 +37,22 @@ internal class RvRowRead(
     val endTags: Set<String>,
     val card: Rect?,
     val cut: Boolean = false,
+    /** The row touches the window's top or bottom edge: it goes on past it, so its extent says nothing. */
+    val edge: Boolean = false,
+    /** The row's trailing parts' whole boxes, which reach past their ink where a touch target does (see [end]). */
+    val endBox: Rect? = null,
+    /** The boxes of the row's line ends (RvRowPart.LINE_END), shown or kept hidden for their room, and of its busy bars. */
+    val lineEnds: List<Rect> = emptyList(),
+    /** The title is honk code, which keeps its own line boxes (RvRowPart.CODE). */
+    val code: Boolean = false,
+    /** The trailing room ([RvRowPart.END]): where the end is laid out, whatever of it shows. */
+    val room: Rect? = null,
+    /** The boxes of the row's line ends alone, not a busy bar's. */
+    val endLines: List<Rect> = emptyList(),
 ) {
+    /** What the trailing part occupies: its room, else what it draws. */
+    val shape get() = room ?: end
+
     val textLeft get() = title.box.left
     val oneLine get() = subtitles.isEmpty() && (title.line?.lines ?: 1) == 1
 
@@ -45,8 +60,11 @@ internal class RvRowRead(
     val textTop get() = title.box.top
     val textBottom get() = (subtitles.lastOrNull() ?: title).box.bottom
 
+    /** The text block's bottom with the lines' ends: an end on a line of its own (under its text) is part of the block. */
+    val blockBottom get() = maxOf(textBottom, lineEnds.maxOfOrNull { it.bottom } ?: textBottom)
+
     /** The trailing part went under the text (a large font: the text keeps the width; R11u). */
-    val under get() = end != null && end.top >= title.box.bottom - UNDER
+    val under get() = shape.let { it != null && it.top >= title.box.bottom - UNDER }
 }
 
 /** A rule a row breaks: the rule's id (LAYOUT-RULES.md), the row's title and what was measured. */
@@ -87,6 +105,9 @@ internal fun rvRowsOf(nodes: List<RvNode>): List<RvRowRead> = nodes.indices.mapN
     }
     kind?.let { nodes.readRow(i, it) }
 }
+
+/** The parts that stand on a text line as its end: a line end, and the busy bar that replaces one. */
+private val LINE_ENDS = setOf(RvRowPart.LINE_END, RvPart.BUSY)
 
 private val LEADS = setOf(RvPart.DISC, RvRowPart.ICON_DISC, RvRowPart.FLAG, RvRowPart.APP_DISC, RvRowPart.GLYPH)
 
@@ -130,9 +151,15 @@ private fun List<RvNode>.readRow(i: Int, kind: RvRowKind): RvRowRead? {
     val title = column.first()
     val subtitles = column.drop(1).filter { it.box.top >= title.box.bottom - TOLERANCE }
     val leadParts = lead?.let { subtree(it).toSet() }.orEmpty()
-    val end = endOf(inRow, column, leadParts)
+    val ends = endOf(inRow, column, leadParts)
+    val end = ends?.first
     val tags = end?.let { r -> inRow.filter { this[it].tag != null && this[it].box.left >= r.left - HALF && this[it].box.right <= r.right + HALF }.mapNotNull { this[it].tag }.toSet() }.orEmpty()
-    return RvRowRead(kind, this[i].box, lead?.let { this[it] }, title, subtitles, end, tags, cardOf(i), this[i].cut)
+    val edge = this[i].box.let { it.top <= this[0].box.top + HALF || it.bottom >= this[0].box.bottom - HALF }
+    val lineEnds = inRow.filter { this[it].tag in LINE_ENDS && this[it].shown() }.map { this[it].box }
+    val code = generateSequence(this.indexOf(title)) { this[it].parent.takeIf { p -> p > i } }.take(CODE_DEPTH).any { this[it].tag == RvRowPart.CODE }
+    val room = inRow.firstOrNull { this[it].tag == RvRowPart.END && this[it].shown() }?.let { this[it].box }
+    val endLines = inRow.filter { this[it].tag == RvRowPart.LINE_END && this[it].shown() }.map { this[it].box }
+    return RvRowRead(kind, this[i].box, lead?.let { this[it] }, title, subtitles, end, tags, cardOf(i), this[i].cut || edge, edge, room ?: ends?.second, lineEnds, code, room, endLines)
 }
 
 /** The bounds of the card [i] stands in, if it stands in one. */
@@ -152,8 +179,8 @@ private fun List<RvNode>.leadOf(inRow: List<Int>): List<Int> {
     return tagged.filterNot { it in inner }.sortedBy { this[it].box.left }
 }
 
-/** The union of the row's outermost shown parts right of its text [column] that hold no column text. */
-private fun List<RvNode>.endOf(inRow: List<Int>, column: List<RvNode>, lead: Set<Int>): Rect? {
+/** The union of the row's outermost shown parts right of its text [column] that hold no column text: what they draw, and their boxes. */
+private fun List<RvNode>.endOf(inRow: List<Int>, column: List<RvNode>, lead: Set<Int>): Pair<Rect, Rect>? {
     val right = column.maxOf { it.box.right }
     val bottom = column.maxOf { it.box.bottom }
     val holders = inRow.filter { j -> subtree(j).any { this[it] in column } }.toSet()
@@ -161,11 +188,20 @@ private fun List<RvNode>.endOf(inRow: List<Int>, column: List<RvNode>, lead: Set
     val ofLine = inRow.filter { this[it].tag == RvRowPart.LINE_END }.flatMap { subtree(it) }.toSet()
     val parts = inRow.filter { it !in lead && it !in holders && it !in ofLine && this[it] !in column && this[it].shown() && (this[it].box.left >= right - HALF || this[it].box.top >= bottom - HALF) }
     val inner = parts.flatMap { subtree(it).drop(1) }.toSet()
-    return parts.filterNot { it in inner }.map { ink(it) }.reduceOrNull { a, b -> Rect(minOf(a.left, b.left), minOf(a.top, b.top), maxOf(a.right, b.right), maxOf(a.bottom, b.bottom)) }
+    val outer = parts.filterNot { it in inner }
+    fun union(rects: List<Rect>) = rects.reduceOrNull { a, b -> Rect(minOf(a.left, b.left), minOf(a.top, b.top), maxOf(a.right, b.right), maxOf(a.bottom, b.bottom)) }
+    val ink = union(outer.map { ink(it) }) ?: return null
+    return ink to union(outer.map { this[it].box })!!
 }
 
-/** What part [i] draws: its box, or where it holds a touch target ([RvRowPart.TARGET]) that reaches past its ink, the shown parts inside. */
+/**
+ * What part [i] draws: its box; where a busy bar stands in for what it shows, the bar (the rest of the box is kept room);
+ * where it holds a touch target ([RvRowPart.TARGET]) that reaches past its ink, the shown parts inside.
+ */
 private fun List<RvNode>.ink(i: Int): Rect {
+    subtree(i).filter { this[it].tag == RvPart.BUSY && this[it].shown() }.takeIf { it.isNotEmpty() }?.let { bars ->
+        return bars.map { this[it].box }.reduce { a, b -> Rect(minOf(a.left, b.left), minOf(a.top, b.top), maxOf(a.right, b.right), maxOf(a.bottom, b.bottom)) }
+    }
     if (subtree(i).none { this[it].tag == RvRowPart.TARGET }) return this[i].box
     val inside = this[i].kids.filter { this[it].shown() }.map { ink(it) }
     return inside.reduceOrNull { a, b -> Rect(minOf(a.left, b.left), minOf(a.top, b.top), maxOf(a.right, b.right), maxOf(a.bottom, b.bottom)) } ?: this[i].box
@@ -201,14 +237,14 @@ private fun RvRowRead.leadX(): RvRowBreak? {
 }
 
 /** R6: the text column starts 16 dp after the leading visual, or 16 dp inside a row without one. */
-private fun RvRowRead.textX(): RvRowBreak? = off("R6", textLeft - (lead?.box?.right?.plus(GAP) ?: (row.left + INSET)))
+private fun RvRowRead.textX(): RvRowBreak? = if (edge && lead == null) null else off("R6", textLeft - (lead?.box?.right?.plus(GAP) ?: (row.left + INSET)))
 
 /** R8 and R9: one line, the leading visual centred on the row; with a subtitle, its top on the title's top. */
 private fun RvRowRead.leadY(): RvRowBreak? {
     val lead = lead ?: return null
     return when {
         subtitles.isNotEmpty() -> off("R9", lead.box.top - title.box.top)
-        oneLine -> off("R8", lead.box.center.y - row.center.y)
+        oneLine -> if (cut) null else off("R8", lead.box.center.y - row.center.y)
         else -> null
     }
 }
@@ -219,18 +255,31 @@ private fun RvRowRead.leadY(): RvRowBreak? {
  * in-card button). A list row's trailing part with a subtitle waits for the owner (LAYOUT-RULES.md, R11).
  */
 private fun RvRowRead.endY(): RvRowBreak? {
-    val end = end ?: return null
+    val ink = end ?: return null
+    val end = shape ?: ink
     val control = endTags.any { it in CONTROLS }
     return when {
         oneLine -> if (cut) null else off("R10", end.center.y - row.center.y)
 
         subtitles.isEmpty() -> null
 
+        // A busy bar stands on the line of an end that went under its title.
+        RvPart.BUSY in endTags && endLines.any { abs(it.center.y - end.center.y) <= TOLERANCE } -> null
+
+        // Honk code keeps its own line boxes, so there is no first line of the role's to centre on.
+        code -> null
+
+        // A control that went under the text (a long subtitle at a large font size) stands where any end under the text does.
+        control && under -> off("R11u", listOf(end.top - textBottom, end.top - title.box.bottom).minBy { abs(it) })
+
         kind == RvRowKind.Settings && end.height >= TALL_END -> off("R11", end.top - title.box.top)
 
         control || kind == RvRowKind.Settings -> off("R11", end.center.y - (title.box.top + maxOf(FIRST_LINE, title.firstLineHeight()) / 2))
 
         // Centred on the row; or its top on the title's top (a value on the title's line); or, once it went under the text, its top on the text's.
+        // A row at the window's edge goes on past it, so where its middle is is unknown.
+        edge -> null
+
         else -> {
             val kept = listOf(end.center.y - row.center.y, end.top - title.box.top).filterIndexed { n, _ -> !cut || n == 1 }.minBy { abs(it) }
             val below = if (under) listOf(end.top - textBottom, end.top - title.box.bottom).minBy { abs(it) } else Float.MAX_VALUE
@@ -240,7 +289,7 @@ private fun RvRowRead.endY(): RvRowBreak? {
 }
 
 /** R16: the trailing part ends at the end of the row's content, 16 dp inside the card. */
-private fun RvRowRead.endX(): RvRowBreak? = end?.let { off("R16", it.right - (row.right - INSET)) }
+private fun RvRowRead.endX(): RvRowBreak? = (room ?: end)?.let { off("R16", it.right - (row.right - INSET)) }
 
 /** R17: the trailing part keeps 12 dp from the text it follows. */
 private fun RvRowRead.textToEnd(): RvRowBreak? {
@@ -266,7 +315,7 @@ private fun RvRowRead.padding(): RvRowBreak? {
     if (cut) return null
     if (end != null && end.height > textBottom - textTop + 2 * INSET) return null
     val above = textTop - row.top
-    val below = row.bottom - maxOf(textBottom, end?.takeIf { it.top >= title.box.bottom - TOLERANCE }?.bottom ?: textBottom)
+    val below = row.bottom - maxOf(blockBottom, endBox?.takeIf { it.top >= title.box.bottom - TOLERANCE }?.bottom ?: blockBottom)
     return when {
         above < INSET - TOLERANCE -> broken("R18", "above ${dp(above)}")
         below < INSET - TOLERANCE -> broken("R18", "below ${dp(below)}")
@@ -279,8 +328,8 @@ private fun RvRowRead.padding(): RvRowBreak? {
 private fun RvRowRead.height(): RvRowBreak? {
     if (cut) return null
     val least = if (subtitles.isEmpty()) ONE_LINE else TWO_LINE
-    val below = end?.takeIf { it.top >= title.box.bottom - TOLERANCE }?.bottom ?: textBottom
-    val need = maxOf(maxOf(textBottom, below) - textTop + 2 * INSET, end?.height ?: 0f)
+    val below = endBox?.takeIf { it.top >= title.box.bottom - TOLERANCE }?.bottom ?: blockBottom
+    val need = maxOf(maxOf(blockBottom, below) - textTop + 2 * INSET, end?.height ?: 0f)
     return when {
         row.height < least - TOLERANCE -> broken("R1", "height ${dp(row.height)}")
         row.height > maxOf(least, need) + TOLERANCE -> broken("R1", "height ${dp(row.height)} for ${dp(maxOf(least, need))}")
@@ -291,7 +340,11 @@ private fun RvRowRead.height(): RvRowBreak? {
 private fun RvNode.firstLineHeight() = line?.let { minOf(it.bottom - it.top, box.height) } ?: box.height
 
 /** R12: the subtitle starts where the title ends. */
-private fun RvRowRead.subtitleGap(): RvRowBreak? = subtitles.firstOrNull()?.let { off("R12", it.box.top - title.box.bottom) }
+private fun RvRowRead.subtitleGap(): RvRowBreak? = subtitles.firstOrNull()?.let {
+    // The title's own end went under it, on a line of its own between the two (RvRow, [RowLine]): the line is the gap.
+    val between = lineEnds.any { e -> e.top >= title.box.bottom - TOLERANCE && e.bottom <= it.box.top + TOLERANCE }
+    if (between) null else off("R12", it.box.top - title.box.bottom)
+}
 
 /** R7: in one card (list or settings rows stacked edge to edge), rows with the same leading visual start their text at one x. */
 internal fun rvColumnBreaks(rows: List<RvRowRead>): List<RvRowBreak> {
@@ -313,8 +366,9 @@ internal fun rvColumnBreaks(rows: List<RvRowRead>): List<RvRowBreak> {
  * script (owner, latinrow); a code title keeps its own.
  */
 internal fun rvLineBoxBreaks(rows: List<RvRowRead>): List<RvRowBreak> {
-    val lists = rows.filter { it.kind == RvRowKind.List || it.kind == RvRowKind.Settings }
-    val titles = lists.filter { (it.title.line?.lines ?: 1) == 1 }.map { it to it.title }
+    // A row cut by the window has clipped boxes; a code title keeps its own.
+    val lists = rows.filter { (it.kind == RvRowKind.List || it.kind == RvRowKind.Settings) && !it.cut }
+    val titles = lists.filter { (it.title.line?.lines ?: 1) == 1 && !it.code }.map { it to it.title }
     val subs = lists.mapNotNull { r -> r.subtitles.firstOrNull()?.takeIf { (it.line?.lines ?: 1) == 1 }?.let { r to it } }
     return listOf("title" to titles, "subtitle" to subs).flatMap { (what, texts) ->
         val usual = texts.groupingBy { dp(it.second.box.height) }.eachCount().maxByOrNull { it.value }?.key
@@ -377,6 +431,7 @@ internal fun ComposeContentTestRule.rvRowRules(name: String) {
     )
 }
 
+private const val CODE_DEPTH = 4
 private const val TOLERANCE = 1f
 private const val HALF = 0.5f
 private const val UNDER = 2.5f

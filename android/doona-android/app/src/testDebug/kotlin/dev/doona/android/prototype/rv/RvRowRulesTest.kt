@@ -2,6 +2,8 @@ package dev.doona.android.prototype.rv
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -36,9 +38,12 @@ class RvRowRulesTest {
         compose.setContent {
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
                 Column {
+                    // Rows at the window's edge go on past it and are not measured, so the rows stand clear of both edges.
+                    Spacer(Modifier.height(EDGE.dp))
                     RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, KEPT, null)
                     // The disc in a box 4 dp taller at its top: centred, the disc sits 2 dp low.
                     RvRow({ Box(Modifier.padding(top = MOVE.dp)) { RvIconDisc(R.drawable.rv_sym_rule) } }, MOVED, null)
+                    Spacer(Modifier.height(EDGE.dp))
                 }
             }
         }
@@ -53,7 +58,11 @@ class RvRowRulesTest {
         compose.setContent {
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
                 // The disc in a box 2 dp taller at its top: centred, the disc sits 1 dp low.
-                RvRow({ Box(Modifier.padding(top = 2.dp)) { RvIconDisc(R.drawable.rv_sym_rule) } }, MOVED, null)
+                Column {
+                    Spacer(Modifier.height(EDGE.dp))
+                    RvRow({ Box(Modifier.padding(top = 2.dp)) { RvIconDisc(R.drawable.rv_sym_rule) } }, MOVED, null)
+                    Spacer(Modifier.height(EDGE.dp))
+                }
             }
         }
         compose.waitForIdle()
@@ -75,6 +84,7 @@ class RvRowRulesTest {
         const val KEPT = "Kept"
         const val MOVED = "Moved"
         const val MOVE = 4
+        const val EDGE = 10
         const val FIELDS = 4
         const val SHOTS = "src/test/screenshots"
     }

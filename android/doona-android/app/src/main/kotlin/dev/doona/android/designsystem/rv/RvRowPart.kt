@@ -24,6 +24,15 @@ internal object RvRowPart {
     /** A touch target that reaches past what it draws (the node picker's info mark): the gate reads its ink, not its box. */
     const val TARGET = "rv-target"
 
+    /**
+     * A row's trailing room: the box its end is laid out in, which the end's visible parts may not fill (a latency figure
+     * without its change, a busy bar standing in for it). The gate centres and measures the room, not the ink in it.
+     */
+    const val END = "rv-end"
+
+    /** A title of honk code ([RvCodeText]): it keeps the code view's own line boxes, so the gate reads no first line of a role's from it. */
+    const val CODE = "rv-code"
+
     const val CHEVRON = "rv-chevron"
     const val SWITCH = "rv-switch"
     const val RADIO = "rv-radio"

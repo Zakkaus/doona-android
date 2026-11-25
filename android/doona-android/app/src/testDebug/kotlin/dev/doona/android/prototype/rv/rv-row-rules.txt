@@ -2,134 +2,15 @@
 # break a rule today, one per line: golden, rule, row (its title), measured value, tab-separated, sorted. The gate fails
 # on a break not listed here and on a listed line that no longer occurs, so this list only shrinks. A change that ends a
 # break deletes its line; build/rowrules/<golden>.txt holds what a run measured (-Ddoona.rowrules=write remakes it).
-proto-rv-activity-consent-denied-v1-dark	R11l	國內與區域網路	+10.0
-proto-rv-activity-consent-denied-v1-light	R11l	國內與區域網路	+10.0
-proto-rv-activity-consent-denied-v2-fs200	R11l	串流	+17.5
-proto-rv-activity-consent-denied-v2-fs200	R13	串流	subtitle 25.0 vs 35.0
-proto-rv-activity-crash-dark	R11l	國內與區域網路	+10.0
-proto-rv-activity-crash-light	R11l	國內與區域網路	+10.0
-proto-rv-activity-failed-no-apps-dark	R11l	國內與區域網路	+10.0
-proto-rv-activity-failed-no-apps-light	R11l	國內與區域網路	+10.0
-proto-rv-activity-failed-no-nodes-fs200	R11l	—	+17.5
-proto-rv-activity-failed-no-nodes-fs200	R13	—	subtitle 28.5 vs 35.0
-proto-rv-activity-failed-start-dark	R11l	國內與區域網路	+10.0
-proto-rv-activity-failed-start-fs200	R13	Hong Kong 02 IPLC	subtitle 24.5 vs 35.0
-proto-rv-activity-failed-start-light	R11l	國內與區域網路	+10.0
-proto-rv-activity-lan-ask-fs200	R11l	串流	+17.5
-proto-rv-activity-lan-ask-fs200	R13	串流	subtitle 25.0 vs 35.0
-proto-rv-activity-lan-denied-fs200	R11l	串流	+17.5
-proto-rv-activity-lan-denied-fs200	R13	串流	subtitle 25.0 vs 35.0
-proto-rv-activity-notify-denied-v2-fs200	R11l	串流	+17.5
-proto-rv-activity-notify-denied-v2-fs200	R13	串流	subtitle 25.0 vs 35.0
-proto-rv-activity-starting-fs200	R11l	串流	+17.5
-proto-rv-activity-starting-fs200	R13	串流	subtitle 25.0 vs 35.0
-proto-rv-activity-stopping-fs200	R11l	串流	+17.5
-proto-rv-activity-stopping-fs200	R13	串流	subtitle 25.0 vs 35.0
-proto-rv-activity-testing-fs200	R11l	串流	+17.5
-proto-rv-activity-testing-fs200	R13	串流	subtitle 24.5 vs 35.0
-proto-rv-activity-testing-scrolled-fs200	R11u	Lantern Net	-2.0
-proto-rv-activity-testing-scrolled-fs200	R6	Lantern Net	+56.0
-proto-rv-activity-vpn-taken-fade-fs200	R11l	出站模式	+25.0
-proto-rv-config-history-fs200	R13	第 4 版	title 31.5 vs 38.5
+#
+# Why each remaining line stays (2026-11-25; each is read again when its page changes):
+# R14, config-history named revision: the revision's name is the user's own text and the row shows it whole (titleLines = MAX), so it can take 3 lines at 200%.
+#   The rule says 2; whether a name is cut or kept whole is the owner's ruling (layout-STATE.md, owner question Q1).
+# R11, config-history named revision at 115%: the chip stands 1.5 dp above the gate's first-line centre of a two-line title; cause not found (the 200% row is exact).
+# R17, node-picker-testing at 115%: the one row of the golden whose result is fading in: its title keeps the width it had beside the bar, 10 dp into the gap.
+#   Open: check at rest whether a result shown after a test leaves the 12 dp (layout-STATE.md, Q2).
 proto-rv-config-history-menu-fs115	R11	東京出差：影音與 AI 走日本節點	-1.5
-proto-rv-config-history-menu-fs200	R11	東京出差：影音與 AI 走日本節點	-3.0
-proto-rv-config-history-menu-fs200	R13	第 5 版	title 8.0 vs 38.5
 proto-rv-config-history-menu-fs200	R14	東京出差：影音與 AI 走日本節點	title 3 lines
 proto-rv-config-history-named-fs115	R11	東京出差：影音與 AI 走日本節點	-1.5
-proto-rv-config-history-named-fs200	R11	東京出差：影音與 AI 走日本節點	-3.0
-proto-rv-config-history-named-fs200	R13	第 5 版	title 8.0 vs 38.5
 proto-rv-config-history-named-fs200	R14	東京出差：影音與 AI 走日本節點	title 3 lines
-proto-rv-config-unsupported-dark	R11	!pname(helper) && mac(00	-11.5
-proto-rv-config-unsupported-dark	R13	!pname(helper) && mac(00	title 49.0 vs 23.0
-proto-rv-config-unsupported-fs115	R11	!pname(helper) && mac(00	-13.8
-proto-rv-config-unsupported-fs115	R13	!pname(helper) && mac(00	title 53.5 vs 25.0
-proto-rv-config-unsupported-fs200	R11	!pname(helper) && mac(00	-66.0
-proto-rv-config-unsupported-fs200	R11	lan_interface: docker0	-21.8
-proto-rv-config-unsupported-fs200	R13	!pname(helper) && mac(00	title 171.0 vs 38.5
-proto-rv-config-unsupported-fs200	R13	lan_interface: docker0	title 82.5 vs 38.5
-proto-rv-config-unsupported-light	R11	!pname(helper) && mac(00	-11.5
-proto-rv-config-unsupported-light	R13	!pname(helper) && mac(00	title 49.0 vs 23.0
-proto-rv-connections-fs200	R11l	91.108.56.130:443	+20.0
-proto-rv-cutout-policy-dark	R11l	日本	+9.5
-proto-rv-cutout-policy-light	R11l	日本	+9.5
-proto-rv-cutout-settings-dark	R13	主題	subtitle 16.5 vs 20.5
-proto-rv-cutout-settings-light	R13	主題	subtitle 16.5 vs 20.5
-proto-rv-layout-en-fs200	R1	Always-on VPN 永久連線	height 225.5 for 190.5
-proto-rv-layout-en-fs200	R11	Per app	+149.8
-proto-rv-layout-en-fs200	R18	Always-on VPN 永久連線	above 16.0 below 51.0
-proto-rv-layout-en-light	R11	Per app	+92.0
-proto-rv-layout-zh-fs200	R1	永久連線的 VPN	height 181.5 for 146.5
-proto-rv-layout-zh-fs200	R11	依 App	+149.8
-proto-rv-layout-zh-fs200	R18	永久連線的 VPN	above 16.0 below 51.0
-proto-rv-node-picker-fs200	R13	Hong Kong 04	subtitle 8.0 vs 35.0
-proto-rv-node-picker-ime-end-dark	R1	Amsterdam 02	height 123.5 for 120.0
-proto-rv-node-picker-ime-end-dark	R1	Manchester 03	height 123.5 for 120.0
-proto-rv-node-picker-ime-end-dark	R1	Sydney 03	height 123.5 for 120.0
-proto-rv-node-picker-ime-end-dark	R11l	Singapore 04	+12.0
-proto-rv-node-picker-ime-end-dark	R18	Amsterdam 02	above 16.0 below 19.5
-proto-rv-node-picker-ime-end-dark	R18	Manchester 03	above 16.0 below 19.5
-proto-rv-node-picker-ime-end-dark	R18	Sydney 03	above 16.0 below 19.5
-proto-rv-node-picker-ime-end-light	R1	Amsterdam 02	height 123.5 for 120.0
-proto-rv-node-picker-ime-end-light	R1	Manchester 03	height 123.5 for 120.0
-proto-rv-node-picker-ime-end-light	R1	Sydney 03	height 123.5 for 120.0
-proto-rv-node-picker-ime-end-light	R11l	Singapore 04	+12.0
-proto-rv-node-picker-ime-end-light	R18	Amsterdam 02	above 16.0 below 19.5
-proto-rv-node-picker-ime-end-light	R18	Manchester 03	above 16.0 below 19.5
-proto-rv-node-picker-ime-end-light	R18	Sydney 03	above 16.0 below 19.5
-proto-rv-node-picker-testing-dark	R11l	Hong Kong 02 IPLC	+5.5
-proto-rv-node-picker-testing-dark	R17	Hong Kong 05 IEPL	-12.0
-proto-rv-node-picker-testing-fs115	R11l	Hong Kong 05 IEPL	+6.8
 proto-rv-node-picker-testing-fs115	R17	Hong Kong 05 IEPL	-10.0
-proto-rv-node-picker-testing-fs200	R13	Hong Kong 04	subtitle 7.0 vs 35.0
-proto-rv-node-picker-testing-light	R11l	Hong Kong 02 IPLC	+5.5
-proto-rv-node-picker-testing-light	R17	Hong Kong 05 IEPL	-12.0
-proto-rv-node-picker-testing-one-fs200	R13	Hong Kong 04	subtitle 7.5 vs 35.0
-proto-rv-nodes-search-ime-end-dark	R1	Amsterdam 02	height 123.5 for 120.0
-proto-rv-nodes-search-ime-end-dark	R1	Manchester 03	height 123.5 for 120.0
-proto-rv-nodes-search-ime-end-dark	R1	Sydney 03	height 123.5 for 120.0
-proto-rv-nodes-search-ime-end-dark	R18	Amsterdam 02	above 16.0 below 19.5
-proto-rv-nodes-search-ime-end-dark	R18	Manchester 03	above 16.0 below 19.5
-proto-rv-nodes-search-ime-end-dark	R18	Sydney 03	above 16.0 below 19.5
-proto-rv-nodes-search-ime-end-light	R1	Amsterdam 02	height 123.5 for 120.0
-proto-rv-nodes-search-ime-end-light	R1	Manchester 03	height 123.5 for 120.0
-proto-rv-nodes-search-ime-end-light	R1	Sydney 03	height 123.5 for 120.0
-proto-rv-nodes-search-ime-end-light	R18	Amsterdam 02	above 16.0 below 19.5
-proto-rv-nodes-search-ime-end-light	R18	Manchester 03	above 16.0 below 19.5
-proto-rv-nodes-search-ime-end-light	R18	Sydney 03	above 16.0 below 19.5
-proto-rv-nodes-search-ime-fs200	R13	Hong Kong 04	subtitle 8.0 vs 35.0
-proto-rv-perm-notify-fs200	R11l	串流	+17.5
-proto-rv-perm-notify-fs200	R13	串流	subtitle 25.0 vs 35.0
-proto-rv-perm-vpn-fs200	R11l	串流	+17.5
-proto-rv-perm-vpn-fs200	R13	串流	subtitle 25.0 vs 35.0
-proto-rv-policy-config-entry-fs115	R11l	日本	+12.0
-proto-rv-policy-config-entry-fs200	R11u	串流	+7.0
-proto-rv-policy-fs115	R11l	日本	+12.0
-proto-rv-policy-fs200	R11u	串流	+7.0
-proto-rv-policy-group-testing-fs200	R1	Hong Kong 03	height 179.0 for 144.0
-proto-rv-policy-group-testing-fs200	R1	Taichung 03	height 179.0 for 144.0
-proto-rv-policy-group-testing-fs200	R1	Taipei 02	height 140.5 for 105.5
-proto-rv-policy-group-testing-fs200	R11l	Hong Kong 01	+1.5
-proto-rv-policy-group-testing-fs200	R12	Hong Kong 01	+38.5
-proto-rv-policy-group-testing-fs200	R12	Hong Kong 02 IPLC	+38.5
-proto-rv-policy-group-testing-fs200	R12	Hong Kong 03	+38.5
-proto-rv-policy-group-testing-fs200	R12	Hong Kong 05 IEPL	+38.5
-proto-rv-policy-group-testing-fs200	R12	Taichung 03	+38.5
-proto-rv-policy-group-testing-fs200	R18	Hong Kong 03	above 16.0 below 51.0
-proto-rv-policy-group-testing-fs200	R18	Taichung 03	above 16.0 below 51.0
-proto-rv-policy-group-testing-fs200	R18	Taipei 02	above 16.0 below 51.0
-proto-rv-policy-picker-edges-latency-dark	R12	Hong Kong 02 IPLC Premiu	+23.0
-proto-rv-policy-picker-edges-latency-light	R12	Hong Kong 02 IPLC Premiu	+23.0
-proto-rv-policy-picker-edges-name-dark	R12	Hong Kong 02 IPLC Premiu	+23.0
-proto-rv-policy-picker-edges-name-light	R12	Hong Kong 02 IPLC Premiu	+23.0
-proto-rv-policy-picker-testing-fs115	R11l	Hong Kong 05 IEPL	+21.5
-proto-rv-policy-picker-testing-fs200	R11u	Taipei 02	+13.5
-proto-rv-policy-picker-unknown-fs200	R12	Premium 01	+38.5
-proto-rv-policy-picker-unknown-fs200	R8	Premium 02	-8.0
-proto-rv-rule-edit-error-fs200	R13	AI	subtitle 10.0 vs 35.0
-proto-rv-rule-edit-fs200	R13	AI	subtitle 10.0 vs 35.0
-proto-rv-sub-detail-noquota-fs200	R11l	名稱	+25.0
-proto-rv-sub-detail-noquota-fs200	R13	名稱	subtitle 29.5 vs 35.0
-proto-rv-threebutton-policy-dark	R11l	日本	+9.5
-proto-rv-threebutton-policy-light	R11l	日本	+9.5
-proto-rv-wide-policy-dark	R11l	日本	+9.5
-proto-rv-wide-policy-light	R11l	日本	+9.5

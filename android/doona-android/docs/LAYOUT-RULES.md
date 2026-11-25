@@ -124,6 +124,19 @@ Decided here (2026-11-25), to be confirmed with the package:
 - **D3** The menu item keeps Revolut's bare 24 dp glyph (UX3 §1): it is a popup, not a row of a card.
 - **D4** A card that mixes rows with and without an icon keeps R6 per row (text at 88 and 32), as Revolut's plain list rows do.
 
+## What the gate reads (2026-11-25)
+
+The gate measures the unmerged semantics tree, so it measures what a part draws unless the library tags what it lays out. These readings are part of the rules; each came from a break that was the reading's, not the layout's.
+
+| Reading | Rule it affects | Why |
+|---|---|---|
+| A row that touches the window's top or bottom edge is **cut**: it goes on past the edge, so R1, R6 (no leading visual left), R8, R10, R11l/R11u, R13 and R18 skip it | those | its middle, height and padding are unknown; the title, the subtitle gap (R12) and the line count (R14) still hold |
+| The **trailing room** ([RvRowPart.END], the box `TextBesideEnd` lays an end out in, and a settings row's first-line box) is what R11, R11l, R11u, R16 and the row's height measure; R17 measures what shows | R10, R11*, R16, R1, R18 | a latency figure without its change, or a busy bar standing in for both, keeps the room it takes at rest on purpose (the row does not move when the result arrives) |
+| A **line end** (a figure on the title's or subtitle's line) and a **busy bar** are part of the text block; the title's end under the title, on a line of its own, is the whole gap between title and subtitle | R1, R12, R18 | RvRow puts an end that does not read well beside its text on a line of its own; R12's 0 is for the text, not for that line |
+| A busy bar stands where its end stands: centred on the line of a line end, else on the room | R11l, R11u | `BusyAtEnd`, `InRoomOf` |
+| A control (switch, radio, check) that went **under** the text stands as any end under it: R11u | R11 | the catalogue's long-subtitle rows |
+| A **honk code** title ([RvRowPart.CODE]) keeps the code view's line boxes: no R11 against a role's first line, no R13 | R11, R13 | code is not set in a role |
+
 ## Icons (R4 in detail)
 
 | Part | Disc | Glyph | Colour | Source |

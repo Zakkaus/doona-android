@@ -230,7 +230,7 @@ private fun TextBesideEnd(titleText: RowText, subtitleText: RowText?, minHeight:
         {
             titleText.Shown()
             subtitleText?.Shown(Rv.colors.textSecondary)
-            Box { CompositionLocalProvider(LocalRvEndSide provides side, trailing) }
+            Box(Modifier.testTag(RvRowPart.END)) { CompositionLocalProvider(LocalRvEndSide provides side, trailing) }
         },
         modifier,
     ) { parts, constraints ->

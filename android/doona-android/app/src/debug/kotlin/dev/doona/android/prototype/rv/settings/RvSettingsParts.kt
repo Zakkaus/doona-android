@@ -168,7 +168,7 @@ private fun rowText(words: RowWords, code: Boolean, titleLines: Int, error: Bool
 /** [content] centred on the title's first [line]. */
 @Composable
 private fun FirstLine(line: Dp, content: @Composable () -> Unit) {
-    Box(Modifier.height(line), contentAlignment = Alignment.Center) { content() }
+    Box(Modifier.height(line).testTag(RvRowPart.END), contentAlignment = Alignment.Center) { content() }
 }
 
 /**
