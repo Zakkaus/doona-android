@@ -15,6 +15,7 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.engine.InstalledApps
 import dev.doona.android.feature.localnetwork.LocalNetworkAccess
 import dev.doona.android.feature.localnetwork.LocalNetworkEngine
+import dev.doona.android.feature.settings.SettingsStore
 import dev.doona.android.feature.subscriptions.SubscriptionImports
 import dev.doona.android.report.AppInfo
 import dev.doona.android.report.AppReportExporter
@@ -65,6 +66,9 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
 
     /** Outlives every screen: imports and local network prompts that a page started go on when it is left. */
     private val uiScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) }
+
+    /** 設定's store; its writes run in [uiScope], so a choice made just before leaving a page is still stored. */
+    internal val settingsStore: SettingsStore by lazy { AppSettingsStore(application, AppSettings.get(application), quickTile, uiScope) }
 
     val logLevels: LogLevelController by lazy { LogLevelController({ engine.setLogLevel(it) }, uiScope, SystemClock::elapsedRealtime) }
 

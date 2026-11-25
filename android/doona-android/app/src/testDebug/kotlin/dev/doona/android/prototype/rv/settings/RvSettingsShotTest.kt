@@ -135,7 +135,7 @@ class RvSettingsShotTest {
     fun dnsDark() = compose.rvShot("settings-dns", dark = true) { Dns() }
 
     @Composable
-    private fun Dns() = RvDnsScreen(RvDnsUpstream.Cloudflare, onSelect = {}, onBack = {})
+    private fun Dns() = RvDnsScreen(RvDnsUpstream.Cloudflare, onSelect = {}, onBack = {}, onCustom = {})
 
     @Composable
     private fun Settings() = RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {})

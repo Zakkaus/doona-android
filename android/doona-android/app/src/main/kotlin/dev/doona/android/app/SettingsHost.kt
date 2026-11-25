@@ -51,19 +51,24 @@ import dev.doona.android.feature.settings.TileAnswer
 import dev.doona.android.feature.settings.rvLicenseEntries
 import dev.doona.android.vpn.QuickTile
 import dev.doona.android.vpn.QuickTileResult
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 /**
  * 設定's store in the app: [settings] for the switches, the interval and the theme, [tile] for the quick settings
- * tile, Android's per-app locale list for the language.
+ * tile, Android's per-app locale list for the language. Each set is launched in [writes], the app's main-thread scope:
+ * a page's own scope is cancelled when the user leaves it, which could drop a choice made just before; a launch there
+ * starts at once, so DataStore queues the edits in the order they were asked for.
  */
 internal class AppSettingsStore(
     private val context: Context,
     private val settings: AppSettings,
     private val tile: QuickTile,
+    private val writes: CoroutineScope,
 ) : SettingsStore {
     override val shippedGeoDate: String = SHIPPED_GEO_DATE
     override val notifyOnDrop: Flow<Boolean> = settings.notifyOnDrop
@@ -73,7 +78,7 @@ internal class AppSettingsStore(
     override val updateHoursRange: IntRange = UpdateInterval.RANGE
     override val appearance: Flow<RvAppearance> = settings.appearance.map(::rvAppearance)
 
-    override suspend fun setAppearance(appearance: RvAppearance) = settings.setAppearance(themeAppearance(appearance))
+    override fun setAppearance(appearance: RvAppearance) = write { settings.setAppearance(themeAppearance(appearance)) }
     override val tileAdded: Flow<Boolean> = tile.added
 
     override fun languageTags(): String = LanguageSettings.languageTags(context)
@@ -82,17 +87,25 @@ internal class AppSettingsStore(
         LanguageSettings.setLanguageTags(context, tags)
     }
 
-    override suspend fun setNotifyOnDrop(enabled: Boolean) = settings.setNotifyOnDrop(enabled)
+    override fun setNotifyOnDrop(enabled: Boolean) = write { settings.setNotifyOnDrop(enabled) }
 
-    override suspend fun setAutoUpdate(enabled: Boolean) = settings.setAutoUpdate(enabled)
+    override fun setAutoUpdate(enabled: Boolean) = write { settings.setAutoUpdate(enabled) }
 
-    override suspend fun setUpdateHours(hours: Int) = settings.setUpdateInterval(UpdateInterval.ofHours(hours))
+    override fun setUpdateHours(hours: Int) {
+        // Out of range throws here, to the caller, not inside the launch.
+        val interval = UpdateInterval.ofHours(hours)
+        write { settings.setUpdateInterval(interval) }
+    }
 
     override val performanceMode: Flow<Boolean> = settings.performanceMode
 
     override suspend fun performanceAtStart(): Boolean = startedPerformance ?: settings.performanceMode.first().also { startedPerformance = it }
 
-    override suspend fun setPerformanceMode(enabled: Boolean) = settings.setPerformanceMode(enabled)
+    override fun setPerformanceMode(enabled: Boolean) = write { settings.setPerformanceMode(enabled) }
+
+    private fun write(edit: suspend () -> Unit) {
+        writes.launch { edit() }
+    }
 
     companion object {
         /** `release_date` of `crates/doona-core/tools/geo-pins.json`: the GeoIP/GeoSite release the APK ships. */
@@ -234,10 +247,7 @@ internal fun EntryProviderScope<NavKey>.settingsEntries(backStack: MutableList<N
 private fun container(): AppContainer = (LocalContext.current.applicationContext as DoonaApplication).container
 
 @Composable
-private fun rememberSettingsStore(): SettingsStore {
-    val container = container()
-    return remember(container) { AppSettingsStore(container.application, AppSettings.get(container.application), container.quickTile) }
-}
+private fun rememberSettingsStore(): SettingsStore = container().settingsStore
 
 @Composable
 private fun rememberSettingsSystem(): SettingsSystem {

@@ -6,6 +6,9 @@ import kotlinx.coroutines.flow.Flow
 /**
  * The app's own settings as 設定 reads and sets them. The app's is its preference store, the quick settings tile's
  * record and the per-app locale list; a test gives fixed ones.
+ *
+ * Each set returns at once and the store writes in a scope of its own that outlives every page, so a choice made just
+ * before the user leaves the page is still stored; writes land in the order they were asked for.
  */
 internal interface SettingsStore {
     /** Whether a dropped connection posts a notice. */
@@ -27,7 +30,7 @@ internal interface SettingsStore {
     val appearance: Flow<RvAppearance>
 
     /** Stores the theme page's choices; the app's theme follows them. */
-    suspend fun setAppearance(appearance: RvAppearance)
+    fun setAppearance(appearance: RvAppearance)
 
     /** Whether the quick settings tile was recorded as added. */
     val tileAdded: Flow<Boolean>
@@ -41,12 +44,12 @@ internal interface SettingsStore {
     /** Sets the per-app locale list ([RvLanguage.tag][dev.doona.android.feature.model.RvLanguage.tag]); Android then shows the app again. */
     fun setLanguageTags(tags: String)
 
-    suspend fun setNotifyOnDrop(enabled: Boolean)
+    fun setNotifyOnDrop(enabled: Boolean)
 
-    suspend fun setAutoUpdate(enabled: Boolean)
+    fun setAutoUpdate(enabled: Boolean)
 
     /** Stores [hours], which must be in [updateHoursRange]. */
-    suspend fun setUpdateHours(hours: Int)
+    fun setUpdateHours(hours: Int)
 
     /** 實驗室's 效能模式 as stored, which the core reads only when it starts. */
     val performanceMode: Flow<Boolean>
@@ -54,7 +57,7 @@ internal interface SettingsStore {
     /** 效能模式 as this run of the app started with it: the stored value read once per process. */
     suspend fun performanceAtStart(): Boolean
 
-    suspend fun setPerformanceMode(enabled: Boolean)
+    fun setPerformanceMode(enabled: Boolean)
 }
 
 /** How the system answered 加到快速設定: the tile was added, the dialog was dismissed, or the request failed. */

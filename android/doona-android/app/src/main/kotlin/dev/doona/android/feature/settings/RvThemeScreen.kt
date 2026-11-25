@@ -68,7 +68,6 @@ import dev.doona.android.feature.model.RvThemeMode
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 
 /**
  * The page 主題 opens, after Revolut's Appearance page (Addendum A): a large title that collapses into the bar, then three
@@ -221,12 +220,12 @@ internal fun ThemeRoute(store: SettingsStore, schemes: RvSchemes, previewPage: R
     RvThemeScreen(appearance, viewModel::set, schemes, previewPage, onBack)
 }
 
-/** 主題's choices as the store has them, null until it answers; a choice is stored in the view model's scope, so leaving the page does not cancel it. */
+/** 主題's choices as the store has them, null until it answers; the store writes a choice in its own scope, so leaving the page at once still keeps it. */
 internal class ThemeViewModel(private val store: SettingsStore) : ViewModel() {
     val appearance: StateFlow<RvAppearance?> = store.appearance.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun set(appearance: RvAppearance) {
-        viewModelScope.launch { store.setAppearance(appearance) }
+        store.setAppearance(appearance)
     }
 
     companion object {

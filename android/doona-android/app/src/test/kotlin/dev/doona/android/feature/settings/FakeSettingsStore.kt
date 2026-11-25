@@ -26,7 +26,7 @@ internal class FakeSettingsStore(
     override val performanceMode = MutableStateFlow(performanceMode)
     private val started = performanceMode
 
-    override suspend fun setAppearance(appearance: RvAppearance) {
+    override fun setAppearance(appearance: RvAppearance) {
         this.appearance.value = appearance
     }
 
@@ -36,22 +36,22 @@ internal class FakeSettingsStore(
         languages = tags
     }
 
-    override suspend fun setNotifyOnDrop(enabled: Boolean) {
+    override fun setNotifyOnDrop(enabled: Boolean) {
         notifyOnDrop.value = enabled
     }
 
-    override suspend fun setAutoUpdate(enabled: Boolean) {
+    override fun setAutoUpdate(enabled: Boolean) {
         autoUpdate.value = enabled
     }
 
-    override suspend fun setUpdateHours(hours: Int) {
+    override fun setUpdateHours(hours: Int) {
         require(hours in updateHoursRange) { "no update interval of $hours h" }
         updateHours.value = hours
     }
 
     override suspend fun performanceAtStart(): Boolean = started
 
-    override suspend fun setPerformanceMode(enabled: Boolean) {
+    override fun setPerformanceMode(enabled: Boolean) {
         performanceMode.value = enabled
     }
 }

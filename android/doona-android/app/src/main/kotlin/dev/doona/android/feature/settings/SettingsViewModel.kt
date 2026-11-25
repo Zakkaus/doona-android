@@ -106,8 +106,8 @@ internal class SettingsViewModel(
      * second turn the page sends before it shows the first one does not write the first field back.
      */
     fun onChange(drawn: RvSettingsState, changed: RvSettingsState) {
-        if (changed.notifyOnDrop != drawn.notifyOnDrop) viewModelScope.launch { store.setNotifyOnDrop(changed.notifyOnDrop) }
-        if (changed.autoUpdate != drawn.autoUpdate) viewModelScope.launch { store.setAutoUpdate(changed.autoUpdate) }
+        if (changed.notifyOnDrop != drawn.notifyOnDrop) store.setNotifyOnDrop(changed.notifyOnDrop)
+        if (changed.autoUpdate != drawn.autoUpdate) store.setAutoUpdate(changed.autoUpdate)
         if (changed.tileSheet != drawn.tileSheet) local.update { it.copy(tileSheet = changed.tileSheet) }
     }
 
@@ -144,6 +144,11 @@ internal class SettingsViewModel(
     /**
      * 檢查更新 (or its 重試) for the app's [version]: asks GitHub for the latest release and shows what it found; a tap
      * while it asks is the same check.
+     *
+     * Ruled, not open: the app asks GitHub itself. Decision 2026-11-23 21:35 had the row only open the releases page;
+     * q-failform (2026-11-24 21:02) and the approved states (checking, 已是最新, a newer release, red 重試 on failure)
+     * need an answer to show, so the in-app check stays. A newer release still opens the releases page
+     * ([SettingsSystem.openReleases]); the app downloads nothing.
      */
     fun checkUpdate(version: String) {
         if (local.value.update == RvUpdate.Checking) return

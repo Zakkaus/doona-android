@@ -259,7 +259,7 @@ class SettingsAppShotTest {
     @Composable
     private fun DnsCustom(state: DnsUiState) {
         Box(Modifier.fillMaxSize()) {
-            RvDnsScreen(rvDnsUpstream(state.servers), onSelect = {}, onBack = {})
+            RvDnsScreen(rvDnsUpstream(state.servers), onSelect = {}, onBack = {}, onCustom = {})
             RvSheetLayout({ 1f }, {}, stringResource(R.string.rv_settings_dns_custom_title)) { RvDnsCustomContent(state, onText = {}, onSave = {}, onDismiss = {}) }
         }
     }

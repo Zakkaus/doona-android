@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 
 /** 實驗室's state: 效能模式 as stored, and as this run of the app started with it. */
 internal data class LabUiState(val performance: Boolean, val started: Boolean) {
@@ -25,7 +24,7 @@ internal class LabViewModel(private val store: SettingsStore) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun setPerformance(enabled: Boolean) {
-        viewModelScope.launch { store.setPerformanceMode(enabled) }
+        store.setPerformanceMode(enabled)
     }
 
     companion object {

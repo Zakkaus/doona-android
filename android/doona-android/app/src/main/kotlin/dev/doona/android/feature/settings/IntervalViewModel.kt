@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 /**
  * 更新間隔: the stored interval in hours ([selected]), and the 自訂 sheet while [customOpen], with the [customText]
@@ -40,7 +39,7 @@ internal class IntervalViewModel(private val store: SettingsStore) : ViewModel()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun select(hours: Int) {
-        viewModelScope.launch { store.setUpdateHours(hours) }
+        store.setUpdateHours(hours)
     }
 
     /** Opens 自訂 holding the stored count when it is no preset, else empty. */

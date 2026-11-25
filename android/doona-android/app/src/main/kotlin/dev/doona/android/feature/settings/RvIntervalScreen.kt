@@ -25,7 +25,7 @@ import dev.doona.android.designsystem.rv.RvSettingsSpace
 import dev.doona.android.designsystem.rv.rvRowPress
 
 /**
- * 更新間隔, the page 訂閱's 更新間隔 row opens, in DNS's language: the large title, then one card of radio rows, each
+ * 更新間隔, the page 設定's 訂閱 card opens from its 更新間隔 row, laid out as the DNS page is: the large title, then one card of radio rows, each
  * preset of [choices] (in hours: the store's, as doona web's `features/nodes/subscription.ts` offers them; its 僅手動 is
  * 設定's 自動更新 switch turned off, so the page leaves it out), and 自訂 last, which opens [RvIntervalCustomSheet]
  * ([onCustom]). A [selected] value that is no preset, one typed in 自訂, leaves every radio empty.

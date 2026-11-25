@@ -41,7 +41,6 @@ import dev.doona.android.designsystem.rv.rvRowPress
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.messageRes
 import dev.doona.android.feature.model.RvDnsUpstream
 
@@ -51,7 +50,7 @@ import dev.doona.android.feature.model.RvDnsUpstream
  * main node (rule-mode decision 10). A [selected] null (servers no preset names) leaves every radio empty.
  */
 @Composable
-internal fun RvDnsScreen(selected: RvDnsUpstream?, onSelect: (RvDnsUpstream) -> Unit, onBack: () -> Unit, onCustom: () -> Unit = NOT_WIRED) {
+internal fun RvDnsScreen(selected: RvDnsUpstream?, onSelect: (RvDnsUpstream) -> Unit, onBack: () -> Unit, onCustom: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_settings_dns)
     RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
@@ -114,5 +113,5 @@ private val PLACEHOLDER = "${RvDnsUpstream.Cloudflare.address}, ${RvDnsUpstream.
 private fun RvDnsScreenPreview() {
     val dark = isSystemInDarkTheme()
     var selected by remember { mutableStateOf(RvDnsUpstream.Cloudflare) }
-    RvTheme(rvSystemScheme(dark), dark) { RvDnsScreen(selected, { selected = it }, onBack = {}) }
+    RvTheme(rvSystemScheme(dark), dark) { RvDnsScreen(selected, { selected = it }, onBack = {}, onCustom = {}) }
 }
