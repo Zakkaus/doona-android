@@ -169,7 +169,19 @@ fn a_configuration_that_fails_to_load_is_a_typed_error() {
     let doc = load(&entry).unwrap();
     let geo = TempDir::new("honk-runtime-geo-empty");
     let error = Runtime::new(&doc, geo.path()).err().unwrap();
-    assert!(matches!(error, RuntimeError::Engine(_)), "{error}");
+    assert!(
+        matches!(&error, RuntimeError::Asset(e) if e.kind() == std::io::ErrorKind::NotFound),
+        "{error}"
+    );
+
+    fs::write(
+        &entry,
+        "routing { domain(regex:'(') -> direct\n fallback: block }",
+    )
+    .unwrap();
+    let doc = load(&entry).unwrap();
+    let error = Runtime::new(&doc, geo.path()).err().unwrap();
+    assert!(matches!(error, RuntimeError::Config(_)), "{error}");
 }
 
 #[test]

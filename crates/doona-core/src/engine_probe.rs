@@ -2,6 +2,7 @@
 //! (`app/src/androidTest`). Built only with the `engine-probe` feature, which only the probe
 //! build of the debug app enables (`-Pdoona.engineProbe=true`).
 
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::path::Path;
 
 use jni::objects::{JObject, JString};
@@ -12,6 +13,7 @@ use crate::honkconf::{Capabilities, HonkStore};
 use crate::jni::ThrowInternal;
 
 const FIXTURE: &str = include_str!("../tests/fixtures/honk/runtime.dae");
+const SOURCE: SocketAddr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(10, 0, 0, 2), 40000));
 
 #[allow(deprecated)]
 const _: NativeMethod = native_method! {
@@ -93,7 +95,7 @@ fn target(store: &HonkStore, global: &str) -> Result<Option<GlobalTarget>, Strin
 fn flow(destination: &str, domain: &str) -> Result<Flow, String> {
     Ok(Flow {
         network: Network::Tcp,
-        source: "10.0.0.2:40000".parse().unwrap(),
+        source: SOURCE,
         destination: destination.parse().map_err(|_| "bad destination")?,
         domain: (!domain.is_empty()).then(|| domain.to_owned()),
         domain_verified: !domain.is_empty(),

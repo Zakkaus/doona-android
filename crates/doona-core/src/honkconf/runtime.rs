@@ -23,9 +23,22 @@ pub enum RuntimeError {
     NoRevision,
     /// The committed tree could not be read or no longer loads.
     Store(StoreError),
-    /// honk refused the configuration, or a geo asset it requires is missing from the data
-    /// root or does not parse. The message is honk's.
-    Engine(anyhow::Error),
+    /// A geo asset the rules need could not be read from the data root (`NotFound` when it is
+    /// absent), does not parse, or lacks a label they name (`InvalidData`).
+    Asset(std::io::Error),
+    /// honk refused the configuration. The message is honk's.
+    Config(anyhow::Error),
+}
+
+impl From<anyhow::Error> for RuntimeError {
+    /// Building the engine reads no file but the geo assets, and honk reports those failures
+    /// as `io::Error`.
+    fn from(error: anyhow::Error) -> Self {
+        match error.downcast::<std::io::Error>() {
+            Ok(io) => Self::Asset(io),
+            Err(error) => Self::Config(error),
+        }
+    }
 }
 
 impl fmt::Display for RuntimeError {
@@ -33,7 +46,8 @@ impl fmt::Display for RuntimeError {
         match self {
             Self::NoRevision => f.write_str("no committed honk configuration"),
             Self::Store(e) => write!(f, "committed honk configuration: {e}"),
-            Self::Engine(e) => write!(f, "honk engine: {e:#}"),
+            Self::Asset(e) => write!(f, "honk geo asset: {e}"),
+            Self::Config(e) => write!(f, "honk configuration: {e:#}"),
         }
     }
 }
@@ -42,7 +56,8 @@ impl std::error::Error for RuntimeError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Store(e) => Some(e),
-            Self::Engine(e) => Some(e.as_ref()),
+            Self::Asset(e) => Some(e),
+            Self::Config(e) => Some(e.as_ref()),
             Self::NoRevision => None,
         }
     }
@@ -70,7 +85,7 @@ impl Runtime {
 
     /// Builds the engine for a loaded document, such as a draft being checked.
     pub fn new(doc: &HonkConfig, data_root: &Path) -> Result<Self, RuntimeError> {
-        let engine = Engine::new(doc.config().clone(), data_root).map_err(RuntimeError::Engine)?;
+        let engine = Engine::new(doc.config().clone(), data_root)?;
         Ok(Self {
             revision: None,
             engine,
