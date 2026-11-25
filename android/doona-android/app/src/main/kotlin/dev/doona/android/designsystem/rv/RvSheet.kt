@@ -160,7 +160,8 @@ internal fun RvSheetPanel(modifier: Modifier = Modifier, content: @Composable Co
  * optional [extra] (stat rows, a field), then [confirm] as the primary button and [dismiss] as the neutral secondary
  * pill under it, as a card's notice sets its action: no action of the sheet is a coloured text link (the owner,
  * 2026-11-23). [titleKeepWords] and [bodyKeepWords] false for a title or body that quotes a name or an address
- * ([RvText]'s `keepWords`: 刪除「香港 01」?).
+ * ([RvText]'s `keepWords`: 刪除「香港 01」?). Back and a tap above the sheet run [onDismissRequest], by default
+ * [onDismiss]; a question whose secondary pill means no, while closing it means not yet, passes its own.
  */
 @Composable
 internal fun RvConfirmSheet(
@@ -174,9 +175,10 @@ internal fun RvConfirmSheet(
     confirmEnabled: Boolean = true,
     titleKeepWords: Boolean = true,
     bodyKeepWords: Boolean = true,
+    onDismissRequest: () -> Unit = onDismiss,
     extra: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    RvSheet(visible, onDismiss, title) {
+    RvSheet(visible, onDismissRequest, title) {
         RvConfirmContent(title, body, confirm, dismiss, onConfirm, onDismiss, confirmEnabled, titleKeepWords, bodyKeepWords, extra)
     }
 }

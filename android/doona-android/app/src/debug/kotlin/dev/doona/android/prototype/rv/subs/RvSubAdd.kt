@@ -34,6 +34,8 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.designsystem.rv.rememberRvFormat
+import dev.doona.android.feature.localnetwork.LocalNetworkPrompt
+import dev.doona.android.feature.localnetwork.RvLanSheet
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.RvSubscription
 import dev.doona.android.prototype.rv.gallery.RV_LINK_PLACEHOLDER
@@ -67,7 +69,7 @@ internal data class RvAddState(
     val userAgent: String = "",
     val clipboardHasLink: Boolean = true,
     val phase: RvAddPhase = RvAddPhase.Editing,
-    val lan: RvLanPrompt? = null,
+    val lan: LocalNetworkPrompt? = null,
 )
 
 /**

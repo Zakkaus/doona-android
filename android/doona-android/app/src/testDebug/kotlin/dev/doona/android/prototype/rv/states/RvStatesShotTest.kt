@@ -10,6 +10,8 @@ import androidx.compose.ui.test.performClick
 import dev.doona.android.designsystem.rv.RvConfirmContent
 import dev.doona.android.designsystem.rv.RvSheetLayout
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.feature.localnetwork.LocalNetworkPrompt
+import dev.doona.android.feature.localnetwork.text
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.RvActivityScreen
@@ -18,10 +20,8 @@ import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.seedColorScheme
-import dev.doona.android.prototype.rv.subs.RvLanPrompt
 import dev.doona.android.prototype.rv.subs.RvSubAdd
 import dev.doona.android.prototype.rv.subs.rvAddSample
-import dev.doona.android.prototype.rv.subs.text
 import dev.doona.android.prototype.rv.welcome.RvWelcome
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -98,13 +98,13 @@ class RvStatesShotTest {
 
     @Test fun crashFs200() = notice(RvActivityNotice.Crash, false, RV_FS200)
 
-    @Test fun lanAskLight() = shot("sub-add-lan-ask", false) { Lan("lan-ask", RvLanPrompt.Ask) }
+    @Test fun lanAskLight() = shot("sub-add-lan-ask", false) { Lan("lan-ask", LocalNetworkPrompt.Ask) }
 
-    @Test fun lanAskDark() = shot("sub-add-lan-ask", true) { Lan("lan-ask", RvLanPrompt.Ask) }
+    @Test fun lanAskDark() = shot("sub-add-lan-ask", true) { Lan("lan-ask", LocalNetworkPrompt.Ask) }
 
-    @Test fun lanDeniedLight() = shot("sub-add-lan-denied", false) { Lan("lan-denied", RvLanPrompt.Denied) }
+    @Test fun lanDeniedLight() = shot("sub-add-lan-denied", false) { Lan("lan-denied", LocalNetworkPrompt.Denied) }
 
-    @Test fun lanDeniedDark() = shot("sub-add-lan-denied", true) { Lan("lan-denied", RvLanPrompt.Denied) }
+    @Test fun lanDeniedDark() = shot("sub-add-lan-denied", true) { Lan("lan-denied", LocalNetworkPrompt.Denied) }
 
     @Test
     fun theWelcomePageAddsASubscription() {
@@ -164,7 +164,7 @@ class RvStatesShotTest {
 
     /** 新增訂閱 with a link on the local network, under the prompt its 匯入 raised. */
     @Composable
-    private fun Lan(sample: String, prompt: RvLanPrompt) {
+    private fun Lan(sample: String, prompt: LocalNetworkPrompt) {
         Box(Modifier.fillMaxSize()) {
             RvSubAdd(rvAddSample(sample).copy(lan = null), {}, onPaste = {}, onImport = {}, onBack = {})
             val text = prompt.text()

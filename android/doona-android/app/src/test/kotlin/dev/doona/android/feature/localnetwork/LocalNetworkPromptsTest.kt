@@ -5,13 +5,15 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.R
-import dev.doona.android.designsystem.theme.DoonaTheme
+import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rvSystemScheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
@@ -43,10 +45,8 @@ class LocalNetworkPromptsTest {
         access.answered(false)
         assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
         var opened = 0
-        compose.setContent {
-            DoonaTheme { LocalNetworkPrompts(LocalNetworkHost(access, request = {}, openSettings = { opened++ })) }
-        }
-        compose.onNodeWithText(RuntimeEnvironment.getApplication().getString(R.string.local_network_open_settings)).performClick()
+        show(LocalNetworkHost(access, request = {}, openSettings = { opened++ }))
+        compose.onNodeWithText(text(R.string.rv_lan_open_settings)).performClick()
         compose.waitForIdle()
         assertEquals("the app's settings page", 1, opened)
         assertNull("the refusal is closed", access.prompt.value)
@@ -55,4 +55,38 @@ class LocalNetworkPromptsTest {
         access.resumed()
         assertEquals(true, retry)
     }
+
+    @Test
+    fun theReasonsContinueGoesOnToTheSystemsQuestion() {
+        var answer: Boolean? = null
+        scope.launch { answer = access.ask() }
+        assertEquals(LocalNetworkPrompt.Ask, access.prompt.value)
+        var requested = 0
+        show(LocalNetworkHost(access, request = { requested++ }, openSettings = {}))
+        compose.onNodeWithText(text(R.string.rv_lan_ask_continue)).performClick()
+        compose.waitForIdle()
+        assertEquals("the system's question", 1, requested)
+        access.answered(true)
+        assertEquals(true, answer)
+    }
+
+    @Test
+    fun theReasonsNotNowIsARefusalAndTheNextFailureShowsTheSettingsWay() {
+        var answer: Boolean? = null
+        scope.launch { answer = access.ask() }
+        var requested = 0
+        show(LocalNetworkHost(access, request = { requested++ }, openSettings = {}))
+        compose.onNodeWithText(text(R.string.rv_lan_ask_not_now)).performClick()
+        compose.waitForIdle()
+        assertEquals("no system question", 0, requested)
+        assertEquals(false, answer)
+        scope.launch { assertFalse(access.ask()) }
+        assertEquals("a refusal is final for the process", LocalNetworkPrompt.Denied, access.prompt.value)
+    }
+
+    private fun show(host: LocalNetworkHost) = compose.setContent {
+        RvTheme(rvSystemScheme(false), dark = false) { LocalNetworkPrompts(host) }
+    }
+
+    private fun text(id: Int) = RuntimeEnvironment.getApplication().getString(id)
 }

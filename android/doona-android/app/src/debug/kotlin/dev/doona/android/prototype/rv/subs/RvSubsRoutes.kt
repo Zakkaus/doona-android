@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import dev.doona.android.feature.localnetwork.LocalNetworkPrompt
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.gallery.RV_SAMPLE_LINK
 import kotlinx.coroutines.delay
@@ -67,7 +68,7 @@ internal fun RvSubsRoute(route: String, push: (String) -> Unit, pop: () -> Unit)
                 onBack = pop,
                 // 繼續 stands for Android's dialog answered yes, and the import runs; 開啟設定 leaves the page as it was.
                 onLanConfirm = {
-                    state = if (state.lan == RvLanPrompt.Ask) state.copy(lan = null, phase = RvAddPhase.Importing(IMPORTED_BYTES, IMPORTED_SHARE)) else state.copy(lan = null)
+                    state = if (state.lan == LocalNetworkPrompt.Ask) state.copy(lan = null, phase = RvAddPhase.Importing(IMPORTED_BYTES, IMPORTED_SHARE)) else state.copy(lan = null)
                 },
             )
         }
@@ -84,8 +85,8 @@ internal fun rvAddSample(phase: String): RvAddState {
         "unreachable" -> typed.copy(phase = RvAddPhase.Failed(RvAddFailure.Unreachable))
         "not-subscription" -> typed.copy(phase = RvAddPhase.Failed(RvAddFailure.NotSubscription))
         "too-large" -> typed.copy(phase = RvAddPhase.Failed(RvAddFailure.TooLarge))
-        "lan-ask" -> typed.copy(link = RV_LAN_LINK, name = "", lan = RvLanPrompt.Ask)
-        "lan-denied" -> typed.copy(link = RV_LAN_LINK, name = "", lan = RvLanPrompt.Denied)
+        "lan-ask" -> typed.copy(link = RV_LAN_LINK, name = "", lan = LocalNetworkPrompt.Ask)
+        "lan-denied" -> typed.copy(link = RV_LAN_LINK, name = "", lan = LocalNetworkPrompt.Denied)
         "user-agent" -> typed.copy(userAgent = RV_SAMPLE_AGENT)
         "user-agent-invalid" -> typed.copy(userAgent = RV_SAMPLE_AGENT + RV_SAMPLE_AGENT_BAD)
         else -> RvAddState()

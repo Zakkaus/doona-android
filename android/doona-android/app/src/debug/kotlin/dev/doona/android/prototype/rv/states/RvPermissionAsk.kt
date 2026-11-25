@@ -9,7 +9,7 @@ import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvConfirmSheet
 import dev.doona.android.engine.Status
-import dev.doona.android.prototype.rv.subs.RvPromptText
+import dev.doona.android.feature.localnetwork.RvPromptText
 
 /**
  * The two permissions doona asks for on the way to its first connection, each said first in the confirm sheet: [Vpn]
