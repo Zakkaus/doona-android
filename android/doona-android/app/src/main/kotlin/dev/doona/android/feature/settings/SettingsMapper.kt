@@ -71,8 +71,9 @@ private const val DNS_PORT = 53
 
 /**
  * What 檢查更新 found for the app's [current] version and the [latest] release tag (null: none published yet, so
- * nothing is newer): [RvUpdate.Available] for a higher version number, [RvUpdate.Latest] otherwise. A tag or a version
- * that starts with no number (`v1.2.3`, `1.2.3-beta` and `1.2` all do) cannot be compared and is [RvUpdate.Failed].
+ * nothing is newer): [RvUpdate.Available] for a higher version number, [RvUpdate.Latest] otherwise. Each is read up
+ * to its first non-numeric part after an optional `v` (`v1.2.3`, `1.2.3-beta` and `1.2` all compare); one that does not
+ * start with a number cannot be compared and is [RvUpdate.Failed].
  */
 internal fun rvUpdate(current: String, latest: String?): RvUpdate {
     if (latest == null) return RvUpdate.Latest

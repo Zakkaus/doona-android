@@ -6,7 +6,6 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation3.runtime.EntryProviderScope
@@ -50,15 +49,14 @@ import kotlinx.coroutines.flow.map
 
 /**
  * 設定's store in the app: [settings] for the switches, the interval and the theme, [tile] for the quick settings
- * tile, Android's per-app locale list for the language. [shippedGeoDate] is the APK's GeoIP/GeoSite release
- * (`crates/doona-core/tools/geo-pins.json`'s `release_date`), until the build passes it on.
+ * tile, Android's per-app locale list for the language.
  */
 internal class AppSettingsStore(
     private val context: Context,
     private val settings: AppSettings,
     private val tile: QuickTile,
-    override val shippedGeoDate: String = SHIPPED_GEO_DATE,
 ) : SettingsStore {
+    override val shippedGeoDate: String = SHIPPED_GEO_DATE
     override val notifyOnDrop: Flow<Boolean> = settings.notifyOnDrop
     override val autoUpdate: Flow<Boolean> = settings.subscriptionUpdate.map { it.enabled }
     override val updateHours: Flow<Int> = settings.subscriptionUpdate.map { it.interval.hours }
@@ -191,15 +189,7 @@ internal fun EntryProviderScope<NavKey>.settingsEntries(backStack: MutableList<N
         LabRoute(rememberSettingsStore(), onBack = { backStack.pop(key) }, onRestart = { restartApp(context) })
     }
     entry<LicensesKey> { key -> RvLicensesScreen(onOpen = { backStack.push(LicenseTextKey(it.toString())) }, onBack = { backStack.pop(key) }) }
-    entry<LicenseTextKey> { key ->
-        // An index another version of the app saved may point past this version's list: back to the list.
-        val license = rvLicenseEntries().getOrNull(key.index.toIntOrNull() ?: -1)
-        if (license == null) {
-            LaunchedEffect(key) { backStack.pop(key) }
-        } else {
-            RvLicenseText(license, onBack = { backStack.pop(key) })
-        }
-    }
+    entry<LicenseTextKey> { key -> RvLicenseText(rvLicenseEntries()[key.index.toInt()], onBack = { backStack.pop(key) }) }
 }
 
 @Composable
