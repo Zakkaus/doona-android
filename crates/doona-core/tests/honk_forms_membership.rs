@@ -1,7 +1,6 @@
 mod common;
 
 use std::collections::BTreeSet;
-use std::fs;
 use std::path::Path;
 
 use common::TempDir;
@@ -17,7 +16,7 @@ const LINK: &str = "socks5://192.0.2.9:1080";
 struct Draft {
     store: HonkStore,
     id: u64,
-    dir: TempDir,
+    _dir: TempDir,
 }
 
 impl Draft {
@@ -28,7 +27,11 @@ impl Draft {
         for (path, text) in files {
             store.edit(id, Path::new(path), text).unwrap();
         }
-        Self { store, id, dir }
+        Self {
+            store,
+            id,
+            _dir: dir,
+        }
     }
 
     fn text(&self, path: &str) -> String {
@@ -249,44 +252,4 @@ fn groups_that_reach_the_node_through_subgroups_are_listed() {
     let config = draft.assembled();
     assert!(selected(&config, "Outer").contains("tw1"));
     assert!(!selected(&config, "Other").contains("tw1"));
-}
-
-#[test]
-fn a_failed_write_of_a_later_file_restores_the_files_already_written() {
-    use std::os::unix::fs::PermissionsExt;
-    // The entry gains the node first; the filter goes to sub/b.dae, whose directory refuses it.
-    let entry = format!("include {{ 'sub/b.dae' }}\n{NODES}");
-    let b = "group { Hk { filter: name(hk1) } }\n";
-    let mut draft = Draft::new(&[(ENTRY, &entry), ("sub/b.dae", b)]);
-    let subs = dirs_named(draft.dir.path(), "sub");
-    assert!(!subs.is_empty());
-    let mode = |dir: &Path, mode| fs::set_permissions(dir, fs::Permissions::from_mode(mode));
-    for dir in &subs {
-        mode(dir, 0o555).unwrap();
-    }
-    let result = draft.add("tw1", &["Hk"]);
-    for dir in &subs {
-        mode(dir, 0o755).unwrap();
-    }
-    assert!(
-        matches!(result, Err(AddNodeError::Edit(EditError::Store(_)))),
-        "{result:?}"
-    );
-    assert_eq!(draft.text(ENTRY), entry);
-    assert_eq!(draft.text("sub/b.dae"), b);
-    assert_eq!(draft.add("tw1", &["Hk"]).unwrap(), ["Hk"]);
-}
-
-fn dirs_named(root: &Path, name: &str) -> Vec<std::path::PathBuf> {
-    let mut found = Vec::new();
-    for item in fs::read_dir(root).unwrap() {
-        let path = item.unwrap().path();
-        if path.is_dir() {
-            if path.file_name().is_some_and(|n| n == name) {
-                found.push(path.clone());
-            }
-            found.extend(dirs_named(&path, name));
-        }
-    }
-    found
 }

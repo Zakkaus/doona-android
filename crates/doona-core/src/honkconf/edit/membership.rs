@@ -21,6 +21,7 @@ use super::ads::{loaded, relative, root};
 use super::carry::Carry;
 use super::{EditError, File, blanks, line_start};
 use crate::honkconf::staged::Tree;
+use crate::honkconf::store::Manifest;
 use crate::honkconf::{HonkStore, StoreError};
 
 #[derive(Debug)]
@@ -30,6 +31,32 @@ pub enum AddNodeError {
     Node,
     /// No group of the tree has this name.
     Group(String),
+    /// A write failed with `error`, and restoring what the edit had already written failed
+    /// too: `paths` still hold the edit's bytes.
+    Unrestored {
+        error: EditError,
+        paths: Vec<PathBuf>,
+        failures: Vec<StoreError>,
+    },
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Test seam: the store calls of `write_files` on this thread, counted from 1, that fail.
+    static FAULTS: std::cell::RefCell<(u32, Vec<u32>)> =
+        const { std::cell::RefCell::new((0, Vec::new())) };
+}
+
+/// One store call of `write_files`; a test can make it fail.
+fn store_call(call: impl FnOnce() -> Result<(), StoreError>) -> Result<(), StoreError> {
+    #[cfg(test)]
+    if FAULTS.with_borrow_mut(|(count, fail)| {
+        *count += 1;
+        fail.contains(count)
+    }) {
+        return Err(std::io::Error::other("injected fault").into());
+    }
+    call()
 }
 
 impl From<EditError> for AddNodeError {
@@ -254,7 +281,7 @@ impl HonkStore {
         draft: u64,
         edited: &Tree,
         texts: &[(PathBuf, String)],
-    ) -> Result<(), EditError> {
+    ) -> Result<(), AddNodeError> {
         let root = root(edited);
         let original =
             Tree::read(&self.draft_entry(self.find(draft)?)).map_err(StoreError::from)?;
@@ -272,16 +299,53 @@ impl HonkStore {
         }
         // Each write replaces one file by rename. When one fails, the files already written
         // get their original bytes back, so the draft keeps no half of the edit.
+        let record = self.manifest.clone();
         let mut written: Vec<(&Path, Arc<str>)> = Vec::new();
         for (path, file, candidate, carry) in steps {
-            if let Err(error) = self.write_steps(draft, path, root, &file, &[(candidate, carry)]) {
-                for (path, original) in written.iter().rev() {
-                    self.write_edit(draft, path, root, original, None)?;
-                }
-                return Err(error.into());
+            let step = [(candidate, carry)];
+            if let Err(error) = store_call(|| self.write_steps(draft, path, root, &file, &step)) {
+                return Err(self.restore(draft, edited, written, record, error.into()));
             }
             written.push((path, file.source.content));
         }
         Ok(())
     }
+
+    /// Writes back every file in `written`, then the draft record from before the edit, whose
+    /// meters and edited flag the writes changed. Returns `error`, with what stayed unrestored.
+    fn restore(
+        &mut self,
+        draft: u64,
+        edited: &Tree,
+        written: Vec<(&Path, Arc<str>)>,
+        record: Manifest,
+        error: EditError,
+    ) -> AddNodeError {
+        let root = root(edited);
+        let (mut paths, mut failures) = (Vec::new(), Vec::new());
+        for (path, original) in written.into_iter().rev() {
+            if let Err(failure) = store_call(|| self.write_edit(draft, path, root, &original, None))
+            {
+                paths.push(relative(edited, path));
+                failures.push(failure);
+            }
+        }
+        // A file left with the edit's bytes needs the meters the edit recorded for them.
+        if paths.is_empty()
+            && let Err(failure) = store_call(|| Ok(self.publish(record)?))
+        {
+            failures.push(failure);
+        }
+        if failures.is_empty() {
+            return AddNodeError::Edit(error);
+        }
+        AddNodeError::Unrestored {
+            error,
+            paths,
+            failures,
+        }
+    }
 }
+
+#[cfg(test)]
+mod tests;
