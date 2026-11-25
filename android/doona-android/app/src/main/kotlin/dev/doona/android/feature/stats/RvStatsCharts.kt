@@ -43,21 +43,27 @@ import dev.doona.android.designsystem.rv.rvValuePill
 import dev.doona.android.designsystem.rv.scripted
 import kotlin.math.abs
 
-/** An empty chart (Addendum A): the grid alone with a short [line] on it; never bars that were not measured. */
+/**
+ * An empty chart (Addendum A): the grid of [slots] hours or days alone with a short [line] on it; never bars that were
+ * not measured.
+ */
 @Composable
-internal fun RvEmptyChart(line: String, modifier: Modifier = Modifier) {
+internal fun RvEmptyChart(line: String, modifier: Modifier = Modifier, slots: Int = HOURS) {
     val colors = Rv.colors
     Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.matchParentSize()) { hourGrid(colors.grid) }
+        Canvas(Modifier.matchParentSize()) { slotGrid(colors.grid, slots) }
         RvText(line, Rv.type.tileCaption, color = colors.textSecondary, align = TextAlign.Center)
     }
 }
 
-/** Hairlines in [color]: a column every [RvUsageSize.GRID_HOURS] hours of the day, edges included, and [RvStatsSize.GRID_ROWS] rows. */
-private fun DrawScope.hourGrid(color: Color) {
+/**
+ * Hairlines in [color]: a column every [gridEvery] of the [slots] (4 hours of a day), both edges included, and
+ * [RvStatsSize.GRID_ROWS] rows.
+ */
+private fun DrawScope.slotGrid(color: Color, slots: Int) {
     val hairline = 1f
-    for (hour in 0..HOURS step RvUsageSize.GRID_HOURS) {
-        val x = (size.width * hour / HOURS).coerceIn(hairline / 2, size.width - hairline / 2)
+    for (slot in ((0..slots step gridEvery(slots)) + slots).distinct()) {
+        val x = (size.width * slot / slots).coerceIn(hairline / 2, size.width - hairline / 2)
         drawLine(color, Offset(x, 0f), Offset(x, size.height), hairline)
     }
     for (j in 0 until RvStatsSize.GRID_ROWS) {
@@ -67,18 +73,18 @@ private fun DrawScope.hourGrid(color: Color) {
 }
 
 /**
- * The bars of a paged tile, after Revolut's 'Income' card: one per hour of the day in [color], scaled to the busiest;
- * the hours still to come are short stubs on the track.
+ * The bars of a paged tile, after Revolut's 'Income' card: one per hour of the day, or per day of a week or a month
+ * ([slots]), in [color], scaled to the busiest; the hours or days still to come are short stubs on the track.
  */
 @Composable
-internal fun RvHourBars(values: List<Long>, color: Color, modifier: Modifier = Modifier) {
+internal fun RvHourBars(values: List<Long>, color: Color, modifier: Modifier = Modifier, slots: Int = HOURS) {
     val stub = Rv.colors.track
     Canvas(modifier.fillMaxWidth().height(RvStatsSize.bars)) {
-        val pitch = size.width / HOURS
+        val pitch = size.width / slots
         val bar = pitch * RvStatsSize.BAR_SHARE
         val peak = values.maxOrNull()?.takeIf { it > 0 } ?: 1L
         val least = RvStatsSize.barStub.toPx()
-        for (h in 0 until HOURS) {
+        for (h in 0 until slots) {
             val value = values.getOrNull(h)
             val height = if (value == null) least else (size.height * value / peak).coerceAtLeast(least)
             val left = h * pitch + (pitch - bar) / 2
@@ -210,7 +216,7 @@ internal fun RvRatingBar(fraction: Float, color: Color, modifier: Modifier = Mod
     }
 }
 
-/** The day's hours on the x axis of the empty grid and the hour bars. */
+/** The day's hours on the x axis of the empty grid and the hour bars, as 今天 draws them. */
 internal const val HOURS = 24
 
 private const val FULL_TURN = 360f

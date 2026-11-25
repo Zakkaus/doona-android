@@ -142,6 +142,25 @@ class StatsViewModelTest {
         assertEquals(StatsTool.TestAll, vm.failure.value?.tool)
     }
 
+    @Test
+    fun `the chips' picks reach the page`() = runTest {
+        val vm = viewModel(Counting())
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        advanceTimeBy(1)
+        assertNull(vm.uiState.value.period)
+        vm.pickRange(RvStatsRange.Month)
+        vm.pickSubscription("s2")
+        advanceTimeBy(1)
+        assertEquals(RvStatsRange.Month, vm.uiState.value.range)
+        assertEquals(30, vm.uiState.value.period?.slots)
+        assertEquals("s2", vm.uiState.value.subscriptionId)
+        vm.pickRange(RvStatsRange.Today)
+        vm.pickSubscription(null)
+        advanceTimeBy(1)
+        assertNull(vm.uiState.value.period)
+        assertNull(vm.uiState.value.subscriptionId)
+    }
+
     private companion object {
         const val SAMPLE_NOW = 1_795_343_040_000L
         const val POLL_MS = 5_000L

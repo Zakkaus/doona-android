@@ -26,19 +26,24 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.DayOfWeek
 import java.time.ZoneId
+import java.time.temporal.WeekFields
+import java.util.Locale
 
 /**
  * The 統計 page: reads `usage()` and `scoreState()` every [pollMs] while the page is shown, with the engine's today
- * totals, subscriptions and catalog, and maps them with [rvStatsState]. A read that fails keeps the last answer, so a
- * passing error does not blank the page. The tools test every node and refresh every subscription; their results come
- * back through the catalog and the subscriptions, and a tool that fails leaves its [failure] until it next succeeds. The
- * reads and the mapping run on [work], off the main thread.
+ * totals, subscriptions and catalog, and maps them with [rvStatsState] by the chips' picks (the range, the
+ * subscription). A read that fails keeps the last answer, so a passing error does not blank the page. The tools test
+ * every node and refresh every subscription; their results come back through the catalog and the subscriptions, and a
+ * tool that fails leaves its [failure] until it next succeeds. The reads and the mapping run on [work], off the main
+ * thread. A week starts on [firstDay], the locale's.
  */
 internal class StatsViewModel(
     private val engine: Engine,
     private val clock: () -> Long = System::currentTimeMillis,
     private val zone: () -> ZoneId = ZoneId::systemDefault,
+    private val firstDay: () -> DayOfWeek = { WeekFields.of(Locale.getDefault()).firstDayOfWeek },
     private val pollMs: Long = POLL_MS,
     work: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
@@ -53,8 +58,12 @@ internal class StatsViewModel(
         }
     }
 
-    val uiState: StateFlow<RvStatsState> = combine(reads, engine.today, engine.subscriptions, engine.catalog) { (usage, score), today, subscriptions, catalog ->
-        rvStatsState(StatsInput(usage, today, subscriptions, catalog, score, clock(), zone()))
+    private val range = MutableStateFlow(RvStatsRange.Today)
+    private val subscription = MutableStateFlow<String?>(null)
+    private val picks = combine(range, subscription, ::Pair)
+
+    val uiState: StateFlow<RvStatsState> = combine(reads, engine.today, engine.subscriptions, engine.catalog, picks) { (usage, score), today, subscriptions, catalog, (range, subscription) ->
+        rvStatsState(StatsInput(usage, today, subscriptions, catalog, score, clock(), zone(), range, subscription, firstDay()))
     }
         .flowOn(work)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), initial())
@@ -63,6 +72,16 @@ internal class StatsViewModel(
 
     /** The last tool that failed, shown as a banner until that tool next succeeds. */
     val failure: StateFlow<StatsFailure?> = failed.asStateFlow()
+
+    /** The range chip's pick: 今天, 本週 or 本月. */
+    fun pickRange(picked: RvStatsRange) {
+        range.value = picked
+    }
+
+    /** The subscription chip's pick, by id; null is 全部訂閱. */
+    fun pickSubscription(id: String?) {
+        subscription.value = id
+    }
 
     /** 測試所有節點: one latency test of every group. */
     fun testAll() = attempt(StatsTool.TestAll) {
@@ -97,7 +116,7 @@ internal class StatsViewModel(
 
     /** The page before the first read answers: the day so far with no bytes, and what the engine already holds. */
     private fun initial() = rvStatsState(
-        StatsInput(null, engine.today.value, engine.subscriptions.value, engine.catalog.value, null, clock(), zone()),
+        StatsInput(null, engine.today.value, engine.subscriptions.value, engine.catalog.value, null, clock(), zone(), firstDay = firstDay()),
     )
 
     companion object {

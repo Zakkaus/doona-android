@@ -2,6 +2,7 @@ package dev.doona.android.feature.stats
 
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.engine.Catalog
+import dev.doona.android.engine.DayTotal
 import dev.doona.android.engine.DayUsage
 import dev.doona.android.engine.Member
 import dev.doona.android.engine.ScoreState
@@ -14,10 +15,16 @@ import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSplit
 import dev.doona.android.feature.model.RvSubscription
 import java.net.URI
+import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.TemporalAdjusters
 
-/** Everything the 統計 page reads from the engine at one instant; [usage] is null until the first read answers. */
+/**
+ * Everything the 統計 page reads from the engine at one instant, and what its chips picked; [usage] is null until the
+ * first read answers. A week starts on [firstDay], the locale's.
+ */
 internal class StatsInput(
     val usage: Usage?,
     val today: TodayTraffic,
@@ -26,6 +33,9 @@ internal class StatsInput(
     val score: ScoreState?,
     val nowEpochMs: Long,
     val zone: ZoneId,
+    val range: RvStatsRange = RvStatsRange.Today,
+    val subscriptionId: String? = null,
+    val firstDay: DayOfWeek = DayOfWeek.MONDAY,
 )
 
 /**
@@ -35,9 +45,10 @@ internal class StatsInput(
 internal fun rvStatsState(input: StatsInput, placeOf: (String) -> RvPlace = ::rvStatsPlace): RvStatsState {
     val nodes = input.catalog?.leafNodes(placeOf).orEmpty()
     val day = input.usage?.today?.takeIf { it.date == localDate(input) }
+    val today = rvDay(day, hoursSoFar(input))
     return RvStatsState(
-        range = RvStatsRange.Today,
-        today = rvDay(day, hoursSoFar(input)),
+        range = input.range,
+        today = today,
         yesterdaySoFar = input.today.yesterdayByNow,
         subscriptions = input.subscriptions.map(::rvSubscription),
         nodes = nodes,
@@ -45,8 +56,43 @@ internal fun rvStatsState(input: StatsInput, placeOf: (String) -> RvPlace = ::rv
         split = day?.let(::rvSplit),
         nowEpochMs = input.nowEpochMs,
         score = input.score?.let { rvStatsScore(it, input.catalog, nodes) },
+        period = rvPeriod(input, today),
+        // A subscription deleted since it was picked leaves the chip at all of them.
+        subscriptionId = input.subscriptionId?.takeIf { id -> input.subscriptions.any { it.id == id } },
     )
 }
+
+/**
+ * 本週 (from the locale's first day) or 本月 (from the 1st) by the day: each past day's bytes from `usage().days` (a day
+ * not listed had none; yesterday falls back to `usage().yesterday`), then today's so far. The week before is compared by
+ * the same point: its days up to the same weekday whole, and that weekday by the share of today gone, since past days
+ * keep no hours. A month has nothing to compare: the 31 days kept do not reach back over the month before.
+ */
+private fun rvPeriod(input: StatsInput, today: RvDay): RvStatsPeriod? {
+    val now = Instant.ofEpochMilli(input.nowEpochMs).atZone(input.zone)
+    val date = now.toLocalDate()
+    val (first, slots) = when (input.range) {
+        RvStatsRange.Today -> return null
+        RvStatsRange.Week -> date.with(TemporalAdjusters.previousOrSame(input.firstDay)) to DAYS_PER_WEEK
+        RvStatsRange.Month -> date.withDayOfMonth(1) to date.lengthOfMonth()
+    }
+    val kept = input.usage?.days.orEmpty().associateBy { it.date }
+    val yesterday = input.usage?.yesterday?.let { DayTotal(it.date, it.up.sum(), it.down.sum()) }
+    fun on(day: LocalDate): DayTotal? = kept[day.toString()] ?: yesterday?.takeIf { it.date == day.toString() }
+    val past = generateSequence(first) { it.plusDays(1) }.takeWhile { it < date }.toList()
+    val days = RvDay(past.map { on(it)?.down ?: 0L } + today.downTotal, past.map { on(it)?.up ?: 0L } + today.upTotal, null)
+    val dayGone = now.toLocalTime().toSecondOfDay().toFloat() / SECONDS_PER_DAY
+    val before = if (input.range == RvStatsRange.Week) {
+        val sameDay = date.minusDays(DAYS_PER_WEEK.toLong())
+        val whole = past.sumOf { on(it.minusDays(DAYS_PER_WEEK.toLong()))?.total ?: 0L }
+        whole + ((on(sameDay)?.total ?: 0L) * dayGone).toLong()
+    } else {
+        null
+    }
+    return RvStatsPeriod(days, slots, past.size + dayGone, before)
+}
+
+private val DayTotal.total get() = up + down
 
 /** Today's hours from midnight up to the current one, which is still filling; a day not yet read is all zero. */
 private fun rvDay(day: DayUsage?, hours: Int): RvDay {
@@ -157,5 +203,7 @@ private fun flagCode(name: String): String? {
 }
 
 private const val DIRECT = "direct"
+private const val DAYS_PER_WEEK = 7
+private const val SECONDS_PER_DAY = 86_400
 private const val REGIONAL_A = 0x1F1E6
 private const val REGIONAL_Z = 0x1F1FF

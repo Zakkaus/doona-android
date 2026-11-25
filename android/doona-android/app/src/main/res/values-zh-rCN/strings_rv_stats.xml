@@ -8,6 +8,9 @@
     <string name="rv_stats_used">已用流量</string>
     <string name="rv_stats_vs_yesterday">比昨天同时段</string>
     <string name="rv_stats_nothing_today">今天尚无流量</string>
+    <string name="rv_stats_vs_last_week">比上周同时段</string>
+    <string name="rv_stats_nothing_week">本周尚无流量</string>
+    <string name="rv_stats_nothing_month">本月尚无流量</string>
     <string name="rv_stats_no_data">尚无数据</string>
     <string name="rv_stats_connections">连接次数</string>
     <string name="rv_stats_quota">订阅额度</string>

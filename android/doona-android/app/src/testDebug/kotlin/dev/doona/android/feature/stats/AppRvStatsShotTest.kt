@@ -2,7 +2,11 @@ package dev.doona.android.feature.stats
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasTestTag
@@ -13,10 +17,12 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvChartSize
+import dev.doona.android.engine.DayTotal
 import dev.doona.android.engine.DayUsage
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
@@ -49,6 +55,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.ZoneOffset
 import android.graphics.Color as AndroidColor
 
@@ -96,6 +104,87 @@ class AppRvStatsShotTest {
     @Config(qualifiers = WINDOW_EMPTY_FS200)
     fun emptyFs200() = shot("stats-empty", dark = false, fontScale = RV_FS200) { Page(::quietEngine) }
 
+    @Test
+    @Config(qualifiers = WINDOW)
+    fun weekLight() = shot("stats-week", dark = false) { Page(::historyEngine, RvStatsRange.Week) }
+
+    @Test
+    @Config(qualifiers = WINDOW)
+    fun weekDark() = shot("stats-week", dark = true) { Page(::historyEngine, RvStatsRange.Week) }
+
+    @Test
+    @Config(qualifiers = WINDOW_FS200)
+    fun weekFs200() = shot("stats-week", dark = false, fontScale = RV_FS200) { Page(::historyEngine, RvStatsRange.Week) }
+
+    @Test
+    @Config(qualifiers = WINDOW_EN)
+    fun weekEnLight() = shot("stats-week-en", dark = false) { Page(::historyEngine, RvStatsRange.Week) }
+
+    @Test
+    @Config(qualifiers = WINDOW)
+    fun monthLight() = shot("stats-month", dark = false) { Page(::historyEngine, RvStatsRange.Month) }
+
+    @Test
+    @Config(qualifiers = WINDOW)
+    fun monthDark() = shot("stats-month", dark = true) { Page(::historyEngine, RvStatsRange.Month) }
+
+    @Test
+    @Config(qualifiers = WINDOW_FS200)
+    fun monthFs200() = shot("stats-month", dark = false, fontScale = RV_FS200) { Page(::historyEngine, RvStatsRange.Month) }
+
+    @Test
+    @Config(qualifiers = WINDOW_EN)
+    fun monthEnLight() = shot("stats-month-en", dark = false) { Page(::historyEngine, RvStatsRange.Month) }
+
+    @Test
+    @Config(qualifiers = WINDOW)
+    fun subscriptionLight() = shot("stats-sub", dark = false) { Page(::historyEngine, subscription = PICKED) }
+
+    @Test
+    @Config(qualifiers = WINDOW)
+    fun subscriptionDark() = shot("stats-sub", dark = true) { Page(::historyEngine, subscription = PICKED) }
+
+    @Test
+    @Config(qualifiers = WINDOW_FS200)
+    fun subscriptionFs200() = shot("stats-sub", dark = false, fontScale = RV_FS200) { Page(::historyEngine, subscription = PICKED) }
+
+    @Test
+    @Config(qualifiers = WINDOW_EN)
+    fun subscriptionEnLight() = shot("stats-sub-en", dark = false) { Page(::historyEngine, subscription = PICKED) }
+
+    /** The alternative for 連線次數 and 分流比例 in a longer range, for the owner to compare: their empty state. */
+    @Test
+    @Config(qualifiers = WINDOW)
+    fun weekNoDataLight() = shot("stats-week-nodata", dark = false) { Page(::historyEngine, RvStatsRange.Week, gap = RvStatsGapLook.NoData) }
+
+    @Test
+    @Config(qualifiers = WINDOW)
+    fun weekNoDataDark() = shot("stats-week-nodata", dark = true) { Page(::historyEngine, RvStatsRange.Week, gap = RvStatsGapLook.NoData) }
+
+    /** 本週 and 本月 say what 連線次數 and 分流比例 count (今天), and a picked subscription tags the traffic cards 全部訂閱. */
+    @Test
+    @Config(qualifiers = WINDOW)
+    fun longerRangesAndAPickedSubscriptionSaySo() {
+        var range by mutableStateOf(RvStatsRange.Today)
+        var subscription by mutableStateOf<String?>(null)
+        compose.rvContent(dark = false) { Page(::historyEngine, range, subscription) }
+        fun count(id: Int, substring: Boolean = false) = compose.onAllNodes(hasText(text(id), substring), useUnmergedTree = true).fetchSemanticsNodes().size
+        assertEquals("the range chip", 1, count(R.string.rv_stats_today))
+        range = RvStatsRange.Week
+        compose.waitForIdle()
+        assertEquals("連線次數's and 分流比例's tags", 2, count(R.string.rv_stats_today))
+        // The delta is one line: the change, then what it compares with.
+        assertEquals(1, count(R.string.rv_stats_vs_last_week, substring = true))
+        range = RvStatsRange.Month
+        compose.waitForIdle()
+        assertEquals("a month compares with nothing", 0, count(R.string.rv_stats_vs_last_week, true) + count(R.string.rv_stats_vs_yesterday, true))
+        subscription = PICKED
+        compose.waitForIdle()
+        // 已用流量's tag; 分流比例's joins both scopes, and the chip names the subscription.
+        assertEquals(1, count(R.string.rv_stats_all_subscriptions))
+        compose.onNode(hasText("Lantern Net"), useUnmergedTree = true).assertExists()
+    }
+
     /** The empty state keeps its cards, says so in words and draws no made-up curve (owner, 2026-11-24 15:24, q-stats A). */
     @Test
     @Config(qualifiers = WINDOW_EMPTY)
@@ -140,7 +229,7 @@ class AppRvStatsShotTest {
     @Config(qualifiers = WINDOW)
     fun aSubscriptionWithoutQuotaHasNoLegend() {
         val engine = noQuotaEngine()
-        compose.rvContent(dark = false) { Page { engine } }
+        compose.rvContent(dark = false) { Page(engine = { engine }) }
         compose.onNode(hasText(text(R.string.rv_stats_no_quota)), useUnmergedTree = true).assertExists()
         for (sub in engine.subscriptions.value) {
             compose.onAllNodes(hasText(sub.name, substring = true), useUnmergedTree = true).fetchSemanticsNodes().let { assertEquals(sub.name, 0, it.size) }
@@ -156,7 +245,7 @@ class AppRvStatsShotTest {
         val failing = object : Engine by scoreEngine() {
             override suspend fun testLatency(groupId: String?): Result<Unit> = Result.failure(EngineException(ErrorCode.Busy))
         }
-        compose.rvContent(dark = false) { Page { failing } }
+        compose.rvContent(dark = false) { Page(engine = { failing }) }
         compose.onAllNodes(hasText(text(R.string.rv_failed_test_latency)), useUnmergedTree = true).fetchSemanticsNodes().let { assertEquals(0, it.size) }
         compose.onNode(hasText(text(R.string.rv_stats_test_all)), useUnmergedTree = true).performScrollTo().performClick()
         compose.waitForIdle()
@@ -181,11 +270,24 @@ class AppRvStatsShotTest {
         compose.onRoot().captureToImage().asAndroidBitmap().captureRoboImage("$SHOTS/$name.png")
     }
 
-    /** The route on a view model with the sample's clock and zone. */
+    /**
+     * The route on a view model with the sample's clock and zone, weeks from Monday (the sample day is a Sunday, so 本週
+     * is a whole week), and the chips at [range] and [subscription]. With a [gap] other than the route's, the page with
+     * that look on the same view model.
+     */
     @Composable
-    private fun Page(engine: () -> Engine) {
-        val vm = remember { StatsViewModel(engine(), clock = { SAMPLE_NOW }, zone = { ZoneOffset.UTC }, work = Dispatchers.Unconfined) }
-        StatsRoute(vm, onBack = {}, onOpenReport = {})
+    private fun Page(engine: () -> Engine, range: RvStatsRange = RvStatsRange.Today, subscription: String? = null, gap: RvStatsGapLook = RvStatsGapLook.Today) {
+        val vm = remember { StatsViewModel(engine(), clock = { SAMPLE_NOW }, zone = { ZoneOffset.UTC }, firstDay = { DayOfWeek.MONDAY }, work = Dispatchers.Unconfined) }
+        LaunchedEffect(range, subscription) {
+            vm.pickRange(range)
+            vm.pickSubscription(subscription)
+        }
+        if (gap == RvStatsGapLook.Today) {
+            StatsRoute(vm, onBack = {}, onOpenReport = {})
+        } else {
+            val state by vm.uiState.collectAsStateWithLifecycle()
+            RvStatsScreen(state, {}, {}, {}, {}, {}, {}, gap = gap)
+        }
     }
 
     /**
@@ -202,6 +304,24 @@ class AppRvStatsShotTest {
         val state = sample.copy(groups = sample.groups.map { it.copy(nodeIds = it.nodeIds.map(idOf::getValue), tcp = it.tcp.engineIds(), udp = it.udp.engineIds()) })
         return object : Engine by engine {
             override suspend fun scoreState(): Result<ScoreState> = Result.success(state)
+        }
+    }
+
+    /**
+     * [scoreEngine] with the 31 days before the sample day kept, a made-up but steady pattern (weekdays busier than the
+     * weekend), so 本週 and 本月 have days to draw and the week before to compare with.
+     */
+    private fun historyEngine(): Engine {
+        val engine = scoreEngine()
+        val today = LocalDate.parse(SAMPLE_DATE)
+        val days = (1..KEPT_DAYS).map { back ->
+            val date = today.minusDays(back.toLong())
+            val weekend = date.dayOfWeek.value >= DayOfWeek.SATURDAY.value
+            val down = (if (weekend) WEEKEND_DOWN else WEEKDAY_DOWN) + back % 5 * STEP_DOWN
+            DayTotal(date.toString(), down / UP_SHARE, down)
+        }
+        return object : Engine by engine {
+            override suspend fun usage(): Result<Usage> = engine.usage().map { it.copy(days = days) }
         }
     }
 
@@ -226,6 +346,12 @@ class AppRvStatsShotTest {
         const val SAMPLE_NOW = 1_795_343_040_000L
         const val SAMPLE_DATE = "2026-11-22"
         const val CARD_AND_TILES = 4
+        const val PICKED = "s2"
+        const val KEPT_DAYS = 31
+        const val WEEKDAY_DOWN = 2_400_000_000L
+        const val WEEKEND_DOWN = 1_300_000_000L
+        const val STEP_DOWN = 210_000_000L
+        const val UP_SHARE = 9
 
         /** A grey's channels differ by a few levels at most; a hue's by far more. */
         const val GREY_SPREAD = 24

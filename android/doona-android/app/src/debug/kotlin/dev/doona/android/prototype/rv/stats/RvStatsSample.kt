@@ -70,7 +70,7 @@ private const val TRIALS_OK_UDP = 3L
 /** The page on a sample [state], its chips and tools not wired (the prototype's, the goldens' and the previews'). */
 @Composable
 internal fun RvStatsScreenSample(state: RvStatsState, onBack: () -> Unit = {}, empty: RvStatsEmptyLook = RvStatsEmptyLook.Grid) =
-    RvStatsScreen(state, onBack, NOT_WIRED, NOT_WIRED, NOT_WIRED, NOT_WIRED, NOT_WIRED, empty)
+    RvStatsScreen(state, onBack, onSubscription = {}, onRange = {}, NOT_WIRED, NOT_WIRED, NOT_WIRED, empty)
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 2200)
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 2200, uiMode = Configuration.UI_MODE_NIGHT_YES)

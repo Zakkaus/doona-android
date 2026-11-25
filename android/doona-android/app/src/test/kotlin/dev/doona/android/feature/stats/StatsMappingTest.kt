@@ -2,6 +2,7 @@ package dev.doona.android.feature.stats
 
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.engine.Catalog
+import dev.doona.android.engine.DayTotal
 import dev.doona.android.engine.DayUsage
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
@@ -18,6 +19,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.DayOfWeek
 import java.time.ZoneOffset
 
 class StatsMappingTest {
@@ -165,9 +167,94 @@ class StatsMappingTest {
         assertEquals(7L, split.directBytes)
     }
 
+    @Test
+    fun `a week from Monday is each day's bytes, then today's so far`() {
+        val input = sampleInput().with(range = RvStatsRange.Week, firstDay = DayOfWeek.MONDAY)
+        val period = rvStatsState(input).period!!
+        val usage = input.usage!!
+        val yesterday = usage.days.single { it.date == "2026-11-21" }
+        assertEquals(7, period.slots)
+        // 2026-11-22 is a Sunday: Monday the 16th to Saturday the 21st, then today.
+        assertEquals(listOf(0L, 0L, 0L, 0L, 0L, yesterday.down, usage.today.down.take(11).sum()), period.days.down)
+        assertEquals(listOf(0L, 0L, 0L, 0L, 0L, yesterday.up, usage.today.up.take(11).sum()), period.days.up)
+        assertNull("past days keep no flows", period.days.connections)
+        assertEquals(6 + DAY_GONE, period.now, 1e-4f)
+    }
+
+    @Test
+    fun `a week from Sunday on a Sunday is today alone`() {
+        val period = rvStatsState(sampleInput().with(range = RvStatsRange.Week, firstDay = DayOfWeek.SUNDAY)).period!!
+        assertEquals(1, period.days.down.size)
+        assertEquals(DAY_GONE, period.now, 1e-4f)
+    }
+
+    @Test
+    fun `a month runs from the 1st over the month's days and has nothing to compare`() {
+        val period = rvStatsState(sampleInput().with(range = RvStatsRange.Month)).period!!
+        assertEquals(30, period.slots)
+        assertEquals(22, period.days.down.size)
+        assertNull(period.before)
+        assertNull(RvStatsRange.Month.against)
+    }
+
+    @Test
+    fun `today has no period`() {
+        assertNull(rvStatsState(sampleInput()).period)
+    }
+
+    @Test
+    fun `the week before is compared by the same point, its same weekday by the share of today gone`() {
+        val base = sampleInput()
+        val usage = base.usage!!.copy(days = listOf(DayTotal("2026-11-10", 200, 300), DayTotal("2026-11-15", 400, 600), DayTotal("2026-11-08", 9_999, 9_999)))
+        val period = rvStatsState(base.with(usage = usage, range = RvStatsRange.Week, firstDay = DayOfWeek.MONDAY)).period!!
+        // Tuesday the 10th whole, Sunday the 15th (today's weekday) by 10:24 of 24 h; the 8th is before that week.
+        assertEquals(500L + (1_000L * DAY_GONE).toLong(), period.before)
+    }
+
+    @Test
+    fun `yesterday missing from the kept days comes from usage's yesterday`() {
+        val base = sampleInput()
+        val usage = base.usage!!.copy(days = emptyList())
+        val period = rvStatsState(base.with(usage = usage, range = RvStatsRange.Week, firstDay = DayOfWeek.MONDAY)).period!!
+        assertEquals(usage.yesterday!!.down.sum(), period.days.down[5])
+    }
+
+    @Test
+    fun `a picked subscription narrows the quota and the nodes, not the traffic or the tools`() {
+        val base = sampleInput()
+        val picked = base.subscriptions.first().id
+        val all = rvStatsState(base)
+        val state = rvStatsState(base.with(subscriptionId = picked))
+        assertEquals(picked, state.subscriptionId)
+        assertEquals(listOf(picked), state.shownSubscriptions.map { it.id })
+        assertTrue(state.shownNodes.isNotEmpty())
+        assertTrue(state.shownNodes.all { it.subscription == picked })
+        assertTrue(state.shownNodes.size < state.nodes.size)
+        assertEquals(all.nodes, state.nodes)
+        assertEquals(all.today, state.today)
+        assertEquals(all.split, state.split)
+    }
+
+    @Test
+    fun `a subscription deleted since it was picked leaves the chip at all of them`() {
+        val state = rvStatsState(sampleInput().with(subscriptionId = "gone"))
+        assertNull(state.subscriptionId)
+        assertEquals(state.subscriptions, state.shownSubscriptions)
+    }
+
+    private fun StatsInput.with(
+        usage: Usage? = this.usage,
+        range: RvStatsRange = this.range,
+        subscriptionId: String? = this.subscriptionId,
+        firstDay: DayOfWeek = this.firstDay,
+    ) = StatsInput(usage, today, subscriptions, catalog, score, nowEpochMs, zone, range, subscriptionId, firstDay)
+
     private companion object {
         /** RvSampleTraffic's snapshot: 2026-11-22 10:24 UTC. */
         const val SAMPLE_NOW = 1_795_343_040_000L
         const val DAY_MS = 86_400_000L
+
+        /** The share of the sample's day gone at 10:24. */
+        const val DAY_GONE = (10 * 60 + 24) / (24 * 60f)
     }
 }
