@@ -4,39 +4,99 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.navigation3.runtime.NavKey
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RV_NAV
+import dev.doona.android.designsystem.rv.RV_NAV_ACTIVITY
+import dev.doona.android.designsystem.rv.RV_NAV_POLICY
+import dev.doona.android.designsystem.rv.RV_NAV_SETTINGS
+import dev.doona.android.designsystem.rv.RvNavItem
 import kotlinx.serialization.Serializable
 import dev.doona.android.icons.R as IconsR
 
-// Back stack keys. They are saved across process death, so they carry ids only, never engine data.
+/**
+ * A back stack key, one per page (plan §2.3). Keys are saved across process death under their class names, so they
+ * carry ids only, never engine data: a page reads what it shows from the engine by the id. Sealed, so every key is
+ * known to the serialization test; a new page adds its key here.
+ */
+@Serializable
+sealed interface AppKey : NavKey
 
 @Serializable
-data object ActivityKey : NavKey
+data object ActivityKey : AppKey
 
 @Serializable
-data object PoliciesKey : NavKey
+data object PoliciesKey : AppKey
 
 @Serializable
-data object SettingsKey : NavKey
+data object SettingsKey : AppKey
 
 @Serializable
-data class GroupKey(val groupId: String) : NavKey
+data object TrafficKey : AppKey
 
 @Serializable
-data object SubscriptionsKey : NavKey
+data object StatsKey : AppKey
 
 @Serializable
-data object PerAppKey : NavKey
+data object NodesKey : AppKey
 
-/** The hub bar's tabs. Each opens its root key; 活動 is always the bottom of the back stack. */
-enum class Tab(val key: NavKey, @StringRes val label: Int, @DrawableRes val icon: Int) {
+@Serializable
+data object NodeSearchKey : AppKey
+
+@Serializable
+data class NodeKey(val nodeId: String) : AppKey
+
+@Serializable
+data class GroupKey(val groupId: String) : AppKey
+
+@Serializable
+data object MainNodeChoiceKey : AppKey
+
+@Serializable
+data object RulesKey : AppKey
+
+@Serializable
+data object TemplateKey : AppKey
+
+@Serializable
+data class TemplateImpactKey(val templateId: String) : AppKey
+
+@Serializable
+data object EffectiveConfigKey : AppKey
+
+@Serializable
+data object SubscriptionsKey : AppKey
+
+@Serializable
+data object SubAddKey : AppKey
+
+@Serializable
+data class SubDetailKey(val subscriptionId: String) : AppKey
+
+@Serializable
+data object PerAppKey : AppKey
+
+@Serializable
+data object ReportKey : AppKey
+
+/**
+ * The tabs of the floating nav, each with its root key and its id in the RV library's bar ([navId], an `RV_NAV_*`
+ * value). 活動 is always the bottom of the back stack. 連線 (D31) waits for the connection list, so the app shows three.
+ * [label] and [icon] are the old hub bar's, which the old pages' screenshot frame ([DoonaAppShell]) still draws.
+ */
+enum class Tab(val key: NavKey, internal val navId: Int, @StringRes val label: Int, @DrawableRes val icon: Int) {
     // Each tab shows its first page's icon (doona `src/shell/HubBar.tsx:33`, `src/shell/registry.ts`).
-    Activity(ActivityKey, R.string.hub_activity, IconsR.drawable.sym_speed),
-    Policies(PoliciesKey, R.string.nav_policies, IconsR.drawable.sym_share),
-    Settings(SettingsKey, R.string.hub_settings, IconsR.drawable.sym_description),
+    Activity(ActivityKey, RV_NAV_ACTIVITY, R.string.hub_activity, IconsR.drawable.sym_speed),
+    Policies(PoliciesKey, RV_NAV_POLICY, R.string.nav_policies, IconsR.drawable.sym_share),
+    Settings(SettingsKey, RV_NAV_SETTINGS, R.string.hub_settings, IconsR.drawable.sym_description),
 }
+
+/** The floating nav's tabs in the app: RV's bar in its own order, without the tabs the app does not ship. */
+internal val APP_NAV: List<RvNavItem> = RV_NAV.filter { item -> Tab.entries.any { it.navId == item.id } }
 
 /** The tab whose root is nearest the top of [backStack]; a page pushed from a tab keeps that tab current. */
 fun currentTab(backStack: List<NavKey>): Tab = Tab.entries.lastOrNull { it.key in backStack } ?: Tab.Activity
+
+/** The tab [key] is the root of, or null for a page pushed onto a tab. */
+fun tabOf(key: NavKey): Tab? = Tab.entries.firstOrNull { it.key == key }
 
 /**
  * Pops [key] only while it is on top, and never the root: a page that asks to leave twice, such as a second back
@@ -53,4 +113,22 @@ fun MutableList<NavKey>.pop(key: NavKey) {
 fun MutableList<NavKey>.selectTab(tab: Tab) {
     while (size > 1) removeAt(lastIndex)
     if (tab != Tab.Activity) add(tab.key)
+}
+
+/** [selectTab] by the RV bar's id ([RvNavItem.id]); an id the app does not ship changes nothing. */
+internal fun MutableList<NavKey>.selectTab(navId: Int) {
+    Tab.entries.firstOrNull { it.navId == navId }?.let { selectTab(it) }
+}
+
+/**
+ * Pushes [key] unless it is already on top, so a double tap opens one page. A key already lower in the stack is not
+ * pushed twice: the stack pops back to it, since two entries with one key would share their saved state.
+ */
+fun MutableList<NavKey>.push(key: NavKey) {
+    val at = indexOf(key)
+    if (at < 0) {
+        add(key)
+    } else {
+        while (lastIndex > at) removeAt(lastIndex)
+    }
 }

@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 
 /**
@@ -16,6 +17,9 @@ import androidx.compose.ui.Modifier
 internal class RvShared(val layout: SharedTransitionScope, val page: AnimatedVisibilityScope, val pushMs: Int)
 
 internal val LocalRvShared = compositionLocalOf<RvShared?> { null }
+
+/** True on a page a hard-cut tab switch is showing: its hero art fades in. The page host provides it. */
+internal val LocalRvTabEntry = staticCompositionLocalOf { false }
 
 /**
  * Makes the search pill and the search page's field one element (brief rv-gestures G7): with the push it moves and

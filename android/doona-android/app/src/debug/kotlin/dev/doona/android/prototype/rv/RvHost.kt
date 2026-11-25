@@ -17,12 +17,6 @@ import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
@@ -34,11 +28,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import dev.doona.android.app.RvPushMotion
+import dev.doona.android.app.RvTabMotion
+import dev.doona.android.app.rvAxisMove
+import dev.doona.android.app.rvPopMs
+import dev.doona.android.app.rvSearchMove
+import dev.doona.android.app.rvTabSwitch
+import dev.doona.android.app.rvZoomMove
 import dev.doona.android.designsystem.rv.LocalRvShared
 import dev.doona.android.designsystem.rv.LocalRvShown
+import dev.doona.android.designsystem.rv.LocalRvTabEntry
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvFrames
 import dev.doona.android.designsystem.rv.RvMotion
@@ -48,12 +49,6 @@ import dev.doona.android.designsystem.rv.RvShared
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
-
-/** How a tab switch looks: T1 a hard cut with the hero art fading in (the default), T2 a cross-fade of the whole page. */
-internal enum class RvTabMotion(val code: String) { Cut("T1"), Fade("T2") }
-
-/** How a page is pushed and popped: S1 a cross-fade with a slight zoom (the default), S2 Material's shared axis X. */
-internal enum class RvPushMotion(val code: String) { Zoom("S1"), Axis("S2") }
 
 /**
  * Whether 活動's hero swipes (brief rv-gestures H1): H0 it shows the traffic only (the default); H1 a horizontal swipe,
@@ -69,9 +64,6 @@ internal data class RvMotionOptions(
     val push: RvPushMotion = RvPushMotion.Zoom,
     val hero: RvHeroSwipe = RvHeroSwipe.Off,
 )
-
-/** True on a page a hard-cut tab switch is showing: its hero art fades in ([rvHeroArt]). */
-internal val LocalRvTabEntry = staticCompositionLocalOf { false }
 
 /** The hero art's alpha: from 0 up over [RvMotion.HERO_FADE_MS] on a page a hard-cut tab switch just showed, else 1. */
 @Composable
@@ -126,7 +118,7 @@ internal fun RvStackHost(stack: List<String>, onBack: () -> Unit, options: RvMot
             } else if (state.targetState != stack) {
                 // A cancelled back gesture: the pop runs back from where the finger left it, then the page is at rest.
                 if (!motion.instant) {
-                    val ms = (state.fraction * popMs(options.push)).roundToInt()
+                    val ms = (state.fraction * rvPopMs(options.push)).roundToInt()
                     Animatable(state.fraction).animateTo(0f, tween(ms, easing = LinearEasing)) { launch { state.seekTo(value) } }
                 }
                 state.snapTo(stack)
@@ -144,7 +136,7 @@ internal fun RvStackHost(stack: List<String>, onBack: () -> Unit, options: RvMot
             seen += shown.last()
             val entering = options.tab == RvTabMotion.Cut && shown == transition.targetState && transition.currentState.first() != shown.first()
             holder.SaveableStateProvider(shown.last()) {
-                val shared = RvShared(this@SharedTransitionLayout, this, popMs(options.push))
+                val shared = RvShared(this@SharedTransitionLayout, this, rvPopMs(options.push))
                 CompositionLocalProvider(LocalRvTabEntry provides entering, LocalRvShared provides shared) {
                     // A page's composition is a section of its own in a Perfetto trace.
                     Trace.beginSection(TRACE_PAGE)
@@ -196,56 +188,16 @@ internal fun rvPageArrived(): () -> Boolean {
     return { page.transition.currentState == EnterExitState.Visible && page.transition.targetState == EnterExitState.Visible }
 }
 
-private fun popMs(push: RvPushMotion) = if (push == RvPushMotion.Zoom) RvMotion.PUSH_MS else RvMotion.AXIS_MS
-
 private fun AnimatedContentTransitionScope<List<String>>.move(options: RvMotionOptions, motion: RvMotionScale, shift: Int): ContentTransform {
     val from = initialState
     val to = targetState
     return when {
         motion.instant -> EnterTransition.None togetherWith ExitTransition.None
-        from.first() != to.first() -> tabSwitch(options.tab, motion)
-        to.last() == SEARCH || from.last() == SEARCH -> search(motion, shift, forward = to.size > from.size)
-        options.push == RvPushMotion.Zoom -> zoom(motion, forward = to.size > from.size)
-        else -> axis(motion, shift, forward = to.size > from.size)
+        from.first() != to.first() -> rvTabSwitch(options.tab, motion)
+        to.last() == SEARCH || from.last() == SEARCH -> rvSearchMove(motion, shift, forward = to.size > from.size)
+        options.push == RvPushMotion.Zoom -> rvZoomMove(motion, forward = to.size > from.size)
+        else -> rvAxisMove(motion, shift, forward = to.size > from.size)
     }
-}
-
-private fun tabSwitch(tab: RvTabMotion, motion: RvMotionScale): ContentTransform = when (tab) {
-    RvTabMotion.Cut -> EnterTransition.None togetherWith ExitTransition.None
-    RvTabMotion.Fade -> fadeIn(motion.tween(RvMotion.FADE_MS)) togetherWith fadeOut(motion.tween(RvMotion.FADE_MS))
-}
-
-/**
- * The search page (G7), whichever push option is set: it fades in rising [shift] px while the pill becomes its field,
- * in [RvMotion.SEARCH_MS]; on the way back it sinks and fades out over the page it came from.
- */
-private fun search(motion: RvMotionScale, shift: Int, forward: Boolean): ContentTransform {
-    val ms = RvMotion.SEARCH_MS
-    return if (forward) {
-        (fadeIn(motion.tween(ms)) + slideInVertically(motion.tween(ms)) { shift }) togetherWith fadeOut(motion.tween(ms))
-    } else {
-        ContentTransform(fadeIn(motion.tween(ms)), fadeOut(motion.tween(ms)) + slideOutVertically(motion.tween(ms)) { shift }, targetContentZIndex = -1f)
-    }
-}
-
-/** S1: the new page fades in growing from 96 %; on a pop the leaving page, on top, fades out shrinking to 96 %. */
-private fun zoom(motion: RvMotionScale, forward: Boolean): ContentTransform {
-    val ms = RvMotion.PUSH_MS
-    return if (forward) {
-        (fadeIn(motion.tween(ms)) + scaleIn(motion.tween(ms), initialScale = RvMotion.PUSH_ZOOM)) togetherWith fadeOut(motion.tween(ms))
-    } else {
-        ContentTransform(fadeIn(motion.tween(ms)), fadeOut(motion.tween(ms)) + scaleOut(motion.tween(ms), targetScale = RvMotion.PUSH_ZOOM), targetContentZIndex = -1f)
-    }
-}
-
-/** S2, Material's shared axis X: both pages travel [shift] px the same way; the old fades out first, then the new fades in. */
-private fun axis(motion: RvMotionScale, shift: Int, forward: Boolean): ContentTransform {
-    val ms = RvMotion.AXIS_MS
-    val out = (ms * RvMotion.AXIS_FADE).roundToInt()
-    val sign = if (forward) 1 else -1
-    val enter = slideInHorizontally(motion.tween(ms)) { sign * shift } + fadeIn(motion.tween(ms - out, delay = out))
-    val exit = slideOutHorizontally(motion.tween(ms)) { -sign * shift } + fadeOut(motion.tween(out))
-    return enter togetherWith exit
 }
 
 private const val TRACE_PAGE = "RvPage"

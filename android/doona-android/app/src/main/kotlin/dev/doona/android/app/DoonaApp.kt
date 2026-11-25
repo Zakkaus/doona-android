@@ -1,17 +1,28 @@
 package dev.doona.android.app
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
-import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
-import androidx.navigation3.ui.NavDisplay
 import dev.doona.android.designsystem.components.DoonaHubShell
 import dev.doona.android.designsystem.components.DoonaHubTab
+import dev.doona.android.designsystem.rv.RvFloatingNav
+import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rememberRvGlass
+import dev.doona.android.designsystem.rv.rvGlassSource
+import dev.doona.android.designsystem.rv.rvNavClearance
+import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.InstalledApps
 import dev.doona.android.feature.activity.ActivityRoute
@@ -27,8 +38,8 @@ import dev.doona.android.feature.subscriptions.SubscriptionsRoute
 import dev.doona.android.feature.subscriptions.rememberSubscriptionImports
 
 /**
- * The frame every page of the app sits in: the hub bar below it, or the hub rail beside it in a short window (see
- * [DoonaHubShell]). Exposed so a screen can be shown in the frame without a back stack, as the screenshot tests do.
+ * The old hub bar's frame (see [DoonaHubShell]), which the old pages' screenshot cases still draw them in until the page
+ * lanes delete those goldens (plan §2.5). The app itself frames its tab roots with RV's floating nav ([RvNavHost]).
  */
 @Composable
 fun DoonaAppShell(current: Tab, onSelect: (Tab) -> Unit, content: @Composable () -> Unit) {
@@ -41,7 +52,7 @@ fun DoonaAppShell(current: Tab, onSelect: (Tab) -> Unit, content: @Composable ()
 }
 
 /**
- * The app shell: one back stack shown by [NavDisplay] in the [DoonaAppShell]. The back stack is saved with the activity,
+ * The app shell: one back stack shown by [RvNavHost], RV's NavDisplay. The back stack is saved with the activity,
  * so it survives configuration changes and process death; each entry gets its own ViewModels and saved state.
  * [start] must begin with [ActivityKey]. [imports] is the app-wide subscription import in flight; the default lives
  * as long as the composition. [version] is the app's version name for the settings, read by the activity.
@@ -58,29 +69,62 @@ fun DoonaApp(
     localNetwork: LocalNetworkHost? = null,
 ) {
     val backStack = rememberNavBackStack(*start.toTypedArray())
-    DoonaAppShell(current = currentTab(backStack), onSelect = { backStack.selectTab(it) }) {
-        NavDisplay(
-            backStack = backStack,
-            modifier = Modifier.fillMaxSize(),
-            onBack = { backStack.pop(backStack.last()) },
-            entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
-            entryProvider = entryProvider {
-                entry<ActivityKey> {
-                    FirstRunGate(engine, imports) { ActivityRoute(engine, onConnect, onOpenGroup = { backStack.add(GroupKey(it)) }) }
+    val onTab: (Int) -> Unit = { backStack.selectTab(it) }
+    RvOverDoona {
+        RvNavHost(backStack, Modifier.fillMaxSize()) {
+            entry<ActivityKey> {
+                OldTabFrame(Tab.Activity, onTab) {
+                    FirstRunGate(engine, imports) { ActivityRoute(engine, onConnect, onOpenGroup = { backStack.push(GroupKey(it)) }) }
                 }
-                entry<PoliciesKey> {
-                    PoliciesRoute(engine, onOpenGroup = { backStack.add(GroupKey(it)) }, onOpenSubscriptions = { backStack.add(SubscriptionsKey) })
+            }
+            entry<PoliciesKey> {
+                OldTabFrame(Tab.Policies, onTab) {
+                    PoliciesRoute(engine, onOpenGroup = { backStack.push(GroupKey(it)) }, onOpenSubscriptions = { backStack.push(SubscriptionsKey) })
                 }
-                entry<GroupKey> { key ->
-                    GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }, onOpenGroup = { backStack.add(GroupKey(it)) })
+            }
+            entry<GroupKey> { key ->
+                GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }, onOpenGroup = { backStack.push(GroupKey(it)) })
+            }
+            entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, imports, onBack = { backStack.pop(key) }) }
+            entry<SettingsKey> {
+                OldTabFrame(Tab.Settings, onTab) {
+                    SettingsRoute(engine, version, onOpenPerApp = { backStack.push(PerAppKey) }, onOpenSubscriptions = { backStack.push(SubscriptionsKey) })
                 }
-                entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, imports, onBack = { backStack.pop(key) }) }
-                entry<SettingsKey> {
-                    SettingsRoute(engine, version, onOpenPerApp = { backStack.add(PerAppKey) }, onOpenSubscriptions = { backStack.add(SubscriptionsKey) })
-                }
-                entry<PerAppKey> { key -> PerAppRoute(engine, installedApps, onBack = { backStack.pop(key) }) }
-            },
-        )
+            }
+            entry<PerAppKey> { key -> PerAppRoute(engine, installedApps, onBack = { backStack.pop(key) }) }
+        }
     }
     localNetwork?.let { LocalNetworkPrompts(it) }
+}
+
+/**
+ * RV's tokens on the system scheme, for the floating nav and the host's motion, until MainActivity's theme provides
+ * them (wire-p1b's AppTheme, which gives the old pages' [DoonaTheme] the same scheme); then this is a no-op to drop.
+ */
+@Composable
+private fun RvOverDoona(content: @Composable () -> Unit) {
+    val dark = DoonaTheme.colors.dark
+    RvTheme(rvSystemScheme(dark), dark, content)
+}
+
+/**
+ * A tab root the RV page lanes have not replaced yet (plan §2.5): the old page above RV's floating nav, which RV's own
+ * tab pages draw themselves. The page ends where the nav's clearance begins, so nothing it shows lies under the nav;
+ * the nav's glass blurs the page's colour. The nav does not fold away, as the old page's scroll is not the frame's.
+ */
+@Composable
+private fun OldTabFrame(tab: Tab, onTab: (Int) -> Unit, content: @Composable () -> Unit) {
+    val glass = rememberRvGlass()
+    val insets = DoonaTheme.insets
+    Box(Modifier.fillMaxSize()) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .rvGlassSource(glass)
+                .background(DoonaTheme.colors.page)
+                .padding(bottom = rvNavClearance(insets))
+                .consumeWindowInsets(insets.only(WindowInsetsSides.Bottom)),
+        ) { content() }
+        RvFloatingNav(tab.navId, onTab, glass, rememberScrollState(), insets, Modifier.align(Alignment.BottomCenter))
+    }
 }
