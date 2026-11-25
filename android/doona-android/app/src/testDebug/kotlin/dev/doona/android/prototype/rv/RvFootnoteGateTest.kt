@@ -247,86 +247,82 @@ private class RvColourNames(private val source: String) {
  */
 internal fun rvCode(source: String): String {
     val out = source.toCharArray()
-    val n = source.length
-
-    fun blank(from: Int, to: Int) {
-        for (k in from until minOf(to, n)) if (out[k] != '\n') out[k] = ' '
-    }
-
-    fun string(at: Int): Int {
-        val raw = source.startsWith("\"\"\"", at)
-        var i = at + if (raw) 3 else 1
-        while (i < n) {
-            when {
-                raw && source.startsWith("\"\"\"", i) -> return (i + 3 until n).firstOrNull { source[it] != '"' } ?: n
-
-                !raw && source[i] == '\\' -> i += 2
-
-                !raw && source[i] == '"' -> return i + 1
-
-                !raw && source[i] == '\n' -> return i
-
-                source.startsWith("\${", i) -> {
-                    // A template's code may hold strings of its own; it ends at its own `}`.
-                    var depth = 1
-                    i += 2
-                    while (i < n && depth > 0) {
-                        when (source[i]) {
-                            '"' -> i = string(i) - 1
-                            '{' -> depth++
-                            '}' -> depth--
-                        }
-                        i++
-                    }
-                }
-
-                else -> i++
-            }
-        }
-        return n
-    }
-
     var i = 0
-    while (i < n) {
+    while (i < source.length) {
         val end = when {
-            source.startsWith("//", i) -> source.indexOf('\n', i).let { if (it < 0) n else it }
-
-            source.startsWith("/*", i) -> {
-                // Kotlin's block comments nest.
-                var depth = 0
-                var k = i
-                while (k < n) {
-                    if (source.startsWith("/*", k)) {
-                        depth++
-                        k += 2
-                    } else if (source.startsWith("*/", k)) {
-                        depth--
-                        k += 2
-                        if (depth == 0) break
-                    } else {
-                        k++
-                    }
-                }
-                k
-            }
-
-            source[i] == '"' -> string(i)
-
-            source[i] == '\'' -> {
-                val close = source.indexOf('\'', i + if (source.getOrNull(i + 1) == '\\') 3 else 2)
-                if (close < 0) i + 1 else close + 1
-            }
-
+            source.startsWith("//", i) -> source.indexOf('\n', i).let { if (it < 0) source.length else it }
+            source.startsWith("/*", i) -> commentEnd(source, i)
+            source[i] == '"' -> stringEnd(source, i)
+            source[i] == '\'' -> charEnd(source, i)
             else -> -1
         }
         if (end < 0) {
             i++
         } else {
-            blank(i, end)
+            for (k in i until end) if (out[k] != '\n') out[k] = ' '
             i = end
         }
     }
     return String(out)
+}
+
+/** The end of the block comment at [at]: Kotlin's block comments nest. */
+private fun commentEnd(source: String, at: Int): Int {
+    var depth = 0
+    var i = at
+    while (i < source.length) {
+        when {
+            source.startsWith("/*", i) -> depth++
+
+            source.startsWith("*/", i) -> depth--
+
+            else -> {
+                i++
+                continue
+            }
+        }
+        i += 2
+        if (depth == 0) return i
+    }
+    return source.length
+}
+
+/** The end of the string literal at [at], plain or raw, its templates' code and strings included. */
+private fun stringEnd(source: String, at: Int): Int {
+    val raw = source.startsWith("\"\"\"", at)
+    var i = at + if (raw) 3 else 1
+    while (i < source.length) {
+        when {
+            source.startsWith("\${", i) -> i = templateEnd(source, i + 2)
+            raw -> if (source.startsWith("\"\"\"", i)) return (i + 3 until source.length).firstOrNull { source[it] != '"' } ?: source.length else i++
+            source[i] == '\\' -> i += 2
+            source[i] == '"' -> return i + 1
+            source[i] == '\n' -> return i
+            else -> i++
+        }
+    }
+    return source.length
+}
+
+/** The end of a string template's code that starts at [at], after its `${`: its own `}`, past any string inside it. */
+private fun templateEnd(source: String, at: Int): Int {
+    var depth = 1
+    var i = at
+    while (i < source.length && depth > 0) {
+        when (source[i]) {
+            '"' -> i = stringEnd(source, i) - 1
+            '{' -> depth++
+            '}' -> depth--
+        }
+        i++
+    }
+    return i
+}
+
+/** The end of the character literal at [at] (`'{'`, `'\''`). */
+private fun charEnd(source: String, at: Int): Int {
+    val close = source.indexOf('\'', at + if (source.getOrNull(at + 1) == '\\') 3 else 2)
+    return if (close < 0) at + 1 else close + 1
 }
 
 /** Each `{` of [source] with its matching `}`. */
