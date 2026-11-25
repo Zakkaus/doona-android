@@ -1,6 +1,7 @@
 package dev.doona.android.data.settings
 
 import android.content.Context
+import androidx.annotation.VisibleForTesting
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.FileStorage
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
@@ -75,6 +76,9 @@ class AppSettings internal constructor(private val store: DataStore<Preferences>
     /** More core threads for more throughput over several flows, at the cost of CPU and power; read when the core opens. */
     val performanceMode = preference { it[PERFORMANCE_MODE] ?: false }
 
+    /** Whether doona has asked for the notification permission, explained or not: it asks once, after a connection. */
+    val notifyAsked = preference { it[NOTIFY_ASKED] ?: false }
+
     private fun <T> preference(read: (Preferences) -> T): Flow<T> = store.data.map(read).distinctUntilChanged()
 
     private suspend fun <T> set(key: Preferences.Key<T>, value: T) {
@@ -99,6 +103,8 @@ class AppSettings internal constructor(private val store: DataStore<Preferences>
 
     suspend fun setPerformanceMode(enabled: Boolean) = set(PERFORMANCE_MODE, enabled)
 
+    suspend fun recordNotifyAsked() = set(NOTIFY_ASKED, true)
+
     companion object {
         private val NOTIFY_ON_DROP = booleanPreferencesKey("notify_on_drop")
         private val AUTO_UPDATE = booleanPreferencesKey("auto_update")
@@ -109,13 +115,31 @@ class AppSettings internal constructor(private val store: DataStore<Preferences>
         private val FOLLOW_WALLPAPER = booleanPreferencesKey("follow_wallpaper")
         private val ACCENT = stringPreferencesKey("accent")
         private val PERFORMANCE_MODE = booleanPreferencesKey("performance_mode")
+        private val NOTIFY_ASKED = booleanPreferencesKey("notify_asked")
 
         private var instance: AppSettings? = null
+        private var owner: Context? = null
 
+        /**
+         * The settings of [context]'s application, one instance for it. Keyed by the application, so a new one, as
+         * each Robolectric test makes over its own files, gets its own store rather than the first test's.
+         */
         @Synchronized
         fun get(context: Context): AppSettings {
             val app = context.applicationContext
-            return instance ?: AppSettings(store { app.preferencesDataStoreFile("app_settings") }).also { instance = it }
+            instance?.takeIf { owner === app }?.let { return it }
+            return AppSettings(store { app.preferencesDataStoreFile("app_settings") }).also {
+                owner = app
+                instance = it
+            }
+        }
+
+        /** Makes [settings] the ones [get] returns for [context]'s application; tests give a store of their own. */
+        @VisibleForTesting
+        @Synchronized
+        internal fun use(context: Context, settings: AppSettings) {
+            owner = context.applicationContext
+            instance = settings
         }
 
         internal fun store(scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()), file: () -> File): DataStore<Preferences> =

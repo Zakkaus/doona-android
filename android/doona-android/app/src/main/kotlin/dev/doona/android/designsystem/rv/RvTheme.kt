@@ -318,14 +318,19 @@ internal fun RvTheme(scheme: ColorScheme, dark: Boolean, content: @Composable ()
     CompositionLocalProvider(LocalRv provides tokens, LocalOverscrollFactory provides overscroll, content = content)
 }
 
-/** The wallpaper's scheme on Android 12 and later; below that there is no wallpaper colour, so Material's baseline. */
+/**
+ * The wallpaper's scheme on Android 12 and later; below that there is no wallpaper colour, so Material's baseline. Kept
+ * per context and [dark]: a new scheme rebuilds [RvTheme]'s tokens and recomposes everything under it.
+ */
 @Composable
 internal fun rvSystemScheme(dark: Boolean): ColorScheme {
     val context = LocalContext.current
-    return when {
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        dark -> darkColorScheme()
-        else -> lightColorScheme()
+    return remember(context, dark) {
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            dark -> darkColorScheme()
+            else -> lightColorScheme()
+        }
     }
 }
 
