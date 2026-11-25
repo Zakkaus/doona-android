@@ -308,13 +308,41 @@ fn block_members_empty_groups_and_subgroup_pins() {
 }
 
 #[test]
-fn a_compact_block_is_located_and_an_empty_include_declares_nothing() {
+fn a_compact_block_is_located_and_only_a_partial_include_declares_groups() {
     let cfg = fixture("edges.dae");
-    assert_eq!(cfg.sources().len(), 2, "blank.dae is admitted");
+    let files: Vec<_> = cfg
+        .sources()
+        .iter()
+        .map(|s| s.path.file_name().unwrap().to_str().unwrap())
+        .collect();
+    assert_eq!(
+        files,
+        ["edges.dae", "blank.dae", "part.dae"],
+        "both are admitted"
+    );
     let p = Projection::build(&cfg, Vec::new(), &[]).unwrap();
+    let located: Vec<_> = p
+        .groups
+        .iter()
+        .map(|g| {
+            (
+                g.id.as_str(),
+                g.location.as_ref().map(|l| (l.source, l.line)),
+            )
+        })
+        .collect();
+    // Nothing is located in blank.dae (source 1); part.dae's one group is.
+    assert_eq!(
+        located,
+        [
+            ("g-Stop", Some((0, 6))),
+            ("g-Empty", Some((0, 10))),
+            ("g-Outer", Some((0, 11))),
+            ("g-Bare", Some((0, 12))),
+            ("g-Part", Some((2, 3))),
+        ]
+    );
     let bare = p.groups.iter().find(|g| g.id == "g-Bare").unwrap();
-    let at = bare.location.as_ref().map(|l| (l.source, l.line));
-    assert_eq!(at, Some((0, 12)));
     assert_eq!(bare.members, [Member::Node(node(&p, "a").into())]);
 }
 

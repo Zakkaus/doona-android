@@ -265,7 +265,8 @@ impl Projection {
             (_, Some(m)) => manager.publish_override(&row.name, m, networks),
             (_, None) => manager.clear_override(&row.name, networks),
         }
-        .expect("a direct member of a managed group")
+        // The row checks rule out every refusal but a u64 revision counter wrapping.
+        .expect("a checked member of a managed group")
         .run_callbacks();
         Ok(())
     }
@@ -286,7 +287,7 @@ impl Projection {
                     .groups
                     .iter()
                     .find(|g| g.name == group.name)
-                    .unwrap()
+                    .expect("every managed group has a row")
                     .id
             }
         }

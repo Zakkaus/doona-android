@@ -1,4 +1,6 @@
 use super::*;
+use honk_config::diagnostic::SettingPath;
+
 use crate::testutil::TempDir;
 
 fn load(text: &str) -> Result<HonkConfig, super::super::HonkConfigError> {
@@ -33,13 +35,22 @@ fn groups_without_any_node_have_no_members() {
 
 #[test]
 fn an_unknown_final_or_exit_never_reaches_the_projection() {
-    for field in ["final: nowhere", "exit: nowhere"] {
+    let cases = [
+        ("final", "invalid-group-final-target"),
+        ("exit", "invalid-group-exit-target"),
+    ];
+    for (field, code) in cases {
         let text = format!(
             "node {{ a: 'trojan://s@192.0.2.1:443#a' }}\n\
-             group {{\n X {{\n  {field}\n }}\n}}\nrouting {{ fallback: X }}\n"
+             group {{\n X {{\n  {field}: nowhere\n }}\n}}\nrouting {{ fallback: X }}\n"
         );
-        let refused = load(&text).map(|cfg| Projection::build(&cfg, Vec::new(), &[]).is_err());
-        assert!(refused.unwrap_or(true), "{field}");
+        let cfg = load(&text).unwrap_or_else(|e| panic!("{field} is accepted at load: {e}"));
+        let Err(refused) = Projection::build(&cfg, Vec::new(), &[]) else {
+            panic!("{field} is refused at assembly");
+        };
+        assert_eq!(refused.diagnostic.code, code);
+        let setting = SettingPath::new("groups").index(1).field(field);
+        assert_eq!(refused.diagnostic.setting, setting);
     }
 }
 
