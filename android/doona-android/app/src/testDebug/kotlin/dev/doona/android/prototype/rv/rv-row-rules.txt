@@ -88,18 +88,24 @@ proto-rv-config-unsupported-fs200	R13	!pname(helper) && mac(00	title 171.0 vs 38
 proto-rv-config-unsupported-fs200	R13	lan_interface: docker0	title 82.5 vs 38.5
 proto-rv-config-unsupported-light	R11	!pname(helper) && mac(00	-11.5
 proto-rv-config-unsupported-light	R13	!pname(helper) && mac(00	title 49.0 vs 23.0
-proto-rv-connections-fs200	R11	91.108.56.130:443	+20.0
-proto-rv-connections-fs200	R11	chatgpt.com:443	+20.0
-proto-rv-connections-fs200	R11	gemini.google.com:443	+20.0
-proto-rv-connections-fs200	R11	rr3---sn-a5mekn6d.google	+20.0
-proto-rv-connections-fs200	R11	szshort.weixin.qq.com:44	+20.0
-proto-rv-connections-search-fs200	R11	gemini.google.com:443	+20.0
-proto-rv-connections-search-fs200	R11	rr3---sn-a5mekn6d.google	+20.0
-proto-rv-connections-search-ime-fs200	R11	91.108.56.130:443	+20.0
-proto-rv-connections-search-ime-fs200	R11	chatgpt.com:443	+20.0
-proto-rv-connections-search-ime-fs200	R11	gemini.google.com:443	+20.0
-proto-rv-connections-search-ime-fs200	R11	rr3---sn-a5mekn6d.google	+20.0
-proto-rv-connections-search-ime-fs200	R11	szshort.weixin.qq.com:44	+20.0
+proto-rv-connections-fs200	R1	chatgpt.com:443	height 180.0 for 105.5
+proto-rv-connections-fs200	R1	gemini.google.com:443	height 180.0 for 105.5
+proto-rv-connections-fs200	R1	szshort.weixin.qq.com:44	height 180.0 for 105.5
+proto-rv-connections-fs200	R18	chatgpt.com:443	above 16.0 below 90.5
+proto-rv-connections-fs200	R18	gemini.google.com:443	above 16.0 below 90.5
+proto-rv-connections-fs200	R18	szshort.weixin.qq.com:44	above 16.0 below 90.5
+proto-rv-connections-search-fs200	R1	gemini.google.com:443	height 180.0 for 105.5
+proto-rv-connections-search-fs200	R1	rr3---sn-a5mekn6d.google	height 180.0 for 105.5
+proto-rv-connections-search-fs200	R18	gemini.google.com:443	above 16.0 below 90.5
+proto-rv-connections-search-fs200	R18	rr3---sn-a5mekn6d.google	above 16.0 below 90.5
+proto-rv-connections-search-ime-fs200	R1	chatgpt.com:443	height 180.0 for 105.5
+proto-rv-connections-search-ime-fs200	R1	gemini.google.com:443	height 180.0 for 105.5
+proto-rv-connections-search-ime-fs200	R1	rr3---sn-a5mekn6d.google	height 180.0 for 105.5
+proto-rv-connections-search-ime-fs200	R1	szshort.weixin.qq.com:44	height 180.0 for 105.5
+proto-rv-connections-search-ime-fs200	R18	chatgpt.com:443	above 16.0 below 90.5
+proto-rv-connections-search-ime-fs200	R18	gemini.google.com:443	above 16.0 below 90.5
+proto-rv-connections-search-ime-fs200	R18	rr3---sn-a5mekn6d.google	above 16.0 below 90.5
+proto-rv-connections-search-ime-fs200	R18	szshort.weixin.qq.com:44	above 16.0 below 90.5
 proto-rv-cutout-policy-dark	R11l	香港	+5.0
 proto-rv-cutout-policy-light	R11l	香港	+5.0
 proto-rv-cutout-settings-dark	R13	主題	subtitle 16.5 vs 20.5

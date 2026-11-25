@@ -34,6 +34,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import kotlin.math.max
@@ -86,7 +87,7 @@ internal fun RvRow(
     // The card clips the layer of its first and last row to its corners.
     val press = onClick?.let { Modifier.rvRowPress(Role.Button, it, onLongClick) } ?: Modifier
     val lineWise = titleEnd != null || subtitleEnd != null
-    val beside = trailing != null && !lineWise && titleOverflow == TextOverflow.Ellipsis
+    val beside = trailing != null && !lineWise
     val minHeight = if (subtitle == null) RvSize.rowOneLine else RvSize.rowTwoLine
     val titleText = rememberRowText(title, Rv.type.rowTitle, titleLines, titleKeepWords)
     val subtitleText = subtitle?.let { rememberRowText(it, Rv.type.rowSub, RV_ROW_SUBTITLE_LINES, subtitleKeepWords) }
@@ -106,7 +107,7 @@ internal fun RvRow(
         Spacer(Modifier.width(RvSpace.rowGap))
         val text = if (top) Modifier.weight(1f).alignBy(RvTitleTop) else Modifier.weight(1f)
         if (beside) {
-            TextBesideEnd(titleText, subtitleText, minHeight, firstLine, trailing, top, text)
+            TextBesideEnd(titleText, subtitleText, titleOverflow, minHeight, firstLine, trailing, top, text)
         } else if (lineWise && endBusy) {
             BusyAtEnd(text) {
                 LineWiseText(titleText, subtitleText, titleOverflow, titleEnd?.let(::hidden), subtitleEnd?.let(::hidden), minHeight, top, Modifier)
@@ -223,12 +224,12 @@ private fun BusyAtEnd(modifier: Modifier, text: @Composable () -> Unit) {
  * `IPLC`), unless only part of the end shows ([besideShown]).
  */
 @Composable
-private fun TextBesideEnd(titleText: RowText, subtitleText: RowText?, minHeight: Dp, endLine: Dp?, trailing: @Composable () -> Unit, top: Boolean, modifier: Modifier) {
+private fun TextBesideEnd(titleText: RowText, subtitleText: RowText?, titleOverflow: TextOverflow, minHeight: Dp, endLine: Dp?, trailing: @Composable () -> Unit, top: Boolean, modifier: Modifier) {
     val measurer = rememberTextMeasurer()
     val side = remember { RvEndSide() }
     Layout(
         {
-            titleText.Shown()
+            titleText.Shown(overflow = titleOverflow)
             subtitleText?.Shown(Rv.colors.textSecondary)
             Box { CompositionLocalProvider(LocalRvEndSide provides side, trailing) }
         },
@@ -240,7 +241,8 @@ private fun TextBesideEnd(titleText: RowText, subtitleText: RowText?, minHeight:
         val least = minHeight.roundToPx()
         val end = parts.last().measure(Constraints(maxWidth = max(0, width - gap)))
         val beside = max(0, width - gap - end.width)
-        val fits = rvReadsWell(measurer.layout(titleText, beside)) && (subtitleText == null || rvReadsWell(measurer.layout(subtitleText, beside)))
+        val titleFits = if (titleOverflow == TextOverflow.MiddleEllipsis) keepsHostEnds(titleText, beside) else rvReadsWell(measurer.layout(titleText, beside))
+        val fits = titleFits && (subtitleText == null || rvReadsWell(measurer.layout(subtitleText, beside)))
         // Told before the end places its parts; read unobserved, so this layout does not run again for its own write.
         if (Snapshot.withoutReadObservation { side.under } == fits) side.under = !fits
         val textWidth = if (fits) measurer.besideShown(titleText, subtitleText, beside, width - gap - end.shownWidth()) else width
@@ -267,6 +269,13 @@ private fun TextBesideEnd(titleText: RowText, subtitleText: RowText?, minHeight:
         }
     }
 }
+
+/**
+ * Whether a title cut in the middle ([TextOverflow.MiddleEllipsis]: a host:port) keeps enough of both ends beside the row's
+ * end: [beside] px hold at least [RV_HOST_MIN_EMS] of the title's font size. Less (the end of a large font size, 「gem...443」)
+ * and the end goes under the title, which then takes the whole line.
+ */
+private fun Density.keepsHostEnds(title: RowText, beside: Int): Boolean = beside >= title.style.fontSize.toPx() * RV_HOST_MIN_EMS
 
 /** Where a row's first text line starts, from the text part's top: the disc of a row with a subtitle stands on it. */
 internal val RvTitleTop = HorizontalAlignmentLine(::min)
@@ -354,6 +363,9 @@ internal const val RV_ROW_SUBTITLE_LINES = 3
 
 /** The share of a line a row's title keeps, if it needs it, before the end of the line takes the rest. */
 internal const val RV_ROW_TITLE_SHARE = 0.4f
+
+/** How many ems of its font size a host:port cut in the middle keeps beside the row's end (about 16 characters) before the end goes under it. */
+private const val RV_HOST_MIN_EMS = 8f
 
 /**
  * One line of a line-wise [RvRow]: [start] keeps its own width up to [RV_ROW_TITLE_SHARE] of the line, [end] takes what it
