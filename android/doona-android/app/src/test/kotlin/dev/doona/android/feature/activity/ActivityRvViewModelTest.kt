@@ -57,9 +57,12 @@ class ActivityRvViewModelTest {
             connects++
         }
 
+        /** When set, what every later usage read returns in place of the fake's. */
+        var nextUsage: Usage? = null
+
         override suspend fun usage(): Result<Usage> {
             usageReads++
-            return fake.usage()
+            return nextUsage?.let { Result.success(it) } ?: fake.usage()
         }
 
         override suspend fun rules(offset: Int, limit: Int): Result<RulePage> {
@@ -128,6 +131,22 @@ class ActivityRvViewModelTest {
         val stopped = engine.usageReads
         advanceTimeBy(ActivityViewModel.USAGE_MS * 10)
         assertEquals(stopped, engine.usageReads)
+    }
+
+    @Test
+    fun `an unchanged usage read does not map the page again, a changed one does`() = runTest {
+        val engine = Recording(rvSampleEngine())
+        val vm = model(engine)
+        val seen = mutableListOf<RvActivityUi>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.ui.collect { seen += it } }
+        val first = seen.size
+        advanceTimeBy(ActivityViewModel.USAGE_MS * 3 + 1)
+        assertEquals(4, engine.usageReads)
+        assertEquals(first, seen.size)
+        val usage = checkNotNull(engine.usage().getOrNull())
+        engine.nextUsage = usage.copy(today = usage.today.copy(down = usage.today.down.map { it + 1 }))
+        advanceTimeBy(ActivityViewModel.USAGE_MS)
+        assertEquals(first + 1, seen.size)
     }
 
     @Test

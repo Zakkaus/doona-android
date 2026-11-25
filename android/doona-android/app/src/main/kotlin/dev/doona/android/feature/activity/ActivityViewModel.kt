@@ -50,7 +50,10 @@ class ActivityViewModel internal constructor(
 ) : ViewModel() {
     private val failure = MutableStateFlow<RvActivityFailure?>(null)
 
-    /** Today's usage, read now and every [USAGE_MS] for as long as it is collected; null until a read succeeds. */
+    /**
+     * Today's usage, read now and every [USAGE_MS] for as long as it is collected; null until a read succeeds. A read
+     * equal to the last one is not passed on, so an unchanged day neither maps the lists again nor redraws the page.
+     */
     private val usage: Flow<Usage?> = flow {
         var last: Usage? = null
         while (true) {
@@ -58,11 +61,12 @@ class ActivityViewModel internal constructor(
             emit(last)
             delay(USAGE_MS)
         }
-    }
+    }.distinctUntilChanged()
 
     /**
      * Each catalog with its nodes, mapped once per catalog revision (plan 2.2), not on each usage read: every leaf node's
-     * endpoint and tests are read first; when that read fails the nodes keep the last ones read, by id.
+     * endpoint and tests are read first; when that read fails the nodes keep the last ones read, by id (orchestrator
+     * ruling 2026-11-26, on 06503034).
      */
     private val catalogNodes: Flow<CatalogNodes> = flow {
         var info = emptyMap<String, NodeInfo>()
