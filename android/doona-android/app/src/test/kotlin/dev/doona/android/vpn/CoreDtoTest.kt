@@ -20,6 +20,8 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
@@ -96,8 +98,26 @@ class CoreDtoTest {
             val serializer = dto as KSerializer<Any>
             val whole = Json.parseToJsonElement(fixture(name))
             val payload = if (name.startsWith("call-ok-")) whole.jsonObject.getValue("ok") else whole
-            assertEquals(name, payload, json.encodeToJsonElement(serializer, json.decodeFromJsonElement(serializer, payload)))
+            val encoded = json.encodeToJsonElement(serializer, json.decodeFromJsonElement(serializer, payload))
+            assertEquals(name, payload, if (name == LEGACY_CATALOG) withoutRegions(encoded) else encoded)
         }
+    }
+
+    /**
+     * [encoded] without each member's `region`, which must be null: schema 3 before location hints omitted the key, as
+     * the core's own contract test strips it from [LEGACY_CATALOG].
+     */
+    private fun withoutRegions(encoded: JsonElement): JsonElement {
+        val snapshot = encoded.jsonObject
+        val catalog = snapshot.getValue("catalog").jsonObject
+        val groups = catalog.getValue("groups").jsonArray.map { group ->
+            val members = group.jsonObject.getValue("members").jsonArray.map { member ->
+                assertEquals(JsonNull, member.jsonObject["region"])
+                JsonObject(member.jsonObject - "region")
+            }
+            JsonObject(group.jsonObject + ("members" to JsonArray(members)))
+        }
+        return JsonObject(snapshot + ("catalog" to JsonObject(catalog + ("groups" to JsonArray(groups)))))
     }
 
     @Test
@@ -182,6 +202,14 @@ class CoreDtoTest {
         assertEquals(shared, group.tcp)
         assertEquals(shared, group.udp)
         assertFalse(group.networksDiffer)
+    }
+
+    @Test
+    fun aMemberCarriesTheRegionTheCoreReadsFromItsName() {
+        val placed = """{"id":"n-jp","name":"JP-NRT","failed":false,"isGroup":false,"region":"JP"}"""
+        assertEquals("JP", Json.decodeFromString(MemberDto.serializer(), placed).toMember().region)
+        val unplaced = """{"id":"n-any","name":"anonymous","failed":false,"isGroup":false,"region":null}"""
+        assertNull(Json.decodeFromString(MemberDto.serializer(), unplaced).toMember().region)
     }
 
     @Test
@@ -505,3 +533,6 @@ class CoreDtoTest {
         assertEquals(ErrorCode.Internal, errorCodeOf("from_a_newer_core"))
     }
 }
+
+/** The one fixture from schema 3 before location hints: its members carry no `region`. */
+private const val LEGACY_CATALOG = "snapshot-stopped-catalog.json"

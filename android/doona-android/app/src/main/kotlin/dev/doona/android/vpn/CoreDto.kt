@@ -346,8 +346,10 @@ internal data class MemberDto(
     val error: String? = null,
     val isGroup: Boolean,
     val subscriptionId: String? = null,
+    /** The ISO code the core reads from the name (`regions::locate`); its centroid and city are not read here. */
+    val region: String? = null,
 ) {
-    fun toMember() = Member(id, name, latencyMs, failed, isGroup, subscriptionId, error?.let(::errorCodeOf))
+    fun toMember() = Member(id, name, latencyMs, failed, isGroup, subscriptionId, error?.let(::errorCodeOf), region)
 }
 
 @Serializable
