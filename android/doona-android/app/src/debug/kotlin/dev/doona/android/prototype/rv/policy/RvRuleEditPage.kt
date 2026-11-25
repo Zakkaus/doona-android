@@ -105,7 +105,7 @@ internal fun RvRuleEditPage(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit,
         MatchFields(draft, onChange)
         RvSectionTitle(stringResource(R.string.rv_policy_send_to), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {
-            RvTargetCard(draft.targetId) { onChange(draft.copy(targetId = it)) }
+            RvTargetCard(rvSampleTargets, draft.targetId) { onChange(draft.copy(targetId = it)) }
             RvCard {
                 val toggle = Modifier.rvRowToggle(draft.enabled) { onChange(draft.copy(enabled = it)) }
                 RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, stringResource(R.string.rv_rule_edit_enabled), null, toggle) { RvSwitch(draft.enabled) }

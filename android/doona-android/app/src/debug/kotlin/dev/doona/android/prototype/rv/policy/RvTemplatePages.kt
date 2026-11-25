@@ -41,7 +41,7 @@ import dev.doona.android.prototype.rv.nodes.SEPARATOR
  * 範本 (the 策略 options row), doona web's routing modes on a phone: one card of templates, each its glyph, its name over
  * one line on what it does, and a radio; the one in use says so after its line, and one the core cannot build yet is
  * listed, dimmed, with the reason after its line, and cannot be chosen. 檢視變更 opens the impact review, and only once a
- * template other than [current] is [selected].
+ * template other than [current] is [selected]. The card lists [templates].
  */
 @Composable
 internal fun RvTemplatePage(
@@ -50,6 +50,7 @@ internal fun RvTemplatePage(
     onSelect: (RvTemplate) -> Unit,
     onBack: () -> Unit,
     onReview: () -> Unit,
+    templates: List<RvTemplate>,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_policy_template)
@@ -61,7 +62,7 @@ internal fun RvTemplatePage(
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         RvGutter {
-            RvCard { RvTemplateData.all.forEach { RvTemplateRow(it, it.id == selected.id, it.id == current.id) { onSelect(it) } } }
+            RvCard { templates.forEach { RvTemplateRow(it, it.id == selected.id, it.id == current.id) { onSelect(it) } } }
         }
     }
 }

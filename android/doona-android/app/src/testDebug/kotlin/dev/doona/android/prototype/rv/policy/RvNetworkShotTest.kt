@@ -29,6 +29,7 @@ import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.RvActivityScreen
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
+import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.rvAnimatorScale
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvSampleActivity
@@ -307,7 +308,7 @@ class RvNetworkShotTest {
     )
 
     @Composable
-    private fun Picker() = RvNetworkPicker(RvNetworkSample.group, RvNetworkSample.apart, RvNetwork.Udp)
+    private fun Picker() = RvNetworkPicker(RvNetworkSample.group, RvNetworkSample.apart, RvNetwork.Udp, RvData.subscriptions, RvData.nowEpochMs)
 
     @Composable
     private fun Activity() = RvActivityScreen(rvSampleActivity(), onAction = {}, onConnect = {}, rules = RvNetworkSample.rules)

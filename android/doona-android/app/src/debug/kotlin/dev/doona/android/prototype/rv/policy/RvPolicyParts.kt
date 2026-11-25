@@ -87,14 +87,13 @@ internal fun RvRuleRow(rule: RvPolicyRule, modifier: Modifier = Modifier, end: S
 internal fun RvPolicyRule.targetName(): String = group?.let { stringResource(it.name) } ?: stringResource(R.string.mode_direct)
 
 /**
- * The 送往 list of the quick rule and the rule page: the groups a rule can send to, then 直連: the first [TARGETS]
+ * The 送往 list of the quick rule and the rule page: the [groups] a rule can send to, then 直連: the first [TARGETS]
  * groups, then the rest in place. A group is drawn by
  * where its traffic ends, as on 活動 and in the rules card.
  */
 @Composable
-internal fun RvTargetCard(targetId: String, onTarget: (String) -> Unit) {
+internal fun RvTargetCard(groups: List<RvPolicyGroup>, targetId: String, onTarget: (String) -> Unit) {
     var all by rememberSaveable { mutableStateOf(false) }
-    val groups = listOf(RvPolicyData.main) + RvPolicyData.groups
     val shown = if (all) groups else groups.take(TARGETS)
     RvCard {
         shown.forEach { Target(it, targetId == it.id) { onTarget(it.id) } }

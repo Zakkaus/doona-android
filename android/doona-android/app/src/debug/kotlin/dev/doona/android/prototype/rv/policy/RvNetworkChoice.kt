@@ -14,6 +14,7 @@ import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvRuleOutbound
+import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RvNodePicker
 import dev.doona.android.prototype.rv.nodes.SEPARATOR
@@ -103,15 +104,24 @@ internal fun rvNetworkMenu(onPick: (RvNetwork?) -> Unit): List<RvMenuItem> =
 
 /**
  * The group's node picker as it is ([RvNodePicker]), opened from a row of [RvNetworkCard]: titled with the group's name,
- * its caption how the group picks, begun with the row's [network] when there is one, and that network's node checked.
+ * its caption how the group picks, begun with the row's [network] when there is one, and that network's node checked;
+ * [subscriptions] head its cards, their end dates as of [nowEpochMs].
  */
 @Composable
-internal fun RvNetworkPicker(group: RvPolicyGroup, choice: RvNetworkChoice, network: RvNetwork?, onPick: (String) -> Unit = {}) {
+internal fun RvNetworkPicker(
+    group: RvPolicyGroup,
+    choice: RvNetworkChoice,
+    network: RvNetwork?,
+    subscriptions: List<RvSubscription>,
+    nowEpochMs: Long,
+    onPick: (String) -> Unit = {},
+) {
     val caption = group.caption()
     RvNodePicker(
         group.members,
-        RvData.subscriptions,
+        subscriptions,
         choice.nodeFor(network),
+        nowEpochMs,
         onPick = onPick,
         onDetail = {},
         onClose = {},

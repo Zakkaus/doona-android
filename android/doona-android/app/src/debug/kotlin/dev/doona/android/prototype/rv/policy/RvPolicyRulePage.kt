@@ -76,7 +76,7 @@ internal fun RvPolicyRulePage(
         MatchBy(connection.host, rule.matchBy) { onChange(rule.copy(matchBy = it)) }
         RvSectionTitle(stringResource(R.string.rv_policy_send_to), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {
-            RvTargetCard(rule.targetId) { onChange(rule.copy(targetId = it)) }
+            RvTargetCard(rvSampleTargets, rule.targetId) { onChange(rule.copy(targetId = it)) }
             PositionCard(connection.rule)
         }
     }
