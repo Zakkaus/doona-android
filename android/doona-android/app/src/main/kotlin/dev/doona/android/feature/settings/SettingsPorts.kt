@@ -56,15 +56,26 @@ internal enum class TileAnswer { Added, Kept, Failed }
 
 /**
  * What 設定 hands to Android: its VPN settings, where always-on is turned on (D14); the releases page, in the browser,
- * which is all 檢查更新 does (owner, 2026-11-23 21:35); and the request to add the quick settings tile, which answers
- * [TileAnswer.Failed] where Android has no such request (before 13), so the page tells how to add it by hand.
+ * where a newer release is downloaded (the app downloads nothing itself, owner 2026-11-23 21:35); the repository's page,
+ * for 關於's GitHub 專案; and the request to add the quick settings tile, which answers [TileAnswer.Failed] where Android
+ * has no such request (before 13), so the page tells how to add it by hand.
  */
 internal interface SettingsSystem {
     fun openVpnSettings()
 
     fun openReleases()
 
+    fun openRepository()
+
     fun requestTile(onAnswer: (TileAnswer) -> Unit)
+}
+
+/**
+ * 檢查更新's question to GitHub: the tag of the app's latest published release, null when none is published yet, or a
+ * failure when GitHub gave no usable answer (offline, refused, not a release).
+ */
+internal fun interface ReleaseCheck {
+    suspend fun latest(): Result<String?>
 }
 
 /**

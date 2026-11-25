@@ -438,6 +438,8 @@ private object NoSystem : SettingsSystem {
 
     override fun openReleases() = Unit
 
+    override fun openRepository() = Unit
+
     override fun requestTile(onAnswer: (TileAnswer) -> Unit) = Unit
 }
 

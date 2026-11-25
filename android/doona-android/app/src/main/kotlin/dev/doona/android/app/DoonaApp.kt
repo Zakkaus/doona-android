@@ -31,7 +31,6 @@ import dev.doona.android.feature.onboarding.FirstRunGate
 import dev.doona.android.feature.perapp.PerAppRoute
 import dev.doona.android.feature.policies.GroupRoute
 import dev.doona.android.feature.policies.PoliciesRoute
-import dev.doona.android.feature.settings.SettingsRoute
 import dev.doona.android.feature.subscriptions.SubscriptionImports
 import dev.doona.android.feature.subscriptions.SubscriptionsRoute
 import dev.doona.android.feature.subscriptions.rememberSubscriptionImports
@@ -86,11 +85,8 @@ fun DoonaApp(
                 GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }, onOpenGroup = { backStack.push(GroupKey(it)) })
             }
             entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, imports, onBack = { backStack.pop(key) }) }
-            entry<SettingsKey> {
-                OldTabFrame(Tab.Settings, onTab, onReselect) {
-                    SettingsRoute(engine, version, onOpenPerApp = { backStack.push(PerAppKey) }, onOpenSubscriptions = { backStack.push(SubscriptionsKey) })
-                }
-            }
+            // The RV pages draw their own floating nav.
+            settingsEntries(backStack, engine, version, onTab)
             entry<PerAppKey> { key -> PerAppRoute(engine, installedApps, onBack = { backStack.pop(key) }) }
         }
     }

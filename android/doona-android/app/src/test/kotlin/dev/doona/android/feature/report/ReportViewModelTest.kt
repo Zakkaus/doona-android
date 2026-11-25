@@ -233,18 +233,20 @@ class ReportViewModelTest : ExportFixture() {
     }
 
     @Test
-    fun `a share sheet that could not open fails the page and drops its zip`() = runTest {
+    fun `a share sheet that could not open keeps the written report ready to share`() = runTest {
         val (vm, reports) = page()
         advanceUntilIdle()
         val share = checkNotNull(vm.uiState.value.share)
+        val ready = vm.uiState.value.build
         val zip = zips().single()
 
         vm.shareFailed(share)
         runCurrent()
-        assertEquals(RvReportBuild.Failed, vm.uiState.value.build)
-        assertNull(vm.uiState.value.share)
-        assertFalse(zip.exists())
-        assertEquals("nothing is written again until 重試", 1, reports.options.size)
+        assertTrue("the export did not fail", ready is RvReportBuild.Ready)
+        assertEquals(ready, vm.uiState.value.build)
+        assertSame(share, vm.uiState.value.share)
+        assertTrue(zip.exists())
+        assertEquals("nothing is written again", 1, reports.options.size)
     }
 
     @Test

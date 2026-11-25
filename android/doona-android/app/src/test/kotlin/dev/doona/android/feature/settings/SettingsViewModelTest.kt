@@ -231,7 +231,7 @@ class SettingsViewModelTest {
 
     @Test
     fun `the row's date is the core's release, else the APK's copy, at noon UTC`() {
-        fun date(ms: Long) = Instant.ofEpochMilli(ms).toString()
+        fun date(ms: Long?) = Instant.ofEpochMilli(checkNotNull(ms)).toString()
         assertEquals("2026-11-23T12:00:00Z", date(rvGeoData(null, "2026-11-23", connected = false).dateEpochMs))
         val builtin = ConfigAssets("builtin", null, "idle", null, false)
         assertEquals("2026-11-23T12:00:00Z", date(rvGeoData(builtin, "2026-11-23", connected = true).dateEpochMs))
@@ -242,6 +242,59 @@ class SettingsViewModelTest {
         assertTrue(row.connected)
         val odd = ConfigAssets("download", "20261130", "idle", null, false)
         assertEquals("a release that is no date falls back", "2026-11-23T12:00:00Z", date(rvGeoData(odd, "2026-11-23", connected = true).dateEpochMs))
+    }
+
+    @Test
+    fun `no date at all when neither the core's release nor the APK's is a date, rather than ending the page`() {
+        val odd = ConfigAssets("download", "20261130", "idle", null, false)
+        assertNull(rvGeoData(odd, "unknown", connected = true).dateEpochMs)
+        assertNull(rvGeoData(null, "", connected = false).dateEpochMs)
+    }
+
+    @Test
+    fun `the update check finds a newer release by its version number`() {
+        assertEquals(RvUpdate.Available("0.2.0"), rvUpdate("0.1.0", "v0.2.0"))
+        assertEquals(RvUpdate.Available("0.1.10"), rvUpdate("0.1.9", "0.1.10"))
+        assertEquals(RvUpdate.Available("1.0"), rvUpdate("0.9.3-debug", "1.0"))
+        assertEquals(RvUpdate.Latest, rvUpdate("0.2.0", "v0.2.0"))
+        assertEquals(RvUpdate.Latest, rvUpdate("0.2.0", "v0.2"))
+        assertEquals("an older release on GitHub", RvUpdate.Latest, rvUpdate("0.3.0", "v0.2.9"))
+        assertEquals("nothing published yet", RvUpdate.Latest, rvUpdate("0.1.0", null))
+        assertEquals("a tag with no version", RvUpdate.Failed, rvUpdate("0.1.0", "nightly"))
+        assertEquals("an app with no version name", RvUpdate.Failed, rvUpdate("", "v0.2.0"))
+    }
+
+    @Test
+    fun `the update check shows Checking while it asks, then the answer, and a retry asks again`() = runTest {
+        val answer = CompletableDeferred<Result<String?>>()
+        var asked = 0
+        val releases = ReleaseCheck {
+            asked++
+            if (asked == 1) answer.await() else Result.success("v0.2.0")
+        }
+        val vm = collected(SettingsViewModel(FakeEngine(), FakeSettingsStore(), releases))
+        assertEquals(RvUpdate.Idle, vm.uiState.value.update)
+
+        vm.checkUpdate("0.1.0")
+        assertEquals(RvUpdate.Checking, vm.uiState.value.update)
+        vm.checkUpdate("0.1.0")
+        assertEquals("a tap while it asks is the same check", 1, asked)
+        answer.complete(Result.failure(java.io.IOException("offline")))
+        runCurrent()
+        assertEquals(RvUpdate.Failed, vm.uiState.value.update)
+
+        vm.checkUpdate("0.1.0")
+        runCurrent()
+        assertEquals(RvUpdate.Available("0.2.0"), vm.uiState.value.update)
+        assertEquals(2, asked)
+    }
+
+    @Test
+    fun `nothing newer on GitHub is Latest`() = runTest {
+        val vm = collected(SettingsViewModel(FakeEngine(), FakeSettingsStore(), ReleaseCheck { Result.success("v0.1.0") }))
+        vm.checkUpdate("0.1.0")
+        runCurrent()
+        assertEquals(RvUpdate.Latest, vm.uiState.value.update)
     }
 
     @Test

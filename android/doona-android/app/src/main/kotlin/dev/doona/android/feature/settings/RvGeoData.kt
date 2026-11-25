@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.RvBusy
 import dev.doona.android.designsystem.rv.RvSecondaryButton
 import dev.doona.android.designsystem.rv.RvSettingsRow
@@ -27,7 +28,8 @@ import dev.doona.android.feature.model.RvGeoUpdate
 @Composable
 internal fun RvGeoDataRow(data: RvGeoData, onUpdate: () -> Unit) {
     val failed = data.update == RvGeoUpdate.Failed
-    val date = rememberRvFormat().date(data.dateEpochMs)
+    val format = rememberRvFormat()
+    val date = data.dateEpochMs?.let(format::date) ?: RV_NO_VALUE
     // Each part whole, so a line that wraps at a large font size breaks after the dot, never inside 已是最新.
     val line = rvConfigLine(listOf(date) + geoState(data).map { stringResource(it) })
     val action: @Composable () -> Unit = {

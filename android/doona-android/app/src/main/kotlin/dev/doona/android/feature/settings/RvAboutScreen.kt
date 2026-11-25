@@ -1,14 +1,10 @@
 package dev.doona.android.feature.settings
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets

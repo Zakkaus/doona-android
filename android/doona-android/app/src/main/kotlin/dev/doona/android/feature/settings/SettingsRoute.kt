@@ -7,7 +7,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
@@ -20,12 +19,21 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.feature.model.RvLanguage
 
 /**
- * The 設定 tab: builds the ViewModel over the [engine] and the app's [store] and shows the page; [system] takes what
- * Android does, [nav] the pages 設定 opens, and [onTab] the floating nav's tabs. [version] is the app's version name, a dash when the shell has none.
+ * The 設定 tab: builds the ViewModel over the [engine], the app's [store] and [releases] (檢查更新) and shows the page;
+ * [system] takes what Android does, [nav] the pages 設定 opens, and [onTab] the floating nav's tabs. [version] is the
+ * app's version name, a dash when the shell has none.
  */
 @Composable
-internal fun SettingsRoute(engine: Engine, store: SettingsStore, system: SettingsSystem, nav: SettingsNav, version: String, onTab: (Int) -> Unit) {
-    val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.factory(engine, store))
+internal fun SettingsRoute(
+    engine: Engine,
+    store: SettingsStore,
+    releases: ReleaseCheck,
+    system: SettingsSystem,
+    nav: SettingsNav,
+    version: String,
+    onTab: (Int) -> Unit,
+) {
+    val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.factory(engine, store, releases))
     SettingsPage(viewModel, system, nav, version, onTab)
 }
 
@@ -34,7 +42,7 @@ internal fun SettingsRoute(engine: Engine, store: SettingsStore, system: Setting
 internal fun SettingsPage(viewModel: SettingsViewModel, system: SettingsSystem, nav: SettingsNav, version: String, onTab: (Int) -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onResume() }
-    val routes = remember(viewModel, system, nav) {
+    val routes = remember(viewModel, system, nav, version) {
         RvSettingsRoutes(
             alwaysOn = system::openVpnSettings,
             addTile = { system.requestTile(viewModel::tileAnswer) },
@@ -46,7 +54,7 @@ internal fun SettingsPage(viewModel: SettingsViewModel, system: SettingsSystem, 
             // 設定檔 shows only with a configuration revision (a preview flag), which the app does not pass.
             config = {},
             geoUpdate = viewModel::updateGeo,
-            checkUpdate = system::openReleases,
+            checkUpdate = { viewModel.checkUpdate(version) },
             release = system::openReleases,
             language = nav.language,
             interval = nav.interval,
@@ -67,6 +75,7 @@ internal fun SettingsPage(viewModel: SettingsViewModel, system: SettingsSystem, 
         geoData = state.geoData,
         perAppLoaded = state.perAppLoaded,
         dnsLoaded = state.dnsLoaded,
+        update = state.update,
     )
 }
 

@@ -89,10 +89,12 @@ internal class ReportViewModel(
         state.update { it.copy(linkFailed = false) }
     }
 
-    /** The share sheet for [share] could not open. */
+    /**
+     * The share sheet for [share] could not open, so nothing was shared. The export did not fail: the report the page
+     * offers stays ready, its zip with it, for another try or 在 GitHub 回報. One no longer offered goes now.
+     */
     fun shareFailed(share: ReportShare) {
-        share.notOpened()
-        if (state.value.share === share) state.update { it.copy(share = null, build = RvReportBuild.Failed) }
+        if (state.value.share !== share) share.notOpened()
     }
 
     private fun build() {

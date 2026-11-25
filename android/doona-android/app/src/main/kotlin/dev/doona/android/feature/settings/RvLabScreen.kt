@@ -1,12 +1,8 @@
 package dev.doona.android.feature.settings
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
@@ -21,7 +17,6 @@ import dev.doona.android.designsystem.rv.RvSettingsCard
 import dev.doona.android.designsystem.rv.RvSettingsColumn
 import dev.doona.android.designsystem.rv.RvSettingsSpace
 import dev.doona.android.designsystem.rv.RvSettingsSwitchRow
-import dev.doona.android.designsystem.rv.RvSpace
 
 /**
  * 實驗室 (owner, 2026-11-25 15:45: experimental options go on a page of their own in 設定), as sample s1125-lab-page

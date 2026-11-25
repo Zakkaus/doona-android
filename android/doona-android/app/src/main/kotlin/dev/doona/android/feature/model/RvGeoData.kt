@@ -8,6 +8,6 @@ import androidx.compose.runtime.Immutable
  */
 internal enum class RvGeoUpdate { Idle, Updating, Updated, Latest, Failed }
 
-/** The data the rules read places and sites from: its [dateEpochMs], where its [update] stands, and whether the VPN is [connected]. */
+/** The data the rules read places and sites from: its [dateEpochMs] (null when no release date is known), where its [update] stands, and whether the VPN is [connected]. */
 @Immutable
-internal data class RvGeoData(val dateEpochMs: Long, val update: RvGeoUpdate = RvGeoUpdate.Idle, val connected: Boolean = true)
+internal data class RvGeoData(val dateEpochMs: Long?, val update: RvGeoUpdate = RvGeoUpdate.Idle, val connected: Boolean = true)

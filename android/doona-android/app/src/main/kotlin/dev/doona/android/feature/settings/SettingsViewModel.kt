@@ -38,21 +38,29 @@ import kotlin.time.Duration.Companion.seconds
 /**
  * What 設定 shows: the page's state ([settings], null until the store has answered, so the page never shows a switch or
  * an interval the user may not have set), whether the per-app policy and the DNS servers have been read ([perAppLoaded],
- * [dnsLoaded]; until then each row has no second line rather than a value the user may not have), and the
- * GeoIP/GeoSite row.
+ * [dnsLoaded]; until then each row has no second line rather than a value the user may not have), the GeoIP/GeoSite
+ * row, and where 檢查更新 stands ([update]).
  */
-internal data class SettingsUiState(val settings: RvSettingsState?, val perAppLoaded: Boolean, val dnsLoaded: Boolean, val geoData: RvGeoData)
+internal data class SettingsUiState(
+    val settings: RvSettingsState?,
+    val perAppLoaded: Boolean,
+    val dnsLoaded: Boolean,
+    val geoData: RvGeoData,
+    val update: RvUpdate = RvUpdate.Idle,
+)
 
 /**
  * 設定 over the app's [store] and the [engine]: the switches set the store, 依 App's row reads the engine's policy, the
  * DNS row the servers the core reports in its effective config, and the GeoIP/GeoSite row reads the core's data and
  * runs its update, asking the core where it stands every [poll] until it ends or [followFor] has passed, which the row
  * then shows as a failure (重試 follows it again). The DNS servers and the geo data are read at the start, when the page
- * shows again, and when the core comes up: a page opened before the core runs fills in once it does.
+ * shows again, and when the core comes up: a page opened before the core runs fills in once it does. 檢查更新 asks
+ * [releases] for the latest release when the user taps it, and only then.
  */
 internal class SettingsViewModel(
     private val engine: Engine,
     private val store: SettingsStore,
+    private val releases: ReleaseCheck = ReleaseCheck { Result.success(null) },
     private val poll: Duration = 1.seconds,
     private val followFor: Duration = 10.minutes,
 ) : ViewModel() {
@@ -78,6 +86,7 @@ internal class SettingsViewModel(
                 perAppLoaded = loaded,
                 dnsLoaded = local.dnsServers != null,
                 geoData = geoData(local, status is Status.Running),
+                update = local.update,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initialState())
 
@@ -132,6 +141,19 @@ internal class SettingsViewModel(
         }
     }
 
+    /**
+     * 檢查更新 (or its 重試) for the app's [version]: asks GitHub for the latest release and shows what it found; a tap
+     * while it asks is the same check.
+     */
+    fun checkUpdate(version: String) {
+        if (local.value.update == RvUpdate.Checking) return
+        local.update { it.copy(update = RvUpdate.Checking) }
+        viewModelScope.launch {
+            val found = releases.latest().fold({ rvUpdate(version, it) }, { RvUpdate.Failed })
+            local.update { it.copy(update = found) }
+        }
+    }
+
     private suspend fun readGeo() {
         engine.configAssets().onSuccess { assets ->
             local.update { it.copy(geo = assets) }
@@ -178,8 +200,8 @@ internal class SettingsViewModel(
 
     /**
      * What the ViewModel itself holds: the language as last read, the tile sheet, the core's DNS servers ([dnsServers],
-     * null until read), the core's geo data as last read, and the update's own outcome while the core has not reported
-     * it ([geoAsked]: under way, or a request that failed).
+     * null until read), the core's geo data as last read, the update's own outcome while the core has not reported
+     * it ([geoAsked]: under way, or a request that failed), and where 檢查更新 stands ([update]).
      */
     private data class Local(
         val language: RvLanguage,
@@ -187,11 +209,12 @@ internal class SettingsViewModel(
         val dnsServers: List<String>? = null,
         val geo: ConfigAssets? = null,
         val geoAsked: RvGeoUpdate? = null,
+        val update: RvUpdate = RvUpdate.Idle,
     )
 
     companion object {
-        fun factory(engine: Engine, store: SettingsStore): ViewModelProvider.Factory = viewModelFactory {
-            initializer { SettingsViewModel(engine, store) }
+        fun factory(engine: Engine, store: SettingsStore, releases: ReleaseCheck): ViewModelProvider.Factory = viewModelFactory {
+            initializer { SettingsViewModel(engine, store, releases) }
         }
     }
 }

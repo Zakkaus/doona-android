@@ -6,23 +6,41 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.navigation3.runtime.EntryProviderScope
+import androidx.navigation3.runtime.NavKey
 import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.data.settings.LanguageSettings
 import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.data.settings.ThemeMode
 import dev.doona.android.data.settings.UpdateCheck
 import dev.doona.android.data.settings.UpdateInterval
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.LogLevel
+import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.model.RvAppearance
 import dev.doona.android.feature.model.RvThemeMode
+import dev.doona.android.feature.report.AppReportFacts
+import dev.doona.android.feature.report.ReportRoute
+import dev.doona.android.feature.settings.IntervalRoute
+import dev.doona.android.feature.settings.LabRoute
+import dev.doona.android.feature.settings.LanguageRoute
 import dev.doona.android.feature.settings.LogLevels
+import dev.doona.android.feature.settings.ReleaseCheck
+import dev.doona.android.feature.settings.RvAboutRoutes
+import dev.doona.android.feature.settings.RvAboutScreen
+import dev.doona.android.feature.settings.RvAboutVersions
+import dev.doona.android.feature.settings.RvLicenseText
+import dev.doona.android.feature.settings.RvLicensesScreen
 import dev.doona.android.feature.settings.SettingsNav
+import dev.doona.android.feature.settings.SettingsRoute
 import dev.doona.android.feature.settings.SettingsStore
 import dev.doona.android.feature.settings.SettingsSystem
 import dev.doona.android.feature.settings.TileAnswer
+import dev.doona.android.feature.settings.rvLicenseEntries
 import dev.doona.android.vpn.QuickTile
 import dev.doona.android.vpn.QuickTileResult
 import kotlinx.coroutines.flow.Flow
@@ -87,7 +105,7 @@ internal class AppSettingsStore(
     }
 }
 
-/** What 設定 hands to Android from [activity]: its VPN settings, the releases page, and the quick settings [tile]'s request. */
+/** What 設定 hands to Android from [activity]: its VPN settings, the releases and repository pages, and the quick settings [tile]'s request. */
 internal class ActivitySettingsSystem(private val activity: Activity, private val tile: QuickTile) : SettingsSystem {
     override fun openVpnSettings() {
         activity.startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
@@ -95,6 +113,10 @@ internal class ActivitySettingsSystem(private val activity: Activity, private va
 
     override fun openReleases() {
         UpdateCheck.openReleases(activity)
+    }
+
+    override fun openRepository() {
+        UpdateCheck.openRepository(activity)
     }
 
     override fun requestTile(onAnswer: (TileAnswer) -> Unit) {
@@ -118,20 +140,80 @@ internal class AppLogLevels(private val controller: LogLevelController) : LogLev
     override suspend fun set(level: LogLevel): Result<Unit> = controller.set(level)
 }
 
+/** 檢查更新 in the app: GitHub's releases API, asked only when the user taps it. */
+internal val APP_RELEASES = ReleaseCheck { UpdateCheck.latestRelease() }
+
 /**
- * The 設定 tab as DoonaApp calls it until the orchestrator wires the new routing
- * (`/scratch/ssd/honk-android/dt/p6a-handoff-doonaapp.patch`, which deletes this): the new page over the app's store,
- * with 依 App open and the sub-pages not yet routed. [onOpenSubscriptions] is the old page's and goes unused; the old
- * tab frame keeps its tabs, so the page's floating nav does nothing here.
+ * The honk revision the core is built on (`honk-config` and `honk-outbound`'s `rev` in `crates/doona-core/Cargo.toml`),
+ * short, for 關於. A test checks it against that file.
  */
-@Composable
-internal fun SettingsRoute(engine: Engine, version: String, onOpenPerApp: () -> Unit, @Suppress("UNUSED_PARAMETER") onOpenSubscriptions: () -> Unit) {
-    val context = LocalContext.current
-    val container = (context.applicationContext as DoonaApplication).container
-    val store = remember(container) { AppSettingsStore(container.application, AppSettings.get(container.application), container.quickTile) }
-    val system = remember(context, container) { ActivitySettingsSystem(context as Activity, container.quickTile) }
-    val nav = remember(onOpenPerApp) {
-        SettingsNav(perApp = onOpenPerApp, dns = {}, effectiveConfig = {}, report = {}, about = {}, theme = {}, language = {}, interval = {}, lab = {})
+internal const val HONK_REVISION = "63de98b"
+
+/**
+ * 設定 and the pages it opens, as the app's back stack entries: 回報問題, 關於, 語言, 更新間隔, 實驗室, 授權 and each
+ * licence's text. 主題 and DNS stay in the debug sandbox (plan 1.2) and the effective config is P4's page, so their rows
+ * open nothing here yet; 日誌等級 waits for the owner (q-p6a-logrow); 關於's 隱私 has no page to open (q-p6a-privacy).
+ */
+internal fun EntryProviderScope<NavKey>.settingsEntries(backStack: MutableList<NavKey>, engine: Engine, version: String, onTab: (Int) -> Unit) {
+    entry<SettingsKey> {
+        val nav = remember(backStack) {
+            SettingsNav(
+                perApp = { backStack.push(PerAppKey) },
+                dns = NOT_WIRED,
+                effectiveConfig = NOT_WIRED,
+                report = { backStack.push(ReportKey) },
+                about = { backStack.push(AboutKey) },
+                theme = NOT_WIRED,
+                language = { backStack.push(LanguageKey) },
+                interval = { backStack.push(IntervalKey) },
+                lab = { backStack.push(LabKey) },
+            )
+        }
+        SettingsRoute(engine, rememberSettingsStore(), APP_RELEASES, rememberSettingsSystem(), nav, version, onTab)
     }
-    dev.doona.android.feature.settings.SettingsRoute(engine, store, system, nav, version, onTab = {})
+    entry<ReportKey> { key ->
+        val context = LocalContext.current
+        val facts = remember(context) { AppReportFacts(context.applicationContext) }
+        ReportRoute(engine, container().reportExporter, facts, onBack = { backStack.pop(key) })
+    }
+    entry<AboutKey> { key ->
+        val system = rememberSettingsSystem()
+        val routes = remember(backStack, system) {
+            RvAboutRoutes(github = system::openRepository, report = { backStack.push(ReportKey) }, licenses = { backStack.push(LicensesKey) }, privacy = NOT_WIRED)
+        }
+        RvAboutScreen(RvAboutVersions(version.ifBlank { RV_NO_VALUE }, HONK_REVISION), onBack = { backStack.pop(key) }, routes)
+    }
+    entry<LanguageKey> { key -> LanguageRoute(rememberSettingsStore(), onBack = { backStack.pop(key) }) }
+    // 自訂 has no page yet (plan 8: built, not hidden).
+    entry<IntervalKey> { key -> IntervalRoute(rememberSettingsStore(), onCustom = NOT_WIRED, onBack = { backStack.pop(key) }) }
+    entry<LabKey> { key ->
+        val context = LocalContext.current
+        LabRoute(rememberSettingsStore(), onBack = { backStack.pop(key) }, onRestart = { restartApp(context) })
+    }
+    entry<LicensesKey> { key -> RvLicensesScreen(onOpen = { backStack.push(LicenseTextKey(it.toString())) }, onBack = { backStack.pop(key) }) }
+    entry<LicenseTextKey> { key ->
+        // An index another version of the app saved may point past this version's list: back to the list.
+        val license = rvLicenseEntries().getOrNull(key.index.toIntOrNull() ?: -1)
+        if (license == null) {
+            LaunchedEffect(key) { backStack.pop(key) }
+        } else {
+            RvLicenseText(license, onBack = { backStack.pop(key) })
+        }
+    }
+}
+
+@Composable
+private fun container(): AppContainer = (LocalContext.current.applicationContext as DoonaApplication).container
+
+@Composable
+private fun rememberSettingsStore(): SettingsStore {
+    val container = container()
+    return remember(container) { AppSettingsStore(container.application, AppSettings.get(container.application), container.quickTile) }
+}
+
+@Composable
+private fun rememberSettingsSystem(): SettingsSystem {
+    val context = LocalContext.current
+    val container = container()
+    return remember(context, container) { ActivitySettingsSystem(context as Activity, container.quickTile) }
 }

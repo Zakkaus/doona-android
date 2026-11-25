@@ -6,6 +6,8 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.engine.Status
+import dev.doona.android.vpn.active
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -37,6 +39,21 @@ class AppRestartTest {
 
         ActivityScenario.launch<MainActivity>(intent).use {
             assertEquals(Status.Running(sinceEpochMs = 0), app.container.engine.status.value)
+        }
+    }
+
+    @Test
+    fun `the connection after a restart uses the node chosen before it`() {
+        val engine = app.container.engine
+        val main = checkNotNull(engine.catalog.value).let { catalog -> catalog.groups.single { it.id == catalog.mainGroupId } }
+        val chosen = main.members.last { it.id != main.selectedId }.id
+        runBlocking { engine.select(main.id, chosen, null).getOrThrow() }
+        engine.connect()
+
+        ActivityScenario.launch<MainActivity>(checkNotNull(restartIntent(app, engine.status.value.active))).use {
+            val after = checkNotNull(engine.catalog.value).groups.single { it.id == main.id }
+            assertEquals(Status.Running(sinceEpochMs = 0), engine.status.value)
+            assertEquals(chosen, after.selectedId)
         }
     }
 

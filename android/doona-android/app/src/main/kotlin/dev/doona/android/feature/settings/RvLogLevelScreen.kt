@@ -1,14 +1,8 @@
 package dev.doona.android.feature.settings
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
@@ -24,7 +18,6 @@ import dev.doona.android.designsystem.rv.RvSettingsColumn
 import dev.doona.android.designsystem.rv.RvSettingsRadioCard
 import dev.doona.android.designsystem.rv.RvSettingsRadioRow
 import dev.doona.android.designsystem.rv.RvSettingsSpace
-import dev.doona.android.designsystem.rv.RvSpace
 
 /**
  * 日誌等級, a page of 設定, in DNS's language: the large title, then one card of the four levels as radio rows, 資訊

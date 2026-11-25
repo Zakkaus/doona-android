@@ -26,7 +26,7 @@ internal fun ReportRoute(engine: Engine, reports: ReportExporter, facts: ReportF
 
 /**
  * The page on [viewModel]'s state. 分享檔案 opens the share sheet on the written report and tells the ViewModel when
- * it returns, or that it could not open; 在 GitHub 回報 opens the report's new-issue link in the browser, and when no
+ * it returns, or that it could not open (the report then stays ready); 在 GitHub 回報 opens the report's new-issue link in the browser, and when no
  * app opens it the page's banner says so.
  */
 @Composable

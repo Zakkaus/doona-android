@@ -38,11 +38,12 @@ internal fun rvGeoUpdate(lastResult: String): RvGeoUpdate = when (lastResult) {
 
 /**
  * The GeoIP/GeoSite row for the core's [assets]: the active data's release date, the APK's own ([shippedDate]) when the
- * core reports none, could not be read, or reports a release that is not a `YYYY-MM-DD` date; where an update stands;
+ * core reports none, could not be read, or reports a release that is not a `YYYY-MM-DD` date (no date at all when the
+ * APK's is none either, which the row shows as a dash rather than ending 設定); where an update stands;
  * and whether the VPN is [connected], which an update needs.
  */
 internal fun rvGeoData(assets: ConfigAssets?, shippedDate: String, connected: Boolean) = RvGeoData(
-    dateEpochMs = assets?.release?.let(::releaseEpochMs) ?: releaseEpochMs(shippedDate) ?: error("shipped geo date $shippedDate"),
+    dateEpochMs = assets?.release?.let(::releaseEpochMs) ?: releaseEpochMs(shippedDate),
     update = assets?.let { rvGeoUpdate(it.lastResult) } ?: RvGeoUpdate.Idle,
     connected = connected,
 )
@@ -67,3 +68,29 @@ internal fun rvDnsUpstream(servers: List<String>): RvDnsUpstream? {
 
 /** The port a preset's servers answer on, which `dnsUpstreams` writes after each address. */
 private const val DNS_PORT = 53
+
+/**
+ * What 檢查更新 found for the app's [current] version and the [latest] release tag (null: none published yet, so
+ * nothing is newer): [RvUpdate.Available] for a higher version number, [RvUpdate.Latest] otherwise. A tag or a version
+ * that starts with no number (`v1.2.3`, `1.2.3-beta` and `1.2` all do) cannot be compared and is [RvUpdate.Failed].
+ */
+internal fun rvUpdate(current: String, latest: String?): RvUpdate {
+    if (latest == null) return RvUpdate.Latest
+    val have = versionNumbers(current)
+    val newest = versionNumbers(latest)
+    if (have == null || newest == null) return RvUpdate.Failed
+    return if (compareVersions(newest, have) > 0) RvUpdate.Available(latest.trim().removePrefix("v")) else RvUpdate.Latest
+}
+
+private val VERSION_NUMBERS = Regex("""^v?(\d+(?:\.\d+)*)""")
+
+private fun versionNumbers(version: String): List<Long>? =
+    VERSION_NUMBERS.find(version.trim())?.groupValues?.get(1)?.split('.')?.map { part -> part.toLongOrNull() ?: return null }
+
+private fun compareVersions(a: List<Long>, b: List<Long>): Int {
+    for (i in 0 until maxOf(a.size, b.size)) {
+        val order = a.getOrElse(i) { 0 }.compareTo(b.getOrElse(i) { 0 })
+        if (order != 0) return order
+    }
+    return 0
+}
