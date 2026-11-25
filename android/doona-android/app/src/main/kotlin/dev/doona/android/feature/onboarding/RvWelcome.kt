@@ -60,7 +60,8 @@ internal fun RvWelcome(onAdd: () -> Unit) {
                 Modifier.padding(horizontal = RvSpace.gutter + RvSpace.rowPadding),
                 color = Rv.colors.textSecondary,
                 align = TextAlign.Center,
-                maxLines = LINE_LINES,
+                // It wraps as far as it needs at any font scale, never to an ellipsis.
+                maxLines = Int.MAX_VALUE,
             )
             Spacer(Modifier.height(RvSpace.actionsToCard))
         }
@@ -73,6 +74,3 @@ internal fun RvWelcome(onAdd: () -> Unit) {
         }
     }
 }
-
-/** The line under the title wraps to three lines at most. */
-private const val LINE_LINES = 3

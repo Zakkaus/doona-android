@@ -12,24 +12,37 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.subscriptions.STOP_MS
 import dev.doona.android.feature.subscriptions.SubscriptionImports
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 /**
  * Whether the 活動 tab shows the welcome page: only once the engine has loaded ([ready]), so the saved subscriptions are
- * not mistaken for none, while there is no subscription and no tunnel runs, so removing the last subscription never
- * hides a running tunnel's status or its switch. Before [ready] the tab shows 活動, which draws its own loading state.
+ * not mistaken for none, while there is no subscription and no node at all ([anyNode] false: nodes written into the
+ * configuration keep 活動; null while not known yet), and no tunnel runs, so removing the last subscription never hides
+ * a running tunnel's status or its switch. Before [ready] the tab shows 活動, which draws its own loading state.
  */
-internal fun showsWelcome(ready: Boolean, subscriptions: Int, status: Status): Boolean =
-    ready && subscriptions == 0 && (status is Status.Stopped || status is Status.Failed)
+internal fun showsWelcome(ready: Boolean, subscriptions: Int, anyNode: Boolean?, status: Status): Boolean =
+    ready && subscriptions == 0 && anyNode == false && (status is Status.Stopped || status is Status.Failed)
 
 /** The first run's state holder (plan §2.2). */
 internal class FirstRunViewModel(engine: Engine) : ViewModel() {
+    /** Whether the catalog holds a node; the core is asked only while no subscription is there. */
+    private val anyNode: Flow<Boolean?> = engine.catalog.map { catalog ->
+        when {
+            catalog == null -> null
+            catalog.subscriptions.isNotEmpty() -> true
+            else -> engine.nodes().getOrNull()?.isNotEmpty()
+        }
+    }
+
     val welcome: StateFlow<Boolean> =
-        combine(engine.ready, engine.subscriptions, engine.status) { ready, subscriptions, status -> showsWelcome(ready, subscriptions.size, status) }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), showsWelcome(engine.ready.value, engine.subscriptions.value.size, engine.status.value))
+        combine(engine.ready, engine.subscriptions, anyNode, engine.status) { ready, subscriptions, anyNode, status ->
+            showsWelcome(ready, subscriptions.size, anyNode, status)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), false)
 }
 
 /**

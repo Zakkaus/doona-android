@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="rv_welcome_title">歡迎使用 doona</string>
-    <string name="rv_welcome_line">doona 使用自研核心，不是另一個 Clash 客戶端。TCP 與 UDP 可各自選擇節點，轉送速度可達 10 Gbps。</string>
+    <string name="rv_welcome_line">doona 使用自研核心，不是另一個 Clash 客戶端。TCP/UDP 可各自選擇節點，轉送速度可達 10 Gbps。</string>
     <string name="rv_welcome_subs_sub">Clash、sing-box 與分享連結清單</string>
     <string name="rv_welcome_rules">規則</string>
     <string name="rv_welcome_rules_sub">每個連線依規則經由節點或直連</string>

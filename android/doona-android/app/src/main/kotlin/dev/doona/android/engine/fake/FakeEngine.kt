@@ -220,8 +220,12 @@ class FakeEngine internal constructor(
 
     private val nodesById = data.nodes.associateBy { it.id }
 
-    override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> =
-        Result.success(if (ids == null) data.nodes else ids.mapNotNull(nodesById::get))
+    /** As the core's: a subscription's nodes leave with it; nodes of no subscription (written into the configuration) stay. */
+    override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> {
+        val subscribed = subscriptions.value.mapTo(HashSet()) { it.id }
+        val asked = if (ids == null) data.nodes else ids.mapNotNull(nodesById::get)
+        return Result.success(asked.filter { it.subscriptionId == null || it.subscriptionId in subscribed })
+    }
 
     override suspend fun scoreState(): Result<ScoreState> = Result.success(data.scoreState)
 

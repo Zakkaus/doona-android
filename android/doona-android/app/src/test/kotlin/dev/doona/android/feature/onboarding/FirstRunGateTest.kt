@@ -1,6 +1,9 @@
 package dev.doona.android.feature.onboarding
 
 import dev.doona.android.engine.FailureReason
+import dev.doona.android.engine.Group
+import dev.doona.android.engine.GroupKind
+import dev.doona.android.engine.Member
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
 import kotlinx.coroutines.Dispatchers
@@ -52,12 +55,27 @@ class FirstRunGateTest {
     }
 
     @Test
+    fun `nodes written into the configuration keep 活動 with no subscription`() = runTest {
+        val static = Member(id = "n-0000000000000001", name = "home")
+        val engine = FakeEngine(groups = listOf(Group("g-Proxy", "Proxy", GroupKind.Selector, listOf(static), selectedId = static.id)), subscriptions = emptyList())
+        val vm = FirstRunViewModel(engine)
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.welcome.collect {} }
+        assertEquals(false, vm.welcome.value)
+    }
+
+    @Test
+    fun `no node known yet, or nodes there, means no welcome page`() {
+        assertEquals(false, showsWelcome(ready = true, subscriptions = 0, anyNode = null, status = Status.Stopped))
+        assertEquals(false, showsWelcome(ready = true, subscriptions = 0, anyNode = true, status = Status.Stopped))
+    }
+
+    @Test
     fun `a running tunnel keeps 活動 after the last subscription is removed`() {
-        assertEquals(false, showsWelcome(ready = true, subscriptions = 0, status = Status.Running(0)))
-        assertEquals(false, showsWelcome(ready = true, subscriptions = 0, status = Status.Starting))
-        assertEquals(false, showsWelcome(ready = true, subscriptions = 0, status = Status.Stopping))
-        assertEquals(true, showsWelcome(ready = true, subscriptions = 0, status = Status.Stopped))
-        assertEquals(true, showsWelcome(ready = true, subscriptions = 0, status = Status.Failed(FailureReason.StartFailed)))
-        assertEquals(false, showsWelcome(ready = false, subscriptions = 0, status = Status.Stopped))
+        assertEquals(false, showsWelcome(ready = true, subscriptions = 0, anyNode = false, status = Status.Running(0)))
+        assertEquals(false, showsWelcome(ready = true, subscriptions = 0, anyNode = false, status = Status.Starting))
+        assertEquals(false, showsWelcome(ready = true, subscriptions = 0, anyNode = false, status = Status.Stopping))
+        assertEquals(true, showsWelcome(ready = true, subscriptions = 0, anyNode = false, status = Status.Stopped))
+        assertEquals(true, showsWelcome(ready = true, subscriptions = 0, anyNode = false, status = Status.Failed(FailureReason.StartFailed)))
+        assertEquals(false, showsWelcome(ready = false, subscriptions = 0, anyNode = false, status = Status.Stopped))
     }
 }
