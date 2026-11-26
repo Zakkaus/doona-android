@@ -35,7 +35,6 @@ import dev.doona.android.feature.nodes.RvNodesPage
 import dev.doona.android.feature.policies.RvPolicyScreen
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
-import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import dev.doona.android.testing.GestureBar

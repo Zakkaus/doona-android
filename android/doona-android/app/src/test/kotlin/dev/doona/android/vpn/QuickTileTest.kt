@@ -29,6 +29,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.IOException
 
 class QuickTileTest {
     @get:Rule
@@ -81,6 +82,16 @@ class QuickTileTest {
         assertTrue(tile.added.first())
         tile.record(false).join()
         assertFalse(tile.added.first())
+    }
+
+    @Test
+    fun aStoreThatCannotBeReadReadsAsNotAdded() = runBlocking {
+        val unreadable = object : DataStore<Preferences> {
+            override val data: Flow<Preferences> = flow { throw IOException("disk") }
+
+            override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences = throw IOException("disk")
+        }
+        assertFalse(QuickTile(unreadable, scope).added.first())
     }
 
     private companion object {

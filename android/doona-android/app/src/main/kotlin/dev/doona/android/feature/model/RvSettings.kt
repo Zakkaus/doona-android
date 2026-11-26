@@ -56,7 +56,8 @@ internal enum class RvDnsUpstream(@StringRes val label: Int, val address: String
 
 /**
  * What the settings page shows. The appearance is the theme page's state, so the 主題 row reads what the page sets;
- * [perApp] is what 依 App saved. Until the quick settings tile is [tileAdded], 連線 offers 加到快速設定; [tileSheet] is
+ * [perApp] is what 依 App saved; [dns] the preset the core's DNS servers are, null for servers no preset names
+ * (自訂). Until the quick settings tile is [tileAdded], 連線 offers 加到快速設定; [tileSheet] is
  * the sheet that tells how to add it by hand.
  */
 @Immutable
@@ -66,11 +67,9 @@ internal data class RvSettingsState(
     val autoUpdate: Boolean,
     val updateHours: Int,
     val appearance: RvAppearance,
-    val dns: RvDnsUpstream,
+    val dns: RvDnsUpstream?,
     val language: RvLanguage = RvLanguage.TraditionalChinese,
     val tileAdded: Boolean = true,
-    /** False until the tile store has answered; 連線 is not drawn before, so no row is ever inserted into the card once it shows. */
-    val tileKnown: Boolean = true,
     val tileSheet: Boolean = false,
 ) {
     /** How many apps 依 App checked. */

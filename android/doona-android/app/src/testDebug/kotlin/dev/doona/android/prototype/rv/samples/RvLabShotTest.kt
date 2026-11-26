@@ -2,13 +2,15 @@ package dev.doona.android.prototype.rv.samples
 
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import dev.doona.android.feature.model.RvGeoData
+import dev.doona.android.feature.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.rvShot
-import dev.doona.android.prototype.rv.settings.RV_SAMPLE_GEO_SHIPPED_MS
-import dev.doona.android.prototype.rv.settings.RvSettingsScreen
+import dev.doona.android.prototype.rv.settings.RV_SAMPLE_GEO_SHIPPED
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
+import dev.doona.android.prototype.rv.settings.rvSampleVersions
+import dev.doona.android.prototype.rv.settings.rvSettingsRoutes
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -17,8 +19,9 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * The sample of 實驗室, whole pages: 設定 as it is (`proto-rv-samples-lab-settings-approved-<v>`) and with the new row
- * (`-sample-<v>`), and the new page (`proto-rv-samples-lab-page-<v>`), for v light, dark, fs200 and en-light.
+ * The sample of 實驗室, whole pages: 設定 as the page draws it (`proto-rv-samples-lab-settings-approved-<v>`), which
+ * since 進階 took 日誌等級 (2026-11-26) is the sample with the new row (`-sample-<v>`) plus that row, and the new
+ * page (`proto-rv-samples-lab-page-<v>`), for v light, dark, fs200 and en-light.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -31,7 +34,7 @@ class RvLabShotTest {
     val utc = Utc()
 
     @Test
-    @Config(qualifiers = "+h1768dp")
+    @Config(qualifiers = "+h1908dp")
     fun settingsApprovedLight() = compose.rvShot("samples-lab-settings-approved", dark = false, before = { assertWhole() }) { Settings() }
 
     @Test
@@ -42,7 +45,7 @@ class RvLabShotTest {
     fun pageLight() = compose.rvShot("samples-lab-page", dark = false, before = { assertWhole() }) { RvLabScreen(performance = false) }
 
     @Test
-    @Config(qualifiers = "+h1768dp")
+    @Config(qualifiers = "+h1908dp")
     fun settingsApprovedDark() = compose.rvShot("samples-lab-settings-approved", dark = true, before = { assertWhole() }) { Settings() }
 
     @Test
@@ -53,7 +56,7 @@ class RvLabShotTest {
     fun pageDark() = compose.rvShot("samples-lab-page", dark = true, before = { assertWhole() }) { RvLabScreen(performance = true) }
 
     @Test
-    @Config(qualifiers = "+h2303dp")
+    @Config(qualifiers = "+h2481dp")
     fun settingsApprovedFs200() = compose.rvShot("samples-lab-settings-approved", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { Settings() }
 
     @Test
@@ -64,7 +67,7 @@ class RvLabShotTest {
     fun pageFs200() = compose.rvShot("samples-lab-page", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { RvLabScreen(performance = false) }
 
     @Test
-    @Config(qualifiers = "en-w412dp-h1818dp-notnight-xhdpi")
+    @Config(qualifiers = "en-w412dp-h1958dp-notnight-xhdpi")
     fun settingsApprovedEn() = compose.rvShot("samples-lab-settings-approved-en", dark = false, before = { assertWhole() }) { Settings() }
 
     @Test
@@ -76,5 +79,5 @@ class RvLabShotTest {
     fun pageEn() = compose.rvShot("samples-lab-page-en", dark = false, before = { assertWhole() }) { RvLabScreen(performance = false) }
 
     @androidx.compose.runtime.Composable
-    private fun Settings() = RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}, geoData = RvGeoData(RV_SAMPLE_GEO_SHIPPED_MS))
+    private fun Settings() = RvSettingsScreen(rvSampleSettings(), rvSampleVersions.app, onChange = {}, onOpenTheme = {}, routes = rvSettingsRoutes(), geoData = RvGeoData(RV_SAMPLE_GEO_SHIPPED))
 }

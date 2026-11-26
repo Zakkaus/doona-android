@@ -4,10 +4,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dev.doona.android.app.ActivityKey
-import dev.doona.android.app.DoonaAppShell
-import dev.doona.android.app.SettingsKey
-import dev.doona.android.app.Tab
 import dev.doona.android.designsystem.components.CardsGallery
 import dev.doona.android.designsystem.components.ControlsGallery
 import dev.doona.android.designsystem.components.DialogGallery
@@ -16,11 +12,8 @@ import dev.doona.android.designsystem.components.FieldsGallery
 import dev.doona.android.designsystem.components.InputsGallery
 import dev.doona.android.designsystem.components.LayoutRole
 import dev.doona.android.designsystem.components.StatusGallery
-import dev.doona.android.designsystem.theme.DoonaTheme
-import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
-import dev.doona.android.engine.fake.FakeInstalledApps
 
 /** Robolectric draws no system bars, so tests give the app the insets of a phone's status bar and gesture bar. */
 val StatusBar = 40.dp
@@ -41,22 +34,11 @@ internal class ScreenCase(val name: String, val layout: PageLayout?, val content
 fun sampleEngine() = FakeEngine(groups = FakeEngine.SAMPLE_GROUPS, status = Status.Running(sinceEpochMs = 0), traffic = FakeEngine.SAMPLE_TRAFFIC)
 
 /**
- * Every screen of the app. A screen lane adds its screens here and so gets the spacing check and the goldens; it also
- * states the screen's [PageLayout], which the check holds the rendered page to.
+ * Every old screen of the app. A screen lane adds its screens here and so gets the spacing check and the goldens; it also
+ * states the screen's [PageLayout], which the check holds the rendered page to. 設定 was the last: every page is an RV
+ * page now, with goldens of its own (plan §2.5).
  */
-internal fun screenCases(): List<ScreenCase> {
-    val engine = sampleEngine()
-    val apps = FakeInstalledApps()
-    val space = DoonaTheme.spacing
-    val bars = setOf(LayoutRole.Sheet, LayoutRole.TopBar)
-    val withHub = bars + LayoutRole.HubBar
-    return listOf(
-        ScreenCase(
-            "settings",
-            PageLayout(withHub + setOf(LayoutRole.ListCard, LayoutRole.ListRow, LayoutRole.Mark), listOf(space.afterTitle)),
-        ) { OldShellApp(engine, apps, listOf(ActivityKey, SettingsKey)) },
-    )
-}
+internal fun screenCases(): List<ScreenCase> = emptyList()
 
 /**
  * The component gallery pages. They get goldens and the accessibility check like a screen, but not the spacing rules,

@@ -77,6 +77,34 @@ data object PerAppKey : AppKey
 @Serializable
 data object ReportKey : AppKey
 
+@Serializable
+data object AboutKey : AppKey
+
+@Serializable
+data object LanguageKey : AppKey
+
+@Serializable
+data object IntervalKey : AppKey
+
+@Serializable
+data object LabKey : AppKey
+
+@Serializable
+data object ThemeKey : AppKey
+
+@Serializable
+data object DnsKey : AppKey
+
+@Serializable
+data object LogLevelKey : AppKey
+
+@Serializable
+data object LicensesKey : AppKey
+
+/** One licence's text, by its place in 授權's list. */
+@Serializable
+data class LicenseTextKey(val index: String) : AppKey
+
 /**
  * The tabs of the floating nav, each with its root key and its id in the RV library's bar ([navId], an `RV_NAV_*`
  * value). 活動 is always the bottom of the back stack. 連線 (D31) waits for the connection list, so the app shows three.

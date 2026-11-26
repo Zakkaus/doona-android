@@ -8,13 +8,15 @@
     <string name="rv_settings_group_connection">Connection</string>
     <string name="rv_settings_notify_drop">Notify when disconnected</string>
     <string name="rv_settings_per_app">Per-app</string>
-    <string name="rv_settings_per_app_value">Proxies %1$d apps</string>
-    <string name="rv_settings_connection_footer">Only the checked apps use the proxy. Others and local-network addresses connect directly.</string>
+    <plurals name="rv_settings_per_app_value">
+        <item quantity="one">Proxies %1$d app</item>
+        <item quantity="other">Proxies %1$d apps</item>
+    </plurals>
+    <string name="rv_settings_connection_footer">Only the selected apps go through the proxy. Other apps and local-network addresses connect directly.</string>
 
     <string name="rv_settings_group_subscription">Subscriptions</string>
     <string name="rv_settings_auto_update">Auto-update</string>
     <string name="rv_settings_update_interval">Update interval</string>
-    <string name="rv_settings_update_interval_value">Every %1$d hours</string>
 
     <string name="rv_settings_group_appearance">Appearance</string>
     <string name="rv_settings_theme">Theme</string>
@@ -28,6 +30,10 @@
     <string name="rv_settings_log_level">Log level</string>
 
     <string name="rv_settings_group_updates">Updates</string>
+    <string name="rv_settings_lab">Lab</string>
+    <string name="rv_lab_performance">Performance mode</string>
+    <string name="rv_lab_performance_sub">Uses more battery for more speed</string>
+    <string name="rv_lab_footnote">These options may change or go away.</string>
     <string name="rv_settings_group_about">About</string>
     <string name="rv_settings_version">Version</string>
     <string name="rv_settings_version_value" translatable="false">0.1.0</string>
@@ -58,19 +64,33 @@
     <string name="rv_settings_dns_custom">Custom</string>
     <string name="rv_settings_dns_custom_sub">Enter an address</string>
     <string name="rv_settings_dns_footer">In rule and global mode, DNS queries go through the main node.</string>
+    <string name="rv_settings_dns_custom_title">Custom DNS servers</string>
+    <string name="rv_settings_dns_custom_hint">Up to 4 IPv4 or IPv6 addresses, separated by commas, such as 1.1.1.1, 2606:4700:4700::1111</string>
+    <string name="rv_settings_dns_custom_invalid">Enter 1 to 4 IP addresses, such as 1.1.1.1 or [2606:4700:4700::1111]:53</string>
+    <string name="rv_settings_interval_custom_title">Custom update interval</string>
+    <string name="rv_settings_interval_custom_hint">%1$d to %2$d hours</string>
+    <string name="rv_settings_interval_custom_invalid">Enter a whole number from %1$d to %2$d</string>
 
     <string name="rv_report_title">Report a problem</string>
     <string name="rv_report_failed">Could not export the diagnostic report</string>
     <string name="rv_report_failed_reason">doona\'s core did not respond.</string>
+    <string name="rv_report_link_failed">Could not open GitHub</string>
+    <string name="rv_report_link_failed_reason">No app on this phone opens the link. Share the file instead.</string>
+    <string name="rv_log_failed">Could not change the log level</string>
+    <string name="rv_log_failed_reason">doona\'s core did not take the new level.</string>
     <string name="rv_log_error">Error</string>
     <string name="rv_log_warn">Warning</string>
     <string name="rv_log_info">Info</string>
     <string name="rv_log_debug">Debug</string>
-    <string name="rv_settings_per_app_except">Proxies all but %1$d apps</string>
+    <plurals name="rv_settings_per_app_except">
+        <item quantity="one">Proxies all but %1$d app</item>
+        <item quantity="other">Proxies all but %1$d apps</item>
+    </plurals>
     <string name="rv_perapp_needs_app">Check at least one app</string>
     <string name="rv_perapp_loading">Loading apps…</string>
     <string name="rv_perapp_saving">Saving…</string>
     <string name="rv_perapp_save_failed">Could not save</string>
     <string name="rv_perapp_rebuild_failed">Saved, but the VPN could not reconnect</string>
     <string name="rv_lab_restart_hint">Takes effect after the app restarts</string>
+    <string name="rv_lab_restart">Restart the app</string>
 </resources>

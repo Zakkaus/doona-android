@@ -162,7 +162,8 @@ private fun catalogSummary(catalog: Catalog, engine: EngineView, scrubber: Repor
     put("mainGroup", index[catalog.mainGroupId])
     putJsonObject("ruleSource") {
         val source = catalog.ruleSource
-        put("template", source.template?.takeIf { it == "cn-direct" })
+        // The core names only a template it builds in (setRuleSource refuses any other), never user text.
+        put("template", source.template)
         put("version", source.version)
         put("subscription", source.subscriptionId?.let(::subscriptionId))
         put("blockQuic", source.options.blockQuic)

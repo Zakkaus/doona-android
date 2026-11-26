@@ -29,6 +29,8 @@ import dev.doona.android.designsystem.rv.RvSettingsSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.feature.model.RvGeoData
 import dev.doona.android.feature.model.RvGeoUpdate
+import dev.doona.android.feature.settings.RvSettingsRoutes
+import dev.doona.android.feature.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed
@@ -47,13 +49,15 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.time.LocalDate
 
 /**
  * 設定's GeoIP/GeoSite row (owner-fix2 item 16; in 更新 under 檢查更新 since owner-fix3 item 27): the whole 設定 page, as
  * its own goldens and `-config-entry-*` are, so a diff against `proto-rv-settings-*` shows only the row's state. Each
  * light, dark, fs115 and fs200: the shipped data with 更新 (`proto-rv-settings-geodata-idle-*`), updating
  * (`-updating-*`, at animator scale 0, so the busy bar rests half full), updated to newer data (`-updated-*`), nothing
- * newer (`-latest-*`), failed (`-failed-*`), and waiting for the VPN (`-waiting-*`). Then each state's second line and
+ * newer (`-latest-*`), failed (`-failed-*`), waiting for the VPN (`-waiting-*`), and failed while the VPN is down
+ * (`-failed-waiting-*`, light and fs200 only). Then each state's second line and
  * action, the failure kept on the row with no dialog, and 更新 disabled until the VPN is up.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -150,6 +154,14 @@ class RvGeoDataShotTest {
     fun failedFs200() = shot("failed", FAILED, fontScale = RV_FS200)
 
     @Test
+    @Config(qualifiers = FAILED_WAITING_WHOLE)
+    fun failedWaitingLight() = shot("failed-waiting", FAILED_WAITING, dark = false)
+
+    @Test
+    @Config(qualifiers = FAILED_WAITING_FS200)
+    fun failedWaitingFs200() = shot("failed-waiting", FAILED_WAITING, fontScale = RV_FS200)
+
+    @Test
     @Config(qualifiers = WHOLE)
     fun waitingLight() = shot("waiting", WAITING, dark = false)
 
@@ -171,18 +183,36 @@ class RvGeoDataShotTest {
     fun eachStateSaysItselfAfterTheDateWithItsAction() {
         var data by mutableStateOf(IDLE)
         compose.setContent { Themed { Page(data) } }
-        val shipped = date(RV_SAMPLE_GEO_SHIPPED_MS)
+        val shipped = date(RV_SAMPLE_GEO_SHIPPED)
         expect(shipped, R.string.rv_menu_update, enabled = true)
         compose.runOnIdle { data = UPDATING }
         expect(after(shipped, R.string.rv_geodata_updating), action = null)
         compose.runOnIdle { data = UPDATED }
-        expect(after(date(RV_SAMPLE_GEO_NEWER_MS), R.string.rv_geodata_updated), R.string.rv_menu_update, enabled = true)
+        expect(after(date(RV_SAMPLE_GEO_NEWER), R.string.rv_geodata_updated), R.string.rv_menu_update, enabled = true)
         compose.runOnIdle { data = LATEST }
         expect(after(shipped, R.string.rv_update_latest), R.string.rv_menu_update, enabled = true)
         compose.runOnIdle { data = FAILED }
         expect(after(shipped, R.string.rv_geodata_failed), R.string.rv_retry, enabled = true)
         compose.runOnIdle { data = WAITING }
         expect(after(shipped, R.string.status_stopped), R.string.rv_menu_update, enabled = false)
+        compose.runOnIdle { data = FAILED_WAITING }
+        expect(after(after(shipped, R.string.rv_geodata_failed), R.string.status_stopped), R.string.rv_retry, enabled = false)
+    }
+
+    /** Whenever 重試 is disabled, the line says why: a failure before the VPN is up keeps 未連線 after 無法更新. */
+    @Test
+    @Config(qualifiers = WHOLE)
+    fun aDisabledRetrySaysTheVpnIsDown() {
+        var updates = 0
+        var data by mutableStateOf(FAILED_WAITING)
+        compose.setContent { Themed { Page(data) { updates++ } } }
+        compose.onNode(line(after(after(date(RV_SAMPLE_GEO_SHIPPED), R.string.rv_geodata_failed), R.string.status_stopped))).assertExists()
+        compose.onNodeWithText(rvText(R.string.rv_retry)).assertIsNotEnabled().performClick()
+        assertEquals(0, updates)
+        compose.runOnIdle { data = FAILED }
+        compose.onNode(line(after(date(RV_SAMPLE_GEO_SHIPPED), R.string.rv_geodata_failed))).assertExists()
+        compose.onNodeWithText(rvText(R.string.rv_retry)).assertIsEnabled().performClick()
+        assertEquals(1, updates)
     }
 
     /** M8: a failed update stays on its row, no dialog and no banner, and 重試 updates again. */
@@ -191,7 +221,7 @@ class RvGeoDataShotTest {
     fun aFailureStaysOnTheRowAndRetries() {
         var updates = 0
         compose.setContent { Themed { Page(FAILED) { updates++ } } }
-        compose.onAllNodes(line(after(date(RV_SAMPLE_GEO_SHIPPED_MS), R.string.rv_geodata_failed))).assertCountEquals(1)
+        compose.onAllNodes(line(after(date(RV_SAMPLE_GEO_SHIPPED), R.string.rv_geodata_failed))).assertCountEquals(1)
         compose.onAllNodes(isDialog()).assertCountEquals(0)
         compose.onNodeWithText(rvText(R.string.rv_retry)).performClick()
         assertEquals(1, updates)
@@ -267,7 +297,7 @@ class RvGeoDataShotTest {
         compose.rvShot("settings-geodata-$name", dark, before = { assertWhole() }, fontScale = fontScale) { Page(data) }
     }
 
-    private fun date(epochMs: Long) = RvFormat(RuntimeEnvironment.getApplication().resources.configuration.locales[0]).date(epochMs)
+    private fun date(day: LocalDate) = RvFormat(RuntimeEnvironment.getApplication().resources.configuration.locales[0]).date(day)
 
     private fun after(date: String, state: Int) = date + " · " + rvText(state)
 
@@ -278,7 +308,7 @@ class RvGeoDataShotTest {
 
     @Composable
     private fun Page(data: RvGeoData, onUpdate: () -> Unit = {}) =
-        RvSettingsScreen(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(geoUpdate = onUpdate), geoData = data)
+        RvSettingsScreen(rvSampleSettings(), rvSampleVersions.app, onChange = {}, onOpenTheme = {}, routes = rvSettingsRoutes(geoUpdate = onUpdate), geoData = data)
 
     @Composable
     private fun Themed(content: @Composable () -> Unit) = RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content)
@@ -288,11 +318,15 @@ class RvGeoDataShotTest {
          * 設定's whole page at each font size ([RvSettingsShotTest]'s frames, the row is on it by default), a whole dp,
          * rounded up. At fs200 the title wraps beside 更新, and the second line too where a state follows the date.
          */
-        const val WHOLE = "+h1768dp"
-        const val WHOLE_FS115 = "+h1793dp"
-        const val FS200_IDLE = "+h2303dp"
-        const val FS200_UPDATING = "+h2300dp"
-        const val FS200_WRAPPED = "+h2344dp"
+        const val WHOLE = "+h1908dp"
+        const val WHOLE_FS115 = "+h1933dp"
+        const val FS200_IDLE = "+h2481dp"
+        const val FS200_UPDATING = "+h2478dp"
+        const val FS200_WRAPPED = "+h2522dp"
+
+        /** 無法更新 · 未連線 takes a second line beside 重試 at fs1, a third at fs200. */
+        const val FAILED_WAITING_WHOLE = "+h1928dp"
+        const val FAILED_WAITING_FS200 = "+h2563dp"
 
         const val HALF_DP = 0.5f
 
@@ -303,11 +337,12 @@ class RvGeoDataShotTest {
         const val ZERO_WIDTH_SPACE = "​"
         const val NO_BREAK_SPACE = "\u00A0"
 
-        val IDLE = RvGeoData(RV_SAMPLE_GEO_SHIPPED_MS)
+        val IDLE = RvGeoData(RV_SAMPLE_GEO_SHIPPED)
         val UPDATING = IDLE.copy(update = RvGeoUpdate.Updating)
-        val UPDATED = RvGeoData(RV_SAMPLE_GEO_NEWER_MS, RvGeoUpdate.Updated)
+        val UPDATED = RvGeoData(RV_SAMPLE_GEO_NEWER, RvGeoUpdate.Updated)
         val LATEST = IDLE.copy(update = RvGeoUpdate.Latest)
         val FAILED = IDLE.copy(update = RvGeoUpdate.Failed)
         val WAITING = IDLE.copy(connected = false)
+        val FAILED_WAITING = FAILED.copy(connected = false)
     }
 }

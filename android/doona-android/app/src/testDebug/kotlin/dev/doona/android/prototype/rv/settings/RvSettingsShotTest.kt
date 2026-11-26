@@ -13,6 +13,9 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvSettingsSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.feature.model.RvDnsUpstream
+import dev.doona.android.feature.settings.RvDnsScreen
+import dev.doona.android.feature.settings.RvSettingsRoutes
+import dev.doona.android.feature.settings.RvThemeScreen
 import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
@@ -21,6 +24,7 @@ import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.rvText
 import dev.doona.android.prototype.rv.seedColorScheme
+import dev.doona.android.prototype.rv.seedSchemes
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -95,7 +99,7 @@ class RvSettingsShotTest {
         var opened = 0
         compose.setContent {
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
-                RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(report = { opened++ }))
+                RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = rvSettingsRoutes(report = { opened++ }))
             }
         }
         compose.onNodeWithText(rvText(R.string.rv_report_title)).performClick()
@@ -109,7 +113,7 @@ class RvSettingsShotTest {
         var about = 0
         compose.setContent {
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
-                RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(perApp = { perApp++ }, about = { about++ }))
+                RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = rvSettingsRoutes(perApp = { perApp++ }, about = { about++ }))
             }
         }
         compose.onNodeWithText(rvText(R.string.rv_settings_per_app)).performClick()
@@ -131,24 +135,24 @@ class RvSettingsShotTest {
     fun dnsDark() = compose.rvShot("settings-dns", dark = true) { Dns() }
 
     @Composable
-    private fun Dns() = RvDnsScreen(RvDnsUpstream.Cloudflare, onSelect = {}, onBack = {})
+    private fun Dns() = RvDnsScreen(RvDnsUpstream.Cloudflare, onSelect = {}, onBack = {}, onCustom = {})
 
     @Composable
     private fun Settings() = RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {})
 
     @Composable
     private fun Theme() =
-        RvThemeScreen(rvSampleAppearance(), onChange = {}, light = seedColorScheme(Seed.Cyan.argb, false), dark = seedColorScheme(Seed.Cyan.argb, true), onBack = {})
+        RvThemeScreen(rvSampleAppearance(), onChange = {}, schemes = seedSchemes(), previewPage = RV_SAMPLE_THEME_PREVIEW, onBack = {})
 
     private companion object {
         /**
          * As tall as the whole 設定 page, at each font size, so its end shows as the phone shows it: the last card 28 dp
          * above the bottom navigation.
          */
-        const val LONG_PAGE = "+h1768dp"
-        const val LONG_PAGE_FS115 = "+h1793dp"
-        const val LONG_PAGE_FS200 = "+h2303dp"
-        const val LONG_PAGE_EN = "en-w412dp-h1818dp-notnight-xhdpi"
+        const val LONG_PAGE = "+h1908dp"
+        const val LONG_PAGE_FS115 = "+h1933dp"
+        const val LONG_PAGE_FS200 = "+h2481dp"
+        const val LONG_PAGE_EN = "en-w412dp-h1958dp-notnight-xhdpi"
 
         const val NEAR = 0.5f
 

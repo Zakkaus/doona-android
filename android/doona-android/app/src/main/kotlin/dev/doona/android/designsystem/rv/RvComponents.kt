@@ -503,12 +503,13 @@ internal fun RvInline(@DrawableRes icon: Int, text: String, color: Color, style:
  * The one footnote: what a group of cards means, under its last card in secondary text at the row subtitle's step,
  * [RvSpace.footnoteAbove] under it, its box [RvSpace.footnoteStart] in from the card's start edge and
  * [RvSpace.footnoteEnd] in from its end (LAYOUT-RULES.md R20, owner q-s1125c-footgap), three lines at most unless
- * [whole]: [inset] is where the cards' edge is, in from its parent, less whatever a column it sits in already insets. A
- * footnote that must never be cut (a privacy statement) is [whole] and grows to every line it needs. 13/18 is for chart
- * captions and legends only. Pages draw no footnote of their own (`RvFootnoteGateTest`).
+ * [whole]: [inset] is where the cards' edge is, in from its parent, less whatever a column it sits in already insets
+ * ([LocalRvColumnInset], which [RvSettingsColumn] sets), so a page passes none. A footnote that must never be cut (a
+ * privacy statement) is [whole] and grows to every line it needs. 13/18 is for chart captions and legends only. Pages
+ * draw no footnote of their own (`RvFootnoteGateTest`).
  */
 @Composable
-internal fun RvFootnote(text: String, modifier: Modifier = Modifier, inset: Dp = RvSpace.gutter, whole: Boolean = false) {
+internal fun RvFootnote(text: String, modifier: Modifier = Modifier, inset: Dp = RvSpace.gutter - LocalRvColumnInset.current, whole: Boolean = false) {
     val pad = Modifier.padding(start = inset + RvSpace.footnoteStart, top = RvSpace.footnoteAbove, end = inset + RvSpace.footnoteEnd).fillMaxWidth().testTag(RvPart.FOOTER)
     RvText(text, Rv.type.rowSub, modifier.then(pad), color = Rv.colors.textSecondary, maxLines = if (whole) Int.MAX_VALUE else FOOTNOTE_LINES)
 }

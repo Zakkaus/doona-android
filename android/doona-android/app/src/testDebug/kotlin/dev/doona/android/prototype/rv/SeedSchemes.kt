@@ -7,6 +7,7 @@ import com.google.android.material.color.utilities.DynamicColor
 import com.google.android.material.color.utilities.Hct
 import com.google.android.material.color.utilities.MaterialDynamicColors
 import com.google.android.material.color.utilities.SchemeTonalSpot
+import dev.doona.android.designsystem.rv.RvSchemes
 
 /** Wallpaper colours that stand in for dynamic colour, which Robolectric lacks. */
 enum class Seed(val argb: Int) {
@@ -74,3 +75,6 @@ fun seedColorScheme(seed: Int, dark: Boolean): ColorScheme {
         onTertiaryFixedVariant = c(m.onTertiaryFixedVariant()),
     )
 }
+
+/** [seed]'s light and dark schemes, as the theme page takes them. */
+internal fun seedSchemes(seed: Seed = Seed.Cyan): RvSchemes = RvSchemes(seedColorScheme(seed.argb, false), seedColorScheme(seed.argb, true))

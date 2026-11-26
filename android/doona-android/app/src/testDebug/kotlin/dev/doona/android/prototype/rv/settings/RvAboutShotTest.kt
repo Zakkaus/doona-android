@@ -8,6 +8,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.feature.settings.RvAboutEntry
+import dev.doona.android.feature.settings.RvAboutRoutes
+import dev.doona.android.feature.settings.RvAboutScreen
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed
@@ -58,7 +61,7 @@ class RvAboutShotTest {
     @Test
     fun eachRowOpensItsRoute() {
         val opened = mutableListOf<String>()
-        val routes = RvAboutRoutes(
+        val routes = rvAboutRoutes(
             github = { opened += "github" },
             report = { opened += "report" },
             licenses = { opened += "licenses" },
@@ -84,7 +87,7 @@ class RvAboutShotTest {
     }
 
     @Composable
-    private fun Page() = RvAboutScreen(rvSampleVersions, onBack = {})
+    private fun Page() = RvAboutScreen(rvSampleVersions, onBack = {}, routes = rvAboutRoutes())
 
     @Composable
     private fun Themed(content: @Composable () -> Unit) = RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content)

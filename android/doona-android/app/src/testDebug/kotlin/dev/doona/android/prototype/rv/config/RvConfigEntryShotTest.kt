@@ -9,6 +9,7 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.policies.RvPolicyRoutes
 import dev.doona.android.feature.policies.RvPolicyScreen
+import dev.doona.android.feature.settings.RvSettingsRoutes
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed
@@ -17,10 +18,9 @@ import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.seedColorScheme
-import dev.doona.android.prototype.rv.settings.RvSettingsRoutes
-import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
+import dev.doona.android.prototype.rv.settings.rvSettingsRoutes
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -87,7 +87,7 @@ class RvConfigEntryShotTest {
     fun settingsLinkOpensTheOverview() {
         var opened = false
         compose.setContent {
-            Themed { RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(config = { opened = true }), configRev = RvConfigData.REV) }
+            Themed { RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = rvSettingsRoutes(config = { opened = true }), configRev = RvConfigData.REV) }
         }
         compose.onNodeWithText(CONFIG).performScrollTo().performClick()
         assertTrue(opened)
@@ -104,9 +104,9 @@ class RvConfigEntryShotTest {
 
     private companion object {
         const val WHOLE_POLICY = "+h1990dp"
-        const val WHOLE_SETTINGS = "+h1850dp"
-        const val WHOLE_SETTINGS_FS115 = "+h1875dp"
-        const val WHOLE_SETTINGS_FS200 = "+h2410dp"
+        const val WHOLE_SETTINGS = "+h1990dp"
+        const val WHOLE_SETTINGS_FS115 = "+h2015dp"
+        const val WHOLE_SETTINGS_FS200 = "+h2589dp"
         const val CONFIG = "設定檔"
     }
 }

@@ -35,7 +35,10 @@ interface ReportExporter {
  * did there, or [notOpened] when it could not open, so the zip goes; a zip neither is called for goes at the next start.
  */
 class ReportShare internal constructor(val intent: Intent, private val zip: ReportZip, private val reports: ReportExport) {
-    val issueLink: String? get() = zip.issueLink
+    val issueLink: String get() = zip.issueLink
+
+    /** Whether the zip is still there to share; read on the export's dispatcher. */
+    suspend fun present(): Boolean = reports.present(zip)
 
     fun returned() = reports.returned(zip)
 

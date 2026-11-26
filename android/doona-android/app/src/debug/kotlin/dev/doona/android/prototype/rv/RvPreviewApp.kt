@@ -39,9 +39,11 @@ import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.designsystem.rv.RvPullDown
 import dev.doona.android.designsystem.rv.RvPullLook
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.accented
 import dev.doona.android.designsystem.rv.rememberRvPullState
 import dev.doona.android.designsystem.rv.rvEverySample
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.designsystem.rv.rvSystemSchemes
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.NOT_WIRED
@@ -62,6 +64,17 @@ import dev.doona.android.feature.nodes.ui.RvRowActions
 import dev.doona.android.feature.onboarding.RvWelcome
 import dev.doona.android.feature.perapp.RvPerAppScreen
 import dev.doona.android.feature.perapp.RvSave
+import dev.doona.android.feature.settings.RvDnsScreen
+import dev.doona.android.feature.settings.RvLanguageScreen
+import dev.doona.android.feature.settings.RvLicenseText
+import dev.doona.android.feature.settings.RvLicensesScreen
+import dev.doona.android.feature.settings.RvSettingsLoading
+import dev.doona.android.feature.settings.RvSettingsRoutes
+import dev.doona.android.feature.settings.RvThemeScreen
+import dev.doona.android.feature.settings.isDark
+import dev.doona.android.feature.settings.rvLicenseEntries
+import dev.doona.android.feature.settings.rvSystemLanguage
+import dev.doona.android.feature.settings.shownAccent
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
 import dev.doona.android.prototype.rv.connections.RvConnectionsPage
 import dev.doona.android.prototype.rv.connections.RvConnectionsRoutes
@@ -73,26 +86,17 @@ import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyPreview
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewRoutes
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewState
-import dev.doona.android.prototype.rv.settings.RvDnsScreen
-import dev.doona.android.prototype.rv.settings.RvLanguageScreen
-import dev.doona.android.prototype.rv.settings.RvLicenseText
-import dev.doona.android.prototype.rv.settings.RvLicensesScreen
+import dev.doona.android.prototype.rv.settings.RV_SAMPLE_THEME_PREVIEW
 import dev.doona.android.prototype.rv.settings.RvReportSample
 import dev.doona.android.prototype.rv.settings.RvSettingsPreview
 import dev.doona.android.prototype.rv.settings.RvSettingsPreviewRoutes
-import dev.doona.android.prototype.rv.settings.RvSettingsRoutes
-import dev.doona.android.prototype.rv.settings.RvSettingsScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
-import dev.doona.android.prototype.rv.settings.RvThemeScreen
-import dev.doona.android.prototype.rv.settings.previewDark
-import dev.doona.android.prototype.rv.settings.rvLicenseEntries
 import dev.doona.android.prototype.rv.settings.rvPerAppActions
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
 import dev.doona.android.prototype.rv.settings.rvQuickTile
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
-import dev.doona.android.prototype.rv.settings.rvSystemLanguage
+import dev.doona.android.prototype.rv.settings.rvSettingsRoutes
 import dev.doona.android.prototype.rv.settings.rvUpdateSample
-import dev.doona.android.prototype.rv.settings.scheme
 import dev.doona.android.prototype.rv.settings.withApp
 import dev.doona.android.prototype.rv.settings.withPolicy
 import dev.doona.android.prototype.rv.states.RvPermission
@@ -161,8 +165,8 @@ internal fun RvPreviewApp(options: RvMotionOptions = RvMotionOptions(), start: R
     // (API 35 and later) runs the app at its normal rate, 60 Hz. Ambient loops vote normal where they run (RvBusy, the
     // map's pulse); a frame where nothing moves votes nothing.
     Box(Modifier.fillMaxSize().preferredFrameRate(FrameRateCategory.High), propagateMinConstraints = true) {
-        RvLookFade(settings.appearance.previewDark(systemDark) to settings.appearance) { (dark, appearance) ->
-            RvTheme(appearance.scheme(rvSystemScheme(dark), dark), dark) {
+        RvLookFade(settings.appearance.isDark(systemDark) to settings.appearance) { (dark, appearance) ->
+            RvTheme(rvSystemScheme(dark).accented(appearance.shownAccent, dark), dark) {
                 RvSample(options, start, settings) { settings = it }
             }
         }
@@ -251,9 +255,10 @@ private fun RvSamplePage(
 
         SETTINGS -> SettingsPage(settings, onSettings, pages, route.substringAfter(':', ""))
 
-        THEME -> RvThemeScreen(settings.appearance, { onSettings(settings.copy(appearance = it)) }, rvSystemScheme(false), rvSystemScheme(true), onBack = pages.pop)
+        THEME -> RvThemeScreen(settings.appearance, { onSettings(settings.copy(appearance = it)) }, rvSystemSchemes(), RV_SAMPLE_THEME_PREVIEW, onBack = pages.pop)
 
-        DNS -> RvDnsScreen(settings.dns, { onSettings(settings.copy(dns = it)) }, onBack = pages.pop)
+        // The sandbox has no core to check typed servers, so 自訂 does nothing here.
+        DNS -> RvDnsScreen(settings.dns, { onSettings(settings.copy(dns = it)) }, onBack = pages.pop, onCustom = {})
 
         PERAPP, LICENSES, LICENSE -> AboutAppsPage(route, settings, onSettings, pages)
 
@@ -299,18 +304,21 @@ private fun SettingsPage(settings: RvSettingsState, onSettings: (RvSettingsState
     val context = LocalContext.current
     val tile = rvQuickTile(settings, onSettings)
     val update = rvUpdateSample(outcome)
-    val routes = RvSettingsRoutes(
+    val routes = rvSettingsRoutes(
         alwaysOn = { context.startActivity(Intent(Settings.ACTION_VPN_SETTINGS)) },
         addTile = tile.add,
         perApp = { pages.push(PERAPP) },
         dns = { pages.push(DNS) },
         effectiveConfig = { pages.push(RvPolicyPreviewRoutes.EFFECTIVE) },
         report = { pages.push(REPORT) },
+        logLevel = { pages.push(RvSettingsPreviewRoutes.LOG_LEVEL) },
         about = { pages.push(RvSettingsPreviewRoutes.ABOUT) },
         checkUpdate = update.check,
         language = { pages.push(RvSettingsPreviewRoutes.LANGUAGE) },
     )
-    RvSettingsScreenSample(settings.copy(tileAdded = tile.added ?: false, tileKnown = tile.added != null), onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab, routes = routes, update = update.update)
+    // Until the tile store answers only the page's background shows, so no row is inserted into a card already drawn.
+    val added = tile.added ?: return RvSettingsLoading()
+    RvSettingsScreenSample(settings.copy(tileAdded = added), onChange = onSettings, onOpenTheme = { pages.push(THEME) }, onTab = pages.tab, routes = routes, update = update.update)
 }
 
 /** 設定's 依 App, and 授權條款 with each licence's text (`license:<n>`). */

@@ -128,7 +128,7 @@ class SubscriptionRefreshTest {
     }
 
     private class TestSettings : SubscriptionUpdateSettings {
-        override val subscriptionUpdate = MutableStateFlow(SubscriptionUpdate(true, UpdateInterval.Twelve))
+        override val subscriptionUpdate = MutableStateFlow(SubscriptionUpdate(true, UpdateInterval.DEFAULT))
 
         override suspend fun setAutoUpdate(enabled: Boolean) {
             subscriptionUpdate.value = subscriptionUpdate.value.copy(enabled = enabled)

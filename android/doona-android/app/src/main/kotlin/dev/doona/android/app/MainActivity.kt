@@ -68,8 +68,9 @@ class MainActivity : ComponentActivity() {
         val version = versionName()
         val localNetwork = LocalNetworkHost(container.localNetwork, ::requestLocalNetwork, ::openAppSettings)
         val lanAsking = container.localNetwork.prompt.map { it != null }
+        val settings = AppSettings.get(this)
         setContent {
-            AppTheme {
+            AppTheme(settings) {
                 DoonaApp(
                     container.uiEngine,
                     container.installedApps,

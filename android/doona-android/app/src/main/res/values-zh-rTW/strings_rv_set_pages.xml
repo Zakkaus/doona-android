@@ -8,7 +8,7 @@
     <string name="rv_update_latest">已是最新</string>
     <string name="rv_update_new">有新版本 %1$s</string>
     <string name="rv_update_new_reason">目前版本 %1$s。</string>
-    <string name="rv_update_view">檢視 GitHub 發布頁</string>
+    <string name="rv_update_view">在 GitHub 檢視</string>
     <string name="rv_update_failed">無法檢查更新</string>
 
     <string name="rv_settings_geodata">GeoIP/GeoSite</string>
@@ -48,7 +48,7 @@
     <string name="rv_redact_apps">App 名稱</string>
     <string name="rv_redact_apps_sub">每條連線所屬的 App</string>
     <string name="rv_redact_footer">遮蔽越多，問題越可能無法解答。回報不含訂閱網址與 Token。</string>
-    <string name="rv_report_github">回報到 GitHub</string>
+    <string name="rv_report_github">在 GitHub 回報</string>
     <string name="rv_report_share">分享檔案</string>
     <string name="rv_report_building">正在建立診斷報告…</string>
 </resources>

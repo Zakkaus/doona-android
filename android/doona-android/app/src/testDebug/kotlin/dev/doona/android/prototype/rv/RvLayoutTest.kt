@@ -13,6 +13,7 @@ import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.model.RvDnsUpstream
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvPolicyState
@@ -24,6 +25,17 @@ import dev.doona.android.feature.nodes.RvNodesPage
 import dev.doona.android.feature.perapp.RvPerAppScreen
 import dev.doona.android.feature.policies.RvRulesPage
 import dev.doona.android.feature.policies.RvTemplateImpactPage
+import dev.doona.android.feature.report.RvRedaction
+import dev.doona.android.feature.report.RvReportBuild
+import dev.doona.android.feature.report.RvReportScreen
+import dev.doona.android.feature.settings.RvAboutScreen
+import dev.doona.android.feature.settings.RvDnsScreen
+import dev.doona.android.feature.settings.RvIntervalScreen
+import dev.doona.android.feature.settings.RvLicensesScreen
+import dev.doona.android.feature.settings.RvLogLevel
+import dev.doona.android.feature.settings.RvLogLevelScreen
+import dev.doona.android.feature.settings.RvThemeScreen
+import dev.doona.android.feature.settings.RvUpdate
 import dev.doona.android.prototype.rv.config.RvConfigHistoryData
 import dev.doona.android.prototype.rv.config.RvConfigImportPage
 import dev.doona.android.prototype.rv.connections.RvConnectionDetail
@@ -44,20 +56,12 @@ import dev.doona.android.prototype.rv.policy.RvRuleEditPage
 import dev.doona.android.prototype.rv.policy.RvServiceRulesPage
 import dev.doona.android.prototype.rv.policy.RvTemplateData
 import dev.doona.android.prototype.rv.policy.RvTemplatePageSample
-import dev.doona.android.prototype.rv.settings.RvAboutScreen
-import dev.doona.android.prototype.rv.settings.RvDnsScreen
-import dev.doona.android.prototype.rv.settings.RvIntervalScreen
-import dev.doona.android.prototype.rv.settings.RvLicensesScreen
-import dev.doona.android.prototype.rv.settings.RvLogLevel
-import dev.doona.android.prototype.rv.settings.RvLogLevelScreen
-import dev.doona.android.prototype.rv.settings.RvRedaction
-import dev.doona.android.prototype.rv.settings.RvReportBuild
-import dev.doona.android.prototype.rv.settings.RvReportScreen
+import dev.doona.android.prototype.rv.settings.RV_SAMPLE_THEME_PREVIEW
 import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
-import dev.doona.android.prototype.rv.settings.RvThemeScreen
-import dev.doona.android.prototype.rv.settings.RvUpdate
+import dev.doona.android.prototype.rv.settings.rvAboutRoutes
 import dev.doona.android.prototype.rv.settings.rvPerAppActions
 import dev.doona.android.prototype.rv.settings.rvPerAppSample
+import dev.doona.android.prototype.rv.settings.rvReportActions
 import dev.doona.android.prototype.rv.settings.rvSampleAppearance
 import dev.doona.android.prototype.rv.settings.rvSampleReport
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
@@ -180,11 +184,11 @@ class RvLayoutTest {
 
     @Test
     fun theme() = measure("settings-theme", Top.Title) {
-        RvThemeScreen(rvSampleAppearance(), onChange = {}, light = seedColorScheme(Seed.Cyan.argb, false), dark = seedColorScheme(Seed.Cyan.argb, true), onBack = {})
+        RvThemeScreen(rvSampleAppearance(), onChange = {}, schemes = seedSchemes(), previewPage = RV_SAMPLE_THEME_PREVIEW, onBack = {})
     }
 
     @Test
-    fun dns() = measure("settings-dns", Top.Title) { RvDnsScreen(RvDnsUpstream.Cloudflare, onSelect = {}, onBack = {}) }
+    fun dns() = measure("settings-dns", Top.Title) { RvDnsScreen(RvDnsUpstream.Cloudflare, onSelect = {}, onBack = {}, onCustom = {}) }
 
     @Test
     fun connections() = measure("connections", Top.Tab) { RvConnectionsPage(RvPolicyData.connections) }
@@ -207,7 +211,7 @@ class RvLayoutTest {
     // Every page 設定 opens keeps the one pushed header: the title where DNS and the licences have it (owner-fix2 item 2).
     // Not 語言: its 简体中文 row is 60 dp, since Noto Sans TC has no 简 and the row falls back to a taller face.
     @Test
-    fun about() = measure("settings-about", Top.Title) { RvAboutScreen(rvSampleVersions, onBack = {}) }
+    fun about() = measure("settings-about", Top.Title) { RvAboutScreen(rvSampleVersions, onBack = {}, routes = rvAboutRoutes()) }
 
     /** 設定 with a failed update check: the banner under the hero, a section's gap above and below it (owner-fix2 item 18). */
     @Test
@@ -216,7 +220,7 @@ class RvLayoutTest {
     }
 
     @Test
-    fun interval() = measure("settings-interval", Top.Title) { RvIntervalScreen(RvData.UPDATE_HOURS, onSelect = {}, onBack = {}) }
+    fun interval() = measure("settings-interval", Top.Title) { RvIntervalScreen(RvData.UPDATE_HOURS, RvData.UPDATE_INTERVALS, onSelect = {}, onBack = {}, onCustom = NOT_WIRED) }
 
     @Test
     fun logLevel() = measure("settings-log-level", Top.Title) { RvLogLevelScreen(RvLogLevel.Info, onSelect = {}, onBack = {}) }
@@ -226,12 +230,12 @@ class RvLayoutTest {
 
     @Test
     fun report() = measure("report", Top.Title) {
-        RvReportScreen(RvReportBuild.Ready(RvRedaction()), rvSampleReport, RvRedaction(), onRedaction = {}, onBack = {})
+        RvReportScreen(RvReportBuild.Ready(RvRedaction()), rvSampleReport, RvRedaction(), onRedaction = {}, onBack = {}, actions = rvReportActions())
     }
 
     @Test
     fun reportFailed() = measure("report-failed", Top.Title) {
-        RvReportScreen(RvReportBuild.Failed, rvSampleReport, RvRedaction(), onRedaction = {}, onBack = {})
+        RvReportScreen(RvReportBuild.Failed, rvSampleReport, RvRedaction(), onRedaction = {}, onBack = {}, actions = rvReportActions())
     }
 
     private fun measure(page: String, top: Top, content: @Composable () -> Unit) {

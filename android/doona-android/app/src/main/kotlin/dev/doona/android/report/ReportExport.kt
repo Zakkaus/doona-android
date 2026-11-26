@@ -30,9 +30,10 @@ data class ExportedCrashes(val names: List<String>, val mark: Long)
 
 /**
  * A report written and ready to share: the zip at [file], the export's [token], which its share sheet's callback
- * carries, and the crash files a pick in that sheet clears ([crashes]; none without the core's listing).
+ * carries, the crash files a pick in that sheet clears ([crashes]; none without the core's listing), and the new-issue
+ * form on GitHub ([issueLink]: with the failure when there is one, else with the app and phone alone).
  */
-data class ReportZip(val file: File, val token: String, val crashes: ExportedCrashes?, val issueLink: String?)
+data class ReportZip(val file: File, val token: String, val crashes: ExportedCrashes?, val issueLink: String)
 
 /**
  * The diagnostic report export: a zip in [outDir] of `report.json` ([reportJson]) and the crash files, which a share
@@ -109,6 +110,9 @@ class ReportExport(
             null
         }
     }
+
+    /** Whether [zip] is still on disk: the system may clear the app's cache while a report waits to be shared. */
+    suspend fun present(zip: ReportZip): Boolean = withContext(io) { zip.file.exists() }
 
     /** The share sheet for [zip] returned, whatever the user did there. The zip goes after [SHARE_GRACE_MS]. */
     fun returned(zip: ReportZip) {
@@ -203,7 +207,7 @@ class ReportExport(
         val issueLink = failure?.let {
             val coreVersion = ((diagnostics["core"] as? JsonObject)?.get("version") as? JsonPrimitive)?.content
             GitHubIssueLink.build(it, appInfo, coreVersion, events, scrubber)
-        }
+        } ?: GitHubIssueLink.plain(appInfo, scrubber)
         val zip = publishZip(STAMP.format(Instant.ofEpochMilli(at)), json, files)
         val token = UUID.randomUUID().toString()
         val cleared = listing?.let { l -> held.takeIf { it.isNotEmpty() }?.let { ExportedCrashes(it, l.crashMark) } }

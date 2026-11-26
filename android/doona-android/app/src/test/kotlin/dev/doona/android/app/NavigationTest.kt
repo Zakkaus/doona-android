@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.navigation3.runtime.NavKey
 import androidx.test.core.app.ApplicationProvider
@@ -81,11 +82,11 @@ class NavigationTest {
     @Test
     fun `the per-app row opens its page and back returns to the settings`() {
         compose.setContent { SeedTheme { DoonaApp(FakeEngine(), FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, SettingsKey)) } }
-        compose.onNodeWithText("Per-app").performClick()
+        compose.onNodeWithText("Per-app").performScrollTo().performClick()
         compose.onNodeWithText("Save").assertExists()
 
         compose.onNodeWithContentDescription("Back").performClick()
-        compose.onNodeWithText("Version").assertExists()
+        compose.onNodeWithText("Per-app").assertExists()
         compose.onNodeWithText("Save").assertDoesNotExist()
     }
 

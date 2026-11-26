@@ -22,6 +22,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvInfoContent
 import dev.doona.android.designsystem.rv.RvSheetLayout
 import dev.doona.android.feature.model.RvSettingsState
+import dev.doona.android.feature.settings.RvSettingsRoutes
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.assertWhole
@@ -88,17 +89,6 @@ class RvSettingsTileTest {
         compose.onNodeWithText(rvText(R.string.rv_settings_quick_tile)).assertDoesNotExist()
     }
 
-    /** The store answers later than the first frame: 連線 is not drawn before, so no row is inserted into a card that shows. */
-    @Test
-    fun theConnectionCardWaitsForTheStoreInsteadOfGainingARow() {
-        var state by mutableStateOf(rvSampleSettings().copy(tileAdded = true, tileKnown = false))
-        compose.rvContent(dark = false) { RvSettingsScreenSample(state, onChange = {}, onOpenTheme = {}) }
-        compose.onNodeWithText(rvText(R.string.rv_settings_always_on)).assertDoesNotExist()
-        state = state.copy(tileAdded = false, tileKnown = true)
-        compose.onNodeWithText(rvText(R.string.rv_settings_always_on)).assertExists()
-        compose.onNodeWithText(rvText(R.string.rv_settings_quick_tile)).assertExists()
-    }
-
     /** What `-tile` records, before and after the user dismissed the system's dialog. */
     @Test
     @Config(qualifiers = TILE_PAGE)
@@ -135,7 +125,7 @@ class RvSettingsTileTest {
     private fun answering(code: Int, start: RvSettingsState = rvSampleSettings().copy(tileAdded = false)): HostState {
         val host = HostState(start)
         compose.rvContent(dark = false) {
-            val routes = RvSettingsRoutes(addTile = { host.state = host.state.afterTileRequest(quickTileResult(code)) })
+            val routes = rvSettingsRoutes(addTile = { host.state = host.state.afterTileRequest(quickTileResult(code)) })
             RvSettingsScreenSample(host.state, onChange = { host.state = it }, onOpenTheme = {}, routes = routes)
         }
         return host
@@ -177,8 +167,8 @@ class RvSettingsTileTest {
          * ends 28 dp above the nav (28.5 where the page ends on a half dp).
          */
         const val LONG_PAGE = "+h1768dp"
-        const val TILE_PAGE = "+h1850dp"
-        const val TILE_PAGE_FS115 = "+h1905dp"
-        const val TILE_PAGE_FS200 = "+h2451dp"
+        const val TILE_PAGE = "+h1990dp"
+        const val TILE_PAGE_FS115 = "+h2045dp"
+        const val TILE_PAGE_FS200 = "+h2630dp"
     }
 }

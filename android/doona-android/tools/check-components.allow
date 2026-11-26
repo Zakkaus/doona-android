@@ -1,3 +1,2 @@
 # Existing exceptions of tools/check-components.sh: <file under app/src>|<rule>|<count>|<reason>
 # Measured 2026-11-25 on v1/p0a 8d01f08a: 21 hits. Each line goes once its page uses the library; do not add one for new work.
-debug/kotlin/dev/doona/android/prototype/rv/settings/RvThemePreview.kt|colour|3|the theme preview derives each accent's scheme from white and black, not from the live Rv.colors

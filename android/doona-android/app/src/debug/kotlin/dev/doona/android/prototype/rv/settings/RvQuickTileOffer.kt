@@ -18,7 +18,8 @@ internal class RvQuickTileOffer(val added: Boolean?, val add: () -> Unit)
  * 設定 with the app's real quick settings tile ([DoonaApplication]'s `QuickTile`): the row shows until the tile is
  * recorded as added, and 加到快速設定 asks the system on Android 13 and later, [settings] then following its answer
  * ([afterTileRequest]); on Android 12, which has no such request, it opens the sheet that tells how to add the tile by
- * hand. Outside the app (a preview) the state's own [RvSettingsState.tileAdded] stands and the row opens the sheet.
+ * hand. Outside the app (a preview) the state's own [RvSettingsState.tileAdded] stands and the row opens the sheet. In the
+ * app it is null until the store answers, and the page waits for it rather than insert the row later.
  */
 @Composable
 internal fun rvQuickTile(settings: RvSettingsState, onSettings: (RvSettingsState) -> Unit): RvQuickTileOffer {

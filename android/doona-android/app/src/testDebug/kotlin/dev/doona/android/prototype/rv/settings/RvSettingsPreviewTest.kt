@@ -21,12 +21,15 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.feature.settings.RV_DEBUG_HOURS
+import dev.doona.android.feature.settings.RvSettingsRoutes
 import dev.doona.android.prototype.rv.REPORT
 import dev.doona.android.prototype.rv.RvMotionOptions
 import dev.doona.android.prototype.rv.RvPreviewApp
 import dev.doona.android.prototype.rv.RvSampleStart
 import dev.doona.android.prototype.rv.SETTINGS
 import dev.doona.android.prototype.rv.Seed
+import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.rvAnimatorScale
 import dev.doona.android.prototype.rv.rvText
 import dev.doona.android.prototype.rv.seedColorScheme
@@ -78,7 +81,7 @@ class RvSettingsPreviewTest {
         compose.setContent {
             val sample = rvUpdateSample("new")
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
-                RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = RvSettingsRoutes(checkUpdate = sample.check), update = sample.update)
+                RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {}, routes = rvSettingsRoutes(checkUpdate = sample.check), update = sample.update)
             }
         }
         compose.mainClock.autoAdvance = false
@@ -107,7 +110,7 @@ class RvSettingsPreviewTest {
 
     @Test
     fun intervalChoosesAndGoesBack() {
-        val hours = RV_INTERVAL_HOURS.first()
+        val hours = RvData.UPDATE_INTERVALS.first()
         val row = RuntimeEnvironment.getApplication().resources.getQuantityString(R.plurals.rv_interval_hours, hours, hours)
         choosesAndGoesBack(RvSettingsPreviewRoutes.INTERVAL, R.string.rv_settings_update_interval, row)
     }

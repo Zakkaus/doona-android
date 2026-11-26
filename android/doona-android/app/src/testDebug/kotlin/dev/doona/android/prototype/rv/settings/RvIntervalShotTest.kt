@@ -7,6 +7,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.feature.NOT_WIRED
+import dev.doona.android.feature.settings.RvIntervalScreen
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed
@@ -47,7 +49,7 @@ class RvIntervalShotTest {
         val picked = mutableListOf<Int>()
         var custom = 0
         compose.setContent {
-            RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { RvIntervalScreen(RvData.UPDATE_HOURS, { picked += it }, onBack = {}, onCustom = { custom++ }) }
+            RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { RvIntervalScreen(RvData.UPDATE_HOURS, RvData.UPDATE_INTERVALS, { picked += it }, onBack = {}, onCustom = { custom++ }) }
         }
         compose.onNodeWithText(hours(RvData.UPDATE_HOURS)).assertIsSelected()
         compose.onNodeWithText(hours(1)).performClick()
@@ -62,9 +64,9 @@ class RvIntervalShotTest {
     @Test
     fun theRowsAreOneRadioGroup() {
         compose.setContent { RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { Page() } }
-        compose.assertOneRadioGroup(RV_INTERVAL_HOURS.size)
+        compose.assertOneRadioGroup(RvData.UPDATE_INTERVALS.size)
     }
 
     @Composable
-    private fun Page() = RvIntervalScreen(RvData.UPDATE_HOURS, onSelect = {}, onBack = {})
+    private fun Page() = RvIntervalScreen(RvData.UPDATE_HOURS, RvData.UPDATE_INTERVALS, onSelect = {}, onBack = {}, onCustom = NOT_WIRED)
 }

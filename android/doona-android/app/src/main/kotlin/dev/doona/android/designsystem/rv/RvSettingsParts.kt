@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,6 +42,24 @@ internal fun RvSettingsText(
 ) {
     RvSpanText(scripted(text), style.copy(color = color, textAlign = align), modifier, maxLines, TextOverflow.Ellipsis)
 }
+
+/**
+ * A settings page's body: its section titles, cards and footnotes on [RvSettingsSpace.margin] from each side. A
+ * [RvFootnote] in it takes that margin off its own inset, so a page never passes one.
+ */
+@Composable
+internal fun RvSettingsColumn(
+    modifier: Modifier = Modifier,
+    verticalArrangement: Arrangement.Vertical = Arrangement.Top,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    CompositionLocalProvider(LocalRvColumnInset provides RvSettingsSpace.margin) {
+        Column(modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin), verticalArrangement, content = content)
+    }
+}
+
+/** How far the column a part sits in is already inset from the page's edge: [RvSettingsColumn]'s margin, else none. */
+internal val LocalRvColumnInset = staticCompositionLocalOf { RvSpace.none }
 
 /** A settings group card: the library's card, 20 dp round as every card (N-06), rows edge to edge, no divider or shadow. */
 @Composable

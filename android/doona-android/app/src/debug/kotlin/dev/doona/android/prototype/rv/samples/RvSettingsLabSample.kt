@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -55,16 +56,15 @@ import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvGeoData
 import dev.doona.android.feature.model.RvPerApp
 import dev.doona.android.feature.model.RvSettingsState
-import dev.doona.android.prototype.rv.settings.RV_SAMPLE_GEO_SHIPPED_MS
-import dev.doona.android.prototype.rv.settings.RvAboutEntry
-import dev.doona.android.prototype.rv.settings.RvGeoDataRow
-import dev.doona.android.prototype.rv.settings.RvSettingsRoutes
-import dev.doona.android.prototype.rv.settings.RvUpdate
-import dev.doona.android.prototype.rv.settings.RvUpdateRow
+import dev.doona.android.feature.settings.RvAboutEntry
+import dev.doona.android.feature.settings.RvGeoDataRow
+import dev.doona.android.feature.settings.RvUpdate
+import dev.doona.android.feature.settings.RvUpdateRow
+import dev.doona.android.feature.settings.rvUpdateActionLabel
+import dev.doona.android.feature.settings.rvUpdateLabel
+import dev.doona.android.feature.settings.rvUpdateNotice
+import dev.doona.android.prototype.rv.settings.RV_SAMPLE_GEO_SHIPPED
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
-import dev.doona.android.prototype.rv.settings.rvUpdateActionLabel
-import dev.doona.android.prototype.rv.settings.rvUpdateLabel
-import dev.doona.android.prototype.rv.settings.rvUpdateNotice
 
 /**
  * 設定 as [dev.doona.android.prototype.rv.settings.RvSettingsScreen] draws it, with one row more: 實驗室, a navigation row
@@ -80,7 +80,7 @@ internal fun RvSettingsLabSample(
     onTab: (Int) -> Unit = {},
     routes: RvSettingsRoutes = RvSettingsRoutes(),
     configRev: Int? = null,
-    geoData: RvGeoData = RvGeoData(RV_SAMPLE_GEO_SHIPPED_MS),
+    geoData: RvGeoData = RvGeoData(RV_SAMPLE_GEO_SHIPPED),
     update: RvUpdate = RvUpdate.Idle,
     onOpenLab: () -> Unit = {},
     lab: Boolean = true,
@@ -211,7 +211,7 @@ private fun SubscriptionGroup(state: RvSettingsState, onChange: (RvSettingsState
             stringResource(R.string.rv_settings_update_interval),
             R.drawable.rv_sym_schedule,
             NOT_WIRED,
-            stringResource(R.string.rv_settings_update_interval_value, state.updateHours),
+            pluralStringResource(R.plurals.rv_interval_hours, state.updateHours, state.updateHours),
         )
     }
 }
@@ -233,7 +233,7 @@ private fun AppearanceGroup(state: RvSettingsState, onOpenTheme: () -> Unit, onO
 private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes, configRev: Int?) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_advanced))
     RvSettingsCard {
-        RvSettingsNavRow(stringResource(R.string.rv_settings_dns), R.drawable.rv_sym_dns, routes.dns, stringResource(state.dns.label))
+        RvSettingsNavRow(stringResource(R.string.rv_settings_dns), R.drawable.rv_sym_dns, routes.dns, stringResource(state.dns?.label ?: R.string.rv_settings_dns_custom))
         RvSettingsNavRow(stringResource(R.string.rv_report_title), R.drawable.rv_sym_ios_share, routes.report)
         if (configRev != null) {
             RvSettingsNavRow(stringResource(R.string.rv_config_title), R.drawable.rv_sym_edit, routes.config, stringResource(R.string.rv_config_revision, configRev))
@@ -246,8 +246,8 @@ private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes, conf
 @Composable
 private fun perAppValue(perApp: RvPerApp): String = when (perApp.policy) {
     RvAppPolicy.All -> stringResource(R.string.perapp_policy_all)
-    RvAppPolicy.Only -> stringResource(R.string.rv_settings_per_app_value, perApp.packages.size)
-    RvAppPolicy.Except -> stringResource(R.string.rv_settings_per_app_except, perApp.packages.size)
+    RvAppPolicy.Only -> pluralStringResource(R.plurals.rv_settings_per_app_value, perApp.packages.size, perApp.packages.size)
+    RvAppPolicy.Except -> pluralStringResource(R.plurals.rv_settings_per_app_except, perApp.packages.size, perApp.packages.size)
 }
 
 /** 更新 as the page has it ([dev.doona.android.prototype.rv.settings.RvUpdateGroup]), then, when [lab], 實驗室 in the same card. */

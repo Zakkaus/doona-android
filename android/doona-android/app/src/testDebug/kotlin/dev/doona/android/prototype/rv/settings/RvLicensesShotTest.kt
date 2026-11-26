@@ -6,6 +6,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.feature.settings.RvLicenseText
+import dev.doona.android.feature.settings.RvLicenses
+import dev.doona.android.feature.settings.RvLicensesScreen
+import dev.doona.android.feature.settings.rvBrandMarks
+import dev.doona.android.feature.settings.rvParagraphs
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed

@@ -225,7 +225,7 @@ private fun UpdatesCard(userAgent: String?, autoUpdate: RvAutoUpdate, onAutoUpda
 
                 RvAutoUpdate.Off -> stringResource(R.string.ui_off)
 
-                is RvAutoUpdate.Every -> stringResource(R.string.rv_settings_update_interval_value, autoUpdate.hours)
+                is RvAutoUpdate.Every -> pluralStringResource(R.plurals.rv_interval_hours, autoUpdate.hours, autoUpdate.hours)
             },
             onClick = onAutoUpdate,
         ) { RvChevron() }

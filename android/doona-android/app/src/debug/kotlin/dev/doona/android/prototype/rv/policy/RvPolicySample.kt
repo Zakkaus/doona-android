@@ -56,7 +56,7 @@ internal fun rvSampleEffectiveConfig(settings: RvSettingsState) = RvEffectiveCon
     rules = RvPolicyData.allRules,
     source = RvRuleSource.Template(RvTemplateData.cnDirect),
     subscriptions = RvData.subscriptions,
-    dns = listOf(settings.dns.address),
+    dns = listOfNotNull(settings.dns?.address),
     dnsVia = RvLabel.Res(R.string.rv_main_node),
     proxiedApps = settings.proxiedApps,
 )

@@ -27,6 +27,10 @@ import dev.doona.android.designsystem.rv.RvControlSize
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.feature.report.RvRedaction
+import dev.doona.android.feature.report.RvReportActions
+import dev.doona.android.feature.report.RvReportBuild
+import dev.doona.android.feature.report.RvReportScreen
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Seed
@@ -116,7 +120,7 @@ class RvReportShotTest {
     fun eachSwitchTurnsItsRedactionAndTheActionsRun() {
         val redaction = mutableStateOf(RvRedaction())
         val ran = mutableListOf<String>()
-        val actions = RvReportActions(github = { ran += "github" }, share = { ran += "share" })
+        val actions = rvReportActions(github = { ran += "github" }, share = { ran += "share" })
         compose.setContent { Themed { RvReportScreen(RvReportBuild.Ready(redaction.value), rvSampleReport, redaction.value, { redaction.value = it }, onBack = {}, actions = actions) } }
         for (id in listOf(R.string.rv_redact_ip, R.string.rv_redact_nodes, R.string.rv_redact_domains, R.string.rv_redact_apps)) {
             compose.onNodeWithText(rvText(id)).performSemanticsAction(SemanticsActions.OnClick)
@@ -203,7 +207,7 @@ class RvReportShotTest {
         val redaction = mutableStateOf(RvRedaction())
         val build = mutableStateOf<RvReportBuild>(RvReportBuild.Ready(RvRedaction()))
         val ran = mutableListOf<String>()
-        val actions = RvReportActions(github = { ran += "github" }, share = { ran += "share" })
+        val actions = rvReportActions(github = { ran += "github" }, share = { ran += "share" })
         compose.setContent { Themed { RvReportScreen(build.value, rvSampleReport, redaction.value, { redaction.value = it }, onBack = {}, actions = actions) } }
         compose.onNodeWithText(rvText(R.string.rv_redact_ip)).performClick()
         compose.onNodeWithText(rvText(R.string.rv_report_building)).assertExists()
@@ -222,7 +226,7 @@ class RvReportShotTest {
     fun theActionsWaitForTheReport() {
         val build = mutableStateOf<RvReportBuild>(RvReportBuild.Building)
         val ran = mutableListOf<String>()
-        val actions = RvReportActions(github = { ran += "github" }, share = { ran += "share" })
+        val actions = rvReportActions(github = { ran += "github" }, share = { ran += "share" })
         compose.setContent { Themed { RvReportScreen(build.value, rvSampleReport, RvRedaction(), {}, onBack = {}, actions = actions) } }
         for (state in listOf(RvReportBuild.Building, RvReportBuild.Failed)) {
             build.value = state
@@ -238,7 +242,7 @@ class RvReportShotTest {
     fun aFailedBuildIsToldAndRetried() {
         var retries = 0
         compose.setContent {
-            Themed { RvReportScreen(RvReportBuild.Failed, rvSampleReport, RvRedaction(), {}, onBack = {}, actions = RvReportActions(retry = { retries++ })) }
+            Themed { RvReportScreen(RvReportBuild.Failed, rvSampleReport, RvRedaction(), {}, onBack = {}, actions = rvReportActions(retry = { retries++ })) }
         }
         compose.onNodeWithText(rvText(R.string.rv_report_failed)).assertExists()
         compose.onNodeWithText(rvText(R.string.rv_retry)).performClick()
@@ -251,7 +255,7 @@ class RvReportShotTest {
     }
 
     @Composable
-    private fun Page(build: RvReportBuild) = RvReportScreen(build, rvSampleReport, RvRedaction(), onRedaction = {}, onBack = {})
+    private fun Page(build: RvReportBuild) = RvReportScreen(build, rvSampleReport, RvRedaction(), onRedaction = {}, onBack = {}, actions = rvReportActions())
 
     @Composable
     private fun Themed(content: @Composable () -> Unit) = RvTheme(seedColorScheme(Seed.Cyan.argb, false), false, content)

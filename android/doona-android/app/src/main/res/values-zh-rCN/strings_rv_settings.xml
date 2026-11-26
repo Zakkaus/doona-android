@@ -7,13 +7,14 @@
     <string name="rv_settings_group_connection">连接</string>
     <string name="rv_settings_notify_drop">断开连接时通知</string>
     <string name="rv_settings_per_app">按应用</string>
-    <string name="rv_settings_per_app_value">只代理 %1$d 个应用</string>
-    <string name="rv_settings_connection_footer">只有勾选的应用经由代理，其他应用和局域网地址直接连接。</string>
+    <plurals name="rv_settings_per_app_value">
+        <item quantity="other">只代理 %1$d 个应用</item>
+    </plurals>
+    <string name="rv_settings_connection_footer">只有选中的应用经由代理，其他应用和局域网地址直接连接。</string>
 
     <string name="rv_settings_group_subscription">订阅</string>
     <string name="rv_settings_auto_update">自动更新</string>
     <string name="rv_settings_update_interval">更新间隔</string>
-    <string name="rv_settings_update_interval_value">每 %1$d 小时</string>
 
     <string name="rv_settings_group_appearance">外观</string>
     <string name="rv_settings_theme">主题</string>
@@ -26,6 +27,10 @@
     <string name="rv_settings_log_level">日志级别</string>
 
     <string name="rv_settings_group_updates">更新</string>
+    <string name="rv_settings_lab">实验室</string>
+    <string name="rv_lab_performance">性能模式</string>
+    <string name="rv_lab_performance_sub">较耗电，速度较快</string>
+    <string name="rv_lab_footnote">这些选项可能变动或移除。</string>
     <string name="rv_settings_group_about">关于</string>
     <string name="rv_settings_version">版本</string>
     <string name="rv_settings_licenses">开源许可证</string>
@@ -52,10 +57,20 @@
     <string name="rv_settings_dns_custom">自定义</string>
     <string name="rv_settings_dns_custom_sub">输入地址</string>
     <string name="rv_settings_dns_footer">规则和全局模式下，DNS 查询经由主节点发出。</string>
+    <string name="rv_settings_dns_custom_title">自定义 DNS 服务器</string>
+    <string name="rv_settings_dns_custom_hint">最多 4 个 IPv4 或 IPv6 地址，以逗号分隔，例如 1.1.1.1、2606:4700:4700::1111</string>
+    <string name="rv_settings_dns_custom_invalid">请输入 1 到 4 个 IP 地址，例如 1.1.1.1 或 [2606:4700:4700::1111]:53</string>
+    <string name="rv_settings_interval_custom_title">自定义更新间隔</string>
+    <string name="rv_settings_interval_custom_hint">%1$d 到 %2$d 小时</string>
+    <string name="rv_settings_interval_custom_invalid">请输入 %1$d 到 %2$d 之间的整数</string>
 
     <string name="rv_report_title">报告问题</string>
     <string name="rv_report_failed">无法导出诊断报告</string>
     <string name="rv_report_failed_reason">doona 的内核没有响应。</string>
+    <string name="rv_report_link_failed">无法打开 GitHub</string>
+    <string name="rv_report_link_failed_reason">这台手机上没有应用能打开链接，请改用分享文件。</string>
+    <string name="rv_log_failed">无法更改日志级别</string>
+    <string name="rv_log_failed_reason">doona 的内核没有接受新的级别。</string>
     <string name="rv_log_error">错误</string>
     <string name="rv_log_warn">警告</string>
     <string name="rv_log_info">信息</string>
@@ -65,6 +80,9 @@
     <string name="rv_perapp_rebuild_failed">已保存，但 VPN 无法重新连接</string>
     <string name="rv_perapp_save_failed">无法保存</string>
     <string name="rv_perapp_saving">正在保存…</string>
-    <string name="rv_settings_per_app_except">不代理 %1$d 个应用</string>
+    <plurals name="rv_settings_per_app_except">
+        <item quantity="other">不代理 %1$d 个应用</item>
+    </plurals>
     <string name="rv_lab_restart_hint">重开应用后生效</string>
+    <string name="rv_lab_restart">重启应用</string>
 </resources>

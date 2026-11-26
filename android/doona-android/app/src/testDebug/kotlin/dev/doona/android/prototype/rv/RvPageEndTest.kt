@@ -29,6 +29,13 @@ import dev.doona.android.feature.nodes.RvNodeDetail
 import dev.doona.android.feature.nodes.RvNodesPage
 import dev.doona.android.feature.perapp.RvPerAppScreen
 import dev.doona.android.feature.policies.RvRulesPage
+import dev.doona.android.feature.report.RvRedaction
+import dev.doona.android.feature.report.RvReportBuild
+import dev.doona.android.feature.report.RvReportScreen
+import dev.doona.android.feature.settings.RvAboutScreen
+import dev.doona.android.feature.settings.RvLanguageScreen
+import dev.doona.android.feature.settings.RvLogLevel
+import dev.doona.android.feature.settings.RvLogLevelScreen
 import dev.doona.android.feature.subscriptions.RvSubDetailState
 import dev.doona.android.feature.subscriptions.RvSubsActions
 import dev.doona.android.feature.subscriptions.RvSubsPage
@@ -40,16 +47,11 @@ import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyGroupPage
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.policy.RvServiceRulesPage
-import dev.doona.android.prototype.rv.settings.RvAboutScreen
-import dev.doona.android.prototype.rv.settings.RvLanguageScreen
-import dev.doona.android.prototype.rv.settings.RvLogLevel
-import dev.doona.android.prototype.rv.settings.RvLogLevelScreen
-import dev.doona.android.prototype.rv.settings.RvRedaction
-import dev.doona.android.prototype.rv.settings.RvReportBuild
-import dev.doona.android.prototype.rv.settings.RvReportScreen
 import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
+import dev.doona.android.prototype.rv.settings.rvAboutRoutes
 import dev.doona.android.prototype.rv.settings.rvPerAppActions
 import dev.doona.android.prototype.rv.settings.rvPerAppLookSample
+import dev.doona.android.prototype.rv.settings.rvReportActions
 import dev.doona.android.prototype.rv.settings.rvSampleReport
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import dev.doona.android.prototype.rv.settings.rvSampleVersions
@@ -122,7 +124,7 @@ class RvPageEndTest {
             Page("節點") { RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {}) },
             Page("統計") { RvStatsScreenSample(rvStatsSample()) },
             Page("流量") { RvTrafficSample(rvSampleActivity(), RvData.session, onBack = {}) },
-            Page("關於") { RvAboutScreen(rvSampleVersions, onBack = {}) },
+            Page("關於") { RvAboutScreen(rvSampleVersions, onBack = {}, routes = rvAboutRoutes()) },
             Page("日誌等級") { RvLogLevelScreen(RvLogLevel.Info, onSelect = {}, onBack = {}) },
             Page("語言") { RvLanguageScreen(RvLanguage.TraditionalChinese, RvLanguage.TraditionalChinese, onSelect = {}, onBack = {}) },
             Page("新增服務規則") { RvServiceRulesPage(onBack = {}) },
@@ -136,7 +138,7 @@ class RvPageEndTest {
             Page("訂閱") { RvSubsPage(rvSubsStateSample(), RvSubsActions()) },
             Page("訂閱詳情") { RvSubDetailSample(RvData.subscriptions.first(), RvSubDetailState(), {}, onBack = {}, onUpdate = {}) },
             Page("依 App") { RvPerAppScreen(rvPerAppLookSample(""), rvPerAppActions(), onBack = {}) },
-            Page("回報問題") { RvReportScreen(RvReportBuild.Ready(RvRedaction()), rvSampleReport, RvRedaction(), {}, onBack = {}) },
+            Page("回報問題") { RvReportScreen(RvReportBuild.Ready(RvRedaction()), rvSampleReport, RvRedaction(), {}, onBack = {}, actions = rvReportActions()) },
             Page("規則") { RvRulesPage(RvPolicyData.allRules, emptyList(), editing = false, onBack = {}) },
             Page("策略群組") { RvPolicyGroupPage(RvPolicyData.streaming, onBack = {}, onSelect = {}, onTest = {}) },
         ),

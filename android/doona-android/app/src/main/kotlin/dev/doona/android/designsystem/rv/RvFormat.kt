@@ -5,6 +5,7 @@ import java.math.MathContext
 import java.math.RoundingMode
 import java.text.NumberFormat
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.chrono.IsoChronology
 import java.time.format.DateTimeFormatter
@@ -64,6 +65,9 @@ internal class RvFormat(val locale: Locale) {
     fun percent(fraction: Double): String = percents.format(fraction)
 
     fun date(epochMs: Long): String = dates.format(Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()))
+
+    /** A calendar [day], such as a release's, which is the same day in every time zone. */
+    fun date(day: LocalDate): String = dates.format(day)
 
     /** An end date: without its year when it falls within the year after [nowEpochMs], so the year is never ambiguous. */
     fun expiry(epochMs: Long, nowEpochMs: Long): String =

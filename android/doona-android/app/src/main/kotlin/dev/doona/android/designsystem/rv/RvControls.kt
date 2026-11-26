@@ -470,21 +470,19 @@ internal fun RvTextField(
 
 /**
  * The message under a field or a form's card: [text] in the row's 17 sp, on the card's content inset, [RvSpace.subGap]
- * under what it describes, in the error hue when it is an [error] (else in secondary ink), wrapping to two lines.
+ * under what it describes, in the error hue when it is an [error] (else in secondary ink), wrapping to as many lines as
+ * it needs: a message is never cut, since an ellipsis drops the why or the example (DNS 自訂's at fs200, 2026-11-26).
  * [RvTextField] sets its supporting and error text with it; a form whose choice cannot be saved says why with it under
  * that choice's card (依 App's 至少要勾選一個 App). [keepWords] false for a message that quotes a name ([RvText]'s).
  */
 @Composable
 internal fun RvFieldMessage(text: String, modifier: Modifier = Modifier, error: Boolean = true, keepWords: Boolean = true) {
     val pad = Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, top = RvSpace.subGap)
-    RvText(text, Rv.type.rowSub, modifier.then(pad), color = if (error) Rv.colors.error else Rv.colors.textSecondary, maxLines = MESSAGE_LINES, keepWords = keepWords)
+    RvText(text, Rv.type.rowSub, modifier.then(pad), color = if (error) Rv.colors.error else Rv.colors.textSecondary, maxLines = Int.MAX_VALUE, keepWords = keepWords)
 }
 
 /** What the user types, with every run of CJK set in Noto as [RvText] sets it; the text itself is unchanged. */
 private val RvScripted = VisualTransformation { TransformedText(scripted(it.text), OffsetMapping.Identity) }
-
-/** A field's supporting or error message wraps to at most this many lines. */
-private const val MESSAGE_LINES = 2
 
 /**
  * A tag chip on a card's header (`v0.2`), Revolut's tag chip (measured §8, [RvControlSize.tag]): full round, the pill's

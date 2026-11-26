@@ -10,8 +10,8 @@ import org.junit.Test
 class UpdateHoursTest {
     @Test
     fun `auto-update on gives its interval in hours, off gives none`() {
-        assertEquals(12, updateHoursOf(SubscriptionUpdate(enabled = true, UpdateInterval.Twelve)))
-        assertEquals(48, updateHoursOf(SubscriptionUpdate(enabled = true, UpdateInterval.FortyEight)))
-        assertNull(updateHoursOf(SubscriptionUpdate(enabled = false, UpdateInterval.Twelve)))
+        assertEquals(12, updateHoursOf(SubscriptionUpdate(enabled = true, UpdateInterval.ofHours(12))))
+        assertEquals(48, updateHoursOf(SubscriptionUpdate(enabled = true, UpdateInterval.ofHours(48))))
+        assertNull(updateHoursOf(SubscriptionUpdate(enabled = false, UpdateInterval.ofHours(12))))
     }
 }
