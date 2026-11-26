@@ -44,9 +44,9 @@ import dev.doona.android.designsystem.rv.RvSettingsNavRow
 import dev.doona.android.designsystem.rv.RvSettingsSection
 import dev.doona.android.designsystem.rv.RvSettingsSize
 import dev.doona.android.designsystem.rv.RvSettingsSpace
-import dev.doona.android.designsystem.rv.RvSettingsSwitchRow
 import dev.doona.android.designsystem.rv.RvSettingsText
 import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.rvActionRowFit
 import dev.doona.android.designsystem.rv.rvBarHeight
 import dev.doona.android.designsystem.rv.rvDotMap
@@ -196,7 +196,7 @@ private fun ConnectionGroup(state: RvSettingsState, onChange: (RvSettingsState) 
                 subtitle = stringResource(R.string.rv_settings_quick_tile_sub),
             )
         }
-        RvSettingsSwitchRow(stringResource(R.string.rv_settings_notify_drop), R.drawable.rv_settings_ic_notifications, state.notifyOnDrop, { onChange(state.copy(notifyOnDrop = it)) })
+        RvSwitchRow(R.drawable.rv_settings_ic_notifications, stringResource(R.string.rv_settings_notify_drop), state.notifyOnDrop, onChange = { onChange(state.copy(notifyOnDrop = it)) })
         RvSettingsNavRow(stringResource(R.string.rv_settings_per_app), R.drawable.rv_sym_apps, routes.perApp, perAppValue(state.perApp))
     }
     RvFootnote(stringResource(R.string.rv_settings_connection_footer), inset = RvSpace.gutter - RvSettingsSpace.margin)
@@ -206,7 +206,7 @@ private fun ConnectionGroup(state: RvSettingsState, onChange: (RvSettingsState) 
 private fun SubscriptionGroup(state: RvSettingsState, onChange: (RvSettingsState) -> Unit) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_subscription))
     RvSettingsCard {
-        RvSettingsSwitchRow(stringResource(R.string.rv_settings_auto_update), R.drawable.rv_sym_rss_feed, state.autoUpdate, { onChange(state.copy(autoUpdate = it)) })
+        RvSwitchRow(R.drawable.rv_sym_rss_feed, stringResource(R.string.rv_settings_auto_update), state.autoUpdate, onChange = { onChange(state.copy(autoUpdate = it)) })
         RvSettingsNavRow(
             stringResource(R.string.rv_settings_update_interval),
             R.drawable.rv_sym_schedule,

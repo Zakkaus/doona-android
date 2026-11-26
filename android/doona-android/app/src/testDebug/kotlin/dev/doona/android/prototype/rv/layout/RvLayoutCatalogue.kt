@@ -22,7 +22,6 @@ import dev.doona.android.designsystem.rv.RvSecondaryButton
 import dev.doona.android.designsystem.rv.RvSectionTitle
 import dev.doona.android.designsystem.rv.RvSettingsNavRow
 import dev.doona.android.designsystem.rv.RvSettingsRow
-import dev.doona.android.designsystem.rv.RvSettingsSwitchRow
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSwitchRow
@@ -83,8 +82,8 @@ internal fun RvLayoutCatalogue(w: RvCatalogueWords) {
             RvSettingsRow(w.wrapped, icon = R.drawable.rv_sym_rule, trailing = { RvChevron() })
             RvSettingsNavRow(w.title, R.drawable.rv_sym_rule, {}, subtitle = w.sub)
             RvSettingsNavRow(w.title, R.drawable.rv_sym_rule, {}, subtitle = w.longSub)
-            RvSettingsSwitchRow(w.one, R.drawable.rv_sym_rule, true, {})
-            RvSettingsSwitchRow(w.title, R.drawable.rv_sym_rule, false, {}, subtitle = w.longSub)
+            RvSwitchRow(R.drawable.rv_sym_rule, w.one, true, onChange = {})
+            RvSwitchRow(R.drawable.rv_sym_rule, w.title, false, w.longSub, onChange = {})
             RvSettingsRow(w.title, icon = R.drawable.rv_sym_rule, subtitle = w.sub, action = { RvSecondaryButton(w.button, {}) })
             RvSettingsRow(w.one, icon = R.drawable.rv_sym_rule, action = { RvSecondaryButton(w.button, {}) })
         }

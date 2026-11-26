@@ -30,7 +30,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -575,9 +574,24 @@ internal fun RvSwitch(checked: Boolean, modifier: Modifier = Modifier) {
 
 /** A card row whose whole width toggles its switch: [icon]'s disc, [title] over an optional [subtitle], the switch at the end. */
 @Composable
-internal fun RvSwitchRow(@DrawableRes icon: Int, title: String, checked: Boolean, subtitle: String? = null, onChange: (Boolean) -> Unit) {
-    val toggle = Modifier.toggleable(checked, interactionSource = null, indication = rvRowIndication(), role = Role.Switch, onValueChange = onChange)
-    RvRow({ RvIconDisc(icon) }, title, subtitle, toggle, endFirstLine = true) { RvSwitch(checked) }
+internal fun RvSwitchRow(@DrawableRes icon: Int, title: String, checked: Boolean, subtitle: String? = null, onChange: (Boolean) -> Unit) =
+    RvSwitchRow({ RvIconDisc(icon) }, title, checked, subtitle, onChange = onChange)
+
+/**
+ * [RvSwitchRow] with its own [leading] visual (an app's icon); [titleKeepWords] and [subtitleKeepWords] are [RvRow]'s,
+ * false for a name or an identifier (an app's label and package).
+ */
+@Composable
+internal fun RvSwitchRow(
+    leading: @Composable () -> Unit,
+    title: String,
+    checked: Boolean,
+    subtitle: String? = null,
+    titleKeepWords: Boolean = true,
+    subtitleKeepWords: Boolean = true,
+    onChange: (Boolean) -> Unit,
+) {
+    RvRow(leading, title, subtitle, Modifier.rvRowToggle(checked, onChange), titleKeepWords = titleKeepWords, subtitleKeepWords = subtitleKeepWords, endFirstLine = true) { RvSwitch(checked) }
 }
 
 /** A radio: a 2 dp ring in [RvColors.control], in the accent with a dot inside once selected. */

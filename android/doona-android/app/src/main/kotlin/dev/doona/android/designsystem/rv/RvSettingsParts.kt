@@ -244,13 +244,6 @@ internal fun RvNavEnd(mark: (@Composable () -> Unit)?) {
     }
 }
 
-/** A row whose whole width toggles its switch. */
-@Composable
-internal fun RvSettingsSwitchRow(title: String, @DrawableRes icon: Int, checked: Boolean, onChange: (Boolean) -> Unit, subtitle: String? = null) {
-    val toggle = Modifier.rvRowToggle(checked, onChange)
-    RvSettingsRow(title, toggle, icon, subtitle) { RvSwitch(checked) }
-}
-
 /**
  * A settings card holding a radio list ([RvSettingsRadioRow]): one group of choices, so a screen reader tells each row's
  * place among the choices.

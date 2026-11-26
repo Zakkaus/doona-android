@@ -39,8 +39,7 @@ import dev.doona.android.designsystem.rv.RvSkeletonCard
 import dev.doona.android.designsystem.rv.RvSkeletonFade
 import dev.doona.android.designsystem.rv.RvSkeletonRow
 import dev.doona.android.designsystem.rv.RvSpace
-import dev.doona.android.designsystem.rv.RvSwitch
-import dev.doona.android.designsystem.rv.rvRowToggle
+import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
 import dev.doona.android.feature.FailureFix
 import dev.doona.android.feature.model.RvAppPolicy
@@ -182,8 +181,7 @@ private fun Apps(state: RvPerAppState, actions: RvPerAppActions, app: @Composabl
  */
 @Composable
 private fun SwitchRow(app: RvApp, checked: Boolean, onToggle: (Boolean) -> Unit) {
-    val toggle = Modifier.rvRowToggle(checked, onToggle)
-    RvRow({ RvAppDisc(app.packageName) }, app.label, app.packageName, toggle, titleKeepWords = false, subtitleKeepWords = false, endFirstLine = true) { RvSwitch(checked) }
+    RvSwitchRow({ RvAppDisc(app.packageName) }, app.label, checked, app.packageName, titleKeepWords = false, subtitleKeepWords = false, onChange = onToggle)
 }
 
 /** Something under way: the sync glyph's disc and the busy bar where a row's end stands, as an export under way. */

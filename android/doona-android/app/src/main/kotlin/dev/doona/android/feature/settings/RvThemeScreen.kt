@@ -56,10 +56,10 @@ import dev.doona.android.designsystem.rv.RvSettingsColumn
 import dev.doona.android.designsystem.rv.RvSettingsSection
 import dev.doona.android.designsystem.rv.RvSettingsSize
 import dev.doona.android.designsystem.rv.RvSettingsSpace
-import dev.doona.android.designsystem.rv.RvSettingsSwitchRow
 import dev.doona.android.designsystem.rv.RvSettingsText
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.primary
 import dev.doona.android.designsystem.rv.rvPressSelect
@@ -162,12 +162,7 @@ private fun DrawScope.page(colors: RvColors) {
 @Composable
 private fun AccentCard(appearance: RvAppearance, own: Color, onChange: (RvAppearance) -> Unit) {
     RvSettingsCard {
-        RvSettingsSwitchRow(
-            stringResource(R.string.rv_settings_follow_wallpaper),
-            R.drawable.rv_sym_image,
-            appearance.followWallpaper,
-            { onChange(appearance.copy(followWallpaper = it)) },
-        )
+        RvSwitchRow(R.drawable.rv_sym_image, stringResource(R.string.rv_settings_follow_wallpaper), appearance.followWallpaper, onChange = { onChange(appearance.copy(followWallpaper = it)) })
         val enabled = !appearance.followWallpaper
         Row(
             Modifier

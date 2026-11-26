@@ -16,7 +16,7 @@ import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSettingsCard
 import dev.doona.android.designsystem.rv.RvSettingsColumn
 import dev.doona.android.designsystem.rv.RvSettingsSpace
-import dev.doona.android.designsystem.rv.RvSettingsSwitchRow
+import dev.doona.android.designsystem.rv.RvSwitchRow
 
 /**
  * 實驗室 (owner, 2026-11-25 15:45: experimental options go on a page of their own in 設定), as sample s1125-lab-page
@@ -35,13 +35,7 @@ internal fun RvLabScreen(performance: Boolean, onPerformance: (Boolean) -> Unit,
         RvBannerSlot(restart?.let { restartNotice(it) })
         RvSettingsColumn {
             RvSettingsCard {
-                RvSettingsSwitchRow(
-                    stringResource(R.string.rv_lab_performance),
-                    R.drawable.rv_sym_speed,
-                    performance,
-                    onPerformance,
-                    stringResource(R.string.rv_lab_performance_sub),
-                )
+                RvSwitchRow(R.drawable.rv_sym_speed, stringResource(R.string.rv_lab_performance), performance, stringResource(R.string.rv_lab_performance_sub), onChange = onPerformance)
             }
             RvFootnote(stringResource(R.string.rv_lab_footnote))
         }

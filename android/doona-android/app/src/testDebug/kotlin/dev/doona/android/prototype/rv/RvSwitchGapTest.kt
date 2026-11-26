@@ -15,7 +15,6 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvControlSize
 import dev.doona.android.designsystem.rv.RvRowPart
-import dev.doona.android.designsystem.rv.RvSettingsSwitchRow
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.RvTheme
@@ -37,7 +36,7 @@ import kotlin.math.abs
  * shows: 12 dp, a measured figure, not the token. Off, the 19 dp thumb overhangs the 14 dp track's start by 2.5 dp, so
  * the nearest ink is 9.5 dp from the text, the value the owner kept (q-l4-thumb, 2026-11-25 23:52: 12 dp to the track,
  * the off thumb at 9.5 dp); the thumb hides the track's start, so off, the track is read from its far end, which shows,
- * less its width: 12 dp as well (R17). Both the list row ([RvSwitchRow]) and the settings row ([RvSettingsSwitchRow]).
+ * less its width: 12 dp as well (R17). Every switch row is [RvSwitchRow].
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -50,13 +49,7 @@ class RvSwitchGapTest {
     fun aListSwitchRowsTextStandsTwelveDpFromTheTrack() = gap(TO_TRACK, onTrack = true) { RvSwitchRow(R.drawable.rv_sym_rule, TITLE, checked = true, subtitle = SUB) {} }
 
     @Test
-    fun aSettingsSwitchRowsTextStandsTwelveDpFromTheTrack() = gap(TO_TRACK, onTrack = true) { RvSettingsSwitchRow(TITLE, R.drawable.rv_sym_rule, true, {}, SUB) }
-
-    @Test
     fun anOffListSwitchsThumbStandsNineAndAHalfDpFromTheText() = gap(TO_THUMB_OFF, onTrack = false) { RvSwitchRow(R.drawable.rv_sym_rule, TITLE, checked = false, subtitle = SUB) {} }
-
-    @Test
-    fun anOffSettingsSwitchsThumbStandsNineAndAHalfDpFromTheText() = gap(TO_THUMB_OFF, onTrack = false) { RvSettingsSwitchRow(TITLE, R.drawable.rv_sym_rule, false, {}, SUB) }
 
     private fun gap(want: Float, onTrack: Boolean, row: @Composable () -> Unit) {
         compose.setContent {

@@ -20,8 +20,8 @@ import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSettingsCard
 import dev.doona.android.designsystem.rv.RvSettingsSpace
-import dev.doona.android.designsystem.rv.RvSettingsSwitchRow
 import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvSwitchRow
 
 /**
  * 實驗室 (owner, 2026-11-25: experimental options go on a page of their own in 設定), a page of 設定 in 關於's form: the
@@ -37,16 +37,16 @@ internal fun RvLabScreen(performance: Boolean, onBack: () -> Unit = {}) {
         RvLargeTitle(title, titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
             RvSettingsCard {
-                RvSettingsSwitchRow(
-                    sampleText("效能模式", "性能模式", "Performance mode"),
+                RvSwitchRow(
                     R.drawable.rv_sym_speed,
+                    sampleText("效能模式", "性能模式", "Performance mode"),
                     on,
-                    { on = it },
                     sampleText(
                         "較耗電，速度較快",
                         "较耗电，速度较快",
                         "Uses more battery for more speed",
                     ),
+                    onChange = { on = it },
                 )
             }
             RvFootnote(sampleText("這些選項可能變動或移除。", "这些选项可能变动或移除。", "These options may change or go away."), inset = RvSpace.gutter - RvSettingsSpace.margin)
