@@ -1,0 +1,47 @@
+{
+  "observed_at": "2026-08-15T10:00:00Z",
+  "assets": [
+    {
+      "kind": "geosite",
+      "sha256": "3f5a9c1e7b2d4c6a8e0f1b3d5a7c9e1f3b5d7a9c1e3f5a7b9d1c3e5f7a9b1d3c",
+      "size_bytes": "4404019",
+      "modified_at": "2026-11-20T12:00:00Z",
+      "source_redacted": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/release/geosite.dat",
+      "fetched_url_redacted": "https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geosite.dat",
+      "verified": true,
+      "download_route": {
+        "route": "group",
+        "group_id": "group-proxy"
+      }
+    },
+    {
+      "kind": "geoip",
+      "sha256": "9b1d3c5e7f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e",
+      "size_bytes": "17406771",
+      "modified_at": "2026-11-20T12:00:00Z",
+      "source_redacted": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/release/geoip.dat",
+      "fetched_url_redacted": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/release/geoip.dat",
+      "verified": true,
+      "download_route": {
+        "route": "group",
+        "group_id": "group-proxy"
+      }
+    }
+  ],
+  "last_checked_at": null,
+  "last_updated_at": null,
+  "next_check_at": "2026-08-16T03:41:07Z",
+  "last_error": null,
+  "required_codes": {
+    "geosite": [
+      "category-ads-all",
+      "cn",
+      "geolocation-!cn",
+      "private"
+    ],
+    "geoip": [
+      "cn",
+      "private"
+    ]
+  }
+}

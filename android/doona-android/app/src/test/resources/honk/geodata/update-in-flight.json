@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "state_conflict",
+    "message": "A geodata update is already queued or running.",
+    "details": null
+  },
+  "request_id": "request-01HZX4K8W6"
+}
