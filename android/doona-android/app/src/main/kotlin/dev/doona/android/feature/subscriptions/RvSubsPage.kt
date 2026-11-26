@@ -95,15 +95,16 @@ internal class RvSubsActions(
  * with 重試; a failed delete, the latest thing the user asked for, takes the place.
  * Each subscription is a card: its row (name, node count and last update, chevron to its page), then what it has used
  * of its quota and when it ends over the progress bar. A long press on a card opens 更新, 編輯 and 刪除; 刪除 asks in
- * the confirm sheet. 新增訂閱 floats at the bottom. With no subscription there is nothing to update or to float over: the
- * bar's 更新所有訂閱 and the floating 新增訂閱 give way to the empty state, which carries the one 新增訂閱. While [loading]
+ * the confirm sheet. 新增訂閱 ends the list as its own card's add row ([RvAddRow]). With no subscription there is nothing
+ * to update: the bar's 更新所有訂閱 and the cards give way to the empty state, which carries the one 新增訂閱. While [loading]
  * (before the engine is ready) the cards are skeletons of subscription cards ([SubsSkeleton]), and the cards fade in
- * over them in place; the title and the bar's actions are there from the start. [extra] (the 組態內 card) follows the
- * subscription cards once they are loaded; [extraKeepsPage] keeps the page for it when there is no subscription (nodes
- * added by hand), with nothing to update. [addNode] puts 新增節點 beside the empty state's 新增訂閱, the only way to add a
- * node before there is one (owner, q-p5d-empty 2026-11-26). [banner] (what the last add or node delete did) takes the banner's place first.
- * In edit mode ([RvSubsState.editing]) each subscription's row starts with the remove disc, which asks in the same
- * sheet, 新增訂閱 ends the list as a row, and 完成 floats at the bottom instead.
+ * over them in place; the title and the bar's actions are there from the start. 新增訂閱 follows the cards as its own
+ * card's add row ([RvAddRow]). [extra] (the 組態內 card) follows it once the cards are loaded; [extraKeepsPage] keeps the
+ * page for it when there is no subscription (nodes added by hand), with nothing to update. [addNode] puts 新增節點 under
+ * the empty state's 新增訂閱, the only way to add a node before there is one (owner, q-p5d-empty 2026-11-26). [banner]
+ * (what the last add or node delete did) takes the banner's place first. In edit mode ([RvSubsState.editing]) each
+ * subscription's row starts with the remove disc, which asks in the same sheet, the add row's disc stands in its place,
+ * and 完成 floats at the bottom.
  */
 @Composable
 internal fun RvSubsPage(
@@ -127,11 +128,7 @@ internal fun RvSubsPage(
             actions.edit?.let { RvGlassButton(glass, R.drawable.rv_sym_edit, stringResource(R.string.rv_rule_menu_edit)) { it(true) } }
         }
     }
-    val add: (@Composable () -> Unit)? = when {
-        empty -> null
-        editing -> ({ RvPrimaryButton(stringResource(R.string.rv_rules_done), { actions.edit?.invoke(false) }) })
-        else -> ({ RvPrimaryButton(stringResource(R.string.rv_add_subscription), actions.add) })
-    }
+    val done: (@Composable () -> Unit)? = if (editing) ({ RvPrimaryButton(stringResource(R.string.rv_rules_done), { actions.edit?.invoke(false) }) }) else null
     // A failed update's banner waits for the cards: while they load it is not known yet.
     val failed = if (loading) {
         null
@@ -139,7 +136,7 @@ internal fun RvSubsPage(
         state.deleteFailed?.let { f -> state.subscriptions.firstOrNull { it.id == f.id }?.let { rvDeleteFailedBanner(it, f.code) { actions.confirmDelete(it.id) } } }
             ?: state.failed?.let { f -> state.subscriptions.firstOrNull { it.id == f.id }?.let { rvFailedBanner(it, f.code) { actions.update(it.id) } } }
     }
-    RvScrollPage(title, insets, onBack = actions.back, actions = updateAll, bottomAction = add) { titleBlock ->
+    RvScrollPage(title, insets, onBack = actions.back, actions = updateAll, bottomAction = done) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         RvGutter(banner = rvFirstNotice(failed, banner.takeUnless { loading })) {
             if (empty) {
@@ -156,8 +153,8 @@ internal fun RvSubsPage(
                     state.subscriptions.forEach { sub ->
                         SubscriptionCard(sub, actions, state.nowEpochMs, if (editing) RvRowRemove(RvRemoveStyle.Editing) { actions.delete(sub.id) } else null)
                     }
-                    if (editing) RvCard { RvAddRow(stringResource(R.string.rv_add_subscription), actions.add) }
                 }
+                RvCard { RvAddRow(stringResource(R.string.rv_add_subscription), actions.add, afterRemoves = editing) }
                 if (!loading) extra?.invoke()
             }
         }
