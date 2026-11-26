@@ -39,6 +39,8 @@
         <item quantity="other">%1$d 份當機記錄</item>
     </plurals>
     <string name="rv_report_redact">遮蔽</string>
+    <string name="rv_redact_nodes">節點位址與連接埠</string>
+    <string name="rv_redact_nodes_sub">伺服器的網域、IP 與連接埠</string>
     <string name="rv_redact_ip">我的 IP 位址</string>
     <string name="rv_redact_ip_sub">本機的公開 IP 與區域網路 IP</string>
     <string name="rv_redact_domains">造訪的網域</string>

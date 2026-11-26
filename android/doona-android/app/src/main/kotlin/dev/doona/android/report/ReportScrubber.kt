@@ -1,10 +1,14 @@
 package dev.doona.android.report
 
 import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.NodeInfo
 import java.net.InetAddress
+import java.net.URI
+import java.net.URISyntaxException
 
 /** Disclosure choices for values already available to the report. */
 data class RedactionOptions(
+    val showNodeEndpoints: Boolean = false,
     val showOwnAddresses: Boolean = false,
     val showVisitedDomains: Boolean = false,
     val showAppNames: Boolean = true,
@@ -12,6 +16,18 @@ data class RedactionOptions(
 
 /** One disclosure boundary for a report's ZIP and issue link. */
 internal class ReportScrubber(private val options: RedactionOptions) {
+    fun endpoint(node: NodeInfo): String? {
+        val server = node.server.removeSurrounding("[", "]")
+        val host = if (':' in server) {
+            if (!isIpv6(server)) return null
+            "[$server]"
+        } else {
+            dnsName(server) ?: return null
+        }
+        if (node.port !in 1..65535) return null
+        return "$host:${node.port}"
+    }
+
     fun ownAddress(address: InetAddress): String = address.hostAddress!!.substringBefore('%')
 
     // Require a qualified name: a single label could be an opaque token.
@@ -42,10 +58,20 @@ internal fun safeAppEventText(text: String): String = text.takeIf {
     it in APP_MESSAGES || actionText.matches(it) || READ_EVENT.matches(it) || FAILURE_EVENT.matches(it)
 } ?: REDACTED
 
+private fun isIpv6(text: String): Boolean {
+    if (!IPV6_TEXT.matches(text)) return false
+    return try {
+        URI("http://[$text]").host != null
+    } catch (_: URISyntaxException) {
+        false
+    }
+}
+
 private fun dnsName(text: String): String? = text.takeIf { it.length <= 254 && DNS_NAME.matches(it) }
 
 private const val LABEL = "[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?"
 private val DNS_NAME = Regex("$LABEL(?:\\.$LABEL)*\\.?")
+private val IPV6_TEXT = Regex("[0-9a-fA-F:.]{2,45}")
 private val APP_PACKAGE = Regex("[a-zA-Z][a-zA-Z0-9_]*(?:\\.[a-zA-Z][a-zA-Z0-9_]*)+")
 private val METADATA = Regex("""[\p{L}\p{N} ._()+-]{1,64}""")
 private const val READ_COMMANDS = "trafficSeries|usage|nodes|scoreState|rules|effectiveConfig|diagnostics|recentFlows"

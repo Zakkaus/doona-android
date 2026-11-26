@@ -111,6 +111,13 @@ private fun Contents(preview: RvReportPreview) {
 @Composable
 private fun Redaction(redaction: RvRedaction, onChange: (RvRedaction) -> Unit) {
     RvSettingsCard {
+        RvSettingsSwitchRow(
+            stringResource(R.string.rv_redact_nodes),
+            R.drawable.rv_sym_dns,
+            redaction.nodes,
+            { onChange(redaction.copy(nodes = it)) },
+            stringResource(R.string.rv_redact_nodes_sub),
+        )
         RvSettingsSwitchRow(stringResource(R.string.rv_redact_ip), R.drawable.rv_sym_vpn_lock, redaction.ip, { onChange(redaction.copy(ip = it)) }, stringResource(R.string.rv_redact_ip_sub))
         RvSettingsSwitchRow(
             stringResource(R.string.rv_redact_domains),

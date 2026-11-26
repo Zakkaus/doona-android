@@ -122,11 +122,11 @@ class RvReportShotTest {
         val ran = mutableListOf<String>()
         val actions = rvReportActions(github = { ran += "github" }, share = { ran += "share" })
         compose.setContent { Themed { RvReportScreen(RvReportBuild.Ready(redaction.value), rvSampleReport, redaction.value, { redaction.value = it }, onBack = {}, actions = actions) } }
-        for (id in listOf(R.string.rv_redact_ip, R.string.rv_redact_domains, R.string.rv_redact_apps)) {
+        for (id in listOf(R.string.rv_redact_ip, R.string.rv_redact_nodes, R.string.rv_redact_domains, R.string.rv_redact_apps)) {
             compose.onNodeWithText(rvText(id)).performSemanticsAction(SemanticsActions.OnClick)
             compose.waitForIdle()
         }
-        assertEquals(RvRedaction(ip = false, domains = false, apps = true), redaction.value)
+        assertEquals(RvRedaction(nodes = false, ip = false, domains = false, apps = true), redaction.value)
         compose.onNodeWithText(rvText(R.string.rv_report_github)).performClick()
         compose.onNodeWithText(rvText(R.string.rv_report_share)).performClick()
         assertEquals(listOf("github", "share"), ran)
@@ -145,16 +145,16 @@ class RvReportShotTest {
     }
 
     /**
-     * Three switches, each on where it hides its part: my IPs and the visited domains start hidden, the app names shown
-     * (the owner, owner-fix2 item 11); no node-address switch (q-k4-endpoints). Under them one paragraph: that hiding
-     * more makes the problem harder to find, then what a report never holds.
+     * Four switches, each on where it hides its part: node addresses, my IPs and the visited domains start hidden, the app
+     * names shown (the owner, owner-fix2 item 11). Under them one paragraph: that hiding more makes the problem harder to
+     * find, then what a report never holds.
      */
     @Test
     @Config(qualifiers = READY)
-    fun twoThingsStartHiddenAndAppNamesShown() {
+    fun threeThingsStartHiddenAndAppNamesShown() {
         compose.setContent { Themed { Page(READY_BUILD) } }
-        compose.onAllNodes(isToggleable()).assertCountEquals(3)
-        for (id in listOf(R.string.rv_redact_ip, R.string.rv_redact_domains)) {
+        compose.onAllNodes(isToggleable()).assertCountEquals(4)
+        for (id in listOf(R.string.rv_redact_nodes, R.string.rv_redact_ip, R.string.rv_redact_domains)) {
             compose.onNodeWithText(rvText(id)).assertIsOn()
         }
         compose.onNodeWithText(rvText(R.string.rv_redact_apps)).assertIsOff()
