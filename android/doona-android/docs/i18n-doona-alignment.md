@@ -12,8 +12,8 @@ Scope: `android/doona-android` English, Traditional Chinese (zh-TW) and Simplifi
 | --- | --- | --- | --- | --- | --- |
 | Node | Node | 節點 | 节点 | `nav.nodes` | `nav_nodes`, `rv_nodes_title` |
 | Subscription | Subscription | 訂閱 | 订阅 | `nodes.addProvider` | `sub_title`, `rv_subscriptions` |
-| Outbound | Outbound | 出站 | 出站 | `act.mode` | `act_mode`, `act_global` |
-| Rule | Rule | 規則 | 规则 | `nav.rules` | `nav_rules`, `mode_rule`, `rv_mode_rule` |
+| Outbound | Outbound | 出站 | 出站 | `act.mode` | `act_mode` |
+| Rule | Rule | 規則 | 规则 | `nav.rules` | `mode_rule`, `rv_mode_rule` |
 | Rule set | Rule set | — | — | — | none in doona or the app |
 | Policy | Policy | 策略 | 策略 | `nav.policies` | `nav_policies` |
 | Policy group | Policy group | 策略群組 | 策略组 | `dashboard.policyGroups` | `rv_policy_groups` (owner check) |
@@ -22,9 +22,9 @@ Scope: `android/doona-android` English, Traditional Chinese (zh-TW) and Simplifi
 | Direct | Direct | 直連 | 直连 | `mode.direct` | `mode_direct`, `rv_stats_direct` |
 | Reject | Reject | 拒絕 | 拒绝 | `rule.dns.action.rejectQuery` | none (the app has no reject target) |
 | Block | Block | 封鎖 | 屏蔽 | `rule.template.blockAds` | `rv_policy_block_ads` (owner check) |
-| Global | Global | 全域 | 全局 | `mode.global` | `mode_global`, `act_global` |
+| Global | Global | 全域 | 全局 | `mode.global` | `mode_global` |
 | Rule mode | Rule | 規則 | 规则 | `mode.rule` | `mode_rule`, `rv_mode_rule` |
-| Latency | Latency | 延遲 | 延迟 | `act.latency` | `act_latency`, `rv_stats_latency` |
+| Latency | Latency | 延遲 | 延迟 | `act.latency` | `rv_stats_latency` |
 | Test latency | Test latency | 測試延遲 | 测试延迟 | `lite:testLatency` | `rv_test_latency` |
 | Traffic | Traffic | 流量 | 流量 | `act.traffic` | `rv_traffic_title`, `rv_stats_quota` |
 | Upload | Upload | 上傳 | 上传 | `ui.upload` | `ui_upload` |
@@ -61,11 +61,11 @@ Scope: `android/doona-android` English, Traditional Chinese (zh-TW) and Simplifi
 | Fixed | Fixed | 固定 | 固定 | `policy.kind.fixed` | `policy_kind_fixed` |
 | Test all | Test all | 測試全部 | 测试全部 | `policy.probeAll` | `policy_test_all` |
 | Filter nodes | Filter nodes | 篩選節點 | 筛选节点 | `policy.filter` | `policy_filter` |
-| Available only | Available only | 只顯示可用節點 | 只显示可用节点 | `policy.aliveOnly` | `policy_alive_only` |
-| All regions | All regions | 全部地區 | 全部地区 | `policy.allRegions` | `policy_all_regions` |
+| Available only | Available only | 只顯示可用節點 | 只显示可用节点 | `policy.aliveOnly` | – |
+| All regions | All regions | 全部地區 | 全部地区 | `policy.allRegions` | – |
 | Sort | Sort | 排序 | 排序 | `policy.sort` | `policy_sort` |
-| By latency | By latency | 依延遲 | 按延迟 | `policy.byLatency` | `policy_by_latency` |
-| Both | Both | 兩者 | 两者 | `policy.both` | `policy_both` |
+| By latency | By latency | 依延遲 | 按延迟 | `policy.byLatency` | – |
+| Both | Both | 兩者 | 两者 | `policy.both` | – |
 | Active connections | Active connections | 活動連線 | 活动连接 | `act.active` | `act_active` |
 | In use | In use | 使用中 | 使用中 | `conn.latency.inUse` | `rv_nodes_in_use` (owner check) |
 | Port | Port | 連接埠 | 端口 | `nodes.manual.port` | `rv_nodes_port` (owner check) |
