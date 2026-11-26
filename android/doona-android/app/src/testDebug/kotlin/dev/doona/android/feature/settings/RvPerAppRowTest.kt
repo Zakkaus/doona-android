@@ -73,13 +73,13 @@ class RvPerAppRowTest {
     fun englishTakesTheCountsPlural() {
         perApp = RvPerApp(RvAppPolicy.Only, apps("a"))
         show()
-        expect("1 app only")
+        expect("Proxies 1 app")
         compose.runOnIdle { perApp = RvPerApp(RvAppPolicy.Only, apps("a", "b")) }
-        expect("2 apps only")
+        expect("Proxies 2 apps")
         compose.runOnIdle { perApp = RvPerApp(RvAppPolicy.Except, apps("a")) }
-        expect("All but 1 app")
+        expect("Proxies all but 1 app")
         compose.runOnIdle { perApp = RvPerApp(RvAppPolicy.Except, apps("a", "b", "c")) }
-        expect("All but 3 apps")
+        expect("Proxies all but 3 apps")
         compose.runOnIdle { perApp = RvPerApp(RvAppPolicy.All, emptySet()) }
         expect("All apps")
     }
