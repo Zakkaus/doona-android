@@ -38,7 +38,7 @@ internal class DaeSubscription internal constructor(
 
     /** The whole text with the entry tagged [name]. */
     fun renamed(name: String): String {
-        val tag = if (name.matches(BARE_TAG)) name else name.quoted()
+        val tag = if (name.matches(BARE_TAG)) name else name.daeQuoted()
         val line = lines[index]
         val renamed = entry.tag?.let { line.replaceRange(indent.length + it.first, indent.length + it.last + 1, tag) }
             ?: line.replaceRange(indent.length, indent.length, "$tag: ")
@@ -54,13 +54,13 @@ internal class DaeSubscription internal constructor(
         var head = entry.suffix?.let { out[index].removeRange(indent.length + it.first, indent.length + it.last + 1) } ?: out[index]
         val ua = uaLine()
         when {
-            userAgent != null && ua != null -> out[ua] = out[ua].takeWhile { it.isWhitespace() } + "ua: " + userAgent.quoted()
+            userAgent != null && ua != null -> out[ua] = out[ua].takeWhile { it.isWhitespace() } + "ua: " + userAgent.daeQuoted()
 
-            userAgent != null && close != null -> out.add(index + 1, bodyIndent() + "ua: " + userAgent.quoted())
+            userAgent != null && close != null -> out.add(index + 1, bodyIndent() + "ua: " + userAgent.daeQuoted())
 
             userAgent != null -> {
                 head = head.replaceRange(codeEnd(head), codeEnd(head), " {")
-                out.addAll(index + 1, listOf(bodyIndent() + "ua: " + userAgent.quoted(), "$indent}"))
+                out.addAll(index + 1, listOf(bodyIndent() + "ua: " + userAgent.daeQuoted(), "$indent}"))
             }
 
             ua != null -> {
@@ -164,7 +164,7 @@ private fun daeClosing(lines: List<String>, open: Int): Int {
 }
 
 /** [this] in single quotes, or double when it holds one; honk's dae has no escape, so one holding both is refused. */
-private fun String.quoted(): String = when {
+internal fun String.daeQuoted(): String = when {
     '\n' in this || ('\'' in this && '"' in this) -> throw EngineException(ErrorCode.InvalidArgument)
     '\'' in this -> "\"$this\""
     else -> "'$this'"
