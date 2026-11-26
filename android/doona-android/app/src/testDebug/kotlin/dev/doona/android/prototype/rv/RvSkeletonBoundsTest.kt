@@ -395,6 +395,7 @@ class RvSkeletonBoundsTest {
          * 1.15 the first rule's domains beside its group; at 2.0 範本's source → template, and the first two groups' lines.
          * A group's page: its subscription's use and end date, and a long node name, in two lines; at 2.0 also 分開選擇
          * TCP/UDP beside the switch (the skeleton row has no switch's room) and the chosen node's name.
+         * A node's 詳細資料 at 2.0: its server, set under its label ([STACKS]).
          */
         val WRAPS = mapOf(
             (RvSkeletonPages.POLICY_GLOBAL to RV_FS200) to setOf(0, 3, 4),
@@ -406,12 +407,13 @@ class RvSkeletonBoundsTest {
             (RvSkeletonPages.GROUP to 1f) to setOf(2, 5),
             (RvSkeletonPages.GROUP to RV_FS115) to setOf(2, 5),
             (RvSkeletonPages.GROUP to RV_FS200) to setOf(0, 1, 2),
+            (RvSkeletonPages.NODE to RV_FS200) to setOf(1),
         )
 
         /**
          * The cards whose [dev.doona.android.designsystem.rv.RvStatRow]s set a value under its label where the two do not
          * fit one line, by page and font size: the value is data, so its skeleton cannot know; from the card's top down only
-         * the cards' tops are compared. At 2.0 a node's 詳細資料, whose subscription is long.
+         * the cards' tops are compared. At 2.0 a node's 詳細資料, whose server and subscription are long.
          */
         val STACKS = mapOf((RvSkeletonPages.NODE to RV_FS200) to 1)
         const val TOLERANCE = 0.5f

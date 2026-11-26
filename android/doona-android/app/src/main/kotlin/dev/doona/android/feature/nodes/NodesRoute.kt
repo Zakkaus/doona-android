@@ -182,7 +182,7 @@ internal fun NodesPull(
 /**
  * What every 節點 route gives its page: the test running ([LocalRvTesting]), the subscriptions updating
  * ([LocalRvUpdating]) and the rows' menus' actions ([LocalRvRowActions]) on [viewModel]: 設為主節點, 測試延遲, and a
- * subscription's 更新 and 刪除. honk keeps no share link, so no row offers 複製分享連結. A pull-down picker not [shown]
+ * subscription's 更新 and 刪除. honk keeps no share link, so every node's 複製分享連結 is disabled. A pull-down picker not [shown]
  * follows no test or update, as [RvPullDown] keeps it (a busy bar would run in each row).
  */
 @Composable
@@ -193,6 +193,7 @@ private fun NodesLocals(viewModel: NodesViewModel, ui: NodesUi, shown: Boolean =
             testNode = viewModel::testNode,
             updateSubscription = viewModel::update,
             deleteSubscription = viewModel::remove,
+            noShareLinks = true,
         )
     }
     CompositionLocalProvider(

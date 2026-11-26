@@ -10,6 +10,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -409,7 +410,10 @@ class NodesRouteTest {
         compose.onNodeWithText("In configuration", useUnmergedTree = true).assertExists()
     }
 
-    /** The app gives the rows' menus their actions (they were the sample's alone): 設為主節點, 測試延遲, 更新; honk keeps no share link. */
+    /**
+     * The app gives the rows' menus their actions (they were the sample's alone): 設為主節點, 測試延遲, 更新; honk keeps no
+     * share link, so 複製分享連結 is there but takes no press.
+     */
     @Test
     fun `the rows' menus run the app's own actions`() {
         val vm = viewModel(Honk())
@@ -438,7 +442,7 @@ class NodesRouteTest {
         compose.waitForIdle()
         compose.onAllNodesWithText("Tokyo 01").onFirst().performTouchInput { longClick() }
         compose.waitForIdle()
-        compose.onNodeWithText("Copy share link").assertDoesNotExist()
+        compose.onNodeWithText("Copy share link").assertExists().assertHasNoClickAction()
         // The picker's 訂閱 row: 更新 updates that subscription.
         pull = true
         compose.waitForIdle()
