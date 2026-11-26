@@ -2,8 +2,11 @@
 # step that is not a footnote, one per line: path, the call's words (first 120 characters), why, tab-separated.
 # A footnote under a card is drawn only by RvFootnote; any other call found fails, and so does a line here that is gone.
 prototype/rv/connections/RvConnectionDetail.kt	RvText(host + PORT + connection.port, Rv.type.rowSub, color = secondary, align = TextAlign.Center, maxLines = Int.MAX_VA	the centred header's host and port, above the first card
+feature/connections/RvConnectionDetailScreen.kt	RvText(host + PORT + connection.port, Rv.type.rowSub, color = secondary, align = TextAlign.Center, maxLines = Int.MAX_VA	the centred header's host and port, above the first card
 prototype/rv/connections/RvConnectionDetail.kt	RvText(stringResource(R.string.rv_conn_no_domain), Rv.type.rowSub, color = secondary, align = TextAlign.Center)	the centred header's no-domain line, above the first card
+feature/connections/RvConnectionDetailScreen.kt	RvText(stringResource(R.string.rv_conn_no_domain), Rv.type.rowSub, color = secondary, align = TextAlign.Center)	the centred header's no-domain line, above the first card
 prototype/rv/connections/RvConnectionsPage.kt	RvText(age, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a connection row's age at the row's end, inside the card
+feature/connections/RvConnectionsScreen.kt	RvText(age, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a connection row's age at the row's end, inside the card
 feature/nodes/RvLatencyDots.kt	RvText(empty, Rv.type.rowSub, color = colors.textSecondary, align = TextAlign.Center)	the latency card's empty line, centred inside the card
 feature/policies/RvPolicyParts.kt	RvText(end ?: bytes, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a rule row's bytes at the row's end, inside the card
 feature/policies/RvPolicyScreen.kt	RvText(stringResource(R.string.rv_policy_rules_order), Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.rowPadding)	the rules card's line under its header, inside the card
@@ -22,7 +25,9 @@ prototype/rv/config/RvConfigSourcePage.kt	RvCaption(stringResource(R.string.rv_c
 prototype/rv/config/RvConfigSourcePage.kt	RvCaption(stringResource(R.string.rv_config_draft_base, draft.baseRev))	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/config/RvConfigTemplatePage.kt	RvCaption(stringResource(R.string.rv_config_based_on, apply.baseRev))	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/connections/RvConnectionsPage.kt	RvCaption(pluralStringResource(R.plurals.rv_conn_matches, shown.size, shown.size))	a page header's caption (RvCaption under the large title), not under a card
+feature/connections/RvConnectionsScreen.kt	RvCaption(pluralStringResource(R.plurals.rv_conn_matches, shown.size, shown.size))	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/connections/RvConnectionsPage.kt	RvCaption(pluralStringResource(R.plurals.rv_conn_summary, connections.size, connections.size, down, up))	a page header's caption (RvCaption under the large title), not under a card
+feature/connections/RvConnectionsScreen.kt	RvCaption(pluralStringResource(R.plurals.rv_conn_summary, connections.size, connections.size, down, up))	a page header's caption (RvCaption under the large title), not under a card
 feature/nodes/RvNodeDetail.kt	RvCaption(rvNodeLine(node.protocol, stringResource(node.place.label)))	a page header's caption (RvCaption under the large title), not under a card
 feature/nodes/RvNodePickerPage.kt	RvCaption(line)	a page header's caption (RvCaption under the large title), not under a card
 feature/nodes/RvNodesPage.kt	RvCaption(line)	a page header's caption (RvCaption under the large title), not under a card

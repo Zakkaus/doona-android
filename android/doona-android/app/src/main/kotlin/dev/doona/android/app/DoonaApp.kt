@@ -9,11 +9,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -33,9 +36,13 @@ import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.InstalledApps
 import dev.doona.android.engine.NetworkState
+import dev.doona.android.engine.Status
 import dev.doona.android.feature.activity.ActivityRoute
 import dev.doona.android.feature.activity.ActivityRoutes
 import dev.doona.android.feature.activity.ConnectRefusals
+import dev.doona.android.feature.connections.ConnectionRoute
+import dev.doona.android.feature.connections.ConnectionsRoute
+import dev.doona.android.feature.connections.ConnectionsViewModel
 import dev.doona.android.feature.nodes.MainNodeRoute
 import dev.doona.android.feature.nodes.NodeRoute
 import dev.doona.android.feature.nodes.NodeSearchRoute
@@ -108,6 +115,10 @@ fun DoonaApp(
     val onReselect: () -> Boolean = { backStack.reselectTab() }
     // Held beside the root 活動 rather than in an entry: the pull-down and every 節點 page read one catalog, mapped once.
     val nodes: NodesViewModel = viewModel(factory = NodesViewModel.factory(engine))
+    // The 連線 list and a connection's page read one list, held by the owner 節點's is held by; built when 連線 first shows.
+    val owner = checkNotNull(LocalViewModelStoreOwner.current) { "DoonaApp runs inside a ViewModelStoreOwner" }
+    val connections: @Composable () -> ConnectionsViewModel = { viewModel(owner, factory = ConnectionsViewModel.factory(nativeApi())) }
+    val status by engine.status.collectAsStateWithLifecycle()
     RvOverDoona {
         RvNavHost(backStack, Modifier.fillMaxSize()) {
             entry<ActivityKey> {
@@ -178,7 +189,7 @@ fun DoonaApp(
                     onBack = { backStack.pop(key) },
                 )
             }
-            entry<TrafficKey> { key -> TrafficRoute(engine, onBack = { backStack.pop(key) }) }
+            entry<TrafficKey> { key -> TrafficRoute(onBack = { backStack.pop(key) }) }
             entry<NodesKey> { key ->
                 NodesRoute(
                     nodes,
@@ -191,6 +202,12 @@ fun DoonaApp(
             entry<NodeKey> { key -> NodeRoute(nodes, key.nodeId, onBack = { backStack.pop(key) }) }
             entry<NodeSearchKey> { key ->
                 NodeSearchRoute(nodes, onClose = { backStack.pop(key) }, onDetail = { backStack.push(NodeKey(it)) }, onAdd = { backStack.push(SubAddKey) })
+            }
+            entry<ConnectionsKey> {
+                ConnectionsRoute(connections(), connected = status is Status.Running, onOpen = { backStack.push(ConnectionKey(it)) }, onTab = onTab)
+            }
+            entry<ConnectionKey> { key ->
+                ConnectionRoute(connections(), key.connectionId, onBack = { backStack.pop(key) }, onNewRule = { backStack.push(RulesKey) })
             }
             entry<MainNodeChoiceKey> { key ->
                 MainNodeRoute(nodes, onBack = { backStack.pop(key) }, onSearch = { backStack.push(NodeSearchKey) }, onAdd = { backStack.push(SubAddKey) })
