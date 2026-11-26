@@ -5,6 +5,7 @@ import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvRuleEnd
 import dev.doona.android.feature.model.RvRuleMatch
+import dev.doona.android.feature.model.RvRuleState
 import dev.doona.android.vpn.honk.HonkRule
 
 /**
@@ -12,14 +13,19 @@ import dev.doona.android.vpn.honk.HonkRule
  * names its outbound; one it names that is not there is drawn as missing, not as 直連. honk has no per-rule byte count,
  * so every rule shows none.
  */
-internal fun rvPolicyRule(rule: HonkRule, groups: Map<String, RvPolicyGroup>): RvPolicyRule {
-    val match = if (rule.isFallback) RvRuleMatch.Rest else rvRuleMatch(ruleCondition(rule.expression))
-    return when (rule.outbound) {
-        DIRECT -> RvPolicyRule(match, null, 0L)
-        BLOCK -> RvPolicyRule(match, null, 0L, end = RvRuleEnd.Reject)
-        else -> groups[rule.outbound]?.let { RvPolicyRule(match, it, 0L) } ?: RvPolicyRule(match, null, 0L, end = RvRuleEnd.Missing)
+internal fun rvPolicyRule(rule: HonkRule, groups: Map<String, RvPolicyGroup>): RvPolicyRule =
+    rvPolicyRule(if (rule.isFallback) RvRuleMatch.Rest else rvRuleMatch(ruleCondition(rule.expression)), rule.outbound, groups)
+
+/** A rule paused in its file ([HonkPausedRule]), drawn as [rvPolicyRule] draws a loaded one but 已停用. */
+internal fun rvPolicyRule(rule: HonkPausedRule, groups: Map<String, RvPolicyGroup>): RvPolicyRule =
+    rvPolicyRule(rvRuleMatch(ruleCondition(rule.expression)), rule.outbound, groups, RvRuleState.Off)
+
+private fun rvPolicyRule(match: RvRuleMatch, outbound: String, groups: Map<String, RvPolicyGroup>, state: RvRuleState = RvRuleState.On): RvPolicyRule =
+    when (outbound) {
+        DIRECT -> RvPolicyRule(match, null, 0L, state)
+        BLOCK -> RvPolicyRule(match, null, 0L, state, RvRuleEnd.Reject)
+        else -> groups[outbound]?.let { RvPolicyRule(match, it, 0L, state) } ?: RvPolicyRule(match, null, 0L, state, RvRuleEnd.Missing)
     }
-}
 
 /**
  * What one condition matches, as the pages say it: a single `domain(...)` or `dip(...)` matcher in the words the rule

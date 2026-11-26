@@ -50,6 +50,9 @@
     <string name="rv_config_restore">恢复</string>
     <string name="rv_config_export">导出配置文件</string>
     <string name="rv_config_import_refused">无法导入</string>
+    <string name="rv_config_import_done">已导入配置文件</string>
+    <string name="rv_config_import_done_reason">选的文件已替换主配置文件，honk 已重新加载。</string>
+    <string name="rv_config_import_rejected_reason">honk 检查这个文件没有通过，没有任何改动。</string>
     <plurals name="rv_config_import_limit">
         <item quantity="other">导入最多 %1$d 个文件，共 %2$s。</item>
     </plurals>

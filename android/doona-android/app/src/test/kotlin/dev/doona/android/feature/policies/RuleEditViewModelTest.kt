@@ -101,6 +101,23 @@ class RuleEditViewModelTest {
     }
 
     @Test
+    fun `a rule written over several lines opens as its lines and writes nothing`() = runTest {
+        val config = HonkFixtures.body("config/rv-sample-hand")
+            .replace("    # AI services.\\n    domain(geosite:openai, geosite:anthropic) -> ai", "    domain(geosite:openai,\\n        geosite:anthropic) -> ai")
+        honk.on("GET", "/api/v1/config", 200, config)
+        honk.on("GET", "/api/v1/rules", 200, HonkFixtures.body("rules/rv-sample-hand").replace("\"line\": 63", "\"line\": 62"))
+        val vm = RuleEditViewModel(honk, "traffic:1", io = io)
+        val at = checkNotNull(vm.uiState.value.at)
+        assertTrue(at.sourceOnly)
+        assertEquals(listOf(62 to "domain(geosite:openai,", 63 to "    geosite:anthropic) -> ai"), checkNotNull(at.statement).hunks.single().map { it.line to it.text })
+        vm.apply()
+        vm.delete()
+        vm.move(1)
+        advanceUntilIdle()
+        assertTrue(honk.calls.none { it.method == "PUT" })
+    }
+
+    @Test
     fun `a line that no longer holds the rule is busy and nothing is written`() = runTest {
         honk.on("GET", "/api/v1/rules", 200, HonkFixtures.body("rules/rv-sample-hand").replace("\"line\": 67", "\"line\": 66"))
         val vm = RuleEditViewModel(honk, "traffic:4", io = io)

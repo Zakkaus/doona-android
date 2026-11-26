@@ -15,6 +15,9 @@ internal class HonkStatementAt(val source: HonkSource, val line: Int) {
     private val lines = source.content.lines()
     private val indent = lines[line - 1].takeWhile(Char::isWhitespace)
 
+    /** The line as written. */
+    val text: String get() = lines[line - 1]
+
     /** The statement as written, its comment dropped. */
     val code: String get() = daeCode(lines[line - 1])
 
@@ -25,7 +28,10 @@ internal class HonkStatementAt(val source: HonkSource, val line: Int) {
     fun removed(): Pair<HonkSource, String> = source to lines.filterIndexed { i, _ -> i != line - 1 }.joinToString("\n")
 
     /** The file with [text] on a line of its own before the statement (a new rule goes before the fallback). */
-    fun before(text: String): Pair<HonkSource, String> = source to (lines.take(line - 1) + (indent + text) + lines.drop(line - 1)).joinToString("\n")
+    fun before(text: String): Pair<HonkSource, String> = before(listOf(text))
+
+    /** The file with each of [texts] on a line of its own before the statement, in order. */
+    fun before(texts: List<String>): Pair<HonkSource, String> = source to (lines.take(line - 1) + texts.map { indent + it } + lines.drop(line - 1)).joinToString("\n")
 
     /** The file with the statement paused: its line kept as a comment, which honk does not load. */
     fun paused(): Pair<HonkSource, String> = replaced("# $code")
@@ -54,4 +60,21 @@ internal fun statementAt(config: HonkConfig, at: HonkSourceAt?, expression: Stri
     val statement = HonkStatementAt(source, at.line)
     if (expression != null && statement.code.filterNot(Char::isWhitespace) != expression.filterNot(Char::isWhitespace)) throw EngineException(ErrorCode.Busy)
     return statement
+}
+
+/**
+ * The lines a rule written over several lines spans, from [at] on: (line number, text) while the code of those lines,
+ * spaces aside, makes up [expression]. Null for a rule on one line, or when the lines no longer hold it.
+ */
+internal fun statementLines(config: HonkConfig, at: HonkSourceAt?, expression: String): List<Pair<Int, String>>? {
+    at ?: return null
+    val lines = config.sources.firstOrNull { it.id == at.sourceId }?.content?.lines() ?: return null
+    val want = expression.filterNot(Char::isWhitespace)
+    var got = ""
+    for (i in at.line - 1 until lines.size) {
+        got += daeCode(lines[i]).filterNot(Char::isWhitespace)
+        if (!want.startsWith(got)) return null
+        if (got == want) return if (i == at.line - 1) null else (at.line - 1..i).map { it + 1 to lines[it].trimEnd() }
+    }
+    return null
 }

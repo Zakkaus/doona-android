@@ -16,6 +16,8 @@
     <string name="rv_group_edit_unset">未設定</string>
     <string name="rv_group_member_node">節點</string>
     <string name="rv_group_member_group">群組 · %1$s</string>
+    <string name="rv_group_edit_member_group">群組</string>
+    <string name="rv_group_edit_in_source">名稱和成員是設定檔裡寫的過濾條件，點一列即可開啟。</string>
     <string name="rv_group_member_remove_title">移除 %1$s？</string>
     <string name="rv_group_member_remove_body">它的流量改由群組的其他成員處理。</string>
     <string name="rv_group_member_remove_confirm">移除</string>

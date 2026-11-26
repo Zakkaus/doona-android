@@ -37,7 +37,8 @@ internal sealed interface RulesFailure {
 }
 
 /**
- * What 全部規則 shows: every rule in order ([rules], honk's ids in [ids]), or why it cannot ([failure]); [loading]
+ * What 全部規則 shows: every rule in order ([rules], honk's ids in [ids], null for a paused rule, which honk does not
+ * list), or why it cannot ([failure]); [loading]
  * until the first read ends. A failed read keeps the rules last read under its banner, and none before the first read.
  * [writeFailure] says why a removal or a pause did not land.
  */
@@ -45,7 +46,7 @@ internal sealed interface RulesFailure {
 internal data class RulesUiState(
     val loading: Boolean = true,
     val rules: List<RvPolicyRule> = emptyList(),
-    val ids: List<String> = emptyList(),
+    val ids: List<String?> = emptyList(),
     val failure: RulesFailure? = null,
     val writeFailure: ErrorCode? = null,
 )
@@ -54,7 +55,8 @@ internal data class RulesUiState(
  * 全部規則: every rule honk runs, in evaluation order with its fallback last, drawn through honk's groups as 策略's card
  * draws its first rows. When honk's last reload left its files unloaded, the rules it runs are not the ones written, so
  * none are listed. [load] reads on [io], at start, after its own writes and on 重試. A removal deletes the rule's line
- * from the file honk names, a pause keeps it as a comment (honk then no longer lists it).
+ * from the file honk names, a pause keeps it as a comment; paused rules are read back from those comments
+ * ([pausedRules]) and listed 已停用 where they are written, and turning one on writes its line back.
  */
 internal class RulesViewModel(
     private val api: NativeApi,
@@ -64,7 +66,7 @@ internal class RulesViewModel(
     private val state = MutableStateFlow(RulesUiState())
     val uiState: StateFlow<RulesUiState> = state.asStateFlow()
     private var reading: Job? = null
-    private var read: HonkPolicyRead? = null
+    private var entries: List<HonkRuleEntry> = emptyList()
 
     init {
         load()
@@ -84,16 +86,22 @@ internal class RulesViewModel(
     /** Deletes the rule at [index]. */
     fun remove(index: Int) = write(index) { it.removed() }
 
-    /** Pauses the rule at [index] (its long-press menu's 停用). */
-    fun pause(index: Int) = write(index) { it.paused() }
+    /** Pauses the rule at [index], or turns a paused one on again (its long-press menu's 停用 and 啟用). */
+    fun toggle(index: Int) = write(index) { it.toggled() }
 
-    private fun write(index: Int, edit: (HonkStatementAt) -> Pair<HonkSource, String>) {
-        val rule = read?.rules?.rules?.getOrNull(index)?.takeUnless { it.isFallback } ?: return
+    private fun write(index: Int, edit: (Statement) -> Pair<HonkSource, String>) {
+        val entry = entries.getOrNull(index)?.takeUnless { it is HonkRuleEntry.Loaded && it.rule.isFallback } ?: return
         state.update { it.copy(writeFailure = null) }
         viewModelScope.launch {
             try {
                 withContext(io) {
-                    val (source, text) = edit(statementAt(NativeConfig(api).config(), rule.source, rule.expression))
+                    val config = NativeConfig(api).config()
+                    val (source, text) = edit(
+                        when (entry) {
+                            is HonkRuleEntry.Loaded -> Statement(statementAt(config, entry.rule.source, entry.rule.expression), null)
+                            is HonkRuleEntry.Paused -> Statement(pausedAt(config, entry.rule), entry.rule.expression)
+                        },
+                    )
                     NativeConfig(api).replace(source, text)
                 }
             } catch (cancelled: CancellationException) {
@@ -110,14 +118,23 @@ internal class RulesViewModel(
             if (NativeRouting(api).sourcesRejected()) {
                 RulesUiState(loading = false, failure = RulesFailure.Parse)
             } else {
-                val read = HonkPolicyRead.read(api).also { this@RulesViewModel.read = it }
-                RulesUiState(loading = false, rules = read.policyRules(read.policyGroups(read.nodes(places))), ids = read.rules.rules.map { it.id })
+                val read = HonkPolicyRead.read(api)
+                val entries = withPaused(read.rules.rules, pausedRules(NativeConfig(api).config())).also { this@RulesViewModel.entries = it }
+                val rules = read.policyRules(read.policyGroups(read.nodes(places)), entries)
+                RulesUiState(loading = false, rules = rules, ids = entries.map { (it as? HonkRuleEntry.Loaded)?.rule?.id })
             }
         }
     } catch (cancelled: CancellationException) {
         throw cancelled
     } catch (error: Exception) {
         RulesUiState(loading = false, rules = state.value.rules, ids = state.value.ids, failure = RulesFailure.Read(error.errorCode()))
+    }
+
+    /** A rule's line, with the rule text when it is paused ([paused]). */
+    private class Statement(val at: HonkStatementAt, val paused: String?) {
+        fun removed() = at.removed()
+
+        fun toggled() = paused?.let(at::replaced) ?: at.paused()
     }
 
     companion object {

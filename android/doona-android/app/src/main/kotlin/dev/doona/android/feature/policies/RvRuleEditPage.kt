@@ -83,10 +83,12 @@ internal data class RvRuleDraft(val kind: RvMatchKind, val value: String, val ta
 
 /**
  * A native honk statement on its page: its place, [index] of [count] in its list, and with [statement] the lines as
- * written, for a match the form cannot represent (config plan: such a form opens its exact source instead).
+ * written, for a match the form cannot represent (config plan: such a form opens its exact source instead). A statement
+ * written over several lines is [sourceOnly]: the page shows its lines and nothing to change (owner, q-rule-multiline
+ * 2026-11-26), since a write checks one line.
  */
 @Immutable
-internal data class RvNativeRuleAt(val index: Int, val count: Int, val statement: RvDiffFile? = null)
+internal data class RvNativeRuleAt(val index: Int, val count: Int, val statement: RvDiffFile? = null, val sourceOnly: Boolean = false)
 
 private val NO_VALUE = setOf(RvMatchKind.GeoIpCn, RvMatchKind.Private)
 
@@ -163,12 +165,17 @@ internal fun RvRuleFormPage(
     var confirming by rememberSaveable { mutableStateOf(false) }
     val draft = form.draft
     val statement = form.native?.statement
+    val sourceOnly = form.native?.sourceOnly == true
     RvScrollPage(
         form.title,
         insets,
         onBack = onBack,
         // A statement the form shows as source keeps its match, so only the form's own value can hold 套用 back.
-        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply, enabled = statement != null || draft.problem == null) },
+        bottomAction = if (sourceOnly) {
+            null
+        } else {
+            { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply, enabled = statement != null || draft.problem == null) }
+        },
     ) { titleBlock ->
         RvLargeTitle(form.title, titleBlock, insets)
         RvBannerSlot(banner, RvSpace.none)
@@ -177,10 +184,12 @@ internal fun RvRuleFormPage(
             MatchFields(draft, form.onChange, form.privateLine)
         } else {
             RvGutter { RvSourceExcerpt(statement.source, statement.hunks.first(), onOpenSource) }
-            RvFootnote(stringResource(R.string.rv_rule_edit_match_in_source))
+            RvFootnote(stringResource(if (sourceOnly) R.string.rv_rule_edit_multiline else R.string.rv_rule_edit_match_in_source))
         }
-        action { Toggles(form) { confirming = true } }
-        form.native?.let { Position(it, onMove) }
+        if (!sourceOnly) {
+            action { Toggles(form) { confirming = true } }
+            form.native?.let { Position(it, onMove) }
+        }
     }
     RvConfirmSheet(
         visible = confirming,

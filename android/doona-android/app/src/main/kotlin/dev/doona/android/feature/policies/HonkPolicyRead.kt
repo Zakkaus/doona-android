@@ -43,10 +43,21 @@ internal class HonkPolicyRead(
     }
 
     /** Every rule in evaluation order, the fallback last, drawn through [groups] (by id, from [policyGroups]). */
-    fun policyRules(groups: Map<String, RvPolicyGroup>): List<RvPolicyRule> {
-        val byName = this.groups.mapNotNull { group -> groups[group.id]?.let { group.name to it } }.toMap()
-        return rules.rules.map { rvPolicyRule(it, byName) }
+    fun policyRules(groups: Map<String, RvPolicyGroup>): List<RvPolicyRule> = rules.rules.map { rvPolicyRule(it, byName(groups)) }
+
+    /** [entries] (rules honk runs and paused ones, from [withPaused]) drawn through [groups] as [policyRules] draws them. */
+    fun policyRules(groups: Map<String, RvPolicyGroup>, entries: List<HonkRuleEntry>): List<RvPolicyRule> {
+        val byName = byName(groups)
+        return entries.map {
+            when (it) {
+                is HonkRuleEntry.Loaded -> rvPolicyRule(it.rule, byName)
+                is HonkRuleEntry.Paused -> rvPolicyRule(it.rule, byName)
+            }
+        }
     }
+
+    private fun byName(groups: Map<String, RvPolicyGroup>): Map<String, RvPolicyGroup> =
+        this.groups.mapNotNull { group -> groups[group.id]?.let { group.name to it } }.toMap()
 
     /** honk's subscriptions: the providers it fetches by URL. */
     val subscriptions: List<Provider> = providers.filter { it.kind == ProviderKind.Subscription }

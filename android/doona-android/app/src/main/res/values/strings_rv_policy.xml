@@ -153,6 +153,7 @@
     <string name="rv_rule_edit_move_down">Move down</string>
     <string name="rv_rule_edit_position_line">Rule %1$d of %2$d</string>
     <string name="rv_rule_edit_match_in_source">This match can only be changed in the source. Tap a line to open it there.</string>
+    <string name="rv_rule_edit_multiline">This rule spans several lines, so it can only be changed in the source. Tap a line to open it there.</string>
     <string name="rv_rule_delete_title">Delete this rule?</string>
     <string name="rv_rule_delete_body">“%1$s” will be removed from the list.</string>
     <string name="rv_rule_delete_confirm">Delete</string>
@@ -163,6 +164,9 @@
     <string name="rv_rule_menu_delete">Delete</string>
     <!-- 新增服務規則 (owner-fix2 item 14 sample): doona web's rule.service.* wording. -->
     <string name="rv_service_add">Add service rules</string>
+    <string name="rv_rules_add_rule">Rule</string>
+    <string name="rv_rules_add_service">Service rules</string>
+    <string name="rv_service_apply">Add and apply</string>
     <string name="rv_service_outbound">Outbound</string>
     <string name="rv_service_has_rule">Has a rule: %1$s</string>
     <string name="rv_service_games">Games</string>

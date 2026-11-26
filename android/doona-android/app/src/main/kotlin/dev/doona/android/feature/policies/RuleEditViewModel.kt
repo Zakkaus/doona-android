@@ -87,7 +87,7 @@ internal class RuleEditViewModel(
     fun change(draft: RvRuleDraft) = state.update { it.copy(draft = draft) }
 
     fun apply() {
-        val draft = state.value.draft ?: return
+        val draft = state.value.draft?.takeUnless { state.value.at?.sourceOnly == true } ?: return
         write { config, read ->
             val rule = rule(read)
             if (rule == null) {
@@ -101,6 +101,7 @@ internal class RuleEditViewModel(
     }
 
     fun delete() {
+        if (state.value.at?.sourceOnly == true) return
         if (ruleId == null) return state.update { it.copy(done = true) }
         write { config, read ->
             val rule = rule(read) ?: throw EngineException(ErrorCode.NotFound)
@@ -110,7 +111,7 @@ internal class RuleEditViewModel(
 
     /** 上移 or 下移: the rule to 1-based place [index] among the rules, the page then on it there. */
     fun move(index: Int) {
-        val read = read ?: return
+        val read = read?.takeUnless { state.value.at?.sourceOnly == true } ?: return
         val other = read.rules.rules.filterNot { it.isFallback }.getOrNull(index - 1) ?: return
         // honk numbers rules by place, so the moved rule takes the id of the one it changed places with.
         write(landed = { ruleId = other.id }) { config, current ->
@@ -145,7 +146,7 @@ internal class RuleEditViewModel(
 
     private suspend fun load() {
         try {
-            val read = withContext(io) { HonkPolicyRead.read(api) }
+            val (read, config) = withContext(io) { HonkPolicyRead.read(api) to ruleId?.let { NativeConfig(api).config() } }
             this.read = read
             val groups = read.policyGroups(read.nodes(places))
             val main = read.mainGroupId?.let(groups::get)
@@ -154,7 +155,7 @@ internal class RuleEditViewModel(
             state.update {
                 it.copy(
                     draft = rule?.let { r -> ruleDraft(r, read) } ?: RvRuleDraft(RvMatchKind.Suffix, "", main?.id ?: RV_DIRECT),
-                    at = rule?.let { r -> ruleAt(r, read) },
+                    at = rule?.let { r -> ruleAt(r, read, config) },
                     targets = targets,
                     readFailure = null,
                 )
@@ -187,9 +188,18 @@ private fun ruleDraft(rule: HonkRule, read: HonkPolicyRead): RvRuleDraft {
     return RvRuleDraft(kind, value, target, enabled = true, must = rule.must)
 }
 
-/** [rule]'s place among the rules, and its line when the form cannot hold its match. */
-private fun ruleAt(rule: HonkRule, read: HonkPolicyRead): RvNativeRuleAt {
+/**
+ * [rule]'s place among the rules, and its line when the form cannot hold its match; a rule written over several lines
+ * of [config] is all its lines, and the page changes nothing.
+ */
+private fun ruleAt(rule: HonkRule, read: HonkPolicyRead, config: HonkConfig?): RvNativeRuleAt {
     val rules = read.rules.rules.filterNot { it.isFallback }
+    val lines = config?.let { statementLines(it, rule.source, rule.expression) }
+    if (lines != null) {
+        val indent = lines.minOf { (_, text) -> text.takeWhile(Char::isWhitespace).length }
+        val hunk = lines.map { (line, text) -> RvDiffLine(RvDiffKind.Same, line, text.drop(indent)) }
+        return RvNativeRuleAt(rules.indexOf(rule) + 1, rules.size, RvDiffFile(rule.source!!.file, listOf(hunk)), sourceOnly = true)
+    }
     val statement = rule.source?.takeIf { formMatch(ruleCondition(rule.expression)) == null }?.let {
         RvDiffFile(it.file, listOf(listOf(RvDiffLine(RvDiffKind.Same, it.line, rule.expression))))
     }

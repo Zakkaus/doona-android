@@ -135,6 +135,7 @@
     <string name="rv_rule_edit_move_down">下移</string>
     <string name="rv_rule_edit_position_line">第 %1$d 条，共 %2$d 条</string>
     <string name="rv_rule_edit_match_in_source">这条规则的条件只能在源码中修改，点一行即可打开。</string>
+    <string name="rv_rule_edit_multiline">这条规则写在多行，只能在源码中修改，点一行即可打开。</string>
     <string name="rv_rule_delete_title">删除这条规则？</string>
     <string name="rv_rule_delete_body">“%1$s”会从列表移除。</string>
     <string name="rv_rule_delete_confirm">删除</string>
@@ -144,6 +145,9 @@
     <string name="rv_rule_menu_on">启用</string>
     <string name="rv_rule_menu_delete">删除</string>
     <string name="rv_service_add">添加服务规则</string>
+    <string name="rv_rules_add_rule">规则</string>
+    <string name="rv_rules_add_service">服务规则</string>
+    <string name="rv_service_apply">加入并应用</string>
     <string name="rv_service_outbound">出站</string>
     <string name="rv_service_has_rule">已有规则：%1$s</string>
     <string name="rv_service_games">游戏</string>
