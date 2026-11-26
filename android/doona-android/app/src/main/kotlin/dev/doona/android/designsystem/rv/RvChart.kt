@@ -173,7 +173,8 @@ internal fun RvFigureText(figure: RvFigure, style: TextStyle, unitStyle: TextSty
         unitStyle.toSpanStyle().copy(fontSize = share.em)
     }
     val all = remember(widest, unit) { widest.map { it.text(unit) } }
-    BasicText(figure.text(unit), modifier, style = style.copy(color = Rv.colors.text), maxLines = 1, autoSize = rvFigureFit(style, all))
+    val roll = rvRollText()
+    BasicText(figure.text(unit), modifier.then(roll.modifier), style = style.copy(color = Rv.colors.text), onTextLayout = roll::laid, maxLines = 1, autoSize = rvFigureFit(style, all))
 }
 
 /** The figure as one text, its unit in [unit]; a CJK unit (毫秒) in the CJK face, as every RV text sets one ([scripted]). */
