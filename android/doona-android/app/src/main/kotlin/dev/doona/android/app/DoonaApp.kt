@@ -48,6 +48,7 @@ import dev.doona.android.feature.policies.EffectiveConfigRoute
 import dev.doona.android.feature.policies.GroupRoute
 import dev.doona.android.feature.policies.PoliciesRoute
 import dev.doona.android.feature.policies.RouteTraceRoute
+import dev.doona.android.feature.policies.RuleEditRoute
 import dev.doona.android.feature.policies.RulesRoute
 import dev.doona.android.feature.policies.RvPolicyRoutes
 import dev.doona.android.feature.policies.RvRulesRoutes
@@ -141,9 +142,12 @@ fun DoonaApp(
                 RulesRoute(
                     onBack = { backStack.pop(key) },
                     onTemplate = { backStack.push(TemplateKey) },
+                    onOpen = { backStack.push(RuleEditKey(it)) },
+                    onNew = { backStack.push(RuleEditKey(null)) },
                     routes = RvRulesRoutes(effective = { backStack.push(EffectiveConfigKey) }),
                 )
             }
+            entry<RuleEditKey> { key -> RuleEditRoute(key.ruleId, onBack = { backStack.pop(key) }, onOpenSource = { backStack.push(ConfigSourceKey(it)) }) }
             entry<TemplateKey> { key -> TemplateRoute(onBack = { backStack.pop(key) }, onReview = { backStack.push(TemplateImpactKey(it)) }) }
             entry<ServiceRulesKey> { key -> ServiceRulesRoute(onBack = { backStack.pop(key) }) }
             entry<TemplateImpactKey> { key ->

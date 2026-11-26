@@ -12,7 +12,10 @@ import androidx.compose.ui.test.performSemanticsAction
 import dev.doona.android.designsystem.rv.RvDiffFile
 import dev.doona.android.designsystem.rv.RvDiffKind
 import dev.doona.android.designsystem.rv.RvDiffLine
+import dev.doona.android.feature.policies.RvNativeRuleAt
 import dev.doona.android.feature.settings.RvDnsAction
+import dev.doona.android.feature.settings.RvDnsRuleDraft
+import dev.doona.android.feature.settings.RvDnsRuleEditPage
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole

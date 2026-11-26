@@ -1,36 +1,30 @@
-package dev.doona.android.prototype.rv.policy
+package dev.doona.android.feature.settings
 
-import android.content.res.Configuration
 import androidx.annotation.StringRes
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvChoiceLine
 import dev.doona.android.designsystem.rv.RvDiffAt
 import dev.doona.android.designsystem.rv.RvGutter
+import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvSectionTitle
 import dev.doona.android.designsystem.rv.RvSegmented
 import dev.doona.android.designsystem.rv.RvSpace
-import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvInkStart
-import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RvDnsServer
-import dev.doona.android.feature.settings.RvDnsAction
-import dev.doona.android.feature.settings.RvDnsList
-import dev.doona.android.feature.settings.rvDnsActionLabel
+import dev.doona.android.feature.policies.RvDnsServerCard
+import dev.doona.android.feature.policies.RvNativeRuleAt
+import dev.doona.android.feature.policies.RvRuleDraft
+import dev.doona.android.feature.policies.RvRuleForm
+import dev.doona.android.feature.policies.RvRuleFormPage
 
 /** A DNS rule being edited: its match and 啟用 as a traffic rule's (no `must`), its [action] and the [upstream] it names. */
 @Immutable
@@ -40,7 +34,7 @@ internal data class RvDnsRuleDraft(val list: RvDnsList, val match: RvRuleDraft, 
  * A DNS rule's page, in the rule page's grammar ([RvRuleFormPage]): 依據 as there (a query matches its name, a response
  * its addresses; a match the form cannot represent opens as its source lines), then 動作 as a slider over the list's
  * three actions with one line on what the chosen one does, and for an upstream the config's DNS servers to pick from
- * ([upstreams]); the card of 啟用 and 刪除規則, then 位置.
+ * ([upstreams]); the card of 啟用 and 刪除規則, then 位置. A [banner] heads the page as on the rule page.
  */
 @Composable
 internal fun RvDnsRuleEditPage(
@@ -53,10 +47,11 @@ internal fun RvDnsRuleEditPage(
     onDelete: () -> Unit,
     onMove: (Int) -> Unit = {},
     onOpenSource: (RvDiffAt) -> Unit = {},
+    banner: RvNotice? = null,
 ) {
     val title = stringResource(if (draft.list == RvDnsList.Query) R.string.rv_dns_query_title else R.string.rv_dns_response_title)
     val form = RvRuleForm(title, draft.match, { onChange(draft.copy(match = it)) }, at, must = false, privateLine = R.string.rv_dns_private_line)
-    RvRuleFormPage(form, onBack, onApply, onDelete, onMove, onOpenSource) { toggles ->
+    RvRuleFormPage(form, onBack, onApply, onDelete, onMove, onOpenSource, banner) { toggles ->
         RvSectionTitle(stringResource(R.string.rv_dns_action), Modifier.padding(horizontal = RvSpace.gutter))
         ActionField(draft) { action -> onChange(draft.copy(action = action, upstream = draft.upstream ?: upstreams.firstOrNull()?.name)) }
         if (draft.action == RvDnsAction.Upstream) {
@@ -85,7 +80,8 @@ private fun ActionField(draft: RvDnsRuleDraft, onAction: (RvDnsAction) -> Unit) 
     }
 }
 
-private val RvDnsList.actions: List<RvDnsAction>
+/** The list's three actions, in the slider's order. */
+internal val RvDnsList.actions: List<RvDnsAction>
     get() = when (this) {
         RvDnsList.Query -> listOf(RvDnsAction.Reject, RvDnsAction.AsIs, RvDnsAction.Upstream)
         RvDnsList.Response -> listOf(RvDnsAction.Accept, RvDnsAction.Reject, RvDnsAction.Upstream)
@@ -97,13 +93,4 @@ private fun line(list: RvDnsList, action: RvDnsAction): Int = when (action) {
     RvDnsAction.AsIs -> R.string.rv_dns_query_original_line
     RvDnsAction.Accept -> R.string.rv_dns_response_accept_line
     RvDnsAction.Upstream -> if (list == RvDnsList.Query) R.string.rv_dns_query_server_line else R.string.rv_dns_response_requery_line
-}
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvDnsRuleEditPagePreview() {
-    val dark = isSystemInDarkTheme()
-    var draft by remember { mutableStateOf(RvNativeSample.dnsQuery) }
-    RvTheme(rvSystemScheme(dark), dark) { RvDnsRuleEditPage(draft, { draft = it }, RvNativeSample.upstreams, RvNativeRuleAt(3, 4), {}, {}, {}) }
 }

@@ -1,8 +1,6 @@
-package dev.doona.android.prototype.rv.policy
+package dev.doona.android.feature.policies
 
-import android.content.res.Configuration
 import androidx.annotation.StringRes
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -13,15 +11,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvChoiceLine
 import dev.doona.android.designsystem.rv.RvConfirmSheet
@@ -31,6 +28,7 @@ import dev.doona.android.designsystem.rv.RvFootnote
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLargeTitle
+import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
@@ -40,10 +38,8 @@ import dev.doona.android.designsystem.rv.RvSourceExcerpt
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSwitch
 import dev.doona.android.designsystem.rv.RvTextField
-import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvInkStart
 import dev.doona.android.designsystem.rv.rvRowToggle
-import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RV_DIRECT
 import dev.doona.android.feature.model.RvMatchKind
 import dev.doona.android.feature.model.RvPolicyGroup
@@ -108,7 +104,7 @@ private val DOMAIN = Regex("""[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*""")
  * which asks first; and 套用 floating at the bottom, off while the value is wrong. A [native] honk statement adds 拒絕
  * to 送往, 所有模式都生效 (`must`) under 啟用 (which pauses and resumes it) and 位置 with 上移 and 下移 ([onMove] gets the
  * new place); a match the form cannot represent is shown as its source lines instead of the slider, and a line opens
- * the editor there ([onOpenSource]).
+ * the editor there ([onOpenSource]). A [banner] (a write honk did not take, a failed read) heads the page.
  */
 @Composable
 internal fun RvRuleEditPage(
@@ -117,13 +113,14 @@ internal fun RvRuleEditPage(
     onBack: () -> Unit,
     onApply: () -> Unit,
     onDelete: () -> Unit,
-    targets: List<RvPolicyGroup> = rvSampleTargets,
+    targets: List<RvPolicyGroup>,
     native: RvNativeRuleAt? = null,
     onMove: (Int) -> Unit = {},
     onOpenSource: (RvDiffAt) -> Unit = {},
+    banner: RvNotice? = null,
 ) {
     val form = RvRuleForm(stringResource(R.string.rv_rule_edit_title), draft, onChange, native, must = native != null)
-    RvRuleFormPage(form, onBack, onApply, onDelete, onMove, onOpenSource) { toggles ->
+    RvRuleFormPage(form, onBack, onApply, onDelete, onMove, onOpenSource, banner) { toggles ->
         RvSectionTitle(stringResource(R.string.rv_policy_send_to), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {
             RvTargetCard(targets, draft.targetId, block = native != null) { onChange(draft.copy(targetId = it)) }
@@ -159,6 +156,7 @@ internal fun RvRuleFormPage(
     onDelete: () -> Unit,
     onMove: (Int) -> Unit,
     onOpenSource: (RvDiffAt) -> Unit,
+    banner: RvNotice?,
     action: @Composable (toggles: @Composable () -> Unit) -> Unit,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
@@ -173,7 +171,8 @@ internal fun RvRuleFormPage(
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply, enabled = statement != null || draft.problem == null) },
     ) { titleBlock ->
         RvLargeTitle(form.title, titleBlock, insets)
-        RvSectionTitle(stringResource(R.string.rv_policy_match_by), Modifier.padding(horizontal = RvSpace.gutter), first = true)
+        RvBannerSlot(banner, RvSpace.none)
+        RvSectionTitle(stringResource(R.string.rv_policy_match_by), Modifier.padding(horizontal = RvSpace.gutter), first = banner == null)
         if (statement == null) {
             MatchFields(draft, form.onChange, form.privateLine)
         } else {
@@ -196,6 +195,16 @@ internal fun RvRuleFormPage(
         onDismiss = { confirming = false },
         bodyKeepWords = false,
     )
+}
+
+/** A rule's page whose first read failed: there is no rule to edit, so under the [title] stands the [banner] alone. */
+@Composable
+internal fun RvRuleFormFailed(title: String, banner: RvNotice, onBack: () -> Unit) {
+    val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
+    RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
+        RvLargeTitle(title, titleBlock, insets)
+        RvBannerSlot(banner)
+    }
 }
 
 /** The card of 啟用 (which pauses and resumes a native statement), 所有模式都生效 when the form has it, and 刪除規則. */
@@ -272,13 +281,4 @@ private fun RvRuleDraft.covers(@StringRes privateLine: Int): String = when (kind
     RvMatchKind.Cidr -> stringResource(R.string.rv_rule_edit_cidr_line, value)
     RvMatchKind.GeoIpCn -> stringResource(R.string.rv_rule_edit_geoip_line)
     RvMatchKind.Private -> stringResource(privateLine)
-}
-
-@Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
-@Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-private fun RvRuleEditPagePreview() {
-    val dark = isSystemInDarkTheme()
-    var draft by remember { mutableStateOf(RvRuleDraft.of(RvPolicyData.allRules[5])) }
-    RvTheme(rvSystemScheme(dark), dark) { RvRuleEditPage(draft, { draft = it }, onBack = {}, onApply = {}, onDelete = {}) }
 }

@@ -16,6 +16,8 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.feature.model.RvMatchKind
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvPolicyState
+import dev.doona.android.feature.policies.RvRuleDraft
+import dev.doona.android.feature.policies.RvRuleEditPage
 import dev.doona.android.feature.policies.RvRulesPage
 import dev.doona.android.feature.policies.RvTemplateImpactPage
 import dev.doona.android.prototype.rv.RV_FS200
@@ -127,7 +129,7 @@ class RvRulesShotTest {
         compose.setContent {
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
                 var shown by remember(address) { mutableStateOf(if (address) BAD_RANGE else draft) }
-                RvRuleEditPage(shown, { changed -> shown = changed.also { draft = it } }, onBack = {}, onApply = {}, onDelete = {})
+                RvRuleEditPage(shown, { changed -> shown = changed.also { draft = it } }, onBack = {}, onApply = {}, onDelete = {}, targets = rvSampleTargets)
             }
         }
         val kind = { label: Int -> compose.onNode(hasText(rvText(label)) and isSelectable()) }
@@ -141,7 +143,7 @@ class RvRulesShotTest {
     }
 
     @Composable
-    private fun Edit(draft: RvRuleDraft) = RvRuleEditPage(draft, onChange = {}, onBack = {}, onApply = {}, onDelete = {})
+    private fun Edit(draft: RvRuleDraft) = RvRuleEditPage(draft, onChange = {}, onBack = {}, onApply = {}, onDelete = {}, targets = rvSampleTargets)
 
     @Composable
     private fun Effective() = RvEffectiveConfigPageSample(RvPolicyState(), rvSampleSettings(), onBack = {})

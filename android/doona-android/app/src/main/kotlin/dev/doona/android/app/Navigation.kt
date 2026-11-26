@@ -53,6 +53,10 @@ data object MainNodeChoiceKey : AppKey
 @Serializable
 data object RulesKey : AppKey
 
+/** A rule's page, from 全部規則: honk's rule [ruleId], or a new rule (新增規則) when it is null. */
+@Serializable
+data class RuleEditKey(val ruleId: String?) : AppKey
+
 @Serializable
 data object TemplateKey : AppKey
 
@@ -126,6 +130,10 @@ data object DnsServersKey : AppKey
 /** DNS 規則, from 設定 › DNS and from a DNS server removal refused because rules name it. */
 @Serializable
 data object DnsRulesKey : AppKey
+
+/** A DNS rule's page, from DNS 規則: in honk's [list] (`request` or `response`), honk's [ruleId], or a new rule when null. */
+@Serializable
+data class DnsRuleEditKey(val list: String, val ruleId: String?) : AppKey
 
 @Serializable
 data object LogLevelKey : AppKey

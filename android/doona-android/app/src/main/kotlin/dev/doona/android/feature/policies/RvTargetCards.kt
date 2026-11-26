@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.policy
+package dev.doona.android.feature.policies
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -20,7 +20,6 @@ import dev.doona.android.feature.model.RV_DIRECT
 import dev.doona.android.feature.model.RvDnsServer
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.text
-import dev.doona.android.feature.policies.RvPolicyTarget
 
 // The radio cards of the rule forms: where a rule sends, and the DNS server a DNS rule asks.
 

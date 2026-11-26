@@ -49,6 +49,38 @@ internal fun rvRuleMatch(condition: String): RvRuleMatch {
     }
 }
 
+/**
+ * [condition] as the rule form edits it, or null when the form cannot hold it: a single [domain] matcher (`domain` in
+ * routing, `qname` in DNS) of one suffix, full or keyword value, or a single [address] matcher (`dip` in routing, `ip`
+ * in a DNS response) of one IPv4 range, `geoip: cn` or `geoip: private`.
+ */
+internal fun formMatch(condition: String, domain: String = "domain", address: String = "dip"): Pair<RvMatchKind, String>? {
+    val matcher = MATCHER.matchEntire(condition)?.takeIf { topLevel(condition, AND).size == 1 } ?: return null
+    val single = topLevel(matcher.groupValues[2], ",").singleOrNull()?.let(::argument) ?: return null
+    return when (matcher.groupValues[1]) {
+        domain -> DOMAIN_KINDS[single.key]?.let { it to single.value }
+
+        address -> when {
+            single.key == "geoip" && single.value.equals("cn", ignoreCase = true) -> RvMatchKind.GeoIpCn to ""
+            single.key == "geoip" && single.value.equals(PRIVATE, ignoreCase = true) -> RvMatchKind.Private to ""
+            single.key == null && FORM_CIDR.matches(single.value) -> RvMatchKind.Cidr to single.value
+            else -> null
+        }
+
+        else -> null
+    }
+}
+
+/** The honk condition of the form's [kind] and [value], over the [domain] and [address] matchers as [formMatch] reads them. */
+internal fun matchText(kind: RvMatchKind, value: String, domain: String = "domain", address: String = "dip"): String = when (kind) {
+    RvMatchKind.Full -> "$domain(full: $value)"
+    RvMatchKind.Suffix -> "$domain(suffix: $value)"
+    RvMatchKind.Keyword -> "$domain(keyword: $value)"
+    RvMatchKind.Cidr -> "$address($value)"
+    RvMatchKind.GeoIpCn -> "$address(geoip: cn)"
+    RvMatchKind.Private -> "$address(geoip: $PRIVATE)"
+}
+
 /** The condition of honk's rule text `condition -> outbound`: what comes before its first arrow outside quotes. */
 internal fun ruleCondition(expression: String): String = topLevel(expression, "->").first()
 
@@ -104,6 +136,7 @@ private const val PRIVATE = "private"
 private const val QUOTES = "'\""
 private val MATCHER = Regex("""([a-z0-9_]+)\((.*)\)""", RegexOption.DOT_MATCHES_ALL)
 private val KEY = Regex("""^([a-z]+)\s*:""")
+private val FORM_CIDR = Regex("""\d{1,3}(\.\d{1,3}){3}/\d{1,2}""")
 private val KEYS = setOf("suffix", "keyword", "full", "regex", "geosite", "geoip")
 
 /** A bare `domain(...)` value is a suffix, as honk reads it. */

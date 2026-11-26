@@ -31,6 +31,7 @@ import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvLanguage
+import dev.doona.android.feature.policies.RuleEditRoute
 import dev.doona.android.feature.report.ReportFacts
 import dev.doona.android.feature.report.ReportPage
 import dev.doona.android.feature.report.ReportViewModel
@@ -261,6 +262,14 @@ class SettingsAppShotTest {
     @Test fun dnsRulesLight() = compose.app("settings-dns-rules", dark = false, before = { shows("qname(geosite:cn)") }) { DnsRulesRoute(PolicyHonkFixtures.rvSample(), onBack = {}) }
 
     @Test fun dnsRulesDark() = compose.app("settings-dns-rules", dark = true, before = { shows("qname(geosite:cn)") }) { DnsRulesRoute(PolicyHonkFixtures.rvSample(), onBack = {}) }
+
+    /** A DNS statement the form cannot hold (a GeoSite match): its line in 依據, then 動作 and its servers. */
+    @Test fun dnsRuleEditLight() = compose.app("settings-dns-rule-edit", dark = false, before = { shows("alidns") }) {
+        DnsRuleEditRoute(PolicyHonkFixtures.rvSample(), query = true, ruleId = "dns_request:1", onBack = {}, onOpenSource = {})
+    }
+
+    /** 全部規則 → github.com, on the app's honk (the sample): a suffix rule to Proxy, sixth of thirteen. */
+    @Test fun ruleEditLight() = compose.app("rule-edit", dark = false, before = { shows("github.com") }) { RuleEditRoute("traffic:5", onBack = {}, onOpenSource = {}) }
 
     @Test fun dnsCustomLight() = compose.app("settings-dns-custom", dark = false) { DnsCustom(DnsUiState(SERVERS, true, TYPED)) }
 

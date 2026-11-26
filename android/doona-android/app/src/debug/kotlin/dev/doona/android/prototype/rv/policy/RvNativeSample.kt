@@ -16,6 +16,7 @@ import dev.doona.android.feature.model.RvRuleMatch
 import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.feature.model.RvRuleState
 import dev.doona.android.feature.policies.RvPolicyProfile
+import dev.doona.android.feature.policies.RvRuleDraft
 import dev.doona.android.feature.policies.RvTraceProto
 import dev.doona.android.feature.policies.RvTraceQuery
 import dev.doona.android.feature.policies.RvTraceResult
@@ -23,6 +24,7 @@ import dev.doona.android.feature.settings.RvDnsAction
 import dev.doona.android.feature.settings.RvDnsList
 import dev.doona.android.feature.settings.RvDnsLists
 import dev.doona.android.feature.settings.RvDnsRow
+import dev.doona.android.feature.settings.RvDnsRuleDraft
 import dev.doona.android.prototype.rv.data.RvData
 
 /**
