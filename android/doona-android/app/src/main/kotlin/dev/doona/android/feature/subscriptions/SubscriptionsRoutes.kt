@@ -12,6 +12,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import dev.doona.android.app.nativeApi
 import dev.doona.android.designsystem.rv.LocalRvUpdating
 import dev.doona.android.engine.Engine
 import dev.doona.android.feature.nodes.ui.LocalRvRowActions
@@ -21,10 +22,11 @@ import kotlinx.coroutines.flow.Flow
 /**
  * 訂閱: the subscriptions, which open their page ([onOpen], also the menu's 編輯) and lead to 新增訂閱 ([onAdd]); under
  * them the 組態內 card, whose nodes open their page ([onOpenNode]) and whose 新增節點 opens its sheet. After an add the
- * banner's 查看策略群組 runs [onViewGroups]. End dates count from [clock].
+ * banner's 查看策略群組 runs [onViewGroups]. End dates count from [clock]. The subscriptions are honk's, read through the
+ * app's [nativeApi] unless a caller (a test) gives its own [viewModel].
  */
 @Composable
-fun SubscriptionsRoute(
+internal fun SubscriptionsRoute(
     engine: Engine,
     onBack: () -> Unit,
     onOpen: (String) -> Unit,
@@ -32,9 +34,9 @@ fun SubscriptionsRoute(
     onOpenNode: (String) -> Unit = {},
     onViewGroups: () -> Unit = {},
     clock: () -> Long = System::currentTimeMillis,
+    viewModel: SubscriptionsViewModel = nativeApi().let { api -> viewModel(factory = viewModelFactory { initializer { SubscriptionsViewModel(api, clock) } }) },
 ) {
     val clipboard = LocalContext.current.applicationContext.getSystemService(ClipboardManager::class.java)
-    val viewModel: SubscriptionsViewModel = viewModel(factory = viewModelFactory { initializer { SubscriptionsViewModel(engine, clock) } })
     val nodes: AddNodeViewModel = viewModel(factory = viewModelFactory { initializer { AddNodeViewModel(engine, AndroidClipboardLinks(clipboard)) } })
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val inline by nodes.uiState.collectAsStateWithLifecycle()

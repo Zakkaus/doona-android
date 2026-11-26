@@ -24,7 +24,9 @@ import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.rvShot
+import dev.doona.android.vpn.HonkFixtures
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
@@ -317,10 +319,12 @@ class AppRvAddNodeShotTest {
         }, fontScale = fontScale, prefix = APP, english = english, windows = true) { Subs(build) }
     }
 
+    /** 訂閱 with its subscriptions from honk's RV sample profile; the 組態內 card reads [build]'s engine. */
     @Composable
     private fun Subs(build: () -> StaticNodesEngine = ::engine) {
         val engine = remember { build() }
-        SubscriptionsRoute(engine, onBack = {}, onOpen = {}, onAdd = {}, clock = { RvData.nowEpochMs })
+        val subscriptions = remember { SubscriptionsViewModel(HonkFixtures.rvSample(), clock = { RvData.nowEpochMs }, io = Dispatchers.Unconfined) }
+        SubscriptionsRoute(engine, onBack = {}, onOpen = {}, onAdd = {}, clock = { RvData.nowEpochMs }, viewModel = subscriptions)
     }
 
     /** The card's 新增節點 tapped, the clipboard holding [clip]. */

@@ -36,6 +36,7 @@ import dev.doona.android.feature.localnetwork.LocalNetworkEngine
 import dev.doona.android.feature.localnetwork.LocalNetworkHost
 import dev.doona.android.feature.localnetwork.LocalNetworkPrompts
 import dev.doona.android.feature.onboarding.FirstRunGate
+import dev.doona.android.feature.reasonRes
 import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
@@ -44,6 +45,9 @@ import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.gallery.RV_SAMPLE_LINK
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.subs.RV_LAN_LINK
+import dev.doona.android.vpn.FakeHonk
+import dev.doona.android.vpn.HonkFixtures
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -85,15 +89,15 @@ class AppRvSubsShotTest {
     @Config(qualifiers = RV_EN)
     fun subsEn() = shot("subs", english = true) { Subs() }
 
-    @Test fun subsEmptyLight() = shot("subs-empty") { Subs { FakeEngine(subscriptions = emptyList()) } }
+    @Test fun subsEmptyLight() = shot("subs-empty") { SubsEmpty() }
 
-    @Test fun subsEmptyDark() = shot("subs-empty", dark = true) { Subs { FakeEngine(subscriptions = emptyList()) } }
+    @Test fun subsEmptyDark() = shot("subs-empty", dark = true) { SubsEmpty() }
 
-    @Test fun subsEmptyFs200() = shot("subs-empty", fontScale = RV_FS200, whole = false) { Subs { FakeEngine(subscriptions = emptyList()) } }
+    @Test fun subsEmptyFs200() = shot("subs-empty", fontScale = RV_FS200, whole = false) { SubsEmpty() }
 
     @Test
     @Config(qualifiers = RV_EN)
-    fun subsEmptyEn() = shot("subs-empty", english = true) { Subs { FakeEngine(subscriptions = emptyList()) } }
+    fun subsEmptyEn() = shot("subs-empty", english = true) { SubsEmpty() }
 
     @Test
     @Config(qualifiers = WHOLE_DETAIL)
@@ -189,35 +193,37 @@ class AppRvSubsShotTest {
     @Config(qualifiers = RV_EN)
     fun tooLargeEn() = add("sub-add-too-large", Answer.Fails(ErrorCode.TooLarge), english = true)
 
-    /** Harbor Cloud's last update failed: the banner over the cards, as the engine reports the failure. */
-    @Test fun failedLight() = shot("subs-failed") { Subs(::failedEngine) }
+    /** Harbor Cloud's last fetch failed: the banner over the cards, as honk reports it in the provider's `last_error`. */
+    @Test fun failedLight() = shot("subs-failed") { Subs { failedHonk() } }
 
-    @Test fun failedDark() = shot("subs-failed", dark = true) { Subs(::failedEngine) }
+    @Test fun failedDark() = shot("subs-failed", dark = true) { Subs { failedHonk() } }
 
     /**
-     * Harbor Cloud deleted from its menu and the core refused, as `state.json` could not be written (`write_failed`):
-     * the delete-failure banner with its reason, the update failure's (orchestrator ruling 12, 2026-11-26; the reason,
-     * p5c 2026-11-26). No approved golden yet; the owner sees these first.
+     * Harbor Cloud deleted from its menu and honk's delete failed, as its configuration store could not be written
+     * (`store_unavailable`, honk's nearest to the core's `write_failed`): the delete-failure banner with its reason, the
+     * update failure's (orchestrator ruling 12, 2026-11-26; the reason, p5c 2026-11-26). No approved golden yet; the
+     * owner sees these first. honk runs the delete in the background, so the banner comes after its first poll.
      */
-    @Test fun deleteFailedLight() = shot("subs-delete-failed", before = { confirmDeleteFromMenu() }) { Subs { DeleteFails() } }
+    @Test fun deleteFailedLight() = shot("subs-delete-failed", before = { confirmDeleteFromMenu(ErrorCode.Internal) }) { Subs { deleteFails() } }
 
-    @Test fun deleteFailedDark() = shot("subs-delete-failed", dark = true, before = { confirmDeleteFromMenu() }) { Subs { DeleteFails() } }
+    @Test fun deleteFailedDark() = shot("subs-delete-failed", dark = true, before = { confirmDeleteFromMenu(ErrorCode.Internal) }) { Subs { deleteFails() } }
 
-    @Test fun deleteFailedFs200() = shot("subs-delete-failed", fontScale = RV_FS200, whole = false, before = { confirmDeleteFromMenu() }) { Subs { DeleteFails() } }
+    @Test
+    fun deleteFailedFs200() = shot("subs-delete-failed", fontScale = RV_FS200, whole = false, before = { confirmDeleteFromMenu(ErrorCode.Internal) }) { Subs { deleteFails() } }
 
     @Test
     @Config(qualifiers = RV_EN)
-    fun deleteFailedEn() = shot("subs-delete-failed", english = true, before = { confirmDeleteFromMenu() }) { Subs { DeleteFails() } }
+    fun deleteFailedEn() = shot("subs-delete-failed", english = true, before = { confirmDeleteFromMenu(ErrorCode.Internal) }) { Subs { deleteFails() } }
 
-    /** The same refused as the phone's storage is full (`storage_full`). */
-    @Test fun deleteFullLight() = shot("subs-delete-full", before = { confirmDeleteFromMenu() }) { Subs { DeleteFails(ErrorCode.StorageFull) } }
+    /** The same refused as honk cannot take the request now (503 `temporarily_unavailable`); honk has no `storage_full`. */
+    @Test fun deleteFullLight() = shot("subs-delete-full", before = { confirmDeleteFromMenu() }) { Subs { deleteRefused() } }
 
     @Test
-    fun deleteFullFs200() = shot("subs-delete-full", fontScale = RV_FS200, whole = false, before = { confirmDeleteFromMenu() }) { Subs { DeleteFails(ErrorCode.StorageFull) } }
+    fun deleteFullFs200() = shot("subs-delete-full", fontScale = RV_FS200, whole = false, before = { confirmDeleteFromMenu() }) { Subs { deleteRefused() } }
 
     @Test
     @Config(qualifiers = RV_EN)
-    fun deleteFullEn() = shot("subs-delete-full", english = true, before = { confirmDeleteFromMenu() }) { Subs { DeleteFails(ErrorCode.StorageFull) } }
+    fun deleteFullEn() = shot("subs-delete-full", english = true, before = { confirmDeleteFromMenu() }) { Subs { deleteRefused() } }
 
     /** The same from Harbor Cloud's page: its 刪除訂閱 row, then the sheet's 刪除. */
     @Test
@@ -382,9 +388,11 @@ class AppRvSubsShotTest {
         waitForIdle()
     }
 
-    private fun ComposeContentTestRule.confirmDeleteFromMenu() {
+    /** 刪除 from the menu and its sheet; with [waitFor], until the banner says why the delete failed with that code. */
+    private fun ComposeContentTestRule.confirmDeleteFromMenu(waitFor: ErrorCode? = null) {
         pickDelete()
         confirmSheetDelete()
+        if (waitFor != null) waitUntil(POLL_WAIT_MS) { onAllNodesWithText(string(waitFor.reasonRes()), substring = true).fetchSemanticsNodes().isNotEmpty() }
     }
 
     private fun ComposeContentTestRule.confirmDeleteFromPage() {
@@ -464,10 +472,18 @@ class AppRvSubsShotTest {
         ) { Add(engine) }
     }
 
+    /** 訂閱 on [honk]; the 組態內 card under the subscriptions still reads [engine]. */
     @Composable
-    private fun Subs(build: () -> Engine = ::rvSampleEngine) {
-        val engine = remember { build() }
-        SubscriptionsRoute(engine, onBack = {}, onOpen = {}, onAdd = {}, clock = { RvData.nowEpochMs })
+    private fun Subs(engine: () -> Engine = ::rvSampleEngine, honk: () -> FakeHonk = { HonkFixtures.rvSample() }) {
+        val sample = remember { engine() }
+        val viewModel = remember { SubscriptionsViewModel(honk(), clock = { RvData.nowEpochMs }, io = Dispatchers.Unconfined) }
+        SubscriptionsRoute(sample, onBack = {}, onOpen = {}, onAdd = {}, clock = { RvData.nowEpochMs }, viewModel = viewModel)
+    }
+
+    /** No subscription and no node of the configuration's own. */
+    @Composable
+    private fun SubsEmpty() = Subs({ FakeEngine(subscriptions = emptyList()) }) {
+        HonkFixtures.rvSample().apply { on("GET", "/api/v1/providers", 200, HonkFixtures.body("providers/empty")) }
     }
 
     @Composable
@@ -483,10 +499,18 @@ class AppRvSubsShotTest {
         SubAddRoute(engine, rememberImports(engine), lanAsking, onBack = {})
     }
 
-    /** The sample with Harbor Cloud's last update failed. */
-    private fun failedEngine(): FakeEngine = rvSampleEngine().apply {
-        subscriptions.value = subscriptions.value.mapIndexed { i, sub -> if (i == 0) sub.copy(error = ErrorCode.FetchFailed) else sub }
+    /** The sample with Harbor Cloud's last fetch failed. */
+    private fun failedHonk(): FakeHonk = HonkFixtures.rvSample().apply { on("GET", "/api/v1/providers", 200, HonkFixtures.body("providers/rv-sample-failed")) }
+
+    /** The sample, whose delete of Harbor Cloud honk accepts and then fails, as its configuration store cannot be written. */
+    private fun deleteFails(): FakeHonk = HonkFixtures.rvSample().apply {
+        on("DELETE", "/api/v1/providers/s1", 202, HonkFixtures.body("operations/provider-delete-accepted"))
+        on("GET", "/api/v1/operations/op-delete", 200, HonkFixtures.body("operations/provider-delete-store-unavailable"))
     }
+
+    /** The sample, whose delete of Harbor Cloud honk refuses now. */
+    private fun deleteRefused(): FakeHonk =
+        HonkFixtures.rvSample().apply { on("DELETE", "/api/v1/providers/s1", 503, HonkFixtures.body("errors/temporarily-unavailable")) }
 
     /** The page's focus, to put the keyboard away after typing; taken once the page has composed. */
     private lateinit var focus: FocusManager
@@ -547,6 +571,9 @@ class AppRvSubsShotTest {
          * matches `proto-rv-sub-adding-unknown-light` with no pixel apart; the bar starts at the tap here.
          */
         const val BUSY_FRAMES = 24
+
+        /** How long a change honk runs in the background takes to report: its first poll is a second after it starts. */
+        const val POLL_WAIT_MS = 5_000L
 
         /** Frames from a step to its prompt shown in place: the dialog's window and its fade, a second at most. */
         const val LAN_FRAMES = 60

@@ -1,0 +1,16 @@
+{
+  "operation_id": "op-refresh",
+  "kind": "provider_refresh",
+  "status": "failed",
+  "created_at": "2026-11-22T06:00:00Z",
+  "started_at": "2026-11-22T06:00:00Z",
+  "finished_at": "2026-11-22T06:00:01Z",
+  "result": null,
+  "error": {
+    "code": "fetch_failed",
+    "message": "The subscription could not be fetched.",
+    "details": {
+      "stage": "connect"
+    }
+  }
+}

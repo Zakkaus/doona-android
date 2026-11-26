@@ -3,10 +3,17 @@ package dev.doona.android.feature.subscriptions
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.doona.android.engine.Engine
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.Subscription
 import dev.doona.android.feature.errorCode
+import dev.doona.android.vpn.NativeApi
+import dev.doona.android.vpn.honk.NativeCatalog
+import dev.doona.android.vpn.honk.Provider
+import dev.doona.android.vpn.honk.ProviderKind
+import dev.doona.android.vpn.honk.errorCode
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -14,53 +21,76 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-/** 訂閱 as the page draws it: the page's state, the subscriptions updating now, and whether the engine is still loading. */
+/** 訂閱 as the page draws it: the page's state, the subscriptions updating now, and whether the first read is running. */
 @Immutable
 internal data class SubsUiState(val page: RvSubsState, val updating: Set<String> = emptySet(), val loading: Boolean = false)
 
 /**
- * What the view model keeps besides the engine's values: updates running, the last one that failed, the delete asked,
- * the last delete the core refused, each failure with the core's code, and the subscriptions the core no longer has.
+ * What the view model keeps besides honk's providers: updates running, the last one that failed, the delete asked and
+ * the last delete honk refused, each failure with its code.
  */
 internal data class SubsLocal(
     val updating: Set<String> = emptySet(),
     val failed: RvSubFailure? = null,
     val deletingId: String? = null,
     val deleteFailed: RvSubFailure? = null,
-    val gone: Set<String> = emptySet(),
 )
 
 /**
- * 訂閱: the engine's subscriptions mapped to the page, with the updates the user started, the banner of the last one
- * that failed (or of a subscription whose last refresh failed, by the core's report), the delete question, and the
- * banner of a delete the core refused. A subscription the core answered `not_found` for is left out.
+ * 訂閱: honk's subscription providers mapped to the page ([listed] null until the first read ends), with the updates
+ * the user started, the banner of the last one that failed (or of a provider whose last fetch failed, by honk's
+ * `last_error`), the delete question, and the banner of a delete honk refused.
  */
-internal fun subsUiState(ready: Boolean, listed: List<Subscription>, local: SubsLocal, nowEpochMs: Long): SubsUiState {
-    val subscriptions = listed.filterNot { it.id in local.gone }
-    val ids = subscriptions.map { it.id }.toSet()
-    val reported = subscriptions.firstNotNullOfOrNull { s -> s.error?.takeIf { s.id !in local.updating }?.let { RvSubFailure(s.id, it) } }
+internal fun subsUiState(listed: List<Provider>?, local: SubsLocal, nowEpochMs: Long): SubsUiState {
+    val providers = listed.orEmpty().filter { it.kind == ProviderKind.Subscription }
+    val ids = providers.map { it.id }.toSet()
+    val reported = providers.firstNotNullOfOrNull { p -> p.lastError?.takeIf { p.id !in local.updating }?.let { RvSubFailure(p.id, it.errorCode()) } }
     val failed = local.failed?.takeIf { it.id in ids } ?: reported
     return SubsUiState(
         page = RvSubsState(
-            subscriptions.map(::rvSubscription),
+            providers.map { rvSubscription(it, userAgent = null) },
             nowEpochMs,
             failed,
             local.deletingId?.takeIf { it in ids },
             local.deleteFailed?.takeIf { it.id in ids },
         ),
         updating = local.updating intersect ids,
-        loading = !ready,
+        loading = listed == null,
     )
 }
 
-/** The subscriptions page's state holder (plan §2.2): reads the engine, and updates and removes subscriptions. */
-internal class SubscriptionsViewModel(private val engine: Engine, private val clock: () -> Long = System::currentTimeMillis) : ViewModel() {
+/**
+ * The subscriptions page's state holder (plan §2.2): reads honk's providers on [io] at start and after each update or
+ * delete, and updates and removes them. honk pushes nothing, so the list is as last read.
+ */
+internal class SubscriptionsViewModel(
+    api: NativeApi,
+    private val clock: () -> Long = System::currentTimeMillis,
+    private val io: CoroutineDispatcher = Dispatchers.IO,
+) : ViewModel() {
+    private val catalog = NativeCatalog(api)
+    private val providers = MutableStateFlow<List<Provider>?>(null)
     private val local = MutableStateFlow(SubsLocal())
+    private var reading: Job? = null
 
     val uiState: StateFlow<SubsUiState> =
-        combine(engine.ready, engine.subscriptions, local) { ready, subscriptions, local -> subsUiState(ready, subscriptions, local, clock()) }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), subsUiState(engine.ready.value, engine.subscriptions.value, local.value, clock()))
+        combine(providers, local) { providers, local -> subsUiState(providers, local, clock()) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), subsUiState(providers.value, local.value, clock()))
+
+    init {
+        load()
+    }
+
+    /** Reads the providers again; a failed read keeps the list last read (none before the first). */
+    private fun load() {
+        reading?.cancel()
+        reading = viewModelScope.launch {
+            val read = attempt { providers() }
+            providers.value = read.getOrNull() ?: providers.value.orEmpty()
+        }
+    }
 
     /** Updates [id]; a second tap while it runs does nothing. A failure shows the banner until the next update starts. */
     fun update(id: String) {
@@ -71,21 +101,23 @@ internal class SubscriptionsViewModel(private val engine: Engine, private val cl
         }
         if (!started) return
         viewModelScope.launch {
-            val failure = engine.updateSubscription(id).exceptionOrNull()
+            val failure = attempt { refreshProvider(id) }.exceptionOrNull()
             local.update { it.failed(id, failure) }
+            load()
         }
     }
 
-    /** Updates every subscription, one after another, as the core takes one fetch at a time. */
+    /** Updates every subscription, one after another, as honk runs one refresh of each at a time. */
     fun updateAll() {
-        val ids = engine.subscriptions.value.map { it.id }.filterNot { it in local.value.updating }
+        val ids = providers.value.orEmpty().filter { it.kind == ProviderKind.Subscription }.map { it.id }.filterNot { it in local.value.updating }
         if (ids.isEmpty()) return
         local.update { it.copy(updating = it.updating + ids, failed = null) }
         viewModelScope.launch {
             ids.forEach { id ->
-                val failure = engine.updateSubscription(id).exceptionOrNull()
+                val failure = attempt { refreshProvider(id) }.exceptionOrNull()
                 local.update { it.failed(id, failure) }
             }
+            load()
         }
     }
 
@@ -94,14 +126,24 @@ internal class SubscriptionsViewModel(private val engine: Engine, private val cl
 
     /**
      * Deletes [id] after the question (重試 on the banner, again). A refusal leaves it in the list, with the banner saying
-     * why; `not_found` means it is gone already, so it leaves the list with no banner.
+     * why; `not_found` means it is gone already, so the next read drops it with no banner.
      */
     fun confirmDelete(id: String) {
         local.update { it.copy(deletingId = null, deleteFailed = null) }
         viewModelScope.launch {
-            val code = engine.removeSubscription(id).exceptionOrNull()?.errorCode() ?: return@launch
-            local.update { if (code == ErrorCode.NotFound) it.copy(gone = it.gone + id) else it.copy(deleteFailed = RvSubFailure(id, code)) }
+            val code = attempt { removeProvider(id) }.exceptionOrNull()?.errorCode()
+            if (code != null && code != ErrorCode.NotFound) local.update { it.copy(deleteFailed = RvSubFailure(id, code)) }
+            load()
         }
+    }
+
+    /** [action] on [io]; its failure, a cancellation apart, is the result's. */
+    private suspend fun <T> attempt(action: suspend NativeCatalog.() -> T): Result<T> = try {
+        Result.success(withContext(io) { catalog.action() })
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Exception) {
+        Result.failure(error)
     }
 }
 
