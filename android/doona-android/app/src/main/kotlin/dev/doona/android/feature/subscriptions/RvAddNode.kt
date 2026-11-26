@@ -1,6 +1,8 @@
 package dev.doona.android.feature.subscriptions
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
@@ -11,7 +13,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RV_NODE_LINK_PLACEHOLDER
+import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
+import dev.doona.android.designsystem.rv.RvCheckRow
 import dev.doona.android.designsystem.rv.RvConfirmSheet
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvNotice
@@ -34,6 +38,7 @@ internal class RvInlineActions(
     val delete: (String?) -> Unit = {},
     val confirmDelete: (String) -> Unit = {},
     val viewGroups: () -> Unit = {},
+    val pick: (String) -> Unit = {},
 )
 
 /**
@@ -58,8 +63,8 @@ internal fun RvInlineCard(nodes: List<RvNode>, actions: RvInlineActions) {
 /**
  * 新增節點's sheet (panel s1125f-addnode-sheet), the library's confirm sheet: what to paste, the clipboard's row while the
  * field is empty and the clipboard may hold a link, the link field (up to [LINK_LINES] lines that wrap, then it scrolls
- * inside; one link per line) with what it will add or why it cannot, then 新增 and 取消. 新增 waits for an add already
- * sent.
+ * inside; one link per line) with what it will add or why it cannot; once it can add, 加入群組, honk's groups to check
+ * for the new nodes; then 新增 and 取消. 新增 waits for an add already sent.
  */
 @Composable
 internal fun RvAddNodeSheet(sheet: RvAddNodeSheet?, actions: RvInlineActions) {
@@ -92,8 +97,39 @@ internal fun RvAddNodeSheet(sheet: RvAddNodeSheet?, actions: RvInlineActions) {
                     lines = LINK_LINES,
                 )
             }
+            if (check.addable && sheet != null && sheet.groups.isNotEmpty()) GroupPicks(sheet, actions.pick)
         },
     )
+}
+
+/**
+ * 加入群組: a check row for each of honk's groups, by its name. A group that takes every node is checked and held, saying
+ * so; one no writable file holds is held, saying why.
+ */
+@Composable
+private fun GroupPicks(sheet: RvAddNodeSheet, pick: (String) -> Unit) {
+    Column(Modifier.padding(top = RvSpace.gutter)) {
+        RvCaption(stringResource(R.string.rv_addnode_groups))
+        Spacer(Modifier.height(RvSpace.tight))
+        RvCard {
+            sheet.groups.forEach { group ->
+                val line = when {
+                    group.every -> stringResource(R.string.rv_addnode_group_every)
+                    !group.writable -> stringResource(R.string.rv_addnode_group_readonly)
+                    else -> null
+                }
+                RvCheckRow(
+                    { RvIconDisc(R.drawable.rv_sym_account_tree) },
+                    group.name,
+                    line,
+                    group.every || group.chosen,
+                    { pick(group.name) },
+                    enabled = group.enabled && !sheet.adding,
+                    titleKeepWords = false,
+                )
+            }
+        }
+    }
 }
 
 /** What the field says under it while the paste can be added: the one node's name, or the count and the lines skipped. */
@@ -141,19 +177,22 @@ private fun sentences(parts: List<String>): String = parts.joinToString(if (Loca
 /**
  * After an add: how many nodes it added and which groups took them, by honk's names, with 查看策略群組; Info when every
  * line was added, an error that also counts the lines it did not add when some were not, as an action that partly failed
- * (the sheet said why before 新增; the reason keeps to the groups, so it stays within the banner's lines at 2.0×).
+ * (the sheet said why before 新增; the reason keeps to the groups, so it stays within the banner's lines at 2.0×). When
+ * the groups chosen in 加入群組 could not take the nodes, an error whose reason is why.
  */
 @Composable
 internal fun rvAddedBanner(added: RvAddedNodes, onViewGroups: () -> Unit): RvNotice {
     val skipped = added.skipped.count + added.skipped.unread
+    val reason = added.failed?.let { stringResource(it.messageRes()) }
+        ?: if (added.groups.isEmpty()) null else stringResource(R.string.rv_addnode_joined, listed(added.groups))
     return RvNotice(
-        if (skipped == 0) RvNoticeKind.Info else RvNoticeKind.Error,
+        if (skipped == 0 && added.failed == null) RvNoticeKind.Info else RvNoticeKind.Error,
         if (skipped == 0) {
             pluralStringResource(R.plurals.rv_addnode_added, added.count, added.count)
         } else {
             pluralStringResource(R.plurals.rv_addnode_added_partial, added.count, added.count, skipped)
         },
-        if (added.groups.isEmpty()) null else stringResource(R.string.rv_addnode_joined, listed(added.groups)),
+        reason,
         stringResource(R.string.rv_addnode_view_groups),
         onViewGroups,
         reasonKeepWords = false,

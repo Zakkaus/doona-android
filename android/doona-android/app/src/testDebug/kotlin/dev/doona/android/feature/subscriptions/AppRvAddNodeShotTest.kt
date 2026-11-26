@@ -4,7 +4,10 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
@@ -12,6 +15,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.core.app.ApplicationProvider
@@ -20,9 +24,11 @@ import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvShot
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -99,6 +105,37 @@ class AppRvAddNodeShotTest {
     @Test
     @Config(qualifiers = EN)
     fun readyEn() = sheet("addnode-ready", { paste(TOKYO) }, english = true)
+
+    // 加入群組 (new, for the owner's review): honk's groups under the link, HK checked; Proxy and Auto take every node
+    // and are held checked, US is in a file honk cannot write.
+    @Test
+    @Config(qualifiers = ZH)
+    fun groupsLight() = sheet("addnode-groups", { pickGroup(TOKYO, "HK") })
+
+    @Test
+    @Config(qualifiers = ZH)
+    fun groupsDark() = sheet("addnode-groups", { pickGroup(TOKYO, "HK") }, dark = true)
+
+    @Test
+    @Config(qualifiers = ZH_927)
+    fun groupsFs200() = sheet("addnode-groups", { pickGroup(TOKYO, "HK") }, fontScale = RV_FS200)
+
+    @Test
+    @Config(qualifiers = EN)
+    fun groupsEn() = sheet("addnode-groups", { pickGroup(TOKYO, "HK") }, english = true)
+
+    // Eight groups run the sheet past the window: 新增 and 取消 are reached by scrolling, and 新增 writes HK's file alone.
+    @Test
+    @Config(qualifiers = ZH)
+    fun groupsScrollToTheActions() {
+        val honk = honk()
+        compose.rvContent(dark = false) { Subs(build = { honk }) }
+        compose.pickGroup(TOKYO, "HK")
+        compose.onNodeWithText(string(R.string.rv_cancel)).assertIsNotDisplayed().performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(string(R.string.rv_add_import)).performScrollTo().assertIsDisplayed().performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("source-regions"), honk.writes.map { it.first })
+    }
 
     // A line that is no share link typed: the field's error, 新增 held. The field has the focus the typing gave it.
     @Test
@@ -346,18 +383,32 @@ class AppRvAddNodeShotTest {
         waitForIdle()
     }
 
+    /** [clip] pasted and [group] checked in 加入群組. */
+    private fun ComposeContentTestRule.pickGroup(clip: String, group: String) {
+        paste(clip)
+        tap(group)
+    }
+
     /** [clip] pasted and added. */
     private fun ComposeContentTestRule.add(clip: String) {
         paste(clip)
-        onNodeWithText(string(R.string.rv_add_import)).performClick()
-        waitForIdle()
+        tapAdd()
     }
 
     /** The link pasted, then 新增 tapped as honk fails every add. */
     private fun ComposeContentTestRule.failAdd() {
         paste(TOKYO)
         failingHonk?.addStatus = 500
-        onNodeWithText(string(R.string.rv_add_import)).performClick()
+        tapAdd()
+    }
+
+    private fun ComposeContentTestRule.tapAdd() = tap(string(R.string.rv_add_import))
+
+    /** [text] tapped, scrolled to first when off the window: 加入群組 runs the sheet past a phone's window. */
+    private fun ComposeContentTestRule.tap(text: String) {
+        val node = onNodeWithText(text)
+        if (!node.isDisplayed()) node.performScrollTo()
+        node.performClick()
         waitForIdle()
     }
 

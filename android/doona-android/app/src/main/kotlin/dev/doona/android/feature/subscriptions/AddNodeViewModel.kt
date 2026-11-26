@@ -9,7 +9,9 @@ import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.rvNode
 import dev.doona.android.vpn.NativeApi
 import dev.doona.android.vpn.honk.NativeCatalog
+import dev.doona.android.vpn.honk.NativeConfig
 import dev.doona.android.vpn.honk.Node
+import dev.doona.android.vpn.honk.daeJoined
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -36,7 +38,8 @@ private data class InlineLocal(
  * at start and after each add or delete, as honk pushes nothing; 新增節點's sheet, which adds each share link it holds
  * with honk's POST /nodes and says which groups took the new nodes; and 刪除節點, which asks first. honk previews no
  * link, so the sheet says only what it can tell before honk reads one: which lines are no share link and which names
- * are in use. The clipboard's content is read only when the user taps its row ([paste]).
+ * are in use. Its 加入群組 lists honk's groups; the ones chosen take the new nodes by name in the configuration file that
+ * holds each, one replace a file. The clipboard's content is read only when the user taps its row ([paste]).
  */
 internal class AddNodeViewModel(
     api: NativeApi,
@@ -45,6 +48,7 @@ internal class AddNodeViewModel(
     private val places: NodePlaces = CoreNodePlaces,
 ) : ViewModel() {
     private val catalog = NativeCatalog(api)
+    private val config = NativeConfig(api)
     private val inline = MutableStateFlow<List<Node>>(emptyList())
     private val local = MutableStateFlow(InlineLocal())
     private var reading: Job? = null
@@ -60,10 +64,23 @@ internal class AddNodeViewModel(
     /** Which sheet is open: each [open] starts a new one, so an answer meant for a sheet since closed finds it gone. */
     private var opened = 0
 
-    /** Opens the sheet empty, asking only whether the clipboard may hold a link. A new add clears the last one's banner. */
+    /**
+     * Opens the sheet empty, asking only whether the clipboard may hold a link, then reads honk's groups for 加入群組 (a
+     * failed read lists none). A new add clears the last one's banner.
+     */
     fun open() {
-        opened++
+        val mine = ++opened
         local.update { it.copy(sheet = RvAddNodeSheet(clipboard = clipboard.mayHoldText()), added = null, deleteFailed = null) }
+        viewModelScope.launch {
+            val picks = attempt { groupPicks(groups(), config.config().sources) }.getOrNull() ?: return@launch
+            local.update { if (opened == mine) it.copy(sheet = it.sheet?.copy(groups = picks)) else it }
+        }
+    }
+
+    /** Chooses group [name] in 加入群組, or no longer; a group that takes every node or that no file can hold stays as it is. */
+    fun pick(name: String) = local.update { state ->
+        val sheet = state.sheet?.takeIf { !it.adding } ?: return@update state
+        state.copy(sheet = sheet.copy(groups = sheet.groups.map { if (it.name == name && it.enabled) it.copy(chosen = !it.chosen) else it }))
     }
 
     /** Closes the sheet; an add already sent still ends, and only its banner shows. */
@@ -115,10 +132,13 @@ internal class AddNodeViewModel(
             }
             // The sheet said which lines it would skip; only the lines honk refused are news, and the lines past the cap,
             // which were never sent: once the sheet closes nothing else says so.
+            val chosen = sheet.groups.filter { it.chosen }.map { it.name }
+            val failed = if (chosen.isEmpty()) null else attempt { join(chosen, added) }.exceptionOrNull()?.errorCode()
             val ids = added.mapTo(HashSet()) { it.id }
             val groups = attempt { groups() }.getOrNull()?.let { joinedGroups(it, ids) }.orEmpty()
             // The nodes are in either way: the banner says so, but only this add's own sheet closes.
-            local.update { it.copy(sheet = if (opened == mine) null else it.sheet, added = RvAddedNodes(added.size, groups, RvSkipped(other = refused, unread = unread))) }
+            val result = RvAddedNodes(added.size, groups, RvSkipped(other = refused, unread = unread), failed)
+            local.update { it.copy(sheet = if (opened == mine) null else it.sheet, added = result) }
             load()
         }
     }
@@ -148,6 +168,20 @@ internal class AddNodeViewModel(
         reading?.cancel()
         reading = viewModelScope.launch {
             attempt { inlineNodes(nodes(), providers()) }.getOrNull()?.let { inline.value = it }
+        }
+    }
+
+    /**
+     * Writes [added] into each of the [chosen] groups that does not hold them yet (its filters may match them already),
+     * one replace of each configuration file that changes, waiting for honk's reload.
+     */
+    private suspend fun join(chosen: List<String>, added: List<Node>) {
+        val held = catalog.groups().associate { group -> group.name to group.members.mapTo(HashSet()) { it.id } }
+        val joins = chosen.associateWith { group -> added.filter { it.id !in held[group].orEmpty() }.map { it.name } }.filterValues { it.isNotEmpty() }
+        if (joins.isEmpty()) return
+        config.config().sources.filter { it.writable }.forEach { source ->
+            val content = daeJoined(source.content, joins)
+            if (content != source.content) config.replace(source, content)
         }
     }
 

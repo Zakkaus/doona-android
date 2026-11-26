@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -46,7 +47,7 @@ class AddNodeViewModelTest {
     fun opensEmptyWithTheClipboardRowWhenItMayHoldText() = runTest {
         val vm = model(clipboard = HeldClipboard(TOKYO))
         vm.open()
-        assertEquals(RvAddNodeSheet(clipboard = true), vm.sheet)
+        assertEquals(RvAddNodeSheet(clipboard = true), vm.sheet.copy(groups = emptyList()))
         vm.paste()
         assertEquals(TOKYO, vm.sheet.text)
         assertFalse(vm.sheet.clipboard)
@@ -106,6 +107,60 @@ class AddNodeViewModelTest {
         assertTrue(state.nodes.all { it.subscription.isEmpty() })
         // honk's groups by their names, in honk's order; the sample has no Singapore group.
         assertEquals(RvAddedNodes(2, listOf("Proxy", "Auto", "Streaming", "AI", "JP"), RvSkipped()), state.added)
+        assertTrue(honk.writes.isEmpty())
+    }
+
+    @Test
+    fun theSheetListsHonksGroupsAsTheFilesHoldThem() = runTest {
+        val vm = model()
+        vm.open()
+        val picks = vm.sheet.groups
+        assertEquals(listOf("Proxy", "Auto", "Streaming", "AI", "HK", "TW", "JP", "US"), picks.map { it.name })
+        // Proxy and Auto have no filter, so they take every node; US is in a file honk cannot write.
+        assertEquals(listOf("Proxy", "Auto"), picks.filter { it.every }.map { it.name })
+        assertEquals(listOf("US"), picks.filterNot { it.writable }.map { it.name })
+        vm.pick("Auto")
+        vm.pick("US")
+        assertTrue(vm.sheet.groups.none { it.chosen })
+        vm.pick("HK")
+        vm.pick("TW")
+        vm.pick("TW")
+        assertEquals(listOf("HK"), vm.sheet.groups.filter { it.chosen }.map { it.name })
+    }
+
+    @Test
+    fun chosenGroupsTakeTheNodesTheyLackInOneWriteAFile() = runTest {
+        val honk = honk()
+        val vm = model(honk)
+        vm.open()
+        vm.edit("$TOKYO\n$SINGAPORE")
+        listOf("HK", "TW", "AI", "JP").forEach(vm::pick)
+        vm.add()
+        advanceUntilIdle()
+        // AI's filter took both nodes and JP's took 東京 03 already: only what each group lacks is written, and
+        // source-main, which holds AI, not at all.
+        assertEquals(listOf("source-regions"), honk.writes.map { it.first })
+        val written = honk.writes.single().second
+        assertEquals(2, written.lines().count { "filter: name('東京 03')" in it })
+        assertEquals(3, written.lines().count { "filter: name('新加坡 05')" in it })
+        assertEquals("        filter: name('新加坡 05')", written.lines()[written.lines().indexOf("    JP {") + 2])
+        assertNull(vm.uiState.value.added?.failed)
+        assertEquals(2, vm.uiState.value.added?.count)
+    }
+
+    @Test
+    fun aRefusedGroupWriteSaysWhyOnTheBannerWithTheNodesIn() = runTest {
+        val honk = honk().apply { writeStatus = 503 }
+        val vm = model(honk)
+        vm.open()
+        vm.edit(TOKYO)
+        vm.pick("HK")
+        vm.add()
+        advanceUntilIdle()
+        val state = vm.uiState.value
+        assertNull(state.sheet)
+        assertEquals(ErrorCode.Busy, state.added?.failed)
+        assertEquals(listOf("東京 03"), state.nodes.map { it.name })
     }
 
     @Test
@@ -273,7 +328,7 @@ class AddNodeViewModelTest {
         vm.open()
         honk.addStatus = 500
         runCurrent()
-        assertEquals(RvAddNodeSheet(), vm.sheet)
+        assertEquals(RvAddNodeSheet(), vm.sheet.copy(groups = emptyList()))
         assertNull(vm.uiState.value.added)
     }
 

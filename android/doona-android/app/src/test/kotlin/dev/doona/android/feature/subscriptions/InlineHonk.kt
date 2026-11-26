@@ -21,7 +21,10 @@ import kotlinx.serialization.json.putJsonArray
  * native API answers them. An add files the node under the name asked, in the inline provider, and puts it in the
  * groups that take every node (Proxy, Auto, Streaming, AI) and in its region's group ([regionOf], from the name, as a
  * filter would); a name in use is 409 `state_conflict`, a link in [refused] 422 `unsupported_value`. GET /nodes and
- * each group list what was added. [addStatus] and [deleteStatus] answer every add or delete with that error status.
+ * each group list what was added. Its configuration ([sources]) holds the groups' blocks: Proxy and Auto with no filter,
+ * so they take every node, the others with name filters, US in a file honk cannot write; a replace of a source keeps
+ * the new text ([writes], in order) and its reload succeeds. [addStatus], [deleteStatus] and [writeStatus] answer every
+ * add, delete or replace with that error status.
  */
 internal class InlineHonk(private val regionOf: (String) -> String? = { null }) : NativeApi {
     private val sample = HonkFixtures.rvSample()
@@ -29,6 +32,9 @@ internal class InlineHonk(private val regionOf: (String) -> String? = { null }) 
     private var next = 1
     var addStatus: Int? = null
     var deleteStatus: Int? = null
+    var writeStatus: Int? = null
+    val sources = linkedMapOf("source-main" to MAIN, "source-regions" to REGIONS_FILE, "source-us" to US_FILE)
+    val writes = mutableListOf<Pair<String, String>>()
     val refused = mutableSetOf<String>()
 
     /** The links each add was asked to file, in order. */
@@ -38,10 +44,19 @@ internal class InlineHonk(private val regionOf: (String) -> String? = { null }) 
     override fun call(method: String, path: String, body: String?, headers: Map<String, String>): NativeResponse = when {
         method == "POST" && path == NODES -> create(Json.parseToJsonElement(checkNotNull(body)).jsonObject)
         method == "DELETE" && path.startsWith("$NODES/") -> remove(path.removePrefix("$NODES/"))
-        method == "GET" && path == NODES -> NativeResponse(200, appended(sample.call(method, path, body).body, "nodes", added))
-        method == "GET" && path == PROVIDERS -> NativeResponse(200, appended(sample.call(method, path, body).body, "providers", listOf(INLINE_PROVIDER)))
-        method == "GET" && path.startsWith("$GROUPS/") -> NativeResponse(200, members(sample.call(method, path, body).body, path.removePrefix("$GROUPS/")))
+        method == "PUT" && path.startsWith("$CONFIG/sources/") -> write(path.removePrefix("$CONFIG/sources/"), Json.parseToJsonElement(checkNotNull(body)).jsonObject)
+        method == "GET" -> read(path) ?: sample.call(method, path, body, headers)
         else -> sample.call(method, path, body, headers)
+    }
+
+    /** The answer to GET [path] where what this honk added or wrote changes it, or null where the sample's stands. */
+    private fun read(path: String): NativeResponse? = when {
+        path == NODES -> NativeResponse(200, appended(sample.call("GET", path, null).body, "nodes", added))
+        path == PROVIDERS -> NativeResponse(200, appended(sample.call("GET", path, null).body, "providers", listOf(INLINE_PROVIDER)))
+        path == CONFIG -> NativeResponse(200, config())
+        path == RELOAD -> NativeResponse(200, HonkFixtures.body("operations/reload-complete"))
+        path.startsWith("$GROUPS/") -> NativeResponse(200, members(sample.call("GET", path, null).body, path.removePrefix("$GROUPS/")))
+        else -> null
     }
 
     /** Files [link] under [name] at once, as an add does. */
@@ -73,6 +88,31 @@ internal class InlineHonk(private val regionOf: (String) -> String? = { null }) 
         return NativeResponse(201, node.toString())
     }
 
+    private fun config(): String = buildJsonObject {
+        putJsonArray("sources") {
+            sources.forEach { (id, content) ->
+                add(
+                    buildJsonObject {
+                        put("id", id)
+                        put("path", "${id.removePrefix("source-")}.dae")
+                        put("kind", if (id == "source-main") "main" else "include")
+                        put("content_sha256", content.hashCode().toString())
+                        put("content", content)
+                        put("writable", id != "source-us")
+                    },
+                )
+            }
+        }
+    }.toString()
+
+    private fun write(id: String, request: JsonObject): NativeResponse {
+        writeStatus?.let { return error(it, "temporarily_unavailable") }
+        val content = request.getValue("content").jsonPrimitive.content
+        sources[id] = content
+        writes += id to content
+        return NativeResponse(202, HonkFixtures.body("config-replace/queued"))
+    }
+
     private fun remove(id: String): NativeResponse {
         deleteStatus?.let { return error(it, "internal") }
         val removed = added.removeAll { it.getValue("id").jsonPrimitive.content == id }
@@ -96,6 +136,31 @@ internal class InlineHonk(private val regionOf: (String) -> String? = { null }) 
         const val NODES = "/api/v1/nodes"
         const val PROVIDERS = "/api/v1/providers"
         const val GROUPS = "/api/v1/groups"
+        const val CONFIG = "/api/v1/config"
+        const val RELOAD = "/api/v1/operations/op-config-01"
+
+        val MAIN = listOf(
+            "group {",
+            "    Proxy {",
+            "        policy: select",
+            "    }",
+            "    Auto {",
+            "        policy: min_moving_avg",
+            "    }",
+            "    Streaming {",
+            "        filter: name(keyword: 'Hong Kong', 'Taipei')",
+            "        policy: min_moving_avg",
+            "    }",
+            "    AI {",
+            "        filter: name(keyword: 'Tokyo')",
+            "        policy: min_moving_avg",
+            "    }",
+            "}",
+        ).joinToString("\n")
+
+        val REGIONS_FILE = listOf("HK", "TW", "JP").joinToString("\n", "group {\n", "\n}") { "    $it {\n        filter: name(regex: '^$it ')\n        policy: min_moving_avg\n    }" }
+
+        val US_FILE = "group {\n    US {\n        filter: name(regex: '^US ')\n    }\n}"
         val EVERY_NODE = listOf("g-Proxy", "g-Auto", "g-Streaming", "g-AI")
         val REGION_GROUPS = setOf("g-HK", "g-TW", "g-JP", "g-US")
 

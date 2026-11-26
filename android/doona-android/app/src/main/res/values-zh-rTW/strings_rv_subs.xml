@@ -72,6 +72,9 @@
     <string name="rv_list_last">%1$s 與 %2$s</string>
     <string name="rv_addnode_joined">已加入%1$s群組。</string>
     <string name="rv_addnode_view_groups">查看策略群組</string>
+    <string name="rv_addnode_groups">加入策略群組</string>
+    <string name="rv_addnode_group_every">已含全部節點</string>
+    <string name="rv_addnode_group_readonly">唯讀檔案</string>
     <string name="rv_node_delete">刪除節點</string>
     <string name="rv_node_delete_body">節點會從組態內與它所在的群組移除。</string>
 </resources>

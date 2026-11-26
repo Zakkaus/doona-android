@@ -83,6 +83,9 @@
     <string name="rv_list_last">%1$s and %2$s</string>
     <string name="rv_addnode_joined">Added to the %1$s groups.</string>
     <string name="rv_addnode_view_groups">View groups</string>
+    <string name="rv_addnode_groups">Add to groups</string>
+    <string name="rv_addnode_group_every">Takes every node</string>
+    <string name="rv_addnode_group_readonly">Read-only file</string>
     <string name="rv_node_delete">Delete node</string>
     <string name="rv_node_delete_body">The node leaves the configuration and every group it is in.</string>
 </resources>

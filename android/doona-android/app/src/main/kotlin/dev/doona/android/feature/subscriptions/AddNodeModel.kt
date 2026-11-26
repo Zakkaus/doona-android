@@ -5,8 +5,10 @@ import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.isInline
 import dev.doona.android.vpn.honk.Group
+import dev.doona.android.vpn.honk.HonkSource
 import dev.doona.android.vpn.honk.Node
 import dev.doona.android.vpn.honk.Provider
+import dev.doona.android.vpn.honk.daeGroup
 import java.net.URLDecoder
 
 /**
@@ -114,9 +116,28 @@ internal fun inlineNodes(nodes: List<Node>, providers: List<Provider>): List<Nod
     return nodes.filter { it.isInline(byId) }
 }
 
-/** After an add: how many nodes it added, the groups they joined, and the lines honk refused. */
+/**
+ * After an add: how many nodes it added, the groups they joined, the lines honk refused, and why the groups chosen in
+ * 加入群組 could not take them ([failed]; the nodes are in either way).
+ */
 @Immutable
-internal data class RvAddedNodes(val count: Int, val groups: List<String>, val skipped: RvSkipped)
+internal data class RvAddedNodes(val count: Int, val groups: List<String>, val skipped: RvSkipped, val failed: ErrorCode? = null)
+
+/**
+ * A group in 新增節點's 加入群組, by its [name] in honk: one that takes every node already ([every], no node filter and no
+ * nested group) shows checked and is never written, as a name filter would shrink it to the new nodes; one no writable
+ * configuration file holds cannot be chosen ([writable] false); the others are the user's to [chosen].
+ */
+@Immutable
+internal data class RvGroupPick(val name: String, val every: Boolean, val writable: Boolean, val chosen: Boolean = false) {
+    val enabled: Boolean get() = writable && !every
+}
+
+/** honk's [groups] in its order, each read from the configuration [sources] that holds its block. */
+internal fun groupPicks(groups: List<Group>, sources: List<HonkSource>): List<RvGroupPick> = groups.map { group ->
+    val held = sources.firstNotNullOfOrNull { source -> daeGroup(source.content, group.name)?.let { source to it } }
+    RvGroupPick(group.name, every = held?.second?.takesEvery == true, writable = held?.first?.writable == true)
+}
 
 /** A node honk would not delete: its name for the banner and why. */
 @Immutable
@@ -135,13 +156,14 @@ internal data class RvInlineState(
     val deleteFailed: RvNodeDeleteFailed? = null,
 )
 
-/** 新增節點's sheet: the field's [text], whether the clipboard may hold a link, what the field says, and an add running. */
+/** 新增節點's sheet: the field's [text], whether the clipboard may hold a link, what the field says, an add running, and 加入群組. */
 @Immutable
 internal data class RvAddNodeSheet(
     val text: String = "",
     val clipboard: Boolean = false,
     val check: RvAddNodeCheck = RvAddNodeCheck.None,
     val adding: Boolean = false,
+    val groups: List<RvGroupPick> = emptyList(),
 )
 
 /** The most lines one add takes, as doona web's batch. */

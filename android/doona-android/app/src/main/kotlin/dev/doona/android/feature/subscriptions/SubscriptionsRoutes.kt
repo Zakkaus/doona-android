@@ -63,7 +63,7 @@ internal fun SubscriptionsRoute(
         )
     }
     val inlineActions = remember(nodes, onOpenNode, onViewGroups) {
-        RvInlineActions(nodes::open, nodes::close, nodes::edit, nodes::paste, nodes::add, onOpenNode, nodes::delete, nodes::confirmDelete, onViewGroups)
+        RvInlineActions(nodes::open, nodes::close, nodes::edit, nodes::paste, nodes::add, onOpenNode, nodes::delete, nodes::confirmDelete, onViewGroups, nodes::pick)
     }
     val banner = inline.deleteFailed?.let { rvNodeDeleteFailedBanner(it) { nodes.confirmDelete(it.id) } } ?: inline.added?.let { rvAddedBanner(it, onViewGroups) }
     // No 複製分享連結: honk gives no node's share link.

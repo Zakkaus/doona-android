@@ -72,6 +72,9 @@
     <string name="rv_list_last">%1$s 和 %2$s</string>
     <string name="rv_addnode_joined">已加入%1$s组。</string>
     <string name="rv_addnode_view_groups">查看策略组</string>
+    <string name="rv_addnode_groups">加入策略组</string>
+    <string name="rv_addnode_group_every">已含全部节点</string>
+    <string name="rv_addnode_group_readonly">只读文件</string>
     <string name="rv_node_delete">删除节点</string>
     <string name="rv_node_delete_body">节点会从配置内与它所在的组移除。</string>
 </resources>
