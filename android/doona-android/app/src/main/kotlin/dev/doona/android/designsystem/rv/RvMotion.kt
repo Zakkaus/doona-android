@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -398,6 +399,18 @@ private fun Outline.rvPath(): Path = when (this) {
     is Outline.Generic -> path
     is Outline.Rectangle -> Path().apply { addRect(rect) }
     is Outline.Rounded -> Path().apply { addRoundRect(roundRect) }
+}
+
+/**
+ * How far a press on [source] is up, 0 to 1: rising and falling linearly in [RvMotion.PRESS_MS] ([rvFollowPress]), as a
+ * row's state layer does. Read its value where it is drawn.
+ */
+@Composable
+internal fun rvPressLevel(source: InteractionSource): State<Float> {
+    val motion = Rv.motion
+    val press = remember { Animatable(0f) }
+    LaunchedEffect(source, motion) { source.rvFollowPress { press.animateTo(it, motion.tween(RvMotion.PRESS_MS, LinearEasing)) } }
+    return press.asState()
 }
 
 /**

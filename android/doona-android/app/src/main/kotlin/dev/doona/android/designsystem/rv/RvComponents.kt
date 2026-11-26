@@ -2,7 +2,6 @@ package dev.doona.android.designsystem.rv
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -30,7 +29,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -126,11 +124,9 @@ private fun Modifier.rvClick(indication: Indication, role: Role, onClick: () -> 
  */
 @Composable
 internal fun Modifier.rvDiscPress(fill: Modifier, onClick: () -> Unit, enabled: Boolean = true): Modifier {
-    val motion = Rv.motion
     val lit = Rv.colors.discLit
     val source = remember { MutableInteractionSource() }
-    val press = remember { Animatable(0f) }
-    LaunchedEffect(source, motion) { source.rvFollowPress { press.animateTo(it, motion.tween(RvMotion.PRESS_MS, LinearEasing)) } }
+    val press = rvPressLevel(source)
     return graphicsLayer {
         val grow = 1f + RvMotion.DISC_GROW * press.value
         scaleX = grow

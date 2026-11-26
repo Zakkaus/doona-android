@@ -2,8 +2,6 @@ package dev.doona.android.designsystem.rv
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.foundation.Canvas
@@ -38,7 +36,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -330,15 +327,10 @@ internal fun RvPrimaryButton(
     val size = RvControlSize
     val fill = if (colors.dark) Color.White else colors.text
     val source = interactionSource ?: remember { MutableInteractionSource() }
-    val motion = Rv.motion
-    val press = remember { Animatable(0f) }
-    LaunchedEffect(source, motion) { source.rvFollowPress { press.animateTo(it, motion.tween(RvMotion.PRESS_MS, LinearEasing)) } }
+    val press = rvPressLevel(source)
     // Disabled, the pill is opaque in the colour its faded fill gives over the page, so a list scrolling under a floating
     // action never shows through it; its label in the page's colour looks as it did faded.
-    val shown = when {
-        !enabled -> fill.copy(alpha = RvAlpha.DISABLED).compositeOver(colors.page)
-        else -> lerp(fill, colors.page.copy(alpha = RvAlpha.PRESSED).compositeOver(fill), press.value)
-    }
+    val shown = if (enabled) lerp(fill, colors.page.copy(alpha = RvAlpha.PRESSED).compositeOver(fill), press.value) else fill.copy(alpha = RvAlpha.DISABLED).compositeOver(colors.page)
     val lift = if (enabled) Modifier.rvSoftShadow(CircleShape, size.primaryShadow, size.primaryShadowDrop, RvAlpha.CTA_SHADOW) else Modifier
     Box(
         modifier
@@ -545,9 +537,9 @@ internal fun DrawScope.rvValuePill(text: TextLayoutResult, topLeft: Offset, ink:
 
 /**
  * Revolut's switch (§13.4, Addendum A): a 34 dp track, a 19 dp thumb, in its 50 × 27 dp node less the room left of the
- * track, so the text stands 12 dp from the track that shows (owner, q-s1125c-switchgap; that room made it 20). On, the
- * accent thumb over its tint (outlined where needed); off, a light thumb on [RvColors.control]. A change slides the thumb
- * ([RvSpring.Fast], spatial) while the track, its rim and the thumb colours turn ([RvSpring.Fast], effects). The row owns the toggle.
+ * track, so the text stands 12 dp from the track that shows (owner, q-s1125c-switchgap; that room made it 20). On, the accent thumb
+ * over its tint (outlined where needed); off, a light thumb on [RvColors.control]. A change slides the thumb ([RvSpring.Fast], spatial)
+ * while the track, its rim (fading, never at once) and the thumb turn colour ([RvSpring.Fast], effects). The row owns the toggle.
  */
 @Composable
 internal fun RvSwitch(checked: Boolean, modifier: Modifier = Modifier) {
@@ -555,12 +547,10 @@ internal fun RvSwitch(checked: Boolean, modifier: Modifier = Modifier) {
     val size = RvControlSize
     val room = (size.switchWidth - size.switchTrackWidth) / 2
     val off = -(size.switchThumb - size.switchTrackHeight) / 2
-    val motion = Rv.motion
-    val x by animateDpAsState(if (checked) off + size.switchTrackWidth - size.switchTrackHeight else off, motion.spatial(RvSpring.Fast), label = "thumb")
-    val track by animateColorAsState(if (checked) colors.switchOnTrack else colors.control, motion.effects(RvSpring.Fast), label = "track")
-    val thumb by animateColorAsState(if (checked) colors.switchOnThumb else colors.switchOffThumb, motion.effects(RvSpring.Fast), label = "thumb colour")
-    // The on rim of a low-contrast theme fades with the track rather than appearing at once.
-    val rim = colors.switchOnRim?.let { on -> animateColorAsState(if (checked) on else on.copy(alpha = 0f), motion.effects(RvSpring.Fast), label = "rim").value }
+    val x by animateDpAsState(if (checked) off + size.switchTrackWidth - size.switchTrackHeight else off, Rv.motion.spatial(RvSpring.Fast), label = "thumb")
+    val track by animateColorAsState(if (checked) colors.switchOnTrack else colors.control, Rv.motion.effects(RvSpring.Fast), label = "track")
+    val thumb by animateColorAsState(if (checked) colors.switchOnThumb else colors.switchOffThumb, Rv.motion.effects(RvSpring.Fast), label = "thumb colour")
+    val rim = colors.switchOnRim?.let { on -> animateColorAsState(if (checked) on else on.copy(alpha = 0f), Rv.motion.effects(RvSpring.Fast), label = "rim").value }
     Box(modifier.size(size.switchWidth - room, size.switchHeight).clearAndSetSemantics { testTag = RvRowPart.SWITCH }) {
         Box(
             Modifier
