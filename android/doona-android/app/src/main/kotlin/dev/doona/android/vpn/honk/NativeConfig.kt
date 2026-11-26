@@ -18,6 +18,9 @@ import kotlinx.serialization.json.put
 internal class NativeConfig(private val api: NativeApi) {
     fun config(): HonkConfig = api.read("GET", "/api/v1/config", HonkConfig.serializer())
 
+    /** The accepted files inlined into one document, listener secrets left out (`GET /x-honk/config/export`). */
+    fun export(): String = api.expect("GET", "/api/v1/x-honk/config/export")
+
     /**
      * Replaces [source] with [content] and waits for honk's reload. A source changed since it was read fails with
      * [ErrorCode.Busy], so the caller reads again; text honk does not accept fails with [ErrorCode.InvalidArgument].

@@ -28,6 +28,8 @@ import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvRowRules
 import dev.doona.android.testing.drawFully
+import dev.doona.android.vpn.FakeHonk
+import dev.doona.android.vpn.HonkFixtures
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -131,9 +133,14 @@ class AppRvTemplateShotTest {
     @Test
     @Config(qualifiers = WHOLE_EFFECTIVE_REREAD)
     fun effectiveRereadFailedLight() {
-        val engine = Rereading()
-        shot("effective-config-reread-failed", dark = false, whole = true, then = { runBlocking { engine.setPerApp(PerApp(packages = setOf("a"))) } }) {
-            Effective { engine }
+        val honk = HonkFixtures.rvSample()
+        lateinit var vm: EffectiveConfigViewModel
+        val reread = {
+            honk.on("GET", "/api/v1/rules", 503, HonkFixtures.body("errors/snapshot-unavailable"))
+            vm.retry()
+        }
+        shot("effective-config-reread-failed", dark = false, whole = true, then = reread) {
+            Effective(honk) { vm = it }
         }
     }
 
@@ -182,10 +189,10 @@ class AppRvTemplateShotTest {
         assertEquals(1, left)
     }
 
+    /** The route on honk serving [honk], the mode the sample engine's, reading on the test's thread; [made] gets the view model. */
     @Composable
-    private fun Effective(make: () -> Engine = ::rvSampleEngine) {
-        val engine = remember { make() }
-        val vm = remember { EffectiveConfigViewModel(engine, reads = Dispatchers.Unconfined) }
+    private fun Effective(honk: FakeHonk = HonkFixtures.rvSample(), made: (EffectiveConfigViewModel) -> Unit = {}) {
+        val vm = remember { EffectiveConfigViewModel(rvSampleEngine(), honk, io = Dispatchers.Unconfined).also(made) }
         EffectiveConfigRoute(vm, onBack = {}, onRules = {})
     }
 
@@ -212,14 +219,6 @@ class AppRvTemplateShotTest {
         val name = "app-rv-$screen-$variant"
         compose.rvRowRules(name)
         compose.onRoot().captureToImage().asAndroidBitmap().captureRoboImage("$SHOTS/$name.png")
-    }
-
-    /** The sample engine whose configuration reads once, then fails with Busy. */
-    private class Rereading(private val base: FakeEngine = rvSampleEngine()) : Engine by base {
-        private var reads = 0
-
-        override suspend fun effectiveConfig(): Result<EffectiveConfig> =
-            if (reads++ == 0) base.effectiveConfig() else Result.failure(EngineException(ErrorCode.Busy))
     }
 
     /** The sample engine with its rules from the configuration file, no template; it records the templates set. */

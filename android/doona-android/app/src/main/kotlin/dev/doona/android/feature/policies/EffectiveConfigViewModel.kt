@@ -7,33 +7,35 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.R
-import dev.doona.android.engine.Catalog
-import dev.doona.android.engine.EffectiveConfig
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.RuleRow
-import dev.doona.android.engine.RuleTarget
 import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvRouteMode
-import dev.doona.android.feature.subscriptions.rvSubscription
+import dev.doona.android.feature.model.RvRuleSource
+import dev.doona.android.feature.model.rvTemplate
+import dev.doona.android.vpn.NativeApi
+import dev.doona.android.vpn.honk.HonkConfig
+import dev.doona.android.vpn.honk.HonkDnsRules
+import dev.doona.android.vpn.honk.NativeConfig
+import dev.doona.android.vpn.honk.NativeRouting
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.channelFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * What 生效設定 shows: the mode and the configuration as the cards draw it ([config], null until the first read), the
- * text 複製 and 匯出 hand on, whether the core cut it ([truncated]), and why the first read failed ([failure]).
+ * text 複製 and 匯出 hand on, whether it was cut ([truncated]; honk's export never is), and why the last read failed ([failure]).
  */
 @Immutable
 internal data class EffectiveConfigUiState(
@@ -45,75 +47,88 @@ internal data class EffectiveConfigUiState(
 )
 
 /**
- * 生效設定: the core's `effectiveConfig` with the catalog's groups, every rule of the source and how many apps 依 App
- * lists, read on [reads] whenever the catalog or the settings change. A read that fails shows its failure with 重試,
- * which reads again, over the configuration last read if there is one, as 策略 and the group page do.
+ * 生效設定 on honk's native API: its groups, nodes, providers, rules, config files, DNS rules and the files' export,
+ * read on [io] at start and on 重試; the mode is the [engine]'s, and how many apps 依 App lists comes from its settings.
+ * A read that fails shows its failure with 重試 over the configuration last read, if there is one.
  */
 internal class EffectiveConfigViewModel(
     private val engine: Engine,
+    private val api: NativeApi,
     private val places: NodePlaces = CoreNodePlaces,
-    private val reads: CoroutineDispatcher = Dispatchers.Default,
+    private val io: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
-    private val read = MutableStateFlow(EffectiveConfigUiState())
-    private val again = MutableStateFlow(0)
+    private val read = MutableStateFlow<EffectiveRead?>(null)
+    private val failure = MutableStateFlow<ErrorCode?>(null)
+    private var reading: Job? = null
 
-    val uiState: StateFlow<EffectiveConfigUiState> = channelFlow {
-        launch(reads) {
-            combine(engine.catalog.filterNotNull(), engine.settings, again) { catalog, settings, _ -> catalog to settings.perApp.packages.size }
-                .collectLatest { (catalog, apps) -> read.value = read(catalog, apps) }
-        }
-        read.collect { send(it) }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), read.value)
+    val uiState: StateFlow<EffectiveConfigUiState> = combine(read, failure, engine.catalog, engine.settings) { read, failure, catalog, settings ->
+        EffectiveConfigUiState(
+            mode = catalog?.mode?.let(::rvRouteMode) ?: RvRouteMode.Rule,
+            config = read?.let { rvEffectiveConfig(it.policies, it.config, it.dns, settings.perApp.packages.size, places) },
+            text = read?.text,
+            failure = failure,
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EffectiveConfigUiState())
+
+    init {
+        load()
+    }
 
     /** The banner's 重試: reads again. */
-    fun retry() {
-        again.value++
-    }
+    fun retry() = load()
 
-    private suspend fun read(catalog: Catalog, apps: Int): EffectiveConfigUiState {
-        val effective = engine.effectiveConfig().getOrElse { return failed(it) }
-        val rows = engine.allRules(effective.ruleSource.rulesRevision).getOrElse { return failed(it) }
-        return EffectiveConfigUiState(
-            mode = rvRouteMode(effective.mode),
-            config = rvEffectiveConfig(effective, catalog, rows, apps, places),
-            text = effective.text,
-            truncated = effective.truncated,
-        )
+    private fun load() {
+        reading?.cancel()
+        reading = viewModelScope.launch {
+            try {
+                read.value = withContext(io) {
+                    val config = NativeConfig(api)
+                    EffectiveRead(HonkPolicyRead.read(api), config.config(), NativeRouting(api).dnsRules(), config.export())
+                }
+                failure.value = null
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                failure.value = error.errorCode()
+            }
+        }
     }
-
-    private fun failed(error: Throwable): EffectiveConfigUiState =
-        read.value.takeIf { it.config != null }?.copy(failure = error.errorCode()) ?: EffectiveConfigUiState(failure = error.errorCode())
 
     companion object {
-        fun factory(engine: Engine): ViewModelProvider.Factory = viewModelFactory {
-            initializer { EffectiveConfigViewModel(engine) }
+        fun factory(engine: Engine, api: NativeApi): ViewModelProvider.Factory = viewModelFactory {
+            initializer { EffectiveConfigViewModel(engine, api) }
         }
     }
 }
 
+/** One read of honk for 生效設定; [text] is honk's export of its files, which 複製 and 匯出 hand on. */
+private class EffectiveRead(val policies: HonkPolicyRead, val config: HonkConfig, val dns: HonkDnsRules, val text: String)
+
 /**
- * 生效設定's cards from the core's [effective] configuration: [catalog]'s groups (the main one by the configuration's
- * main id, null when no group has it), every rule [rows] lists, where the rules come from, the subscriptions, the DNS
- * servers and what their queries go through (the main group is 主節點), and the [apps] 依 App lists.
+ * 生效設定's cards from honk: the groups (the main one is the group the rules' fallback names), every rule, the template
+ * the routing is, the subscriptions, the DNS servers' addresses and what the request fallback's server goes through (the
+ * main group is 主節點), and the [apps] 依 App lists.
  */
-internal fun rvEffectiveConfig(effective: EffectiveConfig, catalog: Catalog, rows: List<RuleRow>, apps: Int, places: NodePlaces): RvEffectiveConfig {
-    val nodes = rvNodes(catalog, emptyMap(), places)
-    val byId = catalog.groups.associateBy { it.id }
-    val groups = catalog.groups.map { rvPolicyGroup(it, byId, nodes) }.associateBy { it.id }
-    val main = groups[effective.mainGroupId]
-    val dnsVia = when (val via = effective.dnsVia) {
-        RuleTarget.Direct -> RvLabel.Res(R.string.mode_direct)
-        RuleTarget.Reject -> RvLabel.Res(R.string.rv_policy_reject)
-        is RuleTarget.Group -> if (via.id == effective.mainGroupId) RvLabel.Res(R.string.rv_main_node) else RvLabel.Text(byId[via.id]?.name ?: via.id)
-    }
+internal fun rvEffectiveConfig(policies: HonkPolicyRead, config: HonkConfig, dns: HonkDnsRules, apps: Int, places: NodePlaces): RvEffectiveConfig {
+    val groups = policies.policyGroups(policies.nodes(places))
+    val main = policies.mainGroupId?.let(groups::get)
+    val upstreams = honkUpstreams(config)
+    val via = fallbackUpstream(upstreams, dns)?.via
+    val mainName = policies.groups.firstOrNull { it.id == main?.id }?.name
     return RvEffectiveConfig(
         main = main,
         groups = groups.values.filter { it.id != main?.id },
-        rules = rows.map { rvPolicyRule(it, groups, 0L) },
-        source = rvRuleSource(effective.ruleSource, catalog.subscriptions),
-        subscriptions = catalog.subscriptions.map(::rvSubscription),
-        dns = effective.dnsUpstreams,
-        dnsVia = dnsVia,
+        rules = policies.policyRules(groups),
+        source = HonkRouting.of(config)?.template?.let { RvRuleSource.Template(rvTemplate(it)) } ?: RvRuleSource.File,
+        subscriptions = policies.subscriptions.map(::rvSubscription),
+        dns = upstreams.map { dnsShown(it.address) },
+        dnsVia = when (via) {
+            null, DIRECT -> RvLabel.Res(R.string.mode_direct)
+            mainName -> RvLabel.Res(R.string.rv_main_node)
+            else -> RvLabel.Text(via)
+        },
         proxiedApps = apps,
     )
 }
+
+private const val DIRECT = "direct"

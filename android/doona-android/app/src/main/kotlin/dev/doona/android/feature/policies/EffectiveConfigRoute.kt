@@ -6,6 +6,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.R
+import dev.doona.android.app.nativeApi
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.engine.Engine
@@ -19,7 +20,7 @@ import dev.doona.android.share.rememberEffectiveConfigActions
  */
 @Composable
 internal fun EffectiveConfigRoute(engine: Engine, onBack: () -> Unit, onRules: () -> Unit) {
-    val viewModel: EffectiveConfigViewModel = viewModel(factory = EffectiveConfigViewModel.factory(engine))
+    val viewModel: EffectiveConfigViewModel = viewModel(factory = EffectiveConfigViewModel.factory(engine, nativeApi()))
     EffectiveConfigRoute(viewModel, onBack, onRules)
 }
 

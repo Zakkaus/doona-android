@@ -44,6 +44,7 @@ internal object HonkFixtures {
         on("GET", "/api/v1/runtime", 200, body("runtime/runtime-example"))
         on("GET", "/api/v1/config", 200, body("config/rv-sample"))
         on("GET", "/api/v1/dns/rules", 200, body("dns-rules/rv-sample"))
+        on("GET", "/api/v1/x-honk/config/export", 200, exported("config/rv-sample"))
     }
 
     /**
@@ -60,6 +61,10 @@ internal object HonkFixtures {
         on("GET", "/api/v1/nodes", 200, body("nodes/honk-groups"))
         on("GET", "/api/v1/rules", 200, body("rules/honk-groups"))
     }
+
+    /** `GET /x-honk/config/export` of the config [name]: its files' text, one after another. */
+    private fun exported(name: String) = Json.parseToJsonElement(body(name)).jsonObject.getValue("sources").jsonArray
+        .joinToString("\n") { it.jsonObject.getValue("content").jsonPrimitive.content }
 
     private fun exists(name: String) = HonkFixtures::class.java.getResource("/honk/$name.json") != null
 }
