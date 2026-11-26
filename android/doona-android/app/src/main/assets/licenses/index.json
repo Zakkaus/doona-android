@@ -3,6 +3,17 @@
   "components": [
     {
       "kind": "artwork",
+      "name": "GitHub brand marks",
+      "version": "github.com/logos",
+      "license": "LicenseRef-GitHub-logos",
+      "bodies": [],
+      "source": "https://github.com/logos",
+      "attribution": [],
+      "notice": "The brand marks are trademarks of their owners, shown only to name a service or group; their use implies no affiliation with or endorsement by those owners, and doona's licence does not cover them. Marks: rv_sym_github. Provenance: app/src/main/BRAND_ICONS.md.",
+      "extras": []
+    },
+    {
+      "kind": "artwork",
       "name": "Inter",
       "version": "4.001",
       "license": "OFL-1.1",

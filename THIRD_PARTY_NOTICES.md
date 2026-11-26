@@ -28,6 +28,13 @@ Android client source: https://github.com/Zakkaus/doona-android
 
 ## Components
 
+### GitHub brand marks github.com/logos
+
+artwork · LicenseRef-GitHub-logos · [Source](https://github.com/logos)
+
+
+The brand marks are trademarks of their owners, shown only to name a service or group; their use implies no affiliation with or endorsement by those owners, and doona's licence does not cover them. Marks: rv_sym_github. Provenance: app/src/main/BRAND_ICONS.md.
+
 ### Inter 4.001
 
 artwork · [OFL-1.1](android/doona-android/app/src/main/assets/licenses/notices.txt#L1306) · [Source](https://github.com/rsms/inter)
