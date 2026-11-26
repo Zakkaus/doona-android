@@ -6,8 +6,8 @@ import androidx.compose.ui.text.font.FontWeight
 import dev.doona.android.R
 
 /**
- * Inter 4.001 at the text optical size (opsz 14), Latin only (rv-fonts/make.py; the prototype's rv_inter_* files). It has
- * no 700 or 800: a step that asks for them gets the 600, the heaviest it has, and Compose fakes no bold over 600.
+ * Inter 4.001 at the text optical size (opsz 14), Latin only (rv-fonts/make.py). It has no 700 or 800: a step that
+ * asks for them gets the 600, the heaviest it has, and Compose fakes no bold over 600.
  */
 val Inter = FontFamily(
     Font(R.font.inter_w400, FontWeight.Normal),

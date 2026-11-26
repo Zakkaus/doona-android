@@ -32,7 +32,7 @@ import dev.doona.android.icons.R as IconsR
 /*
  * The design system on several pages (the three here, and `InputsGallery`, `FieldsGallery`, `FeedbackGallery` and `DialogGallery`), every component in every
  * state it has. The preview pane and the screenshot goldens show the same pages, so a component that is added or changed
- * shows up in both. Sample names and numbers are made up.
+ * shows up in both. The names and numbers on these pages are made up.
  */
 
 private val SERIES = listOf(3f, 4f, 3.5f, 5f, 6f, 5.5f, 4.5f, 5f, 6.5f, 6f)

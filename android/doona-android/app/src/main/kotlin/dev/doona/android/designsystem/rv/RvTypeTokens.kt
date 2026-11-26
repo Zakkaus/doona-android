@@ -71,17 +71,17 @@ internal object RvTypeScale {
     const val TABULAR = "tnum"
 }
 
-/** Inter 4 at the text optical size (opsz 14), Latin only (rv-fonts/make.py). */
+/** Inter 4 at the text optical size (opsz 14), Latin only (rv-fonts/make.py): the files of tokens/Fonts.kt's Inter. */
 internal val RvInter = FontFamily(
-    Font(R.font.rv_inter_w400, FontWeight.Normal),
-    Font(R.font.rv_inter_w500, FontWeight.Medium),
-    Font(R.font.rv_inter_w600, FontWeight.SemiBold),
+    Font(R.font.inter_w400, FontWeight.Normal),
+    Font(R.font.inter_w500, FontWeight.Medium),
+    Font(R.font.inter_w600, FontWeight.SemiBold),
 )
 
 /** Inter 4 at the display optical size (opsz 32), for the hero number. */
 internal val RvInterDisplay = FontFamily(
-    Font(R.font.rv_inter_display_w600, FontWeight.SemiBold),
-    Font(R.font.rv_inter_display_w700, FontWeight.Bold),
+    Font(R.font.inter_display_w600, FontWeight.SemiBold),
+    Font(R.font.inter_display_w700, FontWeight.Bold),
 )
 
 /** The app's Noto Sans TC subset, for every run of CJK text. */

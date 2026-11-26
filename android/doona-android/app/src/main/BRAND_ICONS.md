@@ -1,6 +1,11 @@
 # Brand marks in `res/drawable/rv_brand_*.xml`
 
-Brand glyphs for the service rows of 新增服務規則 (`RvServiceRulesPage`).
+Brand glyphs for the service rows of 新增服務規則 (`RvServiceRulesPage`) and for the emoji marks of node and group
+names (`RvNameMarks`).
+
+`tools/notices.py` reads the tables below: every `rv_brand_*` drawable in `res/drawable` must be listed under its
+source, and a source whose marks main code names (`R.drawable.rv_brand_*`) becomes a release component with the
+notice below. The other marks serve debug pages only; release resource shrinking drops them.
 
 **Notice.** The brand marks are trademarks of their owners, shown only to name the service a rule is for. Their use
 implies no affiliation with or endorsement by those owners, and doona's licence does not cover them. Sources and
@@ -53,15 +58,24 @@ Blizzard's row takes Battle.net's mark, Blizzard's own launcher and store, squar
 wordmark is wide (`icons/battledotnet.svg`, SHA-1 `c62204d2a36f88ca800eb79c6e04d694ba9220ba`, added 2026-11-25).
 
 GitHub's row uses `rv_sym_github`, the GitHub mark already in the app (github.com/logos; the same mark as Simple Icons'
-`github`), so the app carries one copy.
+`github`), so the app carries one copy. It is listed under GitHub below.
+
+## GitHub
+
+The GitHub mark from [github.com/logos](https://github.com/logos), used under GitHub's logo guidelines to name doona's
+repository.
+
+| drawable | source |
+|---|---|
+| rv_sym_github | https://github.com/logos |
 
 ## Bootstrap Icons
 
 From [Bootstrap Icons](https://icons.getbootstrap.com) **1.13.2** (`https://raw.githubusercontent.com/twbs/icons/v1.13.2/icons/<name>.svg`),
 MIT License, copyright (c) 2019-2024 The Bootstrap Authors. Only debug pages use these marks, so the release APK's
 resource shrinking drops them: the licence text is the debug asset `licenses/bootstrap-icons-MIT.txt`, the row
-「Bootstrap Icons」 on the debug licences page. When a release page uses one, add Bootstrap Icons to
-`tools/notice-sources.json` and regenerate the notices (`tools/notices.py`).
+「Bootstrap Icons」 on the debug licences page. When main code names one, `tools/notices.py` credits Bootstrap
+Icons from that text; regenerate the notices (`tools/notices.py --write`).
 
 | drawable | file | SHA-1 of the file |
 |---|---|---|

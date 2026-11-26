@@ -55,3 +55,29 @@ class NoticeGateTest(unittest.TestCase):
         entry, = component['extras']
         self.assertEqual(entry['file'], 'META-INF/NOTICE')
         self.assertEqual(notices.documents[entry['text']], notices.SPDX['Apache-2.0'])
+
+
+class BrandMarkTest(unittest.TestCase):
+    def setUp(self):
+        self.main = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        (self.main / 'res/drawable').mkdir(parents=True)
+        (self.main / 'kotlin').mkdir()
+        self.enterContext(patch.multiple(notices, components=[], documents={}))
+        for name in ('rv_brand_a', 'rv_brand_b'):
+            (self.main / 'res/drawable' / f'{name}.xml').write_text('<vector/>')
+        (self.main / 'kotlin/Page.kt').write_text('val glyph = R.drawable.rv_brand_a\n')
+
+    def doc(self, *rows):
+        (self.main / 'BRAND_ICONS.md').write_text('\n'.join(['## Simple Icons', '', '| drawable | slug |', '|---|---|', *rows, '']))
+
+    def test_unlisted_mark_needs_a_source(self):
+        self.doc('| rv_brand_a | a |')
+        with self.assertRaisesRegex(SystemExit, 'Classify artwork or data: list rv_brand_b'):
+            notices.brand_marks(self.main)
+
+    def test_only_drawn_marks_are_credited(self):
+        self.doc('| rv_brand_a | a |', '| rv_brand_b | b |')
+        self.assertEqual({p.stem for p in notices.brand_marks(self.main)}, {'rv_brand_a', 'rv_brand_b'})
+        component, = notices.components
+        self.assertEqual((component['name'], component['license']), ('Simple Icons brand marks', 'CC0-1.0'))
+        self.assertIn('Marks: rv_brand_a.', component['notice'])

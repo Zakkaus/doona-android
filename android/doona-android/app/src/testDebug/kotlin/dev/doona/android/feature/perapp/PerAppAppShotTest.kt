@@ -1,5 +1,6 @@
 package dev.doona.android.feature.perapp
 
+import android.graphics.Bitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
@@ -37,6 +38,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.io.File
 
 private val SHOTS = System.getProperty("doona.shots") ?: "src/test/screenshots"
 
@@ -234,12 +236,18 @@ class PerAppAppEnShotTest {
 
     @Test fun readFailedSample() = sample("read-failed")
 
-    /** The sample page in English, as the panels' approved column: the page code is the approved code, moved. */
+    /**
+     * The sample page in English, as the panels' approved column: the page code is the approved code, moved. The panel
+     * is a plain PNG under build/, not a Roborazzi capture: a capture is verified against a golden, and build/panels
+     * exists only where the test ran before, so a clean checkout (CI) failed every sample.
+     */
     private fun sample(state: String, name: String = "perapp-$state") {
         rvAnimatorScale(if (state in BUSY) 0f else 1f)
         compose.rvContent(dark = false) { RvPerAppScreen(rvPerAppSample(state), rvPerAppActions(), onBack = {}) }
         compose.drawFully()
-        compose.onRoot().captureToImage().asAndroidBitmap().captureRoboImage("build/panels/proto-rv-$name-en.png")
+        val panel = File("build/panels/proto-rv-$name-en.png").apply { parentFile?.mkdirs() }
+        val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
+        panel.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, PNG_QUALITY, it) }
     }
 }
 
@@ -253,6 +261,9 @@ private class SampleEngine(private val fake: FakeEngine, private val answer: sus
 
 /** The states recorded at animator scale 0, so the bar rests half full. */
 private val BUSY = setOf("saving", "loading")
+
+/** PNG ignores the quality; Bitmap.compress requires one. */
+private const val PNG_QUALITY = 100
 
 /**
  * Draws the page for [state] from the sample engine, through [PerAppViewModel], and records golden [golden], the busy

@@ -66,6 +66,19 @@
     },
     {
       "kind": "artwork",
+      "name": "Simple Icons brand marks",
+      "version": "16.38.1",
+      "license": "CC0-1.0",
+      "bodies": [
+        "CC0-1.0"
+      ],
+      "source": "https://simpleicons.org",
+      "attribution": [],
+      "notice": "The brand marks are trademarks of their owners, shown only to name a service or group; their use implies no affiliation with or endorsement by those owners, and doona's licence does not cover them. Marks: rv_brand_apple, rv_brand_youtube. Provenance: app/src/main/BRAND_ICONS.md.",
+      "extras": []
+    },
+    {
+      "kind": "artwork",
       "name": "circle-flags",
       "version": "379588b5da95482d6bbf10bd45644a35b0609ea6",
       "license": "MIT",

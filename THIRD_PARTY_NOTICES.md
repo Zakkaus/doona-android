@@ -56,6 +56,13 @@ Subset and fixed-weight instances. Copyright 2014-2021 Adobe (http://www.adobe.c
 
 - [noto-sans-tc-OFL.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L36533) Upstream wording does not match a complete declared SPDX body.
 
+### Simple Icons brand marks 16.38.1
+
+artwork · [CC0-1.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L532) · [Source](https://simpleicons.org)
+
+
+The brand marks are trademarks of their owners, shown only to name a service or group; their use implies no affiliation with or endorsement by those owners, and doona's licence does not cover them. Marks: rv_brand_apple, rv_brand_youtube. Provenance: app/src/main/BRAND_ICONS.md.
+
 ### circle-flags 379588b5da95482d6bbf10bd45644a35b0609ea6
 
 artwork · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1264) · [Source](https://github.com/HatScripts/circle-flags)

@@ -92,7 +92,7 @@ internal fun rvPolicyGroup(group: Group, groups: Map<String, Group>, nodes: Map<
 
 /**
  * What a rule row matches, as the pages say it. The core writes the private ranges as GeoIP `private` (as
- * [dev.doona.android.engine.fake.RvSampleRules] does), so that, not an IP range, is 區域網路; a single range stays a range,
+ * `engine.fake.RvSampleRules` does), so that, not an IP range, is 區域網路; a single range stays a range,
  * since one range cannot be told from the private set. Ports, networks and kinds the core does not compile have no match
  * of their own on the pages yet, so they show their value (or their kind's name) as a full value.
  */

@@ -1,5 +1,5 @@
 [versions]
-agp = "9.5.2"
+agp = "9.5.3"
 kotlin = "2.4.21"
 # https://developer.android.com/develop/ui/compose/bom/bom-mapping: material3 1.5.0, ui and foundation 1.13.0
 compose-bom = "2026.11.01"

@@ -157,6 +157,7 @@ androidComponents {
     // profile recorded on the phone with the Macrobenchmark generator, which this build does not have yet.
     onVariants(selector().withBuildType("profile")) { variant ->
         variant.sources.kotlin?.addStaticSourceDirectory("src/debug/kotlin")
+        variant.sources.kotlin?.addStaticSourceDirectory("src/fake/kotlin") // the samples' fake engine
         variant.sources.assets?.addStaticSourceDirectory("src/debug/assets")
         variant.sources.manifests.addStaticManifestFile("src/debug/AndroidManifest.xml")
         variant.sources.baselineProfiles?.addStaticSourceDirectory("src/debug/baselineProfiles")
@@ -196,6 +197,16 @@ android {
             abiFilters += "arm64-v8a"
         }
     }
+    // Ship strings only in the app's own locales (res/xml/locales_config.xml). The libraries carry about 80 more, which
+    // would only put a translated system string next to an English screen.
+    androidResources {
+        localeFilters += listOf("en", "zh-rCN", "zh-rTW")
+    }
+    // The fake engine and its sample data (src/fake) serve the previews, the debug samples and the unit tests (debug
+    // only), so no release build compiles them. The profile build gets them with the debug sources (androidComponents).
+    sourceSets {
+        getByName("debug").kotlin.directories += "src/fake/kotlin"
+    }
 
     buildTypes {
         release {
@@ -232,6 +243,11 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    // Whether a newer version exists depends on the date, not the change: Dependabot opens those bumps.
+    lint {
+        informational += setOf("AndroidGradlePluginVersion", "GradleDependency", "NewerVersionAvailable")
     }
 
     testOptions {
