@@ -1,12 +1,16 @@
 package dev.doona.android.testing
 
+import android.graphics.Bitmap
 import android.view.View
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.onRoot
+import java.io.File
 import kotlin.math.abs
 
 /**
@@ -18,6 +22,16 @@ fun ComposeContentTestRule.drawFully() {
     val view = onRoot().fetchSemanticsNode().root as View
     runOnUiThread { view.invalidate() }
     waitForIdle()
+}
+
+/**
+ * Writes the capture as a plain PNG, for a panel's approved column under build/. Not a Roborazzi capture: a capture is
+ * verified against a golden, and build/panels exists only where the test ran before, so a clean checkout (CI) would fail.
+ */
+fun ComposeContentTestRule.savePanel(path: String) {
+    val panel = File(path).apply { parentFile?.mkdirs() }
+    val bitmap = onRoot().captureToImage().asAndroidBitmap()
+    panel.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, PNG_QUALITY, it) }
 }
 
 /**
@@ -52,6 +66,9 @@ fun ImageBitmap.colours(): Int {
 }
 
 private fun Color.distanceTo(o: Color) = (abs(red - o.red) + abs(green - o.green) + abs(blue - o.blue)) / 3
+
+/** PNG ignores the quality; Bitmap.compress requires one. */
+private const val PNG_QUALITY = 100
 
 private const val EDGE = 0.1f
 private const val MIN_INK = 0.0005f

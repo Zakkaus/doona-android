@@ -64,6 +64,7 @@ import dev.doona.android.report.ReportZip
 import dev.doona.android.report.nodeMembers
 import dev.doona.android.report.testFlowEvents
 import dev.doona.android.testing.drawFully
+import dev.doona.android.testing.savePanel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
@@ -401,7 +402,7 @@ private fun ComposeContentTestRule.app(
 private fun ComposeContentTestRule.sample(name: String, content: @Composable () -> Unit) {
     rvContent(dark = false, content = content)
     drawFully()
-    onRoot().captureToImage().asAndroidBitmap().captureRoboImage("build/panels/proto-rv-$name-light.png")
+    savePanel("build/panels/proto-rv-$name-light.png")
 }
 
 /** 設定 on its ViewModel over the sample engine and store, the ViewModel made before the page is composed. */
