@@ -28,6 +28,7 @@ import dev.doona.android.report.ReportExport
 import dev.doona.android.report.ReportExporter
 import dev.doona.android.report.connectionOwnerUid
 import dev.doona.android.report.reportDir
+import dev.doona.android.vpn.NativeApi
 import dev.doona.android.vpn.QuickTile
 import dev.doona.android.vpn.VpnLog
 import dev.doona.android.work.ForegroundRefresh
@@ -50,9 +51,17 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Process-wide objects, created once by [DoonaApplication] (manual dependency injection, ARCH D6). Activities,
  * ViewModel factories, the VPN service and the tile all take what they need from here.
  */
-class AppContainer(val application: Application, createEngine: () -> Engine, createInstalledApps: () -> InstalledApps) {
+class AppContainer(
+    val application: Application,
+    createEngine: () -> Engine,
+    createInstalledApps: () -> InstalledApps,
+    createNativeApi: () -> NativeApi,
+) {
     /** Created on first use, so a process started for the tile or the service builds it once. */
     val engine: Engine by lazy(createEngine)
+
+    /** honk's native API, the one instance every page reads and writes the catalog through. */
+    val nativeApi: NativeApi by lazy(createNativeApi)
 
     /** The apps per-app routing can name; read on demand, so nothing queries the device until that page opens. */
     val installedApps: InstalledApps by lazy(createInstalledApps)

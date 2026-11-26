@@ -5,7 +5,7 @@ package dev.doona.android.vpn
  * Kotlin forbids `@JvmStatic` on an override, so these are instance methods: the second JNI argument is this object,
  * not its class, and the core must not use it as a class.
  */
-internal object NativeCore : CoreBridge {
+internal object NativeCore : CoreBridge, NativeApi {
     init {
         System.loadLibrary("doonacore")
     }
@@ -19,6 +19,10 @@ internal object NativeCore : CoreBridge {
     external override fun snapshot(sinceRevision: Long): String
 
     external override fun call(command: String, argsJson: String): String
+
+    override fun call(method: String, path: String, body: String?, headers: Map<String, String>) = api(method, path, body, headers)
+
+    private external fun api(method: String, path: String, body: String?, headers: Map<String, String>): NativeResponse
 }
 
 /**

@@ -8,6 +8,8 @@ import dev.doona.android.engine.InstalledApps
 import dev.doona.android.report.AppEvents
 import dev.doona.android.report.AppInfo
 import dev.doona.android.report.CrashCapture
+import dev.doona.android.vpn.NativeApi
+import dev.doona.android.vpn.NativeCore
 import dev.doona.android.vpn.ServiceEngine
 import java.io.File
 
@@ -20,7 +22,7 @@ open class DoonaApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        container = AppContainer(this, ::createEngine, ::createInstalledApps)
+        container = AppContainer(this, ::createEngine, ::createInstalledApps, ::createNativeApi)
         // First, so a crash anywhere later in the process leaves its file for the report.
         CrashCapture.install(container.crashFiles, AppInfo.of(this).crashVersion)
         AppEvents.install { File(noBackupFilesDir, "app-events.tsv") }
@@ -38,4 +40,7 @@ open class DoonaApplication : Application(), Configuration.Provider {
     )
 
     protected open fun createInstalledApps(): InstalledApps = PackageInstalledApps(this)
+
+    /** The core's JNI entry, which JVM tests have no library for: a test that reaches it overrides this with a fake. */
+    protected open fun createNativeApi(): NativeApi = NativeCore
 }
