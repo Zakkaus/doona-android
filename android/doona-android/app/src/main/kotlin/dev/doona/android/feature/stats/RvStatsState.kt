@@ -21,8 +21,8 @@ import dev.doona.android.feature.model.RvSubscription
  *   card's empty state) before any byte or any read.
  * - [score]: honk's Score groups and what each chose per network; null when no group uses Score.
  * - [period]: 本週 or 本月 by the day; null for 今天.
- * - [daily]: whether the usage by the day is kept, which 已用流量 and the paged tiles need; honk keeps none yet, so the
- *   app hides them (owner, 2026-11-26, q-usage) and only the prototype's sample shows them.
+ * - [daily]: whether the usage by the day is kept; honk keeps none yet, so 已用流量 and the paged tiles show their empty
+ *   state (owner, 2026-11-27, keep-1127) and 分流比例 says 本次啟動; only the prototype's sample has it.
  * - [subscriptionId]: the subscription the chip picked, null for all. It narrows the cards the catalog can split
  *   ([shownSubscriptions], [shownNodes]); traffic is counted for all subscriptions together, so the traffic cards stay
  *   at all of them and say so (unwired-rows 4.4, reduced).

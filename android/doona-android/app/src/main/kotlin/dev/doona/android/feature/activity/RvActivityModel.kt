@@ -56,14 +56,13 @@ internal data class RvActivityRule(val label: String?, val groupId: String?, val
 
 /**
  * What 活動's cards read besides [RvActivityState] and its lists: today's bytes by the hour, where now falls in the day
- * and yesterday's bytes by now (今日用量, hidden while [today] is null: honk keeps no usage by the day yet, owner,
- * 2026-11-26, q-usage); now, for the subscriptions' end dates; how many rules the profile has (the
+ * and yesterday's bytes by now (今日用量); now, for the subscriptions' end dates; how many rules the profile has (the
  * see-all line); the node the main group's selection ends on, which 最快節點 checks while no node is in use; a node by
  * its id, for the map's spot and the rule rows; and how a rule group picks, by its id.
  */
 @Immutable
 internal class RvActivityCards(
-    val today: RvDay?,
+    val today: RvDay,
     val nowHour: Float,
     val yesterdayByNow: Long,
     val nowEpochMs: Long,

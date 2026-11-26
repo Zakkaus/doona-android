@@ -17,16 +17,14 @@ internal class RvChipPick(val label: String, val onClick: () -> Unit = {}, val i
 
 /**
  * Analytics' two chips under a title or a search: the subscription at the start, the order at the end. The 節點 page and
- * a policy group's page list nodes the same way and share this row. With no [end], the [start] chip stands alone.
+ * a policy group's page list nodes the same way and share this row.
  */
 @Composable
-internal fun RvFilterChipRow(start: RvChipPick, end: RvChipPick?, modifier: Modifier = Modifier) {
+internal fun RvFilterChipRow(start: RvChipPick, end: RvChipPick, modifier: Modifier = Modifier) {
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Chip(start)
-        if (end != null) {
-            Spacer(Modifier.weight(1f))
-            Chip(end)
-        }
+        Spacer(Modifier.weight(1f))
+        Chip(end)
     }
 }
 

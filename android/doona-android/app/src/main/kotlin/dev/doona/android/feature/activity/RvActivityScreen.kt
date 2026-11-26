@@ -116,7 +116,7 @@ internal fun RvActivityScreen(
                         RvSkeletonCards(loading, { ActivitySkeleton(mode, steady.node?.name ?: RV_NO_VALUE) }) {
                             OutboundCard(steady, mode, routes, nodes, rules, cards)
                             TrafficTiles(state, routes.traffic)
-                            cards.today?.let { RvUsageCard(it, cards.nowHour, cards.yesterdayByNow) }
+                            RvUsageCard(cards.today, cards.nowHour, cards.yesterdayByNow)
                             RvSubscriptionsCard(subscriptions, cards.nowEpochMs, routes.subscriptions)
                             RvFastestCard(fastest, steady.node?.id ?: cards.mainNodeId, routes.nodes)
                         }
