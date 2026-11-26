@@ -19,15 +19,22 @@ import dev.doona.android.feature.settings.changeBanner
 
 /**
  * 全部規則 (查看全部 on 策略): builds the ViewModel on the app's [nativeApi] and draws the page from its state while the
- * screen is started, always editable. A rule opens its page ([onOpen] with honk's rule id), 新增規則 a new rule's
- * ([onNew]); 刪除 and 停用 write honk's file here; the reorder mode is the page's own. Coming back to the page reads
+ * screen is started, always editable. A rule opens its page ([onOpen] with honk's rule id), 新增's 規則 a new rule's
+ * ([onNew]) and its 服務規則 新增服務規則 ([onService]); 刪除 and 停用 write honk's file here; the reorder mode is the page's own. Coming back to the page reads
  * again, since a rule's page may have changed the rules. Files honk did not load show their banner with 範本
  * ([onTemplate]); a failed read, with 重試.
  */
 @Composable
-internal fun RulesRoute(onBack: () -> Unit, onTemplate: () -> Unit, onOpen: (String) -> Unit, onNew: () -> Unit, routes: RvRulesRoutes = RvRulesRoutes()) {
+internal fun RulesRoute(
+    onBack: () -> Unit,
+    onTemplate: () -> Unit,
+    onOpen: (String) -> Unit,
+    onNew: () -> Unit,
+    onService: () -> Unit,
+    routes: RvRulesRoutes = RvRulesRoutes(),
+) {
     val viewModel: RulesViewModel = viewModel(factory = RulesViewModel.factory(nativeApi()))
-    RulesRoute(viewModel, onBack, onTemplate, onOpen, onNew, routes)
+    RulesRoute(viewModel, onBack, onTemplate, onOpen, onNew, routes, onService)
 }
 
 /** 全部規則 on a given [viewModel], for a caller (a test) that makes its own. */
@@ -39,6 +46,7 @@ internal fun RulesRoute(
     onOpen: (String) -> Unit = {},
     onNew: () -> Unit = {},
     routes: RvRulesRoutes = RvRulesRoutes(),
+    onService: () -> Unit = {},
 ) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     var editing by rememberSaveable { mutableStateOf(false) }
@@ -50,10 +58,11 @@ internal fun RulesRoute(
         onBack = onBack,
         routes = RvRulesRoutes(
             open = { i -> ui.ids.getOrNull(i)?.let(onOpen) },
-            toggle = viewModel::pause,
+            toggle = viewModel::toggle,
             delete = viewModel::remove,
             edit = { editing = it },
             newRule = onNew,
+            service = onService,
             apply = routes.apply,
             discard = routes.discard,
             effective = routes.effective,

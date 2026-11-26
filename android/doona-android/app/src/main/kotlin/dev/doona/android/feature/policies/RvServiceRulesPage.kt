@@ -19,6 +19,8 @@ import dev.doona.android.designsystem.rv.RvChevron
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLargeTitle
+import dev.doona.android.designsystem.rv.RvNotice
+import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSectionTitle
@@ -111,7 +113,8 @@ internal fun rvServiceRules(rules: List<RvPolicyRule>): Map<String, RvPolicyRule
  * large title, where the new rules go out (出站, the owner's word; owner-fix4 item 30: the [main] group), then web's five
  * sections, each a title over a card of services to tick, each row with its brand's mark in the row glyph's disc and tint
  * (the generic glyph where there is none). A service with a rule already ([rules], by code) says where that rule sends and
- * cannot be ticked, as on web.
+ * cannot be ticked, as on web. With [onApply], 加入並套用 floats at the bottom, on once a service is ticked; a [banner]
+ * (a write honk did not take) heads the page.
  */
 @Composable
 internal fun RvServiceRulesPage(
@@ -121,13 +124,21 @@ internal fun RvServiceRulesPage(
     onBack: () -> Unit,
     onToggle: (String) -> Unit = {},
     onOutbound: () -> Unit = {},
+    onApply: (() -> Unit)? = null,
+    banner: RvNotice? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_service_add)
     val row: @Composable (RvService) -> Unit = { ServiceRow(it, rules[it.code], it.code in selected, onToggle) }
-    RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
+    val ticked = selected.any { it !in rules }
+    RvScrollPage(
+        title,
+        insets,
+        onBack = onBack,
+        bottomAction = onApply?.let { apply -> { RvPrimaryButton(stringResource(R.string.rv_service_apply), apply, enabled = ticked && main != null) } },
+    ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
-        RvGutter { OutboundCard(main, onOutbound) }
+        RvGutter(banner = banner) { OutboundCard(main, onOutbound) }
         RvServiceSection.entries.forEach { section ->
             RvSectionTitle(stringResource(section.title), Modifier.padding(horizontal = RvSpace.gutter))
             RvGutter { RvCard { RvServiceData.all.filter { it.section == section }.forEach { row(it) } } }
