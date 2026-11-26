@@ -113,7 +113,7 @@ internal fun DoonaApp(
             entry<ActivityKey> {
                 // The RV page draws its own floating nav; the gate's welcome page takes the old tab frame.
                 val routes = remember(backStack, onSystemSettings) { activityRoutes(backStack, onSystemSettings) }
-                FirstRunGate(engine, onAdd = { backStack.push(SubAddKey) }, frame = { OldTabFrame(Tab.Activity, onTab, onReselect, it) }) {
+                FirstRunGate(engine, imports, onAdd = { backStack.push(SubAddKey) }, frame = { OldTabFrame(Tab.Activity, onTab, onReselect, it) }) {
                     NodesPull(nodes, RvPullMotion.Sheet, rememberRvPullState(), onDetail = { backStack.push(NodeKey(it)) }, onAdd = { backStack.push(SubAddKey) }) { look ->
                         ActivityRoute(engine, crashOffer, network, refusals, onConnect, routes, look)
                     }

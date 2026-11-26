@@ -526,7 +526,7 @@ class AppRvSubsShotTest {
     private lateinit var focus: FocusManager
 
     @Composable
-    private fun Welcome() = FirstRunGate(remember { FirstRunViewModel(FakeEngine(subscriptions = emptyList()), NO_NODES, Dispatchers.Unconfined) }, onAdd = {}, frame = { it() }) {}
+    private fun Welcome() = FirstRunGate(remember { FirstRunViewModel(FakeEngine(subscriptions = emptyList()), NO_NODES, MutableStateFlow(ImportState()), Dispatchers.Unconfined) }, onAdd = {}, frame = { it() }) {}
 
     /** How honk answers an add. */
     private sealed interface Answer {

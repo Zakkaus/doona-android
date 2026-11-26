@@ -136,7 +136,7 @@ class SubscriptionFlowsTest {
         compose.onNodeWithText(string(R.string.rv_add_import)).assertIsNotEnabled()
     }
 
-    /** The gate still reads the engine's subscriptions, so honk's add does not hand over to 活動 until the gate reads honk. */
+    /** This honk publishes no node for what it adds, so the add does not hand over to 活動 (PolicyFlowsTest has one that does). */
     @Test
     fun `the first run's welcome page leads to 新增訂閱, whose import adds to honk`() {
         val honk = ProvidersHonk()
@@ -190,7 +190,7 @@ class SubscriptionFlowsTest {
         val scope = rememberCoroutineScope()
         val imports = remember { SubscriptionImports(honk, LocalNetworkAccess { true }, scope, io) }
         RvNavHost(backStack) {
-            entry<ActivityKey> { FirstRunGate(remember { FirstRunViewModel(engine, NO_NODES, Dispatchers.Unconfined) }, onAdd = { backStack.push(SubAddKey) }, frame = { it() }) { Text(ACTIVITY) } }
+            entry<ActivityKey> { FirstRunGate(remember { FirstRunViewModel(engine, NO_NODES, imports.state, Dispatchers.Unconfined) }, onAdd = { backStack.push(SubAddKey) }, frame = { it() }) { Text(ACTIVITY) } }
             entry<SubscriptionsKey> { key ->
                 SubscriptionsRoute(
                     onBack = { backStack.pop(key) },

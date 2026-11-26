@@ -11,7 +11,9 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.app.nativeApi
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.Status
+import dev.doona.android.feature.subscriptions.ImportState
 import dev.doona.android.feature.subscriptions.STOP_MS
+import dev.doona.android.feature.subscriptions.SubscriptionImports
 import dev.doona.android.vpn.NativeApi
 import dev.doona.android.vpn.honk.NativeCatalog
 import kotlinx.coroutines.CancellationException
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
@@ -34,10 +37,18 @@ import kotlinx.coroutines.withContext
 internal fun showsWelcome(ready: Boolean, subscriptions: Int, anyNode: Boolean?, status: Status): Boolean =
     ready && subscriptions == 0 && anyNode == false && (status is Status.Stopped || status is Status.Failed)
 
-/** The first run's state holder (plan §2.2). */
-internal class FirstRunViewModel(engine: Engine, api: NativeApi, io: CoroutineDispatcher = Dispatchers.IO) : ViewModel() {
+/**
+ * The first run's state holder (plan §2.2). honk pushes nothing, so it is asked again once one of [imports] adds a
+ * subscription: the engine's catalog does not show what an import added to honk.
+ */
+internal class FirstRunViewModel(
+    engine: Engine,
+    api: NativeApi,
+    imports: StateFlow<ImportState>,
+    io: CoroutineDispatcher = Dispatchers.IO,
+) : ViewModel() {
     /** Whether the catalog holds a node; honk is asked, on [io], only while no subscription is there. */
-    private val anyNode: Flow<Boolean?> = engine.catalog.map { catalog ->
+    private val anyNode: Flow<Boolean?> = combine(engine.catalog, imports.map { it.added }.distinctUntilChanged()) { catalog, _ -> catalog }.map { catalog ->
         when {
             catalog == null -> null
 
@@ -61,18 +72,19 @@ internal class FirstRunViewModel(engine: Engine, api: NativeApi, io: CoroutineDi
 
 /**
  * The 活動 tab's content: the welcome page ([RvWelcome]) on the first run, whose 新增訂閱 runs [onAdd], and [content],
- * 活動, otherwise (see [showsWelcome]). [frame] holds the welcome page (the app's tab frame with its nav); [content]
+ * 活動, otherwise (see [showsWelcome]); an add by [imports] hands over to 活動. [frame] holds the welcome page (the app's tab frame with its nav); [content]
  * draws its own.
  */
 @Composable
-fun FirstRunGate(
+internal fun FirstRunGate(
     engine: Engine,
+    imports: SubscriptionImports,
     onAdd: () -> Unit,
     frame: @Composable (@Composable () -> Unit) -> Unit,
     content: @Composable () -> Unit,
 ) {
     val api = nativeApi()
-    val viewModel: FirstRunViewModel = viewModel(factory = viewModelFactory { initializer { FirstRunViewModel(engine, api) } })
+    val viewModel: FirstRunViewModel = viewModel(factory = viewModelFactory { initializer { FirstRunViewModel(engine, api, imports.state) } })
     FirstRunGate(viewModel, onAdd, frame, content)
 }
 

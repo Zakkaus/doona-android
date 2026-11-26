@@ -3,9 +3,11 @@ package dev.doona.android.feature.onboarding
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
+import dev.doona.android.feature.subscriptions.ImportState
 import dev.doona.android.vpn.FakeHonk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -29,6 +31,7 @@ class FirstRunGateTest {
     private fun TestScope.firstRun(engine: FakeEngine, nodes: String = "") = FirstRunViewModel(
         engine,
         FakeHonk().apply { on("GET", "/api/v1/nodes", 200, """{"nodes":[$nodes],"next_cursor":null}""") },
+        MutableStateFlow(ImportState()),
         UnconfinedTestDispatcher(testScheduler),
     )
 
