@@ -36,9 +36,6 @@ internal object RvStatsSize {
     const val BAR_SHARE = 0.56f
     val barStub = 3.dp
 
-    /** The delta's filled triangle, Revolut's 8 dp. */
-    val delta = 8.dp
-
     /** The quota ring, Revolut's 'Total assets' (151 dp, 8 dp stroke), and the card-coloured gap between its parts (S05). */
     val ring = 132.dp
     val ringStroke = 8.dp

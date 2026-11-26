@@ -12,9 +12,6 @@ internal object RvNodesSize {
     val topLabelGap = 8.dp
     val topRowGap = 16.dp
 
-    /** The ▲▼ before a change (§7: a filled 8 dp triangle in the number's colour). */
-    val delta = 8.dp
-
     /**
      * The round companion beside the floating [RvPrimaryButton] (§8, N06: a 56 dp disc
      * 8 dp from the 52 dp pill, on one centre line).
