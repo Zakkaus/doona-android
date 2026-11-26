@@ -36,6 +36,7 @@ import dev.doona.android.feature.localnetwork.LocalNetworkEngine
 import dev.doona.android.feature.localnetwork.LocalNetworkHost
 import dev.doona.android.feature.localnetwork.LocalNetworkPrompts
 import dev.doona.android.feature.onboarding.FirstRunGate
+import dev.doona.android.feature.onboarding.FirstRunViewModel
 import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
@@ -44,6 +45,8 @@ import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.gallery.RV_SAMPLE_LINK
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.subs.RV_LAN_LINK
+import dev.doona.android.vpn.FakeHonk
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -494,7 +497,7 @@ class AppRvSubsShotTest {
     @Composable
     private fun Welcome() {
         val engine = remember { FakeEngine(subscriptions = emptyList()) }
-        FirstRunGate(engine, onAdd = {}, frame = { it() }) {}
+        FirstRunGate(remember { FirstRunViewModel(engine, NO_NODES, Dispatchers.Unconfined) }, onAdd = {}, frame = { it() }) {}
     }
 
     @Composable
@@ -540,6 +543,9 @@ class AppRvSubsShotTest {
 
     private companion object {
         const val APP = "app-rv"
+
+        /** honk with no node, so a profile of no subscription has none: the first run's welcome page shows. */
+        val NO_NODES = FakeHonk().apply { on("GET", "/api/v1/nodes", 200, """{"nodes":[],"next_cursor":null}""") }
 
         /**
          * The approved 匯入中 frame of the busy bar: 24 frames (384 ms) into its loop, the time the prototype's page

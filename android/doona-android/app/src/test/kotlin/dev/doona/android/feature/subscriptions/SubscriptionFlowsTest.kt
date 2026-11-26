@@ -3,6 +3,7 @@ package dev.doona.android.feature.subscriptions
 import android.content.Context
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -39,7 +40,10 @@ import dev.doona.android.engine.Status
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.onboarding.FirstRunGate
+import dev.doona.android.feature.onboarding.FirstRunViewModel
+import dev.doona.android.vpn.FakeHonk
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
@@ -185,7 +189,7 @@ class SubscriptionFlowsTest {
         val backStack = rememberNavBackStack(*start.toTypedArray())
         val imports = rememberSubscriptionImports(engine)
         RvNavHost(backStack) {
-            entry<ActivityKey> { FirstRunGate(engine, onAdd = { backStack.push(SubAddKey) }, frame = { it() }) { Text(ACTIVITY) } }
+            entry<ActivityKey> { FirstRunGate(remember { FirstRunViewModel(engine, NO_NODES, Dispatchers.Unconfined) }, onAdd = { backStack.push(SubAddKey) }, frame = { it() }) { Text(ACTIVITY) } }
             entry<SubscriptionsKey> { key ->
                 SubscriptionsRoute(
                     engine,
@@ -201,5 +205,8 @@ class SubscriptionFlowsTest {
 
     private companion object {
         const val ACTIVITY = "活動"
+
+        /** honk with no node, so a profile of no subscription has none: the first run's welcome page shows. */
+        val NO_NODES = FakeHonk().apply { on("GET", "/api/v1/nodes", 200, """{"nodes":[],"next_cursor":null}""") }
     }
 }
