@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.engine.ScoreCounters
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.model.rvScorePick
 import dev.doona.android.feature.stats.RvStatsRange
@@ -47,15 +48,28 @@ internal fun rvStatsQuiet() = RvStatsState(
 
 /**
  * The Score card's sample: the 香港 region of the group page's samples, TCP verified on its fastest node as there, UDP on
- * the second but still waiting for comparable traffic.
+ * the second but still waiting for comparable traffic, with the counters honk would have after a morning's use.
  */
 internal fun rvStatsScore(): RvStatsScore {
     val chosen = RvScoreSample.chosen
-    val udp = chosen.udp.copy(state = "provisional", waitReason = "comparableTraffic")
+    val group = chosen.copy(
+        tcp = chosen.tcp.copy(counters = ScoreCounters(BUSINESS_TCP, TRIALS_OK_TCP, TRIALS_FAILED_TCP, 1)),
+        udp = chosen.udp.copy(state = "provisional", waitReason = "comparableTraffic", counters = ScoreCounters(BUSINESS_UDP, TRIALS_OK_UDP, 0, 0)),
+    )
     // One group, so the card never shows its name; the sample's name is a string resource, and the id stands in.
-    val group = RvStatsScoreGroup(RvScoreSample.group.id, RvScoreSample.group.id, RvScoreSample.group.members, rvScorePick(chosen.tcp), rvScorePick(udp))
-    return RvStatsScore(listOf(group))
+    val members = RvStatsScoreGroup(RvScoreSample.group.id, RvScoreSample.group.id, RvScoreSample.group.members, rvScorePick(group.tcp), rvScorePick(group.udp))
+    val networks = listOf(group.tcp, group.udp)
+    return RvStatsScore(BUSINESS_ROOT, networks.sumOf { it.counters.trialSuccess }, networks.sumOf { it.counters.trialFailure }, listOf(members))
 }
+
+private const val BUSINESS_TCP = 128L
+private const val BUSINESS_UDP = 41L
+
+/** Deduplicated across networks: a connection that tried both counts once. */
+private const val BUSINESS_ROOT = 152L
+private const val TRIALS_OK_TCP = 9L
+private const val TRIALS_FAILED_TCP = 2L
+private const val TRIALS_OK_UDP = 3L
 
 /** The page on a sample [state], its chips and tools not wired (the prototype's, the goldens' and the previews'). */
 @Composable

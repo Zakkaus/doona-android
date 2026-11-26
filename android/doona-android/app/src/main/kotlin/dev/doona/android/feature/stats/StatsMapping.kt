@@ -97,11 +97,16 @@ private fun zeros(hours: Int): RvDay = List(hours) { 0L }.let { RvDay(it, it, Li
 
 /**
  * The Score card: each of honk's Score groups with what it chose per network, its nodes among [nodes]; null when no
- * group uses Score.
+ * group uses Score. honk reports no Score counters (connections started, trials), so those are zero (q-score).
  */
 private fun rvStatsScore(groups: List<Group>, nodes: List<RvNode>): RvStatsScore? {
     val score = groups.filter { it.policy.kind == PolicyKind.Score }.takeIf { it.isNotEmpty() } ?: return null
-    return RvStatsScore(score.map { RvStatsScoreGroup(it.id, it.name, nodes, scorePick(it, Transport.Tcp), scorePick(it, Transport.Udp)) })
+    return RvStatsScore(
+        starts = null,
+        trialsOk = null,
+        trialsFailed = null,
+        groups = score.map { RvStatsScoreGroup(it.id, it.name, nodes, scorePick(it, Transport.Tcp), scorePick(it, Transport.Udp)) },
+    )
 }
 
 /**

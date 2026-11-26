@@ -49,15 +49,18 @@ class RvStatsScoreShotTest {
     @Config(qualifiers = WINDOW_FS200)
     fun scoreFs200() = shot(fontScale = RV_FS200)
 
-    /** The card says each network's choice and state, and no counters: honk reports none (q-score). */
+    /** The card counts the connections and the trials by outcome, and says each network's choice and state. */
     @Test
     @Config(qualifiers = WINDOW)
-    fun cardSaysOnlyTheChoices() {
+    fun cardSaysCountsAndChoices() {
         compose.rvContent(dark = false) { Page() }
         assertEquals(1, count("綜合評分"))
-        // The paged tile's label alone.
-        assertEquals(1, count("連線次數"))
-        assertEquals(0, count("12 成功"))
+        assertEquals(1, count("152"))
+        // The paged tile's label and the card's.
+        assertEquals(2, count("連線次數"))
+        assertEquals(1, count("測試 14 次"))
+        assertEquals(1, count("12 成功"))
+        assertEquals(1, count("2 失敗"))
         assertEquals(1, count("TCP · 已選定"))
         assertEquals(1, count("UDP · 評估中 · 等待可比較的流量"))
     }
