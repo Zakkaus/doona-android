@@ -152,7 +152,7 @@ class StaticNodesTest {
         val draft = StaticNodeDraft.Manual.create("vless", "192.0.2.2", 443, uuid = uuid, options = mapOf("type" to "ws", "path" to "/test")).getOrThrow()
         val beforeFailure = core.snapshots.get()
         core.reply = ContractFixtures.read("call-error-state-write.json")
-        assertEquals(ErrorCode.Internal, engine.addStaticNodes(listOf(draft)).errorCode())
+        assertEquals(ErrorCode.WriteFailed, engine.addStaticNodes(listOf(draft)).errorCode())
         assertEquals(beforeFailure, core.snapshots.get())
         val (command, args) = core.calls.last()
         assertEquals("addStaticNodes", command)

@@ -123,6 +123,8 @@ class SubAddViewModelTest {
             ErrorCode.NotFound to RvAddFailure.Unreachable,
             ErrorCode.Busy to RvAddFailure.Unreachable,
             ErrorCode.Internal to RvAddFailure.Unreachable,
+            ErrorCode.StorageFull to RvAddFailure.NotSaved(ErrorCode.StorageFull),
+            ErrorCode.WriteFailed to RvAddFailure.NotSaved(ErrorCode.WriteFailed),
         )
         assertEquals(ErrorCode.entries.toSet(), expected.keys)
         expected.forEach { (code, failure) ->

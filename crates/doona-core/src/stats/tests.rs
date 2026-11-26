@@ -100,7 +100,7 @@ fn usage_is_written_once_a_minute_at_most_and_at_the_end() {
         let writes = stats.fold(&session, &clock, now);
         assert!(!writes.latency);
         if writes.usage {
-            stats.write_usage();
+            stats.write_usage().unwrap();
         }
         writes.usage
     };
@@ -227,6 +227,33 @@ fn latency_tests_are_kept_written_at_a_round_end_and_pruned() {
     // A new process drops the nodes its catalog no longer has.
     again.keep_nodes(|_| false);
     assert!(again.latency(["n-a"].into_iter())[0].is_empty());
+}
+
+/// A forgetting that cannot be written answers why, so a commit that brings a node back says
+/// `storage_full` or `write_failed` rather than `internal`.
+#[test]
+fn a_forgetting_that_cannot_be_written_says_why() {
+    let (dir, rt) = (TempDir::new("stats-forget-kind"), runtime());
+    let stats = stats(&dir, &rt);
+    stats.record_latency("n-a", 1_000, Some(38));
+    let temp = dir.path().join("latency.json.tmp");
+    std::fs::create_dir(&temp).unwrap();
+    stats.keep_nodes(|_| false);
+    // The write `keep_nodes` started has failed, and its retries go with the runtime.
+    drop(rt);
+    let failed = stats.forgetting_written().unwrap_err();
+    assert_eq!(
+        dto::ErrorCode::of_write(failed),
+        dto::ErrorCode::WriteFailed
+    );
+    std::fs::remove_dir(&temp).unwrap();
+    // `/dev/full` answers every write with ENOSPC, as a full disk does.
+    std::os::unix::fs::symlink("/dev/full", &temp).unwrap();
+    let full = stats.forgetting_written().unwrap_err();
+    assert_eq!(dto::ErrorCode::of_write(full), dto::ErrorCode::StorageFull);
+    assert_eq!(stats.forgetting_written(), Ok(()));
+    let saved = StatsFile::new(dir.path(), file::LATENCY, Arc::default()).load::<LatencyFile>();
+    assert!(saved.latency.is_empty());
 }
 
 #[test]

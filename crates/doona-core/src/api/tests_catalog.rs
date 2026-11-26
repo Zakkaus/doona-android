@@ -463,6 +463,30 @@ fn an_update_that_finishes_after_a_removal_is_dropped() {
     assert!(!saved.contains("192.0.2."));
 }
 
+/// A delete whose `state.json` write fails keeps the subscription and says why: `storage_full`
+/// when the disk or quota is full, `write_failed` for any other I/O error.
+#[test]
+fn a_failed_state_write_says_why_and_keeps_the_subscription() {
+    let dir = TempDir::new("api-write-failed");
+    let feeds = Feeds::new();
+    feeds.set("/sub", &fixture("links.txt"));
+    let core = Core::new(path(&dir)).unwrap();
+    add(&core, &feeds, "/sub").unwrap();
+    let remove = || call(&core, "removeSubscription", json!({"id": "s1"}));
+    let temp = dir.path().join("state.json.tmp");
+    // `/dev/full` answers every write with ENOSPC, as a full disk does.
+    std::os::unix::fs::symlink("/dev/full", &temp).unwrap();
+    assert_eq!(remove(), Err(ErrorCode::StorageFull));
+    std::fs::create_dir(&temp).unwrap();
+    assert_eq!(remove(), Err(ErrorCode::WriteFailed));
+    assert_eq!(catalog(&core).subscriptions.len(), 1);
+    let quota = ErrorCode::of_write(std::io::ErrorKind::QuotaExceeded);
+    assert_eq!(quota, ErrorCode::StorageFull);
+    std::fs::remove_dir(&temp).unwrap();
+    assert_eq!(remove(), Ok(json!({})));
+    assert_eq!(remove(), Err(ErrorCode::NotFound));
+}
+
 #[test]
 fn an_update_over_the_node_budget_fails_and_keeps_the_nodes() {
     let dir = TempDir::new("api-budget");

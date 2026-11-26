@@ -142,7 +142,7 @@ fn a_mode_that_cannot_be_written_is_not_committed() {
     set(0o500);
     let reply = core.call("setMode", r#"{"mode":"Direct"}"#);
     set(0o700);
-    assert_eq!(code(&reply), Some(ErrorCode::Internal));
+    assert_eq!(code(&reply), Some(ErrorCode::WriteFailed));
     let after = snapshot(&core, -1);
     assert_eq!(after.revision, before);
     assert_eq!(after.catalog.unwrap().mode, Mode::Global);

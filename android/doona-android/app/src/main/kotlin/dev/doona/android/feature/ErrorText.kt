@@ -1,6 +1,8 @@
 package dev.doona.android.feature
 
 import androidx.annotation.StringRes
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
@@ -19,7 +21,30 @@ fun ErrorCode.messageRes(): Int = when (this) {
     ErrorCode.Internal -> R.string.error_internal
     ErrorCode.LocalNetwork -> R.string.error_local_network
     ErrorCode.DnsFailed -> R.string.error_dns_failed
+    ErrorCode.StorageFull -> R.string.error_storage_full
+    ErrorCode.WriteFailed -> R.string.error_write_failed
 }
+
+/** Why an action failed, one sentence for each engine error code; every RV failure banner says why through this. */
+@StringRes
+fun ErrorCode.reasonRes(): Int = when (this) {
+    ErrorCode.InvalidArgument -> R.string.rv_reason_invalid_argument
+    ErrorCode.NotFound -> R.string.rv_reason_not_found
+    ErrorCode.FetchFailed -> R.string.rv_reason_fetch_failed
+    ErrorCode.TooLarge -> R.string.rv_reason_too_large
+    ErrorCode.ParseFailed -> R.string.rv_reason_parse_failed
+    ErrorCode.NoNodes -> R.string.rv_reason_no_nodes
+    ErrorCode.Busy -> R.string.rv_reason_busy
+    ErrorCode.Internal -> R.string.rv_reason_internal
+    ErrorCode.LocalNetwork -> R.string.rv_reason_local_network
+    ErrorCode.DnsFailed -> R.string.rv_reason_dns_failed
+    ErrorCode.StorageFull -> R.string.rv_reason_storage_full
+    ErrorCode.WriteFailed -> R.string.rv_reason_write_failed
+}
+
+/** A failure banner's line: why [code] failed, then [after], what stayed the same. */
+@Composable
+fun rvReasonLine(code: ErrorCode, after: String): String = stringResource(R.string.rv_sentences, stringResource(code.reasonRes()), after)
 
 /** The code of a failed engine action; anything that is not an [EngineException] is a bug, shown as internal. */
 fun Throwable.errorCode(): ErrorCode = (this as? EngineException)?.code ?: ErrorCode.Internal

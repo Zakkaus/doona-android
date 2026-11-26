@@ -334,11 +334,23 @@ class CoreDtoTest {
     }
 
     @Test
-    fun aFailedStateWriteMapsToInternal() {
+    fun everyCoreErrorCodeMapsToItsName() {
+        val core = listOf(
+            "invalid_argument", "not_found", "fetch_failed", "too_large", "parse_failed", "no_nodes", "busy", "internal",
+            "local_network", "dns_failed", "storage_full", "write_failed",
+        )
+        assertEquals(ErrorCode.entries.toList(), core.map(::errorCodeOf))
+        assertEquals(ErrorCode.Internal, errorCodeOf("a_later_code"))
+    }
+
+    @Test
+    fun aFailedStateWriteMapsToItsCodes() {
         val failure = assertThrows(EngineException::class.java) {
             CoreJson.result(fixture("call-error-state-write.json"), Unit.serializer())
         }
-        assertEquals(ErrorCode.Internal, failure.code)
+        assertEquals(ErrorCode.WriteFailed, failure.code)
+        val full = assertThrows(EngineException::class.java) { CoreJson.result("""{"error":{"code":"storage_full"}}""", Unit.serializer()) }
+        assertEquals(ErrorCode.StorageFull, full.code)
     }
 
     @Test

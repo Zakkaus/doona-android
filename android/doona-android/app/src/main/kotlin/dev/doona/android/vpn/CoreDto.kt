@@ -382,7 +382,7 @@ internal data class SubscriptionDto(
     val format: String?,
 ) {
     /**
-     * The error becomes an [ErrorCode] name, the same vocabulary as [EngineException]. The core sets the format and the
+     * The error becomes an [ErrorCode], the same vocabulary as [EngineException]. The core sets the format and the
      * time of a fetch together, so one without the other, or a format this build does not know, is a broken reply.
      */
     fun toSubscription() = Subscription(
@@ -391,7 +391,7 @@ internal data class SubscriptionDto(
         url = url,
         nodes = nodes,
         lastFetch = lastFetch(),
-        error = error?.let { errorCodeOf(it).name },
+        error = error?.let(::errorCodeOf),
         usedBytes = usedBytes,
         totalBytes = totalBytes,
         expiresAtEpochMs = expiresAtEpochMs,
@@ -420,18 +420,8 @@ internal data class CallErrorDto(val code: String)
 @Serializable
 internal data class CallErrorReplyDto(val error: CallErrorDto)
 
-private val ERROR_CODES = mapOf(
-    "invalid_argument" to ErrorCode.InvalidArgument,
-    "not_found" to ErrorCode.NotFound,
-    "fetch_failed" to ErrorCode.FetchFailed,
-    "too_large" to ErrorCode.TooLarge,
-    "parse_failed" to ErrorCode.ParseFailed,
-    "no_nodes" to ErrorCode.NoNodes,
-    "busy" to ErrorCode.Busy,
-    "internal" to ErrorCode.Internal,
-    "local_network" to ErrorCode.LocalNetwork,
-    "dns_failed" to ErrorCode.DnsFailed,
-)
+/** The core's snake_case code for each [ErrorCode]: `invalid_argument` for [ErrorCode.InvalidArgument]. */
+private val ERROR_CODES = ErrorCode.entries.associateBy { it.name.replace(Regex("(?<=[a-z])(?=[A-Z])"), "_").lowercase() }
 
 /** An unknown code from a newer core is [ErrorCode.Internal]. */
 internal fun errorCodeOf(code: String): ErrorCode = ERROR_CODES[code] ?: ErrorCode.Internal

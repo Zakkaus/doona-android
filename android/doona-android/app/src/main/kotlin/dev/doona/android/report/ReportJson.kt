@@ -178,7 +178,7 @@ private fun catalogSummary(catalog: Catalog, engine: EngineView, scrubber: Repor
                 put("id", subscriptionId(s.id))
                 put("nodes", s.nodes)
                 put("updatedAtEpochMs", s.lastFetch?.atEpochMs)
-                // The error is the core's text, which may quote the URL: only whether there is one.
+                // Only whether the last refresh failed, not why.
                 put("failed", s.error != null)
                 put("quota", s.totalBytes != null)
             }

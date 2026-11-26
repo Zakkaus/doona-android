@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv.subs
 
 import androidx.compose.runtime.Composable
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.localnetwork.LocalNetworkPrompt
 import dev.doona.android.feature.localnetwork.RvLanSheet
@@ -13,15 +14,19 @@ import dev.doona.android.feature.subscriptions.RvProtocolCount
 import dev.doona.android.feature.subscriptions.RvSubAdd
 import dev.doona.android.feature.subscriptions.RvSubDetail
 import dev.doona.android.feature.subscriptions.RvSubDetailState
+import dev.doona.android.feature.subscriptions.RvSubFailure
 import dev.doona.android.feature.subscriptions.RvSubsState
 import dev.doona.android.prototype.rv.data.RvData
 
 /** 訂閱's state on the sample: [RvData]'s subscriptions unless the caller gives its own, their end dates as of its now. */
 internal fun rvSubsStateSample(
     subscriptions: List<RvSubscription> = RvData.subscriptions,
-    failedId: String? = null,
+    failed: RvSubFailure? = null,
     deletingId: String? = null,
-) = RvSubsState(subscriptions, RvData.nowEpochMs, failedId, deletingId)
+) = RvSubsState(subscriptions, RvData.nowEpochMs, failed, deletingId)
+
+/** The sample's failed update of [id]: its server did not answer, the approved banner. */
+internal fun rvFetchFailedSample(id: String) = RvSubFailure(id, ErrorCode.FetchFailed)
 
 /** A subscription's page on the sample: the interval [RvData] refreshes at. The page takes it as a parameter. */
 @Composable

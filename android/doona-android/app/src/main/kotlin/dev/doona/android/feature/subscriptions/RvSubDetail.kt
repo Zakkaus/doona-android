@@ -27,22 +27,37 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.designsystem.rv.rememberRvFormat
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.model.RvSubFormat
 import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.rvReasonLine
 
 /**
- * A subscription's page: which sheet is open, if any, the name or User-Agent being typed into it, whether the core
- * refused the last rename ([renameFailed], shown under the field until the name changes), and whether it refused the
- * last delete ([deleteFailed], a banner over the page until the next try).
+ * A subscription's page: which sheet is open, if any, the name or User-Agent being typed into it, the code of the
+ * last rename the core refused ([renameFailed], why under the field until the name changes), and the last update,
+ * User-Agent or delete it refused ([failed], a banner saying why over the page until the next try).
  */
 @Immutable
 internal data class RvSubDetailState(
     val sheet: RvSubSheet? = null,
     val name: String = "",
     val userAgent: String = "",
-    val renameFailed: Boolean = false,
-    val deleteFailed: Boolean = false,
+    val renameFailed: ErrorCode? = null,
+    val failed: RvSubDetailFailure? = null,
 )
+
+/** What the core refused on a subscription's page, with its [code] for why; 重試 asks for the same again. */
+@Immutable
+internal sealed interface RvSubDetailFailure {
+    val code: ErrorCode
+
+    data class Update(override val code: ErrorCode) : RvSubDetailFailure
+
+    /** Saving [userAgent] (null: back to the default). */
+    data class UserAgent(override val code: ErrorCode, val userAgent: String?) : RvSubDetailFailure
+
+    data class Delete(override val code: ErrorCode) : RvSubDetailFailure
+}
 
 /**
  * 自動更新 on a subscription's page, as the app's settings give it: [Unread] until they answer (the row has no value
@@ -93,7 +108,7 @@ internal fun RvSubDetail(
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_sub_update_now), onUpdate) },
     ) { titleBlock ->
         RvLargeTitle(sub.name, titleBlock, insets)
-        RvGutter(banner = if (state.deleteFailed) rvDeleteFailedBanner(sub, onDelete) else null) { KeyStats(sub) }
+        RvGutter(banner = state.failed?.let { rvSubDetailBanner(sub, it, onUpdate, onUserAgent, onDelete) }) { KeyStats(sub) }
         RvSectionTitle(stringResource(R.string.rv_sub_updates), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter { UpdatesCard(sub.userAgent, autoUpdate, onAutoUpdate) { onChange(state.copy(sheet = RvSubSheet.UserAgent, userAgent = sub.userAgent.orEmpty())) } }
         RvSectionTitle(stringResource(R.string.rv_sub_section), Modifier.padding(horizontal = RvSpace.gutter))
@@ -115,12 +130,13 @@ internal fun RvSubDetail(
         confirm = stringResource(R.string.rv_save),
         dismiss = stringResource(R.string.rv_cancel),
         onConfirm = {
-            onRename(state.name.trim())
+            // Closes first: a refusal opens the sheet again, and closing on this state would shut it.
             close()
+            onRename(state.name.trim())
         },
         onDismiss = close,
         confirmEnabled = state.name.isNotBlank() && rvNameValid(state.name),
-    ) { RvRenameField(state.name, state.renameFailed) { onChange(state.copy(name = it, renameFailed = false)) } }
+    ) { RvRenameField(state.name, state.renameFailed) { onChange(state.copy(name = it, renameFailed = null)) } }
     RvConfirmSheet(
         visible = state.sheet == RvSubSheet.UserAgent,
         title = stringResource(R.string.rv_sub_user_agent),
@@ -128,8 +144,9 @@ internal fun RvSubDetail(
         confirm = stringResource(R.string.rv_save),
         dismiss = stringResource(R.string.rv_cancel),
         onConfirm = {
-            onUserAgent(rvAgentOf(state.userAgent))
+            // Closes first: the call clears the banner, and closing on this state would bring it back.
             close()
+            onUserAgent(rvAgentOf(state.userAgent))
         },
         onDismiss = close,
         confirmEnabled = rvAgentValid(state.userAgent),
@@ -149,15 +166,29 @@ internal fun RvSubDetail(
     )
 }
 
+/** The banner of what the core refused on the page: why, what stayed, and 重試 asking for the same again. */
+@Composable
+private fun rvSubDetailBanner(
+    sub: RvSubscription,
+    failed: RvSubDetailFailure,
+    onUpdate: () -> Unit,
+    onUserAgent: (String?) -> Unit,
+    onDelete: () -> Unit,
+) = when (failed) {
+    is RvSubDetailFailure.Update -> rvFailedBanner(sub, failed.code, onUpdate)
+    is RvSubDetailFailure.UserAgent -> rvAgentFailedBanner(failed.code) { onUserAgent(failed.userAgent) }
+    is RvSubDetailFailure.Delete -> rvDeleteFailedBanner(sub, failed.code, onDelete)
+}
+
 /**
  * The rename sheet's field: the sheet's title names it, so it has no label of its own (Addendum 3). A name the core
- * would refuse shows the inline error, as does a rename the core refused ([failed]).
+ * would refuse shows the inline error, as does a rename the core refused ([failed], saying why).
  */
 @Composable
-internal fun RvRenameField(name: String, failed: Boolean = false, onName: (String) -> Unit) {
+internal fun RvRenameField(name: String, failed: ErrorCode? = null, onName: (String) -> Unit) {
     val error = when {
         !rvNameValid(name) -> stringResource(R.string.rv_sub_name_invalid)
-        failed -> stringResource(R.string.rv_sub_rename_failed)
+        failed != null -> rvReasonLine(failed, stringResource(R.string.rv_sub_rename_failed_reason))
         else -> null
     }
     RvTextField(name, onName, label = null, name = stringResource(R.string.rv_sub_rename), error = error)

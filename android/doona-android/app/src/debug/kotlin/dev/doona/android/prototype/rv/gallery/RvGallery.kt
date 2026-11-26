@@ -41,6 +41,7 @@ import dev.doona.android.designsystem.rv.RvSkeletonSeeAll
 import dev.doona.android.designsystem.rv.RvSkeletonTiles
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTextField
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.activity.RvActivityNotice
 import dev.doona.android.feature.activity.rvActivityBanner
 import dev.doona.android.feature.model.RvSubscription
@@ -134,7 +135,7 @@ internal fun RvGalleryChecks() {
 internal fun RvGalleryBanners() {
     val sub = RvData.subscriptions.first()
     Column(verticalArrangement = Arrangement.spacedBy(RvSpace.cardGap)) {
-        RvBanner(rvFailedBanner(sub) {})
+        RvBanner(rvFailedBanner(sub, ErrorCode.FetchFailed) {})
         listOf(RvActivityNotice.Offline, RvActivityNotice.Crash).forEach { notice -> rvActivityBanner(notice) {}?.let { RvBanner(it) } }
     }
 }

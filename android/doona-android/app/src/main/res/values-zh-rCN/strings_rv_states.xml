@@ -4,7 +4,7 @@
     <string name="rv_welcome_line">doona 是 honk 的 Android 客户端，可直接导入 Clash、sing-box 订阅和分享链接。</string>
     <string name="rv_welcome_core">自研 honk 内核</string>
     <string name="rv_welcome_core_sub">用 Rust 编写，与 Linux 版 honk 同一套内核和配置</string>
-    <string name="rv_welcome_split">TCP 和 UDP 可分开选节点</string>
+    <string name="rv_welcome_split">TCP/UDP 分别选节点</string>
     <string name="rv_welcome_split_sub">默认一起选，需要时让 UDP 走另一个节点</string>
     <string name="rv_welcome_score">综合评分</string>
     <string name="rv_welcome_score_sub">根据实际连接的结果持续评分，自动挑选最好的节点</string>

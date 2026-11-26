@@ -534,8 +534,8 @@ fn a_node_that_comes_back_never_finds_its_old_tests_on_disk() {
         "{:?}",
         tests(&again)
     );
-    // A came back only once B's forgetting could be written.
-    assert_eq!(back, Err(ErrorCode::Internal));
+    // A came back only once B's forgetting could be written, and the refusal said why.
+    assert_eq!(back, Err(ErrorCode::WriteFailed));
     update(&again, a).unwrap();
     assert_eq!(tests(&again), [json!([])]);
     drop(again);

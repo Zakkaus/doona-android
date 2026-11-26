@@ -501,7 +501,7 @@ impl Core {
 
     /// Writes `next` to `state.json`. A `deadline` is checked once the state is serialized,
     /// right before the first write to the file system: past it nothing is written and the
-    /// command is `busy`.
+    /// command is `busy`. A failed write is `storage_full` or `write_failed`.
     fn write(
         &self,
         next: &State,
@@ -523,7 +523,7 @@ impl Core {
         written.map_err(|e| {
             self.diag
                 .record(Event::error("stateWrite").io(e.kind()).detail(command));
-            ErrorCode::Internal
+            ErrorCode::of_write(e.kind())
         })
     }
 }

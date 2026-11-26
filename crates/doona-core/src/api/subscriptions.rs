@@ -286,9 +286,9 @@ impl Core {
         command: &'static str,
         deadline: Option<Instant>,
     ) -> Result<(), ErrorCode> {
-        if admitting && !self.shared.stats.forgetting_written() {
-            log::error!("{command}: forgotten latency tests not written");
-            return Err(ErrorCode::Internal);
+        if admitting && let Err(kind) = self.shared.stats.forgetting_written() {
+            log::error!("{command}: forgotten latency tests not written: {kind}");
+            return Err(ErrorCode::of_write(kind));
         }
         groups::prune(&mut next.selections, &model.groups);
         groups::prune(&mut next.tcp_selections, &model.groups);

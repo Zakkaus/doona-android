@@ -19,6 +19,7 @@ use day::{Day, Moved, Usage};
 use file::{LatencyFile, STATS_VERSION, StatsFile, UsageFile};
 use latency::Latency;
 use ring::{Ring, Series};
+use std::io::ErrorKind;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -250,12 +251,12 @@ impl Stats {
     /// written, a retry starts unless one runs.
     fn save_file(
         self: &Arc<Self>,
-        write: fn(&Self) -> bool,
+        write: fn(&Self) -> Result<(), ErrorKind>,
         pending: fn(&mut Inner) -> &mut Pending,
     ) {
         let stats = Arc::clone(self);
         self.runtime.spawn_blocking(move || {
-            if write(&stats) || !pending(&mut lock(&stats.inner)).start_retry() {
+            if write(&stats).is_ok() || !pending(&mut lock(&stats.inner)).start_retry() {
                 return;
             }
             let runtime = stats.runtime.clone();
@@ -268,7 +269,7 @@ impl Stats {
     /// last request. It goes with the runtime when the core is dropped.
     async fn retry(
         self: Arc<Self>,
-        write: fn(&Self) -> bool,
+        write: fn(&Self) -> Result<(), ErrorKind>,
         pending: fn(&mut Inner) -> &mut Pending,
     ) {
         let mut delay = 1;
@@ -280,7 +281,7 @@ impl Stats {
             }
             let stats = Arc::clone(&self);
             let written = tokio::task::spawn_blocking(move || write(&stats)).await;
-            if written.unwrap_or(true) {
+            if written.map_or(true, |w| w.is_ok()) {
                 break;
             }
         }
@@ -288,7 +289,7 @@ impl Stats {
     }
 
     /// Copies the usage under the lock, and encodes and writes the copy without it.
-    fn write_usage(&self) -> bool {
+    fn write_usage(&self) -> Result<(), ErrorKind> {
         let mut changes = 0;
         let written = self.usage_file.save(|| {
             let inner = lock(&self.inner);
@@ -298,7 +299,7 @@ impl Stats {
                 usage: inner.usage.clone(),
             }
         });
-        if written {
+        if written.is_ok() {
             let saved = &mut lock(&self.inner).usage_writes.saved;
             *saved = changes.max(*saved);
         }
@@ -306,7 +307,7 @@ impl Stats {
     }
 
     /// As [`Stats::write_usage`], for the latency tests.
-    fn write_latency(&self) -> bool {
+    fn write_latency(&self) -> Result<(), ErrorKind> {
         let mut changes = 0;
         let written = self.latency_file.save(|| {
             let inner = lock(&self.inner);
@@ -316,7 +317,7 @@ impl Stats {
                 latency: inner.latency.all().clone(),
             }
         });
-        if written {
+        if written.is_ok() {
             let saved = &mut lock(&self.inner).latency_writes.saved;
             *saved = changes.max(*saved);
         }
@@ -364,14 +365,14 @@ impl Stats {
 
     /// Writes the latency tests here and now when a node's were forgotten and that is not on
     /// disk yet, so that after a commit that brings the node back, a crash cannot read back the
-    /// tests it had before it left. Answers whether the disk has the forgetting.
-    pub fn forgetting_written(&self) -> bool {
+    /// tests it had before it left. Answers the kind of the write that failed to put the
+    /// forgetting on disk; a forgetting that comes in during the write is written in turn.
+    pub fn forgetting_written(&self) -> Result<(), ErrorKind> {
         let written = |inner: &Inner| inner.latency_writes.saved >= inner.latency_forgot;
-        if written(&lock(&self.inner)) {
-            return true;
+        while !written(&lock(&self.inner)) {
+            self.write_latency()?;
         }
-        self.write_latency();
-        written(&lock(&self.inner))
+        Ok(())
     }
 
     /// The tests of each node of `ids`, oldest first.

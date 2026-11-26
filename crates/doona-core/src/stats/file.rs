@@ -114,8 +114,8 @@ impl StatsFile {
     }
 
     /// Writes what `data` gives once this file's earlier writes are done, encoded and written
-    /// outside any lock `data` takes; failures are logged. Answers whether it was written.
-    pub fn save<T: Serialize>(&self, data: impl FnOnce() -> T) -> bool {
+    /// outside any lock `data` takes; failures are logged. Answers the kind of a failed write.
+    pub fn save<T: Serialize>(&self, data: impl FnOnce() -> T) -> Result<(), ErrorKind> {
         let _writing = lock(&self.writing);
         let written = serde_json::to_vec(&data())
             .map_err(io::Error::from)
@@ -124,6 +124,6 @@ impl StatsFile {
             let event = Event::warn("statsWrite").io(e.kind()).detail(self.name);
             self.diag.record(event);
         }
-        written.is_ok()
+        written.map_err(|e| e.kind())
     }
 }

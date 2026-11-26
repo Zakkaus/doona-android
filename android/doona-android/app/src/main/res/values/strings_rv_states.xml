@@ -4,7 +4,7 @@
     <string name="rv_welcome_line">doona is the Android client for honk. Import Clash and sing-box subscriptions and share links directly.</string>
     <string name="rv_welcome_core">Our own honk core</string>
     <string name="rv_welcome_core_sub">Written in Rust; the same core and config as honk on Linux</string>
-    <string name="rv_welcome_split">TCP and UDP, chosen separately</string>
+    <string name="rv_welcome_split">Separate nodes for TCP/UDP</string>
     <string name="rv_welcome_split_sub">Chosen together by default; send UDP through another node when you need to</string>
     <string name="rv_welcome_score">Score</string>
     <string name="rv_welcome_score_sub">Rates nodes from real connections and picks the best one automatically</string>

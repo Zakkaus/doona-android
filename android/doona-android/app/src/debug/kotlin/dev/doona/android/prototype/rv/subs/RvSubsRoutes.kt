@@ -40,13 +40,13 @@ internal fun RvSubsRoute(route: String, push: (String) -> Unit, pop: () -> Unit)
     val arg = route.substringAfter(':', "")
     when (route.substringBefore(':')) {
         RvSubsRoutes.LIST -> {
-            var state by remember { mutableStateOf(rvSubsStateSample(failedId = if (arg == FAILED) RvData.subscriptions.first().id else null)) }
+            var state by remember { mutableStateOf(rvSubsStateSample(failed = if (arg == FAILED) rvFetchFailedSample(RvData.subscriptions.first().id) else null)) }
             val actions = RvSubsActions(
                 back = pop,
                 open = { push("${RvSubsRoutes.DETAIL}:$it") },
                 add = { push(RvSubsRoutes.ADD) },
-                update = { state = state.copy(failedId = null) },
-                updateAll = { state = state.copy(failedId = null) },
+                update = { state = state.copy(failed = null) },
+                updateAll = { state = state.copy(failed = null) },
                 delete = { state = state.copy(deletingId = it) },
                 confirmDelete = { id -> state = state.copy(subscriptions = state.subscriptions.filterNot { it.id == id }, deletingId = null) },
             )
