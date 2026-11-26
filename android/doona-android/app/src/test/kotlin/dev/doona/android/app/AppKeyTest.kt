@@ -5,6 +5,7 @@ import androidx.navigation3.runtime.serialization.NavKeySerializer
 import kotlinx.serialization.descriptors.elementDescriptors
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -17,7 +18,8 @@ class AppKeyTest {
         ActivityKey, PoliciesKey, SettingsKey, TrafficKey, StatsKey, NodesKey, NodeSearchKey, NodeKey("n-1"), GroupKey("g-Proxy"),
         MainNodeChoiceKey, RulesKey, TemplateKey, TemplateImpactKey("t-1"), EffectiveConfigKey, SubscriptionsKey, SubAddKey,
         SubDetailKey("s-1"), PerAppKey, ReportKey, AboutKey, LanguageKey, IntervalKey, LabKey, ThemeKey, DnsKey, LicensesKey,
-        LicenseTextKey("0"), LogLevelKey, GeoIntervalKey,
+        LicenseTextKey("0"), LogLevelKey, GeoIntervalKey, ConfigKey, ConfigSkippedKey, ConfigSourceKey("config.dae"),
+        ConfigHistoryKey, ConfigRevisionKey(9),
     )
 
     @Test
@@ -39,7 +41,8 @@ class AppKeyTest {
     fun aKeyCarriesOnlyIds() {
         keys.forEach { key ->
             val fields = key::class.java.declaredFields.filterNot { java.lang.reflect.Modifier.isStatic(it.modifiers) }
-            fields.forEach { assertEquals("$key: ${it.name}", String::class.java, it.type) }
+            // An id is a string, or a configuration revision's number (schema 4's `rev`).
+            fields.forEach { assertTrue("$key: ${it.name} is ${it.type}", it.type == String::class.java || it.type == Int::class.javaPrimitiveType) }
         }
     }
 }
