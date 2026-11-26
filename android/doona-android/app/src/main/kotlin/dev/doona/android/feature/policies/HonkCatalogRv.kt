@@ -1,54 +1,13 @@
 package dev.doona.android.feature.policies
 
-import dev.doona.android.feature.model.NodePlaces
-import dev.doona.android.feature.model.RV_INLINE
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvMemberGroup
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
-import dev.doona.android.feature.model.RvSubscription
-import dev.doona.android.feature.model.protocolName
-import dev.doona.android.feature.subscriptions.subscriptionHost
 import dev.doona.android.vpn.honk.Group
-import dev.doona.android.vpn.honk.HealthState
 import dev.doona.android.vpn.honk.MemberKind
-import dev.doona.android.vpn.honk.Node
 import dev.doona.android.vpn.honk.PolicyKind
-import dev.doona.android.vpn.honk.Provider
-import dev.doona.android.vpn.honk.Transport
-import java.time.OffsetDateTime
-
-/**
- * A honk node as the pages draw it. honk keeps one health observation per network, so the history is the latest TCP one
- * alone: its latency when healthy, a timeout when unavailable, nothing before a probe. honk's node carries no server,
- * port, transport or TLS, so the node reads as not described and offers no share link. [providers] is every provider by id.
- */
-internal fun rvNode(node: Node, providers: Map<String, Provider>, places: NodePlaces): RvNode {
-    val placed = places.of(node.name)
-    val tcp = node.health.firstOrNull { it.transport == Transport.Tcp }
-    val history = when (tcp?.state) {
-        HealthState.Healthy -> listOf(tcp.latencyMs?.toInt())
-        HealthState.Unavailable -> listOf(null)
-        HealthState.Unknown, null -> emptyList()
-    }
-    return RvNode(
-        id = node.id,
-        name = node.name,
-        short = placed.short,
-        place = placed.place,
-        city = placed.city,
-        protocol = node.protocol?.let(::protocolName).orEmpty(),
-        host = "",
-        port = 0,
-        transport = "",
-        tls = false,
-        subscription = node.providerId?.let { providers[it]?.name }.orEmpty(),
-        subscriptionId = node.providerId ?: RV_INLINE,
-        history = history,
-        shareable = false,
-    )
-}
 
 internal fun rvGroupKind(kind: PolicyKind): RvGroupKind = when (kind) {
     PolicyKind.Selector, PolicyKind.Fixed -> RvGroupKind.Select
@@ -83,24 +42,3 @@ internal fun memberFor(group: Group, nodeId: String, groups: Map<String, Group>)
     group.members.firstOrNull { it.kind == MemberKind.Node && it.id == nodeId }?.id
         ?: group.members.firstOrNull { it.kind == MemberKind.Group && groups[it.id]?.leafNodeId() == nodeId }?.id
         ?: nodeId
-
-/**
- * A honk subscription as the pages draw it. honk sends neither the subscription's format nor its user agent; a figure the
- * provider's `subscription-userinfo` left out counts as 0, as the pages read a missing quota.
- */
-internal fun rvSubscription(provider: Provider): RvSubscription {
-    val traffic = provider.traffic
-    return RvSubscription(
-        id = provider.id,
-        name = provider.name,
-        nodes = provider.nodeCount,
-        updatedAtEpochMs = provider.updatedAt?.let(::epochMs),
-        usedBytes = (traffic?.uploadBytes?.toLong() ?: 0L) + (traffic?.downloadBytes?.toLong() ?: 0L),
-        totalBytes = traffic?.totalBytes?.toLong() ?: 0L,
-        expiresAtEpochMs = provider.expiresAt?.let(::epochMs),
-        host = provider.urlRedacted?.let(::subscriptionHost).orEmpty(),
-        format = null,
-    )
-}
-
-private fun epochMs(rfc3339: String): Long = OffsetDateTime.parse(rfc3339).toInstant().toEpochMilli()

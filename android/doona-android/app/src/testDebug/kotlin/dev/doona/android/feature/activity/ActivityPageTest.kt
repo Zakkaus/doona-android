@@ -10,7 +10,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.doona.android.R
 import dev.doona.android.engine.Engine
-import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Mode
@@ -20,6 +19,10 @@ import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvText
+import dev.doona.android.vpn.ActivityHonkFixtures
+import dev.doona.android.vpn.ActivityHonkFixtures.refusingProbes
+import dev.doona.android.vpn.FakeHonk
+import dev.doona.android.vpn.HonkFixtures
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
@@ -43,8 +46,20 @@ class ActivityPageTest {
     private val opened = mutableListOf<String>()
     private var connects = 0
 
+    /** 活動 over [honk] with [engine]'s tunnel and mode, its profile read. */
+    private fun model(engine: Engine, honk: FakeHonk = ActivityHonkFixtures.sample(), crash: Boolean = false) =
+        ActivityViewModel(engine, honk, MutableStateFlow(crash), Dispatchers.Unconfined, { RvData.nowEpochMs }, { ZoneOffset.UTC }, io = Dispatchers.Unconfined).also { it.load() }
+
+    private fun FakeHonk.probes() = calls.count { it.method == "POST" && it.path == ActivityHonkFixtures.PROBES_PATH }
+
+    /** Every probe accepted, and its operation done at the first poll. */
+    private fun FakeHonk.acceptingProbes() {
+        on("POST", ActivityHonkFixtures.PROBES_PATH, 202, HonkFixtures.body("probes/queued"))
+        on("GET", "/api/v1/operations/op-01HZX4K8W9", 200, HonkFixtures.body("operations/probe-complete"))
+    }
+
     private fun show(engine: FakeEngine) {
-        val model = ActivityViewModel(engine, MutableStateFlow(false), Dispatchers.Unconfined, { RvData.nowEpochMs }, { ZoneOffset.UTC })
+        val model = model(engine)
         compose.rvContent(dark = false) { ActivityPage(model, crash = null, onConnect = { connects++ }, routes = activityTestRoutes(opened)) }
     }
 
@@ -74,29 +89,21 @@ class ActivityPageTest {
 
     @Test
     fun aFailedLatencyTestShowsItsBannerAndItsRetryTestsAgain() {
-        var tests = 0
-        val counted = object : Engine by rvSampleEngine() {
-            override suspend fun testLatency(groupId: String?): Result<Unit> {
-                tests++
-                return Result.failure(EngineException(ErrorCode.Busy))
-            }
-        }
-        val model = ActivityViewModel(counted, MutableStateFlow(false), Dispatchers.Unconfined, { RvData.nowEpochMs }, { ZoneOffset.UTC })
+        val honk = ActivityHonkFixtures.sample().refusingProbes()
+        val model = model(rvSampleEngine(), honk)
         compose.rvContent(dark = false) { ActivityPage(model, crash = null, onConnect = {}, routes = activityTestRoutes(opened)) }
         model.onAction(ActivityAction.TestLatency)
         compose.waitForIdle()
         compose.onNodeWithText(rvText(R.string.rv_failed_test_latency)).assertExists()
         compose.onNodeWithText(rvText(R.string.rv_retry)).performClick()
-        assertEquals(2, tests)
+        // A refused probe ends the test at the first group.
+        assertEquals(2, honk.probes())
     }
 
     @Test
     fun theCrashOfferIsMarkedShownOnlyOnceItsNoticeIsOnScreenAndTheReportTakesItDown() {
-        var failing = true
-        val engine = object : Engine by rvSampleEngine() {
-            override suspend fun testLatency(groupId: String?): Result<Unit> = if (failing) Result.failure(EngineException(ErrorCode.Busy)) else Result.success(Unit)
-        }
-        val model = ActivityViewModel(engine, MutableStateFlow(true), Dispatchers.Unconfined, { RvData.nowEpochMs }, { ZoneOffset.UTC })
+        val honk = ActivityHonkFixtures.sample().refusingProbes()
+        val model = model(rvSampleEngine(), honk, crash = true)
         val shown = AtomicInteger()
         val dismissed = AtomicInteger()
         // The failure stands before the page's first frame, so its banner holds the notice's place from the start.
@@ -110,9 +117,10 @@ class ActivityPageTest {
         compose.onNodeWithText(rvText(R.string.rv_crash_export)).assertDoesNotExist()
         assertEquals("shown while a failure banner stands", 0, shown.get())
 
-        failing = false
+        honk.acceptingProbes()
         compose.onNodeWithText(rvText(R.string.rv_retry)).performClick()
-        compose.onNodeWithText(rvText(R.string.rv_crash_export)).assertExists()
+        // honk's operations are polled a second apart, one group after another: eight groups take eight seconds.
+        compose.waitUntil(PROBES_TIMEOUT_MS) { compose.onAllNodes(hasText(rvText(R.string.rv_crash_export))).fetchSemanticsNodes().isNotEmpty() }
         compose.waitUntil(TIMEOUT_MS) { shown.get() > 0 }
         // Further frames (the sample's traffic) do not mark it again.
         compose.mainClock.advanceTimeBy(TIMEOUT_MS)
@@ -129,7 +137,7 @@ class ActivityPageTest {
     /** 匯出報告 opens the report before anything takes the offer down; a route that opens nothing leaves it up. */
     @Test
     fun exportOpensTheReportFirstAndTheOfferStaysUpUntilTheReportHoldsIt() {
-        val model = ActivityViewModel(rvSampleEngine(), MutableStateFlow(true), Dispatchers.Unconfined, { RvData.nowEpochMs }, { ZoneOffset.UTC })
+        val model = model(rvSampleEngine(), crash = true)
         val order = mutableListOf<String>()
         var handOff: (() -> Unit)? = null
         val export: (() -> Unit) -> Unit = { received ->
@@ -161,6 +169,7 @@ class ActivityPageTest {
 
     private companion object {
         const val TIMEOUT_MS = 3_000L
+        const val PROBES_TIMEOUT_MS = 12_000L
     }
 }
 

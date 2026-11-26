@@ -24,11 +24,17 @@ import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeInstalledApps
-import dev.doona.android.engine.fake.FakeRuleMode
+import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.report.CrashFiles
 import dev.doona.android.report.CrashHandler
 import dev.doona.android.report.CrashOffer
 import dev.doona.android.testing.SeedTheme
+import dev.doona.android.vpn.ActivityHonkFixtures.servingSample
+import dev.doona.android.vpn.FakeHonk
+import dev.doona.android.vpn.HonkFixtures
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -145,7 +151,9 @@ class NavigationTest {
     @Test
     fun `全部規則 on 活動 opens the rules page and back returns to 活動`() {
         val res = ApplicationProvider.getApplicationContext<Context>().resources
-        val seeAll = res.getQuantityString(R.plurals.rv_see_all_rules, FakeRuleMode.SOURCE.rules, FakeRuleMode.SOURCE.rules)
+        // 活動 counts the rules honk runs: the app's honk serves its contract's three.
+        val rules = Json.parseToJsonElement(HonkFixtures.body("rules/running")).jsonObject.getValue("rules").jsonArray.size
+        val seeAll = res.getQuantityString(R.plurals.rv_see_all_rules, rules, rules)
         compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS, mode = Mode.Rule), FakeInstalledApps(), onConnect = {}) } }
         appears(seeAll)
         compose.onNode(hasClickAction() and hasText(seeAll)).performSemanticsAction(SemanticsActions.OnClick)
@@ -198,7 +206,9 @@ class NavigationTest {
 
     @Test
     fun `the main node on 活動 opens the node's page`() {
-        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS, mode = Mode.Rule), FakeInstalledApps(), onConnect = {}) } }
+        // The contract's rules fall back to block, which names no main node: serve the sample's profile.
+        (ApplicationProvider.getApplicationContext<DoonaApplication>().container.nativeApi as FakeHonk).servingSample()
+        compose.setContent { SeedTheme { DoonaApp(rvSampleEngine(), FakeInstalledApps(), onConnect = {}) } }
         appears(string(R.string.rv_main_node))
         compose.onNode(hasClickAction() and hasText(string(R.string.rv_main_node))).performSemanticsAction(SemanticsActions.OnClick)
         appears(string(R.string.rv_nodes_details))

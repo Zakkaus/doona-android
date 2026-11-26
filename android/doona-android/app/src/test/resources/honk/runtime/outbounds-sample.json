@@ -1,0 +1,51 @@
+{
+    "observed_at": "2026-11-22T10:24:00Z",
+    "counter_since": "2026-11-22T08:42:00Z",
+    "outbounds": [
+        {
+            "name": "direct",
+            "kind": "builtin",
+            "active_connections": 0,
+            "total_connections": "0",
+            "upload_bytes": "74364899",
+            "download_bytes": "694908460",
+            "errors": "0"
+        },
+        {
+            "name": "Proxy",
+            "kind": "group",
+            "active_connections": 0,
+            "total_connections": "0",
+            "upload_bytes": "25433618",
+            "download_bytes": "237666382",
+            "errors": "0"
+        },
+        {
+            "name": "AI",
+            "kind": "group",
+            "active_connections": 0,
+            "total_connections": "0",
+            "upload_bytes": "17627595",
+            "download_bytes": "164722405",
+            "errors": "0"
+        },
+        {
+            "name": "Streaming",
+            "kind": "group",
+            "active_connections": 0,
+            "total_connections": "0",
+            "upload_bytes": "115656745",
+            "download_bytes": "1080763255",
+            "errors": "0"
+        },
+        {
+            "name": "block",
+            "kind": "builtin",
+            "active_connections": 0,
+            "total_connections": "0",
+            "upload_bytes": "0",
+            "download_bytes": "0",
+            "errors": "0"
+        }
+    ]
+}

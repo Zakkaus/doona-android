@@ -4,8 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.doona.android.app.nativeApi
 import dev.doona.android.designsystem.rv.RvPullLook
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.NetworkState
@@ -69,7 +71,11 @@ internal fun ActivityRoute(
 ) {
     val offered = remember(crashOffer) { crashOffer?.offered ?: MutableStateFlow(false) }
     val online = remember(network) { steadyOnline(network.map { it.online }) }
-    val viewModel: ActivityViewModel = viewModel(factory = ActivityViewModel.factory(engine, offered, online, refusals))
+    val viewModel: ActivityViewModel = viewModel(factory = ActivityViewModel.factory(engine, nativeApi(), offered, online, refusals))
+    LifecycleStartEffect(viewModel) {
+        viewModel.load()
+        onStopOrDispose {}
+    }
     val crash = remember(crashOffer) { crashOffer?.let { ActivityCrashOffer(it::shown, it::dismiss) } }
     ActivityPage(viewModel, crash, onConnect, routes, pull)
 }

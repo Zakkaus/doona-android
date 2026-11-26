@@ -14,9 +14,9 @@ import java.time.OffsetDateTime
 internal class NativeRuntime(private val api: NativeApi) {
     fun traffic(): RuntimeTraffic = api.read("GET", "/api/v1/runtime", RuntimeDto.serializer()).traffic.toTraffic()
 
-    /** Every sample honk keeps, oldest first: one a second over the last [HISTORY_SECONDS]. */
-    fun history(): TrafficHistory =
-        api.read("GET", "/api/v1/runtime/traffic/history?window_seconds=$HISTORY_SECONDS&max_points=$HISTORY_SECONDS", TrafficHistoryDto.serializer()).toHistory()
+    /** honk's samples of the last [seconds] (at most [HISTORY_SECONDS], all it keeps), oldest first: one a second. */
+    fun history(seconds: Int = HISTORY_SECONDS): TrafficHistory =
+        api.read("GET", "/api/v1/runtime/traffic/history?window_seconds=$seconds&max_points=$seconds", TrafficHistoryDto.serializer()).toHistory()
 
     /** The bytes each outbound carried since honk's counters started, in honk's order. */
     fun outbounds(): List<OutboundTraffic> = api.read("GET", "/api/v1/runtime/outbounds", OutboundsDto.serializer()).outbounds.map(OutboundDto::toOutbound)
