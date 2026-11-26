@@ -183,7 +183,7 @@ internal class AppLogLevels(private val controller: LogLevelController) : LogLev
 }
 
 /** What 主題's 預覽 draws in the app: the RV 活動 page on [ThemePreviewSample], in the chosen scheme; none of its taps leads anywhere. */
-private val APP_THEME_PREVIEW: RvThemePreviewPage = {
+internal val APP_THEME_PREVIEW: RvThemePreviewPage = {
     RvActivityScreen(
         ThemePreviewSample.state,
         onAction = {},

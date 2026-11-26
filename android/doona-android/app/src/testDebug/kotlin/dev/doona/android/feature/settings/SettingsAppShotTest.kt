@@ -16,6 +16,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.R
+import dev.doona.android.app.APP_THEME_PREVIEW
 import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.data.settings.UpdateInterval
 import dev.doona.android.designsystem.rv.RvSheetLayout
@@ -254,6 +255,13 @@ class SettingsAppShotTest {
     @Test
     @Config(qualifiers = THEME_PAGE_FS200)
     fun themeFs200() = compose.app("settings-theme", fontScale = RV_FS200, whole = true) { Theme() }
+
+    /** 主題 as the app draws it: its own preview, on [dev.doona.android.app.ThemePreviewSample]. */
+    @Test
+    @Config(qualifiers = THEME_PAGE)
+    fun themeAppPreview() = compose.app("settings-theme-app", dark = false, whole = true) {
+        ThemeRoute(FakeSettingsStore(), seedSchemes(), APP_THEME_PREVIEW, onBack = {})
+    }
 
     @Test fun dnsLight() = compose.app("settings-dns", dark = false) { DnsRoute(FakeEngine(), onBack = {}) }
 
