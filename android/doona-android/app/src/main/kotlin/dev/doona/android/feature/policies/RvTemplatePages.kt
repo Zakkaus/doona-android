@@ -1,6 +1,8 @@
 package dev.doona.android.feature.policies
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
@@ -11,6 +13,7 @@ import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvAlpha
+import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvFootnote
 import dev.doona.android.designsystem.rv.RvGutter
@@ -23,13 +26,18 @@ import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSectionTitle
 import dev.doona.android.designsystem.rv.RvSkeletonCard
-import dev.doona.android.designsystem.rv.RvSkeletonCards
+import dev.doona.android.designsystem.rv.RvSkeletonEnd
+import dev.doona.android.designsystem.rv.RvSkeletonFade
+import dev.doona.android.designsystem.rv.RvSkeletonRow
+import dev.doona.android.designsystem.rv.RvSkeletonSection
 import dev.doona.android.designsystem.rv.RvSkeletonStatRow
+import dev.doona.android.designsystem.rv.RvSkeletonText
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rvConfigPhrase
 import dev.doona.android.designsystem.rv.rvRowSelect
+import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
 import dev.doona.android.feature.model.RvImpact
 import dev.doona.android.feature.model.RvImpactGroup
 import dev.doona.android.feature.model.RvImpactRule
@@ -91,13 +99,13 @@ internal fun RvTemplateRow(template: RvTemplate, selected: Boolean, inUse: Boole
  * count the core does not tell is left out); the groups it adds and keeps and the rules it adds or changes, each drawn as
  * the rules card draws a rule, where the core tells them; a line saying only new connections follow it; and 套用
  * floating at the bottom. A failed 套用 shows as [banner] above the stats. Before the rules are read ([impact] null: a
- * back stack restored after the process died) a skeleton of the stats stands in, 套用 is off, and the stats fade in over it.
+ * back stack restored after the process died) the page's skeleton stands in ([ImpactSkeleton]), 套用 is off and the line
+ * under the rules waits for them; the page fades in over the skeleton.
  */
 @Composable
 internal fun RvTemplateImpactPage(impact: RvImpact?, onBack: () -> Unit, onApply: () -> Unit, banner: RvNotice? = null) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_template_review)
-    val template = stringResource(R.string.rv_policy_template)
     RvScrollPage(
         title,
         insets,
@@ -105,22 +113,54 @@ internal fun RvTemplateImpactPage(impact: RvImpact?, onBack: () -> Unit, onApply
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply, enabled = impact != null) },
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
-        RvGutter(banner = banner) {
-            RvSkeletonCards(impact == null, { RvSkeletonCard(description = template) { RvSkeletonStatRow(template) } }) { impact?.let { SummaryCard(it) } }
+        RvBannerSlot(banner)
+        RvSkeletonFade(impact == null, { Column(Modifier.fillMaxWidth()) { ImpactSkeleton() } }) {
+            Column(Modifier.fillMaxWidth()) { impact?.let { ImpactBody(it) } }
         }
-        val groups = impact?.groups.orEmpty()
-        if (groups.isNotEmpty()) {
-            RvSectionTitle(stringResource(R.string.rv_policy_groups), Modifier.padding(horizontal = RvSpace.gutter))
-            RvGutter { RvCard { groups.forEach { ImpactGroupRow(it) } } }
-        }
-        val rules = impact?.rules.orEmpty()
-        if (rules.isNotEmpty()) {
-            RvSectionTitle(stringResource(R.string.rv_policy_rules), Modifier.padding(horizontal = RvSpace.gutter))
-            RvGutter { RvCard { rules.forEach { ImpactRuleRow(it) } } }
-        }
-        RvFootnote(stringResource(R.string.rv_template_new_flows))
     }
 }
+
+/** The review's stats, the groups and rules the core tells, and the line saying only new connections follow it. */
+@Composable
+private fun ImpactBody(impact: RvImpact) {
+    RvGutter { SummaryCard(impact) }
+    if (impact.groups.isNotEmpty()) {
+        RvSectionTitle(stringResource(R.string.rv_policy_groups), Modifier.padding(horizontal = RvSpace.gutter))
+        RvGutter { RvCard { impact.groups.forEach { ImpactGroupRow(it) } } }
+    }
+    if (impact.rules.isNotEmpty()) {
+        RvSectionTitle(stringResource(R.string.rv_policy_rules), Modifier.padding(horizontal = RvSpace.gutter))
+        RvGutter { RvCard { impact.rules.forEach { ImpactRuleRow(it) } } }
+    }
+    RvFootnote(stringResource(R.string.rv_template_new_flows))
+}
+
+/**
+ * The review before its rules are read, shaped as the page: the stats card's rows under their labels, then 策略群組 and
+ * 分流規則, each a card of rows as the page draws a group and a rule; the rules run past the window's foot, as 全部規則's
+ * skeleton does. The line under the rules is not drawn, as it says what the rules do.
+ */
+@Composable
+private fun ImpactSkeleton() {
+    val template = stringResource(R.string.rv_policy_template)
+    val stats = listOf(R.string.rv_template_added, R.string.rv_template_changed, R.string.rv_template_removed, R.string.rv_template_kept)
+    RvGutter {
+        RvSkeletonCard(description = template) {
+            RvSkeletonStatRow(template, RvSkeletonText.Change)
+            stats.forEach { RvSkeletonStatRow(stringResource(it)) }
+        }
+    }
+    val groups = stringResource(R.string.rv_policy_groups)
+    RvSkeletonSection(groups, Modifier.padding(horizontal = RvSpace.gutter))
+    RvGutter { RvSkeletonCard(description = groups) { repeat(SKELETON_GROUPS) { RvSkeletonRow(it, RvSkeletonText.Mixed) } } }
+    val rules = stringResource(R.string.rv_policy_rules)
+    val rows = rvSkeletonRowsToFill()
+    RvSkeletonSection(rules, Modifier.padding(horizontal = RvSpace.gutter))
+    RvGutter { RvSkeletonCard(description = rules) { repeat(rows) { RvSkeletonRow(it, RvSkeletonText.Words, RvSkeletonEnd.Node) } } }
+}
+
+/** Group rows in the skeleton: the count is not known before the read, so the page draws as many as a sample template brings. */
+private const val SKELETON_GROUPS = 4
 
 @Composable
 private fun SummaryCard(impact: RvImpact) {

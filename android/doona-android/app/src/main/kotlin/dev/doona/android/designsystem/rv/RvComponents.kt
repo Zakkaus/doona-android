@@ -325,6 +325,9 @@ internal object RvPart {
     const val BLOCK = "rv-block"
     const val ROW = "rv-row"
 
+    /** A key stats row ([RvStatRow]) and its skeleton ([RvSkeletonStatRow]). */
+    const val STAT = "rv-stat"
+
     /** A settings row's leading disc, held on the title's first line as its end is. */
     const val DISC = "rv-disc"
 
@@ -457,6 +460,7 @@ internal fun RvStatRow(label: String, value: String, valueKeepWords: Boolean = t
         },
         // One stop either way: the label and the value, or what [spoken] says in their place.
         (if (spoken == null) Modifier.semantics(mergeDescendants = true) {} else Modifier.clearAndSetSemantics { contentDescription = spoken })
+            .testTag(RvPart.STAT)
             .fillMaxWidth()
             .padding(horizontal = RvSpace.rowPadding),
     ) { (labelPart, valuePart), constraints ->

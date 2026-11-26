@@ -35,12 +35,14 @@ import dev.doona.android.feature.nodes.ui.RvNodePickRow
 import dev.doona.android.feature.nodes.ui.RvNodeSectionSkeleton
 import dev.doona.android.feature.perapp.RvPerAppScreen
 import dev.doona.android.feature.policies.RvPolicyScreen
+import dev.doona.android.feature.policies.RvTemplateImpactPage
 import dev.doona.android.feature.subscriptions.RvSubsActions
 import dev.doona.android.feature.subscriptions.RvSubsPage
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.data.rvTestTimes
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
+import dev.doona.android.prototype.rv.policy.RvTemplateData
 import dev.doona.android.prototype.rv.settings.RvPerAppLook
 import dev.doona.android.prototype.rv.settings.RvPerAppLookScreen
 import dev.doona.android.prototype.rv.settings.rvPerAppActions
@@ -73,6 +75,7 @@ internal object RvSkeletonPages {
     const val PER_APP_V1 = "perapp-v1"
     const val NODES = "nodes"
     const val NODE = "node"
+    const val TEMPLATE_IMPACT = "template-impact"
 }
 
 /** [page] with its skeleton while [loading], else with its content, in the samples its goldens show. */
@@ -95,6 +98,7 @@ internal fun RvSkeletonPage(page: String, loading: Boolean) {
         RvSkeletonPages.NODE -> if (loading) RvNodeDetailSkeleton(onBack = {}) else RvNodeDetail(RvData.nodes.first { latencyTone(it.latencyMs) == Tone.Ok }, current = false, rvTestTimes(), onBack = {}, onUse = {}, onTest = {})
 
         RvSkeletonPages.PER_APP_V1 -> RvPerAppLookScreen(rvPerAppLookSample(if (loading) "loading" else ""), rvPerAppActions(), onBack = {}, look = RvPerAppLook.Checks)
+        RvSkeletonPages.TEMPLATE_IMPACT -> RvTemplateImpactPage(RvTemplateData.impact.takeUnless { loading }, onBack = {}, onApply = {})
 
         else -> RvPerAppScreen(rvPerAppSample(if (loading) "loading" else ""), rvPerAppActions(), onBack = {})
     }
@@ -211,6 +215,12 @@ class RvSkeletonBoundsTest {
         assertEquals("the node row's height", real.height, row.height, TOLERANCE)
     }
 
+    @Test fun templateImpact() = bounds(RvSkeletonPages.TEMPLATE_IMPACT, 1f)
+
+    @Test fun templateImpactFs115() = bounds(RvSkeletonPages.TEMPLATE_IMPACT, RV_FS115)
+
+    @Test fun templateImpactFs200() = bounds(RvSkeletonPages.TEMPLATE_IMPACT, RV_FS200)
+
     /**
      * 依 App's skeleton rows stop above 儲存's room (the gap over the button and the button), as the loaded list's last
      * row clears it at the end of its scroll: a row ending past it keeps its place but draws nothing, so its disc's middle
@@ -256,7 +266,7 @@ class RvSkeletonBoundsTest {
         compose.waitForIdle()
         val content = compose.texts(window).filter { text -> chrome.none { abs(it.top - text.top) <= TOLERANCE && abs(it.left - text.left) <= TOLERANCE } }
         val loaded = compose.parts(window, LOADED_TAGS) + (TEXT to content)
-        val rows = skeleton.of(RvPart.ROW).zip(loaded.of(RvPart.ROW))
+        val rows = skeleton.rows().zip(loaded.rows())
         val wraps = rows.indices.filter { abs(rows[it].first.height - rows[it].second.height) > TOLERANCE }.toSet()
         assertEquals("$page at $fontScale: the rows whose data, not there yet, wraps past their skeleton", WRAPS[page to fontScale].orEmpty(), wraps)
         // Under the first such row the content stands lower than its skeleton: there only the rows' heights are compared.
@@ -264,7 +274,7 @@ class RvSkeletonBoundsTest {
         val drift = mutableListOf<String>()
         if (wraps.isEmpty()) {
             same(drift, "cards in the window", skeleton.of(RvPart.CARD).size.toFloat(), loaded.of(RvPart.CARD).size.toFloat())
-            same(drift, "rows in the window", skeleton.of(RvPart.ROW).size.toFloat(), loaded.of(RvPart.ROW).size.toFloat())
+            same(drift, "rows in the window", skeleton.rows().size.toFloat(), loaded.rows().size.toFloat())
         }
         skeleton.of(RvPart.CARD).zip(loaded.of(RvPart.CARD)).forEachIndexed { i, (card, real) ->
             if (card.top <= cut) same(drift, "card $i's top", card.top, real.top)
@@ -322,6 +332,9 @@ class RvSkeletonBoundsTest {
 
     private fun Map<String, List<Rect>>.of(kind: String) = getValue(kind)
 
+    /** The list rows and the key stats rows, top to bottom: a stat row stands for its skeleton as a row does. */
+    private fun Map<String, List<Rect>>.rows() = (of(RvPart.ROW) + of(RvPart.STAT)).sortedWith(compareBy({ it.top }, { it.left }))
+
     /** The parts of [tags] in the [window] (dp tall), each in root dp, top to bottom. */
     private fun ComposeContentTestRule.parts(window: Float, tags: List<String>): Map<String, List<Rect>> = tags.associateWith { tag ->
         onAllNodesWithTag(tag, useUnmergedTree = true).fetchSemanticsNodes().map { it.rect() }.inWindow(window)
@@ -355,21 +368,24 @@ class RvSkeletonBoundsTest {
 
     private companion object {
         const val TEXT = "text"
-        val SKELETON_TAGS = listOf(RvPart.CARD, RvPart.ROW, RvPart.SKELETON_LINE, RvPart.SKELETON_BLOCK)
-        val LOADED_TAGS = listOf(RvPart.CARD, RvPart.ROW, RvPart.FRAME, RvPart.SEGMENTED)
+        val SKELETON_TAGS = listOf(RvPart.CARD, RvPart.ROW, RvPart.STAT, RvPart.SKELETON_LINE, RvPart.SKELETON_BLOCK)
+        val LOADED_TAGS = listOf(RvPart.CARD, RvPart.ROW, RvPart.STAT, RvPart.FRAME, RvPart.SEGMENTED)
 
         /**
          * The rows whose words are data the page has not yet, and wrap at a large font size, by page and font size; none
          * elsewhere. Where the page knows a row's words (a node's, a group's, a subscription's name), its skeleton takes
          * their lines and none of these is theirs. At 2.0 全域's subscription over its quota and two of
          * its nodes, which their latency orders; at 2.0 訂閱's subscriptions over their nodes and last update, and 依 App's
-         * apps over their packages, which the phone's list gives.
+         * apps over their packages, which the phone's list gives. 檢視變更's rows (5 stats, 4 groups, then the rules): at
+         * 1.15 the first rule's domains beside its group; at 2.0 範本's source → template, and the first two groups' lines.
          */
         val WRAPS = mapOf(
             (RvSkeletonPages.POLICY_GLOBAL to RV_FS200) to setOf(0, 3, 4),
             (RvSkeletonPages.SUBS to RV_FS200) to setOf(0, 1),
             (RvSkeletonPages.PER_APP to RV_FS200) to setOf(3, 4, 5),
             (RvSkeletonPages.PER_APP_V1 to RV_FS200) to setOf(3, 4, 5),
+            (RvSkeletonPages.TEMPLATE_IMPACT to RV_FS115) to setOf(9),
+            (RvSkeletonPages.TEMPLATE_IMPACT to RV_FS200) to setOf(0, 5, 6),
         )
 
         /**
