@@ -120,7 +120,7 @@ internal fun rvEffectiveConfig(policies: HonkPolicyRead, config: HonkConfig, dns
         main = main,
         groups = groups.values.filter { it.id != main?.id },
         rules = policies.policyRules(groups),
-        source = HonkRouting.of(config)?.template?.let { RvRuleSource.Template(rvTemplate(it)) } ?: RvRuleSource.File,
+        source = honkRuleSource(HonkRouting.of(config)),
         subscriptions = policies.subscriptions.map { rvSubscription(it, null) },
         dns = upstreams.map { dnsShown(it.address) },
         dnsVia = when (via) {

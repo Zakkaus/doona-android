@@ -63,57 +63,12 @@ class TemplateAndEffectiveConfigTest {
     }
 
     @Test
-    fun `範本 lists the core's templates in its order, and a failed read says so until 重試 reads them`() = runTest {
-        val engine = object : Engine by rvSampleEngine() {
-            var failing = true
-
-            override suspend fun ruleTemplates(): Result<List<RuleTemplate>> =
-                if (failing) Result.failure(EngineException(ErrorCode.Busy)) else Result.success(listOf(RuleTemplate("gfw", true), RuleTemplate("cn-direct")))
-        }
-        val vm = TemplateViewModel(engine).also { vm -> backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} } }
-        assertEquals(ErrorCode.Busy, vm.uiState.value.failure)
-        assertNull(vm.uiState.value.templates)
-        assertEquals(RvRuleSource.Template(rvTemplate("cn-direct")), vm.uiState.value.source)
-        engine.failing = false
-        vm.retry()
-        assertNull(vm.uiState.value.failure)
-        assertEquals(listOf(rvTemplate("gfw", needsGeosite = true), rvTemplate("cn-direct")), vm.uiState.value.templates)
-    }
-
-    @Test
     fun `the review names the source and the template and leaves out what the core does not tell`() {
         val impact = rvTemplateImpact(RvRuleSource.File, "cn-direct")
         assertEquals(RvRuleSource.File, impact.from)
         assertEquals(rvTemplate("cn-direct"), impact.to)
         assertEquals(listOf(null, null, null, null), listOf(impact.added, impact.changed, impact.removed, impact.kept))
         assertEquals(0, impact.groups.size + impact.rules.size)
-    }
-
-    /** The sample engine with its rules from no template, its setRuleSource answered by [answer]. */
-    private class Hand(var answer: Result<Unit> = Result.success(Unit)) : Engine by rvSampleEngine() {
-        val calls = mutableListOf<String>()
-
-        override suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit> {
-            calls += "$template ${options.blockQuic}"
-            return answer
-        }
-    }
-
-    @Test
-    fun `套用 sets the template with the source's options, then leaves, and a failure stays until 套用 succeeds`() = runTest {
-        val engine = Hand(Result.failure(EngineException(ErrorCode.Busy)))
-        val vm = TemplateImpactViewModel(engine, "cn-direct")
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
-        var left = 0
-        vm.apply { left++ }
-        assertEquals(ErrorCode.Busy, vm.uiState.value.failure)
-        assertEquals(0, left)
-        engine.answer = Result.success(Unit)
-        vm.apply { left++ }
-        assertNull(vm.uiState.value.failure)
-        assertEquals(1, left)
-        val quic = engine.catalog.value!!.ruleSource.options.blockQuic
-        assertEquals(listOf("cn-direct $quic", "cn-direct $quic"), engine.calls)
     }
 }
 

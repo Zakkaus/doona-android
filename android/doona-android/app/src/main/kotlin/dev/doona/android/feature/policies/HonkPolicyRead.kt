@@ -64,7 +64,7 @@ internal class HonkPolicyRead(
             nodes = nodes.values.toList(),
             subscriptions = subscriptions.map { rvSubscription(it, null) },
             nowEpochMs = nowEpochMs,
-            source = routing?.template?.let { RvRuleSource.Template(rvTemplate(it)) } ?: RvRuleSource.File,
+            source = honkRuleSource(routing),
         )
     }
 

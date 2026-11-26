@@ -41,3 +41,26 @@ internal fun daeCode(line: String): String {
     }
     return line.trim()
 }
+
+/**
+ * The blocks directly inside the block at [path] of [text] (each group of `group`), by name, with the 0-based indices of
+ * their lines from the `name {` line to their closing `}`; empty when the text has no such block.
+ */
+internal fun daeChildren(text: String, vararg path: String): List<Pair<String, IntRange>> {
+    val body = daeBlock(text, *path) ?: return emptyList()
+    val lines = text.lines()
+    val children = mutableListOf<Pair<String, IntRange>>()
+    var depth = 0
+    var open: Pair<String, Int>? = null
+    for (index in body) {
+        val code = daeCode(lines[index])
+        when {
+            code == "}" -> if (--depth == 0) open?.let { children += it.first to (it.second..index) }
+
+            code.endsWith("{") && code.count { it == '{' } == code.count { it == '}' } + 1 -> {
+                if (depth++ == 0) open = code.removeSuffix("{").trim() to index
+            }
+        }
+    }
+    return children
+}

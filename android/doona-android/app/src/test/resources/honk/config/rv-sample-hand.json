@@ -1,0 +1,19 @@
+{
+  "generation_id": "generation-42",
+  "revision": "17",
+  "sources": [
+    {
+      "id": "source-main",
+      "path": "config.dae",
+      "kind": "main",
+      "content_sha256": "e7969e54a933c3d5487a775ea5a89c96d78eff2840c7aa32ca2a29f503744c76",
+      "bytes": 2423,
+      "writable": true,
+      "loaded_at": "2026-08-15T09:30:00Z",
+      "content": "# doona starting configuration: mainland China direct, everything else through proxy.\n# This is ordinary honk configuration. Edit it freely; the app reads whatever groups,\n# rules and DNS settings it holds.\n\ngroup {\n    # Every node; the user picks one, a region or auto.\n    proxy {\n        filter: group('auto', 'hk', 'tw', 'jp', 'sg', 'us', 'kr')\n        filter: !name('direct', 'block')\n        policy: select\n        default: 'auto'\n    }\n    # Every node, chosen by observed quality.\n    auto {\n        filter: !name('direct', 'block')\n        policy: score\n    }\n    # Streaming services.\n    media {\n        filter: group('proxy', 'auto', 'hk', 'tw', 'jp', 'sg', 'us', 'kr')\n        filter: !name('direct', 'block')\n        policy: select\n        default: 'proxy'\n    }\n    # AI services.\n    ai {\n        filter: group('proxy', 'auto', 'hk', 'tw', 'jp', 'sg', 'us', 'kr')\n        filter: !name('direct', 'block')\n        policy: select\n        default: 'proxy'\n    }\n    # Regions, by node name.\n    hk {\n        filter: name(regex: '港|HK|Hong Kong|HongKong|🇭🇰')\n        policy: score\n    }\n    tw {\n        filter: name(regex: '台|臺|TW|Taiwan|🇹🇼')\n        policy: score\n    }\n    jp {\n        filter: name(regex: '日|JP|Japan|Tokyo|🇯🇵')\n        policy: score\n    }\n    sg {\n        filter: name(regex: '新加坡|獅城|狮城|SG|Singapore|🇸🇬')\n        policy: score\n    }\n    us {\n        filter: name(regex: '美|US|United States|America|🇺🇸')\n        policy: score\n    }\n    kr {\n        filter: name(regex: '韓|韩|KR|Korea|🇰🇷')\n        policy: score\n    }\n}\n\nrouting {\n    # Streaming services.\n    domain(geosite:youtube, geosite:netflix, geosite:disney, geosite:hbo, geosite:primevideo, geosite:twitch, geosite:spotify) -> media\n    # AI services.\n    domain(geosite:openai, geosite:anthropic) -> ai\n    # Mainland China.\n    domain(geosite:cn) -> direct\n    dip(geoip:cn) -> direct\n    domain(suffix: corp.example) -> direct\n    fallback: proxy\n}\n\ndns {\n    upstream {\n        alidns: 'udp://1.1.1.1:53' -> Proxy\n        cloudflare: 'udp://8.8.8.8:53' -> Proxy\n    }\n    routing {\n        request {\n            # Block ads: answer ad domains with an empty reply.\n            qname(geosite:category-ads-all) -> reject\n            # Mainland names from a mainland resolver.\n            qname(geosite:cn) -> alidns\n            fallback: cloudflare\n        }\n    }\n}\n",
+      "line_count": 86
+    }
+  ],
+  "diagnostics": [],
+  "secrets_redacted": false
+}

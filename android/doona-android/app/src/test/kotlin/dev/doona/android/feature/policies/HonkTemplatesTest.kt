@@ -5,6 +5,8 @@ import dev.doona.android.vpn.honk.HonkDnsRule
 import dev.doona.android.vpn.honk.HonkDnsRules
 import dev.doona.android.vpn.honk.HonkSource
 import dev.doona.android.vpn.honk.HonkSourceAt
+import dev.doona.android.vpn.honk.daeBlock
+import dev.doona.android.vpn.honk.daeChildren
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -51,6 +53,30 @@ class HonkTemplatesTest {
         assertTrue(blocksAds(on))
         assertNull(adsEdit(config(added), on, on = true))
         assertEquals(text, checkNotNull(adsEdit(config(added), on, on = false)).second)
+    }
+
+    @Test
+    fun aTemplateTakesTheRoutingKeepsTheFilesGroupsAddsItsOwnAndKeepsQuic() {
+        val hand = HonkTemplates.text("cn-direct").replace("    fallback: proxy\n", "    domain(suffix: corp.example) -> direct\n    fallback: proxy\n")
+        val routing = checkNotNull(HonkRouting.of(config(checkNotNull(HonkRouting.of(config(hand))).withBlockQuic(true))))
+        assertNull(routing.template)
+        val written = routing.withTemplate("services")
+        val after = checkNotNull(HonkRouting.of(config(written)))
+        assertEquals("services", after.template)
+        assertTrue(after.blockQuic)
+        val groups = daeChildren(written, "group").map { it.first }
+        val own = daeChildren(hand, "group").map { it.first }
+        val theirs = daeChildren(HonkTemplates.text("services"), "group").map { it.first }
+        assertEquals(own + theirs.filter { it !in own }, groups)
+        assertEquals(daeBlock(hand, "dns")?.let { hand.lines().slice(it) }, daeBlock(written, "dns")?.let { written.lines().slice(it) })
+    }
+
+    @Test
+    fun aFileWithNoGroupsGetsTheTemplatesGroupBlock() {
+        val bare = "routing {\n    fallback: direct\n}\n"
+        val written = checkNotNull(HonkRouting.of(config(bare))).withTemplate("gfw")
+        assertEquals("gfw", checkNotNull(HonkRouting.of(config(written))).template)
+        assertEquals(daeChildren(HonkTemplates.text("gfw"), "group").map { it.first }, daeChildren(written, "group").map { it.first })
     }
 
     private fun config(text: String) = HonkConfig(listOf(source("main", text)))

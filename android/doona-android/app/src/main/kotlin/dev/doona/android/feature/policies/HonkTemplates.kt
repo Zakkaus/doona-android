@@ -2,22 +2,29 @@ package dev.doona.android.feature.policies
 
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
+import dev.doona.android.feature.model.RvRuleSource
+import dev.doona.android.feature.model.RvTemplate
+import dev.doona.android.feature.model.rvTemplate
 import dev.doona.android.vpn.honk.HonkConfig
 import dev.doona.android.vpn.honk.HonkDnsRules
 import dev.doona.android.vpn.honk.HonkSource
 import dev.doona.android.vpn.honk.daeBlock
+import dev.doona.android.vpn.honk.daeChildren
 import dev.doona.android.vpn.honk.daeCode
 import dev.doona.android.vpn.honk.daeEntries
 
 /**
- * doona's starting configurations: ordinary honk files, which 套用 writes whole. Their ids are the ones [rvTemplate]
- * names, in the order the template page lists them.
+ * doona's starting configurations: ordinary honk files, whose routing and groups 套用 writes
+ * ([HonkRouting.withTemplate]). Their ids are the ones [rvTemplate] names, in the order the template page lists them.
  */
 internal object HonkTemplates {
     val ids = listOf("cn-direct", "services", "regions", "homebound", "gfw")
 
     fun text(id: String): String =
         checkNotNull(HonkTemplates::class.java.getResource("/dev/doona/android/templates/$id.dae")) { "no template $id" }.readText()
+
+    /** The templates as 範本 lists them: one that reads GeoSite categories needs a GeoSite file honk loaded. */
+    fun listed(geosite: Boolean): List<RvTemplate> = ids.map { rvTemplate(it, needsGeosite = !geosite && GEOSITE in text(it)) }
 
     /** Each template's routing entries, read once. */
     val routing: Map<String, List<String>> by lazy { ids.associateWith { routingEntries(text(it)).orEmpty() } }
@@ -36,6 +43,29 @@ internal class HonkRouting(val source: HonkSource, val template: String?, val bl
         return (lines.take(body.first) + "$INDENT$QUIC" + lines.drop(body.first)).joinToString("\n")
     }
 
+    /**
+     * The file with the template [id] in it, as doona web writes one: the template's routing in place of the file's,
+     * 阻擋 QUIC kept as it was, and each of the template's groups the file does not name added to its groups. The file's
+     * own groups and DNS stay as they are.
+     */
+    fun withTemplate(id: String): String {
+        val template = HonkTemplates.text(id)
+        val templateLines = template.lines()
+        val own = daeChildren(source.content, GROUP).map { it.first }.toSet()
+        val added = daeChildren(template, GROUP).filter { it.first !in own }.flatMap { templateLines.slice(it.second) }
+        var lines = source.content.lines()
+        val routing = daeBlock(source.content, ROUTING) ?: throw EngineException(ErrorCode.Busy)
+        lines = lines.take(routing.first) + templateLines.slice(checkNotNull(daeBlock(template, ROUTING))) + lines.drop(routing.last + 1)
+        val groups = daeBlock(lines.joinToString("\n"), GROUP)
+        lines = when {
+            added.isEmpty() -> lines
+            groups == null -> templateLines.slice(checkNotNull(daeBlock(template, GROUP)).let { it.first - 1..it.last + 1 }) + "" + lines
+            else -> lines.take(groups.last + 1) + added + lines.drop(groups.last + 1)
+        }
+        val written = HonkRouting(HonkSource(source.id, source.path, source.kind, source.sha256, lines.joinToString("\n"), source.writable), id, false)
+        return if (blockQuic) written.withBlockQuic(true) else written.source.content
+    }
+
     companion object {
         fun of(config: HonkConfig): HonkRouting? {
             val holders = config.sources.filter { it.kind == MAIN || it.kind == INCLUDE }.mapNotNull { source ->
@@ -47,6 +77,9 @@ internal class HonkRouting(val source: HonkSource, val template: String?, val bl
         }
     }
 }
+
+/** Where the rules of [routing] come from: the template it is, else the user's own files. */
+internal fun honkRuleSource(routing: HonkRouting?): RvRuleSource = routing?.template?.let { RvRuleSource.Template(rvTemplate(it)) } ?: RvRuleSource.File
 
 /** Whether 封鎖廣告's DNS rule is among honk's running request rules. */
 internal fun blocksAds(dns: HonkDnsRules): Boolean = dns.request.any { it.expression == ADS }
@@ -83,6 +116,8 @@ private const val QUIC = "l4proto(udp) && dport(443) -> block"
 private const val ADS = "qname(geosite:category-ads-all) -> reject"
 
 private const val ROUTING = "routing"
+private const val GEOSITE = "geosite:"
+private const val GROUP = "group"
 private const val MAIN = "main"
 private const val INCLUDE = "include"
 private const val INDENT = "    "

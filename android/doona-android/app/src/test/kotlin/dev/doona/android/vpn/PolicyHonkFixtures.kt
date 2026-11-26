@@ -12,11 +12,20 @@ internal object PolicyHonkFixtures {
         on("GET", "/api/v1/config", 200, HonkFixtures.body("config/editable"))
     }
 
-    /** [HonkFixtures.rvSample] with its config: template `cn-direct`, 封鎖廣告 on, and that config's export. */
+    /**
+     * [HonkFixtures.rvSample] with its config (template `cn-direct`, 封鎖廣告 on) and that config's export, and its
+     * geodata, GeoSite loaded.
+     */
     fun rvSample(long: Boolean = false): FakeHonk = HonkFixtures.rvSample(long).apply {
         on("GET", "/api/v1/config", 200, HonkFixtures.body("config/rv-sample"))
+        on("GET", "/api/v1/geodata", 200, HonkFixtures.body("geodata/rv-sample"))
         on("GET", "/api/v1/dns/rules", 200, HonkFixtures.body("dns-rules/rv-sample"))
         on("GET", "/api/v1/x-honk/config/export", 200, exported("config/rv-sample"))
+    }
+
+    /** [rvSample] with the routing of its file edited by hand (a rule of the user's own), so it is no template. */
+    fun handWritten(): FakeHonk = rvSample().apply {
+        on("GET", "/api/v1/config", 200, HonkFixtures.body("config/rv-sample-hand"))
     }
 
     /**

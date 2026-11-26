@@ -213,6 +213,9 @@ class HonkFixtureContractTest {
             "config-replace/.*" to "PUT /api/v1/config/sources/{source_id} 202",
             "operations/.*" to "GET /api/v1/operations/{operation_id} 200",
             "probes/.*" to "POST /api/v1/probes 202",
+            "geodata/(loaded|packaged|rv-sample)" to "GET /api/v1/geodata 200",
+            "geodata/update-queued" to "POST /api/v1/geodata/update 202",
+            "geodata/update-in-flight" to "#/components/schemas/ErrorResponse",
         ).mapKeys { Regex(it.key) }
     }
 }

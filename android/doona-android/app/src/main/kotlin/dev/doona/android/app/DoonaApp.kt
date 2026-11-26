@@ -141,9 +141,9 @@ fun DoonaApp(
                     routes = RvRulesRoutes(effective = { backStack.push(EffectiveConfigKey) }),
                 )
             }
-            entry<TemplateKey> { key -> TemplateRoute(engine, onBack = { backStack.pop(key) }, onReview = { backStack.push(TemplateImpactKey(it)) }) }
+            entry<TemplateKey> { key -> TemplateRoute(onBack = { backStack.pop(key) }, onReview = { backStack.push(TemplateImpactKey(it)) }) }
             entry<TemplateImpactKey> { key ->
-                TemplateImpactRoute(engine, key.templateId, onBack = { backStack.pop(key) }, onApplied = { backStack.push(PoliciesKey) })
+                TemplateImpactRoute(key.templateId, onBack = { backStack.pop(key) }, onApplied = { backStack.push(PoliciesKey) })
             }
             entry<EffectiveConfigKey> { key -> EffectiveConfigRoute(engine, onBack = { backStack.pop(key) }, onRules = { backStack.push(RulesKey) }) }
             entry<SubscriptionsKey> { key ->

@@ -9,20 +9,26 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.R
+import dev.doona.android.app.nativeApi
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
-import dev.doona.android.engine.Engine
 import dev.doona.android.feature.messageRes
 import dev.doona.android.feature.model.RvRuleSource
 
 /**
- * 範本 (the 策略 options row): the templates the core lists, the one in use marked, and 檢視變更 ([onReview], with the
- * chosen template's id) once another is chosen; with rules from no template, the first buildable one starts chosen. The
- * choice is the page's own until the review applies it. A failed read shows as the page's banner with 重試.
+ * 範本 (the 策略 options row) on the app's [nativeApi]: doona's templates, the one honk's routing is marked, and 檢視變更
+ * ([onReview], with the chosen template's id) once another is chosen; with rules from no template, the first buildable
+ * one starts chosen. The choice is the page's own until the review applies it. A failed read shows as the page's banner
+ * with 重試.
  */
 @Composable
-internal fun TemplateRoute(engine: Engine, onBack: () -> Unit, onReview: (String) -> Unit) {
-    val viewModel: TemplateViewModel = viewModel(factory = TemplateViewModel.factory(engine))
+internal fun TemplateRoute(onBack: () -> Unit, onReview: (String) -> Unit) {
+    TemplateRoute(viewModel(factory = TemplateViewModel.factory(nativeApi())), onBack, onReview)
+}
+
+/** 範本 on a given [viewModel], for a caller (a test) that makes its own. */
+@Composable
+internal fun TemplateRoute(viewModel: TemplateViewModel, onBack: () -> Unit, onReview: (String) -> Unit) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     val current = (ui.source as? RvRuleSource.Template)?.template
     val templates = ui.templates.orEmpty()
@@ -35,13 +41,18 @@ internal fun TemplateRoute(engine: Engine, onBack: () -> Unit, onReview: (String
 }
 
 /**
- * The review before [templateId] replaces the rules, and its 套用: on success [onApplied] (back to 策略); a failure shows
- * as the page's banner with 重試, which applies again. Until the catalog is read (a back stack restored after the process
- * died) the page waits as its skeleton.
+ * The review before [templateId] replaces the rules, and its 套用, on the app's [nativeApi]: on success [onApplied] (back
+ * to 策略); a failure shows as the page's banner with 重試, which applies again. Until honk's config is read the page
+ * waits as its skeleton.
  */
 @Composable
-internal fun TemplateImpactRoute(engine: Engine, templateId: String, onBack: () -> Unit, onApplied: () -> Unit) {
-    val viewModel: TemplateImpactViewModel = viewModel(factory = TemplateImpactViewModel.factory(engine, templateId))
+internal fun TemplateImpactRoute(templateId: String, onBack: () -> Unit, onApplied: () -> Unit) {
+    TemplateImpactRoute(viewModel(factory = TemplateImpactViewModel.factory(nativeApi(), templateId)), onBack, onApplied)
+}
+
+/** The template review on a given [viewModel], for a caller (a test) that makes its own. */
+@Composable
+internal fun TemplateImpactRoute(viewModel: TemplateImpactViewModel, onBack: () -> Unit, onApplied: () -> Unit) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     val impact = ui.impact
     val apply = { viewModel.apply(onApplied) }
