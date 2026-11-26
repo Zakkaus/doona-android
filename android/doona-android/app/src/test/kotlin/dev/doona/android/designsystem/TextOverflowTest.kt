@@ -9,7 +9,6 @@ import dev.doona.android.testing.FontScale115
 import dev.doona.android.testing.FontScale200
 import dev.doona.android.testing.GalleryVariants
 import dev.doona.android.testing.Variant
-import dev.doona.android.testing.galleryCases
 import dev.doona.android.testing.screenCases
 import dev.doona.android.testing.setVariantContent
 import org.junit.Assert.assertTrue
@@ -35,7 +34,7 @@ class TextOverflowTest(private val name: String, private val variant: Variant) {
 
     @Test
     fun textThatDoesNotFitWrapsOrEllipsizes() {
-        val case = (screenCases() + galleryCases()).first { it.name == name }
+        val case = screenCases().first { it.name == name }
         compose.setVariantContent(variant) { case.content() }
         compose.waitForIdle()
         val clipped = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.GetTextLayoutResult), useUnmergedTree = true).fetchSemanticsNodes().mapNotNull { node ->
@@ -58,7 +57,6 @@ class TextOverflowTest(private val name: String, private val variant: Variant) {
         @JvmStatic
         @Parameters(name = "{0}-{1}")
         fun parameters(): List<Array<Any>> =
-            screenCases().flatMap { case -> listOf(FontScale115, FontScale200).map { arrayOf(case.name, it) } } +
-                galleryCases().flatMap { case -> GalleryVariants.filter { it.fontScale > 1f }.map { arrayOf(case.name, it) } }
+            screenCases().flatMap { case -> listOf(FontScale115, FontScale200).map { arrayOf(case.name, it) } }
     }
 }

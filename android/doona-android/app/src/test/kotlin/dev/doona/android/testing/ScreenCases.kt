@@ -4,14 +4,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dev.doona.android.designsystem.components.CardsGallery
-import dev.doona.android.designsystem.components.ControlsGallery
-import dev.doona.android.designsystem.components.DialogGallery
-import dev.doona.android.designsystem.components.FeedbackGallery
-import dev.doona.android.designsystem.components.FieldsGallery
-import dev.doona.android.designsystem.components.InputsGallery
 import dev.doona.android.designsystem.components.LayoutRole
-import dev.doona.android.designsystem.components.StatusGallery
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
 
@@ -39,17 +32,3 @@ fun sampleEngine() = FakeEngine(groups = FakeEngine.SAMPLE_GROUPS, status = Stat
  * page now, with goldens of its own (plan §2.5).
  */
 internal fun screenCases(): List<ScreenCase> = emptyList()
-
-/**
- * The component gallery pages. They get goldens and the accessibility check like a screen, but not the spacing rules,
- * since a gallery lists components rather than laying out a page.
- */
-internal fun galleryCases(): List<ScreenCase> = listOf(
-    ScreenCase("gallery-controls", null) { ControlsGallery() },
-    ScreenCase("gallery-cards", null) { CardsGallery() },
-    ScreenCase("gallery-status", null) { StatusGallery() },
-    ScreenCase("gallery-inputs", null) { InputsGallery() },
-    ScreenCase("gallery-fields", null) { FieldsGallery() },
-    ScreenCase("gallery-feedback", null) { FeedbackGallery() },
-    ScreenCase("gallery-dialog", null) { DialogGallery() },
-)

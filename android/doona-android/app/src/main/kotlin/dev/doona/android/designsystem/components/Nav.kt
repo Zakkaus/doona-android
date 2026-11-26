@@ -152,24 +152,3 @@ fun navHeight(): Dp {
     val chrome = DoonaTheme.chrome
     return max(chrome.navHeight, chrome.navPillInset * 2 + chrome.navGlyph + chrome.navLabelGap + max(chrome.navLabel, lineHeightOf(DoonaTheme.type.navLabel)))
 }
-
-/**
- * Whether the capsule is collapsed for [scroll]: from the moment the content moves up (scrolls down) until it moves back
- * down or reaches the top, as Revolut's bar follows the direction of the scroll.
- */
-@Composable
-fun rememberNavCollapsed(scroll: ScrollState): Boolean {
-    var collapsed by remember { mutableStateOf(false) }
-    LaunchedEffect(scroll) {
-        var last = scroll.value
-        snapshotFlow { scroll.value }.collect { now ->
-            if (now <= 0 || now < last) {
-                collapsed = false
-            } else if (now > last) {
-                collapsed = true
-            }
-            last = now
-        }
-    }
-    return collapsed
-}

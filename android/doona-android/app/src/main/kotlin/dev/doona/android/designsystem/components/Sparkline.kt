@@ -82,7 +82,6 @@ private fun DrawScope.dayGrid(color: Color) {
 
 /** Ghost bar heights as shares of the chart's height: download's, and upload's of its own shape (S5-09). */
 val ghostDownload = floatArrayOf(0.42f, 0.64f, 0.5f, 0.8f, 0.58f, 0.36f, 0.7f, 0.9f, 0.54f, 0.68f, 0.46f, 0.76f)
-val ghostUpload = floatArrayOf(0.3f, 0.22f, 0.48f, 0.34f, 0.6f, 0.4f, 0.26f, 0.52f, 0.72f, 0.44f, 0.58f, 0.38f)
 
 /** The empty chart's grid rows. */
 internal object DoonaGhostBarsDefaults {

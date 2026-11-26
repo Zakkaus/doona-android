@@ -113,9 +113,6 @@ fun scripted(text: String): AnnotatedString = buildAnnotatedString {
     }
 }
 
-/** A text field's input style: its input cannot carry spans cheaply, so it stays in Noto Sans TC, which has Latin too. */
-fun TextStyle.forInput(): TextStyle = copy(fontFamily = NotoSansTc)
-
 private fun Char.isCjk() = code >= CJK_START
 
 /** CJK Radicals Supplement: everything from here up is set in Noto. */
