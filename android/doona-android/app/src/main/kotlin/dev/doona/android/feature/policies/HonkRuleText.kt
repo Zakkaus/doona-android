@@ -22,9 +22,9 @@ internal fun rvPolicyRule(rule: HonkPausedRule, groups: Map<String, RvPolicyGrou
 
 private fun rvPolicyRule(match: RvRuleMatch, outbound: String, groups: Map<String, RvPolicyGroup>, state: RvRuleState = RvRuleState.On): RvPolicyRule =
     when (outbound) {
-        DIRECT -> RvPolicyRule(match, null, 0L, state)
-        BLOCK -> RvPolicyRule(match, null, 0L, state, RvRuleEnd.Reject)
-        else -> groups[outbound]?.let { RvPolicyRule(match, it, 0L, state) } ?: RvPolicyRule(match, null, 0L, state, RvRuleEnd.Missing)
+        DIRECT -> RvPolicyRule(match, null, null, state)
+        BLOCK -> RvPolicyRule(match, null, null, state, RvRuleEnd.Reject)
+        else -> groups[outbound]?.let { RvPolicyRule(match, it, null, state) } ?: RvPolicyRule(match, null, null, state, RvRuleEnd.Missing)
     }
 
 /**

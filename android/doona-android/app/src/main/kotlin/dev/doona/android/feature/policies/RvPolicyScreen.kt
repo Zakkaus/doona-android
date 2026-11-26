@@ -104,8 +104,8 @@ internal class RvPolicyRoutes(
  * The 策略 tab, a control page in the language of 設定 and 節點 (rv-policy-STATE.md has the synthesis behind it): the
  * tabs' bar, its capsule opening the node search ([RvPolicyRoutes.search]) and its two glass actions after it; the mode as FlClash's three segments in a card with one line saying
  * what it does. 規則: the main node, which carries whatever no rule sends elsewhere (its card opens the main node's
- * picker); the groups, each with how it picks and the node it uses (a row pushes its page); the rules in order, as
- * Karing lists them; and the template and the switches that shape the rules. 全域 has one decision,
+ * picker); the groups, each with how it picks and the node it uses (a row pushes its page); the rules in order with
+ * today's bytes, as Karing lists them; and the template and the switches that shape the rules. 全域 has one decision,
  * the node everything goes through, so under the mode the page is the node picker itself; 直連 shows the mode alone.
  * With no subscription there is nothing to route: [noSubscription], when set, puts the empty state with 新增訂閱 (which
  * runs it) in place of the cards, as 活動 does; the bar and the nav stay. [configRev] is a preview flag (PV-f): set, 設定檔
@@ -400,7 +400,7 @@ internal fun groupLine(group: RvPolicyGroup, kind: RvGroupKind = group.kind): St
 
 /**
  * The rules (規則 only): how they are tried, then each one as what it matches over its kind, where the traffic ends
- * (the group's node, or 直連's arrow) and the group; then the rest of the list.
+ * (the group's node, or 直連's arrow) and the group over today's bytes; then the rest of the list.
  */
 @Composable
 private fun RulesCard(profile: RvPolicyProfile, onAll: () -> Unit) {
