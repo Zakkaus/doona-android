@@ -1,8 +1,8 @@
 package dev.doona.android.app
 
 import androidx.work.Configuration
-import dev.doona.android.vpn.HonkFixtures
 import dev.doona.android.vpn.NativeApi
+import dev.doona.android.vpn.PolicyHonkFixtures
 
 /**
  * The app as JVM tests run it (robolectric.properties makes it the default). WorkManager keeps one instance per sandbox,
@@ -14,11 +14,11 @@ import dev.doona.android.vpn.NativeApi
  * Every test that sets its own application with `@Config(application = ...)` must extend this class, unless it uses a
  * plain [android.app.Application] that never starts the app's work, as SubscriptionRefreshScheduleTest does.
  *
- * The JVM has no native core, so honk's native API answers with its contract's examples ([HonkFixtures.running]).
+ * The JVM has no native core, so honk's native API answers with the RV sample ([PolicyHonkFixtures.rvSample]).
  */
 open class DoonaTestApplication : DoonaApplication() {
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setDefaultProcessName("$packageName:no-in-process-work").build()
 
-    override fun createNativeApi(): NativeApi = HonkFixtures.running()
+    override fun createNativeApi(): NativeApi = PolicyHonkFixtures.rvSample()
 }

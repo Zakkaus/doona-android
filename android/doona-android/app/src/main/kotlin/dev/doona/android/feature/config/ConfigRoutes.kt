@@ -20,10 +20,10 @@ import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvScrollPage
-import dev.doona.android.engine.Engine
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.ExportKind
 import dev.doona.android.feature.messageRes
+import dev.doona.android.vpn.NativeApi
 
 /** Where the configuration pages lead; each is a push of the app's back stack. */
 internal class ConfigRoutes(
@@ -33,7 +33,7 @@ internal class ConfigRoutes(
     val history: () -> Unit = {},
     val import: () -> Unit = {},
     val revision: (Int) -> Unit = {},
-    /** The export token, for the picker to stream (slice 13). */
+    /** honk's export of the accepted files, for the picker to write (slice 13). */
     val export: (String) -> Unit = {},
 )
 
@@ -55,8 +55,8 @@ private fun ConfigWaitPage(title: Int, onBack: () -> Unit, banner: RvNotice?) {
 }
 
 @Composable
-internal fun ConfigOverviewRoute(engine: Engine, onBack: () -> Unit, routes: ConfigRoutes) =
-    ConfigOverviewRoute(viewModel<ConfigOverviewViewModel>(factory = viewModelFactory { initializer { ConfigOverviewViewModel(engine) } }), onBack, routes)
+internal fun ConfigOverviewRoute(api: NativeApi, onBack: () -> Unit, routes: ConfigRoutes) =
+    ConfigOverviewRoute(viewModel<ConfigOverviewViewModel>(factory = ConfigOverviewViewModel.factory(api)), onBack, routes)
 
 /** 設定檔 on a given [viewModel], for a caller (a test) that makes its own. */
 @Composable
@@ -67,8 +67,8 @@ internal fun ConfigOverviewRoute(viewModel: ConfigOverviewViewModel, onBack: () 
 }
 
 @Composable
-internal fun ConfigSkippedRoute(engine: Engine, onBack: () -> Unit, onOpen: (String) -> Unit) =
-    ConfigSkippedRoute(viewModel<ConfigOverviewViewModel>(factory = viewModelFactory { initializer { ConfigOverviewViewModel(engine) } }), onBack, onOpen)
+internal fun ConfigSkippedRoute(api: NativeApi, onBack: () -> Unit, onOpen: (String) -> Unit) =
+    ConfigSkippedRoute(viewModel<ConfigOverviewViewModel>(factory = ConfigOverviewViewModel.factory(api)), onBack, onOpen)
 
 /** 已略過: a row opens its file ([onOpen] gets the path). */
 @Composable
@@ -79,8 +79,8 @@ internal fun ConfigSkippedRoute(viewModel: ConfigOverviewViewModel, onBack: () -
 }
 
 @Composable
-internal fun ConfigSourceRoute(engine: Engine, path: String, onBack: () -> Unit, onApplied: () -> Unit) =
-    ConfigSourceRoute(viewModel<ConfigSourceViewModel>(key = path, factory = viewModelFactory { initializer { ConfigSourceViewModel(engine, path) } }), onBack, onApplied)
+internal fun ConfigSourceRoute(api: NativeApi, path: String, onBack: () -> Unit, onApplied: () -> Unit) =
+    ConfigSourceRoute(viewModel<ConfigSourceViewModel>(key = path, factory = ConfigSourceViewModel.factory(api, path)), onBack, onApplied)
 
 /**
  * 原始碼 and, once 檢視變更 passed, its diff over it; Back from the diff returns to the editor with the draft kept, Back
@@ -101,8 +101,8 @@ internal fun ConfigSourceRoute(viewModel: ConfigSourceViewModel, onBack: () -> U
 }
 
 @Composable
-internal fun ConfigHistoryRoute(engine: Engine, onBack: () -> Unit, routes: ConfigRoutes) =
-    ConfigHistoryRoute(viewModel<ConfigHistoryViewModel>(factory = viewModelFactory { initializer { ConfigHistoryViewModel(engine) } }), onBack, routes)
+internal fun ConfigHistoryRoute(api: NativeApi, onBack: () -> Unit, routes: ConfigRoutes) =
+    ConfigHistoryRoute(viewModel<ConfigHistoryViewModel>(factory = ConfigHistoryViewModel.factory(api)), onBack, routes)
 
 /**
  * 版本紀錄; 匯出設定檔 asks first, since the files can carry credentials, and which kind, then stages the head; a refused
@@ -146,8 +146,8 @@ internal fun ConfigHistoryRoute(viewModel: ConfigHistoryViewModel, onBack: () ->
 }
 
 @Composable
-internal fun ConfigRevisionRoute(engine: Engine, rev: Int, onBack: () -> Unit, onRestored: () -> Unit) =
-    ConfigRevisionRoute(viewModel<ConfigRevisionViewModel>(key = "rev-$rev", factory = viewModelFactory { initializer { ConfigRevisionViewModel(engine, rev) } }), onBack, onRestored)
+internal fun ConfigRevisionRoute(api: NativeApi, rev: Int, onBack: () -> Unit, onRestored: () -> Unit) =
+    ConfigRevisionRoute(viewModel<ConfigRevisionViewModel>(key = "rev-$rev", factory = ConfigRevisionViewModel.factory(api, rev)), onBack, onRestored)
 
 /** A revision's page; [onRestored] runs once 還原 made a new head. */
 @Composable
@@ -161,8 +161,8 @@ internal fun ConfigRevisionRoute(viewModel: ConfigRevisionViewModel, onBack: () 
 }
 
 @Composable
-internal fun ConfigImportRoute(engine: Engine, token: String, name: String, onBack: () -> Unit, onPickAgain: () -> Unit) =
-    ConfigImportRoute(viewModel<ConfigImportViewModel>(key = token, factory = viewModelFactory { initializer { ConfigImportViewModel(engine, token, name) } }), onBack, onPickAgain)
+internal fun ConfigImportRoute(api: NativeApi, text: String, name: String, onBack: () -> Unit, onPickAgain: () -> Unit) =
+    ConfigImportRoute(viewModel<ConfigImportViewModel>(key = name, factory = viewModelFactory { initializer { ConfigImportViewModel(api, text, name) } }), onBack, onPickAgain)
 
 /** 匯入設定檔 for a staged pick. */
 @Composable

@@ -62,7 +62,7 @@ internal class HonkRouting(val source: HonkSource, val template: String?, val bl
             groups == null -> templateLines.slice(checkNotNull(daeBlock(template, GROUP)).let { it.first - 1..it.last + 1 }) + "" + lines
             else -> lines.take(groups.last + 1) + added + lines.drop(groups.last + 1)
         }
-        val written = HonkRouting(HonkSource(source.id, source.path, source.kind, source.sha256, lines.joinToString("\n"), source.writable), id, false)
+        val written = HonkRouting(HonkSource(source.id, source.path, source.kind, source.sha256, lines.joinToString("\n"), source.writable, lines.size, source.loadedAt), id, false)
         return if (blockQuic) written.withBlockQuic(true) else written.source.content
     }
 

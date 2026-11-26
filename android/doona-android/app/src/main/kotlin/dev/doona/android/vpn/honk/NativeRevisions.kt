@@ -82,6 +82,7 @@ internal class HonkDiagnostic(
     val line: Long?,
     val code: String,
     val message: String,
+    val span: HonkSpan? = null,
 )
 
 /** The first error of a configuration honk rejected: the source's [path] and the [line], each null when unknown. */

@@ -149,7 +149,7 @@ fun DoonaApp(
                 TemplateImpactRoute(key.templateId, onBack = { backStack.pop(key) }, onApplied = { backStack.push(PoliciesKey) })
             }
             entry<EffectiveConfigKey> { key -> EffectiveConfigRoute(engine, onBack = { backStack.pop(key) }, onRules = { backStack.push(RulesKey) }) }
-            configEntries(engine, backStack)
+            configEntries(backStack)
             entry<SubscriptionsKey> { key ->
                 SubscriptionsRoute(
                     engine,

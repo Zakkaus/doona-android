@@ -81,7 +81,7 @@ class HonkTemplatesTest {
 
     private fun config(text: String) = HonkConfig(listOf(source("main", text)))
 
-    private fun source(id: String, text: String, kind: String = "main") = HonkSource(id, "$id.dae", kind, "0".repeat(64), text, true)
+    private fun source(id: String, text: String, kind: String = "main") = HonkSource(id, "$id.dae", kind, "0".repeat(64), text, true, text.lines().size, "2026-08-15T09:30:00Z")
 
     private fun rule(expression: String, line: Int, kind: String = "rule") =
         HonkDnsRule("d$line", line, expression, "upstream", null, HonkSourceAt("main.dae", "main", line, 13), kind)
