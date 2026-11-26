@@ -1,0 +1,35 @@
+# doona starting configuration: back to mainland China, everything else directly.
+# Mainland sites go through mainland nodes, for use from outside mainland China.
+# This is ordinary honk configuration. Edit it freely; the app reads whatever groups,
+# rules and DNS settings it holds.
+
+group {
+    # Mainland China nodes by name, without Hong Kong, Macao or Taiwan; chosen by observed quality.
+    cn {
+        filter: name(regex: '(?i)回国|回國|中国|中國|大陆|大陸|(?:^|[^A-Za-z])(?:China|Mainland|CN)(?:[^A-Za-z]|$)|🇨🇳') && !name(regex: '(?i)香港|澳门|澳門|台湾|台灣|臺灣|(?:^|[^A-Za-z])(?:HK|MO|TW)(?:[^A-Za-z]|$)|Hong ?Kong|Macau|Macao|Taiwan')
+        policy: score
+    }
+}
+
+routing {
+    # Mainland China.
+    domain(geosite:cn) -> cn
+    dip(geoip:cn) -> cn
+    fallback: direct
+}
+
+dns {
+    upstream {
+        alidns: 'https://223.5.5.5/dns-query?tls_server_name=dns.alidns.com' -> cn
+        cloudflare: 'https://1.1.1.1/dns-query?tls_server_name=cloudflare-dns.com' -> direct
+    }
+    routing {
+        request {
+            # Block ads: answer ad domains with an empty reply.
+# paused r-5fbbaffc75615770:             qname(geosite:category-ads-all) -> reject
+            # Mainland names from a mainland resolver, through a mainland node.
+            qname(geosite:cn) -> alidns
+            fallback: cloudflare
+        }
+    }
+}

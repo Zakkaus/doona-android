@@ -1,4 +1,5 @@
-//! Slice 10, lane D: the seed configuration the APK ships, `templates/cn-direct.dae`.
+//! Slice 10, lanes D and D2: the starting configurations the APK ships, `templates/*.dae`,
+//! through the core's list.
 mod common;
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -9,35 +10,97 @@ use std::path::Path;
 use common::TempDir;
 use doonacore::honkconf::assets::Release;
 use doonacore::honkconf::edit::{Edit, List};
+use doonacore::honkconf::templates::TEMPLATES;
 use doonacore::honkconf::{
     Capabilities, Disposition, Geo, GeoCatalog, HonkConfig, HonkStore, Ingress, Label, Support,
     load,
 };
 use honk_config::dns::{DnsCond, DnsDomainMatcher, DnsRequestAction};
 
-const TEMPLATE: &str = include_str!("../templates/cn-direct.dae");
 const ENTRY: &str = "config.dae";
 
-/// Every geodata label the seed names, ad block included.
-const GEOSITE: [&str; 11] = [
+/// Every geodata label the templates name, ad block included.
+const GEOSITE: [&str; 19] = [
     "anthropic",
+    "apple",
+    "bahamut",
+    "bilibili",
     "category-ads-all",
+    "category-games",
     "cn",
     "disney",
+    "gfw",
     "hbo",
+    "microsoft",
+    "netease",
     "netflix",
     "openai",
     "primevideo",
     "spotify",
+    "telegram",
     "twitch",
     "youtube",
 ];
-const GEOIP: [&str; 1] = ["cn"];
+const GEOIP: [&str; 2] = ["cn", "telegram"];
 
-/// The seed with its paused statements restored, as the 封鎖廣告 switch turns them on.
-fn active() -> String {
-    TEMPLATE
-        .split_inclusive('\n')
+/// What each template declares, in the order of [`TEMPLATES`].
+struct Shape {
+    id: &'static str,
+    groups: &'static [&'static str],
+    routing_rules: usize,
+    /// The `dip(geoip:…)` rules, whose IPv6 networks the IPv4 TUN never sees.
+    geoip_rules: &'static [&'static str],
+}
+
+const SHAPES: [Shape; 5] = [
+    Shape {
+        id: "cn-direct",
+        groups: &[
+            "proxy", "auto", "media", "ai", "hk", "tw", "jp", "sg", "us", "kr",
+        ],
+        routing_rules: 4,
+        geoip_rules: &["rule[3]"],
+    },
+    Shape {
+        id: "gfw",
+        groups: &["proxy", "auto"],
+        routing_rules: 3,
+        geoip_rules: &["rule[1]"],
+    },
+    Shape {
+        id: "services",
+        groups: &["proxy", "auto", "telegram", "media", "apple"],
+        routing_rules: 8,
+        geoip_rules: &["rule[3]", "rule[7]"],
+    },
+    Shape {
+        id: "regions",
+        groups: &[
+            "proxy", "auto", "hk", "tw", "jp", "sg", "us", "kr", "telegram", "ai", "youtube",
+            "netflix", "bahamut", "media",
+        ],
+        routing_rules: 12,
+        geoip_rules: &["rule[2]", "rule[11]"],
+    },
+    Shape {
+        id: "homebound",
+        groups: &["cn"],
+        routing_rules: 2,
+        geoip_rules: &["rule[1]"],
+    },
+];
+
+/// Each template with its shape, checked to be the same list.
+fn templates() -> impl Iterator<Item = (&'static str, &'static Shape)> {
+    let ids: Vec<_> = TEMPLATES.iter().map(|t| t.id).collect();
+    let shapes: Vec<_> = SHAPES.iter().map(|s| s.id).collect();
+    assert_eq!(ids, shapes);
+    TEMPLATES.iter().map(|t| t.source).zip(SHAPES.iter())
+}
+
+/// A template with its paused statements restored, as the 封鎖廣告 switch turns them on.
+fn active(text: &str) -> String {
+    text.split_inclusive('\n')
         .map(|line| {
             line.strip_prefix("# paused ")
                 .and_then(|rest| rest.split_once(": "))
@@ -103,7 +166,10 @@ impl GeoCatalog for Catalog {
         self.ips.get(code).cloned()
     }
     fn geosite(&self, label: &str) -> Label {
-        assert!(!label.contains('@'), "the seed names no attribute: {label}");
+        assert!(
+            !label.contains('@'),
+            "the templates name no attribute: {label}"
+        );
         match self.sites.contains(label) {
             true => Label::Present,
             false => Label::MissingCategory,
@@ -123,33 +189,36 @@ fn report(text: &str, catalog: &Catalog) -> Support {
 }
 
 #[test]
-fn seed_loads_complete_with_no_diagnostics() {
-    for text in [TEMPLATE, &active()] {
-        let doc = load_text(text);
-        assert!(doc.complete());
-        assert_eq!(doc.diagnostics(), []);
-        let names: Vec<_> = doc
-            .config()
-            .groups
-            .iter()
-            .map(|g| g.name.as_str())
-            .collect();
-        assert_eq!(
-            names,
-            [
-                "proxy", "auto", "media", "ai", "hk", "tw", "jp", "sg", "us", "kr"
-            ]
-        );
-        let summary = doc.summary();
-        assert_eq!((summary.nodes, summary.subscriptions), (0, 0));
-        assert_eq!((summary.routing_rules, summary.dns_upstreams), (4, 2));
+fn templates_load_complete_with_no_diagnostics() {
+    for (source, shape) in templates() {
+        for text in [source, &active(source)] {
+            let doc = load_text(text);
+            assert!(doc.complete(), "{}", shape.id);
+            assert_eq!(doc.diagnostics(), [], "{}", shape.id);
+            let names: Vec<_> = doc
+                .config()
+                .groups
+                .iter()
+                .map(|g| g.name.as_str())
+                .collect();
+            assert_eq!(names, shape.groups, "{}", shape.id);
+            let summary = doc.summary();
+            assert_eq!((summary.nodes, summary.subscriptions), (0, 0));
+            assert_eq!(
+                (summary.routing_rules, summary.dns_upstreams),
+                (shape.routing_rules, 2),
+                "{}",
+                shape.id
+            );
+        }
+        assert_eq!(load_text(source).summary().dns_request_rules, 1);
+        assert_eq!(load_text(&active(source)).summary().dns_request_rules, 2);
     }
-    assert_eq!(load_text(TEMPLATE).summary().dns_request_rules, 1);
-    assert_eq!(load_text(&active()).summary().dns_request_rules, 2);
 }
 
-/// The only record: `dip(geoip:cn)` also lists IPv6 networks, which the IPv4 TUN never sees.
-fn assert_runs_on_android(report: &Support) {
+/// The only records: each `dip(geoip:…)` rule also lists IPv6 networks, which the IPv4 TUN
+/// never sees.
+fn assert_runs_on_android(report: &Support, shape: &Shape) {
     let rows: Vec<_> = report
         .records
         .iter()
@@ -158,21 +227,17 @@ fn assert_runs_on_android(report: &Support) {
             (r.section, r.name.as_ref(), reasons, r.disposition)
         })
         .collect();
-    assert_eq!(
-        rows,
-        [(
-            "routing",
-            "rule[3]",
-            vec!["ipv4_scope"],
-            Disposition::Limited
-        )]
-    );
-    assert!(report.runnable());
+    let limited: Vec<_> = shape
+        .geoip_rules
+        .iter()
+        .map(|&rule| ("routing", rule, vec!["ipv4_scope"], Disposition::Limited))
+        .collect();
+    assert_eq!(rows, limited, "{}", shape.id);
+    assert!(report.runnable(), "{}", shape.id);
 }
 
-#[test]
-fn seed_needs_nothing_android_lacks() {
-    // GeoIP networks as a real generation lists them: public IPv4 and IPv6.
+/// GeoIP networks as a real generation lists them: public IPv4 and IPv6.
+fn catalog_of(sites: &[&str]) -> Catalog {
     let nets = vec![
         (IpAddr::V4(Ipv4Addr::new(1, 0, 1, 0)), 24),
         (
@@ -180,51 +245,85 @@ fn seed_needs_nothing_android_lacks() {
             32,
         ),
     ];
-    let catalog = Catalog {
-        sites: GEOSITE.iter().map(|s| (*s).to_owned()).collect(),
+    Catalog {
+        sites: sites.iter().map(|s| (*s).to_owned()).collect(),
         ips: GEOIP
             .iter()
             .map(|c| ((*c).to_owned(), nets.clone()))
             .collect(),
-    };
-    for text in [TEMPLATE, &active()] {
-        assert_runs_on_android(&report(text, &catalog));
     }
 }
 
 #[test]
+fn templates_need_nothing_android_lacks() {
+    let catalog = catalog_of(&GEOSITE);
+    for (source, shape) in templates() {
+        for text in [source, &active(source)] {
+            assert_runs_on_android(&report(text, &catalog), shape);
+        }
+    }
+}
+
+/// Without the gfw list the gfw template does not run, and the report names the list.
+#[test]
+fn gfw_reports_its_geosite_need() {
+    let sites: Vec<_> = GEOSITE.into_iter().filter(|s| *s != "gfw").collect();
+    let gfw = TEMPLATES.iter().find(|t| t.id == "gfw").unwrap().source;
+    let report = report(gfw, &catalog_of(&sites));
+    let blocked: Vec<_> = report
+        .records
+        .iter()
+        .filter(|r| r.disposition == Disposition::Blocked)
+        .map(|r| {
+            let labels: Vec<_> = r.reasons.iter().map(|r| r.category.as_deref()).collect();
+            (r.section, r.name.as_ref(), labels)
+        })
+        .collect();
+    assert_eq!(
+        blocked,
+        [
+            ("routing", "rule[2]", vec![Some("gfw")]),
+            ("dns.routing.request", "rule[0]", vec![Some("gfw")]),
+        ]
+    );
+    assert!(!report.runnable());
+}
+
+#[test]
 fn ad_block_ships_paused_first_in_the_entry_dns_request() {
-    let dir = TempDir::new("honk-template-ads");
-    let mut store = HonkStore::open(dir.path()).unwrap();
-    let draft = store.draft(None).unwrap();
-    let entry = Path::new(ENTRY);
-    store.edit(draft, entry, TEMPLATE).unwrap();
-    let rows = store.rule_rows(draft, entry).unwrap();
-    let first = rows.iter().find(|r| r.list == List::DnsRequest).unwrap();
-    assert!(first.paused && !first.fallback, "{first:?}");
-    let id = first.id.clone();
+    for (source, shape) in templates() {
+        let dir = TempDir::new("honk-template-ads");
+        let mut store = HonkStore::open(dir.path()).unwrap();
+        let draft = store.draft(None).unwrap();
+        let entry = Path::new(ENTRY);
+        store.edit(draft, entry, source).unwrap();
+        let rows = store.rule_rows(draft, entry).unwrap();
+        let first = rows.iter().find(|r| r.list == List::DnsRequest).unwrap();
+        assert!(first.paused && !first.fallback, "{}: {first:?}", shape.id);
+        let id = first.id.clone();
 
-    store.form_edit(draft, entry, Edit::Resume(&id)).unwrap();
-    assert_eq!(*store.text(draft, entry).unwrap(), active());
-    let doc = store.check(draft).unwrap();
-    let request = &doc.config().dns.routing.request.rules;
-    let qname = |i: usize| match &request[i].conditions[..] {
-        [DnsCond::Qname { matchers, .. }] => matchers.clone(),
-        other => panic!("{other:?}"),
-    };
-    let site = |code: &str| vec![DnsDomainMatcher::Geosite(code.into())];
-    assert_eq!(
-        (qname(0), &request[0].action),
-        (site("category-ads-all"), &DnsRequestAction::Reject)
-    );
-    assert_eq!(
-        (qname(1), &request[1].action),
-        (site("cn"), &DnsRequestAction::Upstream("alidns".into()))
-    );
+        store.form_edit(draft, entry, Edit::Resume(&id)).unwrap();
+        assert_eq!(*store.text(draft, entry).unwrap(), active(source));
+        let doc = store.check(draft).unwrap();
+        let request = &doc.config().dns.routing.request.rules;
+        let ads = vec![DnsDomainMatcher::Geosite("category-ads-all".into())];
+        match (&request[0].conditions[..], &request[0].action) {
+            ([DnsCond::Qname { matchers, .. }], DnsRequestAction::Reject) => {
+                assert_eq!(*matchers, ads, "{}", shape.id);
+            }
+            other => panic!("{}: {other:?}", shape.id),
+        }
+        // The rule it must beat, the template's own qname rule, follows it.
+        assert!(
+            matches!(request[1].action, DnsRequestAction::Upstream(_)),
+            "{}",
+            shape.id
+        );
 
-    // The shipped bytes are exactly what the app's own pause writes.
-    store.form_edit(draft, entry, Edit::Pause(&id)).unwrap();
-    assert_eq!(*store.text(draft, entry).unwrap(), *TEMPLATE);
+        // The shipped bytes are exactly what the app's own pause writes.
+        store.form_edit(draft, entry, Edit::Pause(&id)).unwrap();
+        assert_eq!(*store.text(draft, entry).unwrap(), *source, "{}", shape.id);
+    }
 }
 
 fn varint(b: &[u8], i: &mut usize) -> u64 {
@@ -288,7 +387,7 @@ fn cidr(bytes: &[u8]) -> (IpAddr, u8) {
 
 #[test]
 #[ignore = "requires DOONA_GEO_DIR containing the pinned DATs"]
-fn seed_runs_on_the_pinned_pair() {
+fn templates_run_on_the_pinned_pair() {
     let source = std::env::var_os("DOONA_GEO_DIR").unwrap();
     let stage = TempDir::new("honk-template-geo");
     let dir = stage.path().join("bundle");
@@ -313,7 +412,9 @@ fn seed_runs_on_the_pinned_pair() {
     for label in GEOSITE {
         assert!(catalog.sites.contains(label), "{label}");
     }
-    for text in [TEMPLATE, &active()] {
-        assert_runs_on_android(&report(text, &catalog));
+    for (source, shape) in templates() {
+        for text in [source, &active(source)] {
+            assert_runs_on_android(&report(text, &catalog), shape);
+        }
     }
 }
