@@ -98,6 +98,7 @@ internal fun RvSkeletonPage(page: String, loading: Boolean) {
         RvSkeletonPages.NODE -> if (loading) RvNodeDetailSkeleton(onBack = {}) else RvNodeDetail(RvData.nodes.first { latencyTone(it.latencyMs) == Tone.Ok }, current = false, rvTestTimes(), onBack = {}, onUse = {}, onTest = {})
 
         RvSkeletonPages.PER_APP_V1 -> RvPerAppLookScreen(rvPerAppLookSample(if (loading) "loading" else ""), rvPerAppActions(), onBack = {}, look = RvPerAppLook.Checks)
+
         RvSkeletonPages.TEMPLATE_IMPACT -> RvTemplateImpactPage(RvTemplateData.impact.takeUnless { loading }, onBack = {}, onApply = {})
 
         else -> RvPerAppScreen(rvPerAppSample(if (loading) "loading" else ""), rvPerAppActions(), onBack = {})
