@@ -57,6 +57,9 @@ data object RulesKey : AppKey
 data object TemplateKey : AppKey
 
 @Serializable
+data object ServiceRulesKey : AppKey
+
+@Serializable
 data class TemplateImpactKey(val templateId: String) : AppKey
 
 @Serializable

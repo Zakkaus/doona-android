@@ -35,7 +35,7 @@ internal class RvPolicyPreviewState(pending: List<RvPolicyRule> = emptyList()) {
     var draft: RvRuleDraft? by mutableStateOf(null)
 
     // The services ticked on the 新增服務規則 sample.
-    var services by mutableStateOf(RvServiceData.sample)
+    var services by mutableStateOf(RV_SERVICE_SAMPLE)
 
     // The main node's picker keeps its own order, apart from 全域's (in the policy state), as each screen remembers its last.
     var pickerSort by mutableStateOf(RvNodeSort.Latency)

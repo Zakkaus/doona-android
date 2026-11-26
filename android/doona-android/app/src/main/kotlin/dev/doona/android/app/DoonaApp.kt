@@ -50,6 +50,7 @@ import dev.doona.android.feature.policies.PoliciesRoute
 import dev.doona.android.feature.policies.RulesRoute
 import dev.doona.android.feature.policies.RvPolicyRoutes
 import dev.doona.android.feature.policies.RvRulesRoutes
+import dev.doona.android.feature.policies.ServiceRulesRoute
 import dev.doona.android.feature.policies.TemplateImpactRoute
 import dev.doona.android.feature.policies.TemplateRoute
 import dev.doona.android.feature.stats.StatsRoute
@@ -142,6 +143,7 @@ fun DoonaApp(
                 )
             }
             entry<TemplateKey> { key -> TemplateRoute(onBack = { backStack.pop(key) }, onReview = { backStack.push(TemplateImpactKey(it)) }) }
+            entry<ServiceRulesKey> { key -> ServiceRulesRoute(onBack = { backStack.pop(key) }) }
             entry<TemplateImpactKey> { key ->
                 TemplateImpactRoute(key.templateId, onBack = { backStack.pop(key) }, onApplied = { backStack.push(PoliciesKey) })
             }
