@@ -60,6 +60,7 @@ class HonkFixtureContractTest {
     /** The JSON schema of `METHOD path status`, or of `#/components/schemas/Name`. */
     private fun schemaOf(target: String): Any {
         if (target.startsWith("#/")) return resolve(target)
+        X_HONK[target]?.let { return Yaml(SafeConstructor(LoaderOptions())).load<Map<*, *>>(it) }
         val (method, path, status) = target.split(" ")
         val paths = spec["paths"] as Map<*, *>
         val operation = ((paths[path] as Map<*, *>)[method.lowercase()] as Map<*, *>)
@@ -216,6 +217,42 @@ class HonkFixtureContractTest {
             "geodata/(loaded|packaged|rv-sample)" to "GET /api/v1/geodata 200",
             "geodata/update-queued" to "POST /api/v1/geodata/update 202",
             "geodata/update-in-flight" to "#/components/schemas/ErrorResponse",
+            "revisions/.*" to "GET /api/v1/x-honk/config/revisions 200",
         ).mapKeys { Regex(it.key) }
+
+        /**
+         * honk's `x-honk` routes are not in its OpenAPI document; these schemas follow api.md (section "Configuration db")
+         * and the handler (`native_api/config/revisions.rs`) of the same commit.
+         */
+        val X_HONK: Map<String, String> = mapOf(
+            "GET /api/v1/x-honk/config/revisions 200" to """
+                type: object
+                required: [active, max_revisions, revisions]
+                properties:
+                  active: {type: [integer, 'null']}
+                  max_revisions: {type: integer}
+                  revisions:
+                    type: array
+                    items:
+                      type: object
+                      required: [revision, parent, created_at, principal, origin, content_sha256, bytes, sources]
+                      properties:
+                        revision: {type: integer, minimum: 1}
+                        parent: {type: [integer, 'null']}
+                        created_at: {type: string}
+                        principal: {type: string}
+                        origin: {enum: [import, write, activate]}
+                        content_sha256: {type: string}
+                        bytes: {type: integer}
+                        sources:
+                          type: array
+                          items:
+                            type: object
+                            required: [path, sha256]
+                            properties:
+                              path: {type: string}
+                              sha256: {type: string}
+            """.trimIndent(),
+        )
     }
 }

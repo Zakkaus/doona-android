@@ -35,7 +35,7 @@ internal class HonkLastReload(val status: String, val error: HonkReloadError?) {
 internal class HonkReloadError(val details: HonkReloadDetails? = null)
 
 @Serializable
-internal class HonkReloadDetails(val committed: Boolean? = null)
+internal class HonkReloadDetails(val committed: Boolean? = null, val diagnostics: List<HonkDiagnostic> = emptyList())
 
 @Serializable
 internal class HonkRules(

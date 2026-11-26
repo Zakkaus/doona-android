@@ -21,4 +21,9 @@
     <string name="vpn_failure_incompatible_core">The VPN core does not match this version of doona.</string>
     <string name="vpn_failure_lockdown_enabled">doona cannot run while “Block connections without VPN” is on. Turn it off in the system VPN settings.</string>
     <string name="vpn_failure_not_established">Android did not establish the VPN. Open doona and try connecting again.</string>
+    <!-- honk rejected the configuration; a tap goes back to the previous revision. -->
+    <string name="vpn_config_unusable_title">Current settings can’t be used</string>
+    <!-- %1$s is a configuration file's path, %2$d a line number in it. -->
+    <string name="vpn_config_unusable_at">Error in %1$s at line %2$d. Tap to switch back to the last settings that worked.</string>
+    <string name="vpn_config_unusable_restore">Tap to switch back to the last settings that worked.</string>
 </resources>
