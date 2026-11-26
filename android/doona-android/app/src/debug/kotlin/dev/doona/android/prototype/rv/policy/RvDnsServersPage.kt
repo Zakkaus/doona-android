@@ -70,7 +70,7 @@ internal fun RvDnsServersPage(
                         removeLabel = stringResource(R.string.rv_list_remove, server.name),
                     )
                 }
-                if (editing != null) RvAddRow(stringResource(R.string.rv_dns_server_new)) { onAdding(RvDnsServer("", "")) }
+                if (editing != null) RvAddRow(stringResource(R.string.rv_dns_server_new), { onAdding(RvDnsServer("", "")) })
             }
         }
     }

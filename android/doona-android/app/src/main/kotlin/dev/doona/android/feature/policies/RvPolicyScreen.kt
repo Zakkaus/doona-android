@@ -453,7 +453,7 @@ private fun OptionsCard(state: RvPolicyState, onChange: (RvPolicyState) -> Unit,
         if (configRev != null) {
             ValueRow(R.drawable.rv_sym_edit, stringResource(R.string.rv_config_title), stringResource(R.string.rv_config_revision, configRev), routes.config)
         }
-        RvRow({ RvIconDisc(R.drawable.rv_sym_add) }, stringResource(R.string.rv_policy_new_rule), null, onClick = routes.newRule) { RvChevron() }
+        RvAddRow(stringResource(R.string.rv_policy_new_rule), routes.newRule, afterRemoves = false)
         RvSwitchRow(R.drawable.rv_sym_ad_off, stringResource(R.string.rv_policy_block_ads), state.blockAds) { onChange(state.copy(blockAds = it)) }
         if (source is RvRuleSource.Template) {
             RvSwitchRow(R.drawable.rv_sym_block, stringResource(R.string.rv_policy_block_quic), state.blockQuic) { onChange(state.copy(blockQuic = it)) }

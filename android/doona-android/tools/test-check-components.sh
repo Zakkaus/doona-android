@@ -42,6 +42,9 @@ plant widget 'Text("a raw Text")'
 plant widget 'Icon(painterResource(R.drawable.x), null)'
 plant click 'Box(Modifier.clickable { })'
 plant click 'Box(Modifier.selectable(true, onClick = { }))'
+# A page-built add row (the 策略 page's 新增規則 before RvAddRow): the add glyph in the page's own disc or glyph.
+plant add 'RvRow({ RvIconDisc(R.drawable.rv_sym_add) }, stringResource(R.string.rv_policy_new_rule), null, onClick = {}) { RvChevron() }'
+plant add 'RvGlyph(R.drawable.rv_sym_add, RvSize.removeGlyph, Rv.colors.card)'
 # A `//` inside a string literal starts no comment, so what follows the string is still read.
 plant widget 'val note = "see https://doona.dev // the site"; Text("a raw Text")'
 plant dp "val quote = '\"'; Box(Modifier.padding(13.dp))"

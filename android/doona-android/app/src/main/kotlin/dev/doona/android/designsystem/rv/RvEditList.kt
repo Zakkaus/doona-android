@@ -131,27 +131,36 @@ internal fun rvRemoveTrailing(remove: RvRowRemove?, description: String): (@Comp
 internal class RvRowRemove(val style: RvRemoveStyle, val onRemove: (() -> Unit)?)
 
 /**
- * The last row of an editable list's card in style A's edit mode (owner 2026-11-26: the add row is the same row as the
- * rows above it): a list row of their height, insets and title, whose start is theirs too. The accent add disc stands
- * where the red remove disc stands, as large, and the leading visual's place after it stays empty, so the title starts
- * on the card's text column; nothing at its end. A tap opens the add form.
+ * Every 新增 X entry (owner 2026-11-26: one add component for list cards and empty states): a list row of the rows'
+ * height, insets and title, nothing at its end; a tap opens the add form. Its start follows the rows above it, so the
+ * title starts on the card's text column. [afterRemoves], the last row of style A's edit mode: the accent add disc stands
+ * where the red remove disc stands, as large, and the leading visual's place after it stays empty. Otherwise (a card
+ * whose rows start with their visual, or the card of an empty state) the same disc stands centred in the visual's place.
  */
 @Composable
-internal fun RvAddRow(label: String, onClick: () -> Unit) {
-    RvRow({ RvAddStart() }, label, null, Modifier.testTag(RvEditPart.ADD), onClick = onClick)
+internal fun RvAddRow(label: String, onClick: () -> Unit, afterRemoves: Boolean = true) {
+    RvRow({ RvAddStart(afterRemoves) }, label, null, Modifier.testTag(RvEditPart.ADD), onClick = onClick)
 }
 
-/** [RvAddRow]'s start: the add disc in the remove disc's place, then the leading visual's place, empty. */
+/** [RvAddRow]'s start: the add disc in the remove disc's place and the visual's place empty, or the disc in the visual's place. */
 @Composable
-private fun RvAddStart() {
+private fun RvAddStart(afterRemoves: Boolean) {
+    if (!afterRemoves) {
+        Box(Modifier.size(RvSize.rowDisc).testTag(RvEditPart.ADD_PLACE), contentAlignment = Alignment.Center) { RvAddDisc() }
+        return
+    }
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.height(RvSize.rowDisc), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(RvSize.removeDisc).testTag(RvEditPart.ADD_DISC).clip(CircleShape).background(Rv.colors.positive), contentAlignment = Alignment.Center) {
-                RvGlyph(R.drawable.rv_sym_add, RvSize.removeGlyph, Rv.colors.card)
-            }
-        }
+        Box(Modifier.height(RvSize.rowDisc), contentAlignment = Alignment.Center) { RvAddDisc() }
         Spacer(Modifier.width(RvSpace.rowGap))
         Spacer(Modifier.size(RvSize.rowDisc).testTag(RvEditPart.ADD_PLACE))
+    }
+}
+
+/** The accent add disc, the remove disc's size, its plus cut in the card's colour. */
+@Composable
+private fun RvAddDisc() {
+    Box(Modifier.size(RvSize.removeDisc).testTag(RvEditPart.ADD_DISC).clip(CircleShape).background(Rv.colors.positive), contentAlignment = Alignment.Center) {
+        RvGlyph(R.drawable.rv_sym_add, RvSize.removeGlyph, Rv.colors.card)
     }
 }
 
