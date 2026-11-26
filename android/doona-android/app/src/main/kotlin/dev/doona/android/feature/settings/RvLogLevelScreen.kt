@@ -13,10 +13,10 @@ import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvPageEnd
+import dev.doona.android.designsystem.rv.RvRadioRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSettingsColumn
 import dev.doona.android.designsystem.rv.RvSettingsRadioCard
-import dev.doona.android.designsystem.rv.RvSettingsRadioRow
 import dev.doona.android.designsystem.rv.RvSettingsSpace
 
 /**
@@ -35,7 +35,7 @@ internal fun RvLogLevelScreen(level: RvLogLevel, onSelect: (RvLogLevel) -> Unit,
         RvSettingsColumn {
             RvSettingsRadioCard {
                 RvLogLevel.entries.forEach {
-                    RvSettingsRadioRow(stringResource(it.label), it == level, { onSelect(it) }, subtitle = if (it == RvLogLevel.Info) stringResource(R.string.rv_log_default) else null)
+                    RvRadioRow(null, stringResource(it.label), it == level, if (it == RvLogLevel.Info) stringResource(R.string.rv_log_default) else null, onSelect = { onSelect(it) })
                 }
             }
             RvFootnote(pluralStringResource(R.plurals.rv_log_debug_footer, RV_DEBUG_HOURS, RV_DEBUG_HOURS))

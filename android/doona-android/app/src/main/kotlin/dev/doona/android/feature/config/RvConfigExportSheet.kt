@@ -8,8 +8,8 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvConfirmContent
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
+import dev.doona.android.designsystem.rv.RvRadioRow
 import dev.doona.android.designsystem.rv.RvSettingsRadioCard
-import dev.doona.android.designsystem.rv.RvSettingsRadioRow
 import dev.doona.android.designsystem.rv.RvSheet
 import dev.doona.android.engine.ExportKind
 
@@ -39,7 +39,7 @@ internal fun ColumnScope.RvConfigExportContent(kind: ExportKind, onKind: (Export
                     ExportKind.Archive -> R.string.rv_config_export_archive to R.string.rv_config_export_archive_line
                     ExportKind.Portable -> R.string.rv_config_export_portable to R.string.rv_config_export_portable_line
                 }
-                RvSettingsRadioRow(stringResource(title), each == kind, { onKind(each) }, subtitle = stringResource(line))
+                RvRadioRow(null, stringResource(title), each == kind, stringResource(line), onSelect = { onKind(each) })
             }
         }
     }

@@ -16,10 +16,10 @@ import dev.doona.android.designsystem.rv.RvInputContent
 import dev.doona.android.designsystem.rv.RvInputSheet
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvPageEnd
+import dev.doona.android.designsystem.rv.RvRadioRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSettingsColumn
 import dev.doona.android.designsystem.rv.RvSettingsRadioCard
-import dev.doona.android.designsystem.rv.RvSettingsRadioRow
 import dev.doona.android.designsystem.rv.RvSettingsRow
 import dev.doona.android.designsystem.rv.RvSettingsSpace
 import dev.doona.android.designsystem.rv.rvRowPress
@@ -39,7 +39,7 @@ internal fun RvIntervalScreen(selected: Int, choices: List<Int>, onSelect: (Int)
         RvSettingsColumn {
             RvSettingsRadioCard {
                 choices.forEach { hours ->
-                    RvSettingsRadioRow(pluralStringResource(R.plurals.rv_interval_hours, hours, hours), hours == selected, { onSelect(hours) })
+                    RvRadioRow(null, pluralStringResource(R.plurals.rv_interval_hours, hours, hours), hours == selected, onSelect = { onSelect(hours) })
                 }
                 // As DNS's 自訂: no radio, a chevron, since it opens a field rather than choosing.
                 RvSettingsRow(stringResource(R.string.rv_settings_dns_custom), Modifier.rvRowPress(Role.Button, onCustom)) { RvChevron() }

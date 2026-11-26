@@ -51,7 +51,8 @@ import kotlin.math.roundToInt
 // The one list row of every card: RvRow, with its line-wise ends and the title it never lets its end cut.
 
 /**
- * A row of a grouped card: a disc at the start, a title over an optional subtitle, and trailing content at the end.
+ * A row of a grouped card: a disc at the start (none in a plain list: [leading] null), a title over an optional subtitle,
+ * and trailing content at the end.
  *
  * [titleEnd] and [subtitleEnd] put a value at the end of the title's line and of the subtitle's line instead of one
  * trailing column beside both: each line then shares its width only with its own end. The start keeps its width up to
@@ -76,7 +77,7 @@ import kotlin.math.roundToInt
  */
 @Composable
 internal fun RvRow(
-    leading: @Composable () -> Unit,
+    leading: (@Composable () -> Unit)?,
     title: String,
     subtitle: String?,
     modifier: Modifier = Modifier,
@@ -116,8 +117,11 @@ internal fun RvRow(
             .padding(horizontal = RvSpace.rowPadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (top) Box(Modifier.alignBy { 0 }) { leading() } else leading()
-        Spacer(Modifier.width(RvSpace.rowGap))
+        // A row of a plain list (a radio list of settings) has no leading visual: its text starts on the row's padding.
+        leading?.let {
+            if (top) Box(Modifier.alignBy { 0 }) { it() } else it()
+            Spacer(Modifier.width(RvSpace.rowGap))
+        }
         val text = if (top) Modifier.weight(1f).alignBy(RvTitleTop) else Modifier.weight(1f)
         if (beside) {
             TextBesideEnd(titleText, subtitleText, titleOverflow, minHeight, firstLine, trailing, top, text)

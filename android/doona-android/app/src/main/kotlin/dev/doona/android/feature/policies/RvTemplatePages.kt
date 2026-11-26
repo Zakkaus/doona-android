@@ -7,12 +7,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
-import dev.doona.android.designsystem.rv.RvAlpha
 import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvFootnote
@@ -21,7 +19,7 @@ import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPrimaryButton
-import dev.doona.android.designsystem.rv.RvRadio
+import dev.doona.android.designsystem.rv.RvRadioRow
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSectionTitle
@@ -36,7 +34,6 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rvConfigPhrase
-import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
 import dev.doona.android.feature.model.RvImpact
 import dev.doona.android.feature.model.RvImpactGroup
@@ -87,10 +84,7 @@ internal fun RvTemplateRow(template: RvTemplate, selected: Boolean, inUse: Boole
     val parts = listOfNotNull(template.line?.let { stringResource(it) }, state)
     val line = if (kept) rvConfigPhrase(parts) else parts.joinToString(SEPARATOR)
     val title = template.name.text().let { if (kept) rvConfigPhrase(listOf(it)) else it }
-    val pick = Modifier
-        .graphicsLayer { alpha = if (reason == null) 1f else RvAlpha.DISABLED }
-        .rvRowSelect(selected, onSelect, enabled = reason == null)
-    RvRow({ RvIconDisc(template.glyph) }, title, line, pick, endFirstLine = true) { RvRadio(selected) }
+    RvRadioRow(template.glyph, title, selected, line, enabled = reason == null, onSelect = onSelect)
 }
 
 /**

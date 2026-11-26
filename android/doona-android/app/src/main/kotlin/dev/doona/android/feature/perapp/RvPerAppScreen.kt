@@ -28,12 +28,12 @@ import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvPrimaryButton
+import dev.doona.android.designsystem.rv.RvRadioRow
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSearchField
 import dev.doona.android.designsystem.rv.RvSearchSlot
 import dev.doona.android.designsystem.rv.RvSettingsCard
-import dev.doona.android.designsystem.rv.RvSettingsRadioRow
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSkeletonCard
 import dev.doona.android.designsystem.rv.RvSkeletonFade
@@ -122,7 +122,7 @@ internal fun RvPerAppScreen(
 @Composable
 internal fun RvPerAppPolicyCard(state: RvPerAppState, actions: RvPerAppActions) {
     RvSettingsCard {
-        RvAppPolicy.entries.forEach { RvSettingsRadioRow(stringResource(it.label), it == state.edited.policy, { actions.policy(it) }) }
+        RvAppPolicy.entries.forEach { RvRadioRow(null, stringResource(it.label), it == state.edited.policy, onSelect = { actions.policy(it) }) }
     }
 }
 

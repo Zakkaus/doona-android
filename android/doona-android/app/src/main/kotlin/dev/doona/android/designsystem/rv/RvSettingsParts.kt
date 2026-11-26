@@ -245,18 +245,8 @@ internal fun RvNavEnd(mark: (@Composable () -> Unit)?) {
 }
 
 /**
- * A settings card holding a radio list ([RvSettingsRadioRow]): one group of choices, so a screen reader tells each row's
+ * A settings card holding a radio list ([RvRadioRow]): one group of choices, so a screen reader tells each row's
  * place among the choices.
  */
 @Composable
 internal fun RvSettingsRadioCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) = RvSettingsCard(modifier.selectableGroup(), content)
-
-/**
- * A row of a radio list (in an [RvSettingsRadioCard]): the title over an optional [subtitle], and the radio at the end;
- * [subtitleKeepWords] false for a subtitle that is an address (a DNS server's).
- */
-@Composable
-internal fun RvSettingsRadioRow(title: String, selected: Boolean, onSelect: () -> Unit, subtitle: String? = null, subtitleKeepWords: Boolean = true) {
-    val choose = Modifier.rvRowSelect(selected, onSelect)
-    RvSettingsRow(title, choose, subtitle = subtitle, subtitleKeepWords = subtitleKeepWords) { RvRadio(selected) }
-}

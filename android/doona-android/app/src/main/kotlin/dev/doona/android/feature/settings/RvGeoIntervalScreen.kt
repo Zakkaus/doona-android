@@ -9,10 +9,10 @@ import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvFootnote
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvPageEnd
+import dev.doona.android.designsystem.rv.RvRadioRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSettingsColumn
 import dev.doona.android.designsystem.rv.RvSettingsRadioCard
-import dev.doona.android.designsystem.rv.RvSettingsRadioRow
 import dev.doona.android.designsystem.rv.RvSettingsSpace
 import dev.doona.android.feature.model.RvGeoInterval
 
@@ -32,7 +32,7 @@ internal fun RvGeoIntervalScreen(selected: RvGeoInterval, onSelect: (RvGeoInterv
             RvSettingsRadioCard {
                 RvGeoInterval.entries.forEach {
                     val default = if (it == RvGeoInterval.Weekly) stringResource(R.string.rv_geo_interval_default) else null
-                    RvSettingsRadioRow(stringResource(it.label), it == selected, { onSelect(it) }, subtitle = default)
+                    RvRadioRow(null, stringResource(it.label), it == selected, default, onSelect = { onSelect(it) })
                 }
             }
             RvFootnote(stringResource(R.string.rv_geo_interval_footer))

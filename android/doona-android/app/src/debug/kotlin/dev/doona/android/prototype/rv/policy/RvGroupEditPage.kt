@@ -28,7 +28,7 @@ import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPrimaryButton
-import dev.doona.android.designsystem.rv.RvRadio
+import dev.doona.android.designsystem.rv.RvRadioRow
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvRowRemove
 import dev.doona.android.designsystem.rv.RvScrollPage
@@ -38,7 +38,6 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvRemoveTrailing
-import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.NOT_WIRED
 
@@ -158,7 +157,7 @@ internal fun RvGroupEditPage(
 private fun PolicyCard(policy: RvHonkPolicy, onPolicy: (RvHonkPolicy) -> Unit) {
     RvCard {
         RvHonkPolicy.entries.forEach { p ->
-            RvRow({ RvIconDisc(p.glyph) }, stringResource(p.label), null, Modifier.rvRowSelect(p == policy, { onPolicy(p) })) { RvRadio(p == policy) }
+            RvRadioRow(p.glyph, stringResource(p.label), p == policy) { onPolicy(p) }
         }
     }
 }

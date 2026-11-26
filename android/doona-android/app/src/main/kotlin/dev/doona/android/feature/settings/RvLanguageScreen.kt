@@ -9,10 +9,10 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvPageEnd
+import dev.doona.android.designsystem.rv.RvRadioRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSettingsColumn
 import dev.doona.android.designsystem.rv.RvSettingsRadioCard
-import dev.doona.android.designsystem.rv.RvSettingsRadioRow
 import dev.doona.android.designsystem.rv.RvSettingsSpace
 import dev.doona.android.feature.model.RvLanguage
 
@@ -36,7 +36,7 @@ internal fun RvLanguageScreen(selected: RvLanguage, system: RvLanguage, onSelect
             RvSettingsRadioCard {
                 RvLanguage.entries.forEach {
                     val subtitle = if (it == RvLanguage.System) stringResource(system.label) else null
-                    RvSettingsRadioRow(stringResource(it.label), it == selected, { onSelect(it) }, subtitle = subtitle)
+                    RvRadioRow(null, stringResource(it.label), it == selected, subtitle, onSelect = { onSelect(it) })
                 }
             }
         }
