@@ -8,15 +8,22 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import dev.doona.android.app.nativeApi
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.subscriptions.STOP_MS
+import dev.doona.android.vpn.NativeApi
+import dev.doona.android.vpn.honk.NativeCatalog
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.withContext
 
 /**
  * Whether the 活動 tab shows the welcome page: only once the engine has loaded ([ready]), so the saved subscriptions are
@@ -28,13 +35,21 @@ internal fun showsWelcome(ready: Boolean, subscriptions: Int, anyNode: Boolean?,
     ready && subscriptions == 0 && anyNode == false && (status is Status.Stopped || status is Status.Failed)
 
 /** The first run's state holder (plan §2.2). */
-internal class FirstRunViewModel(engine: Engine) : ViewModel() {
-    /** Whether the catalog holds a node; the core is asked only while no subscription is there. */
+internal class FirstRunViewModel(engine: Engine, api: NativeApi, io: CoroutineDispatcher = Dispatchers.IO) : ViewModel() {
+    /** Whether the catalog holds a node; honk is asked, on [io], only while no subscription is there. */
     private val anyNode: Flow<Boolean?> = engine.catalog.map { catalog ->
         when {
             catalog == null -> null
+
             catalog.subscriptions.isNotEmpty() -> true
-            else -> engine.nodes().getOrNull()?.isNotEmpty()
+
+            else -> try {
+                withContext(io) { NativeCatalog(api).nodes().isNotEmpty() }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                null
+            }
         }
     }
 
@@ -56,7 +71,19 @@ fun FirstRunGate(
     frame: @Composable (@Composable () -> Unit) -> Unit,
     content: @Composable () -> Unit,
 ) {
-    val viewModel: FirstRunViewModel = viewModel(factory = viewModelFactory { initializer { FirstRunViewModel(engine) } })
+    val api = nativeApi()
+    val viewModel: FirstRunViewModel = viewModel(factory = viewModelFactory { initializer { FirstRunViewModel(engine, api) } })
+    FirstRunGate(viewModel, onAdd, frame, content)
+}
+
+/** The 活動 tab's content on a given [viewModel], as [FirstRunGate] draws it, for a caller (a test) that makes its own. */
+@Composable
+internal fun FirstRunGate(
+    viewModel: FirstRunViewModel,
+    onAdd: () -> Unit,
+    frame: @Composable (@Composable () -> Unit) -> Unit,
+    content: @Composable () -> Unit,
+) {
     val welcome by viewModel.welcome.collectAsStateWithLifecycle()
     if (welcome) frame { RvWelcome(onAdd) } else content()
 }

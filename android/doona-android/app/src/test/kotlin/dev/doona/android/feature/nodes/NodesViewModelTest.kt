@@ -1,41 +1,25 @@
 package dev.doona.android.feature.nodes
 
 import dev.doona.android.designsystem.rv.RvPlace
-import dev.doona.android.engine.Catalog
-import dev.doona.android.engine.Engine
-import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.Group
-import dev.doona.android.engine.GroupKind
-import dev.doona.android.engine.LatencyTest
-import dev.doona.android.engine.Member
-import dev.doona.android.engine.Network
-import dev.doona.android.engine.NodeInfo
-import dev.doona.android.engine.ScoreCounters
-import dev.doona.android.engine.ScoreCoverage
-import dev.doona.android.engine.ScoreGroup
-import dev.doona.android.engine.ScoreNetwork
-import dev.doona.android.engine.ScoreState
-import dev.doona.android.engine.ShareLink
-import dev.doona.android.engine.Subscription
-import dev.doona.android.engine.SubscriptionFetch
-import dev.doona.android.engine.SubscriptionFormat
-import dev.doona.android.engine.fake.FakeEngine
-import dev.doona.android.engine.fake.FakeRuleMode
 import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.feature.model.NodePlace
 import dev.doona.android.feature.model.NodePlaces
-import kotlinx.coroutines.CompletableDeferred
+import dev.doona.android.vpn.FakeHonk
+import dev.doona.android.vpn.HonkFixtures
+import dev.doona.android.vpn.honk.SelectionNetwork
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -43,8 +27,10 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 
+/** The 節點 pages' state on honk's native API: the RV sample as honk serves it, and honk-shaped bodies for other states. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class NodesViewModelTest {
     @Before
@@ -52,61 +38,6 @@ class NodesViewModelTest {
 
     @After
     fun tearDown() = Dispatchers.resetMain()
-
-    /** An engine over [base] whose details, select and test answer as set, recording what they were asked. */
-    private class Probe(
-        val base: FakeEngine,
-        var infos: Map<String, NodeInfo>? = null,
-        mainGroupId: String? = null,
-        revisions: MutableStateFlow<Catalog?>? = null,
-    ) : Engine by base {
-        override val catalog: StateFlow<Catalog?> =
-            revisions ?: mainGroupId?.let { id -> MutableStateFlow(base.catalog.value?.copy(mainGroupId = id)) } ?: base.catalog
-
-        var result: Result<Unit> = Result.success(Unit)
-        val selected = mutableListOf<Triple<String, String?, Network?>>()
-        val tested = mutableListOf<String?>()
-        var gate: CompletableDeferred<Unit>? = null
-        var readFails = false
-        val selectGates = mutableMapOf<String, CompletableDeferred<Unit>>()
-        val links = mutableMapOf<String, String>()
-        val updated = mutableListOf<String>()
-        val removed = mutableListOf<String>()
-        var subFails = false
-        var score: Result<ScoreState>? = null
-
-        override suspend fun scoreState(): Result<ScoreState> = score ?: base.scoreState()
-
-        override suspend fun nodeShareLink(nodeId: String): Result<ShareLink> =
-            links[nodeId]?.let { Result.success(ShareLink(it)) } ?: Result.failure(EngineException(ErrorCode.NotFound))
-
-        override suspend fun updateSubscription(id: String): Result<Subscription> {
-            updated += id
-            return if (subFails) Result.failure(EngineException(ErrorCode.FetchFailed)) else base.updateSubscription(id)
-        }
-
-        override suspend fun removeSubscription(id: String): Result<Unit> {
-            removed += id
-            return if (subFails) Result.failure(EngineException(ErrorCode.Busy)) else base.removeSubscription(id)
-        }
-
-        override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> = when {
-            readFails -> Result.failure(EngineException(ErrorCode.Busy))
-            else -> infos?.let { all -> Result.success(ids?.mapNotNull(all::get) ?: all.values.toList()) } ?: base.nodes(ids)
-        }
-
-        override suspend fun select(groupId: String, memberId: String?, network: Network?): Result<Unit> {
-            selected += Triple(groupId, memberId, network)
-            memberId?.let(selectGates::get)?.await()
-            return if (result.isSuccess) base.select(groupId, memberId, network) else result
-        }
-
-        override suspend fun testLatency(groupId: String?): Result<Unit> {
-            tested += groupId
-            gate?.await()
-            return result
-        }
-    }
 
     private class Counting(val inner: NodePlaces = CoreNodePlaces) : NodePlaces {
         val calls = AtomicInteger()
@@ -117,358 +48,240 @@ class NodesViewModelTest {
         }
     }
 
-    private fun TestScope.collected(engine: Engine, places: NodePlaces = CoreNodePlaces) =
-        NodesViewModel(engine, UnconfinedTestDispatcher(testScheduler), places, clock = { NOW }).also { vm ->
+    private fun TestScope.collected(api: FakeHonk, places: NodePlaces = CoreNodePlaces) =
+        NodesViewModel(api, UnconfinedTestDispatcher(testScheduler), places, clock = { NOW }).also { vm ->
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.ui.collect {} }
         }
 
-    private val sub = Subscription("s-1", "Harbor", "https://sub.example.net/token", nodes = 2, lastFetch = SubscriptionFetch(1L, SubscriptionFormat.Clash))
-
-    private fun engine(members: List<Member>, selected: String? = members.first().id) =
-        FakeEngine(groups = listOf(Group(MAIN, "Proxy", GroupKind.Selector, members, Group.Selection(selected, pinned = true))), subscriptions = listOf(sub))
-
     @Test
     fun mapsEveryNodeOnceWithItsPlaceItsProtocolAndTheMainGroupsNode() = runTest {
-        val members = listOf(Member("n-hk", "🇭🇰 Hong Kong 02", subscriptionId = "s-1"), Member("n-static", "Tokyo NRT"), Member("n-hk", "🇭🇰 Hong Kong 02", subscriptionId = "s-1"))
-        val info = mapOf("n-hk" to NodeInfo("n-hk", null, "vless", "hk2.example.net", 443, "grpc", true, emptyList()))
-        val ui = collected(Probe(engine(members), info)).ui.value
+        val ui = collected(HonkFixtures.rvSample()).ui.value
         assertTrue(ui.loaded)
-        assertEquals(listOf("n-hk", "n-static"), ui.state.nodes.map { it.id })
-        val hk = ui.state.node("n-hk")!!
+        assertEquals(48, ui.state.nodes.size)
+        val hk = ui.state.node(HK2)!!
         assertEquals(RvPlace.HK, hk.place)
-        assertEquals("HK 02", hk.short)
         assertEquals("VLESS", hk.protocol)
         assertEquals("gRPC", hk.transport)
-        assertEquals("🇭🇰 Hong Kong 02", hk.name)
-        assertEquals("Harbor", hk.subscription)
-        assertEquals("s-1", hk.subscriptionId)
-        // A static node belongs to no subscription, so no 訂閱 section lists it.
-        assertEquals("", ui.state.node("n-static")!!.subscriptionId)
-        assertTrue(ui.state.node("n-static")!!.inline)
-        assertEquals("n-hk", ui.state.currentId)
-        assertEquals(MAIN, ui.state.mainGroupId)
-        assertEquals(listOf("Harbor"), ui.state.subscriptions.map { it.name })
-        assertEquals("sub.example.net", ui.state.subscriptions.single().host)
-    }
-
-    /** Only a share-link subscription's node has a link the core keeps (Engine.nodeShareLink); a legacy one, of no format, has none until refetched. */
-    @Test
-    fun aNodeIsShareableOnlyFromAShareLinkSubscription() {
-        val subs = listOf(SubscriptionFormat.ShareLinks, SubscriptionFormat.Clash, null).mapIndexed { i, f -> sub.copy(id = "s-$i", lastFetch = f?.let { SubscriptionFetch(1L, it) }) }
-        val members = subs.mapIndexed { i, it -> Member("n-$i", "Node 0$i", subscriptionId = it.id) } + Member("n-static", "Tokyo NRT")
-        val catalog = FakeEngine(groups = listOf(Group(MAIN, "Proxy", GroupKind.Selector, members, Group.Selection("n-0", pinned = true))), subscriptions = subs).catalog.value!!
-        val state = nodesState(catalog, emptyMap(), CoreNodePlaces, ungrouped = true)
-        assertEquals(listOf(true, false, false, false), state.nodes.map { it.shareable })
-    }
-
-    /** A hand-edited profile (owner, 2026-11-26): a main group of the user's own name over a nested group, no Proxy group, a node in no group. */
-    @Test
-    fun aHandEditedProfileListsEveryNodeAndFollowsItsMainGroupThroughANestedOne() = runTest {
-        val asia = Group("g-Asia", "Asia", GroupKind.UrlTest, listOf(Member("n-jp", "Tokyo 01", subscriptionId = "s-1"), Member("n-sg", "Singapore 01", subscriptionId = "s-1")), Group.Selection("n-sg", pinned = false))
-        val mine = Group("g-Mine", "Mine", GroupKind.Selector, listOf(Member("n-us", "Dallas 01", subscriptionId = "s-1"), Member("g-Asia", "Asia", isGroup = true)), Group.Selection("g-Asia", pinned = true))
-        val infos = listOf("n-jp", "n-lone", "n-sg", "n-us").associateWith { NodeInfo(it, null, "trojan", "$it.example.net", 443, "tcp", true, emptyList()) }
-        val probe = Probe(FakeEngine(groups = listOf(mine, asia), subscriptions = listOf(sub)), infos, mainGroupId = "g-Mine")
-        val vm = collected(probe)
-        val state = vm.ui.value.state
-        // Every group's nodes in the catalog's order, then the node no group lists, named by its server.
-        assertEquals(listOf("n-us", "n-jp", "n-sg", "n-lone"), state.nodes.map { it.id })
-        assertEquals("n-lone.example.net", state.node("n-lone")!!.name)
-        assertEquals("", state.node("n-lone")!!.subscription)
-        assertEquals("g-Mine", state.mainGroupId)
-        assertEquals("n-sg", state.currentId)
-        vm.pick("n-jp")
-        assertEquals(listOf(Triple("g-Mine", "n-jp", null)), probe.selected)
-    }
-
-    @Test
-    fun withNoMainGroupTheNodesStillListAndTestButNoneIsCurrentAndAPickDoesNothing() = runTest {
-        val mine = Group("g-Mine", "Mine", GroupKind.Selector, listOf(Member("n-a", "A 01", subscriptionId = "s-1"), Member("n-b", "B 02", subscriptionId = "s-1")), Group.Selection("n-a", pinned = true))
-        // The catalog names g-Proxy as its main group, which this profile does not have.
-        val probe = Probe(FakeEngine(groups = listOf(mine), subscriptions = listOf(sub)))
-        val vm = collected(probe)
-        val ui = vm.ui.value
-        assertEquals(listOf("n-a", "n-b"), ui.state.nodes.map { it.id })
-        assertNull(ui.state.mainGroupId)
-        assertEquals("", ui.state.currentId)
+        assertEquals("Hong Kong 02 IPLC", hk.name)
+        assertEquals("Harbor Cloud", hk.subscription)
+        assertEquals("s1", hk.subscriptionId)
+        assertFalse("honk keeps no share link", hk.shareable)
+        assertEquals(HK2, ui.state.currentId)
+        assertEquals(setOf(HK2), ui.state.current)
+        assertEquals("g-Proxy", ui.state.mainGroupId)
         assertFalse(ui.state.split)
-        vm.pick("n-b")
-        assertTrue(probe.selected.isEmpty())
-        assertNull(vm.ui.value.failure)
-        vm.test()
-        assertEquals(listOf<String?>(null), probe.tested)
+        assertEquals(listOf("Harbor Cloud", "Lantern Net"), ui.state.subscriptions.map { it.name })
+        assertNull("honk reports no Score evidence", ui.score)
     }
 
     @Test
-    fun aPickSwitchesTheMainGroupOnBothNetworksOrOnTheOneChosen() = runTest {
-        val probe = Probe(engine(listOf(Member("n-a", "A 01"), Member("n-b", "B 02"))))
-        val vm = collected(probe)
-        vm.pick("n-b")
-        vm.pick("n-a", Network.Udp)
-        assertEquals(listOf(Triple(MAIN, "n-b", null), Triple(MAIN, "n-a", Network.Udp)), probe.selected)
-        assertEquals("n-b", vm.ui.value.state.currentId)
-        assertTrue(vm.ui.value.state.split)
+    fun aNodesLastProbeIsItsOneTestWithItsTime() = runTest {
+        val api = honk(nodes = listOf(node("n-1", "Tokyo 01", latency = 41), node("n-2", "Tokyo 02", state = "unavailable"), node("n-3", "Tokyo 03", state = null)))
+        val state = collected(api).ui.value.state
+        assertEquals(listOf(41), state.node("n-1")!!.history)
+        assertEquals(listOf(null), state.node("n-2")!!.history)
+        assertEquals(emptyList<Int?>(), state.node("n-3")!!.history)
+        assertEquals(listOf(Instant.parse(PROBED).toEpochMilli()), state.testedAt["n-1"])
+        assertEquals(1, state.testedAt["n-2"]!!.size)
+        assertEquals(emptyList<Long>(), state.testedAt["n-3"])
     }
 
     @Test
-    fun aFailedPickStaysUntilAPickSucceedsAndATestDoesNotClearIt() = runTest {
-        val probe = Probe(engine(listOf(Member("n-a", "A 01"), Member("n-b", "B 02"))))
-        val vm = collected(probe)
-        probe.result = Result.failure(EngineException(ErrorCode.Busy))
-        vm.pick("n-b")
-        assertEquals(NodesFailure(NodesAction.Select, ErrorCode.Busy), vm.ui.value.failure)
-        assertEquals("n-a", vm.ui.value.state.currentId)
-        probe.result = Result.success(Unit)
-        vm.test()
-        assertEquals(NodesAction.Select, vm.ui.value.failure?.action)
-        vm.pick("n-b")
-        assertNull(vm.ui.value.failure)
+    fun aNodeOfNoProviderIsListedUnder組態內() = runTest {
+        val state = collected(honk(nodes = listOf(node("n-1", "Home", provider = null)))).ui.value.state
+        assertTrue(state.node("n-1")!!.inline)
+        assertEquals("", state.node("n-1")!!.subscription)
     }
 
     @Test
-    fun retryRunsTheFailedPickOrTestAgainAndTheClockIsNow() = runTest {
-        val probe = Probe(engine(listOf(Member("n-a", "A 01"), Member("n-b", "B 02"))))
-        val vm = collected(probe)
-        assertEquals(NOW, vm.ui.value.nowEpochMs)
-        probe.result = Result.failure(EngineException(ErrorCode.Busy))
-        vm.pick("n-b", Network.Tcp)
-        probe.result = Result.success(Unit)
-        vm.retry()
-        assertEquals(listOf(Triple(MAIN, "n-b", Network.Tcp), Triple(MAIN, "n-b", Network.Tcp)), probe.selected)
-        assertNull(vm.ui.value.failure)
-        probe.result = Result.failure(EngineException(ErrorCode.Busy))
-        vm.test()
-        assertEquals(NodesAction.Test, vm.ui.value.failure?.action)
-        probe.result = Result.success(Unit)
-        vm.retry()
-        assertEquals(listOf<String?>(null, null), probe.tested)
-        assertNull(vm.ui.value.failure)
-        // With nothing failed, a retry does nothing.
-        vm.retry()
-        assertEquals(2, probe.selected.size)
-        assertEquals(2, probe.tested.size)
-    }
-
-    @Test
-    fun aTestAsksForEveryGroupAndShowsAsRunningUntilItAnswers() = runTest {
-        val probe = Probe(engine(listOf(Member("n-a", "A 01"))))
-        val vm = collected(probe)
-        probe.gate = CompletableDeferred()
-        vm.test()
-        vm.test()
-        assertTrue(vm.ui.value.testing)
-        assertEquals(listOf<String?>(null), probe.tested)
-        probe.gate!!.complete(Unit)
-        assertFalse(vm.ui.value.testing)
-    }
-
-    @Test
-    fun noneOrOneProbeRecordGiveAnEmptyOrSingleHistoryWithTheirOwnTimes() = runTest {
-        val members = listOf(Member("n-0", "Zero 01"), Member("n-1", "One 01"), Member("n-c", "Catalog 01", latencyMs = 42))
-        val info = mapOf(
-            "n-0" to NodeInfo("n-0", null, "trojan", "h", 443, "TCP", true, emptyList()),
-            "n-1" to NodeInfo("n-1", null, "trojan", "h", 443, "TCP", true, listOf(LatencyTest(1_000L, 88))),
+    fun theMainGroupIsTheFallbacksAndItsNodeIsFollowedThroughANestedGroup() = runTest {
+        val groups = listOf(
+            group("g-HK", "HK", members = listOf("n-1" to "node")),
+            group("g-Main", "Main", members = listOf("g-HK" to "group", "n-2" to "node"), tcp = sel("g-HK", leaf = "n-1"), udp = sel("n-2")),
         )
-        val state = collected(Probe(engine(members), info)).ui.value.state
-        assertEquals(emptyList<Int?>(), state.node("n-0")!!.history)
-        assertEquals(emptyList<Long>(), state.testedAt["n-0"])
-        assertEquals(listOf<Int?>(88), state.node("n-1")!!.history)
-        assertEquals(listOf(1_000L), state.testedAt["n-1"])
-        // No details: the catalog's own last probe, never a made-up one, with no time to show.
-        assertEquals(listOf<Int?>(42), state.node("n-c")!!.history)
-        assertEquals(emptyList<Long>(), state.testedAt["n-c"])
+        val state = collected(honk(groups = groups, fallback = "Main")).ui.value.state
+        assertEquals("g-Main", state.mainGroupId)
+        assertEquals("n-1", state.currentId)
+        assertEquals("n-2", state.udpId)
+        assertTrue(state.split)
+        assertEquals(setOf("n-1", "n-2"), state.current)
     }
 
     @Test
-    fun hundredsOfNodesArePlacedOncePerCatalogRevision() = runTest {
-        val members = List(NODES) { Member("n-$it", "Hong Kong ${it + 1}") }
-        val places = Counting()
-        val probe = Probe(engine(members))
-        val vm = collected(probe, places)
-        assertEquals(NODES, vm.ui.value.state.nodes.size)
-        assertEquals(NODES, places.calls.get())
-        // A failure or a test changes what the pages show, not the catalog: nothing is placed again.
-        probe.result = Result.failure(EngineException(ErrorCode.Busy))
-        vm.pick("n-3")
-        vm.test()
-        assertEquals(NODES, places.calls.get())
-        // A pick that lands is a new revision.
-        probe.result = Result.success(Unit)
-        vm.pick("n-3")
-        assertEquals(2 * NODES, places.calls.get())
-        assertEquals("n-3", vm.ui.value.state.currentId)
+    fun withADirectFallbackTheNodesStillListButNoneIsCurrentAndAPickDoesNothing() = runTest {
+        val api = honk(fallback = "direct")
+        val vm = collected(api)
+        assertNull(vm.ui.value.state.mainGroupId)
+        assertEquals("", vm.ui.value.state.currentId)
+        assertEquals(2, vm.ui.value.state.nodes.size)
+        vm.pick("n-1")
+        assertTrue(api.calls.none { it.method == "PUT" })
     }
 
     @Test
-    fun withTheNetworksApartEachNetworksNodeIsCurrentThroughANestedGroup() = runTest {
-        val members = listOf(Member("n-a", "A 01", subscriptionId = "s-1"), Member("n-b", "B 01", subscriptionId = "s-1"))
-        val inner = Group("g-Inner", "Inner", GroupKind.Selector, members, Group.Selection("n-a", pinned = true), Group.Selection("n-b", pinned = true))
-        val main = Group(MAIN, "Proxy", GroupKind.Selector, listOf(Member("g-Inner", "Inner", isGroup = true)), Group.Selection("g-Inner", pinned = true))
-        val state = collected(FakeEngine(groups = listOf(main, inner), subscriptions = listOf(sub))).ui.value.state
-        assertEquals("n-a", state.currentId)
-        assertEquals("n-b", state.udpId)
-        assertEquals(setOf("n-a", "n-b"), state.current)
+    fun aPickSelectsInTheMainGroupOnBothNetworksOrTheOneChosenThenReadsAgain() = runTest {
+        val api = HonkFixtures.rvSample().apply { on("PUT", "/api/v1/groups/g-Proxy/selection", 200, "{}") }
+        val vm = collected(api)
+        var picked = 0
+        vm.pick(TOKYO, onPicked = { picked++ })
+        vm.pick(TOKYO, SelectionNetwork.Udp)
+        val bodies = api.calls.filter { it.method == "PUT" }.map { Json.parseToJsonElement(it.body!!).jsonObject }
+        assertEquals(listOf("both", "udp"), bodies.map { it.getValue("network").jsonPrimitive.content })
+        assertEquals(TOKYO, bodies.first().getValue("member_id").jsonPrimitive.content)
+        assertEquals(1, picked)
+        assertEquals("each pick reads the groups again", 3, api.calls.count { it.path == "/api/v1/groups" })
     }
 
     @Test
-    fun theMainGroupsNodeIsFollowedThroughANestedGroup() = runTest {
-        val inner = Group("g-Auto", "Auto", GroupKind.UrlTest, listOf(Member("n-x", "X 01")), Group.Selection("n-x", pinned = false))
-        val main = Group(MAIN, "Proxy", GroupKind.Selector, listOf(Member("g-Auto", "Auto", isGroup = true), Member("n-y", "Y 01")), Group.Selection("g-Auto", pinned = true))
-        val ui = collected(FakeEngine(groups = listOf(main, inner))).ui.value
-        assertEquals("n-x", ui.state.currentId)
-        assertEquals(listOf("n-y", "n-x"), ui.state.nodes.map { it.id })
-    }
-
-    /** A failed read of the details shows with 重試; the nodes still list, with no details the core never sent. */
-    @Test
-    fun aFailedReadOfTheDetailsShowsAndRetryReadsThemAgain() = runTest {
-        val info = mapOf("n-a" to NodeInfo("n-a", null, "vless", "a.example.net", 443, "tcp", true, emptyList()))
-        val probe = Probe(engine(listOf(Member("n-a", "A 01", subscriptionId = "s-1"))), info).apply { readFails = true }
-        val vm = collected(probe)
-        assertEquals(NodesFailure(NodesAction.Read, ErrorCode.Busy), vm.ui.value.failure)
-        val bare = vm.ui.value.state.node("n-a")!!
-        assertFalse(bare.described)
-        assertEquals("", bare.host)
-        probe.readFails = false
+    fun aFailedPickStaysUntilRetrySucceedsAndThenCloses() = runTest {
+        val api = HonkFixtures.rvSample().apply { on("PUT", "/api/v1/groups/g-Proxy/selection", 409, ERROR) }
+        val vm = collected(api)
+        var picked = 0
+        vm.pick(TOKYO, onPicked = { picked++ })
+        assertEquals(NodesFailure(NodesAction.Select, ErrorCode.Busy), vm.ui.value.failure)
+        assertEquals(0, picked)
+        api.on("PUT", "/api/v1/groups/g-Proxy/selection", 200, "{}")
         vm.retry()
         assertNull(vm.ui.value.failure)
-        assertEquals("a.example.net", vm.ui.value.state.node("n-a")!!.host)
-        assertTrue(vm.ui.value.state.node("n-a")!!.described)
+        assertEquals(1, picked)
+        assertEquals(NOW, vm.ui.value.nowEpochMs)
     }
 
-    /**
-     * A subscription deleted while the read of the details fails: the new revision's rows are the nodes its groups list,
-     * with the details last read, and the deleted subscription's node that no group listed is gone, not a stale row.
-     */
-    @Test
-    fun aFailedReadNeverBringsBackANodeOfAnOlderRevision() = runTest {
-        val listed = Member("n-a", "A 01", subscriptionId = "s-1")
-        val base = engine(listOf(listed))
-        val revisions = MutableStateFlow(base.catalog.value)
-        val info = listOf("n-a", "n-lone").associateWith { NodeInfo(it, null, "vless", "$it.example.net", 443, "tcp", true, emptyList()) }
-        val probe = Probe(base, info, revisions = revisions)
-        val vm = collected(probe)
-        assertEquals(listOf("n-a", "n-lone"), vm.ui.value.state.nodes.map { it.id })
-        probe.readFails = true
-        revisions.value = revisions.value!!.copy(subscriptions = emptyList())
-        assertEquals(NodesFailure(NodesAction.Read, ErrorCode.Busy), vm.ui.value.failure)
-        assertEquals(listOf("n-a"), vm.ui.value.state.nodes.map { it.id })
-        assertEquals("n-a.example.net", vm.ui.value.state.node("n-a")!!.host)
-        probe.readFails = false
-        probe.infos = info - "n-lone"
-        vm.retry()
-        assertNull(vm.ui.value.failure)
-        assertEquals(listOf("n-a"), vm.ui.value.state.nodes.map { it.id })
-    }
-
-    /** A failed read of Score's choices shows as the details' does, keeps the last marks, and 重試 reads them again. */
-    @Test
-    fun aFailedScoreReadShowsKeepsTheLastMarksAndRetries() = runTest {
-        val members = listOf(Member("n-a", "A 01", subscriptionId = "s-1"), Member("n-b", "B 02", subscriptionId = "s-1"))
-        val base = FakeEngine(groups = listOf(Group(MAIN, "Proxy", GroupKind.Score, members, Group.Selection("n-a", pinned = false))), subscriptions = listOf(sub))
-        val revisions = MutableStateFlow(base.catalog.value)
-        val probe = Probe(base, revisions = revisions).apply { score = Result.success(ScoreState(0, listOf(ScoreGroup(MAIN, listOf("n-a", "n-b"), chose("n-a"), chose("n-a"))))) }
-        val vm = collected(probe)
-        val marks = RvScoreMarks(setOf("n-a"), setOf("n-a"))
-        assertEquals(marks, vm.ui.value.score)
-        probe.score = Result.failure(EngineException(ErrorCode.Busy))
-        revisions.value = revisions.value!!.copy(subscriptions = listOf(sub.copy(nodes = 3)))
-        assertEquals(NodesFailure(NodesAction.Read, ErrorCode.Busy), vm.ui.value.failure)
-        assertEquals(marks, vm.ui.value.score)
-        probe.score = Result.success(ScoreState(0, listOf(ScoreGroup(MAIN, listOf("n-a", "n-b"), chose("n-b"), chose("n-a")))))
-        vm.retry()
-        assertNull(vm.ui.value.failure)
-        assertEquals(RvScoreMarks(setOf("n-b"), setOf("n-a")), vm.ui.value.score)
-    }
-
-    /** Two quick picks: the first one's answer does not close the page while the second is still switching. */
     @Test
     fun aPickALaterOneSupersededDoesNotClose() = runTest {
-        val probe = Probe(engine(listOf(Member("n-a", "A 01"), Member("n-b", "B 02"), Member("n-c", "C 03")), selected = "n-c"))
-        val vm = collected(probe)
-        val first = CompletableDeferred<Unit>().also { probe.selectGates["n-a"] = it }
-        val second = CompletableDeferred<Unit>().also { probe.selectGates["n-b"] = it }
-        val closed = mutableListOf<String>()
-        vm.pick("n-a") { closed += "n-a" }
-        vm.pick("n-b") { closed += "n-b" }
-        first.complete(Unit)
-        assertEquals(emptyList<String>(), closed)
-        second.complete(Unit)
-        assertEquals(listOf("n-b"), closed)
+        val api = HonkFixtures.rvSample().apply { on("PUT", "/api/v1/groups/g-Proxy/selection", 409, ERROR) }
+        val vm = collected(api)
+        var first = 0
+        vm.pick(TOKYO, onPicked = { first++ })
+        api.on("PUT", "/api/v1/groups/g-Proxy/selection", 200, "{}")
+        var second = 0
+        vm.pick(HK2, onPicked = { second++ })
+        assertEquals(0, first)
+        assertEquals(1, second)
     }
 
-    /** A probe that timed out (failed, no latency) is a test with no answer, 逾時, not a node never tested. */
     @Test
-    fun aTimedOutProbeIsATestWithNoAnswer() = runTest {
-        val ui = collected(engine(listOf(Member("n-a", "A 01", latencyMs = null, failed = true), Member("n-b", "B 02")))).ui.value
-        assertEquals(listOf<Int?>(null), ui.state.node("n-a")!!.history)
-        assertEquals(emptyList<Int?>(), ui.state.node("n-b")!!.history)
+    fun aTestProbesEveryGroupAndShowsAsRunningUntilHonkHasTheResults() = runTest {
+        val api = probing(HonkFixtures.rvSample())
+        val vm = collected(api)
+        vm.test()
+        assertTrue(vm.ui.value.testing)
+        advanceUntilIdle()
+        assertFalse(vm.ui.value.testing)
+        val targets = api.calls.filter { it.path == "/api/v1/probes" }.map { Json.parseToJsonElement(it.body!!).jsonObject.getValue("target").jsonObject }
+        assertEquals(8, targets.size)
+        assertTrue(targets.all { it.getValue("type").jsonPrimitive.content == "group" })
+        assertEquals("the results are read again", 2, api.calls.count { it.path == "/api/v1/nodes" })
     }
 
-    /**
-     * A row menu's 測試延遲 runs one plan, on the main group when it lists the node and else on the first group that does
-     * (each plan starts a new probe round, so a second would drop the first's results); a failure retries that test.
-     */
     @Test
-    fun aOneNodeTestRunsOnePlanAndRetriesItself() = runTest {
-        val other = Group("g-Other", "Other", GroupKind.UrlTest, listOf(Member("n-a", "A 01"), Member("n-c", "C 03")), Group.Selection("n-a", pinned = false))
-        val main = Group(MAIN, "Proxy", GroupKind.Selector, listOf(Member("n-a", "A 01"), Member("n-b", "B 02")), Group.Selection("n-a", pinned = true))
-        val probe = Probe(FakeEngine(groups = listOf(other, main), subscriptions = listOf(sub)))
-        val vm = collected(probe)
-        vm.testNode("n-a")
-        assertEquals(listOf<String?>(MAIN), probe.tested)
-        probe.result = Result.failure(EngineException(ErrorCode.Internal))
-        vm.testNode("n-c")
-        assertEquals(listOf(MAIN, "g-Other"), probe.tested)
-        assertEquals(NodesAction.Test, vm.ui.value.failure?.action)
-        probe.result = Result.success(Unit)
+    fun aOneNodeTestProbesThatNodeAndRetriesItself() = runTest {
+        val api = HonkFixtures.rvSample().apply { on("POST", "/api/v1/probes", 503, ERROR) }
+        val vm = collected(api)
+        vm.testNode(TOKYO)
+        advanceUntilIdle()
+        assertEquals(NodesFailure(NodesAction.Test, ErrorCode.Busy), vm.ui.value.failure)
+        probing(api)
         vm.retry()
-        assertEquals(listOf(MAIN, "g-Other", "g-Other"), probe.tested)
+        advanceUntilIdle()
+        assertNull(vm.ui.value.failure)
+        val targets = api.calls.filter { it.path == "/api/v1/probes" }.map { Json.parseToJsonElement(it.body!!).jsonObject.getValue("target").toString() }
+        assertEquals(List(2) { """{"type":"node","node_id":"$TOKYO"}""" }, targets)
+    }
+
+    @Test
+    fun aFailedReadKeepsWhatWasShownAndRetryReadsAgain() = runTest {
+        val api = HonkFixtures.rvSample()
+        val vm = collected(api)
+        api.on("GET", "/api/v1/nodes", 500, ERROR)
+        api.on("PUT", "/api/v1/groups/g-Proxy/selection", 200, "{}")
+        vm.pick(TOKYO)
+        assertEquals(NodesFailure(NodesAction.Read, ErrorCode.Internal), vm.ui.value.failure)
+        assertEquals(48, vm.ui.value.state.nodes.size)
+        api.on("GET", "/api/v1/nodes", 200, HonkFixtures.body("nodes/rv-sample"))
+        vm.retry()
         assertNull(vm.ui.value.failure)
     }
 
-    /** 複製分享連結 copies the core's link; a node the core has none for fails with its banner, and the link is never made up. */
     @Test
-    fun aShareLinkComesFromTheCoreAndANodeWithoutOneFails() = runTest {
-        val probe = Probe(engine(listOf(Member("n-a", "A 01"), Member("n-b", "B 02"))))
-        probe.links["n-a"] = "vless://id@a.example.net:443#A"
-        val vm = collected(probe)
-        val copied = mutableListOf<String>()
-        vm.copyLink("n-a") { copied += it }
-        assertEquals(listOf("vless://id@a.example.net:443#A"), copied)
-        vm.copyLink("n-b") { copied += it }
-        assertEquals(1, copied.size)
-        assertEquals(NodesFailure(NodesAction.Share, ErrorCode.NotFound), vm.ui.value.failure)
+    fun aFirstReadThatFailsShowsNoNodeUnderItsBanner() = runTest {
+        val api = HonkFixtures.rvSample().apply { on("GET", "/api/v1/groups", 500, ERROR) }
+        val ui = collected(api).ui.value
+        assertTrue(ui.loaded)
+        assertEquals(NodesState.Empty, ui.state)
+        assertEquals(NodesAction.Read, ui.failure?.action)
     }
 
-    /** A subscription's 更新 shows it updating until the core answers; a failed one names it; 刪除 deletes it. */
     @Test
-    fun aSubscriptionsUpdateAndDeleteGoToTheCoreAndAFailureNamesIt() = runTest {
-        val probe = Probe(engine(listOf(Member("n-a", "A 01", subscriptionId = "s-1")))).apply { subFails = true }
-        val vm = collected(probe)
-        vm.update("s-1")
-        assertEquals(listOf("s-1"), probe.updated)
+    fun hundredsOfNodesArePlacedOncePerRead() = runTest {
+        val places = Counting()
+        collected(honk(nodes = List(300) { node("n-$it", "Tokyo $it") }), places)
+        assertEquals(300, places.calls.get())
+    }
+
+    @Test
+    fun aProvidersRefreshAndDeletionGoToHonkAndAFailureNamesIt() = runTest {
+        val api = HonkFixtures.rvSample().apply {
+            on("POST", "/api/v1/providers/s1/refresh", 409, ERROR)
+            on("DELETE", "/api/v1/providers/s2", 200, """{"deleted":1}""")
+        }
+        val vm = collected(api)
+        vm.update("s1")
+        assertEquals(NodesFailure(NodesAction.Update, ErrorCode.Busy, "Harbor Cloud"), vm.ui.value.failure)
         assertEquals(emptySet<String>(), vm.ui.value.updating)
-        assertEquals(NodesFailure(NodesAction.Update, ErrorCode.FetchFailed, "Harbor"), vm.ui.value.failure)
-        probe.subFails = false
-        vm.retry()
-        assertEquals(listOf("s-1", "s-1"), probe.updated)
-        assertNull(vm.ui.value.failure)
-        vm.remove("s-1")
-        assertEquals(listOf("s-1"), probe.removed)
+        vm.remove("s2")
+        assertTrue(api.calls.any { it.method == "DELETE" && it.path == "/api/v1/providers/s2" })
+        assertEquals("a deletion reads again", 2, api.calls.count { it.path == "/api/v1/providers" })
     }
-
-    @Test
-    fun scoreMarksAreTheNodesTheScoreGroupsChosePerNetwork() {
-        assertNull(rvScoreMarks(emptyList()))
-        val marks = rvScoreMarks(listOf(ScoreGroup("g-s", emptyList(), chose("n-a"), chose("n-b")), ScoreGroup("g-t", emptyList(), chose(null), chose("n-a"))))
-        assertEquals(RvScoreMarks(setOf("n-a"), setOf("n-b", "n-a")), marks)
-    }
-
-    private fun chose(id: String?) = ScoreNetwork(id, id, "", "", ScoreCoverage(0, 0, 0), emptyList(), ScoreCounters(0, 0, 0, 0))
 
     private companion object {
-        const val NODES = 300
-        const val MAIN = FakeRuleMode.MAIN_GROUP_ID
         const val NOW = 1_764_000_000_000L
+        const val HK2 = "n-0001938f00000000"
+        const val TOKYO = "n-00019bab00000000"
+        const val PROBED = "2026-11-22T10:00:00Z"
+        const val ERROR = """{"error":{"code":"conflict","message":"The request conflicts with the current state."},"request_id":"request-1"}"""
+
+        /** [api] with a probe honk accepts and finishes. */
+        fun probing(api: FakeHonk) = api.apply {
+            on("POST", "/api/v1/probes", 202, HonkFixtures.body("operations/probe-queued"))
+            on("GET", "/api/v1/operations/op-01HZX4K8W9", 200, HonkFixtures.body("operations/probe-complete"))
+        }
+
+        /** A running honk with [nodes], [groups] and a routing fallback to [fallback]; one provider, `s1`. */
+        fun honk(
+            nodes: List<String> = listOf(node("n-1", "Tokyo 01"), node("n-2", "Tokyo 02")),
+            groups: List<String> = listOf(group("g-Proxy", "Proxy", members = listOf("n-1" to "node", "n-2" to "node"), tcp = sel("n-1"), udp = sel("n-1"))),
+            fallback: String = "Proxy",
+        ) = FakeHonk().apply {
+            on("GET", "/api/v1/nodes", 200, """{"nodes":[${nodes.joinToString(",")}],"next_cursor":null}""")
+            on("GET", "/api/v1/providers", 200, """{"providers":[${provider("s1", "Harbor")}],"next_cursor":null}""")
+            on("GET", "/api/v1/groups", 200, groups.joinToString(",", "[", "]") { Json.parseToJsonElement(it).jsonObject.let { g -> """{"id":${g["id"]},"name":${g["name"]}}""" } })
+            for (group in groups) on("GET", "/api/v1/groups/${Json.parseToJsonElement(group).jsonObject.getValue("id").jsonPrimitive.content}", 200, group)
+            on("GET", "/api/v1/rules", 200, """{"generation_id":"1","rules":[],"fallback":{"outbound":"$fallback","source":null}}""")
+        }
+
+        /** A node with one TCP probe in [state] (none for null). */
+        fun node(id: String, name: String, provider: String? = "s1", latency: Int? = 30, state: String? = "healthy"): String {
+            val health = state?.let {
+                val ms = latency.takeIf { state == "healthy" }
+                """{"transport":"tcp","state":"$it","latency_ms":$ms,"observed_at":"$PROBED","error":null}"""
+            }.orEmpty()
+            val sub = provider?.let { "\"$it\"" } ?: "null"
+            return """{"id":"$id","name":"$name","protocol":"vless","stream_transport":"grpc","subscription_tag":$sub,"provider_id":$sub,""" +
+                """"group_ids":[],"health":[$health]}"""
+        }
+
+        fun provider(id: String, name: String) = """{"id":"$id","name":"$name","kind":"subscription","url_redacted":"https://sub.example/$id",""" +
+            """"node_count":2,"updated_at":null,"expires_at":null,"traffic":null,"status":"ok","last_error":null}"""
+
+        fun sel(member: String, leaf: String = member) = """{"member_id":"$member","resolved_leaf_node_id":"$leaf","source":"runtime"}"""
+
+        /** A group of [members] (id to `node` or `group`) choosing [tcp] and [udp]. */
+        fun group(id: String, name: String, kind: String = "selector", members: List<Pair<String, String>>, tcp: String? = null, udp: String? = null): String {
+            val list = members.joinToString(",") { (member, of) -> """{"id":"$member","name":"$member","kind":"$of"}""" }
+            return """{"id":"$id","name":"$name","icon":null,"policy":{"kind":"$kind","native":"$kind"},"members":[$list],""" +
+                """"runtime":{"selection":{"tcp":${tcp ?: "null"},"udp":${udp ?: "null"}},"health":[]},""" +
+                """"capabilities":{"can_select":true,"can_override":false}}"""
+        }
     }
 }

@@ -9,10 +9,14 @@ import dev.doona.android.vpn.read
 import kotlinx.coroutines.delay
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import java.net.URLEncoder
 
 /**
@@ -57,9 +61,10 @@ internal class NativeCatalog(private val api: NativeApi) {
 
     suspend fun removeNode(id: String) = removed("/api/v1/nodes/$id")
 
-    fun groups(): List<Group> = api.read("GET", "/api/v1/groups", ListSerializer(GroupSummary.serializer())).map {
-        api.read("GET", "/api/v1/groups/${it.id}", Group.serializer())
-    }
+    fun groups(): List<Group> = api.read("GET", "/api/v1/groups", ListSerializer(GroupSummary.serializer())).map { group(it.id) }
+
+    /** One group in full; one honk does not have fails with [ErrorCode.NotFound]. */
+    fun group(id: String): Group = api.read("GET", "/api/v1/groups/$id", Group.serializer())
 
     /** Selects [memberId] in [groupId] on [network]: a Selector's choice, or a pin on an automatic group. */
     fun select(groupId: String, memberId: String, network: SelectionNetwork) {
@@ -73,6 +78,33 @@ internal class NativeCatalog(private val api: NativeApi) {
     /** Clears the pins on an automatic group; a Selector has none and fails with [ErrorCode.InvalidArgument]. */
     fun clearSelection(groupId: String, network: SelectionNetwork) {
         api.expect("DELETE", "/api/v1/groups/$groupId/selection?network=${wire(network)}", conflict = ErrorCode.InvalidArgument)
+    }
+
+    /**
+     * Probes [target] with one HTTP round trip over TCP from a cold connection and waits for honk to record the results,
+     * which the next [nodes] and [groups] report. A full probe queue fails with [ErrorCode.Busy].
+     */
+    suspend fun probe(target: ProbeTarget) {
+        val body = buildJsonObject {
+            putJsonObject("target") {
+                when (target) {
+                    is ProbeTarget.Node -> {
+                        put("type", "node")
+                        put("node_id", target.id)
+                    }
+
+                    is ProbeTarget.Group -> {
+                        put("type", "group")
+                        put("group_id", target.id)
+                    }
+                }
+            }
+            put("kind", "http")
+            putJsonArray("transport") { add("tcp") }
+            put("ip_version", "any")
+            put("warmth", "cold")
+        }
+        finished(api.read("POST", "/api/v1/probes", OperationAccepted.serializer(), body.toString()), JsonObject.serializer())
     }
 
     /** A create answers 201 with the resource, or 202 with an operation when honk runs it in the background. */

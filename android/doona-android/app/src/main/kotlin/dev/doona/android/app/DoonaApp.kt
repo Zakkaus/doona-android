@@ -107,7 +107,7 @@ fun DoonaApp(
     val onTab: (Int) -> Unit = { backStack.selectTab(it) }
     val onReselect: () -> Boolean = { backStack.reselectTab() }
     // Held beside the root 活動 rather than in an entry: the pull-down and every 節點 page read one catalog, mapped once.
-    val nodes: NodesViewModel = viewModel(factory = NodesViewModel.factory(engine))
+    val nodes: NodesViewModel = viewModel(factory = NodesViewModel.factory(nativeApi()))
     RvOverDoona {
         RvNavHost(backStack, Modifier.fillMaxSize()) {
             entry<ActivityKey> {
@@ -133,7 +133,7 @@ fun DoonaApp(
                     ),
                 )
             }
-            entry<GroupKey> { key -> GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }) }
+            entry<GroupKey> { key -> GroupRoute(key.groupId, onBack = { backStack.pop(key) }) }
             entry<RulesKey> { key ->
                 RulesRoute(
                     engine,

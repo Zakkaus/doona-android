@@ -5,251 +5,268 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import dev.doona.android.engine.Catalog
-import dev.doona.android.engine.Engine
-import dev.doona.android.engine.Group
-import dev.doona.android.engine.GroupKind
-import dev.doona.android.engine.Network
-import dev.doona.android.engine.ScoreGroup
+import dev.doona.android.engine.EngineException
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvSubscription
-import dev.doona.android.feature.nodes.rvNode
-import dev.doona.android.feature.nodes.rvSource
+import dev.doona.android.feature.model.rvNode
 import dev.doona.android.feature.nodes.ui.RvApplyTo
 import dev.doona.android.feature.subscriptions.rvSubscription
+import dev.doona.android.vpn.NativeApi
+import dev.doona.android.vpn.honk.Group
+import dev.doona.android.vpn.honk.MemberKind
+import dev.doona.android.vpn.honk.NativeCatalog
+import dev.doona.android.vpn.honk.PolicyKind
+import dev.doona.android.vpn.honk.ProbeTarget
+import dev.doona.android.vpn.honk.SelectionNetwork
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.channelFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 /**
  * A group's page: the group [groupId] with its nodes, the node each network uses, and the taps that choose them, as the
- * approved 套用到 sample has them ([RvApplyChoice]). Each new catalog is read on [reads] with the members' details; a
- * read that fails keeps what is shown and says so with 重試. [clock] is now, for the subscriptions' end dates; [places] places the nodes by name. The 分開選擇 switch and 套用到 live here:
- * the engine only knows each network's node. A Score group's evidence (`scoreState`) is read with each catalog and again
- * every [scoreEveryMs], since it changes as Score compares without a new catalog.
+ * approved 套用到 sample has them ([RvApplyChoice]). honk pushes nothing, so the group is read on [io] at start, after
+ * each change made here and on 重試 ([readGroup]); a read that fails keeps what is shown and says so with 重試. A tap
+ * selects through honk (a pin on an automatic group) and the 分開選擇 switch clears or sets pins; the switch and 套用到
+ * live here, as honk only knows each network's member. [clock] is now, for the subscriptions' end dates; [places] places
+ * the nodes by name. honk reports no Score evidence, so the page gets none.
  */
 internal class GroupViewModel(
-    private val engine: Engine,
+    private val api: NativeApi,
     private val groupId: String,
     private val clock: () -> Long = System::currentTimeMillis,
     private val places: NodePlaces = CoreNodePlaces,
-    private val reads: CoroutineDispatcher = Dispatchers.Default,
-    private val scoreEveryMs: Long = SCORE_EVERY_MS,
+    private val io: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
+    private val catalog = NativeCatalog(api)
     private val local = MutableStateFlow(Local(apart = false, apply = RvApplyTo.Tcp))
     private val failure = MutableStateFlow<GroupFailure?>(null)
     private val read = MutableStateFlow<Read?>(null)
+    private val testing = MutableStateFlow(false)
+    private var reading: Job? = null
+
+    /** Keeps the changes in tap order: each waits for the one before it. */
+    private val changes = Mutex()
 
     /** The call that failed last, for the banner's 重試; null once an attempt succeeds. */
     private var retry: (() -> Unit)? = null
 
-    /** Bumped by 重試 after a failed first read, to read the same catalog again. */
-    private val again = MutableStateFlow(0)
-
-    /** Whether the networks differed in the last catalog read; null before the first. Only the reader touches it. */
+    /** Whether the networks differed in the last read; null before the first. */
     private var differed: Boolean? = null
 
-    val uiState: StateFlow<GroupUiState> = channelFlow {
-        launch(reads) {
-            combine(engine.catalog.filterNotNull().distinctUntilChanged(), again) { catalog, _ -> catalog }.collectLatest { catalog ->
-                read(catalog).onSuccess(::shown).onFailure(::unread)
-            }
-        }
-        launch(reads) {
-            while (true) {
-                delay(scoreEveryMs)
-                rescore()
-            }
-        }
-        combine(engine.ready, engine.catalog, read, local, failure, ::groupUiState).collect { send(it) }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), current())
+    val uiState: StateFlow<GroupUiState> = combine(read, local, failure, testing, ::groupUiState)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), groupUiState(null, local.value, null, false))
+
+    init {
+        load()
+    }
 
     /**
      * A tap on [memberId], a node or a member group, chooses it for the network 套用到 names while the switch is on, else
      * for both. A Score group picks each network's node itself, so a tap there chooses nothing.
      */
     fun onTap(memberId: String) {
-        val catalog = engine.catalog.value ?: return
-        val groups = catalog.groups.associateBy { it.id }
-        val group = groups[groupId]?.takeIf { it.kind != GroupKind.Score } ?: return
-        val shown = local.value
+        val shown = read.value ?: return
+        val group = shown.source?.takeIf { it.policy.kind != PolicyKind.Score } ?: return
         val network = when {
-            !shown.apart -> null
-            shown.apply == RvApplyTo.Tcp -> Network.Tcp
-            shown.apply == RvApplyTo.Udp -> Network.Udp
-            else -> null
+            !local.value.apart -> SelectionNetwork.Both
+            local.value.apply == RvApplyTo.Tcp -> SelectionNetwork.Tcp
+            local.value.apply == RvApplyTo.Udp -> SelectionNetwork.Udp
+            else -> SelectionNetwork.Both
         }
-        val member = memberFor(group, memberId, groups)
-        perform(GroupAction.Select) { engine.select(groupId, member, network) }
+        val member = memberFor(group, memberId, shown.groups)
+        perform(GroupAction.Select) { catalog.select(groupId, member, network) }
     }
 
     /**
-     * The 分開選擇 switch set to [on]. Turned off while the networks use two nodes, UDP goes to TCP's node (q-nboff), so
-     * one node serves both, as the switch says. A Score group pins TCP's node on both networks instead: Score would
+     * The 分開選擇 switch set to [on]. Turned off while the networks use two members, UDP goes to TCP's (q-nboff), so one
+     * node serves both, as the switch says. A Score group pins TCP's member on both networks instead: Score would
      * otherwise move TCP on its own and split the networks again. Turned on, a Score group with a pin goes back to
      * choosing each network's node itself; a tap there chooses nothing, so the switch is the only way back.
      */
     fun onApart(on: Boolean) {
-        val group = engine.catalog.value?.groups?.firstOrNull { it.id == groupId }
         local.update { it.copy(apart = on) }
-        group ?: return
-        val score = group.kind == GroupKind.Score
+        val group = read.value?.source ?: return
+        val selection = group.runtime.selection
+        val score = group.policy.kind == PolicyKind.Score
+        val tcp = selection.tcp?.memberId
         when {
-            on && score && (group.tcp.pinned || group.udp.pinned) -> perform(GroupAction.Apart) { engine.select(groupId, null) }
-            on || !group.networksDiffer -> Unit
-            score -> perform(GroupAction.Apart) { engine.select(groupId, group.tcp.selectedId) }
-            else -> perform(GroupAction.Apart) { engine.select(groupId, group.tcp.selectedId, Network.Udp) }
+            on && score && (selection.tcp?.source == OVERRIDE || selection.udp?.source == OVERRIDE) ->
+                perform(GroupAction.Apart) { catalog.clearSelection(groupId, SelectionNetwork.Both) }
+
+            on || !group.networksDiffer || tcp == null -> Unit
+
+            score -> perform(GroupAction.Apart) { catalog.select(groupId, tcp, SelectionNetwork.Both) }
+
+            else -> perform(GroupAction.Apart) { catalog.select(groupId, tcp, SelectionNetwork.Udp) }
         }
     }
 
     fun onApply(to: RvApplyTo) = local.update { it.copy(apply = to) }
 
-    /** Probes this group's members. */
-    fun onTest() = perform(GroupAction.Test) { engine.testLatency(groupId) }
-
-    /**
-     * Hands an engine call over at once, in tap order, and shows its failure when it ends, or clears the banner when it
-     * succeeds. The engine keeps the order of what it is handed and does not drop it when this screen is left.
-     */
-    private fun perform(action: GroupAction, call: suspend () -> Result<Unit>) {
-        viewModelScope.launch {
-            val error = call().exceptionOrNull()
-            retry = error?.let { { perform(action, call) } }
-            failure.value = error?.let { GroupFailure(action, it.errorCode()) }
+    /** Probes this group's members; the page shows the test running until honk has recorded the results. */
+    fun onTest() {
+        testing.value = true
+        perform(GroupAction.Test) {
+            try {
+                catalog.probe(ProbeTarget.Group(groupId))
+            } finally {
+                testing.value = false
+            }
         }
     }
 
-    /** A read: it shows, and a failed read's banner goes. */
-    private fun shown(next: Read) {
-        read.value = next
-        failure.update { it?.takeIf { failed -> failed.action != GroupAction.Read } }
-    }
-
-    /** Reads a Score group's evidence again over the group shown; a failure shows as a failed read does. */
-    private suspend fun rescore() {
-        if (read.value?.isScore != true) return
-        engine.scoreState().onSuccess { state ->
-            read.value?.let { shown(it.copy(score = state.groups.firstOrNull { group -> group.id == groupId })) }
-        }.onFailure(::unread)
-    }
-
-    /** A read failed: it shows with 重試, over the group last read if there is one. */
-    private fun unread(error: Throwable) {
-        retry = { again.update { it + 1 } }
-        failure.value = GroupFailure(GroupAction.Read, error.errorCode())
-    }
-
-    /** The banner's 重試: hands the failed call to the engine again, as it was first made. */
+    /** The banner's 重試: runs the failed call again, as it was first made. */
     fun retry() {
         retry?.invoke()
     }
 
+    /** Runs a change on [io] after those before it, then shows its failure, or clears the banner and reads again. */
+    private fun perform(action: GroupAction, call: suspend () -> Unit) {
+        viewModelScope.launch {
+            val error = attempt { changes.withLock { withContext(io) { call() } } }
+            retry = error?.let { { perform(action, call) } }
+            failure.value = error?.let { GroupFailure(action, it.errorCode()) }
+            if (error == null) load()
+        }
+    }
+
+    private fun load() {
+        reading?.cancel()
+        reading = viewModelScope.launch {
+            var fresh: Read? = null
+            val error = attempt { fresh = withContext(io) { readGroup() } }
+            fresh?.let(::shown)
+            if (error != null) {
+                retry = ::load
+                failure.value = GroupFailure(GroupAction.Read, error.errorCode())
+            }
+        }
+    }
+
     /**
-     * The page's data from [catalog]. The switch starts as the networks are and is the user's from then on; it turns on
-     * again only when the networks start to differ, as when another device chose apart.
+     * The page's one read of honk: the group, the groups among its members (for the nodes they end on), every node and
+     * every provider. A group honk no longer has reads as none, and the page leaves.
      */
-    private suspend fun read(catalog: Catalog): Result<Read> {
-        val groups = catalog.groups.associateBy { it.id }
-        val group = groups[groupId] ?: return Result.success(Read.none(catalog))
-        seedApart(group)
-        val own = group.members.filterNot { it.isGroup }
-        val shown = (own + leafNodes(group, groups)).distinctBy { it.id }
-        val infos = engine.nodes(shown.map { it.id }).getOrElse { return Result.failure(it) }.associateBy { it.id }
-        val subscriptions = catalog.subscriptions.associateBy { it.id }
-        val nodes = shown.associate { it.id to rvNode(it, infos[it.id], rvSource(it, subscriptions), places) }
-        val mapped = rvPolicyGroup(group, groups, nodes)
+    private fun readGroup(): Read {
+        val group = groupOrNull(groupId) ?: return Read.None
+        val groups = (group.members.filter { it.kind == MemberKind.Group }.mapNotNull { groupOrNull(it.id) } + group).associateBy { it.id }
+        val nodes = catalog.nodes()
+        val providers = catalog.providers()
+        val byProvider = providers.associateBy { it.id }
+        val mapped = rvPolicyGroup(group, groups, nodes.associate { it.id to rvNode(it, byProvider, places) })
         val members = mapped.members.map { it.id } + mapped.groups.map { it.id }
-        val held = own.mapNotNullTo(mutableSetOf()) { it.subscriptionId }
-        val tcp = mapped.selectedId
-        val udp = group.udp.selectedId?.takeIf { it in members } ?: tcp
-        val isScore = group.kind == GroupKind.Score
-        val score = if (isScore) engine.scoreState().getOrElse { return Result.failure(it) }.groups.firstOrNull { it.id == groupId } else null
-        return Result.success(
-            Read(
-                from = catalog,
-                group = mapped,
-                subscriptions = catalog.subscriptions.filter { it.id in held }.map(::rvSubscription),
-                tcpId = tcp,
-                udpId = udp,
-                isScore = isScore,
-                score = score,
-                nowEpochMs = clock(),
-            ),
+        val own = group.members.filter { it.kind == MemberKind.Node }.mapTo(HashSet()) { it.id }
+        val held = nodes.filter { it.id in own }.mapNotNullTo(HashSet()) { it.providerId }
+        return Read(
+            source = group,
+            groups = groups,
+            group = mapped,
+            subscriptions = providers.filter { it.id in held }.map { rvSubscription(it, null) },
+            tcpId = mapped.selectedId,
+            udpId = group.runtime.selection.udp?.memberId?.takeIf { it in members } ?: mapped.selectedId,
+            isScore = group.policy.kind == PolicyKind.Score,
+            nowEpochMs = clock(),
         )
     }
 
-    private fun seedApart(group: Group) {
-        val differs = group.networksDiffer
-        if (differed == null || (differs && differed == false)) local.update { it.copy(apart = differs) }
-        differed = differs
+    private fun groupOrNull(id: String): Group? = try {
+        catalog.group(id)
+    } catch (missing: EngineException) {
+        if (missing.code == ErrorCode.NotFound) null else throw missing
     }
 
-    /** The engine's flows are StateFlows, so the first frame already shows real values. */
-    private fun current() = groupUiState(engine.ready.value, engine.catalog.value, read.value, local.value, failure.value)
+    /**
+     * A read: it shows, and a failed read's banner goes. The switch starts as the networks are and is the user's from
+     * then on; it turns on again only when the networks start to differ, as when another device chose apart.
+     */
+    private fun shown(next: Read) {
+        next.source?.networksDiffer?.let { differs ->
+            if (differed == null || (differs && differed == false)) local.update { it.copy(apart = differs) }
+            differed = differs
+        }
+        read.value = next
+        failure.update { it?.takeIf { failed -> failed.action != GroupAction.Read } }
+    }
 
     /** The 分開選擇 switch and the network 套用到 names: the page's own. */
     private data class Local(val apart: Boolean, val apply: RvApplyTo)
 
     /**
-     * One catalog read: [group] is null when the catalog has no such group. [tcpId] and [udpId] name the member each
-     * network uses, a node or a group. [score] is a Score group's evidence, null when honk reports none for it. [from]
-     * is the catalog it was read from.
+     * One read: [source] is honk's group, null when honk has no such group, and [groups] it and its member groups by id.
+     * [tcpId] and [udpId] name the member each network uses, a node or a group.
      */
     private data class Read(
-        val from: Catalog,
+        val source: Group?,
+        val groups: Map<String, Group>,
         val group: RvPolicyGroup?,
         val subscriptions: List<RvSubscription>,
         val tcpId: String,
         val udpId: String,
         val isScore: Boolean,
-        val score: ScoreGroup?,
         val nowEpochMs: Long,
     ) {
         companion object {
-            fun none(from: Catalog) = Read(from, null, emptyList(), "", "", isScore = false, score = null, nowEpochMs = 0L)
+            val None = Read(null, emptyMap(), null, emptyList(), "", "", isScore = false, nowEpochMs = 0L)
         }
     }
 
-    /**
-     * Still loading until the group is read; a read that found no such group counts only for the catalog it read, since
-     * the engine can turn ready before the next catalog's read ends, and the page would leave a group that exists.
-     */
-    private fun groupUiState(ready: Boolean, catalog: Catalog?, read: Read?, local: Local, failure: GroupFailure?) = GroupUiState(
-        loading = !ready ||
-            catalog == null ||
-            (read == null && failure?.action != GroupAction.Read) ||
-            (read != null && read.group == null && read.from != catalog),
+    /** Still loading until the first read ends; a first read that fails shows its banner instead. */
+    private fun groupUiState(read: Read?, local: Local, failure: GroupFailure?, testing: Boolean) = GroupUiState(
+        loading = read == null && failure?.action != GroupAction.Read,
         group = read?.group,
         subscriptions = read?.subscriptions.orEmpty(),
         choice = read?.takeIf { it.group != null }?.let { RvApplyChoice(it.tcpId, it.udpId, local.apart) },
         apply = local.apply,
         isScore = read?.isScore ?: false,
-        score = read?.score,
         nowEpochMs = read?.nowEpochMs ?: 0L,
-        testing = catalog?.groups?.firstOrNull { it.id == groupId }?.testing ?: false,
+        testing = testing,
         failure = failure,
     )
 
     companion object {
-        /** How often a Score group's evidence is read again while its page is shown. */
-        const val SCORE_EVERY_MS = 5_000L
+        /** A selection's source when a pin chose it. */
+        private const val OVERRIDE = "override"
 
-        fun factory(engine: Engine, groupId: String): ViewModelProvider.Factory = viewModelFactory {
-            initializer { GroupViewModel(engine, groupId) }
+        fun factory(api: NativeApi, groupId: String): ViewModelProvider.Factory = viewModelFactory {
+            initializer { GroupViewModel(api, groupId) }
         }
     }
 }
+
+/** Runs [call]; its failure, or null. */
+private suspend fun attempt(call: suspend () -> Unit): Exception? = try {
+    call()
+    null
+} catch (cancelled: CancellationException) {
+    throw cancelled
+} catch (error: Exception) {
+    error
+}
+
+/** Whether TCP and UDP use different members. */
+private val Group.networksDiffer: Boolean get() = runtime.selection.tcp?.memberId != runtime.selection.udp?.memberId
+
+/**
+ * The member of [group] to select so that it carries [nodeId]: the node itself when it is a member, else the first member
+ * group whose selection ends on it. The page lists member groups by their leaf node, so a tap names a node that may only
+ * be reachable through a group. [groups] holds the member groups by id.
+ */
+private fun memberFor(group: Group, nodeId: String, groups: Map<String, Group>): String =
+    group.members.firstOrNull { it.id == nodeId }?.id
+        ?: group.members.firstOrNull { it.kind == MemberKind.Group && groups[it.id]?.leafNodeId() == nodeId }?.id
+        ?: nodeId
