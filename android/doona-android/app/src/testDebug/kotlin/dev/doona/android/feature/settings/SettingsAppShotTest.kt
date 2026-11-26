@@ -10,6 +10,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -253,13 +254,13 @@ class SettingsAppShotTest {
     @Test fun dnsFs200() = compose.app("settings-dns", fontScale = RV_FS200) { DnsRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onServers = {}, onRules = {}) }
 
     /** 自訂 open on the core's two servers, over the page. */
-    @Test fun dnsServersLight() = compose.app("settings-dns-servers", dark = false) { DnsServersRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onRules = {}) }
+    @Test fun dnsServersLight() = compose.app("settings-dns-servers", dark = false, before = { shows("cloudflare") }) { DnsServersRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onRules = {}) }
 
-    @Test fun dnsServersDark() = compose.app("settings-dns-servers", dark = true) { DnsServersRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onRules = {}) }
+    @Test fun dnsServersDark() = compose.app("settings-dns-servers", dark = true, before = { shows("cloudflare") }) { DnsServersRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onRules = {}) }
 
-    @Test fun dnsRulesLight() = compose.app("settings-dns-rules", dark = false) { DnsRulesRoute(PolicyHonkFixtures.rvSample(), onBack = {}) }
+    @Test fun dnsRulesLight() = compose.app("settings-dns-rules", dark = false, before = { shows("qname(geosite:cn)") }) { DnsRulesRoute(PolicyHonkFixtures.rvSample(), onBack = {}) }
 
-    @Test fun dnsRulesDark() = compose.app("settings-dns-rules", dark = true) { DnsRulesRoute(PolicyHonkFixtures.rvSample(), onBack = {}) }
+    @Test fun dnsRulesDark() = compose.app("settings-dns-rules", dark = true, before = { shows("qname(geosite:cn)") }) { DnsRulesRoute(PolicyHonkFixtures.rvSample(), onBack = {}) }
 
     @Test fun dnsCustomLight() = compose.app("settings-dns-custom", dark = false) { DnsCustom(DnsUiState(SERVERS, true, TYPED)) }
 
@@ -405,6 +406,11 @@ private fun ComposeContentTestRule.app(
     rvRowRules(golden)
     onRoot().captureToImage().asAndroidBitmap().captureRoboImage("$SHOTS/$golden.png")
 }
+
+/** Waits for [text], which honk's read puts on the page: the read runs on Dispatchers.IO, which compose does not track. */
+private fun ComposeContentTestRule.shows(text: String) = waitUntil(READ_MS) { onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty() }
+
+private const val READ_MS = 5_000L
 
 /** The sample page in English, for the panels' approved column where no English golden exists. */
 private fun ComposeContentTestRule.sample(name: String, content: @Composable () -> Unit) {
