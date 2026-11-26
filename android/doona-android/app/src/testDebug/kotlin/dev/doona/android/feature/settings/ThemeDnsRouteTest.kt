@@ -163,7 +163,7 @@ class ThemeDnsRouteTest {
         honk.now("GET", "/api/v1/runtime/settings", 200, SettingsHonk.runtimeSettings(enabled = false))
         compose.onNodeWithText(OFF).performClick()
         compose.waitForIdle()
-        assertEquals(RvGeoInterval.Off, interval.selected.value)
+        assertEquals(RvGeoInterval.Off, interval.state.value?.selected)
         assertEquals("""{"geodata":{"auto_update":{"enabled":false}}}""", honk.calls.last { it.method == "PATCH" }.body)
         compose.onNodeWithText(WEEKLY).performClick()
         compose.waitForIdle()

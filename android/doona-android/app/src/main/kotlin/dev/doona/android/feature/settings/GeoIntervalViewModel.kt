@@ -17,11 +17,12 @@ import kotlinx.coroutines.withContext
 
 /**
  * GeoIP/GeoSite's 自動更新 over honk's schedule ([NativeSettings.geoInterval]): read when the page opens and after each
- * choice, which goes to honk. [selected] stays null until honk answers.
+ * choice, which goes to honk. [state] is null until the first read ends; then honk's interval (每天, honk's own, when
+ * it names none), or a null [GeoIntervalState.selected] when honk did not answer (VPN off, q-k4-geooffline).
  */
 internal class GeoIntervalViewModel(private val honk: NativeSettings, private val io: CoroutineDispatcher = Dispatchers.IO) : ViewModel() {
-    private val interval = MutableStateFlow<RvGeoInterval?>(null)
-    val selected: StateFlow<RvGeoInterval?> = interval.asStateFlow()
+    private val read = MutableStateFlow<GeoIntervalState?>(null)
+    val state: StateFlow<GeoIntervalState?> = read.asStateFlow()
 
     init {
         load()
@@ -39,7 +40,10 @@ internal class GeoIntervalViewModel(private val honk: NativeSettings, private va
     }
 
     private suspend fun read() {
-        runCatching { withContext(io) { honk.geoInterval() } }.getOrNull()?.let { interval.value = it }
+        read.value = runCatching { withContext(io) { honk.geoInterval() } }.fold(
+            { GeoIntervalState(it ?: RvGeoInterval.Daily) },
+            { GeoIntervalState(null) },
+        )
     }
 
     companion object {
@@ -48,3 +52,6 @@ internal class GeoIntervalViewModel(private val honk: NativeSettings, private va
         }
     }
 }
+
+/** 自動更新's page: honk's [selected] interval, null while honk does not answer. */
+internal data class GeoIntervalState(val selected: RvGeoInterval?)

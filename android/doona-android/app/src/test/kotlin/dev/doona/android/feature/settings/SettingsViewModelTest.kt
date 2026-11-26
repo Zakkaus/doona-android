@@ -336,18 +336,18 @@ class SettingsViewModelTest {
     fun `自動更新 opens on honk's schedule and sends each choice, then reads it again`() = runTest {
         val honk = SettingsHonk.running()
         val vm = GeoIntervalViewModel(NativeSettings(honk), UnconfinedTestDispatcher(testScheduler))
-        assertEquals(RvGeoInterval.Daily, vm.selected.value)
+        assertEquals(GeoIntervalState(RvGeoInterval.Daily), vm.state.value)
 
         honk.now("GET", "/api/v1/runtime/settings", 200, SettingsHonk.runtimeSettings(hours = 168))
         vm.select(RvGeoInterval.Weekly)
-        assertEquals(RvGeoInterval.Weekly, vm.selected.value)
+        assertEquals(GeoIntervalState(RvGeoInterval.Weekly), vm.state.value)
         assertEquals("PATCH", honk.calls[honk.calls.lastIndex - 1].method)
     }
 
     @Test
-    fun `自動更新 waits for honk rather than showing a choice it has not made`() = runTest {
+    fun `自動更新 shows no choice and 未連線 while honk does not answer`() = runTest {
         val vm = GeoIntervalViewModel(NativeSettings(SettingsHonk()), UnconfinedTestDispatcher(testScheduler))
-        assertNull(vm.selected.value)
+        assertEquals(GeoIntervalState(null), vm.state.value)
     }
 
     @Test

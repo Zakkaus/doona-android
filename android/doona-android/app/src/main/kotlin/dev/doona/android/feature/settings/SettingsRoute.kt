@@ -120,11 +120,14 @@ internal fun LanguageRoute(store: SettingsStore, onBack: () -> Unit, system: RvL
 internal fun GeoIntervalRoute(honk: NativeSettings, onBack: () -> Unit) =
     GeoIntervalPage(viewModel(factory = GeoIntervalViewModel.factory(honk)), onBack)
 
-/** 自動更新 on [viewModel]'s schedule, the page's background alone until honk answers; the goldens drive their own ViewModel through it. */
+/**
+ * 自動更新 on [viewModel]'s schedule, the page's background alone until the first read ends, then disabled with 未連線
+ * when honk did not answer; the goldens drive their own ViewModel through it.
+ */
 @Composable
 internal fun GeoIntervalPage(viewModel: GeoIntervalViewModel, onBack: () -> Unit) {
-    val selected = viewModel.selected.collectAsStateWithLifecycle().value ?: return RvSettingsLoading()
-    RvGeoIntervalScreen(selected, viewModel::select, onBack)
+    val state = viewModel.state.collectAsStateWithLifecycle().value ?: return RvSettingsLoading()
+    RvGeoIntervalScreen(state.selected, viewModel::select, onBack)
 }
 
 /** 日誌等級 over the app's [levels]. */

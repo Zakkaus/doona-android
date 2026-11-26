@@ -202,7 +202,7 @@ class SettingsAppShotTest {
 
     @Test fun logLevelFs200() = compose.app("settings-log-level", fontScale = RV_FS200) { LogLevel() }
 
-    /** GeoIP/GeoSite's 自動更新 (sample, q-p6a-geointerval): the stored 每週. */
+    /** GeoIP/GeoSite's 自動更新 (sample, q-p6a-geointerval): honk's 每週, 預設 under 每天 (q-k4-geodefault). */
     @Test fun geoIntervalLight() = compose.app("settings-geo-interval", dark = false) { GeoIntervalPage(remember { sampleInterval() }, onBack = {}) }
 
     @Test fun geoIntervalDark() = compose.app("settings-geo-interval", dark = true) { GeoIntervalPage(remember { sampleInterval() }, onBack = {}) }
@@ -210,6 +210,13 @@ class SettingsAppShotTest {
     @Test fun geoIntervalFs115() = compose.app("settings-geo-interval", fontScale = RV_FS115) { GeoIntervalPage(remember { sampleInterval() }, onBack = {}) }
 
     @Test fun geoIntervalFs200() = compose.app("settings-geo-interval", fontScale = RV_FS200) { GeoIntervalPage(remember { sampleInterval() }, onBack = {}) }
+
+    /** 自動更新 with the VPN off (q-k4-geooffline): honk does not answer, so the rows are disabled and the footer reads 未連線. */
+    @Test fun geoIntervalOfflineLight() = compose.app("settings-geo-interval-offline", dark = false) { GeoIntervalPage(remember { offlineInterval() }, onBack = {}) }
+
+    @Test fun geoIntervalOfflineDark() = compose.app("settings-geo-interval-offline", dark = true) { GeoIntervalPage(remember { offlineInterval() }, onBack = {}) }
+
+    @Test fun geoIntervalOfflineFs200() = compose.app("settings-geo-interval-offline", fontScale = RV_FS200) { GeoIntervalPage(remember { offlineInterval() }, onBack = {}) }
 
     /** The core refuses 除錯: the banner says so, with 重試. */
     @Test fun logLevelRefusedLight() = compose.app("settings-log-level-refused", dark = false, before = { pickDebug() }) { RefusedLogLevel() }
@@ -373,6 +380,8 @@ class SettingsAppEnShotTest {
 
     @Test fun geoInterval() = compose.app("settings-geo-interval-en", dark = false) { GeoIntervalPage(remember { sampleInterval() }, onBack = {}) }
 
+    @Test fun geoIntervalOffline() = compose.app("settings-geo-interval-offline-en", dark = false) { GeoIntervalPage(remember { offlineInterval() }, onBack = {}) }
+
     @Test fun logLevelSample() = compose.sample("settings-log-level-en") { RvLogLevelScreen(RvLogLevel.Info, onSelect = {}, onBack = {}) }
 
     /** The phone's language as the sample fixes it, 繁體中文, so the page is the sample's. */
@@ -453,6 +462,9 @@ private fun sampleHonk() = NativeSettings(SettingsHonk.sample()) { ZoneId.of("UT
 
 /** 自動更新 over [sampleHonk]. */
 private fun sampleInterval() = GeoIntervalViewModel(sampleHonk(), Dispatchers.Unconfined)
+
+/** 自動更新 over a honk that is not running. */
+private fun offlineInterval() = GeoIntervalViewModel(NativeSettings(SettingsHonk()) { ZoneId.of("UTC") }, Dispatchers.Unconfined)
 
 /** The RV sample engine, connected, with the sample's saved per-app policy. */
 private fun settingsEngine(): Engine {
