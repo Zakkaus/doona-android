@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.runtime.Composable
@@ -14,10 +13,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvDots
 import dev.doona.android.designsystem.rv.RvDuckMark
@@ -54,15 +53,7 @@ internal fun RvWelcome(onAdd: () -> Unit) {
                 RvText(stringResource(R.string.rv_welcome_title), Rv.type.largeTitle, Modifier.semantics { heading() })
             }
             Spacer(Modifier.height(RvSpace.subGap))
-            RvText(
-                stringResource(R.string.rv_welcome_line),
-                Rv.type.rowSub,
-                Modifier.padding(horizontal = RvSpace.gutter + RvSpace.rowPadding),
-                color = Rv.colors.textSecondary,
-                align = TextAlign.Center,
-                // It wraps as far as it needs at any font scale, never to an ellipsis.
-                maxLines = Int.MAX_VALUE,
-            )
+            RvCaption(stringResource(R.string.rv_welcome_line), lines = Int.MAX_VALUE)
             Spacer(Modifier.height(RvSpace.actionsToCard))
         }
         RvGutter {
