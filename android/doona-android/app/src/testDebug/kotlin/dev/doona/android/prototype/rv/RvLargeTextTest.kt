@@ -162,7 +162,7 @@ class RvLargeTextTest {
     @Test
     fun rangeChipsFitTheirRow() {
         large { RvTrafficSample(rvSampleActivity(), RvData.session, onBack = {}) }
-        assertOneWholeSize(listOf(R.string.rv_range_1m, R.string.rv_range_5m, R.string.rv_range_10m).map(::rvText))
+        assertOneWholeSize(listOf(R.string.rv_range_1m, R.string.rv_range_5m, R.string.rv_range_15m, R.string.rv_range_1h).map(::rvText))
     }
 
     /** The main node's page's 訂閱 and 排序 chips (B3, X7; ruling q-p3c-mainchips): the same. */

@@ -10,7 +10,7 @@
     <string name="rv_expires">Expires %1$s</string>
     <string name="rv_updated">Updated %1$s</string>
     <string name="rv_peak">Peak %1$s</string>
-    <string name="rv_stat_peak">10-min peak</string>
+    <string name="rv_stat_peak">Peak</string>
     <string name="rv_stat_average">Average</string>
     <string name="rv_now">Now</string>
     <string name="rv_no_traffic">No traffic right now</string>
@@ -22,7 +22,8 @@
     <string name="rv_duration">%1$d h %2$d min</string>
     <string name="rv_range_1m">1 min</string>
     <string name="rv_range_5m">5 min</string>
-    <string name="rv_range_10m">10 min</string>
+    <string name="rv_range_15m">15 min</string>
+    <string name="rv_range_1h">1 h</string>
     <string name="rv_search_nodes">Search nodes</string>
     <string name="rv_stats">Open statistics</string>
     <string name="rv_subscriptions">Subscriptions</string>

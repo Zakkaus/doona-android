@@ -23,7 +23,7 @@ import dev.doona.android.prototype.rv.data.RvSessionSeconds
 
 /**
  * 流量詳情 from the sample, holding the range the page reports: [activity]'s rates, its minute as the live 1 分, and
- * [session]'s seconds ([RvSessionSeconds]) as the 5 分 and 10 分 windows ending at the session's now.
+ * [session]'s seconds ([RvSessionSeconds]) as the 5 分, 15 分 and 1 小時 windows ending at the session's now.
  */
 @Composable
 internal fun RvTrafficSample(activity: RvActivitySampleState, session: RvSession, onBack: () -> Unit, initialScrub: Int? = null) {

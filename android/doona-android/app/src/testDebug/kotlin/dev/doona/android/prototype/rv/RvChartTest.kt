@@ -67,16 +67,16 @@ class RvChartTest {
         compose.mainClock.autoAdvance = false
         compose.mainClock.advanceTimeByFrame()
         val minute = chart()
-        compose.onNodeWithText(rvText(R.string.rv_range_10m)).performClick()
+        compose.onNodeWithText(rvText(R.string.rv_range_1h)).performClick()
         compose.mainClock.advanceTimeBy(RvMotion.FADE_MS / 2L)
         val half = chart()
         compose.mainClock.advanceTimeBy(RvMotion.MOVE_MS * 2L)
-        val tenMinutes = chart()
+        val hour = chart()
         compose.mainClock.advanceTimeByFrame()
         assertFalse("part way it is no longer the minute", half.sameAs(minute))
-        assertFalse("nor yet the 10 minutes", half.sameAs(tenMinutes))
-        assertFalse("the 10 minutes are not the minute", tenMinutes.sameAs(minute))
-        assertTrue("then it rests", chart().sameAs(tenMinutes))
+        assertFalse("nor yet the hour", half.sameAs(hour))
+        assertFalse("the hour is not the minute", hour.sameAs(minute))
+        assertTrue("then it rests", chart().sameAs(hour))
     }
 
     private fun traffic() = compose.setContent {

@@ -8,7 +8,8 @@ internal class TrafficRead(val traffic: RuntimeTraffic?, val history: TrafficHis
 
 /**
  * [range]'s chart of [RV_TRAFFIC_POINTS] points from honk's samples: the samples of the range's last seconds, each chart
- * point averaging as many of them as fit (10 over 10 分), which keeps the window's mean. Null with no sample. A sample honk could not rate counts as 0, as the chart draws no gaps.
+ * point averaging as many of them as fit (10 over 10 分), which keeps the window's mean. honk keeps 600 s, so a longer
+ * range shows those. Null with no sample. A sample honk could not rate counts as 0, as the chart draws no gaps.
  */
 internal fun trafficChart(range: Int, history: TrafficHistory): RvTrafficChart? {
     val end = history.endEpochMs ?: return null
@@ -23,7 +24,7 @@ internal fun trafficChart(range: Int, history: TrafficHistory): RvTrafficChart? 
 private fun List<Long?>.averaged(per: Int): List<Float> = takeLast(size / per * per).chunked(per) { group -> group.map { it ?: 0L }.average().toFloat() }
 
 /**
- * The session's figures at [nowEpochMs]: each way's fastest sample honk keeps (its last 10 minutes), the bytes since its counters started and
+ * The session's figures at [nowEpochMs]: each way's fastest sample honk keeps, the bytes since its counters started and
  * their average over the seconds since then (at least one, so a session that has just started has no infinite rate).
  * Null before honk counts.
  */

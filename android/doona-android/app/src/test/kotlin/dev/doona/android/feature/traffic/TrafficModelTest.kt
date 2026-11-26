@@ -37,8 +37,8 @@ class TrafficModelTest {
     }
 
     @Test
-    fun tenMinutesAveragesTenSamplesAPointOverTheSixHundredSecondsHonkKeeps() {
-        val chart = trafficChart(2, history(600))!!
+    fun aRangeLongerThanHonkKeepsShowsTheSixHundredSecondsItKeeps() {
+        val chart = trafficChart(3, history(600))!!
         assertEquals(RV_TRAFFIC_POINTS, chart.down.size)
         assertEquals(10_000L, chart.stepMs)
         assertEquals(4.5f, chart.down.first())

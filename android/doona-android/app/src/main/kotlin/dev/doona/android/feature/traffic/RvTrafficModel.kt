@@ -2,13 +2,10 @@ package dev.doona.android.feature.traffic
 
 import androidx.compose.runtime.Immutable
 
-/**
- * The ranges under 流量詳情's chart, 1 分, 5 分 and 10 分, by the seconds each spans back from now: honk keeps the last
- * 600 s, so no range reaches past them (owner, 2026-11-26, q-traffic-range).
- */
-internal val RV_TRAFFIC_RANGE_SECONDS = listOf(60, 300, 600)
+/** The ranges under 流量詳情's chart, 1 分, 5 分, 15 分 and 1 小時, by the seconds each spans back from now. */
+internal val RV_TRAFFIC_RANGE_SECONDS = listOf(60, 300, 900, 3_600)
 
-/** Every range's chart has this many points, a second each over 1 分 and ten seconds each over 10 分, so its line keeps one density. */
+/** Every range's chart has this many points, a second each over 1 分 and a minute each over 1 小時, so its line keeps one density. */
 internal const val RV_TRAFFIC_POINTS = 60
 
 /** The range index of 1 分, the live minute. */
@@ -25,9 +22,8 @@ internal data class RvTrafficChart(val range: Int, val down: List<Float>, val up
 }
 
 /**
- * The connection's figures for the Key stats card: each way's fastest second of the last 10 minutes (all honk keeps,
- * labelled so: owner, 2026-11-26, q-peak), each way's average over the session, the bytes each way and how many
- * [seconds] it has run.
+ * The connection's figures for the Key stats card: each way's fastest second and average over the session, the bytes
+ * each way and how many [seconds] it has run.
  */
 @Immutable
 internal data class RvTrafficSession(
