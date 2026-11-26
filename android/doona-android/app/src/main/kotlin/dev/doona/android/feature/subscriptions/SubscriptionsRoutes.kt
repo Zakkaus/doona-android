@@ -65,7 +65,7 @@ fun SubscriptionsRoute(
     val banner = inline.deleteFailed?.let { rvNodeDeleteFailedBanner(it) { nodes.confirmDelete(it.id) } } ?: inline.added?.let { rvAddedBanner(it, onViewGroups) }
     // No 複製分享連結: the core keeps a share link only for a share-link subscription's node, never a 組態內 one.
     CompositionLocalProvider(LocalRvUpdating provides state.updating, LocalRvRowActions provides remember(nodes) { RvRowActions(deleteNode = nodes::delete) }) {
-        RvSubsPage(state.page, actions, loading = state.loading, extra = { RvInlineCard(inline.nodes, inlineActions) }, extraKeepsPage = inline.nodes.isNotEmpty(), banner = banner)
+        RvSubsPage(state.page, actions, loading = state.loading, extra = { RvInlineCard(inline.nodes, inlineActions) }, extraKeepsPage = inline.nodes.isNotEmpty(), banner = banner, addNode = inlineActions.add)
         RvAddNodeSheet(inline.sheet, inlineActions)
         RvNodeDeleteSheet(inline.nodes.firstOrNull { it.id == inline.deletingId }, inlineActions)
     }

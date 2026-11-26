@@ -84,7 +84,8 @@ internal class RvSubsActions(
  * (before the engine is ready) the cards are skeletons of subscription cards ([SubsSkeleton]), and the cards fade in
  * over them in place; the title and the bar's actions are there from the start. [extra] (the 組態內 card) follows the
  * subscription cards once they are loaded; [extraKeepsPage] keeps the page for it when there is no subscription (nodes
- * added by hand), with nothing to update. [banner] (what the last add or node delete did) takes the banner's place first.
+ * added by hand), with nothing to update. [addNode] puts 新增節點 beside the empty state's 新增訂閱, the only way to add a
+ * node before there is one (owner, q-p5d-empty 2026-11-26). [banner] (what the last add or node delete did) takes the banner's place first.
  */
 @Composable
 internal fun RvSubsPage(
@@ -94,6 +95,7 @@ internal fun RvSubsPage(
     extra: (@Composable () -> Unit)? = null,
     extraKeepsPage: Boolean = false,
     banner: RvNotice? = null,
+    addNode: (() -> Unit)? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_subscriptions)
@@ -117,6 +119,8 @@ internal fun RvSubsPage(
                     stringResource(R.string.rv_empty_subscription_line),
                     stringResource(R.string.rv_add_subscription),
                     actions.add,
+                    second = addNode?.let { stringResource(R.string.rv_addnode) },
+                    onSecond = addNode ?: {},
                 )
             } else {
                 RvSkeletonCards(loading, { SubsSkeleton(state.subscriptions) }) {

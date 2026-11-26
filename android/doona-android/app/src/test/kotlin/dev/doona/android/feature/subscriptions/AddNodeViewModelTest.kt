@@ -226,6 +226,19 @@ class AddNodeViewModelTest {
     }
 
     @Test
+    fun anAddThatSucceedsStillCountsTheLinesPastTheCap() = runTest {
+        val vm = model()
+        vm.open()
+        vm.edit((listOf(TOKYO) + List(ADD_NODE_LINES - 1) { "not a link" } + SINGAPORE).joinToString("\n"))
+        vm.add()
+        // The sheet closes, so the banner is what says the line past the cap was never read.
+        val state = vm.uiState.value
+        assertNull(state.sheet)
+        assertEquals(1, state.added?.count)
+        assertEquals(RvSkipped(unread = 1), state.added?.skipped)
+    }
+
+    @Test
     fun anAddsLateResultLeavesASheetOpenedSince() = runTest {
         val engine = engine().apply { addGate = CompletableDeferred() }
         val vm = model(engine)

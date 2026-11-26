@@ -146,7 +146,7 @@ private fun sentences(parts: List<String>): String = parts.joinToString(if (Loca
 @Composable
 internal fun rvAddedBanner(added: RvAddedNodes, onViewGroups: () -> Unit): RvNotice {
     val names = added.groups.map { groupLabel(it) }
-    val skipped = added.skipped.count
+    val skipped = added.skipped.count + added.skipped.unread
     return RvNotice(
         if (skipped == 0) RvNoticeKind.Info else RvNoticeKind.Error,
         if (skipped == 0) {

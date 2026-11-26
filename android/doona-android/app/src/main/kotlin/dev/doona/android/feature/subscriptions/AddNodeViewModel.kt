@@ -101,11 +101,13 @@ internal class AddNodeViewModel(private val engine: Engine, private val clipboar
             val results = engine.addStaticNodes(drafts(lines)).getOrElse { error ->
                 return@launch sheetUpdate { it.copy(adding = false, check = RvAddNodeCheck.Failed(error.errorCode())) }
             }
+            val unread = addNodeUnread(sheet.text)
             val (taken, skipped) = sortRows(lines, results)
-            if (taken.isEmpty()) return@launch sheetUpdate { it.copy(adding = false, check = RvAddNodeCheck.Refused(skipped)) }
-            // The lines the sheet already said it would skip are no news: only rows the preview took and the add refused count.
+            if (taken.isEmpty()) return@launch sheetUpdate { it.copy(adding = false, check = RvAddNodeCheck.Refused(skipped.copy(unread = unread))) }
+            // The lines the sheet already said it would skip are no news: only rows the preview took and the add refused count,
+            // and the lines past the cap, which were never sent: once the sheet closes nothing else says so.
             val known = (sheet.check as? RvAddNodeCheck.Many)?.skipped ?: RvSkipped()
-            val refused = RvSkipped(skipped.notLink - known.notLink.toSet(), skipped.duplicate - known.duplicate.toSet(), skipped.other - known.other.toSet())
+            val refused = RvSkipped(skipped.notLink - known.notLink.toSet(), skipped.duplicate - known.duplicate.toSet(), skipped.other - known.other.toSet(), unread)
             val ids = taken.mapTo(HashSet()) { it.id }
             val catalog = withTimeoutOrNull(CATALOG_MS) { engine.catalog.first { holds(it, ids) } } ?: engine.catalog.value
             val groups = catalog?.let { joinedGroups(it, ids) }.orEmpty()
