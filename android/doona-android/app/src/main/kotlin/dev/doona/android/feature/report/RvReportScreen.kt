@@ -3,7 +3,6 @@ package dev.doona.android.feature.report
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
@@ -13,7 +12,7 @@ import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.Rv
-import dev.doona.android.designsystem.rv.RvBanner
+import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvBusy
 import dev.doona.android.designsystem.rv.RvButtonPair
 import dev.doona.android.designsystem.rv.RvFootnote
@@ -68,7 +67,7 @@ internal fun RvReportScreen(
         RvLargeTitle(title, titleBlock, insets)
         val banner = failure(build, actions.retry) ?: linkFailure(linkFailed && ready, actions.share)
         // The banner stands where the first section title stood, which then keeps its own gap above it.
-        banner?.let { RvBanner(it, Modifier.padding(horizontal = RvSpace.gutter)) }
+        RvBannerSlot(banner, gapBelow = RvSpace.none)
         RvSettingsColumn {
             if (building) {
                 RvSettingsCard {

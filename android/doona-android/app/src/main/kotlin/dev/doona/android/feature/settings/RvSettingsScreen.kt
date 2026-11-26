@@ -28,7 +28,7 @@ import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RV_NAV_SETTINGS
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvAction
-import dev.doona.android.designsystem.rv.RvBanner
+import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvBarSpacer
 import dev.doona.android.designsystem.rv.RvDuckMark
 import dev.doona.android.designsystem.rv.RvFloatingNav
@@ -96,7 +96,8 @@ internal fun RvSettingsScreen(
         Hero(titleBlock, insets, routes, update)
         // The banner stands where the first section title would, which then keeps its own gap above it (as 回報問題's).
         rvUpdateNotice(update, version, routes.release)?.let {
-            RvBanner(it, Modifier.padding(start = RvSpace.gutter, top = RvSpace.sectionAbove, end = RvSpace.gutter))
+            Spacer(Modifier.height(RvSpace.sectionAbove))
+            RvBannerSlot(it, gapBelow = RvSpace.none)
         }
         RvSettingsColumn {
             ConnectionGroup(state, onChange, routes, perAppLoaded)
