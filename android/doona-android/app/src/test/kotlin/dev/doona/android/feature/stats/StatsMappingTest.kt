@@ -86,9 +86,8 @@ class StatsMappingTest {
     }
 
     @Test
-    fun `a Score group's card reads what it chose per network, with no counters`() {
+    fun `a Score group's card reads only what it chose per network`() {
         val score = rvStatsState(input(profile = profile(ActivityHonkFixtures.sample().scoring()))).score!!
-        assertEquals(0L, score.starts + score.trialsOk + score.trialsFailed)
         val group = score.groups.single()
         assertEquals("HK", group.name)
         assertEquals("n-0001938f00000000", group.tcp.selectedId)

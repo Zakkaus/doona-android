@@ -43,9 +43,4 @@
     <plurals name="rv_stats_node_count">
         <item quantity="other">%1$d 个节点</item>
     </plurals>
-    <plurals name="rv_score_trials">
-        <item quantity="other">测试 %1$d 次</item>
-    </plurals>
-    <string name="rv_score_trial_ok">成功</string>
-    <string name="rv_score_trial_failed">失败</string>
 </resources>

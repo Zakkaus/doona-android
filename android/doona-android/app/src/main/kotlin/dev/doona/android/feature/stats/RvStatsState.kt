@@ -77,12 +77,9 @@ internal enum class RvStatsRange(@StringRes val label: Int, @StringRes val quiet
 @Immutable
 internal class RvStatsAgainst(@StringRes val line: Int, @StringRes val up: Int, @StringRes val down: Int)
 
-/**
- * What the Score card reads: the connections the Score groups started ([starts]), the trials run to compare their nodes
- * that succeeded ([trialsOk]) and failed ([trialsFailed]), and each Score group's choice per network.
- */
+/** What the Score card reads: each Score group's choice per network (q-score). */
 @Immutable
-internal class RvStatsScore(val starts: Long, val trialsOk: Long, val trialsFailed: Long, val groups: List<RvStatsScoreGroup>)
+internal class RvStatsScore(val groups: List<RvStatsScoreGroup>)
 
 /**
  * A Score group as the card names it when there are several, what it chose on each network ([tcp], [udp]), and the nodes
