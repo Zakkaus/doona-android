@@ -21,12 +21,9 @@ import dev.doona.android.data.settings.UpdateInterval
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.rvSystemSchemes
 import dev.doona.android.engine.Engine
-import dev.doona.android.feature.activity.RvActivityCards
 import dev.doona.android.feature.activity.RvActivityRoutes
 import dev.doona.android.feature.activity.RvActivityScreen
-import dev.doona.android.feature.activity.RvActivityState
 import dev.doona.android.feature.model.RvAppearance
-import dev.doona.android.feature.model.RvDay
 import dev.doona.android.feature.model.RvThemeMode
 import dev.doona.android.feature.report.AppReportFacts
 import dev.doona.android.feature.report.ReportRoute
@@ -185,20 +182,17 @@ internal class AppLogLevels(private val controller: LogLevelController) : LogLev
     override suspend fun set(level: RvLogLevel): Result<Unit> = controller.set(level)
 }
 
-/**
- * What 主題's 預覽 draws in the app: the RV 活動 page, disconnected and with nothing read, in the chosen scheme. Its
- * sample (the sandbox's) is debug-only data, so the app shows the page empty; none of its taps leads anywhere.
- */
+/** What 主題's 預覽 draws in the app: the RV 活動 page on [ThemePreviewSample], in the chosen scheme; none of its taps leads anywhere. */
 private val APP_THEME_PREVIEW: RvThemePreviewPage = {
     RvActivityScreen(
-        RvActivityState(),
+        ThemePreviewSample.state,
         onAction = {},
         onConnect = {},
         routes = PREVIEW_ROUTES,
-        nodes = emptyList(),
-        subscriptions = emptyList(),
+        nodes = ThemePreviewSample.nodes,
+        subscriptions = ThemePreviewSample.subscriptions,
         rules = emptyList(),
-        cards = PREVIEW_CARDS,
+        cards = ThemePreviewSample.cards,
     )
 }
 
@@ -215,18 +209,6 @@ private val PREVIEW_ROUTES = RvActivityRoutes(
     test = {},
     subscriptions = {},
     more = {},
-)
-
-/** A day with no bytes and no node, as 活動 has before its first read. */
-private val PREVIEW_CARDS = RvActivityCards(
-    today = RvDay(listOf(0L), listOf(0L), null),
-    nowHour = 0f,
-    yesterdayByNow = 0L,
-    nowEpochMs = 0L,
-    ruleCount = 0,
-    mainNodeId = "",
-    node = { null },
-    groupKind = { null },
 )
 
 /** 檢查更新 in the app: GitHub's releases API, asked only when the user taps it. */
