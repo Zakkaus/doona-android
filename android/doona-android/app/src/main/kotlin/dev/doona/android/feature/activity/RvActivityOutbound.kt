@@ -9,7 +9,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
@@ -24,8 +23,6 @@ import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvSeeAll
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
-import dev.doona.android.designsystem.rv.RvText
-import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvRouteMode
@@ -67,14 +64,14 @@ private fun groupGlyph(kind: RvGroupKind?): Int = (kind ?: RvGroupKind.Select).g
 
 /**
  * A rule group that sent traffic today: the node's flag, or for 直連 its own straight arrow (the diamond is the mode's), the
- * group (直連 when the rules send there themselves, then with no subtitle: [ruleRowText]), its node, its bytes; a tap
- * opens the group, or the rules for 直連. A group whose UDP uses another node (a sample) names both, a line each, each
- * after its network (`TCP Taipei 04`, `UDP Hong Kong 01`); when the two are in different places no one flag stands for
- * them, and the group's glyph (how it picks, as 策略 draws the group) leads the row ([ruleLead]).
+ * group (直連 when the rules send there themselves, then with no subtitle: [ruleRowText]) and its node, with no bytes
+ * (honk counts none per rule: owner, 2026-11-26, q-rule-bytes); a tap opens the group, or the rules for 直連. A group whose
+ * UDP uses another node (a sample) names both, a line each, each after its network (`TCP Taipei 04`, `UDP Hong Kong 01`);
+ * when the two are in different places no one flag stands for them, and the group's glyph (how it picks, as 策略 draws
+ * the group) leads the row ([ruleLead]).
  */
 @Composable
 private fun RuleRow(rule: RvActivityRule, cards: RvActivityCards, routes: RvActivityRoutes) {
-    val format = rememberRvFormat()
     val node = rule.nodeId?.let(cards.node)
     val udp = rule.udpNodeId?.takeIf { it != rule.nodeId }?.let(cards.node)
     val direct = stringResource(R.string.mode_direct)
@@ -100,7 +97,7 @@ private fun RuleRow(rule: RvActivityRule, cards: RvActivityCards, routes: RvActi
         onClick = { rule.groupId?.let(routes.rule) ?: routes.rules() },
         titleKeepWords = false,
         subtitleKeepWords = false,
-    ) { RvText(format.bytes(rule.bytes).toString(), Rv.type.rowValue, align = TextAlign.End) }
+    )
 }
 
 /** The outbound card lists two rule groups after the main node. */
