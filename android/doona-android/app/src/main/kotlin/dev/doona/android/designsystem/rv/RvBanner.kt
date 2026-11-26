@@ -111,21 +111,22 @@ internal fun RvEmptyState(
     line: String,
     add: String,
     onAdd: () -> Unit,
-    modifier: Modifier = Modifier,
-    second: String? = null,
-    onSecond: () -> Unit = {},
+    second: RvAddEntry? = null,
 ) {
-    Column(modifier.fillMaxWidth().padding(vertical = RvSpace.chartGap), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(Modifier.fillMaxWidth().padding(vertical = RvSpace.chartGap), horizontalAlignment = Alignment.CenterHorizontally) {
         RvText(title, Rv.type.rowTitle, align = TextAlign.Center, maxLines = BANNER_TITLE_LINES)
         Spacer(Modifier.height(RvSpace.emptyLine))
         RvText(line, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.Center, maxLines = BANNER_REASON_LINES)
         Spacer(Modifier.height(RvSpace.chartGap))
         RvCard {
-            RvAddRow(add, onAdd, afterRemoves = false)
-            if (second != null) RvAddRow(second, onSecond, afterRemoves = false)
+            RvAddRow(add, onAdd)
+            second?.let { RvAddRow(it.label, it.onClick) }
         }
     }
 }
+
+/** A second 新增 X row of [RvEmptyState]'s card: its [label], and what a tap opens. */
+internal class RvAddEntry(val label: String, val onClick: () -> Unit)
 
 /**
  * An empty state inside a card (連線 with the tunnel off, a search that matches nothing), as Revolut's tile with no data

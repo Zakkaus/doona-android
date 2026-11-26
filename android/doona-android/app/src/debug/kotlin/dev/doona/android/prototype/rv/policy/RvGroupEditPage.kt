@@ -11,7 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -24,15 +23,12 @@ import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvChevron
 import dev.doona.android.designsystem.rv.RvConfirmSheet
 import dev.doona.android.designsystem.rv.RvFlag
-import dev.doona.android.designsystem.rv.RvGlassButton
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvRadio
-import dev.doona.android.designsystem.rv.RvRemovableLeading
-import dev.doona.android.designsystem.rv.RvRemoveStyle
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvRowRemove
 import dev.doona.android.designsystem.rv.RvScrollPage
@@ -86,20 +82,16 @@ internal data class RvGroupDraft(
  * A honk group's editor (config-plan row 17), in the rule editor's grammar: the large title; the authored name; the
  * policy, any of honk's five, as the 送往 card's radio rows; the members in group order (nodes, nested groups, and
  * `direct` or `block` as honk writes them), each removable, with 新增成員 at the card's end; and `default`, `final` and
- * `exit`, each a row that opens its picker. [removeStyle] is the owner's open question: A puts the remove discs in edit
- * mode, which the bar's pencil turns on and 完成 ends; B shows a remove control at every member's end.
+ * `exit`, each a row that opens its picker. Every member ends with the remove control.
  *
- * With [create] the page is 新增群組 (the groups list's add row): every member is new, so the discs and 新增成員 show
- * without the pencil, and the bottom 新增 is enabled once the group has a name nobody else uses and one member.
+ * With [create] the page is 新增群組 (the groups list's add row): every member is new, so a removed one goes at once
+ * with no sheet, and the bottom 新增 is enabled once the group has a name nobody else uses and one member.
  * [nameError] is the name field's error; a [banner] (a group the phone could not stage) heads the sections.
  */
 @Composable
 internal fun RvGroupEditPage(
     draft: RvGroupDraft,
-    removeStyle: RvRemoveStyle,
-    editing: Boolean,
     onChange: (RvGroupDraft) -> Unit,
-    onEdit: (Boolean) -> Unit,
     onBack: () -> Unit,
     removing: RvMemberRef? = null,
     onRemoving: (RvMemberRef?) -> Unit = {},
@@ -109,24 +101,19 @@ internal fun RvGroupEditPage(
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(if (create) R.string.rv_group_new else R.string.rv_group_edit_title)
-    val editLabel = stringResource(R.string.rv_rule_menu_edit)
-    val inEdit = removeStyle == RvRemoveStyle.Editing && (editing || create)
     RvScrollPage(
         title,
         insets,
         onBack = onBack,
-        actions = if (removeStyle == RvRemoveStyle.Editing && !inEdit) ({ glass -> RvGlassButton(glass, R.drawable.rv_sym_edit, editLabel) { onEdit(true) } }) else null,
         bottomAction = {
-            when {
-                create -> RvPrimaryButton(
+            if (create) {
+                RvPrimaryButton(
                     stringResource(R.string.rv_list_create),
                     NOT_WIRED,
                     enabled = draft.name.isNotBlank() && nameError == null && draft.members.isNotEmpty(),
                 )
-
-                inEdit -> RvPrimaryButton(stringResource(R.string.rv_rules_done), { onEdit(false) })
-
-                else -> RvPrimaryButton(stringResource(R.string.rv_policy_apply), NOT_WIRED)
+            } else {
+                RvPrimaryButton(stringResource(R.string.rv_policy_apply), NOT_WIRED)
             }
         },
     ) { titleBlock ->
@@ -139,13 +126,12 @@ internal fun RvGroupEditPage(
         RvSectionTitle(stringResource(R.string.rv_group_edit_members), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {
             RvCard {
-                val shown = removeStyle == RvRemoveStyle.Trailing || inEdit
                 draft.members.forEach { member ->
                     // A member of a group being created was added on this page: it goes at once, with no sheet.
                     val remove = { if (create) onChange(draft.copy(members = draft.members - member)) else onRemoving(member) }
-                    MemberRow(member, if (shown) RvRowRemove(removeStyle, remove) else null)
+                    MemberRow(member, RvRowRemove(remove))
                 }
-                if (shown) RvAddRow(stringResource(R.string.rv_group_edit_add_member), NOT_WIRED)
+                RvAddRow(stringResource(R.string.rv_group_edit_add_member), NOT_WIRED)
             }
         }
         RvSectionTitle(stringResource(R.string.rv_group_edit_options), Modifier.padding(horizontal = RvSpace.gutter))
@@ -179,7 +165,7 @@ private fun PolicyCard(policy: RvHonkPolicy, onPolicy: (RvHonkPolicy) -> Unit) {
 
 /** One member: a node by its flag, a group by its policy's glyph and label, 直連 and 拒絕 by theirs. */
 @Composable
-private fun MemberRow(member: RvMemberRef, remove: RvRowRemove?) {
+private fun MemberRow(member: RvMemberRef, remove: RvRowRemove) {
     val name = memberName(member)
     val label = stringResource(R.string.rv_member_remove, name)
     val subtitle = when (member) {
@@ -188,7 +174,7 @@ private fun MemberRow(member: RvMemberRef, remove: RvRowRemove?) {
         else -> null
     }
     RvRow(
-        { RvRemovableLeading(remove, label) { MemberMark(member) } },
+        { MemberMark(member) },
         name,
         subtitle,
         titleKeepWords = false,
@@ -232,6 +218,5 @@ private fun OptionsCard(draft: RvGroupDraft) {
 private fun RvGroupEditPagePreview() {
     val dark = isSystemInDarkTheme()
     var draft by remember { mutableStateOf(RvNativeSample.overseas) }
-    var editing by rememberSaveable { mutableStateOf(true) }
-    RvTheme(rvSystemScheme(dark), dark) { RvGroupEditPage(draft, RvRemoveStyle.Editing, editing, { draft = it }, { editing = it }, onBack = {}) }
+    RvTheme(rvSystemScheme(dark), dark) { RvGroupEditPage(draft, { draft = it }, onBack = {}) }
 }

@@ -49,7 +49,6 @@ import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.text
-import dev.doona.android.feature.policies.RvTargetCard
 import dev.doona.android.feature.policies.title
 
 /**

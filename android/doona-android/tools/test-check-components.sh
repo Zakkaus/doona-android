@@ -45,6 +45,8 @@ plant click 'Box(Modifier.selectable(true, onClick = { }))'
 # A page-built add row (the 策略 page's 新增規則 before RvAddRow): the add glyph in the page's own disc or glyph.
 plant add 'RvRow({ RvIconDisc(R.drawable.rv_sym_add) }, stringResource(R.string.rv_policy_new_rule), null, onClick = {}) { RvChevron() }'
 plant add 'RvGlyph(R.drawable.rv_sym_add, RvSize.removeGlyph, Rv.colors.card)'
+# An action row that borrows the add glyph (導入設定 before its own glyph).
+plant add 'RvSettingsNavRow("import", R.drawable.rv_sym_add, {})'
 # A `//` inside a string literal starts no comment, so what follows the string is still read.
 plant widget 'val note = "see https://doona.dev // the site"; Text("a raw Text")'
 plant dp "val quote = '\"'; Box(Modifier.padding(13.dp))"

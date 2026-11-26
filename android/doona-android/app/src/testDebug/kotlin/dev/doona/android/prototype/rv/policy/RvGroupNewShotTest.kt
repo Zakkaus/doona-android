@@ -16,7 +16,6 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvEditPart
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
-import dev.doona.android.designsystem.rv.RvRemoveStyle
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.prototype.rv.RV_FS200
@@ -130,10 +129,7 @@ class RvGroupNewShotTest {
         }
         RvGroupEditPage(
             draft,
-            RvRemoveStyle.Editing,
-            editing = false,
             onChange = onChange ?: { local = it },
-            onEdit = {},
             onBack = {},
             create = true,
             nameError = if (taken) stringResource(R.string.rv_group_name_taken) else null,

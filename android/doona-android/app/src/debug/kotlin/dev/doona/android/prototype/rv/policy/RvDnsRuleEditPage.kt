@@ -28,7 +28,6 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvInkStart
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RvDnsServer
-import dev.doona.android.feature.policies.RvDnsServerCard
 
 /** The two DNS lists of honk's `dns.routing` (schema 4 §8): `request` (查詢) and `response` (回應). */
 internal enum class RvDnsList { Query, Response }

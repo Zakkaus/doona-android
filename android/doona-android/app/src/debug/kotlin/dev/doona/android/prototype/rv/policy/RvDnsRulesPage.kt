@@ -15,7 +15,6 @@ import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RV_ROW_TITLE_LINES
-import dev.doona.android.designsystem.rv.RvAddRow
 import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
@@ -26,10 +25,10 @@ import dev.doona.android.designsystem.rv.RvListEdit
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvPrimaryButton
-import dev.doona.android.designsystem.rv.RvRemoveStyle
 import dev.doona.android.designsystem.rv.RvRowRemove
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSectionTitle
+import dev.doona.android.designsystem.rv.RvSettingsAddRow
 import dev.doona.android.designsystem.rv.RvSettingsNavRow
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.SEPARATOR
@@ -50,8 +49,8 @@ internal data class RvDnsLists(val query: List<RvDnsRow>, val response: List<RvD
  * as its own section in file order, how they are tried under the title. A row is the statement's match in honk text
  * (what the user finds in dns.dae), over its action and the server it names, after its action's glyph; a paused one
  * says so. The last row is the list's fallback (其餘查詢, 其餘回應), which stays. A tap opens the statement's page
- * ([RvDnsRuleEditPage]). With [edit] (style A of the owner's add/remove question) the bar holds 編輯; in edit mode each
- * statement starts with the remove disc (the fallback keeps its place empty), 新增規則 ends each card and 完成 floats.
+ * ([RvDnsRuleEditPage]). With [edit] each statement ends with the remove control (the fallback keeps its place empty)
+ * and 新增規則 ends each card.
  * A [banner] (a removal the phone could not stage) heads the sections.
  */
 @Composable
@@ -65,19 +64,16 @@ internal fun RvDnsRulesPage(
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_dns_rules_title)
-    val editing = edit?.takeIf { it.editing }
     var deleting by rememberSaveable { mutableStateOf<Pair<RvDnsList, Int>?>(null) }
     RvScrollPage(
         title,
         insets,
         onBack = onBack,
-        actions = edit?.takeIf { !it.editing }?.let { { glass -> RvGlassButton(glass, R.drawable.rv_sym_edit, stringResource(R.string.rv_rule_menu_edit)) { it.onEdit(true) } } },
-        bottomAction = editing?.let { { RvPrimaryButton(stringResource(R.string.rv_rules_done), { it.onEdit(false) }) } },
     ) { titleBlock ->
         RvPageHeader(title, titleBlock, insets, caption = { RvCaption(stringResource(R.string.rv_policy_rules_order)) })
         RvBannerSlot(banner, RvSpace.none)
-        DnsSection(RvDnsList.Query, lists.query, first = banner == null, editing, onOpen, { onAdd(RvDnsList.Query) }) { deleting = RvDnsList.Query to it }
-        DnsSection(RvDnsList.Response, lists.response, first = false, editing, onOpen, { onAdd(RvDnsList.Response) }) { deleting = RvDnsList.Response to it }
+        DnsSection(RvDnsList.Query, lists.query, first = banner == null, edit, onOpen, { onAdd(RvDnsList.Query) }) { deleting = RvDnsList.Query to it }
+        DnsSection(RvDnsList.Response, lists.response, first = false, edit, onOpen, { onAdd(RvDnsList.Response) }) { deleting = RvDnsList.Response to it }
     }
     val target = deleting?.let { (list, i) -> (if (list == RvDnsList.Query) lists.query else lists.response).getOrNull(i) }
     RvConfirmSheet(
@@ -95,7 +91,7 @@ internal fun RvDnsRulesPage(
     )
 }
 
-/** One DNS list under its title: its statements, the fallback last; in edit mode the discs and 新增規則. */
+/** One DNS list under its title: its statements, the fallback last; in an editable list the remove controls and 新增規則. */
 @Composable
 private fun DnsSection(
     list: RvDnsList,
@@ -112,7 +108,7 @@ private fun DnsSection(
         RvCard {
             rows.forEachIndexed { i, row ->
                 val title = row.source ?: stringResource(if (list == RvDnsList.Query) R.string.rv_dns_rest_query else R.string.rv_dns_rest_response)
-                val remove = editing?.let { RvRowRemove(RvRemoveStyle.Editing, if (row.source == null) null else ({ onRemove(i) })) }
+                val remove = editing?.let { RvRowRemove(if (row.source == null) null else ({ onRemove(i) })) }
                 RvSettingsNavRow(
                     title,
                     row.action.glyph,
@@ -126,7 +122,7 @@ private fun DnsSection(
                     removeLabel = stringResource(R.string.rv_list_remove, title),
                 )
             }
-            if (editing != null) RvAddRow(stringResource(R.string.rv_policy_new_rule), onAdd)
+            if (editing != null) RvSettingsAddRow(stringResource(R.string.rv_policy_new_rule), onAdd, disc = true)
         }
     }
 }

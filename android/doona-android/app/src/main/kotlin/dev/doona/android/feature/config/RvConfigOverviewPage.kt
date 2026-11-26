@@ -14,22 +14,19 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
-import dev.doona.android.designsystem.rv.RvAddRow
 import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvConfirmSheet
-import dev.doona.android.designsystem.rv.RvGlassButton
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvListEdit
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPageHeader
-import dev.doona.android.designsystem.rv.RvPrimaryButton
-import dev.doona.android.designsystem.rv.RvRemoveStyle
 import dev.doona.android.designsystem.rv.RvRowRemove
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSectionTitle
 import dev.doona.android.designsystem.rv.RvSeeAll
+import dev.doona.android.designsystem.rv.RvSettingsAddRow
 import dev.doona.android.designsystem.rv.RvSettingsNavRow
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
@@ -42,9 +39,8 @@ import dev.doona.android.designsystem.rv.rvConfigLine
  * the large title over the applied revision; 檔案, the entry and each include as a plain navigation row naming the file
  * that includes it, its lines and what was skipped in it; 內容, the summary's counts, ending in 檢視生效設定 (the running
  * projection); 相容性, the skipped and partly applied records with the way into their list; 版本, history and import.
- * With [edit] (the owner's add/remove question, style A) the bar holds 編輯: in edit mode each include starts with the
- * remove disc (the entry keeps its place empty: it cannot go), 新增檔案 ends the files' card, and 完成 floats; a removal
- * or a new file is a draft, shown as its change before it applies. [addFile] is the new file's sheet while it is open;
+ * With [edit] each include ends with the remove control (the entry keeps its place empty: it cannot go) and 新增檔案
+ * ends the files' card; a removal or a new file is a draft, shown as its change before it applies. [addFile] is the new file's sheet while it is open;
  * a [banner] (a removal the phone could not stage) heads the sections.
  * Without [edit] the page is the approved one.
  */
@@ -64,25 +60,18 @@ internal fun RvConfigOverviewPage(
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_config_title)
     val applied = rvConfigWhen(state.appliedAtEpochMs, state.nowEpochMs)
-    val editing = edit?.takeIf { it.editing }
-    RvScrollPage(
-        title,
-        insets,
-        onBack = onBack,
-        actions = edit?.takeIf { !it.editing }?.let { { glass -> RvGlassButton(glass, R.drawable.rv_sym_edit, stringResource(R.string.rv_rule_menu_edit)) { it.onEdit(true) } } },
-        bottomAction = editing?.let { { RvPrimaryButton(stringResource(R.string.rv_rules_done), { it.onEdit(false) }) } },
-    ) { titleBlock ->
+    RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         RvPageHeader(title, titleBlock, insets, caption = { RvCaption(stringResource(R.string.rv_config_applied, state.rev, applied)) })
         // A refused edit's [banner] heads the sections; the files' title then keeps its gap above.
         RvBannerSlot(banner, RvSpace.none)
         RvSectionTitle(stringResource(R.string.rv_config_files), Modifier.padding(horizontal = RvSpace.gutter), first = banner == null)
-        RvGutter { FilesCard(state, onFile, editing) }
+        RvGutter { FilesCard(state, onFile, edit) }
         RvConfigSection(R.string.rv_config_contents) { ContentsCard(state.summary, onEffective) }
         RvConfigSection(R.string.rv_config_compat) { CompatCard(state, onSkipped) }
         RvConfigSection(R.string.rv_settings_version) {
             RvCard {
                 RvSettingsNavRow(stringResource(R.string.rv_config_history), R.drawable.rv_sym_schedule, onHistory)
-                RvSettingsNavRow(stringResource(R.string.rv_config_import), R.drawable.rv_sym_add, onImport)
+                RvSettingsNavRow(stringResource(R.string.rv_config_import), R.drawable.rv_sym_download, onImport)
             }
         }
     }
@@ -97,16 +86,16 @@ internal fun RvConfigSection(title: Int, content: @Composable () -> Unit) {
 }
 
 /**
- * Each file of the tree: the entry first, then each include under the file that names it, as they load. In edit mode
- * ([editing]) an include starts with the remove disc, whose sheet says which line goes with it and which files it
- * includes go too; the entry keeps the disc's place empty; 新增檔案 ends the card.
+ * Each file of the tree: the entry first, then each include under the file that names it, as they load. In an editable
+ * list ([editing]) an include ends with the remove control, whose sheet says which line goes with it and which files it
+ * includes go too; the entry keeps the control's place empty; 新增檔案 ends the card.
  */
 @Composable
 private fun FilesCard(state: RvConfigState, onFile: (String) -> Unit, editing: RvListEdit?) {
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     RvCard {
         state.files.forEach { file ->
-            val remove = editing?.let { RvRowRemove(RvRemoveStyle.Editing, if (file.parent == null) null else ({ deleting = file.path })) }
+            val remove = editing?.let { RvRowRemove(if (file.parent == null) null else ({ deleting = file.path })) }
             val origin = file.parent?.let { stringResource(R.string.rv_config_included_by, it) } ?: stringResource(R.string.rv_config_entry)
             val skipped = state.skippedIn(file.path)
             val parts = listOfNotNull(
@@ -124,7 +113,7 @@ private fun FilesCard(state: RvConfigState, onFile: (String) -> Unit, editing: R
                 removeLabel = stringResource(R.string.rv_list_remove, file.path),
             )
         }
-        if (editing != null) RvAddRow(stringResource(R.string.rv_config_file_new), editing.onAdd)
+        if (editing != null) RvSettingsAddRow(stringResource(R.string.rv_config_file_new), editing.onAdd, disc = false)
     }
     val target = deleting?.let { path -> state.files.firstOrNull { it.path == path } }
     val nested = target?.let { state.includedUnder(it.path) }.orEmpty().joinToString(stringResource(R.string.rv_effective_list_separator))
@@ -146,12 +135,12 @@ private fun FilesCard(state: RvConfigState, onFile: (String) -> Unit, editing: R
 }
 
 /**
- * The new file's sheet (style A's 新增檔案): its [path] relative to the entry, which gets the line that includes it.
+ * The new file's sheet (新增檔案): its [path] relative to the entry, which gets the line that includes it.
  * [onPath] types into it and with null closes it; [onCreate] takes a path that is relative, names a `.dae` file and is
  * not in the tree yet.
  */
 @Immutable
-internal class RvConfigAddFile(val path: String, val onPath: (String?) -> Unit = {}, val onCreate: (String) -> Unit = {})
+internal class RvConfigAddFile(val path: String, val onPath: (String?) -> Unit, val onCreate: (String) -> Unit)
 
 @Composable
 private fun AddFileSheet(state: RvConfigState, add: RvConfigAddFile?) {

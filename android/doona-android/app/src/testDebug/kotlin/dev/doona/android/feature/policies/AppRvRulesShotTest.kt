@@ -210,7 +210,7 @@ class AppRvRulesShotTest {
 
         /** Windows as tall as each page whole; measured by assertWhole. */
         const val WHOLE = "+h1730dp"
-        const val WHOLE_FS200 = "+h2431dp"
+        const val WHOLE_FS200 = "+h2428dp"
         const val WHOLE_EN = "en-w412dp-h1754dp-notnight-xhdpi"
         const val WHOLE_LONG = "+h1889dp"
         const val WHOLE_REREAD = "+h1900dp"

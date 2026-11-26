@@ -20,6 +20,7 @@ import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.LocalRvUpdating
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvAddEntry
 import dev.doona.android.designsystem.rv.RvAddRow
 import dev.doona.android.designsystem.rv.RvBusy
 import dev.doona.android.designsystem.rv.RvCard
@@ -37,8 +38,6 @@ import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvProgress
-import dev.doona.android.designsystem.rv.RvRemovableLeading
-import dev.doona.android.designsystem.rv.RvRemoveStyle
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvRowRemove
 import dev.doona.android.designsystem.rv.RvScrollPage
@@ -52,14 +51,14 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvFirstNotice
+import dev.doona.android.designsystem.rv.rvRemoveTrailing
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.rvReasonLine
 
 /**
  * What the subscriptions page shows: the subscriptions, now (for their end dates), the one whose last update failed, the
- * one asked to delete, and the one the core would not delete, each failure with the core's code for why, and whether
- * the list is in edit mode.
+ * one asked to delete, and the one the core would not delete, each failure with the core's code for why.
  */
 @Immutable
 internal data class RvSubsState(
@@ -68,7 +67,6 @@ internal data class RvSubsState(
     val failed: RvSubFailure? = null,
     val deletingId: String? = null,
     val deleteFailed: RvSubFailure? = null,
-    val editing: Boolean = false,
 )
 
 /** A subscription [id] the core refused an action on, with its [code] for why. */
@@ -76,8 +74,7 @@ internal data class RvSubsState(
 internal data class RvSubFailure(val id: String, val code: ErrorCode)
 
 /**
- * Where the subscriptions page leads: back, a subscription's page, the add page; and what it asks for. With [edit] the
- * bar offers 編輯, the owner's open add/remove question in style A: edit mode puts a remove disc on each subscription.
+ * Where the subscriptions page leads: back, a subscription's page, the add page; and what it asks for.
  */
 internal class RvSubsActions(
     val back: () -> Unit = {},
@@ -87,7 +84,6 @@ internal class RvSubsActions(
     val updateAll: () -> Unit = {},
     val delete: (String?) -> Unit = {},
     val confirmDelete: (String) -> Unit = {},
-    val edit: ((Boolean) -> Unit)? = null,
 )
 
 /**
@@ -95,16 +91,15 @@ internal class RvSubsActions(
  * with 重試; a failed delete, the latest thing the user asked for, takes the place.
  * Each subscription is a card: its row (name, node count and last update, chevron to its page), then what it has used
  * of its quota and when it ends over the progress bar. A long press on a card opens 更新, 編輯 and 刪除; 刪除 asks in
- * the confirm sheet. With no subscription there is nothing to update: the bar's 更新所有訂閱 and the cards give way to
- * the empty state, which carries 新增訂閱. While [loading]
+ * the confirm sheet. 新增訂閱 floats at the bottom. With no subscription there is nothing to update or to float over: the
+ * bar's 更新所有訂閱 and the floating 新增訂閱 give way to the empty state, which carries the one 新增訂閱. While [loading]
  * (before the engine is ready) the cards are skeletons of subscription cards ([SubsSkeleton]), and the cards fade in
- * over them in place; the title and the bar's actions are there from the start. 新增訂閱 follows the cards as its own
- * card's add row ([RvAddRow]). [extra] (the 組態內 card) follows it once the cards are loaded; [extraKeepsPage] keeps the
- * page for it when there is no subscription (nodes added by hand), with nothing to update. [addNode] puts 新增節點 under
- * the empty state's 新增訂閱, the only way to add a node before there is one (owner, q-p5d-empty 2026-11-26). [banner]
- * (what the last add or node delete did) takes the banner's place first. In edit mode ([RvSubsState.editing]) each
- * subscription's row starts with the remove disc, which asks in the same sheet, the add row's disc stands in its place,
- * and 完成 floats at the bottom.
+ * over them in place; the title and the bar's actions are there from the start. [extra] (the 組態內 card) follows the
+ * subscription cards once they are loaded; [extraKeepsPage] keeps the page for it when there is no subscription (nodes
+ * added by hand), with nothing to update. [addNode] puts 新增節點 beside the empty state's 新增訂閱, the only way to add a
+ * node before there is one (owner, q-p5d-empty 2026-11-26). [banner] (what the last add or node delete did) takes the banner's place first.
+ * With [removable] each subscription's row ends with the remove control, which asks in the same sheet, and 新增訂閱
+ * ends the list as a row.
  */
 @Composable
 internal fun RvSubsPage(
@@ -115,20 +110,17 @@ internal fun RvSubsPage(
     extraKeepsPage: Boolean = false,
     banner: RvNotice? = null,
     addNode: (() -> Unit)? = null,
+    removable: Boolean = false,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_subscriptions)
     val empty = !loading && state.subscriptions.isEmpty() && !extraKeepsPage
-    val editing = state.editing && !empty
-    val updateAll: (@Composable (RvGlass) -> Unit)? = if (empty || editing || state.subscriptions.isEmpty()) {
+    val updateAll: (@Composable (RvGlass) -> Unit)? = if (empty || state.subscriptions.isEmpty()) {
         null
     } else {
-        { glass ->
-            RvGlassButton(glass, R.drawable.rv_stats_ic_sync, stringResource(R.string.rv_stats_update_all), actions.updateAll)
-            actions.edit?.let { RvGlassButton(glass, R.drawable.rv_sym_edit, stringResource(R.string.rv_rule_menu_edit)) { it(true) } }
-        }
+        { glass -> RvGlassButton(glass, R.drawable.rv_stats_ic_sync, stringResource(R.string.rv_stats_update_all), actions.updateAll) }
     }
-    val done: (@Composable () -> Unit)? = if (editing) ({ RvPrimaryButton(stringResource(R.string.rv_rules_done), { actions.edit?.invoke(false) }) }) else null
+    val add: (@Composable () -> Unit)? = if (empty) null else ({ RvPrimaryButton(stringResource(R.string.rv_add_subscription), actions.add) })
     // A failed update's banner waits for the cards: while they load it is not known yet.
     val failed = if (loading) {
         null
@@ -136,7 +128,7 @@ internal fun RvSubsPage(
         state.deleteFailed?.let { f -> state.subscriptions.firstOrNull { it.id == f.id }?.let { rvDeleteFailedBanner(it, f.code) { actions.confirmDelete(it.id) } } }
             ?: state.failed?.let { f -> state.subscriptions.firstOrNull { it.id == f.id }?.let { rvFailedBanner(it, f.code) { actions.update(it.id) } } }
     }
-    RvScrollPage(title, insets, onBack = actions.back, actions = updateAll, bottomAction = done) { titleBlock ->
+    RvScrollPage(title, insets, onBack = actions.back, actions = updateAll, bottomAction = add) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         RvGutter(banner = rvFirstNotice(failed, banner.takeUnless { loading })) {
             if (empty) {
@@ -145,16 +137,15 @@ internal fun RvSubsPage(
                     stringResource(R.string.rv_empty_subscription_line),
                     stringResource(R.string.rv_add_subscription),
                     actions.add,
-                    second = addNode?.let { stringResource(R.string.rv_addnode) },
-                    onSecond = addNode ?: {},
+                    second = addNode?.let { RvAddEntry(stringResource(R.string.rv_addnode), it) },
                 )
             } else {
                 RvSkeletonCards(loading, { SubsSkeleton(state.subscriptions) }) {
                     state.subscriptions.forEach { sub ->
-                        SubscriptionCard(sub, actions, state.nowEpochMs, if (editing) RvRowRemove(RvRemoveStyle.Editing) { actions.delete(sub.id) } else null)
+                        SubscriptionCard(sub, actions, state.nowEpochMs, if (removable) RvRowRemove { actions.delete(sub.id) } else null)
                     }
+                    if (removable) RvCard { RvAddRow(stringResource(R.string.rv_add_subscription), actions.add) }
                 }
-                RvCard { RvAddRow(stringResource(R.string.rv_add_subscription), actions.add, afterRemoves = editing) }
                 if (!loading) extra?.invoke()
             }
         }
@@ -210,7 +201,7 @@ internal fun rvAgentFailedBanner(code: ErrorCode, onRetry: () -> Unit) = RvNotic
 
 /**
  * A subscription: its row, with a busy bar before the chevron while it updates ([LocalRvUpdating], as the node picker's
- * row), then its use; with [remove] the row starts with the remove disc.
+ * row), then its use; with [remove] the remove control stands in the chevron's place.
  */
 @Composable
 private fun SubscriptionCard(sub: RvSubscription, actions: RvSubsActions, nowEpochMs: Long, remove: RvRowRemove?) {
@@ -220,20 +211,22 @@ private fun SubscriptionCard(sub: RvSubscription, actions: RvSubsActions, nowEpo
         RvLongPressMenu(menu, onClick = { actions.open(sub.id) }) { press ->
             Column(press) {
                 val removeLabel = stringResource(R.string.rv_list_remove, sub.name)
-                RvRow({ RvRemovableLeading(remove, removeLabel) { RvIconDisc(R.drawable.rv_sym_rss_feed) } }, sub.name, rvNodesUpdated(sub), titleKeepWords = false) {
-                    if (updating) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            RvBusy(Modifier.width(RvSize.busy))
-                            Spacer(Modifier.width(RvSpace.trailingGap))
-                            RvChevron()
-                        }
-                    } else {
-                        RvChevron()
-                    }
-                }
+                val trailing = rvRemoveTrailing(remove, removeLabel) ?: { SubscriptionEnd(updating) }
+                RvRow({ RvIconDisc(R.drawable.rv_sym_rss_feed) }, sub.name, rvNodesUpdated(sub), titleKeepWords = false, trailing = trailing)
                 Usage(sub, nowEpochMs)
             }
         }
+    }
+}
+
+/** A subscription row's end: the chevron, after a busy bar while it updates. */
+@Composable
+private fun SubscriptionEnd(updating: Boolean) {
+    if (!updating) return RvChevron()
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        RvBusy(Modifier.width(RvSize.busy))
+        Spacer(Modifier.width(RvSpace.trailingGap))
+        RvChevron()
     }
 }
 

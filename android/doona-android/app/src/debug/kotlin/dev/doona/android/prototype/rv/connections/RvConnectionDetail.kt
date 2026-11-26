@@ -74,7 +74,7 @@ internal fun RvConnectionDetail(
         RvSectionTitle(stringResource(R.string.rv_conn_path), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {
             PathCard(connection)
-            RvCard { RvAddRow(stringResource(R.string.rv_policy_new_rule), onNewRule, afterRemoves = false) }
+            RvCard { RvAddRow(stringResource(R.string.rv_policy_new_rule), onNewRule) }
             RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_close, Rv.colors.error) }, stringResource(R.string.rv_conn_close), null, onClick = onClose) }
         }
     }

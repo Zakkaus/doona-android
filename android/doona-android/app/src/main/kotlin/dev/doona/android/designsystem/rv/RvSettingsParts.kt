@@ -131,7 +131,7 @@ internal fun RvSettingsRow(
 /** A settings row's title and subtitle, whether each holds its words ([RvSettingsRow]'s keepWords), and its exception to R14. */
 private class SettingsRowWords(val title: String, val subtitle: String?, val titleKeepWords: Boolean, val subtitleKeepWords: Boolean, val subtitleLines: Int, val titleWhole: RvWhole?, val subtitleWhole: RvWhole?)
 
-/** A settings row's remove control in edit mode, its leading disc, and its trailing [action] or [trailing] control ([RvSettingsRow]). */
+/** A settings row's leading disc, its trailing [action], and its remove control or else its [trailing] control ([RvSettingsRow]). */
 private class SettingsRowEnds(
     @DrawableRes val icon: Int?,
     val action: (@Composable () -> Unit)?,
@@ -151,8 +151,6 @@ private fun rowText(words: SettingsRowWords, code: Boolean, titleLines: Int, err
     val line = maxOf(RvSize.rowOneLine - RvSpace.rowTextInset * 2, rvOneLine(title, Rv.type.rowTitle, lineBox = !code))
     val top = words.subtitle != null
     return {
-        // Style A's edit mode: the remove disc on the title's first line, before the disc or the text.
-        ends.remove?.takeIf { it.style == RvRemoveStyle.Editing }?.let { Row(Modifier.height(line), verticalAlignment = Alignment.CenterVertically) { RvRemoveStart(it, ends.removeLabel) } }
         ends.icon?.let {
             Tall(line, top, Modifier.testTag(RvPart.DISC)) { RvIconDisc(it) }
             Spacer(Modifier.width(RvSpace.rowGap))
@@ -175,7 +173,7 @@ private fun rowText(words: SettingsRowWords, code: Boolean, titleLines: Int, err
             Spacer(Modifier.width(RvSettingsSpace.trailingGap))
             Tall(line, top, content = it)
         }
-        ends.trailing?.let {
+        (rvRemoveTrailing(ends.remove, ends.removeLabel) ?: ends.trailing)?.let {
             Spacer(Modifier.width(RvSettingsSpace.trailingGap))
             FirstLine(line, it)
         }

@@ -14,7 +14,6 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvEditPart
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
-import dev.doona.android.designsystem.rv.RvRemoveStyle
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.policies.RvRulesPage
 import dev.doona.android.feature.policies.title
@@ -31,12 +30,10 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Samples of the add and remove controls (owner 2026-11-26: 「要加要減的按鈕我都要看到」), on the native rule list and
- * on a group's members, each whole page in one capture. The owner chooses A or B (review question 2026-11-26):
- * A (`proto-rv-rules-remove-a-*`, `proto-rv-group-edit-a-*`) shows a remove disc at each row's start in edit mode;
- * B (`proto-rv-rules-remove-b-*`, `proto-rv-group-edit-b-*`) a remove control at each row's end at all times; both end
- * the card with an add row. The rest follows A until the owner answers: the confirm sheet (`-confirm`), a delete the
- * phone could not store (`-failed`), and the list after its last removal (`-empty`).
+ * Samples of the add and remove controls (owner 2026-11-26: 「要加要減的按鈕我都要看到」; on the right, 13:53), on the
+ * native rule list and on a group's members, each whole page in one capture: a remove control at each row's end and an
+ * add row ending the card, the confirm sheet (`-confirm`), a delete the phone could not store (`-failed`), and the list
+ * after its last removal (`-empty`).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -49,82 +46,58 @@ class RvEditListShotTest {
     val utc = Utc()
 
     @Test
-    @Config(qualifiers = WHOLE_RULES_A)
-    fun rulesALight() = compose.rvShot("rules-remove-a", dark = false, before = { assertWhole() }) { Rules(RvRemoveStyle.Editing) }
+    @Config(qualifiers = WHOLE_RULES)
+    fun rulesLight() = compose.rvShot("rules-remove", dark = false, before = { assertWhole() }) { Rules() }
 
     @Test
-    @Config(qualifiers = WHOLE_RULES_A)
-    fun rulesADark() = compose.rvShot("rules-remove-a", dark = true, before = { assertWhole() }) { Rules(RvRemoveStyle.Editing) }
+    @Config(qualifiers = WHOLE_RULES)
+    fun rulesDark() = compose.rvShot("rules-remove", dark = true, before = { assertWhole() }) { Rules() }
 
     @Test
-    @Config(qualifiers = WHOLE_RULES_B)
-    fun rulesBLight() = compose.rvShot("rules-remove-b", dark = false, before = { assertWhole() }) { Rules(RvRemoveStyle.Trailing) }
+    fun rulesConfirmLight() = compose.rvShot("rules-remove-confirm", dark = false, windows = true, before = { pickFirstRemove() }) { Rules() }
 
     @Test
-    @Config(qualifiers = WHOLE_RULES_B)
-    fun rulesBDark() = compose.rvShot("rules-remove-b", dark = true, before = { assertWhole() }) { Rules(RvRemoveStyle.Trailing) }
-
-    @Test
-    fun rulesConfirmLight() = compose.rvShot("rules-remove-a-confirm", dark = false, windows = true, before = { pickFirstRemove() }) { Rules(RvRemoveStyle.Editing) }
-
-    @Test
-    fun rulesConfirmDark() = compose.rvShot("rules-remove-a-confirm", dark = true, windows = true, before = { pickFirstRemove() }) { Rules(RvRemoveStyle.Editing) }
+    fun rulesConfirmDark() = compose.rvShot("rules-remove-confirm", dark = true, windows = true, before = { pickFirstRemove() }) { Rules() }
 
     @Test
     @Config(qualifiers = WHOLE_RULES_FAILED)
-    fun rulesFailedLight() = compose.rvShot("rules-remove-a-failed", dark = false, before = { assertWhole() }) { Rules(RvRemoveStyle.Editing, failed = true) }
+    fun rulesFailedLight() = compose.rvShot("rules-remove-failed", dark = false, before = { assertWhole() }) { Rules(failed = true) }
 
     @Test
     @Config(qualifiers = WHOLE_RULES_FAILED)
-    fun rulesFailedDark() = compose.rvShot("rules-remove-a-failed", dark = true, before = { assertWhole() }) { Rules(RvRemoveStyle.Editing, failed = true) }
+    fun rulesFailedDark() = compose.rvShot("rules-remove-failed", dark = true, before = { assertWhole() }) { Rules(failed = true) }
 
     @Test
-    fun rulesEmptyLight() = compose.rvShot("rules-remove-a-empty", dark = false) { Rules(RvRemoveStyle.Editing, RvNativeSample.restOnly) }
+    fun rulesEmptyLight() = compose.rvShot("rules-remove-empty", dark = false) { Rules(RvNativeSample.restOnly) }
 
     @Test
-    fun rulesEmptyDark() = compose.rvShot("rules-remove-a-empty", dark = true) { Rules(RvRemoveStyle.Editing, RvNativeSample.restOnly) }
-
-    @Test
-    @Config(qualifiers = WHOLE_GROUP)
-    fun groupALight() = compose.rvShot("group-edit-a", dark = false, before = { assertWhole() }) { Group(RvRemoveStyle.Editing, editing = false) }
+    fun rulesEmptyDark() = compose.rvShot("rules-remove-empty", dark = true) { Rules(RvNativeSample.restOnly) }
 
     @Test
     @Config(qualifiers = WHOLE_GROUP)
-    fun groupADark() = compose.rvShot("group-edit-a", dark = true, before = { assertWhole() }) { Group(RvRemoveStyle.Editing, editing = false) }
+    fun groupLight() = compose.rvShot("group-edit", dark = false, before = { assertWhole() }) { Group() }
 
     @Test
-    @Config(qualifiers = WHOLE_GROUP_EDIT)
-    fun groupAEditLight() = compose.rvShot("group-edit-a-editing", dark = false, before = { assertWhole() }) { Group(RvRemoveStyle.Editing, editing = true) }
+    @Config(qualifiers = WHOLE_GROUP)
+    fun groupDark() = compose.rvShot("group-edit", dark = true, before = { assertWhole() }) { Group() }
 
     @Test
-    @Config(qualifiers = WHOLE_GROUP_EDIT)
-    fun groupAEditDark() = compose.rvShot("group-edit-a-editing", dark = true, before = { assertWhole() }) { Group(RvRemoveStyle.Editing, editing = true) }
+    @Config(qualifiers = WHOLE_GROUP_EN)
+    fun groupEn() = compose.rvShot("group-edit", dark = false, english = true, before = { assertWhole() }) { Group() }
 
     @Test
-    @Config(qualifiers = WHOLE_GROUP_EDIT_EN)
-    fun groupAEditEn() = compose.rvShot("group-edit-a-editing", dark = false, english = true, before = { assertWhole() }) { Group(RvRemoveStyle.Editing, editing = true) }
+    fun groupFs200() = compose.rvShot("group-edit", dark = false, fontScale = RV_FS200) { Group() }
 
     @Test
-    fun groupAEditFs200() = compose.rvShot("group-edit-a-editing", dark = false, fontScale = RV_FS200) { Group(RvRemoveStyle.Editing, editing = true) }
+    fun groupConfirmLight() = compose.rvShot("group-edit-confirm", dark = false, windows = true, before = { pickFirstRemove() }) { Group() }
 
     @Test
-    @Config(qualifiers = WHOLE_GROUP_EDIT)
-    fun groupBLight() = compose.rvShot("group-edit-b", dark = false, before = { assertWhole() }) { Group(RvRemoveStyle.Trailing, editing = false) }
+    fun groupConfirmDark() = compose.rvShot("group-edit-confirm", dark = true, windows = true, before = { pickFirstRemove() }) { Group() }
 
-    @Test
-    @Config(qualifiers = WHOLE_GROUP_EDIT)
-    fun groupBDark() = compose.rvShot("group-edit-b", dark = true, before = { assertWhole() }) { Group(RvRemoveStyle.Trailing, editing = false) }
-
-    @Test
-    fun groupConfirmLight() = compose.rvShot("group-edit-a-confirm", dark = false, windows = true, before = { pickFirstRemove() }) { Group(RvRemoveStyle.Editing, editing = true) }
-
-    @Test
-    fun groupConfirmDark() = compose.rvShot("group-edit-a-confirm", dark = true, windows = true, before = { pickFirstRemove() }) { Group(RvRemoveStyle.Editing, editing = true) }
-
-    /** A's remove disc asks first, and 移除 drops only that member; B's control is there without edit mode. */
+    /** A member's remove control asks first, and 移除 drops only that member. */
     @Test
     fun removingAMemberAsksAndDropsOnlyIt() {
-        compose.setContent { dev.doona.android.designsystem.rv.RvTheme(dev.doona.android.designsystem.rv.rvSystemScheme(false), false) { Group(RvRemoveStyle.Editing, editing = true) } }
+        compose.setContent { dev.doona.android.designsystem.rv.RvTheme(dev.doona.android.designsystem.rv.rvSystemScheme(false), false) { Group() } }
         val before = compose.onAllNodesWithTag(RvEditPart.REMOVE).fetchSemanticsNodes().size
         assertEquals(RvNativeSample.overseas.members.size, before)
         compose.onAllNodesWithTag(RvEditPart.REMOVE)[0].performClick()
@@ -139,7 +112,7 @@ class RvEditListShotTest {
     }
 
     @Composable
-    private fun Rules(style: RvRemoveStyle, rules: List<RvPolicyRule> = RvNativeSample.rules, failed: Boolean = false) {
+    private fun Rules(rules: List<RvPolicyRule> = RvNativeSample.rules, failed: Boolean = false) {
         val banner = if (failed) {
             RvNotice(
                 RvNoticeKind.Error,
@@ -152,22 +125,20 @@ class RvEditListShotTest {
         } else {
             null
         }
-        RvRulesPage(rules, emptyList(), editing = style == RvRemoveStyle.Editing, onBack = {}, banner = banner, removeStyle = style)
+        RvRulesPage(rules, emptyList(), editing = false, onBack = {}, banner = banner, removable = true)
     }
 
     @Composable
-    private fun Group(style: RvRemoveStyle, editing: Boolean) {
+    private fun Group() {
         var draft by remember { mutableStateOf(RvNativeSample.overseas) }
         var removing by remember { mutableStateOf<RvMemberRef?>(null) }
-        RvGroupEditPage(draft, style, editing, { draft = it }, {}, onBack = {}, removing = removing, onRemoving = { removing = it })
+        RvGroupEditPage(draft, { draft = it }, onBack = {}, removing = removing, onRemoving = { removing = it })
     }
 
     private companion object {
-        const val WHOLE_RULES_A = "+h989dp"
-        const val WHOLE_RULES_B = "+h1277dp"
-        const val WHOLE_RULES_FAILED = "+h1138dp"
-        const val WHOLE_GROUP = "+h1465dp"
-        const val WHOLE_GROUP_EDIT = "+h1523dp"
-        const val WHOLE_GROUP_EDIT_EN = "en-w412dp-h1525dp-notnight-xhdpi"
+        const val WHOLE_RULES = "+h1277dp"
+        const val WHOLE_RULES_FAILED = "+h1402dp"
+        const val WHOLE_GROUP = "+h1523dp"
+        const val WHOLE_GROUP_EN = "en-w412dp-h1525dp-notnight-xhdpi"
     }
 }

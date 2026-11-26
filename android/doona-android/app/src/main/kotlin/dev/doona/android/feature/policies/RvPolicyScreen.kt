@@ -44,10 +44,7 @@ import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLatencyChange
 import dev.doona.android.designsystem.rv.RvListEdit
 import dev.doona.android.designsystem.rv.RvNotice
-import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvPageEnd
-import dev.doona.android.designsystem.rv.RvPrimaryButton
-import dev.doona.android.designsystem.rv.RvRemoveStyle
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvRowRemove
 import dev.doona.android.designsystem.rv.RvScrollPage
@@ -68,8 +65,6 @@ import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.RvTabHeader
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.SEPARATOR
-import dev.doona.android.designsystem.rv.latencyColor
-import dev.doona.android.designsystem.rv.latencyText
 import dev.doona.android.designsystem.rv.rvRaisedReach
 import dev.doona.android.designsystem.rv.rvRowPress
 import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
@@ -119,9 +114,8 @@ internal class RvPolicyRoutes(
  * the content fades in over it in place. A [banner] (a failed action: a mode switch) heads the cards in [RvBannerSlot],
  * outside the fade. What the profile holds (the main node, the groups, the rules, the nodes and subscriptions) is [profile];
  * before the first read there is none, and the skeleton stands with bars in place of the profile's words. Not loading
- * with no profile (the first read failed) shows the banner alone. With [groupsEdit] (the owner's add/remove question, style
- * A) the bar under 規則 adds 編輯, which turns the groups' card into an editable list ([GroupsCard]); while it edits, the
- * bar's actions give way and 完成 floats in the nav's place. Without it the page is the approved one.
+ * with no profile (the first read failed) shows the banner alone. With [groupsEdit] the groups' card under 規則 is an
+ * editable list ([GroupsCard]). Without it the page is the approved one.
  */
 @Composable
 internal fun RvPolicyScreen(
@@ -142,25 +136,16 @@ internal fun RvPolicyScreen(
     val update = stringResource(R.string.rv_policy_update_subscriptions)
     // The groups can be edited where they show: under 規則, with a profile and a subscription.
     val groupsEditable = groupsEdit?.takeIf { state.mode == RvRouteMode.Rule && noSubscription == null && profile != null && !loading }
-    val editing = groupsEditable?.editing == true
     RvScrollPage(
         title,
         insets,
         scroll = scroll,
-        actions = if (editing) {
-            null
-        } else {
-            { glass ->
-                RvGlassButton(glass, R.drawable.rv_sym_speed, testAll, routes.testAll)
-                RvGlassButton(glass, R.drawable.rv_stats_ic_sync, update, routes.update)
-                groupsEditable?.let { RvGlassButton(glass, R.drawable.rv_sym_edit, stringResource(R.string.rv_rule_menu_edit)) { it.onEdit(true) } }
-            }
+        actions = { glass ->
+            RvGlassButton(glass, R.drawable.rv_sym_speed, testAll, routes.testAll)
+            RvGlassButton(glass, R.drawable.rv_stats_ic_sync, update, routes.update)
         },
-        bottomAction = groupsEditable?.takeIf { editing }?.let { { RvPrimaryButton(stringResource(R.string.rv_rules_done), { it.onEdit(false) }) } },
         field = { glass, modifier -> RvSearchPill(routes.search, modifier, glass) },
-        overlay = { glass ->
-            if (!editing) RvFloatingNav(RV_NAV_POLICY, routes.tab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter))
-        },
+        overlay = { glass -> RvFloatingNav(RV_NAV_POLICY, routes.tab, glass, scroll, insets, Modifier.align(Alignment.BottomCenter)) },
         end = RvPageEnd.Nav,
     ) {
         RvTabHeader(insets)
@@ -176,7 +161,7 @@ internal fun RvPolicyScreen(
         } else {
             RvBannerSlot(banner)
             RvSkeletonFade(loading, { Column { PolicySkeleton(state, profile) } }) {
-                Column { profile?.let { PolicyContent(state, onChange, routes, configRev, it, groupsEditable?.takeIf { editing }) } }
+                Column { profile?.let { PolicyContent(state, onChange, routes, configRev, it, groupsEditable) } }
             }
         }
     }
@@ -349,7 +334,7 @@ private fun GlobalPicker(state: RvPolicyState, profile: RvPolicyProfile, onChang
 
 /**
  * Every other group: its kind's glyph, its name over how it picks and how many nodes it has, and the node it uses. In
- * edit mode ([editing], style A of the owner's add/remove question) each row starts with the remove disc, which asks in
+ * an editable list ([editing]) each row ends with the remove control, which asks in
  * [RvConfirmSheet] (saying which groups hold it as a member, as it leaves them too), and 新增群組 ends the card; with no
  * group left the card holds the add row alone.
  */
@@ -358,7 +343,7 @@ private fun GroupsCard(state: RvPolicyState, profile: RvPolicyProfile, onOpen: (
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     RvCard {
         RvCardHeader(stringResource(R.string.rv_policy_groups))
-        profile.groups.forEach { group -> GroupRow(state.group(group), onOpen, editing?.let { RvRowRemove(RvRemoveStyle.Editing) { deleting = group.id } }) }
+        profile.groups.forEach { group -> GroupRow(state.group(group), onOpen, editing?.let { RvRowRemove { deleting = group.id } }) }
         if (editing != null) RvAddRow(stringResource(R.string.rv_group_new), editing.onAdd)
     }
     val target = deleting?.let { id -> profile.groups.firstOrNull { it.id == id } }
@@ -397,20 +382,6 @@ private fun GroupRow(group: RvPolicyGroup, onOpen: (String) -> Unit, remove: RvR
         removeLabel = stringResource(R.string.rv_list_remove, name),
     )
 }
-
-/**
- * The banner of a group or DNS server the configuration would not lose, an error: [rules] rules still send traffic to
- * it, so nothing changed; 查看規則 opens the rules.
- */
-@Composable
-internal fun rvDeleteRefusedBanner(name: String, rules: Int, onRules: () -> Unit) = RvNotice(
-    RvNoticeKind.Error,
-    stringResource(R.string.rv_list_delete_failed_title, name),
-    pluralStringResource(R.plurals.rv_list_delete_refused_rules, rules, rules),
-    stringResource(R.string.rv_list_delete_refused_action),
-    onRules,
-    titleKeepWords = false,
-)
 
 /**
  * A group's line under its name: how it picks ([kind]), how many nodes it has and, when groups are among its members,
@@ -453,7 +424,7 @@ private fun OptionsCard(state: RvPolicyState, onChange: (RvPolicyState) -> Unit,
         if (configRev != null) {
             ValueRow(R.drawable.rv_sym_edit, stringResource(R.string.rv_config_title), stringResource(R.string.rv_config_revision, configRev), routes.config)
         }
-        RvAddRow(stringResource(R.string.rv_policy_new_rule), routes.newRule, afterRemoves = false)
+        RvAddRow(stringResource(R.string.rv_policy_new_rule), routes.newRule)
         RvSwitchRow(R.drawable.rv_sym_ad_off, stringResource(R.string.rv_policy_block_ads), state.blockAds) { onChange(state.copy(blockAds = it)) }
         if (source is RvRuleSource.Template) {
             RvSwitchRow(R.drawable.rv_sym_block, stringResource(R.string.rv_policy_block_quic), state.blockQuic) { onChange(state.copy(blockQuic = it)) }

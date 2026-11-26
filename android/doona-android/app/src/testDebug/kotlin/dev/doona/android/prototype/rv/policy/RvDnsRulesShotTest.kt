@@ -1,9 +1,6 @@
 package dev.doona.android.prototype.rv.policy
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -29,9 +26,9 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * DNS 規則, the config's DNS query and response lists (no prototype; sample only), with the add and remove controls in
- * style A (the owner's open question): `dns-rules` the list with 編輯 in the bar; `dns-rules-editing` the edit mode (a
- * disc on each statement, the fallbacks' places empty, 新增規則 ending each card, 完成 at the bottom); `-confirm` the
+ * DNS 規則, the config's DNS query and response lists (no prototype; sample only): `dns-rules` the list;
+ * `dns-rules-edit` with the add and remove controls (a remove control at each statement's end, the fallbacks' places
+ * empty, 新增規則 ending each card); `-confirm` the
  * question for `qname(suffix: corp.example)`; `-failed` a removal the phone could not stage; `-empty` each list's
  * fallback alone.
  */
@@ -62,20 +59,20 @@ class RvDnsRulesShotTest {
     fun listEnLight() = compose.rvShot("dns-rules", false, before = { assertWhole() }, english = true) { Page(editing = false) }
 
     @Test
-    @Config(qualifiers = WHOLE_EDITING)
-    fun editingLight() = shot("dns-rules-editing", false) { Page() }
+    @Config(qualifiers = WHOLE_EDIT)
+    fun editLight() = shot("dns-rules-edit", false) { Page() }
 
     @Test
-    @Config(qualifiers = WHOLE_EDITING)
-    fun editingDark() = shot("dns-rules-editing", true) { Page() }
+    @Config(qualifiers = WHOLE_EDIT)
+    fun editDark() = shot("dns-rules-edit", true) { Page() }
 
     @Test
-    @Config(qualifiers = WHOLE_EDITING_FS200)
-    fun editingFs200() = compose.rvShot("dns-rules-editing", false, before = { assertWhole() }, fontScale = RV_FS200) { Page() }
+    @Config(qualifiers = WHOLE_EDIT_FS200)
+    fun editFs200() = compose.rvShot("dns-rules-edit", false, before = { assertWhole() }, fontScale = RV_FS200) { Page() }
 
     @Test
     @Config(qualifiers = "en-w412dp-h1175dp-notnight-xhdpi")
-    fun editingEnLight() = compose.rvShot("dns-rules-editing", false, before = { assertWhole() }, english = true) { Page() }
+    fun editEnLight() = compose.rvShot("dns-rules-edit", false, before = { assertWhole() }, english = true) { Page() }
 
     @Test fun confirmLight() = confirm(false)
 
@@ -94,23 +91,13 @@ class RvDnsRulesShotTest {
     @Test fun emptyDark() = shot("dns-rules-empty", true) { Page(lists = RvNativeSample.dnsListsEmpty) }
 
     @Test
-    fun thePencilEntersEditModeAndTheSheetRemovesTheStatement() {
-        var editing by mutableStateOf(false)
-        val edits = mutableListOf<Boolean>()
+    fun aStatementsRemoveControlAsksAndTheSheetRemovesIt() {
         val removed = mutableListOf<String>()
-        val edit = { on: Boolean ->
-            edits += on
-            editing = on
-        }
-        compose.setContent { Themed { RvDnsRulesPage(RvNativeSample.dnsLists, onBack = {}, edit = RvListEdit(editing, edit, onRemove = { removed += it })) } }
-        compose.onNodeWithContentDescription("刪除 $CORP").assertDoesNotExist()
-        compose.onNodeWithContentDescription("編輯").performClick()
+        compose.setContent { Themed { RvDnsRulesPage(RvNativeSample.dnsLists, onBack = {}, edit = RvListEdit({}, { removed += it })) } }
         compose.onNodeWithContentDescription("刪除 其餘查詢").assertDoesNotExist()
         compose.onNodeWithContentDescription("刪除 $CORP").performScrollTo().performClick()
         compose.onNodeWithText("刪除").performClick()
-        compose.onNodeWithText("完成").performClick()
         assertEquals(listOf("Query:2"), removed)
-        assertEquals(listOf(true, false), edits)
     }
 
     private fun confirm(dark: Boolean) = compose.rvShot(
@@ -124,7 +111,7 @@ class RvDnsRulesShotTest {
 
     @Composable
     private fun Page(editing: Boolean = true, lists: RvDnsLists = RvNativeSample.dnsLists, banner: RvNotice? = null) =
-        RvDnsRulesPage(lists, onBack = {}, edit = RvListEdit(editing), banner = banner)
+        RvDnsRulesPage(lists, onBack = {}, edit = if (editing) RvListEdit({}, {}) else null, banner = banner)
 
     @Composable
     private fun failed() = RvNotice(
@@ -145,8 +132,8 @@ class RvDnsRulesShotTest {
         /** Windows as tall as each whole page. */
         const val WHOLE = "+h969dp"
         const val WHOLE_LIST_FS200 = "+h1534dp"
-        const val WHOLE_EDITING = "+h1153dp"
-        const val WHOLE_EDITING_FS200 = "+h1998dp"
+        const val WHOLE_EDIT = "+h1153dp"
+        const val WHOLE_EDIT_FS200 = "+h1998dp"
         const val WHOLE_FAILED = "+h1336dp"
     }
 }

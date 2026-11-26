@@ -28,7 +28,6 @@ import dev.doona.android.designsystem.rv.RvMenuItem
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvPrimaryButton
-import dev.doona.android.designsystem.rv.RvRemoveStyle
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvRowRemove
 import dev.doona.android.designsystem.rv.RvScrollPage
@@ -67,8 +66,8 @@ internal class RvRulesRoutes(
  * opens its page; a long press its menu. 刪除 asks in the library's confirm sheet. A [banner] (the source did not parse,
  * or the rules could not be read) stands in [RvGutter]'s slot over the rules a failed reread kept, or in place of the
  * cards when none were kept; the title, the bar and the bottom action stay. While [loading] (the first read) a skeleton
- * of the rules card stands in for the cards, and they fade in over it. [removeStyle] puts a remove control on every rule
- * but the last. The rules card ends with 新增規則 ([RvAddRow]), its disc in the remove disc's place while removing in A.
+ * of the rules card stands in for the cards, and they fade in over it. [removable] ends every rule but the last with
+ * the remove control and the rules card with 新增規則.
  */
 @Composable
 internal fun RvRulesPage(
@@ -79,7 +78,7 @@ internal fun RvRulesPage(
     routes: RvRulesRoutes = RvRulesRoutes(),
     banner: RvNotice? = null,
     loading: Boolean = false,
-    removeStyle: RvRemoveStyle? = null,
+    removable: Boolean = false,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_policy_rules)
@@ -89,7 +88,7 @@ internal fun RvRulesPage(
         insets,
         onBack = onBack,
         actions = if (editing) null else ({ glass -> RvGlassButton(glass, R.drawable.rv_sym_edit, reorder) { routes.edit(true) } }),
-        bottomAction = bottomAction(pending.size, editing, routes),
+        bottomAction = { BottomAction(pending.size, editing, routes) },
     ) { titleBlock ->
         val order: (@Composable ColumnScope.() -> Unit)? = if (!editing && banner == null) ({ RvCaption(stringResource(R.string.rv_policy_rules_order)) }) else null
         RvPageHeader(title, titleBlock, insets, caption = order)
@@ -97,7 +96,7 @@ internal fun RvRulesPage(
             if (banner != null && rules.isEmpty()) return@RvGutter
             RvSkeletonCards(loading, { RulesSkeleton() }) {
                 if (pending.isNotEmpty() && !editing) PendingCard(pending, routes.discard)
-                RulesCard(rules, editing, routes, removeStyle)
+                RulesCard(rules, editing, routes, removable)
                 if (!editing) {
                     CountsCard(rules)
                     RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, stringResource(R.string.rv_effective_open), null, onClick = routes.effective) { RvChevron() } }
@@ -116,11 +115,14 @@ private fun RulesSkeleton() {
     }
 }
 
-/** The page's one action: 完成 while reordering, 套用 N 條 while rules are held, else none (新增規則 ends the rules card). */
-private fun bottomAction(held: Int, editing: Boolean, routes: RvRulesRoutes): (@Composable () -> Unit)? = when {
-    editing -> ({ RvPrimaryButton(stringResource(R.string.rv_rules_done), { routes.edit(false) }) })
-    held > 0 -> ({ RvPrimaryButton(pluralStringResource(R.plurals.rv_rules_apply_held, held, held), routes.apply) })
-    else -> null
+/** The page's one action: 完成 while reordering, 套用 N 條 while rules are held, else 新增規則. */
+@Composable
+private fun BottomAction(held: Int, editing: Boolean, routes: RvRulesRoutes) {
+    when {
+        editing -> RvPrimaryButton(stringResource(R.string.rv_rules_done), { routes.edit(false) })
+        held > 0 -> RvPrimaryButton(pluralStringResource(R.plurals.rv_rules_apply_held, held, held), routes.apply)
+        else -> RvPrimaryButton(stringResource(R.string.rv_policy_new_rule), routes.newRule)
+    }
 }
 
 /** Rules written but not applied yet (doona web's pending card): each as it will route, then a row that drops them. */
@@ -141,25 +143,19 @@ private fun PendingCard(pending: List<RvPolicyRule>, onDiscard: () -> Unit) {
  * merged; the last rule stays last).
  */
 @Composable
-private fun RulesCard(rules: List<RvPolicyRule>, editing: Boolean, routes: RvRulesRoutes, removeStyle: RvRemoveStyle?) {
+private fun RulesCard(rules: List<RvPolicyRule>, editing: Boolean, routes: RvRulesRoutes, removable: Boolean) {
     var deleting by rememberSaveable { mutableStateOf<Int?>(null) }
-    // A list with remove controls (owner question 2026-11-26): A shows them in edit mode, B at all times.
-    val removing = when (removeStyle) {
-        RvRemoveStyle.Editing -> editing
-        RvRemoveStyle.Trailing -> true
-        null -> false
-    }
     RvCard {
         rules.forEachIndexed { i, rule ->
             val last = i == rules.lastIndex
-            val remove = removeStyle?.takeIf { removing }?.let { RvRowRemove(it, if (last) null else ({ deleting = i })) }
+            val remove = if (removable) RvRowRemove(if (last) null else ({ deleting = i })) else null
             when {
                 editing -> RvRuleRow(rule, remove = remove)
                 last -> RvRuleRow(rule, Modifier.rvRowPress(Role.Button, { routes.open(i) }), remove = remove)
                 else -> RvLongPressMenu(ruleMenu(rule, { routes.open(i) }, { routes.toggle(i) }, { deleting = i }), { routes.open(i) }) { RvRuleRow(rule, it, remove = remove) }
             }
         }
-        RvAddRow(stringResource(R.string.rv_policy_new_rule), routes.newRule, afterRemoves = removing && removeStyle == RvRemoveStyle.Editing)
+        if (removable) RvAddRow(stringResource(R.string.rv_policy_new_rule), routes.newRule)
     }
     val target = deleting?.let(rules::getOrNull)
     RvConfirmSheet(

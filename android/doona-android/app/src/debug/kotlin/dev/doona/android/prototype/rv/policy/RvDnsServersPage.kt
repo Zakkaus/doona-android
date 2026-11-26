@@ -10,7 +10,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
-import dev.doona.android.designsystem.rv.RvAddRow
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvConfirmSheet
 import dev.doona.android.designsystem.rv.RvFieldStack
@@ -20,18 +19,17 @@ import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvListEdit
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPrimaryButton
-import dev.doona.android.designsystem.rv.RvRemoveStyle
 import dev.doona.android.designsystem.rv.RvRowRemove
 import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSettingsAddRow
 import dev.doona.android.designsystem.rv.RvSettingsNavRow
 import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.feature.model.RvDnsServer
 
 /**
  * DNS 伺服器 (config plan row 17; no prototype, sample only): the servers dns.dae declares in `dns.upstream`, in file
- * order, each its name over its address; a tap opens it ([onOpen]). With [edit] (style A of the owner's add/remove
- * question) the bar holds 編輯; in edit mode each server starts with the remove disc, 新增伺服器 ends the card and 完成
- * floats; 新增伺服器 opens [adding], whose 新增 hands [onCreate] the server. A removal asks first; a server a DNS rule still names is refused by the caller through [banner], as a group
+ * order, each its name over its address; a tap opens it ([onOpen]). With [edit] each server ends with the remove
+ * control and 新增伺服器 ends the card; 新增伺服器 opens [adding], whose 新增 hands [onCreate] the server. A removal asks first; a server a DNS rule still names is refused by the caller through [banner], as a group
  * is. [adding] is the new server's sheet, typed through [onAdding] (null closes it).
  */
 @Composable
@@ -47,14 +45,11 @@ internal fun RvDnsServersPage(
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_config_dns_servers)
-    val editing = edit?.takeIf { it.editing }
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     RvScrollPage(
         title,
         insets,
         onBack = onBack,
-        actions = edit?.takeIf { !it.editing }?.let { { glass -> RvGlassButton(glass, R.drawable.rv_sym_edit, stringResource(R.string.rv_rule_menu_edit)) { it.onEdit(true) } } },
-        bottomAction = editing?.let { { RvPrimaryButton(stringResource(R.string.rv_rules_done), { it.onEdit(false) }) } },
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         RvGutter(banner = banner) {
@@ -66,11 +61,11 @@ internal fun RvDnsServersPage(
                         { onOpen(server) },
                         subtitle = server.address,
                         subtitleKeepWords = false,
-                        remove = editing?.let { RvRowRemove(RvRemoveStyle.Editing) { deleting = server.name } },
+                        remove = edit?.let { RvRowRemove { deleting = server.name } },
                         removeLabel = stringResource(R.string.rv_list_remove, server.name),
                     )
                 }
-                if (editing != null) RvAddRow(stringResource(R.string.rv_dns_server_new), { onAdding(RvDnsServer("", "")) })
+                if (edit != null) RvSettingsAddRow(stringResource(R.string.rv_dns_server_new), { onAdding(RvDnsServer("", "")) }, disc = true)
             }
         }
     }

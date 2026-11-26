@@ -10,8 +10,9 @@
 #           RvGlyph, RvSwitch, RvPrimaryButton, ...);
 #   click   calls `clickable(`, `selectable(`, `toggleable(` or `combinedClickable(`: a press and its focus outline come
 #           from the library's `rvPress`, `rvRowPress`, `rvRowSelect`, `rvRowToggle` and `rvPressSelect`;
-#   add     draws the add glyph in a disc or glyph of its own (`RvIconDisc(R.drawable.rv_sym_add`): every 新增 X entry is
-#           the library's `RvAddRow` (owner 2026-11-26: one add component for list cards and empty states).
+#   add     names the add glyph (`R.drawable.rv_sym_add`) at all: every 新增 X entry is the library's `RvAddRow` or
+#           `RvSettingsAddRow` (owner 2026-11-26: one add component for list cards and empty states), and an action
+#           that is not one (導入設定) takes its own glyph.
 # Comments are not read: a comment line, and the rest of a line after a `//` outside a string literal. Each existing
 # exception is a line of tools/check-components.allow:
 #   <file under app/src>|<rule>|<count>|<reason>
@@ -38,7 +39,7 @@ colour='Color\(0x|\b0x[0-9A-Fa-f]{8}\b|\bColor\.[A-Z]|MaterialTheme\.'
 style='TextStyle\(|\bfontSize\b|\bFontWeight\.'
 widget='(^|[^A-Za-z_.])(Text|BasicText|Icon|Image|IconButton|Switch|Button|TextButton|OutlinedButton|Card|Surface|TextField|OutlinedTextField|RadioButton|Checkbox|HorizontalDivider|Divider)\('
 click='(^|[^A-Za-z_])(clickable|selectable|toggleable|combinedClickable)[[:space:]]*[({]'
-add='(^|[^A-Za-z_.])(RvIconDisc|RvGlyph)\(R\.drawable\.rv_sym_add\b'
+add='\bR\.drawable\.rv_sym_add\b'
 # A class, object or interface of a widget's name (`data class Icon(`): a declaration, read past by the widget rule.
 declared='^[0-9]+:.*\b(class|interface)[[:space:]]+(Text|BasicText|Icon|Image|IconButton|Switch|Button|TextButton|OutlinedButton|Card|Surface|TextField|OutlinedTextField|RadioButton|Checkbox|HorizontalDivider|Divider)\('
 

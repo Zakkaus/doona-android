@@ -32,9 +32,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * 設定檔's files with the add and remove controls in style A (the owner's open question; owner 2026-11-26
- * 「要加要減的按鈕我都要看到」): `config-files-a` is the approved overview with 編輯 in the bar; `-editing` the edit mode (a
- * remove disc on each include, the entry's place empty, 新增檔案 ending the card, 完成 at the bottom); `-confirm` the
+ * 設定檔's files with the add and remove controls (owner 2026-11-26 「要加要減的按鈕我都要看到」; on the right, 13:53):
+ * `config-files-edit` a remove control at each include's end, the entry's place empty, 新增檔案 ending the card; `-confirm` the
  * question for nodes.dae, whose include nodes/office.dae goes with it; `-add` the new file's sheet; `-failed` a removal
  * the phone could not stage; `-empty` the entry alone after the last include went.
  */
@@ -49,72 +48,54 @@ class RvConfigFilesEditShotTest {
     val utc = Utc()
 
     @Test
-    @Config(qualifiers = WHOLE_APPROVED)
-    fun aLight() = shot("config-files-a", false) { Page(editing = false) }
+    @Config(qualifiers = WHOLE_EDIT)
+    fun editLight() = shot("config-files-edit", false) { Page() }
 
     @Test
-    @Config(qualifiers = WHOLE_APPROVED)
-    fun aDark() = shot("config-files-a", true) { Page(editing = false) }
+    @Config(qualifiers = WHOLE_EDIT)
+    fun editDark() = shot("config-files-edit", true) { Page() }
 
     @Test
-    @Config(qualifiers = WHOLE_EDITING)
-    fun editingLight() = shot("config-files-a-editing", false) { Page() }
-
-    @Test
-    @Config(qualifiers = WHOLE_EDITING)
-    fun editingDark() = shot("config-files-a-editing", true) { Page() }
-
-    @Test
-    @Config(qualifiers = WHOLE_EDITING_FS200)
-    fun editingFs200() = compose.rvShot("config-files-a-editing", false, before = { assertWhole() }, fontScale = RV_FS200) { Page() }
+    @Config(qualifiers = WHOLE_EDIT_FS200)
+    fun editFs200() = compose.rvShot("config-files-edit", false, before = { assertWhole() }, fontScale = RV_FS200) { Page() }
 
     @Test
     @Config(qualifiers = "en-w412dp-h1817dp-notnight-xhdpi")
-    fun editingEnLight() = compose.rvShot("config-files-a-editing", false, before = { assertWhole() }, english = true) { Page() }
+    fun editEnLight() = compose.rvShot("config-files-edit", false, before = { assertWhole() }, english = true) { Page() }
 
     @Test fun confirmLight() = confirm(false)
 
     @Test fun confirmDark() = confirm(true)
 
-    @Test fun addLight() = compose.rvShot("config-files-a-add", false, windows = true) { Page(addFile = RvConfigAddFile(NEW_FILE)) }
+    @Test fun addLight() = compose.rvShot("config-files-edit-add", false, windows = true) { Page(addFile = RvConfigAddFile(NEW_FILE, {}, {})) }
 
-    @Test fun addDark() = compose.rvShot("config-files-a-add", true, windows = true) { Page(addFile = RvConfigAddFile(NEW_FILE)) }
-
-    @Test
-    @Config(qualifiers = WHOLE_FAILED)
-    fun failedLight() = shot("config-files-a-failed", false) { Page(banner = failed()) }
+    @Test fun addDark() = compose.rvShot("config-files-edit-add", true, windows = true) { Page(addFile = RvConfigAddFile(NEW_FILE, {}, {})) }
 
     @Test
     @Config(qualifiers = WHOLE_FAILED)
-    fun failedDark() = shot("config-files-a-failed", true) { Page(banner = failed()) }
+    fun failedLight() = shot("config-files-edit-failed", false) { Page(banner = failed()) }
+
+    @Test
+    @Config(qualifiers = WHOLE_FAILED)
+    fun failedDark() = shot("config-files-edit-failed", true) { Page(banner = failed()) }
 
     @Test
     @Config(qualifiers = WHOLE_EMPTY)
-    fun emptyLight() = shot("config-files-a-empty", false) { Page(state = ENTRY_ONLY) }
+    fun emptyLight() = shot("config-files-edit-empty", false) { Page(state = ENTRY_ONLY) }
 
     @Test
     @Config(qualifiers = WHOLE_EMPTY)
-    fun emptyDark() = shot("config-files-a-empty", true) { Page(state = ENTRY_ONLY) }
+    fun emptyDark() = shot("config-files-edit-empty", true) { Page(state = ENTRY_ONLY) }
 
     @Test
-    fun thePencilEntersEditModeAndTheSheetRemovesTheFileAndItsIncludes() {
-        var editing by mutableStateOf(false)
-        val edits = mutableListOf<Boolean>()
+    fun anIncludesRemoveControlAsksAndTheSheetRemovesTheFileAndItsIncludes() {
         val removed = mutableListOf<String>()
-        val edit = { on: Boolean ->
-            edits += on
-            editing = on
-        }
-        compose.setContent { Themed { RvConfigOverviewPage(RvConfigData.overview, onBack = {}, edit = RvListEdit(editing, edit, onRemove = { removed += it })) } }
-        compose.onNodeWithContentDescription("刪除 ${RvConfigData.NODES}").assertDoesNotExist()
-        compose.onNodeWithContentDescription("編輯").performClick()
+        compose.setContent { Themed { RvConfigOverviewPage(RvConfigData.overview, onBack = {}, edit = RvListEdit({}, { removed += it })) } }
         compose.onNodeWithContentDescription("刪除 ${RvConfigData.ENTRY}").assertDoesNotExist()
         compose.onNodeWithContentDescription("刪除 ${RvConfigData.NODES}").performScrollTo().performClick()
         compose.onNodeWithText("${RvConfigData.ENTRY} 中引入它的那一行會一起刪除，它引入的 nodes/office.dae 也會刪除。套用前會先顯示變更。").assertExists()
         compose.onNodeWithText("刪除").performClick()
-        compose.onNodeWithText("完成").performClick()
         assertEquals(listOf(RvConfigData.NODES), removed)
-        assertEquals(listOf(true, false), edits)
     }
 
     /** 新增 takes a relative `.dae` path that is not in the tree yet. */
@@ -123,7 +104,7 @@ class RvConfigFilesEditShotTest {
         var path by mutableStateOf(RvConfigData.NODES)
         val created = mutableListOf<String>()
         val add = { RvConfigAddFile(path, { it?.let { p -> path = p } }, { created += it }) }
-        compose.setContent { Themed { RvConfigOverviewPage(RvConfigData.overview, onBack = {}, edit = RvListEdit(true), addFile = add()) } }
+        compose.setContent { Themed { RvConfigOverviewPage(RvConfigData.overview, onBack = {}, edit = RvListEdit({}, {}), addFile = add()) } }
         listOf(RvConfigData.NODES, "../outside.dae", "/etc/honk.dae", "notes.txt").forEach {
             path = it
             compose.onNodeWithText("新增").assertIsNotEnabled()
@@ -134,7 +115,7 @@ class RvConfigFilesEditShotTest {
     }
 
     private fun confirm(dark: Boolean) = compose.rvShot(
-        "config-files-a-confirm",
+        "config-files-edit-confirm",
         dark,
         before = { onNodeWithContentDescription("刪除 ${RvConfigData.NODES}").performScrollTo().performClick() },
         windows = true,
@@ -143,8 +124,8 @@ class RvConfigFilesEditShotTest {
     private fun shot(name: String, dark: Boolean, content: @Composable () -> Unit) = compose.rvShot(name, dark, before = { assertWhole() }, content = content)
 
     @Composable
-    private fun Page(editing: Boolean = true, state: RvConfigState = RvConfigData.overview, addFile: RvConfigAddFile? = null, banner: RvNotice? = null) =
-        RvConfigOverviewPage(state, onBack = {}, edit = RvListEdit(editing), addFile = addFile, banner = banner)
+    private fun Page(state: RvConfigState = RvConfigData.overview, addFile: RvConfigAddFile? = null, banner: RvNotice? = null) =
+        RvConfigOverviewPage(state, onBack = {}, edit = RvListEdit({}, {}), addFile = addFile, banner = banner)
 
     @Composable
     private fun failed() = RvNotice(
@@ -172,9 +153,8 @@ class RvConfigFilesEditShotTest {
         )
 
         /** Windows as tall as each whole page (the approved overview is +h1695dp). */
-        const val WHOLE_APPROVED = "+h1695dp"
-        const val WHOLE_EDITING = "+h1816dp"
-        const val WHOLE_EDITING_FS200 = "+h2345dp"
+        const val WHOLE_EDIT = "+h1816dp"
+        const val WHOLE_EDIT_FS200 = "+h2345dp"
         const val WHOLE_FAILED = "+h1973dp"
         const val WHOLE_EMPTY = "+h1406dp"
     }

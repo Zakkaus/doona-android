@@ -16,7 +16,6 @@ import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RvDnsServer
-import dev.doona.android.feature.policies.rvDeleteRefusedBanner
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
@@ -32,9 +31,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * DNS 伺服器, the servers dns.dae declares (no prototype; sample only), with the add and remove controls in style A:
- * `dns-servers` the list with 編輯 in the bar; `-editing` a disc on each server, 新增伺服器 ending the card, 完成 at the
- * bottom; `-confirm` the question for `google`, which no rule names; `-refused` `local`, which a query rule names;
+ * DNS 伺服器, the servers dns.dae declares (no prototype; sample only): `dns-servers` the list; `-edit` with the add
+ * and remove controls, a remove control at each server's end and 新增伺服器 ending the card; `-confirm` the question for `google`, which no rule names; `-refused` `local`, which a query rule names;
  * `-add` the new server's sheet filled in, `-add-invalid` a taken name and an address without a scheme; `-empty` a
  * config with no server.
  */
@@ -58,17 +56,17 @@ class RvDnsServersShotTest {
     @Config(qualifiers = "en-w412dp-h915dp-notnight-xhdpi")
     fun listEnLight() = compose.rvShot("dns-servers", false, before = { assertWhole() }, english = true) { Page(editing = false) }
 
-    @Test fun editingLight() = shot("dns-servers-editing", false) { Page() }
+    @Test fun editLight() = shot("dns-servers-edit", false) { Page() }
 
-    @Test fun editingDark() = shot("dns-servers-editing", true) { Page() }
+    @Test fun editDark() = shot("dns-servers-edit", true) { Page() }
 
     @Test
     @Config(qualifiers = "+h991dp")
-    fun editingFs200() = compose.rvShot("dns-servers-editing", false, before = { assertWhole() }, fontScale = RV_FS200) { Page() }
+    fun editFs200() = compose.rvShot("dns-servers-edit", false, before = { assertWhole() }, fontScale = RV_FS200) { Page() }
 
     @Test
     @Config(qualifiers = "en-w412dp-h915dp-notnight-xhdpi")
-    fun editingEnLight() = compose.rvShot("dns-servers-editing", false, before = { assertWhole() }, english = true) { Page() }
+    fun editEnLight() = compose.rvShot("dns-servers-edit", false, before = { assertWhole() }, english = true) { Page() }
 
     @Test fun confirmLight() = confirm(false)
 
@@ -91,19 +89,12 @@ class RvDnsServersShotTest {
     @Test fun emptyDark() = shot("dns-servers-empty", true) { Page(servers = emptyList()) }
 
     @Test
-    fun thePencilEntersEditModeAndTheSheetRemovesTheServer() {
-        var editing by mutableStateOf(false)
+    fun aServersRemoveControlAsksAndTheSheetRemovesIt() {
         val removed = mutableListOf<String>()
-        compose.setContent {
-            Themed { RvDnsServersPage(RvNativeSample.dnsServers, onBack = {}, edit = RvListEdit(editing, { editing = it }, onRemove = { removed += it })) }
-        }
-        compose.onNodeWithContentDescription("刪除 google").assertDoesNotExist()
-        compose.onNodeWithContentDescription("編輯").performClick()
+        compose.setContent { Themed { RvDnsServersPage(RvNativeSample.dnsServers, onBack = {}, edit = RvListEdit({}, { removed += it })) } }
         compose.onNodeWithContentDescription("刪除 google").performClick()
         compose.onNodeWithText("刪除").performClick()
-        compose.onNodeWithText("完成").performClick()
         assertEquals(listOf("google"), removed)
-        assertFalse(editing)
     }
 
     @Test
@@ -111,7 +102,7 @@ class RvDnsServersShotTest {
         var adding by mutableStateOf<RvDnsServer?>(null)
         val created = mutableListOf<RvDnsServer>()
         compose.setContent {
-            Themed { RvDnsServersPage(RvNativeSample.dnsServers, onBack = {}, edit = RvListEdit(true), adding = adding, onAdding = { adding = it }, onCreate = { created += it }) }
+            Themed { RvDnsServersPage(RvNativeSample.dnsServers, onBack = {}, edit = RvListEdit({}, {}), adding = adding, onAdding = { adding = it }, onCreate = { created += it }) }
         }
         compose.onNodeWithText("新增伺服器").performClick()
         assertEquals(RvDnsServer("", ""), adding)
@@ -143,7 +134,7 @@ class RvDnsServersShotTest {
     @Composable
     private fun Page(editing: Boolean = true, servers: List<RvDnsServer> = RvNativeSample.dnsServers, banner: RvNotice? = null, adding: RvDnsServer? = null) {
         var draft by remember { mutableStateOf(adding) }
-        RvDnsServersPage(servers, onBack = {}, edit = RvListEdit(editing), banner = banner, adding = draft, onAdding = { draft = it })
+        RvDnsServersPage(servers, onBack = {}, edit = if (editing) RvListEdit({}, {}) else null, banner = banner, adding = draft, onAdding = { draft = it })
     }
 
     @Composable
