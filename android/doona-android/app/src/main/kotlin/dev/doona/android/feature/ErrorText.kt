@@ -44,6 +44,10 @@ fun ErrorCode.reasonRes(): Int = when (this) {
     ErrorCode.DnsFailed -> R.string.rv_reason_dns_failed
     ErrorCode.StorageFull -> R.string.rv_reason_storage_full
     ErrorCode.WriteFailed -> R.string.rv_reason_write_failed
+    ErrorCode.Conflict -> R.string.rv_reason_conflict
+    ErrorCode.SourceLimit -> R.string.rv_reason_source_limit
+    ErrorCode.NonNativeSource -> R.string.rv_reason_non_native_source
+    ErrorCode.ActivationFailed -> R.string.rv_reason_activation_failed
 }
 
 /** A failure banner's line: why [code] failed, then [after], what stayed the same. */

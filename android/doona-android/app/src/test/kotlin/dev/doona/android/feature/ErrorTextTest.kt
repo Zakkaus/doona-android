@@ -36,6 +36,10 @@ class ErrorTextTest {
             ErrorCode.DnsFailed to Triple(R.string.rv_reason_dns_failed, "DNS 查詢失敗。", "DNS 查询失败。"),
             ErrorCode.StorageFull to Triple(R.string.rv_reason_storage_full, "手機儲存空間不足。", "手机存储空间不足。"),
             ErrorCode.WriteFailed to Triple(R.string.rv_reason_write_failed, "無法寫入 doona 的資料檔。", "无法写入 doona 的数据文件。"),
+            ErrorCode.Conflict to Triple(R.string.rv_reason_conflict, "已先套用較新的設定檔。", "已先应用较新的配置文件。"),
+            ErrorCode.SourceLimit to Triple(R.string.rv_reason_source_limit, "檔案過多或過大。", "文件过多或过大。"),
+            ErrorCode.NonNativeSource to Triple(R.string.rv_reason_non_native_source, "這不是 honk 設定檔。", "这不是 honk 配置文件。"),
+            ErrorCode.ActivationFailed to Triple(R.string.rv_reason_activation_failed, "設定檔無法啟用。", "配置文件无法启用。"),
         )
         val english = mapOf(
             ErrorCode.InvalidArgument to "The value is not valid.",
@@ -50,6 +54,10 @@ class ErrorTextTest {
             ErrorCode.DnsFailed to "The DNS lookup failed.",
             ErrorCode.StorageFull to "The phone's storage is full.",
             ErrorCode.WriteFailed to "doona could not write its data file.",
+            ErrorCode.Conflict to "A newer configuration was applied first.",
+            ErrorCode.SourceLimit to "There are too many files, or they are too large.",
+            ErrorCode.NonNativeSource to "It is not a honk configuration.",
+            ErrorCode.ActivationFailed to "The configuration could not be activated.",
         )
         assertEquals(ErrorCode.entries.toSet(), expected.keys)
         val (tw, cn, en) = listOf(Locale.TRADITIONAL_CHINESE, Locale.SIMPLIFIED_CHINESE, Locale.ENGLISH).map(::localized)
