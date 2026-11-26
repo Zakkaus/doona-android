@@ -53,6 +53,7 @@ internal fun SettingsPage(viewModel: SettingsViewModel, system: SettingsSystem, 
             effectiveConfig = nav.effectiveConfig,
             report = nav.report,
             logLevel = nav.logLevel,
+            geoInterval = nav.geoInterval,
             about = nav.about,
             // 設定檔 shows only with a configuration revision (a preview flag), which the app does not pass.
             config = {},
@@ -110,6 +111,13 @@ internal fun LanguageRoute(store: SettingsStore, onBack: () -> Unit, system: RvL
         selected = language
         store.setLanguageTags(language.tag)
     }, onBack)
+}
+
+/** GeoIP/GeoSite's 自動更新 over the [store]: a choice is stored at once, and GeoRefresh reads it on its next run. */
+@Composable
+internal fun GeoIntervalRoute(store: SettingsStore, onBack: () -> Unit) {
+    val selected = store.geoInterval.collectAsStateWithLifecycle(null).value ?: return RvSettingsLoading()
+    RvGeoIntervalScreen(selected, store::setGeoInterval, onBack)
 }
 
 /** 日誌等級 over the app's [levels]. */

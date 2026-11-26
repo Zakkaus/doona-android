@@ -318,15 +318,15 @@ class RvGeoDataShotTest {
          * 設定's whole page at each font size ([RvSettingsShotTest]'s frames, the row is on it by default), a whole dp,
          * rounded up. At fs200 the title wraps beside 更新, and the second line too where a state follows the date.
          */
-        const val WHOLE = "+h1908dp"
-        const val WHOLE_FS115 = "+h1933dp"
-        const val FS200_IDLE = "+h2481dp"
-        const val FS200_UPDATING = "+h2478dp"
-        const val FS200_WRAPPED = "+h2522dp"
+        const val WHOLE = "+h1990dp"
+        const val WHOLE_FS115 = "+h2015dp"
+        const val FS200_IDLE = "+h2589dp"
+        const val FS200_UPDATING = "+h2586dp"
+        const val FS200_WRAPPED = "+h2630dp"
 
         /** 無法更新 · 未連線 takes a second line beside 重試 at fs1, a third at fs200. */
-        const val FAILED_WAITING_WHOLE = "+h1928dp"
-        const val FAILED_WAITING_FS200 = "+h2563dp"
+        const val FAILED_WAITING_WHOLE = "+h2010dp"
+        const val FAILED_WAITING_FS200 = "+h2671dp"
 
         const val HALF_DP = 0.5f
 

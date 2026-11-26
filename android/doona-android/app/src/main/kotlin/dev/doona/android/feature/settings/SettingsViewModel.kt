@@ -13,6 +13,7 @@ import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.model.RvAppearance
 import dev.doona.android.feature.model.RvGeoData
+import dev.doona.android.feature.model.RvGeoInterval
 import dev.doona.android.feature.model.RvGeoUpdate
 import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.model.RvSettingsState
@@ -71,7 +72,10 @@ internal class SettingsViewModel(
     private val local = MutableStateFlow(Local(language = RvLanguage.of(store.languageTags())))
     private var geoJob: Job? = null
 
-    private val prefs = combine(store.notifyOnDrop, store.autoUpdate, store.updateHours, store.appearance, store.tileAdded, ::Prefs)
+    private val prefs = combine(store.notifyOnDrop, store.autoUpdate, store.updateHours, store.appearance, combine(store.tileAdded, store.geoInterval, ::Pair)) {
+            notify, auto, hours, appearance, (tile, geo) ->
+        Prefs(notify, auto, hours, appearance, tile, geo)
+    }
 
     val uiState: StateFlow<SettingsUiState> =
         combine(prefs, engine.settings, engine.perAppLoaded, engine.status, local) { prefs, settings, loaded, status, local ->
@@ -85,6 +89,7 @@ internal class SettingsViewModel(
                     dns = local.dnsServers?.let(::rvDnsUpstream),
                     language = local.language,
                     tileAdded = prefs.tileAdded,
+                    geoInterval = prefs.geoInterval,
                     tileSheet = local.tileSheet,
                 ),
                 perAppLoaded = loaded,
@@ -206,7 +211,14 @@ internal class SettingsViewModel(
     )
 
     /** The store's values the page shows. */
-    private data class Prefs(val notifyOnDrop: Boolean, val autoUpdate: Boolean, val updateHours: Int, val appearance: RvAppearance, val tileAdded: Boolean)
+    private data class Prefs(
+        val notifyOnDrop: Boolean,
+        val autoUpdate: Boolean,
+        val updateHours: Int,
+        val appearance: RvAppearance,
+        val tileAdded: Boolean,
+        val geoInterval: RvGeoInterval,
+    )
 
     /**
      * What the ViewModel itself holds: the language as last read, the tile sheet, the core's DNS servers ([dnsServers],

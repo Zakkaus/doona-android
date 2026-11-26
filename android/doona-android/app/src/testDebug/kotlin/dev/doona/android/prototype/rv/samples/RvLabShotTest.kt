@@ -34,7 +34,7 @@ class RvLabShotTest {
     val utc = Utc()
 
     @Test
-    @Config(qualifiers = "+h1908dp")
+    @Config(qualifiers = "+h1990dp")
     fun settingsApprovedLight() = compose.rvShot("samples-lab-settings-approved", dark = false, before = { assertWhole() }) { Settings() }
 
     @Test
@@ -45,7 +45,7 @@ class RvLabShotTest {
     fun pageLight() = compose.rvShot("samples-lab-page", dark = false, before = { assertWhole() }) { RvLabScreen(performance = false) }
 
     @Test
-    @Config(qualifiers = "+h1908dp")
+    @Config(qualifiers = "+h1990dp")
     fun settingsApprovedDark() = compose.rvShot("samples-lab-settings-approved", dark = true, before = { assertWhole() }) { Settings() }
 
     @Test
@@ -56,7 +56,7 @@ class RvLabShotTest {
     fun pageDark() = compose.rvShot("samples-lab-page", dark = true, before = { assertWhole() }) { RvLabScreen(performance = true) }
 
     @Test
-    @Config(qualifiers = "+h2481dp")
+    @Config(qualifiers = "+h2589dp")
     fun settingsApprovedFs200() = compose.rvShot("samples-lab-settings-approved", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { Settings() }
 
     @Test
@@ -67,7 +67,7 @@ class RvLabShotTest {
     fun pageFs200() = compose.rvShot("samples-lab-page", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { RvLabScreen(performance = false) }
 
     @Test
-    @Config(qualifiers = "en-w412dp-h1958dp-notnight-xhdpi")
+    @Config(qualifiers = "en-w412dp-h2040dp-notnight-xhdpi")
     fun settingsApprovedEn() = compose.rvShot("samples-lab-settings-approved-en", dark = false, before = { assertWhole() }) { Settings() }
 
     @Test

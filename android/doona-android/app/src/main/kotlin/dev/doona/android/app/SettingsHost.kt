@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import dev.doona.android.data.settings.AppSettings
+import dev.doona.android.data.settings.GeoUpdateInterval
 import dev.doona.android.data.settings.LanguageSettings
 import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.data.settings.ThemeAccent
@@ -28,10 +29,12 @@ import dev.doona.android.feature.activity.RvActivityScreen
 import dev.doona.android.feature.activity.RvActivityState
 import dev.doona.android.feature.model.RvAppearance
 import dev.doona.android.feature.model.RvDay
+import dev.doona.android.feature.model.RvGeoInterval
 import dev.doona.android.feature.model.RvThemeMode
 import dev.doona.android.feature.report.AppReportFacts
 import dev.doona.android.feature.report.ReportRoute
 import dev.doona.android.feature.settings.DnsRoute
+import dev.doona.android.feature.settings.GeoIntervalRoute
 import dev.doona.android.feature.settings.IntervalRoute
 import dev.doona.android.feature.settings.LabRoute
 import dev.doona.android.feature.settings.LanguageRoute
@@ -105,6 +108,10 @@ internal class AppSettingsStore(
 
     override fun setPerformanceMode(enabled: Boolean) = write { settings.setPerformanceMode(enabled) }
 
+    override val geoInterval: Flow<RvGeoInterval> = settings.geoUpdateInterval.map(::rvGeoInterval)
+
+    override fun setGeoInterval(interval: RvGeoInterval) = write { settings.setGeoUpdateInterval(geoUpdateInterval(interval)) }
+
     private fun write(edit: suspend () -> Unit) {
         writes.launch { edit() }
     }
@@ -120,6 +127,20 @@ internal class AppSettingsStore(
         @Volatile
         private var startedPerformance: Boolean? = null
     }
+}
+
+/** GeoRefresh's interval as 自動更新 shows it. */
+internal fun rvGeoInterval(interval: GeoUpdateInterval) = when (interval) {
+    GeoUpdateInterval.Off -> RvGeoInterval.Off
+    GeoUpdateInterval.Daily -> RvGeoInterval.Daily
+    GeoUpdateInterval.Weekly -> RvGeoInterval.Weekly
+}
+
+/** The page's choice as GeoRefresh reads it; [rvGeoInterval]'s inverse. */
+internal fun geoUpdateInterval(interval: RvGeoInterval) = when (interval) {
+    RvGeoInterval.Off -> GeoUpdateInterval.Off
+    RvGeoInterval.Daily -> GeoUpdateInterval.Daily
+    RvGeoInterval.Weekly -> GeoUpdateInterval.Weekly
 }
 
 /** 主題's choices as the page shows them: the accent is the swatch's place, the scheme's own first. */
@@ -237,9 +258,9 @@ internal val APP_RELEASES = ReleaseCheck { UpdateCheck.latestRelease() }
 internal const val HONK_REVISION = "63de98b"
 
 /**
- * 設定 and the pages it opens, as the app's back stack entries: 回報問題, 日誌等級, 關於, 主題, 語言, 更新間隔, 實驗室,
- * DNS, 授權 and each licence's text; 生效設定 opens P4's page, the app's [EffectiveConfigKey]. 關於's 隱私 opens the
- * repository's privacy notice in the browser.
+ * 設定 and the pages it opens, as the app's back stack entries: 回報問題, 日誌等級, GeoIP/GeoSite's 自動更新, 關於, 主題,
+ * 語言, 更新間隔, 實驗室, DNS, 授權 and each licence's text; 生效設定 opens P4's page, the app's [EffectiveConfigKey].
+ * 關於's 隱私 opens the repository's privacy notice in the browser.
  */
 internal fun EntryProviderScope<NavKey>.settingsEntries(backStack: MutableList<NavKey>, engine: Engine, version: String, onTab: (Int) -> Unit) {
     entry<SettingsKey> {
@@ -250,6 +271,7 @@ internal fun EntryProviderScope<NavKey>.settingsEntries(backStack: MutableList<N
                 effectiveConfig = { backStack.push(EffectiveConfigKey) },
                 report = { backStack.push(ReportKey) },
                 logLevel = { backStack.push(LogLevelKey) },
+                geoInterval = { backStack.push(GeoIntervalKey) },
                 about = { backStack.push(AboutKey) },
                 theme = { backStack.push(ThemeKey) },
                 language = { backStack.push(LanguageKey) },
@@ -260,6 +282,7 @@ internal fun EntryProviderScope<NavKey>.settingsEntries(backStack: MutableList<N
         SettingsRoute(engine, rememberSettingsStore(), APP_RELEASES, rememberLogLevels(), rememberSettingsSystem(), nav, version, onTab)
     }
     entry<LogLevelKey> { key -> LogLevelRoute(rememberLogLevels(), onBack = { backStack.pop(key) }) }
+    entry<GeoIntervalKey> { key -> GeoIntervalRoute(rememberSettingsStore(), onBack = { backStack.pop(key) }) }
     entry<ReportKey> { key ->
         val context = LocalContext.current
         val facts = remember(context) { AppReportFacts(context.applicationContext) }
