@@ -182,7 +182,8 @@ internal fun RvNodeSectionSkeleton() {
  * 節點's row with an info mark at its end: a tap picks the node, the mark opens its page, and a long press opens its
  * menu (設為主節點, 測試延遲, 詳情, 複製分享連結), or its page where the sample offers no menus. A page may show the node
  * under another [title] (a name without its emoji), put [lead] before the line under it (the network a node is chosen on,
- * its Score mark) and draw its leading disc itself with [mark], told whether the node is chosen.
+ * its Score mark) and draw its leading disc itself with [mark], told whether the node is chosen. With [pickInMenu] false
+ * the menu leaves 設為主節點 out: a page where a tap opens the node rather than picking it (訂閱's 組態內 card).
  */
 @Composable
 internal fun RvNodePickRow(
@@ -195,11 +196,12 @@ internal fun RvNodePickRow(
     title: String = rvNodeTitle(node),
     lead: String? = null,
     mark: (@Composable (current: Boolean) -> Unit)? = null,
+    pickInMenu: Boolean = true,
 ) {
     val inUse = stringResource(R.string.rv_nodes_in_use)
     val details = stringResource(R.string.rv_nodes_details)
     // Each row is a layer of its own: a row composed after the others records itself, not the whole card again.
-    RvMenuAnchor(rvNodeMenu(node, current, onPick, onDetail), Modifier.graphicsLayer {}) { menu, actions ->
+    RvMenuAnchor(rvNodeMenu(node, current, onPick.takeIf { pickInMenu }, onDetail), Modifier.graphicsLayer {}) { menu, actions ->
         RvRow(
             { if (mark != null) mark(current) else RvNodeDisc(node, RvNodesSize.rowFlag, Modifier.rvSharedFlag(node.id), current = current) },
             title,

@@ -2,6 +2,7 @@ package dev.doona.android.designsystem.rv
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,12 +12,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
@@ -81,6 +86,12 @@ internal fun RvBanner(notice: RvNotice, modifier: Modifier = Modifier) {
 }
 
 /**
+ * The one banner a page shows when several want its place: the most serious by [RvNoticeKind]'s order (an error before
+ * a warning before an info); between two of a kind, the one listed first. Null when every one is null.
+ */
+internal fun rvFirstNotice(vararg notices: RvNotice?): RvNotice? = notices.filterNotNull().minByOrNull { it.kind.ordinal }
+
+/**
  * Where a page's banner sits, the same on every page: first in the page's body, right under its header (活動's hero
  * and actions, a large title, the tab's header, the picker's title and caption), so it takes the place of the first
  * card, on the gutter, [gapBelow] over what follows: [RvSpace.cardGap] before a card, [RvSpace.none] before a part that brings its
@@ -95,17 +106,42 @@ internal fun RvBannerSlot(banner: RvNotice?, gapBelow: Dp = RvSpace.cardGap) {
 /**
  * An empty state where a section is not set up yet (活動 with no subscription), as Revolut's product that is not opened
  * (revolut-ux3 §4): no glyph, no disc and no card, the [title] over one [line], centred, then the one [action] as the
- * full-width primary pill on the caller's gutter. The title keeps the row title's step: Revolut's 44 sp is the hero's,
+ * full-width primary pill on the caller's gutter; with a [second] way in (訂閱's 新增節點 beside 新增訂閱, owner
+ * q-p5d-empty 2026-11-26), the two pills share the width, [RvSpace.controlStack] apart, or stack that far apart when a
+ * label would not fit whole in half the width (en 「Add subscription」). The title keeps the row title's step: Revolut's 44 sp is the hero's,
  * not a notice's. For data that is empty inside a card, [RvEmptyCaption].
  */
 @Composable
-internal fun RvEmptyState(title: String, line: String, action: String, onAction: () -> Unit, modifier: Modifier = Modifier) {
+internal fun RvEmptyState(
+    title: String,
+    line: String,
+    action: String,
+    onAction: () -> Unit,
+    modifier: Modifier = Modifier,
+    second: String? = null,
+    onSecond: () -> Unit = {},
+) {
     Column(modifier.fillMaxWidth().padding(vertical = RvSpace.chartGap), horizontalAlignment = Alignment.CenterHorizontally) {
         RvText(title, Rv.type.rowTitle, align = TextAlign.Center, maxLines = BANNER_TITLE_LINES)
         Spacer(Modifier.height(RvSpace.emptyLine))
         RvText(line, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.Center, maxLines = BANNER_REASON_LINES)
         Spacer(Modifier.height(RvSpace.chartGap))
-        RvPrimaryButton(action, onAction)
+        if (second == null) return@Column RvPrimaryButton(action, onAction)
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            // Each pill's label room: half the width less the gap, less the pill's own padding on both sides.
+            val label = (maxWidth - RvSpace.controlStack) / 2 - RvSpace.gutter * 2
+            if (allFitOneLine(listOf(action, second), Rv.type.button, label)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(RvSpace.controlStack)) {
+                    RvPrimaryButton(action, onAction, Modifier.weight(1f))
+                    RvPrimaryButton(second, onSecond, Modifier.weight(1f))
+                }
+            } else {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(RvSpace.controlStack)) {
+                    RvPrimaryButton(action, onAction)
+                    RvPrimaryButton(second, onSecond)
+                }
+            }
+        }
     }
 }
 
@@ -122,6 +158,14 @@ internal fun RvEmptyCaption(title: String, caption: String, modifier: Modifier =
             RvText(caption, Rv.type.rowSub, color = Rv.colors.textSecondary, maxLines = BANNER_REASON_LINES)
         }
     }
+}
+
+/** Whether every one of [labels] fits on one line [width] wide in [style], at its full size. */
+@Composable
+private fun allFitOneLine(labels: List<String>, style: TextStyle, width: Dp): Boolean {
+    val measurer = rememberTextMeasurer()
+    val px = with(LocalDensity.current) { width.toPx() }
+    return remember(labels, style, px, measurer) { px > 0 && labels.all { measurer.measure(it, style, maxLines = 1).size.width <= px } }
 }
 
 /** A banner's or an empty state's title wraps to two lines at most, and its reason, line or caption to three. */

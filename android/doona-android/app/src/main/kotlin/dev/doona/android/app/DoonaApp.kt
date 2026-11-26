@@ -153,6 +153,8 @@ fun DoonaApp(
                     onBack = { backStack.pop(key) },
                     onOpen = { backStack.push(SubDetailKey(it)) },
                     onAdd = { backStack.push(SubAddKey) },
+                    onOpenNode = { backStack.push(NodeKey(it)) },
+                    onViewGroups = { backStack.selectTab(Tab.Policies) },
                 )
             }
             entry<SubAddKey> { key ->

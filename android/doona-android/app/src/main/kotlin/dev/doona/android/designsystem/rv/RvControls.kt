@@ -31,6 +31,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -131,6 +132,9 @@ internal object RvControlSize {
     val field = 52.dp
     val fieldRing = 1.dp
     val fieldTrailing = 4.dp
+
+    /** A field of several lines: its text this far from its top and bottom, so one line sits as in [field]: (52 − 26) / 2 for its 26 dp line. */
+    val fieldInset = 13.dp
 }
 
 /**
@@ -391,7 +395,8 @@ internal fun RvSecondaryButton(
 }
 
 /**
- * A single-line text field. The [label] sits over the field in secondary ink; it is null when the title right above
+ * A text field of one line, or of up to [lines] that wrap its value (a share link), then scroll inside the field. The
+ * [label] sits over the field in secondary ink; it is null when the title right above
  * already names the field, and [name] then names it for a screen reader. The field is the search pill's shape
  * (measured §4) on the segmented control's track, which reads on the page, on a card and in a sheet, holding [value] in
  * 19 sp (the stat value, measured §11) or [placeholder] in secondary ink; under it [supporting] text, or [error] in the
@@ -399,7 +404,9 @@ internal fun RvSecondaryButton(
  * it. Focused, the field is ringed in the accent and
  * the cursor is the accent. Label, field and message are one target, as Material's field is; [trailing] (a clear or
  * paste button) sits inside the field's end. Disabled, the whole field is at [RvAlpha.DISABLED] and takes no input.
- * Label, field and message are measured as one part of the page ([RvPart.FIELD]).
+ * Label, field and message are measured as one part of the page ([RvPart.FIELD]). A field of more than one line keeps the
+ * pill's ends as rounded corners and its text [RvControlSize.fieldInset] from its top and bottom, so one line of it is as
+ * tall as the single-line field.
  */
 @Composable
 internal fun RvTextField(
@@ -415,9 +422,12 @@ internal fun RvTextField(
     keyboard: KeyboardOptions = KeyboardOptions.Default,
     actions: KeyboardActions = KeyboardActions.Default,
     trailing: (@Composable () -> Unit)? = null,
+    lines: Int = 1,
 ) {
     val colors = Rv.colors
     val size = RvControlSize
+    val shape = if (lines == 1) CircleShape else RoundedCornerShape(size.field / 2)
+    val inset = if (lines == 1) RvSpace.none else size.fieldInset
     val source = remember { MutableInteractionSource() }
     val focused by source.collectIsFocusedAsState()
     val ring = if (focused && enabled) colors.positive else null
@@ -436,7 +446,8 @@ internal fun RvTextField(
         textStyle = Rv.type.field.copy(color = colors.text),
         keyboardOptions = keyboard,
         keyboardActions = actions,
-        singleLine = true,
+        singleLine = lines == 1,
+        maxLines = lines,
         visualTransformation = RvScripted,
         interactionSource = source,
         cursorBrush = SolidColor(colors.positive),
@@ -450,10 +461,10 @@ internal fun RvTextField(
                     Modifier
                         .fillMaxWidth()
                         .heightIn(min = size.field)
-                        .clip(CircleShape)
+                        .clip(shape)
                         .background(colors.segmentTrack)
-                        .then(ring?.let { Modifier.border(size.fieldRing, it, CircleShape) } ?: Modifier)
-                        .padding(start = RvSpace.rowPadding, end = if (trailing != null) size.fieldTrailing else RvSpace.rowPadding),
+                        .then(ring?.let { Modifier.border(size.fieldRing, it, shape) } ?: Modifier)
+                        .padding(start = RvSpace.rowPadding, end = if (trailing != null) size.fieldTrailing else RvSpace.rowPadding, top = inset, bottom = inset),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
@@ -575,3 +586,6 @@ internal fun RvRadio(selected: Boolean, modifier: Modifier = Modifier) {
 
 /** A link field's placeholder: the scheme a subscription link starts with. */
 internal const val RV_LINK_PLACEHOLDER = "https://"
+
+/** A node link field's placeholder: the scheme most share links start with. */
+internal const val RV_NODE_LINK_PLACEHOLDER = "vless://…"

@@ -14,11 +14,14 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.designsystem.rv.LocalRvUpdating
 import dev.doona.android.engine.Engine
+import dev.doona.android.feature.nodes.ui.LocalRvRowActions
+import dev.doona.android.feature.nodes.ui.RvRowActions
 import kotlinx.coroutines.flow.Flow
 
 /**
- * 訂閱: the subscriptions, which open their page ([onOpen], also the menu's 編輯) and lead to 新增訂閱 ([onAdd]).
- * End dates count from [clock].
+ * 訂閱: the subscriptions, which open their page ([onOpen], also the menu's 編輯) and lead to 新增訂閱 ([onAdd]); under
+ * them the 組態內 card, whose nodes open their page ([onOpenNode]) and whose 新增節點 opens its sheet. After an add the
+ * banner's 查看策略群組 runs [onViewGroups]. End dates count from [clock].
  */
 @Composable
 fun SubscriptionsRoute(
@@ -26,14 +29,46 @@ fun SubscriptionsRoute(
     onBack: () -> Unit,
     onOpen: (String) -> Unit,
     onAdd: () -> Unit,
+    onOpenNode: (String) -> Unit = {},
+    onViewGroups: () -> Unit = {},
     clock: () -> Long = System::currentTimeMillis,
 ) {
+    val clipboard = LocalContext.current.applicationContext.getSystemService(ClipboardManager::class.java)
     val viewModel: SubscriptionsViewModel = viewModel(factory = viewModelFactory { initializer { SubscriptionsViewModel(engine, clock) } })
+    val nodes: AddNodeViewModel = viewModel(factory = viewModelFactory { initializer { AddNodeViewModel(engine, AndroidClipboardLinks(clipboard)) } })
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val actions = remember(viewModel, onBack, onOpen, onAdd) {
-        RvSubsActions(onBack, onOpen, onAdd, viewModel::update, viewModel::updateAll, viewModel::delete, viewModel::confirmDelete)
+    val inline by nodes.uiState.collectAsStateWithLifecycle()
+    val actions = remember(viewModel, nodes, onBack, onOpen, onAdd) {
+        // Anything else asked of the page puts the last add's banner away.
+        RvSubsActions(
+            back = onBack,
+            open = onOpen,
+            add = onAdd,
+            update = {
+                nodes.dismissAdded()
+                viewModel.update(it)
+            },
+            updateAll = {
+                nodes.dismissAdded()
+                viewModel.updateAll()
+            },
+            delete = {
+                nodes.dismissAdded()
+                viewModel.delete(it)
+            },
+            confirmDelete = viewModel::confirmDelete,
+        )
     }
-    CompositionLocalProvider(LocalRvUpdating provides state.updating) { RvSubsPage(state.page, actions, loading = state.loading) }
+    val inlineActions = remember(nodes, onOpenNode, onViewGroups) {
+        RvInlineActions(nodes::open, nodes::close, nodes::edit, nodes::paste, nodes::add, onOpenNode, nodes::delete, nodes::confirmDelete, onViewGroups)
+    }
+    val banner = inline.deleteFailed?.let { rvNodeDeleteFailedBanner(it) { nodes.confirmDelete(it.id) } } ?: inline.added?.let { rvAddedBanner(it, onViewGroups) }
+    // No 複製分享連結: the core keeps a share link only for a share-link subscription's node, never a 組態內 one.
+    CompositionLocalProvider(LocalRvUpdating provides state.updating, LocalRvRowActions provides remember(nodes) { RvRowActions(deleteNode = nodes::delete) }) {
+        RvSubsPage(state.page, actions, loading = state.loading, extra = { RvInlineCard(inline.nodes, inlineActions) }, extraKeepsPage = inline.nodes.isNotEmpty(), banner = banner, addNode = inlineActions.add)
+        RvAddNodeSheet(inline.sheet, inlineActions)
+        RvNodeDeleteSheet(inline.nodes.firstOrNull { it.id == inline.deletingId }, inlineActions)
+    }
 }
 
 /**

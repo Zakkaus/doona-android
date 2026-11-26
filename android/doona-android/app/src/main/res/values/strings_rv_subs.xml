@@ -42,4 +42,47 @@
     <string name="rv_import_title">Add %1$s</string>
     <string name="rv_import_body">This link came from %1$s.</string>
     <string name="rv_import_add">Add</string>
+    <!-- 新增節點 on 訂閱 (p5d; approved s1125f-addnode-*, except the lines marked new) -->
+    <string name="rv_addnode">Add node</string>
+    <string name="rv_addnode_line">Paste a node\'s share link</string>
+    <string name="rv_addnode_help">Paste a node\'s share link. The node is named after the link\'s #fragment, else its host.</string>
+    <string name="rv_addnode_link">Node link</string>
+    <string name="rv_addnode_as">Will be added as “%1$s”</string>
+    <string name="rv_addnode_invalid">The node link must be a protocol://… link, such as ss://, vmess://, vless://, trojan:// or hysteria2://</string>
+    <string name="rv_inline_source">In configuration</string>
+    <!-- new (copy batch 4) -->
+    <plurals name="rv_addnode_count">
+        <item quantity="one">%1$d node will be added.</item>
+        <item quantity="other">%1$d nodes will be added.</item>
+    </plurals>
+    <plurals name="rv_addnode_skip_link">
+        <item quantity="one">Line %2$s is not a share link and is skipped.</item>
+        <item quantity="other">Lines %2$s are not share links and are skipped.</item>
+    </plurals>
+    <plurals name="rv_addnode_skip_duplicate">
+        <item quantity="one">Line %2$s is already in the configuration and is skipped.</item>
+        <item quantity="other">Lines %2$s are already in the configuration and are skipped.</item>
+    </plurals>
+    <plurals name="rv_addnode_skip_other">
+        <item quantity="one">Line %2$s cannot be read and is skipped.</item>
+        <item quantity="other">Lines %2$s cannot be read and are skipped.</item>
+    </plurals>
+    <plurals name="rv_addnode_skip_unread">
+        <item quantity="one">Only the first %2$d lines are read; %1$d more line is skipped.</item>
+        <item quantity="other">Only the first %2$d lines are read; %1$d more lines are skipped.</item>
+    </plurals>
+    <plurals name="rv_addnode_added">
+        <item quantity="one">%1$d node added</item>
+        <item quantity="other">%1$d nodes added</item>
+    </plurals>
+    <plurals name="rv_addnode_added_partial">
+        <item quantity="one">%1$d node added, %2$d not added</item>
+        <item quantity="other">%1$d nodes added, %2$d not added</item>
+    </plurals>
+    <string name="rv_list_sep">,\u0020</string>
+    <string name="rv_list_last">%1$s and %2$s</string>
+    <string name="rv_addnode_joined">Added to the %1$s groups.</string>
+    <string name="rv_addnode_view_groups">View groups</string>
+    <string name="rv_node_delete">Delete node</string>
+    <string name="rv_node_delete_body">The node leaves the configuration and every group it is in.</string>
 </resources>
