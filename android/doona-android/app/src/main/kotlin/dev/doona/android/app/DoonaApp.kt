@@ -133,7 +133,7 @@ fun DoonaApp(
                     ),
                 )
             }
-            entry<GroupKey> { key -> GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }) }
+            entry<GroupKey> { key -> GroupRoute(key.groupId, onBack = { backStack.pop(key) }) }
             entry<RulesKey> { key ->
                 RulesRoute(
                     engine,

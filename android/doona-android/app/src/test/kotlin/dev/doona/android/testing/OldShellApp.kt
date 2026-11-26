@@ -50,7 +50,7 @@ internal fun OldShellApp(engine: Engine, installedApps: InstalledApps, start: Li
                     PoliciesRoute(engine, onOpenGroup = { backStack.add(GroupKey(it)) }, onOpenSubscriptions = { backStack.add(SubscriptionsKey) })
                 }
                 entry<GroupKey> { key ->
-                    GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) })
+                    GroupRoute(key.groupId, onBack = { backStack.pop(key) })
                 }
                 entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, onBack = { backStack.pop(key) }, onOpen = {}, onAdd = {}) }
                 entry<PerAppKey> { key -> PerAppRoute(engine, installedApps, onConnect = {}, onAddSubscription = {}, onCheckUpdate = {}, onBack = { backStack.pop(key) }) }

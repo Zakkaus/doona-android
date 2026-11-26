@@ -61,9 +61,10 @@ internal class NativeCatalog(private val api: NativeApi) {
 
     suspend fun removeNode(id: String) = removed("/api/v1/nodes/$id")
 
-    fun groups(): List<Group> = api.read("GET", "/api/v1/groups", ListSerializer(GroupSummary.serializer())).map {
-        api.read("GET", "/api/v1/groups/${it.id}", Group.serializer())
-    }
+    fun groups(): List<Group> = api.read("GET", "/api/v1/groups", ListSerializer(GroupSummary.serializer())).map { group(it.id) }
+
+    /** One group in full; one honk does not have fails with [ErrorCode.NotFound]. */
+    fun group(id: String): Group = api.read("GET", "/api/v1/groups/$id", Group.serializer())
 
     /** Selects [memberId] in [groupId] on [network]: a Selector's choice, or a pin on an automatic group. */
     fun select(groupId: String, memberId: String, network: SelectionNetwork) {

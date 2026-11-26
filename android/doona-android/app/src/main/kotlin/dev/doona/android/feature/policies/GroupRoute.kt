@@ -11,6 +11,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.R
+import dev.doona.android.app.nativeApi
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.LocalRvTesting
 import dev.doona.android.designsystem.rv.RvGutter
@@ -23,25 +24,23 @@ import dev.doona.android.designsystem.rv.RvSkeletonEnd
 import dev.doona.android.designsystem.rv.RvSkeletonHeader
 import dev.doona.android.designsystem.rv.RvSkeletonRow
 import dev.doona.android.designsystem.rv.RvSkeletonText
-import dev.doona.android.engine.Engine
 import dev.doona.android.feature.messageRes
 
 /**
  * A group's page, pushed over 策略: builds the ViewModel and draws [RvGroupPage] from its state while the screen is
- * started. A group removed while its page is open, such as by a subscription update, leaves the page; before the engine
- * has loaded, as after process death, the group is only not read yet and the page is a skeleton under its name; a
- * first read that fails shows its banner with 重試 under the name instead.
+ * started. A group honk no longer has, such as after a subscription update, leaves the page once read; before honk
+ * has answered the first read the page is a skeleton under its name; a first read that fails shows its banner with 重試
+ * under the name instead.
  * [onNodeDetail] opens a node's detail (a wiring point: the 節點 lane's page). A member group is a row a tap chooses;
  * its own page opens from 策略's groups card, so this page opens none.
  */
 @Composable
 fun GroupRoute(
-    engine: Engine,
     groupId: String,
     onBack: () -> Unit,
     onNodeDetail: (String) -> Unit = {},
 ) {
-    val viewModel: GroupViewModel = viewModel(factory = GroupViewModel.factory(engine, groupId))
+    val viewModel: GroupViewModel = viewModel(factory = GroupViewModel.factory(nativeApi(), groupId))
     GroupRoute(viewModel, groupId, onBack, onNodeDetail)
 }
 
@@ -95,7 +94,7 @@ private fun GroupUnread(title: String, onBack: () -> Unit, banner: RvNotice) {
     }
 }
 
-/** The banner of a failed [failure]: what failed over the engine's reason, and 重試 ([onRetry]). */
+/** The banner of a failed [failure]: what failed over honk's reason, and 重試 ([onRetry]). */
 @Composable
 private fun groupBanner(failure: GroupFailure, onRetry: () -> Unit) = RvNotice(
     RvNoticeKind.Error,
