@@ -32,7 +32,6 @@ import dev.doona.android.report.connectionOwnerUid
 import dev.doona.android.report.reportDir
 import dev.doona.android.vpn.NativeApi
 import dev.doona.android.vpn.QuickTile
-import dev.doona.android.vpn.RegionLookup
 import dev.doona.android.vpn.VpnLog
 import dev.doona.android.work.ForegroundRefresh
 import dev.doona.android.work.GeoRefresh
@@ -59,16 +58,12 @@ class AppContainer(
     createEngine: () -> Engine,
     createInstalledApps: () -> InstalledApps,
     createNativeApi: () -> NativeApi,
-    createRegionLookup: () -> RegionLookup,
 ) {
     /** Created on first use, so a process started for the tile or the service builds it once. */
     val engine: Engine by lazy(createEngine)
 
     /** honk's native API, the one instance every page reads and writes the catalog through. */
     val nativeApi: NativeApi by lazy(createNativeApi)
-
-    /** The country or region each node name is in, read by doona-core's region table: honk keeps none. */
-    val regions: RegionLookup by lazy(createRegionLookup)
 
     /** The apps per-app routing can name; read on demand, so nothing queries the device until that page opens. */
     val installedApps: InstalledApps by lazy(createInstalledApps)
@@ -225,7 +220,3 @@ class AppContainer(
 /** [AppContainer.nativeApi] for a page: the one instance, from the application. */
 @Composable
 internal fun nativeApi(): NativeApi = (LocalContext.current.applicationContext as DoonaApplication).container.nativeApi
-
-/** [AppContainer.regions] for a page. */
-@Composable
-internal fun regionLookup(): RegionLookup = (LocalContext.current.applicationContext as DoonaApplication).container.regions
