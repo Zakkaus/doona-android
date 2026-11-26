@@ -2,6 +2,7 @@ package dev.doona.android.prototype.rv.policy
 
 import androidx.compose.runtime.Composable
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvListEdit
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvNode
@@ -13,7 +14,6 @@ import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.model.RvTemplate
 import dev.doona.android.feature.policies.RvEffectiveConfig
 import dev.doona.android.feature.policies.RvEffectiveConfigPage
-import dev.doona.android.feature.policies.RvGroupsEdit
 import dev.doona.android.feature.policies.RvPolicyProfile
 import dev.doona.android.feature.policies.RvPolicyRoutes
 import dev.doona.android.feature.policies.RvPolicyScreen
@@ -42,7 +42,7 @@ internal fun RvPolicyScreenSample(
     configRev: Int? = null,
     loading: Boolean = false,
     banner: RvNotice? = null,
-    groupsEdit: RvGroupsEdit? = null,
+    groupsEdit: RvListEdit? = null,
     profile: RvPolicyProfile = rvSamplePolicyProfile,
 ) = RvPolicyScreen(state, onChange, routes, noSubscription, configRev, loading, banner, profile, groupsEdit)
 

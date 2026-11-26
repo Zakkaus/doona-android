@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,6 +28,19 @@ import dev.doona.android.R
  * Both end the list's card with [RvAddRow].
  */
 internal enum class RvRemoveStyle { Editing, Trailing }
+
+/**
+ * A page's list in style A ([RvRemoveStyle.Editing]): the bar's 編輯 runs [onEdit] with true and 完成 with false; while
+ * [editing] each row that can go starts with [RvRemoveDisc], whose sheet runs [onRemove] with the row's id once
+ * confirmed, and [onAdd] is the [RvAddRow] that ends the list. A page given none is its approved self.
+ */
+@Immutable
+internal class RvListEdit(
+    val editing: Boolean,
+    val onEdit: (Boolean) -> Unit = {},
+    val onAdd: () -> Unit = {},
+    val onRemove: (String) -> Unit = {},
+)
 
 /** A: the filled remove disc at a row's start in edit mode, in the scheme's one red, its minus cut in the card's colour. */
 @Composable
@@ -76,15 +90,26 @@ internal fun RvRemoveButton(description: String, onClick: () -> Unit, modifier: 
 internal fun RvRemovableLeading(remove: RvRowRemove?, description: String, leading: @Composable () -> Unit) {
     if (remove?.style != RvRemoveStyle.Editing) return leading()
     Row(verticalAlignment = Alignment.CenterVertically) {
-        val onRemove = remove.onRemove
-        if (onRemove != null) {
-            RvRemoveDisc(description, onRemove, Modifier.rvTouchOverhang(start = true))
-            Spacer(Modifier.width(RvSpace.rowGap - RvEditGap.slack))
-        } else {
-            Spacer(Modifier.size(RvSize.removeDisc).testTag(RvEditPart.REMOVE_DISC))
-            Spacer(Modifier.width(RvSpace.rowGap))
-        }
+        RvRemoveStart(remove, description)
         leading()
+    }
+}
+
+/**
+ * The start of a row in style A's edit mode, before its leading visual or, on a row with none (a settings row), its
+ * text: the remove disc and the gap after its ink, or on a row that cannot be removed the disc's place left empty.
+ * Nothing outside edit mode.
+ */
+@Composable
+internal fun RvRemoveStart(remove: RvRowRemove?, description: String) {
+    if (remove?.style != RvRemoveStyle.Editing) return
+    val onRemove = remove.onRemove
+    if (onRemove != null) {
+        RvRemoveDisc(description, onRemove, Modifier.rvTouchOverhang(start = true))
+        Spacer(Modifier.width(RvSpace.rowGap - RvEditGap.slack))
+    } else {
+        Spacer(Modifier.size(RvSize.removeDisc).testTag(RvEditPart.REMOVE_DISC))
+        Spacer(Modifier.width(RvSpace.rowGap))
     }
 }
 

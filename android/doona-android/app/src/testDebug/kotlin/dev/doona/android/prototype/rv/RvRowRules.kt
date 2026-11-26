@@ -260,8 +260,12 @@ private fun RvRowRead.leadX(): RvRowBreak? {
     return off("R5", lead.box.left - (remove?.right?.plus(GAP) ?: (row.left + INSET)))
 }
 
-/** R6: the text column starts 16 dp after the leading visual, or 16 dp inside a row without one. */
-private fun RvRowRead.textX(): RvRowBreak? = if (edge && lead == null) null else off("R6", textLeft - (lead?.box?.right?.plus(GAP) ?: (row.left + INSET)))
+/**
+ * R6: the text column starts 16 dp after the leading visual, or on a row without one 16 dp after an editable list's
+ * remove disc (A) or 16 dp inside the row.
+ */
+private fun RvRowRead.textX(): RvRowBreak? =
+    if (edge && lead == null) null else off("R6", textLeft - (lead?.box?.right?.plus(GAP) ?: remove?.right?.plus(GAP) ?: (row.left + INSET)))
 
 /** R8 and R9: one line, the leading visual centred on the row; with a subtitle, its top on the title's top. */
 private fun RvRowRead.leadY(): RvRowBreak? {

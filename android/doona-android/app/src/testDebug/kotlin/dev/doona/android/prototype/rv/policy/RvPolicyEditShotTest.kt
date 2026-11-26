@@ -9,11 +9,11 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import dev.doona.android.designsystem.rv.RvListEdit
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
-import dev.doona.android.feature.policies.RvGroupsEdit
 import dev.doona.android.feature.policies.RvPolicyProfile
 import dev.doona.android.feature.policies.rvGroupDeleteRefusedBanner
 import dev.doona.android.prototype.rv.RV_FS200
@@ -109,7 +109,7 @@ class RvPolicyEditShotTest {
         }
         compose.setContent {
             Themed {
-                RvPolicyScreenSample(RULE, {}, groupsEdit = RvGroupsEdit(editing, edit, onRemove = { removed += it }), profile = RvNativeSample.profile)
+                RvPolicyScreenSample(RULE, {}, groupsEdit = RvListEdit(editing, edit, onRemove = { removed += it }), profile = RvNativeSample.profile)
             }
         }
         compose.onNodeWithContentDescription("刪除 ${RvNativeSample.TOKYO}").assertDoesNotExist()
@@ -141,14 +141,14 @@ class RvPolicyEditShotTest {
 
     @Composable
     private fun Page(editing: Boolean = true, profile: RvPolicyProfile = rvSamplePolicyProfile) =
-        RvPolicyScreenSample(RULE, {}, groupsEdit = RvGroupsEdit(editing), profile = profile)
+        RvPolicyScreenSample(RULE, {}, groupsEdit = RvListEdit(editing), profile = profile)
 
     @Composable
     private fun Refused() = RvPolicyScreenSample(
         RULE,
         {},
         banner = rvGroupDeleteRefusedBanner(RvNativeSample.STREAMING, 1) {},
-        groupsEdit = RvGroupsEdit(true),
+        groupsEdit = RvListEdit(true),
         profile = RvNativeSample.profile,
     )
 

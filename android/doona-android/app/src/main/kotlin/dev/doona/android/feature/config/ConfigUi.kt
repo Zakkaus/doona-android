@@ -62,6 +62,12 @@ internal data class RvConfigState(
 ) {
     /** How many of [skipped] lie in [path]. */
     fun skippedIn(path: String): Int = skipped.count { it.source == path }
+
+    /** The files [path] includes, directly or through another include, in load order: they leave the tree with it. */
+    fun includedUnder(path: String): List<String> {
+        val under = mutableSetOf(path)
+        return files.filter { file -> file.parent in under && under.add(file.path) }.map { it.path }
+    }
 }
 
 /**

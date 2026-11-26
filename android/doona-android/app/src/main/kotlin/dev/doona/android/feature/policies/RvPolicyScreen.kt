@@ -42,6 +42,7 @@ import dev.doona.android.designsystem.rv.RvGlassButton
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLatencyChange
+import dev.doona.android.designsystem.rv.RvListEdit
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvPageEnd
@@ -132,7 +133,7 @@ internal fun RvPolicyScreen(
     loading: Boolean = false,
     banner: RvNotice? = null,
     profile: RvPolicyProfile?,
-    groupsEdit: RvGroupsEdit? = null,
+    groupsEdit: RvListEdit? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -235,7 +236,7 @@ private fun PolicyContent(
     routes: RvPolicyRoutes,
     configRev: Int?,
     profile: RvPolicyProfile,
-    editing: RvGroupsEdit? = null,
+    editing: RvListEdit? = null,
 ) {
     RvGutter {
         ModeCard(state.mode) { onChange(state.copy(mode = it)) }
@@ -353,7 +354,7 @@ private fun GlobalPicker(state: RvPolicyState, profile: RvPolicyProfile, onChang
  * group left the card holds the add row alone.
  */
 @Composable
-private fun GroupsCard(state: RvPolicyState, profile: RvPolicyProfile, onOpen: (String) -> Unit, editing: RvGroupsEdit?) {
+private fun GroupsCard(state: RvPolicyState, profile: RvPolicyProfile, onOpen: (String) -> Unit, editing: RvListEdit?) {
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     RvCard {
         RvCardHeader(stringResource(R.string.rv_policy_groups))
@@ -366,7 +367,7 @@ private fun GroupsCard(state: RvPolicyState, profile: RvPolicyProfile, onOpen: (
     val holderNames = holders.map { it.name.text() }.joinToString(stringResource(R.string.rv_effective_list_separator))
     RvConfirmSheet(
         visible = target != null,
-        title = stringResource(R.string.rv_group_delete_title, name),
+        title = stringResource(R.string.rv_list_delete_title, name),
         body = if (holders.isEmpty()) stringResource(R.string.rv_group_delete_body) else stringResource(R.string.rv_group_delete_body_member, holderNames),
         confirm = stringResource(R.string.rv_rule_delete_confirm),
         dismiss = stringResource(R.string.rv_rule_delete_cancel),
@@ -396,19 +397,6 @@ private fun GroupRow(group: RvPolicyGroup, onOpen: (String) -> Unit, remove: RvR
         removeLabel = stringResource(R.string.rv_list_remove, name),
     )
 }
-
-/**
- * 策略's groups as an editable list (owner 2026-11-26, style A while the owner chooses): the bar's 編輯 runs [onEdit]
- * with true, and 完成, floating where the nav was, with false; [onAdd] opens a new group's editor, and [onRemove] removes
- * a group once its sheet is confirmed. A refusal (a rule still sends to the group) comes back as the page's banner.
- */
-@Immutable
-internal class RvGroupsEdit(
-    val editing: Boolean,
-    val onEdit: (Boolean) -> Unit = {},
-    val onAdd: () -> Unit = {},
-    val onRemove: (String) -> Unit = {},
-)
 
 /**
  * The banner of a group the configuration would not lose, an error: [rules] rules still send traffic to it, so nothing

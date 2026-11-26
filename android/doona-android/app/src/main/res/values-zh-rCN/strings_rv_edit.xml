@@ -20,11 +20,16 @@
     <string name="rv_group_member_remove_body">它的流量改由群组的其他成员处理。</string>
     <string name="rv_group_member_remove_confirm">移除</string>
     <string name="rv_group_new">新建群组</string>
-    <string name="rv_group_delete_title">删除 %1$s？</string>
+    <string name="rv_list_delete_title">删除 %1$s？</string>
     <string name="rv_group_delete_body">这个群组会从配置文件移除。</string>
     <string name="rv_group_delete_body_member">这个群组会从配置文件移除，也不再是 %1$s 的成员。</string>
     <plurals name="rv_group_delete_refused_rules">
         <item quantity="other">还有 %1$d 条规则发往它，没有任何变动。请先修改这些规则。</item>
     </plurals>
     <string name="rv_group_delete_refused_action">查看规则</string>
+    <string name="rv_config_file_new">新建文件</string>
+    <string name="rv_config_file_new_body">会在 %1$s 加上引入这个文件的一行，应用前会先显示变更。</string>
+    <string name="rv_config_file_create">新建</string>
+    <string name="rv_config_file_delete_body">%1$s 中引入它的那一行会一起删除，应用前会先显示变更。</string>
+    <string name="rv_config_file_delete_body_nested">%1$s 中引入它的那一行会一起删除，它引入的 %2$s 也会删除。应用前会先显示变更。</string>
 </resources>
