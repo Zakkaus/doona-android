@@ -25,10 +25,13 @@ import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeInstalledApps
 import dev.doona.android.engine.fake.FakeRuleMode
+import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.report.CrashFiles
 import dev.doona.android.report.CrashHandler
 import dev.doona.android.report.CrashOffer
 import dev.doona.android.testing.SeedTheme
+import dev.doona.android.vpn.FakeHonk
+import dev.doona.android.vpn.HonkFixtures
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -198,7 +201,8 @@ class NavigationTest {
 
     @Test
     fun `the main node on 活動 opens the node's page`() {
-        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS, mode = Mode.Rule), FakeInstalledApps(), onConnect = {}) } }
+        // 活動 names the engine's main node, the node page reads it from honk: the RV sample profile has it in both.
+        compose.setContent { SeedTheme { DoonaApp(rvSampleEngine(), FakeInstalledApps(), onConnect = {}) } }
         appears(string(R.string.rv_main_node))
         compose.onNode(hasClickAction() and hasText(string(R.string.rv_main_node))).performSemanticsAction(SemanticsActions.OnClick)
         appears(string(R.string.rv_nodes_details))
@@ -233,15 +237,14 @@ class NavigationTest {
     }
 
     @Test
-    fun `a group page leaves when its group is removed`() {
-        val engine = FakeEngine(FakeEngine.SAMPLE_GROUPS)
-        compose.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, PoliciesKey, GroupKey("g-Auto"))) } }
-        appears(TEST_GROUP)
+    fun `a group page leaves when honk has no such group`() {
+        // Removed from the configuration, as on another device: honk answers the page's read with 404.
+        val honk = ApplicationProvider.getApplicationContext<DoonaApplication>().container.nativeApi as FakeHonk
+        honk.on("GET", "/api/v1/groups/g-Auto", 404, HonkFixtures.body("errors/group-not-found"))
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS), FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, PoliciesKey, GroupKey("g-Auto"))) } }
 
-        engine.groups.value = engine.groups.value.filter { it.id != "g-Auto" }
-
-        compose.onNodeWithContentDescription("Back").assertDoesNotExist()
         appears(POLICIES)
+        compose.onNodeWithContentDescription("Back").assertDoesNotExist()
     }
 
     @Test

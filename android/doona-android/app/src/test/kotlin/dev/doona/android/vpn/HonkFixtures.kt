@@ -52,6 +52,7 @@ internal class FakeHonk : NativeApi {
     val calls = mutableListOf<Call>()
     private val replies = mutableMapOf<String, NativeResponse>()
 
+    @Synchronized
     fun on(method: String, path: String, status: Int, body: String) {
         replies["$method $path"] = NativeResponse(status, body)
     }
