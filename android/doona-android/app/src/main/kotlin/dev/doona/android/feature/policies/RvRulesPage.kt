@@ -60,7 +60,7 @@ internal class RvRulesRoutes(
 /**
  * All rules (查看全部 on 策略), in the 策略 card's grammar: the large title and, unless reordering, one line on how rules
  * are tried; any rules held for a later 套用, with the button that applies them; every rule in order, each with where
- * it sends and today's bytes, an off or skipped rule saying so; how many are in use, off and skipped, as D34 counts
+ * it sends, an off or skipped rule saying so; how many are in use, off and skipped, as D34 counts
  * them; and the way to the effective config, which shows what the core compiled. The bar's pencil turns on [editing],
  * for reordering (first match wins, so order matters): a long press lifts a rule to drag it, and 完成 ends it. A rule
  * opens its page; a long press its menu. 刪除 asks in the library's confirm sheet. A [banner] (the source did not parse,
@@ -106,7 +106,7 @@ internal fun RvRulesPage(
     }
 }
 
-/** The rules card before the first read: a screenful of rule rows, each with its target over its bytes. */
+/** The rules card before the first read: a screenful of rule rows, each with its target. */
 @Composable
 private fun RulesSkeleton() {
     val rows = rvSkeletonRowsToFill()

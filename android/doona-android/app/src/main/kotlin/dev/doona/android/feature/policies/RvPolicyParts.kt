@@ -7,7 +7,6 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
-import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvIconDisc
@@ -19,7 +18,6 @@ import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.latencyColor
 import dev.doona.android.designsystem.rv.latencyText
-import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvRemoveTrailing
 import dev.doona.android.feature.model.RV_BLOCK
 import dev.doona.android.feature.model.RV_DIRECT
@@ -78,18 +76,16 @@ internal fun RvRuleMatch.kind(): String = when (this) {
 
 /**
  * A rule as the 策略 card and the list of all rules draw it, after 活動's rule rows: where the traffic ends, what it
- * matches over its kind, and the target over [end] (today's bytes by default). A rule that is off or skipped says so
- * after its kind and shows no bytes.
+ * matches over its kind, and the target, over [end] when given. A rule that is off or skipped says so after its kind.
+ * honk counts no bytes per rule, so the row shows none (owner, q-rule-bytes 2026-11-26).
  */
 @Composable
 internal fun RvRuleRow(rule: RvPolicyRule, modifier: Modifier = Modifier, end: String? = null, remove: RvRowRemove? = null) {
-    val format = rememberRvFormat()
     val subtitle = when (rule.state) {
         RvRuleState.On -> rule.match.kind()
         RvRuleState.Off -> rule.match.kind() + SEPARATOR + stringResource(R.string.rv_policy_rule_off)
         RvRuleState.Skipped -> rule.match.kind() + SEPARATOR + stringResource(R.string.rv_policy_rule_skipped)
     }
-    val bytes = if (rule.state == RvRuleState.On) format.bytes(rule.bytes).toString() else RV_NO_VALUE
     val title = rule.match.title()
     val removeLabel = stringResource(R.string.rv_list_remove, title)
     RvRow(
@@ -98,7 +94,7 @@ internal fun RvRuleRow(rule: RvPolicyRule, modifier: Modifier = Modifier, end: S
         subtitle,
         modifier,
         titleEnd = { RvRowEndName(rule.targetName()) },
-        subtitleEnd = { RvText(end ?: bytes, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End) },
+        subtitleEnd = end?.let { { RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End) } },
         titleKeepWords = false,
         trailing = rvRemoveTrailing(remove, removeLabel),
     )
