@@ -136,7 +136,6 @@ fun DoonaApp(
             entry<GroupKey> { key -> GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }) }
             entry<RulesKey> { key ->
                 RulesRoute(
-                    engine,
                     onBack = { backStack.pop(key) },
                     onTemplate = { backStack.push(TemplateKey) },
                     routes = RvRulesRoutes(effective = { backStack.push(EffectiveConfigKey) }),

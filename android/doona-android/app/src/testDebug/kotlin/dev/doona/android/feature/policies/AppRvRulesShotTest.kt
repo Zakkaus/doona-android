@@ -14,22 +14,17 @@ import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvPart
-import dev.doona.android.engine.Catalog
-import dev.doona.android.engine.Engine
-import dev.doona.android.engine.EngineException
-import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.RulePage
-import dev.doona.android.engine.fake.FakeEngine
-import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvRowRules
 import dev.doona.android.testing.drawFully
+import dev.doona.android.vpn.FakeHonk
+import dev.doona.android.vpn.HonkFixtures
+import dev.doona.android.vpn.NativeApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.test.StandardTestDispatcher
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -39,11 +34,11 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * 全部規則 as the app draws it: an engine, RulesViewModel, the mapper, then the page of the approved `proto-rv-rules-*`
- * samples (goldens `app-rv-rules-*`). On the RV sample engine it is every rule of the sample's source with today's bytes,
- * the whole page; with the groups named at length as users name them in honk by hand ([longNames]) the targets wrap as
- * the row rules say; a source that did not parse and a read that failed show the approved banners; before the engine is
- * ready it is the skeleton. No place mapper is wired yet (P3c), so every node is 其他.
+ * 全部規則 as the app draws it: honk's native API, RulesViewModel, the mapper, then the page of the approved
+ * `proto-rv-rules-*` samples (goldens `app-rv-rules-*`). On the RV sample profile ([HonkFixtures.rvSample]) it is every
+ * rule honk runs, the whole page; with the groups named at length as users name them in honk by hand the targets wrap
+ * as the row rules say; files honk did not load and a read that failed show the approved banners; before the first read
+ * ends it is the skeleton. No place mapper is wired yet (P3c), so every node is 其他.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -57,33 +52,33 @@ class AppRvRulesShotTest {
 
     @Test
     @Config(qualifiers = WHOLE)
-    fun rulesLight() = shot("rules", dark = false, whole = true) { Page(::rvSampleEngine) }
+    fun rulesLight() = shot("rules", dark = false, whole = true) { Page({ HonkFixtures.rvSample() }) }
 
     @Test
     @Config(qualifiers = WHOLE)
-    fun rulesDark() = shot("rules", dark = true, whole = true) { Page(::rvSampleEngine) }
+    fun rulesDark() = shot("rules", dark = true, whole = true) { Page({ HonkFixtures.rvSample() }) }
 
     @Test
     @Config(qualifiers = WHOLE_FS200)
-    fun rulesFs200() = shot("rules", dark = false, fontScale = RV_FS200, whole = true) { Page(::rvSampleEngine) }
+    fun rulesFs200() = shot("rules", dark = false, fontScale = RV_FS200, whole = true) { Page({ HonkFixtures.rvSample() }) }
 
     @Test
     @Config(qualifiers = WHOLE_EN)
-    fun rulesEnLight() = shot("rules-en", dark = false, whole = true) { Page(::rvSampleEngine) }
+    fun rulesEnLight() = shot("rules-en", dark = false, whole = true) { Page({ HonkFixtures.rvSample() }) }
 
     @Test
     @Config(qualifiers = WHOLE_LONG)
-    fun longNamesLight() = shot("rules-long", dark = false, whole = true) { Page(::longNames) }
+    fun longNamesLight() = shot("rules-long", dark = false, whole = true) { Page({ HonkFixtures.rvSample(long = true) }) }
 
     @Test
     @Config(qualifiers = WHOLE_LONG)
-    fun longNamesDark() = shot("rules-long", dark = true, whole = true) { Page(::longNames) }
+    fun longNamesDark() = shot("rules-long", dark = true, whole = true) { Page({ HonkFixtures.rvSample(long = true) }) }
 
     @Test
-    fun parseFailedLight() = shot("rules-parse-failed", dark = false) { Page(::unparsed) }
+    fun parseFailedLight() = shot("rules-parse-failed", dark = false) { Page(::unloaded) }
 
     @Test
-    fun parseFailedDark() = shot("rules-parse-failed", dark = true) { Page(::unparsed) }
+    fun parseFailedDark() = shot("rules-parse-failed", dark = true) { Page(::unloaded) }
 
     @Test
     fun readFailedLight() = shot("rules-read-failed", dark = false) { Page(::unreadable) }
@@ -92,18 +87,21 @@ class AppRvRulesShotTest {
     fun readFailedDark() = shot("rules-read-failed", dark = true) { Page(::unreadable) }
 
     @Test
-    fun loadingLight() = shot("rules-loading", dark = false) { Page(::notReady) }
+    fun loadingLight() = shot("rules-loading", dark = false) {
+        val vm = remember { RulesViewModel(HonkFixtures.rvSample(), io = StandardTestDispatcher()) }
+        RulesRoute(vm, onBack = {}, onTemplate = {})
+    }
 
     /** A reread that failed (DS 1126i 2): the banner with 重試 over the rules last read, every row of them still drawn. */
     @Test
     @Config(qualifiers = WHOLE_REREAD)
     fun rereadFailedLight() {
-        val engine = RereadingRules()
-        val vm = RulesViewModel(engine, reads = Dispatchers.Unconfined)
+        val honk = HonkFixtures.rvSample()
+        val vm = RulesViewModel(honk, io = Dispatchers.Unconfined)
         var rows = 0
         val reread = {
             rows = compose.onAllNodes(hasTestTag(RvPart.ROW), useUnmergedTree = true).fetchSemanticsNodes().size
-            engine.fail = true
+            unreadable(honk)
             vm.retry()
         }
         shot("rules-reread-failed", dark = false, whole = true, then = reread) { RulesRoute(vm, onBack = {}, onTemplate = {}) }
@@ -116,7 +114,7 @@ class AppRvRulesShotTest {
     @Test
     fun theParseBannerOpensTheTemplates() {
         var opened = 0
-        compose.rvContent(dark = false) { Page(::unparsed, onTemplate = { opened++ }) }
+        compose.rvContent(dark = false) { Page(::unloaded, onTemplate = { opened++ }) }
         compose.onNode(hasText(text(R.string.rv_policy_template)), useUnmergedTree = true).performClick()
         compose.waitForIdle()
         assertEquals(1, opened)
@@ -125,15 +123,10 @@ class AppRvRulesShotTest {
     /** A failed read: 重試 reads the rules again, and they show. */
     @Test
     fun aFailedReadRetries() {
-        var fail = true
-        val sample = rvSampleEngine()
-        val engine = object : Engine by sample {
-            override suspend fun rules(offset: Int, limit: Int): Result<RulePage> =
-                if (fail) Result.failure(EngineException(ErrorCode.Busy)) else sample.rules(offset, limit)
-        }
-        compose.rvContent(dark = false) { Page({ engine }) }
+        val honk = unreadable()
+        compose.rvContent(dark = false) { Page({ honk }) }
         assertEquals(1, shown(text(R.string.rv_rules_read_failed)))
-        fail = false
+        honk.on("GET", "/api/v1/rules", 200, HonkFixtures.body("rules/rv-sample"))
         compose.onNode(hasText(text(R.string.rv_retry)), useUnmergedTree = true).performClick()
         compose.waitForIdle()
         assertEquals(0, shown(text(R.string.rv_rules_read_failed)))
@@ -161,52 +154,24 @@ class AppRvRulesShotTest {
 
     /** The route on a view model reading on the test's thread. */
     @Composable
-    private fun Page(engine: () -> Engine, onTemplate: () -> Unit = {}) {
-        val vm = remember { RulesViewModel(engine(), reads = Dispatchers.Unconfined) }
+    private fun Page(api: () -> NativeApi, onTemplate: () -> Unit = {}) {
+        val vm = remember { RulesViewModel(api(), io = Dispatchers.Unconfined) }
         RulesRoute(vm, onBack = {}, onTemplate = onTemplate)
     }
 
-    /** The sample engine with its rules' groups named at length, zh and en mixed, as users write them in honk. */
-    private fun longNames(): FakeEngine = rvSampleEngine().apply {
-        groups.value = groups.value.map { group -> LONG_NAMES[group.id]?.let { group.copy(name = it) } ?: group }
+    /** The sample profile after a reload whose files honk did not load. */
+    private fun unloaded(): FakeHonk = HonkFixtures.rvSample().apply {
+        on("GET", "/api/v1/runtime", 200, HonkFixtures.body("runtime/runtime-reload-failed"))
     }
 
-    /** The sample engine whose rule source did not parse. */
-    private fun unparsed(): Engine {
-        val sample = rvSampleEngine()
-        val catalog = sample.catalog.value!!
-        return object : Engine by sample {
-            override val catalog: StateFlow<Catalog?> = MutableStateFlow(catalog.copy(ruleSource = catalog.ruleSource.copy(error = ErrorCode.ParseFailed)))
-        }
-    }
-
-    /** The sample engine whose rules cannot be read. */
-    private fun unreadable(): Engine = object : Engine by rvSampleEngine() {
-        override suspend fun rules(offset: Int, limit: Int): Result<RulePage> = Result.failure(EngineException(ErrorCode.Busy))
-    }
-
-    /** The sample engine whose rules read until [fail] is set, then fail with Busy. */
-    private class RereadingRules(private val base: Engine = rvSampleEngine()) : Engine by base {
-        var fail = false
-
-        override suspend fun rules(offset: Int, limit: Int): Result<RulePage> =
-            if (fail) Result.failure(EngineException(ErrorCode.Busy)) else base.rules(offset, limit)
-    }
-
-    /** The sample engine before its catalog has loaded: the page waits as a skeleton. */
-    private fun notReady(): Engine = object : Engine by rvSampleEngine() {
-        override val catalog: StateFlow<Catalog?> = MutableStateFlow(null)
+    /** The sample profile whose rules cannot be read now: honk has no coherent generation to read them from. */
+    private fun unreadable(honk: FakeHonk = HonkFixtures.rvSample()): FakeHonk = honk.apply {
+        on("GET", "/api/v1/rules", 503, HonkFixtures.body("errors/snapshot-unavailable"))
     }
 
     private companion object {
         val SHOTS: String = System.getProperty("doona.shots") ?: "src/test/screenshots"
         const val PERCENT = 100
-
-        val LONG_NAMES = mapOf(
-            "g-Streaming" to "影音串流與直播平台（香港、臺灣、日本）",
-            "g-AI" to "AI Services and Developer Tools (US West)",
-            "g-JP" to "日本遊戲低延遲專線 Japan Gaming Relay",
-        )
 
         /** Windows as tall as each page whole; measured by assertWhole. */
         const val WHOLE = "+h1730dp"

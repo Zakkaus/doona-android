@@ -9,20 +9,20 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.R
+import dev.doona.android.app.nativeApi
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
-import dev.doona.android.engine.Engine
 import dev.doona.android.feature.messageRes
 
 /**
- * 全部規則 (查看全部 on 策略): builds the ViewModel and draws the page from its state while the screen is started. The
- * engine has no call yet that edits a rule (rules-p1's form commands are not on the core's API), so [routes] carries the
- * taps that open, edit, turn off, delete, add, apply and drop rules as the caller wires them; the reorder mode is the
- * page's own. A source that did not compile shows its banner with 範本 ([onTemplate]); a failed read, with 重試.
+ * 全部規則 (查看全部 on 策略): builds the ViewModel on the app's [nativeApi] and draws the page from its state while the
+ * screen is started. honk's native API has no call yet that edits one rule, so [routes] carries the taps that open,
+ * edit, turn off, delete, add, apply and drop rules as the caller wires them; the reorder mode is the page's own. Files
+ * honk did not load show their banner with 範本 ([onTemplate]); a failed read, with 重試.
  */
 @Composable
-internal fun RulesRoute(engine: Engine, onBack: () -> Unit, onTemplate: () -> Unit, routes: RvRulesRoutes = RvRulesRoutes()) {
-    val viewModel: RulesViewModel = viewModel(factory = RulesViewModel.factory(engine))
+internal fun RulesRoute(onBack: () -> Unit, onTemplate: () -> Unit, routes: RvRulesRoutes = RvRulesRoutes()) {
+    val viewModel: RulesViewModel = viewModel(factory = RulesViewModel.factory(nativeApi()))
     RulesRoute(viewModel, onBack, onTemplate, routes)
 }
 
@@ -51,7 +51,7 @@ internal fun RulesRoute(viewModel: RulesViewModel, onBack: () -> Unit, onTemplat
     )
 }
 
-/** The banner of [failure], as the approved error samples have it: a source that did not parse opens 範本; a read retries. */
+/** The banner of [failure], as the approved error samples have it: files honk did not load open 範本; a read retries. */
 @Composable
 private fun rulesBanner(failure: RulesFailure, onTemplate: () -> Unit, onRetry: () -> Unit): RvNotice = when (failure) {
     RulesFailure.Parse -> RvNotice(
