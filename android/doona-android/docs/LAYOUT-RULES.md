@@ -64,6 +64,7 @@ Component code uses only these through tokens (`RvSpace`, `RvSettingsSpace`, a c
 | Title to subtitle | `titleToSubtitle` | 2 dp, an exception (below); was S0, the line boxes touching |
 | Disc to label (round action) | `discToLabel` | S2 |
 | Between two stacked controls | `controlStack` | S3 |
+| Between two stacked fields of a form | `fieldGap` | S4 (the Field row's 16 to the next) |
 | Notice text to its button | `noticeToAction` | S4 |
 | Chart and body to actions | `chartGap`, `controlGap` | S5 |
 | Tile gap | `tileGap` | S4 |

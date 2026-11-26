@@ -144,6 +144,7 @@ class RvGroupNewShotTest {
     private companion object {
         val TAKEN = RvNativeSample.newStreaming.copy(name = RvNativeSample.JAPAN)
         const val CREATE = "新增"
+
         /** Windows as tall as each whole page. */
         const val WHOLE_NEW = "+h1137dp"
         const val WHOLE_NEW_EN = "en-w412dp-h1139dp-notnight-xhdpi"

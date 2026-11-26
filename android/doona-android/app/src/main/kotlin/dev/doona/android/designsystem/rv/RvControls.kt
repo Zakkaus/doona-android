@@ -15,6 +15,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -392,6 +393,12 @@ internal fun RvSecondaryButton(
             .padding(horizontal = RvSpace.gutter, vertical = RvSpace.tight),
         contentAlignment = Alignment.Center,
     ) { RvText(label, labelStyle, color = faded(colors.text), align = TextAlign.Center) }
+}
+
+/** The fields of one form, [RvSpace.fieldGap] apart, each with its label over it and its message under it. */
+@Composable
+internal fun RvFieldStack(content: @Composable ColumnScope.() -> Unit) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(RvSpace.fieldGap), content = content)
 }
 
 /**

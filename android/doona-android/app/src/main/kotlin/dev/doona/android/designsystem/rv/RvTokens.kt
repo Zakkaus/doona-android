@@ -52,6 +52,9 @@ internal object RvSpace {
      */
     val searchGap = 16.dp
 
+    /** Between two stacked fields of one form (LAYOUT-RULES, Field: 16 to the next). */
+    val fieldGap = 16.dp
+
     /** Between the blocks of a tab home (a caption, a control row, the first card), as Revolut's flat tabs set them. */
     val tabBlockGap = 16.dp
 

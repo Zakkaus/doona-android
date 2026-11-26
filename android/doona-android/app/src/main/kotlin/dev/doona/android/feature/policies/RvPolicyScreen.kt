@@ -399,15 +399,15 @@ private fun GroupRow(group: RvPolicyGroup, onOpen: (String) -> Unit, remove: RvR
 }
 
 /**
- * The banner of a group the configuration would not lose, an error: [rules] rules still send traffic to it, so nothing
- * changed; 查看規則 opens the rules.
+ * The banner of a group or DNS server the configuration would not lose, an error: [rules] rules still send traffic to
+ * it, so nothing changed; 查看規則 opens the rules.
  */
 @Composable
-internal fun rvGroupDeleteRefusedBanner(name: String, rules: Int, onRules: () -> Unit) = RvNotice(
+internal fun rvDeleteRefusedBanner(name: String, rules: Int, onRules: () -> Unit) = RvNotice(
     RvNoticeKind.Error,
     stringResource(R.string.rv_list_delete_failed_title, name),
-    pluralStringResource(R.plurals.rv_group_delete_refused_rules, rules, rules),
-    stringResource(R.string.rv_group_delete_refused_action),
+    pluralStringResource(R.plurals.rv_list_delete_refused_rules, rules, rules),
+    stringResource(R.string.rv_list_delete_refused_action),
     onRules,
     titleKeepWords = false,
 )

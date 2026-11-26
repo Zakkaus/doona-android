@@ -15,7 +15,7 @@ import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.policies.RvPolicyProfile
-import dev.doona.android.feature.policies.rvGroupDeleteRefusedBanner
+import dev.doona.android.feature.policies.rvDeleteRefusedBanner
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
@@ -147,7 +147,7 @@ class RvPolicyEditShotTest {
     private fun Refused() = RvPolicyScreenSample(
         RULE,
         {},
-        banner = rvGroupDeleteRefusedBanner(RvNativeSample.STREAMING, 1) {},
+        banner = rvDeleteRefusedBanner(RvNativeSample.STREAMING, 1) {},
         groupsEdit = RvListEdit(true),
         profile = RvNativeSample.profile,
     )

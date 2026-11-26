@@ -91,6 +91,9 @@ internal object RvNativeSample {
         RvDnsServer("backup", "https://dns.example/dns-query"),
     )
 
+    /** The DNS 伺服器 list: dns.dae's three servers, each named by a rule, and `google`, which no rule names. */
+    val dnsServers: List<RvDnsServer> = upstreams + RvDnsServer("google", "tls://dns.google:853")
+
     /** dns.dae's `qname(suffix: corp.example) -> local`, a query rule the form can represent. A DNS draft has no target. */
     val dnsQuery = RvDnsRuleDraft(RvDnsList.Query, RvRuleDraft(RvMatchKind.Suffix, "corp.example", ""), RvDnsAction.Upstream, "local")
 

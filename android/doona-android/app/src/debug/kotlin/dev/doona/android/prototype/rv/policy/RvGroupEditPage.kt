@@ -123,7 +123,9 @@ internal fun RvGroupEditPage(
                     NOT_WIRED,
                     enabled = draft.name.isNotBlank() && nameError == null && draft.members.isNotEmpty(),
                 )
+
                 inEdit -> RvPrimaryButton(stringResource(R.string.rv_rules_done), { onEdit(false) })
+
                 else -> RvPrimaryButton(stringResource(R.string.rv_policy_apply), NOT_WIRED)
             }
         },
