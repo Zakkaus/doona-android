@@ -11,6 +11,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RV_NODE_LINK_PLACEHOLDER
+import dev.doona.android.designsystem.rv.RvAddRow
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvConfirmSheet
 import dev.doona.android.designsystem.rv.RvIconDisc
@@ -46,12 +47,12 @@ internal class RvInlineActions(
 internal fun RvInlineCard(nodes: List<RvNode>, actions: RvInlineActions) {
     val add = stringResource(R.string.rv_addnode)
     RvCard {
-        if (nodes.isEmpty()) return@RvCard RvRow({ RvIconDisc(R.drawable.rv_sym_add) }, add, stringResource(R.string.rv_addnode_line), onClick = actions.add)
+        if (nodes.isEmpty()) return@RvCard RvAddRow(add, actions.add, afterRemoves = false, subtitle = stringResource(R.string.rv_addnode_line))
         RvRow({ RvIconDisc(R.drawable.rv_sym_link) }, stringResource(R.string.rv_inline_source), pluralStringResource(R.plurals.rv_nodes_nodes, nodes.size, nodes.size))
         nodes.forEachIndexed { order, node ->
             RvNodePickRow(node, stringResource(node.place.label), current = false, order = order, onPick = actions.openNode, onDetail = actions.openNode, pickInMenu = false)
         }
-        RvRow({ RvIconDisc(R.drawable.rv_sym_add) }, add, null, onClick = actions.add)
+        RvAddRow(add, actions.add, afterRemoves = false)
     }
 }
 

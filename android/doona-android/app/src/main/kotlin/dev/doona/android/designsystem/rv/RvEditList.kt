@@ -136,10 +136,11 @@ internal class RvRowRemove(val style: RvRemoveStyle, val onRemove: (() -> Unit)?
  * title starts on the card's text column. [afterRemoves], the last row of style A's edit mode: the accent add disc stands
  * where the red remove disc stands, as large, and the leading visual's place after it stays empty. Otherwise (a card
  * whose rows start with their visual, or the card of an empty state) the same disc stands centred in the visual's place.
+ * A [subtitle] says what adding takes, under the label.
  */
 @Composable
-internal fun RvAddRow(label: String, onClick: () -> Unit, afterRemoves: Boolean = true) {
-    RvRow({ RvAddStart(afterRemoves) }, label, null, Modifier.testTag(RvEditPart.ADD), onClick = onClick)
+internal fun RvAddRow(label: String, onClick: () -> Unit, afterRemoves: Boolean = true, subtitle: String? = null) {
+    RvRow({ RvAddStart(afterRemoves) }, label, subtitle, Modifier.testTag(RvEditPart.ADD), onClick = onClick)
 }
 
 /** [RvAddRow]'s start: the add disc in the remove disc's place and the visual's place empty, or the disc in the visual's place. */

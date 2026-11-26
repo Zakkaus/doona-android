@@ -95,8 +95,8 @@ internal class RvSubsActions(
  * with 重試; a failed delete, the latest thing the user asked for, takes the place.
  * Each subscription is a card: its row (name, node count and last update, chevron to its page), then what it has used
  * of its quota and when it ends over the progress bar. A long press on a card opens 更新, 編輯 and 刪除; 刪除 asks in
- * the confirm sheet. 新增訂閱 ends the list as its own card's add row ([RvAddRow]). With no subscription there is nothing
- * to update: the bar's 更新所有訂閱 and the cards give way to the empty state, which carries the one 新增訂閱. While [loading]
+ * the confirm sheet. With no subscription there is nothing to update: the bar's 更新所有訂閱 and the cards give way to
+ * the empty state, which carries 新增訂閱. While [loading]
  * (before the engine is ready) the cards are skeletons of subscription cards ([SubsSkeleton]), and the cards fade in
  * over them in place; the title and the bar's actions are there from the start. 新增訂閱 follows the cards as its own
  * card's add row ([RvAddRow]). [extra] (the 組態內 card) follows it once the cards are loaded; [extraKeepsPage] keeps the
