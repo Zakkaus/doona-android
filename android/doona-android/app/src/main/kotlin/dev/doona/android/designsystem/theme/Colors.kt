@@ -32,6 +32,10 @@ class DoonaColors(s: ColorScheme, val dark: Boolean) {
 
     /** The accent: the scheme's primary, and what sits on it. */
     val positive = s.primary
+
+    /** Selection: what is in use or ranked best; the accent (owner q-item4 2026-11-26). The RV role of the same name. */
+    val selected = positive
+
     val onPositive = s.onPrimary
 
     /** The dot map and its marker while connected; neutral while not (S5-10). */
@@ -94,6 +98,9 @@ class DoonaColors(s: ColorScheme, val dark: Boolean) {
 
     /** Latency qualities: the only fixed hues, darkened (light) or lightened (dark) until they read on the card and their chip (N02). */
     val good = readableHue(if (dark) HueScale.goodDark else HueScale.goodLight)
+
+    /** Completion: a step that finished; the good latency's green, apart from [selected] (q-item4). */
+    val done = good
     val fair = readableHue(if (dark) HueScale.fairDark else HueScale.fairLight)
     val slow = readableHue(if (dark) HueScale.slowDark else HueScale.slowLight)
 

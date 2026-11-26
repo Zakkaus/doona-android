@@ -185,7 +185,7 @@ internal data class RvProtocolCount(val protocol: String, val nodes: Int)
 private fun Imported(sub: RvSubscription, protocols: List<RvProtocolCount>) {
     RvCard {
         RvRow(
-            { RvIconDisc(R.drawable.rv_nodes_ic_check_circle, Rv.colors.good) },
+            { RvIconDisc(R.drawable.rv_nodes_ic_check_circle, Rv.colors.done) },
             stringResource(R.string.rv_add_done, sub.name),
             pluralStringResource(R.plurals.rv_nodes_nodes, sub.nodes, sub.nodes) + sub.format?.let { SEPARATOR + stringResource(it.label) }.orEmpty(),
             titleKeepWords = false,

@@ -51,6 +51,9 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     val discOnHeader = if (dark) s.surfaceContainerHighest else s.surfaceContainerHigh
     val text = s.onSurface
     val positive = s.primary
+
+    /** Selection: what is in use or ranked best (節點 detail's 使用中 and Score chips); the accent (owner q-item4 2026-11-26). */
+    val selected = positive
     val onPositive = s.onPrimary
 
     /** The dot map and its marker while connected; neutral while not (S5-10). */
@@ -115,6 +118,9 @@ internal class RvColors(s: ColorScheme, val dark: Boolean) {
     val good = readableHue(if (dark) RvHue.goodDark else RvHue.goodLight)
     val fair = readableHue(if (dark) RvHue.fairDark else RvHue.fairLight)
     val slow = readableHue(if (dark) RvHue.slowDark else RvHue.slowLight)
+
+    /** Completion: a step that finished (新增訂閱's done disc); the good latency's green, apart from [selected] (q-item4). */
+    val done = good
 
     /** A progress bar's empty part. */
     val track = discOnCard
