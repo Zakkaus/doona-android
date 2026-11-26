@@ -148,9 +148,31 @@ internal fun RvSettingsNavRow(
     }
 }
 
-/** The end of a row that opens something: its chevron, after a [mark] (a status chip) when there is one. */
+/**
+ * The end of a row that opens something: its chevron, after a [mark] (a status chip) when there is one, else after its
+ * current [value] in the subtitle's grey (the policy page's 規則範本 and 設定檔, owner q-e8 2026-11-26), or after a busy
+ * bar while what it opens is being updated ([busy]).
+ */
 @Composable
-internal fun RvNavEnd(mark: (@Composable () -> Unit)?) {
+internal fun RvNavEnd(mark: (@Composable () -> Unit)? = null, value: String? = null, busy: Boolean = false) {
+    val shown: (@Composable () -> Unit)? = when {
+        mark != null -> mark
+
+        busy -> {
+            { RvBusy(Modifier.width(RvSize.busy)) }
+        }
+
+        value != null -> {
+            { RvText(value, Rv.type.rowSub, color = Rv.colors.textSecondary) }
+        }
+
+        else -> null
+    }
+    NavEnd(shown)
+}
+
+@Composable
+private fun NavEnd(mark: (@Composable () -> Unit)?) {
     if (mark == null) {
         RvChevron()
     } else {

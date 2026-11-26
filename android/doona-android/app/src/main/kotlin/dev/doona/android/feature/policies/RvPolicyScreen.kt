@@ -2,8 +2,6 @@ package dev.doona.android.feature.policies
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
@@ -43,6 +41,7 @@ import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLatencyChange
 import dev.doona.android.designsystem.rv.RvListEdit
+import dev.doona.android.designsystem.rv.RvNavEnd
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvRow
@@ -435,13 +434,7 @@ private fun OptionsCard(state: RvPolicyState, onChange: (RvPolicyState) -> Unit,
 /** A row that opens a page, with its current value before the chevron. */
 @Composable
 private fun ValueRow(@DrawableRes icon: Int, title: String, value: String, onClick: () -> Unit) {
-    RvRow({ RvIconDisc(icon) }, title, null, onClick = onClick) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            RvText(value, Rv.type.rowSub, color = Rv.colors.textSecondary)
-            Spacer(Modifier.width(RvSpace.trailingGap))
-            RvChevron()
-        }
-    }
+    RvRow({ RvIconDisc(icon) }, title, null, onClick = onClick) { RvNavEnd(value = value) }
 }
 
 private val MODES = listOf(RvRouteMode.Rule, RvRouteMode.Global, RvRouteMode.Direct)

@@ -1,8 +1,6 @@
 # Existing exceptions of tools/check-components.sh: <file under app/src>|<rule>|<count>|<reason>
-# Measured 2026-11-26 on v1/unify: 6 hits, all of the rules added by unify-1126 (rowctl, navend, tint); the first six
+# Measured 2026-11-26 on v1/unify: 6 hits (2 since the q-e4 and q-e8 rulings), all of the rules added by unify-1126 (rowctl, navend, tint); the first six
 # rules have none. Each line goes once its page uses the library or the owner rules; do not add one for new work.
 # rules: dp colour style widget click add rowctl navend tint
 main/kotlin/dev/doona/android/feature/settings/RvThemeScreen.kt|rowctl|1|the radio under each theme picture is a tile's mark, not a row's end
-main/kotlin/dev/doona/android/feature/policies/RvPolicyScreen.kt|navend|1|ValueRow's grey value and chevron: owner question q-e8 (unify-1126), the library's RvRowEndName is black rowValue
-main/kotlin/dev/doona/android/feature/subscriptions/RvSubsPage.kt|navend|1|busy bar before the chevron while a subscription updates: waits on q-e8 (unify-1126), the same row end
-main/kotlin/dev/doona/android/feature/subscriptions/RvSubAdd.kt|tint|1|done disc in good while node detail's check is positive: owner question q-item4 (unify-1126)
+main/kotlin/dev/doona/android/feature/subscriptions/RvSubAdd.kt|tint|1|done disc in the done role (Rv.colors.done), apart from selection: owner ruling q-item4 2026-11-26
