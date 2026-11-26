@@ -4,6 +4,7 @@ import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.engine.CoreDiagnostics
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
+import dev.doona.android.vpn.NativeApi
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -12,7 +13,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import java.io.File
 import java.io.FileOutputStream
@@ -36,8 +36,8 @@ data class ExportedCrashes(val names: List<String>, val mark: Long)
 data class ReportZip(val file: File, val token: String, val crashes: ExportedCrashes?, val issueLink: String)
 
 /**
- * The diagnostic report export: a zip in [outDir] of `report.json` ([reportJson]) and the crash files, which a share
- * sheet sends ([ReportExporter]). Nothing is sent anywhere: the user picks where it goes. Each export has a token, kept
+ * The diagnostic report export: a zip in [outDir] of `report.json` ([reportJson]: honk's build, state and catalog read
+ * through [api], the core's diagnostics) and the crash files, which a share sheet sends ([ReportExporter]). Nothing is sent anywhere: the user picks where it goes. Each export has a token, kept
  * in [tokens] with the names and the mark of the core's listing before its sheet opens, which its sheet's callback
  * carries; once that sheet reports that the user picked an app ([picked]), those crash files are cleared, so a crash
  * written meanwhile stays, and a late pick in an earlier sheet clears only its own export's. A clear that does not
@@ -51,6 +51,7 @@ data class ReportZip(val file: File, val token: String, val crashes: ExportedCra
  */
 class ReportExport(
     private val engine: Engine,
+    private val api: NativeApi,
     private val crashes: CrashFiles,
     private val offer: CrashOffer,
     private val outDir: () -> File,
@@ -88,14 +89,7 @@ class ReportExport(
         }
         val appEvents = AppEvents.reportSnapshot()
         val events = if (flows.isEmpty()) appEvents else (appEvents + flows).sortedBy(AppEvent::atEpochMs)
-        val catalog = engine.catalog.value
-        val members = catalog?.nodeMembers().orEmpty()
-        val endpoints = if (options.showNodeEndpoints && members.isNotEmpty()) {
-            engine.nodes(members.take(MAX_LISTED_NODES).map { it.id }).getOrNull().orEmpty().associateBy { it.id }
-        } else {
-            emptyMap()
-        }
-        val engineView = EngineView(engine.status.value, engine.settings.value, catalog, members, endpoints)
+        val engineView = EngineView(engine.settings.value, withContext(io) { HonkView.read(api) })
         val code = (core.exceptionOrNull() as? EngineException)?.code?.name
         return try {
             withContext(io) {
@@ -205,7 +199,7 @@ class ReportExport(
         val diagnostics = scrubber.diagnostics(core, held)
         val json = reportJson(at, appInfo, engineView, diagnostics, events, held, addresses, scrubber)
         val issueLink = failure?.let {
-            val coreVersion = ((diagnostics["core"] as? JsonObject)?.get("version") as? JsonPrimitive)?.content
+            val coreVersion = (honkCore(engineView.honk.version)?.get("version") as? JsonPrimitive)?.content
             GitHubIssueLink.build(it, appInfo, coreVersion, events, scrubber)
         } ?: GitHubIssueLink.plain(appInfo, scrubber)
         val zip = publishZip(STAMP.format(Instant.ofEpochMilli(at)), json, files)

@@ -170,7 +170,7 @@ class AppContainer(
         val connectivity = checkNotNull(application.getSystemService(ConnectivityManager::class.java))
         val lookup = connectivity::getConnectionOwnerUid
         FlowEvents(
-            engine,
+            nativeApi,
             Dispatchers.IO,
             { protocol, local, remote -> connectionOwnerUid(protocol, local, remote, lookup) },
             application.packageManager::getPackagesForUid,
@@ -189,6 +189,7 @@ class AppContainer(
         val tokens = ExportTokens { File(application.noBackupFilesDir, "report-exports.json") }
         ReportExport(
             engine,
+            nativeApi,
             crashFiles,
             crashOffer,
             { reportDir(application) },

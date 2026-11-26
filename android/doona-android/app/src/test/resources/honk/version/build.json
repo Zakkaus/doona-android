@@ -1,0 +1,16 @@
+{
+  "api": {
+    "name": "daeuniverse/native",
+    "major": 1,
+    "status": "draft"
+  },
+  "engine": {
+    "name": "honk",
+    "version": "0.0.1-alpha"
+  },
+  "build": {
+    "revision": "abc1234",
+    "target": "x86_64-unknown-linux-gnu",
+    "built_at": null
+  }
+}

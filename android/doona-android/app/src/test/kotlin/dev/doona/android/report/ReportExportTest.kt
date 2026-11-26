@@ -5,8 +5,8 @@ import dev.doona.android.engine.CrashFile
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.LogLevel
-import dev.doona.android.engine.Network
 import dev.doona.android.feature.settings.RvLogLevel
+import dev.doona.android.vpn.HonkFixtures
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -19,6 +19,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.int
@@ -32,7 +33,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The export: a zip that holds no URL, address or host of the catalog it was made from, and a clear after the share that
+ * The export: a zip that holds no URL, address or host of honk's catalog it was made from, and a clear after the share that
  * takes only the crash files the zip holds.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -55,51 +56,60 @@ class ReportExportTest : ExportFixture() {
         val report = Json.parseToJsonElement(zip.getValue(ReportExport.REPORT_ENTRY)).jsonObject
         val catalog = report["settings"]!!.jsonObject["catalog"]!!.jsonObject
         val nodes = catalog["nodeList"]!!.jsonArray.map { it.jsonObject }
-        assertEquals(listOf("n-1a2b3c4d", "n-9f8e7d6c", "n-00112233"), nodes.map { it["code"]!!.jsonPrimitive.content })
+        assertEquals(listOf("node:0", "node:1", "node:2"), nodes.map { it["code"]!!.jsonPrimitive.content })
+        assertEquals(listOf(0, 0, 0), nodes.map { it["provider"]!!.jsonPrimitive.int })
         assertTrue(nodes.none { "endpoint" in it })
         assertFalse("ownAddresses" in report.getValue("device").jsonObject)
-        assertEquals("s1", catalog["subscriptions"]!!.jsonArray.single().jsonObject["id"]!!.jsonPrimitive.content)
-        assertEquals("group:1", catalog["groups"]!!.jsonArray[0].jsonObject["selected"]!!.jsonPrimitive.content)
+        assertEquals(0, catalog["providers"]!!.jsonArray.single().jsonObject["index"]!!.jsonPrimitive.int)
+        assertEquals("group:1", catalog["groups"]!!.jsonArray[0].jsonObject["tcpSelected"]!!.jsonPrimitive.content)
+        assertEquals("honk", report["core"]!!.jsonObject["name"]!!.jsonPrimitive.content)
+        assertEquals("running", report["settings"]!!.jsonObject["runtime"]!!.jsonObject["state"]!!.jsonPrimitive.content)
         assertEquals(2, report["events"]!!.jsonArray.size)
         assertEquals("Pixel 9", report["device"]!!.jsonObject["model"]!!.jsonPrimitive.content)
         assertTrue(report["diagnostics"] is JsonObject)
     }
 
     @Test
-    fun exportsSplitGroupSelectionsWithoutRawIds() = runTest {
-        val engine = fixtureEngine()
-        val proxy = engine.groups.value.first()
-        val udpId = "n-9f8e7d6c5b4a3921"
-        engine.select(proxy.id, udpId, Network.Udp).getOrThrow()
+    fun `each network's selection goes by its place in honk's lists, with whether it is pinned`() = runTest {
+        val auto = Json.parseToJsonElement(HonkFixtures.body("groups/report-secrets-Auto")).jsonObject
+        val runtime = auto.getValue("runtime").jsonObject
+        val selection = runtime.getValue("selection").jsonObject
+        val udp = Json.parseToJsonElement("""{"member_id":"hk1.edge-example.org","resolved_leaf_node_id":"hk1.edge-example.org","source":"override"}""")
+        val split = JsonObject(auto + ("runtime" to JsonObject(runtime + ("selection" to JsonObject(selection + ("udp" to udp))))))
+        val honk = ReportHonk.secrets().apply { on("GET", "/api/v1/groups/Auto", 200, split.toString()) }
 
-        val json = entries(export(engine).build()!!.file).getValue(ReportExport.REPORT_ENTRY)
-        val catalog = Json.parseToJsonElement(json).jsonObject.getValue("settings").jsonObject.getValue("catalog").jsonObject
-        val group = catalog.getValue("groups").jsonArray.first().jsonObject
-        assertEquals("group:1", group.getValue("selected").jsonPrimitive.content)
-        assertFalse(group.getValue("pinned").jsonPrimitive.boolean)
-        assertEquals("group:1", group.getValue("tcpSelected").jsonPrimitive.content)
+        val json = entries(export(fixtureEngine(), honk = honk).build()!!.file).getValue(ReportExport.REPORT_ENTRY)
+        val groups = Json.parseToJsonElement(json).jsonObject.getValue("settings").jsonObject.getValue("catalog").jsonObject.getValue("groups").jsonArray
+        val selector = groups[0].jsonObject
+        assertEquals("group:1", selector.getValue("tcpSelected").jsonPrimitive.content)
+        assertTrue(selector.getValue("tcpPinned").jsonPrimitive.boolean)
+        val group = groups[1].jsonObject
+        assertEquals("node:0", group.getValue("tcpSelected").jsonPrimitive.content)
         assertFalse(group.getValue("tcpPinned").jsonPrimitive.boolean)
-        assertEquals("n-9f8e7d6c", group.getValue("udpSelected").jsonPrimitive.content)
+        assertEquals("node:1", group.getValue("udpSelected").jsonPrimitive.content)
         assertTrue(group.getValue("udpPinned").jsonPrimitive.boolean)
-        assertFalse("g-Auto" in json)
-        assertFalse(udpId in json)
+        assertFalse("Auto" in json)
+        assertFalse("hk1.edge-example.org" in json)
     }
 
     @Test
-    fun countsDnsProbeFailuresSeparatelyAndOncePerNode() = runTest {
-        val engine = fixtureEngine()
-        engine.groups.value = engine.groups.value.map { group ->
-            val members = group.members.map { node ->
-                if (node.id == "n-0011223344556677") node.copy(failed = true, error = ErrorCode.DnsFailed) else node
-            }
-            group.copy(members = members)
-        }
-        val json = entries(export(engine).build()!!.file).getValue(ReportExport.REPORT_ENTRY)
+    fun `nodes are counted by honk's TCP health`() = runTest {
+        val json = entries(export(fixtureEngine()).build()!!.file).getValue(ReportExport.REPORT_ENTRY)
         val catalog = Json.parseToJsonElement(json).jsonObject.getValue("settings").jsonObject.getValue("catalog").jsonObject
         val counts = catalog.getValue("nodes").jsonObject
-        assertEquals(2, counts.getValue("failed").jsonPrimitive.int)
-        assertEquals(1, counts.getValue("localNetwork").jsonPrimitive.int)
-        assertEquals(1, counts.getValue("dnsFailed").jsonPrimitive.int)
+        assertEquals(3, counts.getValue("total").jsonPrimitive.int)
+        assertEquals(1, counts.getValue("tested").jsonPrimitive.int)
+        assertEquals(1, counts.getValue("failed").jsonPrimitive.int)
+        assertEquals(listOf("Healthy", "Unavailable", "Unknown"), catalog.getValue("nodeList").jsonArray.map { it.jsonObject.getValue("state").jsonPrimitive.content })
+    }
+
+    @Test
+    fun `without honk the report says so in each of its parts`() = runTest {
+        val json = entries(export(fixtureEngine(), honk = ReportHonk.down()).build()!!.file).getValue(ReportExport.REPORT_ENTRY)
+        val report = Json.parseToJsonElement(json).jsonObject
+        assertEquals(JsonNull, report.getValue("core"))
+        assertEquals(JsonNull, report.getValue("settings").jsonObject.getValue("runtime"))
+        assertEquals(JsonNull, report.getValue("settings").jsonObject.getValue("catalog"))
     }
 
     @Test
@@ -190,6 +200,7 @@ class ReportExportTest : ExportFixture() {
         val building = Job(coroutineContext[Job])
         val report = ReportExport(
             engine,
+            ReportHonk.secrets(),
             files,
             CrashOffer(files, tmp.root.resolve("seen")),
             {
@@ -276,7 +287,7 @@ class ReportExportTest : ExportFixture() {
         val engine = fixtureEngine()
         val logLevels = LogLevelController({ engine.setLogLevel(LogLevel.valueOf(it.name)) }, backgroundScope) { testScheduler.currentTime }
         val io = StandardTestDispatcher(testScheduler)
-        ReportExport(engine, files, offer, { outDir }, tokens, { app }, this, io, logLevels, testFlowEvents(io)).build()
+        ReportExport(engine, ReportHonk.secrets(), files, offer, { outDir }, tokens, { app }, this, io, logLevels, testFlowEvents(io)).build()
         assertFalse(offer.offered.value)
     }
 

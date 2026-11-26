@@ -16,9 +16,10 @@ import java.net.InetAddress
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ReportBaselineTest : ExportFixture() {
-    // The fixture is 25050034's output plus the dnsFailed count. Derive the added shared selections from that report.
+    // The fixture is 25050034's output. Its core and settings came from doona-core; they are honk's now, read in
+    // ReportExportTest, so the baseline holds for every other part.
     @Test
-    fun `default ZIP entries match 25050034 without looking up endpoints or IPs`() = runTest {
+    fun `default ZIP entries match 25050034 without looking up IPs`() = runTest {
         val fake = fixtureEngine()
         val names = listOf("1795300140000.txt", "1795300150000.txt")
         crashDir.mkdirs()
@@ -28,11 +29,8 @@ class ReportBaselineTest : ExportFixture() {
         )
         crashDir.resolve(names[1]).writeText(crashText("java.lang.IllegalStateException", null, true, app.crashVersion, 1_795_300_150_000))
         fake.crashes = names.map { CrashFile(it, crashDir.resolve(it).length()) }
-        var nodeReads = 0
         var addressReads = 0
         val engine = object : Engine by fake {
-            override suspend fun nodes(ids: List<String>?) = fake.nodes(ids).also { nodeReads++ }
-
             override suspend fun diagnostics(level: LogLevel?) = fake.diagnostics(level).map {
                 it.copy(
                     json = """
@@ -58,26 +56,13 @@ class ReportBaselineTest : ExportFixture() {
             val original = requireNotNull(javaClass.getResource("/report/25050034/$name")).readText()
             val contents = actual.getValue(name)
             if (name == ReportExport.REPORT_ENTRY) {
-                assertEquals(withSharedSelections(original), Json.parseToJsonElement(contents))
+                assertEquals(withoutCoreParts(Json.parseToJsonElement(original).jsonObject), withoutCoreParts(Json.parseToJsonElement(contents).jsonObject))
             } else {
                 assertEquals(name, original, contents)
             }
         }
-        assertEquals("default endpoint lookups", 0, nodeReads)
         assertEquals("default address lookups", 0, addressReads)
     }
 
-    private fun withSharedSelections(original: String): JsonObject {
-        val report = Json.parseToJsonElement(original).jsonObject
-        val settings = report.getValue("settings").jsonObject
-        val catalog = settings.getValue("catalog").jsonObject
-        val groups = catalog.getValue("groups").jsonArray.map { element ->
-            val group = element.jsonObject
-            val selected = group.getValue("selected")
-            val pinned = group.getValue("pinned")
-            JsonObject(group + mapOf("tcpSelected" to selected, "udpSelected" to selected, "tcpPinned" to pinned, "udpPinned" to pinned))
-        }
-        val updatedCatalog = JsonObject(catalog + ("groups" to JsonArray(groups)))
-        return JsonObject(report + ("settings" to JsonObject(settings + ("catalog" to updatedCatalog))))
-    }
+    private fun withoutCoreParts(report: JsonObject) = JsonObject(report - "core" - "settings")
 }

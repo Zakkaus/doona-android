@@ -13,14 +13,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.doona.android.app.nativeApi
 import dev.doona.android.engine.Engine
 import dev.doona.android.report.ReportExporter
 import dev.doona.android.report.ReportShare
 
-/** The 回報問題 entry: builds the ViewModel over the [engine], the app's [reports] and its [facts], and shows the page. */
+/** The 回報問題 entry: builds the ViewModel over the [engine], honk, the app's [reports] and its [facts], and shows the page. */
 @Composable
 internal fun ReportRoute(engine: Engine, reports: ReportExporter, facts: ReportFacts, onBack: () -> Unit) {
-    val viewModel: ReportViewModel = viewModel(factory = ReportViewModel.factory(engine, reports, facts))
+    val api = nativeApi()
+    val viewModel: ReportViewModel = viewModel(factory = ReportViewModel.factory(engine, api, reports, facts))
     ReportPage(viewModel, onBack)
 }
 

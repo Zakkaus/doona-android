@@ -61,9 +61,11 @@ import dev.doona.android.report.ReportExporter
 import dev.doona.android.report.ReportFailure
 import dev.doona.android.report.ReportShare
 import dev.doona.android.report.ReportZip
-import dev.doona.android.report.nodeMembers
 import dev.doona.android.report.testFlowEvents
 import dev.doona.android.testing.drawFully
+import dev.doona.android.vpn.FakeHonk
+import dev.doona.android.vpn.HonkFixtures
+import dev.doona.android.vpn.NativeApi
 import dev.doona.android.vpn.NativeSettings
 import dev.doona.android.vpn.SettingsHonk
 import kotlinx.coroutines.CoroutineScope
@@ -72,6 +74,11 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
@@ -418,7 +425,7 @@ private fun settingsPage(): @Composable () -> Unit {
  * [linkFailed]: 在 GitHub 回報 could not open its link.
  */
 private fun reportPage(built: Built, tmp: TemporaryFolder, linkFailed: Boolean = false): @Composable () -> Unit {
-    val vm = ReportViewModel(reportEngine(), ShotReports(built, tmp), SampleFacts)
+    val vm = ReportViewModel(reportEngine(), reportHonk(), ShotReports(built, tmp), SampleFacts, Dispatchers.Unconfined)
     if (linkFailed) vm.linkFailed()
     return { ReportPage(vm, onBack = {}) }
 }
@@ -448,18 +455,17 @@ private fun settingsEngine(): Engine {
     return engine
 }
 
-/** The RV sample engine with the sample report's two crash files and, in its catalog, the sample report's node count. */
-private fun reportEngine(): Engine {
-    val engine = rvSampleEngine().apply {
-        crashes = listOf(CrashFile("1795300000000.txt", 2_048), CrashFile("1795300100000.txt", 1_024))
-    }
-    val catalog = checkNotNull(engine.catalog.value)
-    val nodes = catalog.nodeMembers().take(rvSampleReport.nodes)
+/** The RV sample engine with the sample report's two crash files. */
+private fun reportEngine(): Engine = rvSampleEngine().apply {
+    crashes = listOf(CrashFile("1795300000000.txt", 2_048), CrashFile("1795300100000.txt", 1_024))
+}
+
+/** honk on the RV sample, its node list cut to the sample report's node count; its 2 subscriptions and 14 rules as they are. */
+private fun reportHonk(): NativeApi = HonkFixtures.rvSample().apply {
+    val list = Json.parseToJsonElement(HonkFixtures.body("nodes/rv-sample")).jsonObject
+    val nodes = list.getValue("nodes").jsonArray.take(rvSampleReport.nodes)
     check(nodes.size == rvSampleReport.nodes)
-    val sampled = catalog.copy(groups = listOf(catalog.groups.first().copy(members = nodes)))
-    return object : Engine by engine {
-        override val catalog: StateFlow<Catalog?> = MutableStateFlow(sampled)
-    }
+    on("GET", "/api/v1/nodes", 200, JsonObject(list + ("nodes" to JsonArray(nodes))).toString())
 }
 
 /** The sample report's app, phone and event count ([rvSampleReport]). */
@@ -499,6 +505,7 @@ private fun shotExport(tmp: TemporaryFolder): ReportExport {
     val app = AppInfo("0.1.0", 1, "debug", listOf("arm64-v8a"), "15", 35, "Google", "Pixel 8")
     return ReportExport(
         engine,
+        FakeHonk(),
         files,
         CrashOffer(files, tmp.root.resolve("seen")),
         { tmp.root.resolve("reports") },

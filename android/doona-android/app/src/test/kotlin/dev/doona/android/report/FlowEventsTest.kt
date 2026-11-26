@@ -2,12 +2,9 @@ package dev.doona.android.report
 
 import android.os.Process
 import dev.doona.android.data.settings.LogLevelController
-import dev.doona.android.engine.Engine
-import dev.doona.android.engine.LogLevel
-import dev.doona.android.engine.RecentFlow
-import dev.doona.android.engine.Status
-import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.settings.RvLogLevel
+import dev.doona.android.vpn.FakeHonk
+import dev.doona.android.vpn.HonkFixtures
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -15,141 +12,136 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/** honk's flows (`GET /flows`, `detail=full`) as the report's events; bodies are `flows/full.json` with other values. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class FlowEventsTest : ExportFixture() {
     @After
     fun clearEvents() = AppEvents.clear()
 
     @Test
-    fun `repeated reads record each socket and start time once per tunnel`() = runTest {
-        val rows = listOf(
-            FLOW.copy(name = "other-protocol.example", protocol = "udp"),
-            FLOW.copy(name = "other-local.example", local = "172.19.0.2:41002"),
-            FLOW.copy(name = "other-remote.example", remote = "192.0.2.3:443"),
-            FLOW.copy(name = "later-start.example", startedMs = FLOW.startedMs + 1),
-            FLOW,
+    fun `repeated reads record each flow once per honk instance, oldest first`() = runTest {
+        val flows = listOf(
+            Flow("flow-3", domain = "later.example", startedAt = "2026-08-15T09:59:53Z"),
+            Flow("flow-1", domain = "first.example", network = "udp", startedAt = "2026-08-15T09:59:51Z"),
+            Flow("flow-2", domain = "second.example", startedAt = "2026-08-15T09:59:52Z"),
         )
-        val engine = fixtureEngine().apply { recentFlowRows = rows }
-        val producer = producer(engine)
+        val honk = honk(flows)
+        val producer = producer(honk)
         producer.recordRecent()
-        engine.recentFlowRows = rows.map { it.copy(open = false) }
+        honk.on("GET", ReportHonk.FLOWS, 200, list(flows.map { it.copy(state = "closed") }))
         producer.recordRecent()
-        val names = rows.asReversed().map { it.name }
+        val names = listOf("first.example", "second.example", "later.example")
         assertEquals(names, producer.snapshot().map { it.visitedDomain })
+        assertEquals(listOf(TCP_FLOW_EVENT, TCP_FLOW_EVENT, UDP_FLOW_EVENT).sorted(), producer.snapshot().map { it.text }.sorted())
 
-        engine.disconnect()
-        engine.connect()
-        engine.recentFlowRows = listOf(FLOW)
+        // honk started again: its flow ids start again too.
+        honk.on("GET", ReportHonk.FLOWS, 200, list(listOf(flows[1]), instance = "instance-8"))
         producer.recordRecent()
-        assertEquals(names + FLOW.name, producer.snapshot().map { it.visitedDomain })
+        assertEquals(names + "first.example", producer.snapshot().map { it.visitedDomain })
     }
 
     @Test
-    fun `only open sockets have an owner and the first sorted package wins`() = runTest {
-        val closed = FLOW.copy(name = "closed.example", open = false, startedMs = 0)
-        val engine = fixtureEngine().apply { recentFlowRows = listOf(FLOW, closed) }
+    fun `only active flows have an owner and the first sorted package wins`() = runTest {
+        val closed = Flow("flow-1", domain = "closed.example", state = "closed", startedAt = "2026-08-15T09:59:40Z")
         val lookups = mutableListOf<Pair<String, String>>()
-        val producer = producer(engine, { _, local, remote ->
+        val producer = producer(honk(listOf(FLOW, closed)), { _, local, remote ->
             lookups.add(local to remote)
             10123
         }, { arrayOf("com.zulu.app", PACKAGE) })
         producer.recordRecent()
-        assertEquals(listOf(FLOW.local to FLOW.remote), lookups)
-        assertEquals(listOf(closed.name to null, FLOW.name to PACKAGE), producer.snapshot().map { it.visitedDomain to it.appPackage })
+        assertEquals(listOf(FLOW.src to FLOW.dst), lookups)
+        assertEquals(listOf("closed.example" to null, FLOW.domain to PACKAGE), producer.snapshot().map { it.visitedDomain to it.appPackage })
     }
 
     @Test
     fun `a denied lookup still records the flow without a package`() = runTest {
-        val engine = fixtureEngine().apply { recentFlowRows = listOf(FLOW) }
-        val producer = producer(engine, { _, _, _ -> throw SecurityException("VPN lost") }, { arrayOf(PACKAGE) })
+        val producer = producer(honk(listOf(FLOW)), { _, _, _ -> throw SecurityException("VPN lost") }, { arrayOf(PACKAGE) })
         producer.recordRecent()
-        assertEquals(FLOW.name to null, producer.snapshot().single().let { it.visitedDomain to it.appPackage })
+        assertEquals(FLOW.domain to null, producer.snapshot().single().let { it.visitedDomain to it.appPackage })
     }
 
     @Test
     fun `an invalid UID has no package`() = runTest {
-        val engine = fixtureEngine().apply { recentFlowRows = listOf(FLOW) }
-        val producer = producer(engine, packages = { arrayOf(PACKAGE) })
+        val producer = producer(honk(listOf(FLOW)), packages = { arrayOf(PACKAGE) })
         producer.recordRecent()
-        assertEquals(FLOW.name to null, producer.snapshot().single().let { it.visitedDomain to it.appPackage })
+        assertEquals(FLOW.domain to null, producer.snapshot().single().let { it.visitedDomain to it.appPackage })
     }
 
     @Test
-    fun `capture samples every two seconds only while Debug and the tunnel are running`() = runTest {
-        val fake = FakeEngine()
-        val reads = mutableListOf<Long>()
-        val engine = object : Engine by fake {
-            override suspend fun recentFlows() = fake.recentFlows().also { reads.add(testScheduler.currentTime) }
-        }
-        val levels = LogLevelController({ fake.setLogLevel(LogLevel.valueOf(it.name)) }, backgroundScope) { testScheduler.currentTime }
-        backgroundScope.launch { producer(engine).followCapture(levels) }
-        levels.set(RvLogLevel.Debug).getOrThrow()
-        advanceTimeBy(4_000)
-        assertTrue(reads.isEmpty())
+    fun `without honk a read records nothing`() = runTest {
+        val producer = producer(ReportHonk.down())
+        producer.recordRecent()
+        assertTrue(producer.snapshot().isEmpty())
+    }
 
-        fake.connect()
+    @Test
+    fun `capture reads every two seconds only while Debug lasts`() = runTest {
+        val honk = honk(listOf(FLOW))
+        val levels = LogLevelController({ Result.success(Unit) }, backgroundScope) { testScheduler.currentTime }
+        backgroundScope.launch { producer(honk).followCapture(levels) }
+        advanceTimeBy(4_000)
+        assertTrue(honk.reads().isEmpty())
+
+        levels.set(RvLogLevel.Debug).getOrThrow()
         runCurrent()
         advanceTimeBy(1_999)
         runCurrent()
-        assertEquals(listOf(4_000L), reads)
+        assertEquals(1, honk.reads().size)
         advanceTimeBy(1)
         runCurrent()
-        assertEquals(listOf(4_000L, 6_000L), reads)
+        assertEquals(2, honk.reads().size)
 
         levels.set(RvLogLevel.Info).getOrThrow()
         advanceTimeBy(4_000)
-        assertEquals(listOf(4_000L, 6_000L), reads)
-        levels.set(RvLogLevel.Debug).getOrThrow()
-        runCurrent()
-        fake.disconnect()
-        advanceTimeBy(4_000)
-        assertEquals(listOf(4_000L, 6_000L, 10_000L), reads)
+        assertEquals(2, honk.reads().size)
     }
 
     @Test
-    fun `capture stops at the elapsed deadline even if the core refuses to reset`() = runTest {
-        val fake = fixtureEngine().apply { recentFlowRows = listOf(FLOW) }
-        var lastReadMs = -1L
-        val engine = object : Engine by fake {
-            override suspend fun recentFlows() = fake.recentFlows().also { lastReadMs = testScheduler.currentTime }
-        }
+    fun `capture stops at the elapsed deadline even if honk refuses to reset`() = runTest {
+        val honk = honk(listOf(FLOW))
         val levels = LogLevelController({ level ->
-            if (level == RvLogLevel.Debug) fake.setLogLevel(LogLevel.valueOf(level.name)) else Result.failure(IllegalStateException("refused"))
+            if (level == RvLogLevel.Debug) Result.success(Unit) else Result.failure(IllegalStateException("refused"))
         }, backgroundScope) { testScheduler.currentTime }
-        backgroundScope.launch { producer(engine).followCapture(levels) }
+        backgroundScope.launch { producer(honk).followCapture(levels) }
         levels.set(RvLogLevel.Debug).getOrThrow()
         advanceTimeBy(3_605_000)
-        assertEquals(3_598_000L, lastReadMs)
+        assertEquals(1_800, honk.reads().size)
     }
 
     @Test
-    fun `the ZIP discloses produced domains and packages only under their switches and never exposes sockets`() = runTest {
-        val engine = fixtureEngine().apply { recentFlowRows = listOf(FLOW) }
-        val report = export(engine, flowEvents = producer(engine, { _, _, _ -> 10123 }, { arrayOf(PACKAGE) }))
+    fun `the ZIP discloses domains and packages only under their switches and never exposes addresses`() = runTest {
+        val honk = honk(listOf(FLOW))
+        val report = export(fixtureEngine(), flowEvents = producer(honk, { _, _, _ -> 10123 }, { arrayOf(PACKAGE) }))
         for (showDomain in listOf(false, true)) {
             for (showApp in listOf(false, true)) {
                 val zip = report.build(RedactionOptions(showVisitedDomains = showDomain, showAppNames = showApp))!!
                 val text = entries(zip.file).values.joinToString("\n")
                 assertEquals("flow event presence", showDomain || showApp, "flow tcp" in text)
-                assertEquals("visited domain", showDomain, FLOW.name!! in text)
+                assertEquals("visited domain", showDomain, FLOW.domain in text)
                 assertEquals("app package", showApp, PACKAGE in text)
-                for (secret in listOf(FLOW.local, FLOW.remote, FLOW.outbound)) assertFalse(secret, secret in text)
+                for (secret in listOf(FLOW.src, FLOW.dst, "flow-23", "tcp-01HZX4K8W5")) assertFalse(secret, secret in text)
             }
         }
     }
 
     @Test
     fun `exporting 128 flows preserves an earlier app warning`() = runTest {
-        val engine = fixtureEngine().apply { recentFlowRows = newerFlows() }
+        val honk = honk(newerFlows())
         val warning = AppEvents.record(AppEventLevel.Warn, "health check: data path down")
         repeat(198) { AppEvents.record(AppEventLevel.Info, "diagnostics: ok after 1 ms") }
-        val report = export(engine, flowEvents = producer(engine))
+        val report = export(fixtureEngine(), flowEvents = producer(honk))
         val zip = report.build(RedactionOptions(showVisitedDomains = true))!!
         val text = entries(zip.file).getValue(ReportExport.REPORT_ENTRY)
         assertTrue(warning.text in text)
@@ -158,47 +150,78 @@ class FlowEventsTest : ExportFixture() {
     }
 
     @Test
-    fun `both switches off skip sampling and omit previously captured flows`() = runTest {
-        val fake = fixtureEngine().apply { recentFlowRows = listOf(FLOW) }
-        var reads = 0
-        val engine = object : Engine by fake {
-            override suspend fun recentFlows() = fake.recentFlows().also { reads++ }
-        }
-        val producer = producer(engine, { _, _, _ -> 10123 }, { arrayOf(PACKAGE) })
+    fun `both switches off skip reading and omit flows read before`() = runTest {
+        val honk = honk(listOf(FLOW))
+        val producer = producer(honk, { _, _, _ -> 10123 }, { arrayOf(PACKAGE) })
         producer.recordRecent()
-        val zip = export(engine, flowEvents = producer).build(RedactionOptions(showVisitedDomains = false, showAppNames = false))!!
+        val zip = export(fixtureEngine(), flowEvents = producer).build(RedactionOptions(showVisitedDomains = false, showAppNames = false))!!
         val text = entries(zip.file).getValue(ReportExport.REPORT_ENTRY)
-        assertEquals("core reads", 1, reads)
+        assertEquals("flow reads", 1, honk.reads().size)
         assertFalse("flow tcp" in text)
-        assertFalse(FLOW.name!! in text)
+        assertFalse(FLOW.domain in text)
         assertFalse(PACKAGE in text)
     }
 
     @Test
-    fun `a key evicted from the core ring no longer suppresses a new row`() = runTest {
-        val engine = fixtureEngine().apply { recentFlowRows = listOf(FLOW) }
-        val producer = producer(engine)
+    fun `a flow honk no longer holds no longer suppresses a new one by its id`() = runTest {
+        val honk = honk(listOf(FLOW))
+        val producer = producer(honk)
         producer.recordRecent()
-        engine.recentFlowRows = newerFlows()
+        val newer = newerFlows()
+        honk.on("GET", ReportHonk.FLOWS, 200, list(newer))
         producer.recordRecent()
-        assertEquals(engine.recentFlowRows.asReversed().map { it.name }, producer.snapshot().map { it.visitedDomain })
+        assertEquals(newer.map { it.domain }, producer.snapshot().map { it.visitedDomain })
 
-        val reused = FLOW.copy(name = "reused.example")
-        engine.recentFlowRows = listOf(reused) + engine.recentFlowRows.dropLast(1)
+        val reused = FLOW.copy(domain = "reused.example", startedAt = "2026-08-15T10:30:00Z")
+        honk.on("GET", ReportHonk.FLOWS, 200, list(newer.drop(1) + reused))
         producer.recordRecent()
-        assertEquals(engine.recentFlowRows.asReversed().map { it.name }, producer.snapshot().map { it.visitedDomain })
+        assertEquals(newer.drop(1).map { it.domain } + "reused.example", producer.snapshot().map { it.visitedDomain })
     }
 
-    private fun newerFlows() = List(128) { FLOW.copy(name = "flow-$it.example", remote = "192.0.2.2:${500 + it}") }
+    /** A flow of `flows/full.json` with these values. */
+    private data class Flow(
+        val id: String,
+        val domain: String = "alice.hunter2.example",
+        val network: String = "tcp",
+        val state: String = "active",
+        val startedAt: String = "2026-08-15T09:59:50Z",
+        val src: String = "192.168.1.100:12345",
+        val dst: String = "1.2.3.4:443",
+    )
+
+    private fun list(flows: List<Flow>, instance: String = "instance-7"): String {
+        val template = Json.parseToJsonElement(HonkFixtures.body("flows/full")).jsonObject
+        val flow = template.getValue("flows").jsonArray.single().jsonObject
+        val input = flow.getValue("input").jsonObject
+        val rows = flows.map { f ->
+            JsonObject(
+                flow + mapOf(
+                    "id" to JsonPrimitive(f.id),
+                    "instance_id" to JsonPrimitive(instance),
+                    "network" to JsonPrimitive(f.network),
+                    "state" to JsonPrimitive(f.state),
+                    "started_at" to JsonPrimitive(f.startedAt),
+                    "input" to JsonObject(input + mapOf("src" to JsonPrimitive(f.src), "dst" to JsonPrimitive(f.dst), "domain" to JsonPrimitive(f.domain))),
+                ),
+            )
+        }
+        return JsonObject(template + mapOf("instance_id" to JsonPrimitive(instance), "flows" to JsonArray(rows))).toString()
+    }
+
+    private fun honk(flows: List<Flow>) = FakeHonk().apply { on("GET", ReportHonk.FLOWS, 200, list(flows)) }
+
+    private fun FakeHonk.reads() = calls.filter { it.path == ReportHonk.FLOWS }
+
+    private fun newerFlows() = List(128) { Flow("flow-n$it", domain = "flow-$it.example", startedAt = "2026-08-15T10:%02d:%02dZ".format(it / 60, it % 60)) }
 
     private fun TestScope.producer(
-        engine: Engine,
+        honk: FakeHonk,
         owner: (Int, String, String) -> Int = { _, _, _ -> Process.INVALID_UID },
         packages: (Int) -> Array<String>? = { null },
-    ) = FlowEvents(engine, StandardTestDispatcher(testScheduler), owner, packages)
+    ) = FlowEvents(honk, StandardTestDispatcher(testScheduler), owner, packages)
 
     companion object {
         private const val PACKAGE = "com.alice.hunter2"
-        private val FLOW = RecentFlow("tcp", "172.19.0.1:41002", "192.0.2.2:443", "alice.hunter2.example", "alice.outbound.secret", 12, true)
+        private val FLOW = Flow("flow-23")
     }
 }

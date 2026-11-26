@@ -75,7 +75,7 @@ class DebugExportTest {
         val tokens = ExportTokens { File(data, "report-exports.json") }
         val engine = FakeEngine()
         val logLevels = LogLevelController({ engine.setLogLevel(LogLevel.valueOf(it.name)) }, backgroundScope) { testScheduler.currentTime }
-        val reports = ReportExport(engine, files, offer, { reportDir(app) }, tokens, { AppInfo.of(app) }, this, io, logLevels, testFlowEvents(io))
+        val reports = ReportExport(engine, FakeHonk(), files, offer, { reportDir(app) }, tokens, { AppInfo.of(app) }, this, io, logLevels, testFlowEvents(io))
         val started = mutableListOf<Intent>()
         shareReport(AppReportExporter(app, reports, io)) { started += it }
         assertEquals(1, started.size)
