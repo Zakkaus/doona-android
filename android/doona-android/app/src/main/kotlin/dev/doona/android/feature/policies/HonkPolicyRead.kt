@@ -5,7 +5,9 @@ import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvRuleSource
+import dev.doona.android.feature.model.rvNode
 import dev.doona.android.feature.model.rvTemplate
+import dev.doona.android.feature.subscriptions.rvSubscription
 import dev.doona.android.vpn.NativeApi
 import dev.doona.android.vpn.honk.Group
 import dev.doona.android.vpn.honk.HonkRules
@@ -60,7 +62,7 @@ internal class HonkPolicyRead(
             rules = policyRules(groups).take(RV_POLICY_CARD_RULES),
             ruleCount = rules.rules.size,
             nodes = nodes.values.toList(),
-            subscriptions = subscriptions.map(::rvSubscription),
+            subscriptions = subscriptions.map { rvSubscription(it, null) },
             nowEpochMs = nowEpochMs,
             source = routing?.template?.let { RvRuleSource.Template(rvTemplate(it)) } ?: RvRuleSource.File,
         )

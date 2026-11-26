@@ -7,6 +7,7 @@ import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvRuleEnd
 import dev.doona.android.feature.model.RvRuleMatch
 import dev.doona.android.vpn.HonkFixtures
+import dev.doona.android.vpn.PolicyHonkFixtures
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
@@ -14,7 +15,7 @@ import org.junit.Test
 
 /** honk answers with its contract's examples. */
 class HonkPolicyReadTest {
-    private val honk = HonkFixtures.running()
+    private val honk = PolicyHonkFixtures.running()
 
     @Test
     fun rulesNameTheirGroupsByNameAndEndWithTheFallback() {

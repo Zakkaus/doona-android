@@ -23,6 +23,7 @@ import dev.doona.android.testing.drawFully
 import dev.doona.android.vpn.FakeHonk
 import dev.doona.android.vpn.HonkFixtures
 import dev.doona.android.vpn.NativeApi
+import dev.doona.android.vpn.PolicyHonkFixtures
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.StandardTestDispatcher
 import org.junit.Assert.assertEquals
@@ -35,7 +36,7 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * 全部規則 as the app draws it: honk's native API, RulesViewModel, the mapper, then the page of the approved
- * `proto-rv-rules-*` samples (goldens `app-rv-rules-*`). On the RV sample profile ([HonkFixtures.rvSample]) it is every
+ * `proto-rv-rules-*` samples (goldens `app-rv-rules-*`). On the RV sample profile ([PolicyHonkFixtures.rvSample]) it is every
  * rule honk runs, the whole page; with the groups named at length as users name them in honk by hand the targets wrap
  * as the row rules say; files honk did not load and a read that failed show the approved banners; before the first read
  * ends it is the skeleton. No place mapper is wired yet (P3c), so every node is 其他.
@@ -52,27 +53,27 @@ class AppRvRulesShotTest {
 
     @Test
     @Config(qualifiers = WHOLE)
-    fun rulesLight() = shot("rules", dark = false, whole = true) { Page({ HonkFixtures.rvSample() }) }
+    fun rulesLight() = shot("rules", dark = false, whole = true) { Page({ PolicyHonkFixtures.rvSample() }) }
 
     @Test
     @Config(qualifiers = WHOLE)
-    fun rulesDark() = shot("rules", dark = true, whole = true) { Page({ HonkFixtures.rvSample() }) }
+    fun rulesDark() = shot("rules", dark = true, whole = true) { Page({ PolicyHonkFixtures.rvSample() }) }
 
     @Test
     @Config(qualifiers = WHOLE_FS200)
-    fun rulesFs200() = shot("rules", dark = false, fontScale = RV_FS200, whole = true) { Page({ HonkFixtures.rvSample() }) }
+    fun rulesFs200() = shot("rules", dark = false, fontScale = RV_FS200, whole = true) { Page({ PolicyHonkFixtures.rvSample() }) }
 
     @Test
     @Config(qualifiers = WHOLE_EN)
-    fun rulesEnLight() = shot("rules-en", dark = false, whole = true) { Page({ HonkFixtures.rvSample() }) }
+    fun rulesEnLight() = shot("rules-en", dark = false, whole = true) { Page({ PolicyHonkFixtures.rvSample() }) }
 
     @Test
     @Config(qualifiers = WHOLE_LONG)
-    fun longNamesLight() = shot("rules-long", dark = false, whole = true) { Page({ HonkFixtures.rvSample(long = true) }) }
+    fun longNamesLight() = shot("rules-long", dark = false, whole = true) { Page({ PolicyHonkFixtures.rvSample(long = true) }) }
 
     @Test
     @Config(qualifiers = WHOLE_LONG)
-    fun longNamesDark() = shot("rules-long", dark = true, whole = true) { Page({ HonkFixtures.rvSample(long = true) }) }
+    fun longNamesDark() = shot("rules-long", dark = true, whole = true) { Page({ PolicyHonkFixtures.rvSample(long = true) }) }
 
     @Test
     fun parseFailedLight() = shot("rules-parse-failed", dark = false) { Page(::unloaded) }
@@ -88,7 +89,7 @@ class AppRvRulesShotTest {
 
     @Test
     fun loadingLight() = shot("rules-loading", dark = false) {
-        val vm = remember { RulesViewModel(HonkFixtures.rvSample(), io = StandardTestDispatcher()) }
+        val vm = remember { RulesViewModel(PolicyHonkFixtures.rvSample(), io = StandardTestDispatcher()) }
         RulesRoute(vm, onBack = {}, onTemplate = {})
     }
 
@@ -96,7 +97,7 @@ class AppRvRulesShotTest {
     @Test
     @Config(qualifiers = WHOLE_REREAD)
     fun rereadFailedLight() {
-        val honk = HonkFixtures.rvSample()
+        val honk = PolicyHonkFixtures.rvSample()
         val vm = RulesViewModel(honk, io = Dispatchers.Unconfined)
         var rows = 0
         val reread = {
@@ -160,12 +161,12 @@ class AppRvRulesShotTest {
     }
 
     /** The sample profile after a reload whose files honk did not load. */
-    private fun unloaded(): FakeHonk = HonkFixtures.rvSample().apply {
+    private fun unloaded(): FakeHonk = PolicyHonkFixtures.rvSample().apply {
         on("GET", "/api/v1/runtime", 200, HonkFixtures.body("runtime/runtime-reload-failed"))
     }
 
     /** The sample profile whose rules cannot be read now: honk has no coherent generation to read them from. */
-    private fun unreadable(honk: FakeHonk = HonkFixtures.rvSample()): FakeHonk = honk.apply {
+    private fun unreadable(honk: FakeHonk = PolicyHonkFixtures.rvSample()): FakeHonk = honk.apply {
         on("GET", "/api/v1/rules", 503, HonkFixtures.body("errors/snapshot-unavailable"))
     }
 

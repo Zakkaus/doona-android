@@ -8,6 +8,7 @@ import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.feature.model.rvTemplate
 import dev.doona.android.vpn.HonkFixtures
+import dev.doona.android.vpn.PolicyHonkFixtures
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -23,9 +24,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-/** 生效設定 on honk serving the RV sample ([HonkFixtures.rvSample]); the mode and 依 App are the engine's. */
+/** 生效設定 on honk serving the RV sample ([PolicyHonkFixtures.rvSample]); the mode and 依 App are the engine's. */
 class EffectiveConfigViewModelTest {
-    private val honk = HonkFixtures.rvSample()
+    private val honk = PolicyHonkFixtures.rvSample()
     private val engine = rvSampleEngine()
 
     @Before

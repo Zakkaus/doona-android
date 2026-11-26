@@ -30,6 +30,7 @@ import dev.doona.android.prototype.rv.rvRowRules
 import dev.doona.android.testing.drawFully
 import dev.doona.android.vpn.FakeHonk
 import dev.doona.android.vpn.HonkFixtures
+import dev.doona.android.vpn.PolicyHonkFixtures
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -133,7 +134,7 @@ class AppRvTemplateShotTest {
     @Test
     @Config(qualifiers = WHOLE_EFFECTIVE_REREAD)
     fun effectiveRereadFailedLight() {
-        val honk = HonkFixtures.rvSample()
+        val honk = PolicyHonkFixtures.rvSample()
         lateinit var vm: EffectiveConfigViewModel
         val reread = {
             honk.on("GET", "/api/v1/rules", 503, HonkFixtures.body("errors/snapshot-unavailable"))
@@ -191,7 +192,7 @@ class AppRvTemplateShotTest {
 
     /** The route on honk serving [honk], the mode the sample engine's, reading on the test's thread; [made] gets the view model. */
     @Composable
-    private fun Effective(honk: FakeHonk = HonkFixtures.rvSample(), made: (EffectiveConfigViewModel) -> Unit = {}) {
+    private fun Effective(honk: FakeHonk = PolicyHonkFixtures.rvSample(), made: (EffectiveConfigViewModel) -> Unit = {}) {
         val vm = remember { EffectiveConfigViewModel(rvSampleEngine(), honk, io = Dispatchers.Unconfined).also(made) }
         EffectiveConfigRoute(vm, onBack = {}, onRules = {})
     }

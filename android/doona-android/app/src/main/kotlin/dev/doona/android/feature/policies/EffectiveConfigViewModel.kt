@@ -16,6 +16,7 @@ import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.feature.model.rvTemplate
+import dev.doona.android.feature.subscriptions.rvSubscription
 import dev.doona.android.vpn.NativeApi
 import dev.doona.android.vpn.honk.HonkConfig
 import dev.doona.android.vpn.honk.HonkDnsRules
@@ -120,7 +121,7 @@ internal fun rvEffectiveConfig(policies: HonkPolicyRead, config: HonkConfig, dns
         groups = groups.values.filter { it.id != main?.id },
         rules = policies.policyRules(groups),
         source = HonkRouting.of(config)?.template?.let { RvRuleSource.Template(rvTemplate(it)) } ?: RvRuleSource.File,
-        subscriptions = policies.subscriptions.map(::rvSubscription),
+        subscriptions = policies.subscriptions.map { rvSubscription(it, null) },
         dns = upstreams.map { dnsShown(it.address) },
         dnsVia = when (via) {
             null, DIRECT -> RvLabel.Res(R.string.mode_direct)

@@ -25,6 +25,7 @@ import dev.doona.android.prototype.rv.rvRowRules
 import dev.doona.android.testing.drawFully
 import dev.doona.android.vpn.FakeHonk
 import dev.doona.android.vpn.HonkFixtures
+import dev.doona.android.vpn.PolicyHonkFixtures
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -54,35 +55,35 @@ class AppRvPolicyShotTest {
 
     @Test
     @Config(qualifiers = WHOLE_RULE)
-    fun ruleLight() = shot("policy", dark = false, whole = true) { Page(HonkFixtures::rvSample) }
+    fun ruleLight() = shot("policy", dark = false, whole = true) { Page(PolicyHonkFixtures::rvSample) }
 
     @Test
     @Config(qualifiers = WHOLE_RULE)
-    fun ruleDark() = shot("policy", dark = true, whole = true) { Page(HonkFixtures::rvSample) }
+    fun ruleDark() = shot("policy", dark = true, whole = true) { Page(PolicyHonkFixtures::rvSample) }
 
     @Test
-    fun ruleFs200() = shot("policy", dark = false, fontScale = RV_FS200) { Page(HonkFixtures::rvSample) }
+    fun ruleFs200() = shot("policy", dark = false, fontScale = RV_FS200) { Page(PolicyHonkFixtures::rvSample) }
 
     @Test
     @Config(qualifiers = WHOLE_RULE_EN)
-    fun ruleEnLight() = shot("policy-en", dark = false, whole = true) { Page(HonkFixtures::rvSample) }
+    fun ruleEnLight() = shot("policy-en", dark = false, whole = true) { Page(PolicyHonkFixtures::rvSample) }
 
     /**
-     * Groups as a user writes them in honk by hand ([HonkFixtures.honkGroups]): no main group, nested groups, a fallback, an empty
+     * Groups as a user writes them in honk by hand ([PolicyHonkFixtures.honkGroups]): no main group, nested groups, a fallback, an empty
      * group. Its rules lead with a REJECT (拒絕), and the sample's rules name groups this profile lacks (找不到群組).
      */
     @Test
-    fun honkGroupsLight() = shot("policy-honk", dark = false) { Page(HonkFixtures::honkGroups) }
+    fun honkGroupsLight() = shot("policy-honk", dark = false) { Page(PolicyHonkFixtures::honkGroups) }
 
     /** The first read failed: the banner with 重試 in place of the cards, no skeleton left standing. */
     @Test
     fun readFailedLight() = shot("policy-read-failed", dark = false) { Page(::unreadable) }
 
     @Test
-    fun loadingLight() = shot("policy-loading", dark = false) { Page(HonkFixtures::rvSample, io = StandardTestDispatcher()) }
+    fun loadingLight() = shot("policy-loading", dark = false) { Page(PolicyHonkFixtures::rvSample, io = StandardTestDispatcher()) }
 
     @Test
-    fun loadingDark() = shot("policy-loading", dark = true) { Page(HonkFixtures::rvSample, io = StandardTestDispatcher()) }
+    fun loadingDark() = shot("policy-loading", dark = true) { Page(PolicyHonkFixtures::rvSample, io = StandardTestDispatcher()) }
 
     @Test
     fun emptyLight() = shot("policy-empty", dark = false) { Page(::noSubscription) }
@@ -101,7 +102,7 @@ class AppRvPolicyShotTest {
                 return answer
             }
         }
-        compose.rvContent(dark = false) { Page(HonkFixtures::rvSample, engine = failing) }
+        compose.rvContent(dark = false) { Page(PolicyHonkFixtures::rvSample, engine = failing) }
         compose.onAllNodes(hasText(text(R.string.rv_failed_switch_mode)), useUnmergedTree = true).fetchSemanticsNodes().let { assertEquals(0, it.size) }
         // The mode switch heads the page; the rules below it can also go 直連.
         compose.onAllNodes(hasText(text(R.string.mode_direct)), useUnmergedTree = true)[0].performClick()
@@ -153,12 +154,12 @@ class AppRvPolicyShotTest {
     }
 
     /** The sample whose rules honk cannot read. */
-    private fun unreadable(): FakeHonk = HonkFixtures.rvSample().apply {
+    private fun unreadable(): FakeHonk = PolicyHonkFixtures.rvSample().apply {
         on("GET", "/api/v1/rules", 503, HonkFixtures.body("errors/snapshot-unavailable"))
     }
 
     /** The sample with no subscription: nothing to route. */
-    private fun noSubscription(): FakeHonk = HonkFixtures.rvSample().apply {
+    private fun noSubscription(): FakeHonk = PolicyHonkFixtures.rvSample().apply {
         on("GET", "/api/v1/providers", 200, """{"providers": [], "next_cursor": null}""")
     }
 

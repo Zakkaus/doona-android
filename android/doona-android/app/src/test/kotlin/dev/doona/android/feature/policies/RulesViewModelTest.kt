@@ -6,6 +6,7 @@ import dev.doona.android.feature.model.RvMatchKind
 import dev.doona.android.feature.model.RvRuleEnd
 import dev.doona.android.feature.model.RvRuleMatch
 import dev.doona.android.vpn.HonkFixtures
+import dev.doona.android.vpn.PolicyHonkFixtures
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -21,7 +22,7 @@ import org.junit.Test
 
 /** 全部規則 on honk answering with its contract's examples ([HonkFixtures]). */
 class RulesViewModelTest {
-    private val honk = HonkFixtures.running()
+    private val honk = PolicyHonkFixtures.running()
 
     @Before
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())

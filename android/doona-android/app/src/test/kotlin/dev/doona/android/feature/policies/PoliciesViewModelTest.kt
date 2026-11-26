@@ -11,6 +11,7 @@ import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.vpn.FakeHonk
 import dev.doona.android.vpn.HonkFixtures
+import dev.doona.android.vpn.PolicyHonkFixtures
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -30,9 +31,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-/** 策略 on honk serving the RV sample ([HonkFixtures.rvSample]); the mode alone is the engine's. */
+/** 策略 on honk serving the RV sample ([PolicyHonkFixtures.rvSample]); the mode alone is the engine's. */
 class PoliciesViewModelTest {
-    private val honk = HonkFixtures.rvSample().apply {
+    private val honk = PolicyHonkFixtures.rvSample().apply {
         on("PUT", "/api/v1/config/sources/source-main", 202, HonkFixtures.body("config-replace/queued"))
         on("GET", "/api/v1/operations/op-config-01", 200, HonkFixtures.body("operations/reload-complete"))
         on("PUT", "/api/v1/groups/g-Proxy/selection", 200, "{}")
