@@ -132,6 +132,12 @@ class LocalNetworkAccess(private val granted: () -> Boolean) {
         return answer.await()
     }
 
+    /**
+     * Called before an action that is known to need the local network: true at once when access is allowed; otherwise
+     * asks ([ask]) and, refused, waits on the refusal ([allowedInSettings]), so true once the user allows it.
+     */
+    suspend fun allowed(): Boolean = granted() || ask() || allowedInSettings()
+
     /** The user closed the refusal: the actions waiting on it keep their failure. */
     fun dismissed() = closeRefusal(toSettings = false)
 

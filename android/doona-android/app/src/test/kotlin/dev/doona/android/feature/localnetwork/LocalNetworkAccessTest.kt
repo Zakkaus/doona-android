@@ -211,4 +211,32 @@ class LocalNetworkAccessTest {
         access.answered(true)
         assertTrue(asking.await())
     }
+
+    @Test
+    fun anActionOnTheLocalNetworkGoesOnAtOnceWhenAccessIsAllowed() = runTest {
+        granted = true
+        assertTrue(access.allowed())
+        assertNull(access.prompt.value)
+    }
+
+    @Test
+    fun anActionOnTheLocalNetworkGoesOnOnceTheUserAllowsIt() = runTest(UnconfinedTestDispatcher()) {
+        val asked = async { access.allowed() }
+        assertEquals(LocalNetworkPrompt.Ask, access.prompt.value)
+        access.requesting()
+        granted = true
+        access.answered(true)
+        assertTrue(asked.await())
+    }
+
+    @Test
+    fun anActionOnTheLocalNetworkWaitsOnTheRefusalAndStopsWhenItIsClosed() = runTest(UnconfinedTestDispatcher()) {
+        val asked = async { access.allowed() }
+        access.requesting()
+        access.answered(false)
+        assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
+        assertFalse("it waits on the refusal", asked.isCompleted)
+        access.dismissed()
+        assertFalse(asked.await())
+    }
 }

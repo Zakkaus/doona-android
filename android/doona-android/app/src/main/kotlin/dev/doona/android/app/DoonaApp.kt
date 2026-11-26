@@ -90,12 +90,12 @@ fun DoonaAppShell(current: Tab, onSelect: (Tab) -> Unit, content: @Composable ()
  * no settings and never asks.
  */
 @Composable
-fun DoonaApp(
+internal fun DoonaApp(
     engine: Engine,
     installedApps: InstalledApps,
     onConnect: () -> Unit,
     start: List<NavKey> = listOf(ActivityKey),
-    imports: SubscriptionImports = rememberSubscriptionImports(engine),
+    imports: SubscriptionImports = rememberSubscriptionImports(nativeApi()),
     version: String = "",
     crashOffer: CrashOffer? = null,
     network: Flow<NetworkState> = engine.network,
@@ -158,7 +158,7 @@ fun DoonaApp(
                 )
             }
             entry<SubAddKey> { key ->
-                SubAddRoute(engine, imports, lanAsking, onBack = { backStack.pop(key) })
+                SubAddRoute(imports, lanAsking, onBack = { backStack.pop(key) })
             }
             entry<SubDetailKey> { key ->
                 val context = LocalContext.current

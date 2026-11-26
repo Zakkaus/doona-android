@@ -26,13 +26,10 @@ import androidx.test.core.app.ApplicationProvider
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
-import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.feature.localnetwork.LocalNetworkAccess
-import dev.doona.android.feature.localnetwork.LocalNetworkEngine
 import dev.doona.android.feature.localnetwork.LocalNetworkHost
 import dev.doona.android.feature.localnetwork.LocalNetworkPrompts
 import dev.doona.android.feature.onboarding.FirstRunGate
@@ -49,11 +46,11 @@ import dev.doona.android.prototype.rv.subs.RV_LAN_LINK
 import dev.doona.android.vpn.FakeHonk
 import dev.doona.android.vpn.HonkFixtures
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.test.StandardTestDispatcher
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -62,13 +59,13 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * The wired subscription pages and the welcome page (`app-rv-<screen>-*`, plan §2.4): RvSampleEngine through each
- * page's route, view model and mapper, in zh light, dark, fs200 and en light, each set against its `proto-rv` golden.
- * 新增訂閱 is driven as the user drives it: the name typed and the keyboard put away, the link taken from the clipboard's
- * row, 新增 tapped. The engine answers each import at once,
- * with the fake standing for the core's fetch (Harbor Cloud as it is in the sample, or the failure under test), or
- * never, for the import in flight. The sheets, the long-press menu and the local network prompt open as the user opens
- * them, in their own windows, so those goldens capture every window (light and dark, as their approved goldens).
+ * The wired subscription pages and the welcome page (`app-rv-<screen>-*`, plan §2.4): honk's RV sample profile
+ * ([HonkFixtures.rvSample]) through each page's route, view model and mapper, in zh light, dark, fs200 and en light,
+ * each set against its `proto-rv` golden. 新增訂閱 is driven as the user drives it: the name typed and the keyboard put
+ * away, the link taken from the clipboard's row, 新增 tapped. honk answers each add (Harbor Cloud as it is in the
+ * sample, or the failure under test), or never, for the import in flight. The sheets and the long-press menu open as
+ * the user opens them, in their own windows, so those goldens capture every window (light and dark, as their approved
+ * goldens). The welcome page and the 組態內 card still read the engine.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -314,8 +311,8 @@ class AppRvSubsShotTest {
     @Test fun userAgentDark() = shot("sub-detail-user-agent", dark = true, whole = false, windows = true, before = { tap(R.string.rv_sub_user_agent) }) { Detail() }
 
     /**
-     * A link on the local network added: the core refuses it until the permission is granted, and the app's prompt asks
-     * over the page. Until P1b this is the old dialog ([LocalNetworkPrompts]), not the approved sheet.
+     * A link on the local network added: the import asks for the permission before it adds to honk, and the app's prompt
+     * asks over the page. Until P1b this is the old dialog ([LocalNetworkPrompts]), not the approved sheet.
      */
     @Test fun lanAskLight() = lan("sub-add-lan-ask", refused = false)
 
@@ -408,8 +405,8 @@ class AppRvSubsShotTest {
     }
 
     /**
-     * 新增訂閱 with [RV_LAN_LINK] typed and 新增 tapped, over an engine that refuses it until the local network is allowed,
-     * as the core does; the prompt asks, and with [refused] the system's question is refused. The import waits on the
+     * 新增訂閱 with [RV_LAN_LINK] typed and 新增 tapped, while the local network is not allowed: the import asks before it
+     * adds to honk, and with [refused] the system's question is refused. The import waits on the
      * prompt, so the busy bar runs under it: the clock stops at the tap and runs [LAN_FRAMES] frames for each step.
      */
     private fun lan(name: String, refused: Boolean, dark: Boolean = false) {
@@ -435,18 +432,17 @@ class AppRvSubsShotTest {
                 repeat(LAN_FRAMES) { mainClock.advanceTimeByFrame() }
             },
         ) {
-            val scope = rememberCoroutineScope()
-            val engine = remember { LocalNetworkEngine(Answering(Answer.Fails(ErrorCode.LocalNetwork)), access, scope) }
-            Add(engine, remember { access.prompt.map { it != null } })
+            Add(Answer.Harbor, access, remember { access.prompt.map { it != null } })
             // The sheet over the page, as AppSheets draws it under MainActivity's AppTheme.
             DoonaTheme { LocalNetworkPrompts(remember { LocalNetworkHost(access, request = {}, openSettings = {}) }) }
         }
     }
 
     /**
-     * 新增訂閱 over an engine that answers [answer]; with [typed] the sample's name is typed, the keyboard put away, the
-     * link taken from the clipboard's row and 新增 tapped, so no field keeps the focus or a scrolled link. With
-     * [busyFrames] the clock stops at the tap and runs that many frames, so a busy bar is drawn at a fixed point.
+     * 新增訂閱 over honk answering the add with [answer]; with [typed] the sample's name is typed, the keyboard put away,
+     * the link taken from the clipboard's row and 新增 tapped, so no field keeps the focus or a scrolled link. With
+     * [busyFrames] the clock stops at the tap and runs that many frames, so a busy bar is drawn at a fixed point; else
+     * the shot waits for the import to end, as an add honk runs in the background ends after its first poll.
      */
     private fun add(
         name: String,
@@ -459,7 +455,6 @@ class AppRvSubsShotTest {
     ) {
         // The clipboard holds a link, as on the approved page; its content is read only if its row is tapped.
         clipboard().setPrimaryClip(ClipData.newPlainText(null, RV_SAMPLE_LINK))
-        val engine = Answering(answer)
         shot(
             name,
             dark,
@@ -474,9 +469,10 @@ class AppRvSubsShotTest {
                     if (busyFrames > 0) mainClock.autoAdvance = false
                     onNodeWithText(string(R.string.rv_add_import)).performClick()
                     repeat(busyFrames) { mainClock.advanceTimeByFrame() }
+                    if (busyFrames == 0) waitUntil(POLL_WAIT_MS) { onAllNodesWithText(string(R.string.rv_add_importing)).fetchSemanticsNodes().isEmpty() }
                 }
             },
-        ) { Add(engine) }
+        ) { Add(answer) }
     }
 
     /** 訂閱 on [honk]; the 組態內 card under the subscriptions still reads [engine]. */
@@ -500,11 +496,16 @@ class AppRvSubsShotTest {
         SubDetailRoute(hours, "s1", onBack = {}, onAutoUpdate = {}, viewModel = viewModel)
     }
 
+    /** 新增訂閱 over honk's sample answering an add with [answer] (Never: it never runs); a LAN link asks [access]. */
     @Composable
-    private fun Add(engine: Engine, lanAsking: Flow<Boolean> = flowOf(false)) {
+    private fun Add(answer: Answer, access: LocalNetworkAccess = LocalNetworkAccess { true }, lanAsking: Flow<Boolean> = flowOf(false)) {
         val manager = LocalFocusManager.current
         SideEffect { focus = manager }
-        SubAddRoute(engine, rememberImports(engine), lanAsking, onBack = {})
+        val honk = remember { answering(answer) }
+        val scope = rememberCoroutineScope()
+        val imports = remember { SubscriptionImports(honk, access, scope, if (answer == Answer.Never) StandardTestDispatcher() else Dispatchers.Unconfined) }
+        val viewModel = remember { SubAddViewModel(honk, imports, AndroidClipboardLinks(clipboard()), lanAsking, io = Dispatchers.Unconfined) }
+        SubAddRoute(imports, lanAsking, onBack = {}, viewModel = viewModel)
     }
 
     /** honk's RV sample profile with its configuration file, whose entries set no User-Agent. */
@@ -538,31 +539,30 @@ class AppRvSubsShotTest {
         FirstRunGate(remember { FirstRunViewModel(engine, NO_NODES, Dispatchers.Unconfined) }, onAdd = {}, frame = { it() }) {}
     }
 
-    @Composable
-    private fun rememberImports(engine: Engine): SubscriptionImports {
-        val scope = rememberCoroutineScope()
-        return remember(engine) { SubscriptionImports(engine, scope) }
-    }
-
-    /** How the engine answers an import. */
+    /** How honk answers an add. */
     private sealed interface Answer {
         data object None : Answer
 
-        /** The fetch never ends: the import stays in flight. */
+        /** The add never ends: the import stays in flight. */
         data object Never : Answer
 
-        /** The sample's Harbor Cloud, as the core would add it from the sample's link. */
+        /** The sample's Harbor Cloud, as honk would add it from the sample's link. */
         data object Harbor : Answer
 
         data class Fails(val code: ErrorCode) : Answer
     }
 
-    private class Answering(private val answer: Answer, private val sample: FakeEngine = rvSampleEngine()) : Engine by sample {
-        override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> = when (answer) {
-            Answer.None, Answer.Harbor -> Result.success(sample.subscriptions.value.first())
-            Answer.Never -> awaitCancellation()
-            is Answer.Fails -> Result.failure(EngineException(answer.code))
+    /** The sample profile answering an add with [answer]: at once, or through an operation that fails fetching. */
+    private fun answering(answer: Answer): FakeHonk = sampleHonk().apply {
+        on("POST", "/api/v1/providers", 201, HonkFixtures.body("providers/created-harbor"))
+        val failed = when ((answer as? Answer.Fails)?.code) {
+            ErrorCode.FetchFailed -> "provider-create-fetch-failed"
+            ErrorCode.ParseFailed -> "provider-create-parse-failed"
+            ErrorCode.TooLarge -> return@apply on("POST", "/api/v1/providers", 413, HonkFixtures.body("errors/request-too-large"))
+            else -> return@apply
         }
+        on("POST", "/api/v1/providers", 202, HonkFixtures.body("operations/provider-create-accepted"))
+        on("GET", "/api/v1/operations/op-create", 200, HonkFixtures.body("operations/$failed"))
     }
 
     private companion object {

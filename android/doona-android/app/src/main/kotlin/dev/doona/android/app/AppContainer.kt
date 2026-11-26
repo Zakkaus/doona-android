@@ -143,7 +143,7 @@ class AppContainer(
     val uiEngine: Engine by lazy { LocalNetworkEngine(engine, localNetwork, uiScope).also { it.watch() } }
 
     /** The subscription import in flight, above every screen that can start one: a slow fetch survives leaving the page. */
-    val imports: SubscriptionImports by lazy { SubscriptionImports(uiEngine, uiScope) }
+    internal val imports: SubscriptionImports by lazy { SubscriptionImports(nativeApi, localNetwork, uiScope) }
 
     /**
      * The crash files of the core and the app: the core's `crash/` directory under the data directory it is given. The
