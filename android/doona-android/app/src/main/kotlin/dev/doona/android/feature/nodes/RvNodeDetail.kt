@@ -61,7 +61,7 @@ import dev.doona.android.feature.nodes.ui.rvNodeLine
 /**
  * A node's page in the language of Revolut's stock page: the flag over its name as the large title, which collapses into
  * the bar beside the back disc on scroll, its protocol and country under it, and the status chips that apply; 延遲紀錄 as the EPS dot chart of its last tests, the picked one's figure over
- * it; its share link's details as a Key stats card; and 設為目前節點 floating at the bottom as 'Get started', with a
+ * it; its details as a Key stats card; and 設為目前節點 floating at the bottom as 'Get started', with a
  * round 測試延遲 beside it. A [banner] (a test that failed) sits over 延遲紀錄 in [RvGutter]'s slot. Without [canUse] (a
  * profile with no main group) the main action is disabled.
  */
@@ -114,10 +114,7 @@ internal fun RvNodeDetailSkeleton(onBack: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val labels = listOf(
         stringResource(R.string.rv_nodes_protocol),
-        stringResource(R.string.rv_nodes_server),
-        stringResource(R.string.rv_nodes_port),
         stringResource(R.string.rv_nodes_transport),
-        TLS,
         stringResource(R.string.rv_nodes_subscription),
         stringResource(R.string.rv_nodes_last_test),
     )
@@ -200,19 +197,15 @@ private fun Figure(text: String) {
 }
 
 /**
- * Key stats: what the share link says, the subscription it came from (組態內 for a node the profile lists itself, decision
- * q-s5-inline-name) and when it was last tested. A node whose details the core has not sent ([RvNode.described]) shows a
- * dash for each of the link's facts, never a port 0 or TLS off it was not told.
+ * Key stats: the protocol and transport, the subscription it came from (組態內 for a node the profile lists itself,
+ * decision q-s5-inline-name) and when it was last tested. honk's nodes carry no server, port or TLS, so those rows are
+ * not drawn until /nodes sends them (owner, q-node-host 2026-11-26).
  */
 @Composable
 private fun StatsCard(node: RvNode, lastTest: String) {
-    val told = node.described
     RvCard {
         RvStatRow(stringResource(R.string.rv_nodes_protocol), node.protocol.ifEmpty { RV_NO_VALUE }, valueKeepWords = false)
-        RvStatRow(stringResource(R.string.rv_nodes_server), node.host.ifEmpty { RV_NO_VALUE }, valueKeepWords = false)
-        RvStatRow(stringResource(R.string.rv_nodes_port), if (told) node.port.toString() else RV_NO_VALUE)
         RvStatRow(stringResource(R.string.rv_nodes_transport), node.transport.ifEmpty { RV_NO_VALUE }, valueKeepWords = false)
-        RvStatRow(TLS, if (told) stringResource(if (node.tls) R.string.ui_on else R.string.ui_off) else RV_NO_VALUE)
         val source = if (node.inline) stringResource(R.string.rv_nodes_inline) else node.subscription
         RvStatRow(stringResource(R.string.rv_nodes_subscription), source, valueKeepWords = false)
         RvStatRow(stringResource(R.string.rv_nodes_last_test), lastTest)
@@ -235,8 +228,6 @@ private fun Actions(current: Boolean, canUse: Boolean, onUse: () -> Unit, onTest
         Spacer(Modifier.windowInsetsBottomHeight(insets))
     }
 }
-
-private const val TLS = "TLS"
 
 /** No test picked by the user: the chart marks the latest. */
 private const val NONE_PICKED = -1

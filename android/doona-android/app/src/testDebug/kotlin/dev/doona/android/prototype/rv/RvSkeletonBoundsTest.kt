@@ -379,7 +379,6 @@ class RvSkeletonBoundsTest {
          * its nodes, which their latency orders; at 2.0 訂閱's subscriptions over their nodes and last update, and 依 App's
          * apps over their packages, which the phone's list gives. 檢視變更's rows (5 stats, 4 groups, then the rules): at
          * 1.15 the first rule's domains beside its group; at 2.0 範本's source → template, and the first two groups' lines.
-         * A node's 詳細資料 at 2.0: its server, set under its label ([STACKS]).
          */
         val WRAPS = mapOf(
             (RvSkeletonPages.POLICY_GLOBAL to RV_FS200) to setOf(0, 3, 4),
@@ -388,13 +387,12 @@ class RvSkeletonBoundsTest {
             (RvSkeletonPages.PER_APP_V1 to RV_FS200) to setOf(3, 4, 5),
             (RvSkeletonPages.TEMPLATE_IMPACT to RV_FS115) to setOf(9),
             (RvSkeletonPages.TEMPLATE_IMPACT to RV_FS200) to setOf(0, 5, 6),
-            (RvSkeletonPages.NODE to RV_FS200) to setOf(1),
         )
 
         /**
          * The cards whose [dev.doona.android.designsystem.rv.RvStatRow]s set a value under its label where the two do not
          * fit one line, by page and font size: the value is data, so its skeleton cannot know; from the card's top down only
-         * the cards' tops are compared. At 2.0 a node's 詳細資料, whose server and subscription are long.
+         * the cards' tops are compared. At 2.0 a node's 詳細資料, whose subscription is long.
          */
         val STACKS = mapOf((RvSkeletonPages.NODE to RV_FS200) to 1)
         const val TOLERANCE = 0.5f
