@@ -21,7 +21,6 @@ import dev.doona.android.designsystem.rv.LocalRvUpdating
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvAddEntry
-import dev.doona.android.designsystem.rv.RvAddRow
 import dev.doona.android.designsystem.rv.RvBusy
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvChevron
@@ -98,8 +97,8 @@ internal class RvSubsActions(
  * subscription cards once they are loaded; [extraKeepsPage] keeps the page for it when there is no subscription (nodes
  * added by hand), with nothing to update. [addNode] puts 新增節點 beside the empty state's 新增訂閱, the only way to add a
  * node before there is one (owner, q-p5d-empty 2026-11-26). [banner] (what the last add or node delete did) takes the banner's place first.
- * With [removable] each subscription's row ends with the remove control, which asks in the same sheet, and 新增訂閱
- * ends the list as a row.
+ * With [removable] each subscription's row ends with the remove control, which asks in the same sheet; 新增訂閱 stays
+ * the bottom button (owner, q-add-primary 2026-11-26).
  */
 @Composable
 internal fun RvSubsPage(
@@ -144,7 +143,6 @@ internal fun RvSubsPage(
                     state.subscriptions.forEach { sub ->
                         SubscriptionCard(sub, actions, state.nowEpochMs, if (removable) RvRowRemove { actions.delete(sub.id) } else null)
                     }
-                    if (removable) RvCard { RvAddRow(stringResource(R.string.rv_add_subscription), actions.add) }
                 }
                 if (!loading) extra?.invoke()
             }
