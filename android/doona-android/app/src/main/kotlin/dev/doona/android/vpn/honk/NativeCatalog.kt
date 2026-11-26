@@ -109,10 +109,14 @@ internal class NativeCatalog(private val api: NativeApi) {
     }
 }
 
-/** A failed fetch names its stage; one that fetched text honk could not read is [ErrorCode.ParseFailed]. */
+/**
+ * A failed fetch names its stage; one that fetched text honk could not read is [ErrorCode.ParseFailed]. An operation
+ * whose change honk could not record in its configuration store (`store_unavailable`) is [ErrorCode.WriteFailed].
+ */
 internal fun SafeError.errorCode(): ErrorCode = when {
     code == "fetch_failed" && (details?.get("stage") as? JsonPrimitive)?.content == "parse_failed" -> ErrorCode.ParseFailed
     code == "fetch_failed" || code == "route_unavailable" -> ErrorCode.FetchFailed
+    code == "store_unavailable" -> ErrorCode.WriteFailed
     else -> ErrorCode.Internal
 }
 

@@ -185,7 +185,7 @@ class SubscriptionsViewModelTest {
         val vm = list()
         vm.confirmDelete("s1")
         advanceUntilIdle()
-        assertEquals(RvSubFailure("s1", ErrorCode.Internal), vm.uiState.value.page.deleteFailed)
+        assertEquals(RvSubFailure("s1", ErrorCode.WriteFailed), vm.uiState.value.page.deleteFailed)
     }
 
     @Test

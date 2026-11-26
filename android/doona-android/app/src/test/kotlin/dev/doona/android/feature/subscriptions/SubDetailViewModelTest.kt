@@ -186,7 +186,7 @@ class SubDetailViewModelTest {
         honk.on("GET", "/api/v1/operations/op-delete", 200, HonkFixtures.body("operations/provider-delete-store-unavailable"))
         vm.delete()
         advanceUntilIdle()
-        assertEquals(RvSubDetailFailure.Delete(ErrorCode.Internal), vm.uiState.value.sheet.failed)
+        assertEquals(RvSubDetailFailure.Delete(ErrorCode.WriteFailed), vm.uiState.value.sheet.failed)
 
         honk.on("DELETE", "/api/v1/providers/s1", 200, HonkFixtures.body("providers/deleted"))
         vm.delete()

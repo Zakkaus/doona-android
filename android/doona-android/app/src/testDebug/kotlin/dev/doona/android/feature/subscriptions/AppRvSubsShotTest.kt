@@ -204,16 +204,16 @@ class AppRvSubsShotTest {
      * update failure's (orchestrator ruling 12, 2026-11-26; the reason, p5c 2026-11-26). No approved golden yet; the
      * owner sees these first. honk runs the delete in the background, so the banner comes after its first poll.
      */
-    @Test fun deleteFailedLight() = shot("subs-delete-failed", before = { confirmDeleteFromMenu(ErrorCode.Internal) }) { Subs { deleteFails() } }
+    @Test fun deleteFailedLight() = shot("subs-delete-failed", before = { confirmDeleteFromMenu(ErrorCode.WriteFailed) }) { Subs { deleteFails() } }
 
-    @Test fun deleteFailedDark() = shot("subs-delete-failed", dark = true, before = { confirmDeleteFromMenu(ErrorCode.Internal) }) { Subs { deleteFails() } }
+    @Test fun deleteFailedDark() = shot("subs-delete-failed", dark = true, before = { confirmDeleteFromMenu(ErrorCode.WriteFailed) }) { Subs { deleteFails() } }
 
     @Test
-    fun deleteFailedFs200() = shot("subs-delete-failed", fontScale = RV_FS200, whole = false, before = { confirmDeleteFromMenu(ErrorCode.Internal) }) { Subs { deleteFails() } }
+    fun deleteFailedFs200() = shot("subs-delete-failed", fontScale = RV_FS200, whole = false, before = { confirmDeleteFromMenu(ErrorCode.WriteFailed) }) { Subs { deleteFails() } }
 
     @Test
     @Config(qualifiers = RV_EN)
-    fun deleteFailedEn() = shot("subs-delete-failed", english = true, before = { confirmDeleteFromMenu(ErrorCode.Internal) }) { Subs { deleteFails() } }
+    fun deleteFailedEn() = shot("subs-delete-failed", english = true, before = { confirmDeleteFromMenu(ErrorCode.WriteFailed) }) { Subs { deleteFails() } }
 
     /** The same refused as honk cannot take the request now (503 `temporarily_unavailable`); honk has no `storage_full`. */
     @Test fun deleteFullLight() = shot("subs-delete-full", before = { confirmDeleteFromMenu() }) { Subs { deleteRefused() } }
@@ -228,20 +228,20 @@ class AppRvSubsShotTest {
     /** The same from Harbor Cloud's page: its 刪除訂閱 row, then the sheet's 刪除 (`store_unavailable`, then a 503). */
     @Test
     @Config(qualifiers = WHOLE_DETAIL_BANNER)
-    fun detailDeleteFailedLight() = shot("sub-detail-delete-failed", before = { confirmDeleteFromPage(ErrorCode.Internal) }) { Detail { deleteFails() } }
+    fun detailDeleteFailedLight() = shot("sub-detail-delete-failed", before = { confirmDeleteFromPage(ErrorCode.WriteFailed) }) { Detail { deleteFails() } }
 
     @Test
     @Config(qualifiers = WHOLE_DETAIL_BANNER)
-    fun detailDeleteFailedDark() = shot("sub-detail-delete-failed", dark = true, before = { confirmDeleteFromPage(ErrorCode.Internal) }) { Detail { deleteFails() } }
+    fun detailDeleteFailedDark() = shot("sub-detail-delete-failed", dark = true, before = { confirmDeleteFromPage(ErrorCode.WriteFailed) }) { Detail { deleteFails() } }
 
     @Test
     @Config(qualifiers = WHOLE_DETAIL)
     fun detailDeleteFailedFs200() =
-        shot("sub-detail-delete-failed", fontScale = RV_FS200, whole = false, before = { confirmDeleteFromPage(ErrorCode.Internal) }) { Detail { deleteFails() } }
+        shot("sub-detail-delete-failed", fontScale = RV_FS200, whole = false, before = { confirmDeleteFromPage(ErrorCode.WriteFailed) }) { Detail { deleteFails() } }
 
     @Test
     @Config(qualifiers = RV_EN)
-    fun detailDeleteFailedEn() = shot("sub-detail-delete-failed", english = true, whole = false, before = { confirmDeleteFromPage(ErrorCode.Internal) }) { Detail { deleteFails() } }
+    fun detailDeleteFailedEn() = shot("sub-detail-delete-failed", english = true, whole = false, before = { confirmDeleteFromPage(ErrorCode.WriteFailed) }) { Detail { deleteFails() } }
 
     @Test
     @Config(qualifiers = WHOLE_DETAIL_BANNER)
@@ -286,11 +286,11 @@ class AppRvSubsShotTest {
     fun detailAgentFullEn() = shot("sub-detail-agent-full", english = true, whole = false, before = { saveSheet(R.string.rv_sub_user_agent) }) { Detail { writeRefused() } }
 
     /** The rename sheet saved while honk cannot take the file's replacement (503): it opens again on the name, why under the field. */
-    @Test fun renameFullLight() = shot("sub-detail-rename-full", whole = false, windows = true, before = { saveSheet(R.string.rv_sub_name) }) { Detail { writeRefused() } }
+    @Test fun renameFullLight() = shot("sub-detail-rename-full", whole = false, windows = true, before = { saveSheet(R.string.rv_sub_name, waitFor = ErrorCode.Busy) }) { Detail { writeRefused() } }
 
     @Test
     @Config(qualifiers = RV_EN)
-    fun renameFullEn() = shot("sub-detail-rename-full", english = true, whole = false, windows = true, before = { saveSheet(R.string.rv_sub_name) }) { Detail { writeRefused() } }
+    fun renameFullEn() = shot("sub-detail-rename-full", english = true, whole = false, windows = true, before = { saveSheet(R.string.rv_sub_name, waitFor = ErrorCode.Busy) }) { Detail { writeRefused() } }
 
     /** Harbor Cloud's card held where the prototype's finger held it; the menu opens at the finger. */
     @Test fun menuLight() = shot("subs-menu", whole = false, windows = true, before = { holdHarbor() }) { Subs() }
@@ -380,11 +380,12 @@ class AppRvSubsShotTest {
         onAllNodesWithText(string(R.string.rv_menu_delete)).onLast().performClick()
     }
 
-    /** The sheet [row] opens on the page, saved as it opens. */
-    private fun ComposeContentTestRule.saveSheet(row: Int) {
+    /** The sheet [row] opens on the page, saved as it opens; with [waitFor], until the reopened sheet says why the save failed with that code. */
+    private fun ComposeContentTestRule.saveSheet(row: Int, waitFor: ErrorCode? = null) {
         tap(row)
         waitForIdle()
         onAllNodesWithText(string(R.string.rv_save)).onLast().performClick()
+        if (waitFor != null) waitForReason(waitFor)
         waitForIdle()
     }
 
