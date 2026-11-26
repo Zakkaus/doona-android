@@ -3,8 +3,8 @@ package dev.doona.android.prototype.rv.settings
 import androidx.compose.runtime.Composable
 import dev.doona.android.feature.model.RvAppearance
 import dev.doona.android.feature.model.RvDnsUpstream
-import dev.doona.android.feature.model.RvGeoInterval
 import dev.doona.android.feature.model.RvGeoData
+import dev.doona.android.feature.model.RvGeoInterval
 import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.model.RvThemeMode
 import dev.doona.android.feature.report.RvReportPreview
