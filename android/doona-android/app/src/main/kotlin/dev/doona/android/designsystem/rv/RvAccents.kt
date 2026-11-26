@@ -67,9 +67,3 @@ internal fun RvTheme(schemes: RvSchemes, dark: Boolean, accent: Int, content: @C
 internal fun RvOverDoona(content: @Composable () -> Unit) {
     RvTheme(MaterialTheme.colorScheme, DoonaTheme.colors.dark, content)
 }
-
-/** The old pages' [DoonaTheme] on the scheme the RV theme around it was built from, for an old page inside an RV one. */
-@Composable
-internal fun RvOldPage(content: @Composable () -> Unit) {
-    DoonaTheme(Rv.colors.dark, LocalRvScheme.current, content)
-}
