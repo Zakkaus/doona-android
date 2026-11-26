@@ -75,24 +75,11 @@ internal fun RvSettingsSection(title: String, modifier: Modifier = Modifier, fir
 }
 
 /**
- * A row of a card: the [icon]'s 40 dp disc ([RvIconDisc]), a title over an optional subtitle, and trailing content, 58 dp
- * tall with one line and 82 with a subtitle, as [RvRow]; a subtitle that wraps makes it taller. The disc starts its text
- * [RvSpace.rowGap] after it, as [RvRow]'s leading disc does, so every list row starts alike. The text block centres in
- * the row's height. A row of one line centres its disc on the row. A row with a subtitle puts the disc's top on the
- * title's top, as Revolut's settings rows do (Appearance and Language cards: icon top = title top in the 2-line rows,
- * centred in the 1-line ones), so in a 2-line row it stands 1.5 dp above the row's centre and a card of 1- and 2-line
- * rows reads as one column. The trailing control centres on the title's first line, where Revolut keeps the switch: the
- * line a one-line row keeps for its title (58 dp less its insets), or the title's own line where it is taller
- * ([rvOneLine]), so at a large font size it stays beside the title's first line. The title, the subtitle and that line
- * take their role's Latin line box whatever their script, as [RvRow]'s text. The row's touch behaviour comes in
- * [modifier], outside the padding, so the whole row is the target. A subtitle that says an action failed is in the
- * [error] hue, as a field's error message ([dev.doona.android.designsystem.rv.RvFieldMessage]). An [action] (an in-card
- * button, 40 dp as the disc, taller than a line) takes the trailing place instead and stands as the disc does: its top on
- * the title's top with a subtitle, on the row's centre without, so the two 40 dp ends share one rule and the button stays
- * inside the row's text inset; its end is the row's inset, where a chevron's box ends.
- * [titleKeepWords] and [subtitleKeepWords] are [RvRow]'s: false for a name or an identifier. [titleLines],
- * [subtitleLines], [titleWhole] and [subtitleWhole] are [RvRow]'s too: a title or subtitle of [Int.MAX_VALUE] lines is
- * shown whole only with an owner's exception, and an exception given to a text with a line limit is an error.
+ * A row of a settings card: [RvRow] with the [icon]'s 40 dp disc ([RvIconDisc]; none in a plain list, whose text then
+ * starts on the card's padding), its disc and ends standing on the title's first line (RvRow's `settings`),
+ * and, in an editable list, its [remove] control in the trailing place. The row's touch behaviour comes in [modifier].
+ * [code], [error] and [action] are RvRow's `titleCode`, `subtitleError` and `action`; [titleKeepWords],
+ * [subtitleKeepWords], [titleLines], [subtitleLines], [titleWhole] and [subtitleWhole] are RvRow's own.
  */
 @Composable
 internal fun RvSettingsRow(
@@ -113,91 +100,23 @@ internal fun RvSettingsRow(
     removeLabel: String = title,
     trailing: (@Composable () -> Unit)? = null,
 ) {
-    rvRequireWhole(titleWhole, titleLines)
-    rvRequireWhole(subtitleWhole, subtitleLines)
-    Box(
-        modifier
-            .fillMaxWidth()
-            .testTag(RvPart.ROW)
-            .heightIn(min = if (subtitle == null) RvSize.rowOneLine else RvSize.rowTwoLine)
-            .padding(horizontal = RvSpace.rowPadding),
-        contentAlignment = Alignment.CenterStart,
-    ) {
-        val text = rowText(SettingsRowWords(title, subtitle, titleKeepWords, subtitleKeepWords, subtitleLines, titleWhole, subtitleWhole), code, titleLines, error, SettingsRowEnds(icon, action, trailing, remove, removeLabel))
-        Row(Modifier.fillMaxWidth().testTag(RvRowPart.SETTINGS_ROW).padding(vertical = RvSpace.rowTextInset), verticalAlignment = Alignment.Top, content = text)
-    }
-}
-
-/** A settings row's title and subtitle, whether each holds its words ([RvSettingsRow]'s keepWords), and its exception to R14. */
-private class SettingsRowWords(val title: String, val subtitle: String?, val titleKeepWords: Boolean, val subtitleKeepWords: Boolean, val subtitleLines: Int, val titleWhole: RvWhole?, val subtitleWhole: RvWhole?)
-
-/** A settings row's leading disc, its trailing [action], and its remove control or else its [trailing] control ([RvSettingsRow]). */
-private class SettingsRowEnds(
-    @DrawableRes val icon: Int?,
-    val action: (@Composable () -> Unit)?,
-    val trailing: (@Composable () -> Unit)?,
-    val remove: RvRowRemove?,
-    val removeLabel: String,
-)
-
-/**
- * [RvSettingsRow]'s disc, title over subtitle, and trailing control: the control on the title's first line; the disc
- * and an action on the title's top when there is a subtitle, on the first line (the row's centre) when there is none.
- */
-@Composable
-private fun rowText(words: SettingsRowWords, code: Boolean, titleLines: Int, error: Boolean, ends: SettingsRowEnds): @Composable RowScope.() -> Unit {
-    // A title of honk code keeps its own line boxes, as it is a code view; any other takes its role's Latin one.
-    val title = words.title
-    val line = maxOf(RvSize.rowOneLine - RvSpace.rowTextInset * 2, rvOneLine(title, Rv.type.rowTitle, lineBox = !code))
-    val top = words.subtitle != null
-    return {
-        ends.icon?.let {
-            Tall(line, top, Modifier.testTag(RvPart.DISC)) { RvIconDisc(it) }
-            Spacer(Modifier.width(RvSpace.rowGap))
-        }
-        // R18: a one-line row's title is centred in the first-line box, as the disc and the control are; a taller block fills it.
-        Column(Modifier.weight(1f).heightIn(min = line), verticalArrangement = Arrangement.Center) {
-            if (code) {
-                RvCodeText(title, Rv.type.rowTitle, maxLines = titleLines)
-            } else {
-                RvText(title, Rv.type.rowTitle, rvWhole(words.titleWhole), maxLines = titleLines, lineBox = true, keepWords = words.titleKeepWords)
-            }
-            val hue = if (error) Rv.colors.error else Rv.colors.textSecondary
-            words.subtitle?.let {
-                // R12 (owner, q-s1125c-titlegap): the subtitle stands its gap under the title, as in every row.
-                Spacer(Modifier.height(RvSpace.titleToSubtitle))
-                RvText(it, Rv.type.rowSub, rvWhole(words.subtitleWhole), color = hue, maxLines = words.subtitleLines, lineBox = true, keepWords = words.subtitleKeepWords)
-            }
-        }
-        ends.action?.let {
-            Spacer(Modifier.width(RvSpace.trailingGap))
-            Tall(line, top, content = it)
-        }
-        (rvRemoveTrailing(ends.remove, ends.removeLabel) ?: ends.trailing)?.let {
-            Spacer(Modifier.width(RvSpace.trailingGap))
-            FirstLine(line, it)
-        }
-    }
-}
-
-/** [content] centred on the title's first [line]. */
-@Composable
-private fun FirstLine(line: Dp, content: @Composable () -> Unit) {
-    Box(Modifier.height(line).testTag(RvRowPart.END), contentAlignment = Alignment.Center) { content() }
-}
-
-/**
- * An end of the row's left or right side: one as tall as a line box or taller (the 40 dp disc, an in-card button) is not
- * held to the box's height and never makes the row taller, its top on the title's [top] (a row with a subtitle), else
- * centred on the first [line]; a shorter one (the busy bar standing in for a button) is centred on the first line.
- */
-@Composable
-private fun Tall(line: Dp, top: Boolean, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Layout({ Box(modifier) { content() } }, Modifier.height(line)) { (part), _ ->
-        val placed = part.measure(Constraints())
-        val height = line.roundToPx()
-        layout(placed.width, height) { placed.place(0, if (top && placed.height >= height) 0 else (height - placed.height) / 2) }
-    }
+    RvRow(
+        leading = icon?.let { { RvIconDisc(it) } },
+        title = title,
+        subtitle = subtitle,
+        modifier = modifier,
+        titleLines = titleLines,
+        titleKeepWords = titleKeepWords,
+        subtitleKeepWords = subtitleKeepWords,
+        subtitleLines = subtitleLines,
+        titleWhole = titleWhole,
+        subtitleWhole = subtitleWhole,
+        settings = true,
+        titleCode = code,
+        subtitleError = error,
+        action = action,
+        trailing = rvRemoveTrailing(remove, removeLabel) ?: trailing,
+    )
 }
 
 /**

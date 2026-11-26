@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.text.TextLayoutResult
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvPart
+import dev.doona.android.designsystem.rv.RvRowPart
 import dev.doona.android.designsystem.rv.RvSettingsRow
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvTheme
@@ -49,7 +50,7 @@ class RvSettingsRowFirstLineTest {
                 }
             }
         }
-        val discs = compose.onAllNodesWithTag(RvPart.DISC, useUnmergedTree = true).fetchSemanticsNodes()
+        val discs = compose.onAllNodesWithTag(RvRowPart.ICON_DISC, useUnmergedTree = true).fetchSemanticsNodes()
         val rows = compose.onAllNodesWithTag(RvPart.ROW, useUnmergedTree = true).fetchSemanticsNodes()
         ROWS.forEachIndexed { i, (title, subtitle) ->
             val text = compose.onNodeWithText(title, useUnmergedTree = true).fetchSemanticsNode()

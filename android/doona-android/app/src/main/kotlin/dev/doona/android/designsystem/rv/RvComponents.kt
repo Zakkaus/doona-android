@@ -328,9 +328,6 @@ internal object RvPart {
     /** A key stats row ([RvStatRow]) and its skeleton ([RvSkeletonStatRow]). */
     const val STAT = "rv-stat"
 
-    /** A settings row's leading disc, held on the title's first line as its end is. */
-    const val DISC = "rv-disc"
-
     /** A busy bar standing in for a row's end while a test runs. */
     const val BUSY = "rv-busy"
     const val SEGMENTED = "rv-segmented"

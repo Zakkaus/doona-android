@@ -25,6 +25,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvControlSize
 import dev.doona.android.designsystem.rv.RvFormat
 import dev.doona.android.designsystem.rv.RvPart
+import dev.doona.android.designsystem.rv.RvRowPart
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.feature.model.RvGeoData
@@ -256,7 +257,7 @@ class RvGeoDataShotTest {
             compose.runOnIdle { shown = data }
             val row = compose.onNode(hasTestTag(RvPart.ROW) and hasAnyDescendant(hasText(name)), useUnmergedTree = true).getBoundsInRoot()
             val title = compose.onNode(hasText(name) and hasAnyAncestor(hasTestTag(RvPart.ROW)), useUnmergedTree = true).getBoundsInRoot()
-            val disc = compose.onNode(hasTestTag(RvPart.DISC) and hasAnyAncestor(hasTestTag(RvPart.ROW) and hasAnyDescendant(hasText(name))), useUnmergedTree = true).getBoundsInRoot()
+            val disc = compose.onNode(hasTestTag(RvRowPart.ICON_DISC) and hasAnyAncestor(hasTestTag(RvPart.ROW) and hasAnyDescendant(hasText(name))), useUnmergedTree = true).getBoundsInRoot()
             val button = compose.onNode(hasText(rvText(label)) and hasClickAction()).getBoundsInRoot()
             assertEquals("$label top", title.top.value, button.top.value, HALF_DP)
             assertEquals("$label top as the disc's", disc.top.value, button.top.value, HALF_DP)

@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -30,6 +32,7 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.layout.VerticalAlignmentLine
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -74,6 +77,17 @@ import kotlin.math.roundToInt
  * latency test runs for the row), a busy bar stands at the row's end in place of [titleEnd] and [subtitleEnd], which
  * keep their room, so the text keeps its width and its lines: centred on the text, or on the line of an end that went
  * under it.
+ *
+ * [endFirstLine] puts the end of a row with a subtitle on the title's first line (R11): a control's.
+ *
+ * A [settings] row stands as every settings row has (`RvSettingsRow`): its end on the title's first line with a subtitle
+ * or without, in a room as tall as that line (a chip, a remove target overflow it, centred), beside the text at every
+ * font size (the text wraps in what the end leaves; it never goes under), and, without a subtitle, its leading disc
+ * centred on that first line too, so a title that wraps keeps both on its first line. An [action] (an in-card button,
+ * 40 dp as the disc) takes the end's place there: with a subtitle its top is on the title's top, as the disc's, so the
+ * two 40 dp ends share one rule; without one it is centred on the first line. A title that is honk text is [titleCode],
+ * highlighted as all honk text is ([RvCodeText]) in the code view's own line boxes. A subtitle that says an action
+ * failed is [subtitleError].
  */
 @Composable
 internal fun RvRow(
@@ -94,20 +108,31 @@ internal fun RvRow(
     subtitleWhole: RvWhole? = null,
     endBusy: Boolean = false,
     endFirstLine: Boolean = false,
+    settings: Boolean = false,
+    titleCode: Boolean = false,
+    subtitleError: Boolean = false,
+    action: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     rvRequireWhole(titleWhole, titleLines)
     rvRequireWhole(subtitleWhole, subtitleLines)
+    require(action == null || trailing == null) { "a row ends in an action or in a trailing part, not both" }
     // The card clips the layer of its first and last row to its corners.
     val press = onClick?.let { Modifier.rvRowPress(Role.Button, it, onLongClick) } ?: Modifier
     val lineWise = titleEnd != null || subtitleEnd != null
-    val beside = trailing != null && !lineWise
+    val end = trailing ?: action
+    val beside = end != null && !lineWise
     val minHeight = if (subtitle == null) RvSize.rowOneLine else RvSize.rowTwoLine
-    val titleText = rememberRowText(title, Rv.type.rowTitle, titleLines, titleKeepWords, titleWhole)
-    val subtitleText = subtitle?.let { rememberRowText(it, Rv.type.rowSub, subtitleLines, subtitleKeepWords, subtitleWhole) }
+    val titleText = rememberRowText(title, Rv.type.rowTitle, titleLines, titleKeepWords, titleWhole, Rv.colors.text, titleCode)
+    // A subtitle that says an action failed is in the error hue, as a field's error message (RvFieldMessage).
+    val hue = if (subtitleError) Rv.colors.error else Rv.colors.textSecondary
+    val subtitleText = subtitle?.let { rememberRowText(it, Rv.type.rowSub, subtitleLines, subtitleKeepWords, subtitleWhole, hue) }
     // LAYOUT-RULES.md R9: with a subtitle the disc's top is the title's top, so the text publishes where its title starts.
     val top = subtitle != null
-    val firstLine = if (endFirstLine && top) maxOf(RvSize.rowOneLine - RvSpace.rowTextInset * 2, rvOneLine(title, Rv.type.rowTitle, lineBox = true)) else null
+    val firstLine = if (settings || (endFirstLine && top)) maxOf(RvSize.rowOneLine - RvSpace.rowTextInset * 2, rvOneLine(title, Rv.type.rowTitle, lineBox = !titleCode)) else null
+    // A settings row's text publishes its title's top with or without a subtitle: its disc and end stand on its first line.
+    val anchored = top || settings
+    val linePx = firstLine?.let { with(LocalDensity.current) { it.roundToPx() } } ?: 0
     Row(
         modifier
             .fillMaxWidth()
@@ -119,23 +144,43 @@ internal fun RvRow(
     ) {
         // A row of a plain list (a radio list of settings) has no leading visual: its text starts on the row's padding.
         leading?.let {
-            if (top) Box(Modifier.alignBy { 0 }) { it() } else it()
+            when {
+                // A settings row's disc is centred on the first line's box (its offset in the box rounded toward zero, as the
+                // settings row always placed it); with a subtitle, one as tall as the box or taller has its top on the box's.
+                settings -> Box(Modifier.alignBy { part -> if (top && part.measuredHeight >= linePx) linePx / 2 else linePx / 2 - (linePx - part.measuredHeight) / 2 }) { it() }
+
+                top -> Box(Modifier.alignBy { 0 }) { it() }
+
+                else -> it()
+            }
             Spacer(Modifier.width(RvSpace.rowGap))
         }
-        val text = if (top) Modifier.weight(1f).alignBy(RvTitleTop) else Modifier.weight(1f)
+        val text = when {
+            settings && leading != null -> Modifier.weight(1f).alignBy(RvFirstLineMiddle)
+            top -> Modifier.weight(1f).alignBy(RvTitleTop)
+            else -> Modifier.weight(1f)
+        }.then(if (settings) Modifier.testTag(RvRowPart.SETTINGS_ROW) else Modifier)
         if (beside) {
-            TextBesideEnd(titleText, subtitleText, titleOverflow, minHeight, firstLine, trailing, top, text)
+            TextBesideEnd(titleText, subtitleText, titleOverflow, EndAt(firstLine, tall = action != null, settings = settings), end, anchored, text, minHeight)
         } else {
-            RowTextBlock(titleText, subtitleText, titleOverflow, LineEnds(titleEnd, subtitleEnd, endBusy), minHeight, top, text)
+            RowTextBlock(titleText, subtitleText, titleOverflow, LineEnds(titleEnd, subtitleEnd, endBusy), minHeight, anchored, text, firstLine.takeIf { settings })
         }
         if (!beside) {
-            trailing?.let {
+            end?.let {
                 Spacer(Modifier.width(RvSpace.trailingGap))
                 it()
             }
         }
     }
 }
+
+/**
+ * Where a row's end beside its text stands: centred on the row, or, with a [line] (the title's first line: [RvRow]'s
+ * endFirstLine with a subtitle, or a [settings] row's), centred on that line; a [tall] end (an in-card button, [RvRow]'s
+ * action) at least as tall as that line, in a row with a subtitle, has its top on the title's top instead (Table 0). A
+ * [settings] row's end stands in a room as tall as its line and never goes under its text.
+ */
+private class EndAt(val line: Dp?, val tall: Boolean, val settings: Boolean)
 
 /** A line-wise row's ends ([RvRow]'s titleEnd and subtitleEnd), and whether a busy bar stands in for them. */
 private class LineEnds(val title: (@Composable () -> Unit)?, val subtitle: (@Composable () -> Unit)?, val busy: Boolean)
@@ -146,7 +191,7 @@ private class LineEnds(val title: (@Composable () -> Unit)?, val subtitle: (@Com
  * title's top with a subtitle ([RowTextColumn]) and centred in the row without one.
  */
 @Composable
-private fun RowTextBlock(titleText: RowText, subtitleText: RowText?, titleOverflow: TextOverflow, ends: LineEnds, minHeight: Dp, top: Boolean, modifier: Modifier) {
+private fun RowTextBlock(titleText: RowText, subtitleText: RowText?, titleOverflow: TextOverflow, ends: LineEnds, minHeight: Dp, top: Boolean, modifier: Modifier, line: Dp?) {
     val lineWise = ends.title != null || ends.subtitle != null
     if (lineWise && ends.busy) {
         BusyAtEnd(modifier) {
@@ -155,14 +200,14 @@ private fun RowTextBlock(titleText: RowText, subtitleText: RowText?, titleOverfl
     } else if (lineWise) {
         LineWiseText(titleText, subtitleText, titleOverflow, ends.title, ends.subtitle, minHeight, top, modifier)
     } else if (top) {
-        RowTextColumn(minHeight, modifier) {
+        RowTextColumn(minHeight, modifier, line) {
             titleText.Shown(overflow = titleOverflow)
-            subtitleText?.let { UnderTitle { it.Shown(Rv.colors.textSecondary) } }
+            subtitleText?.let { UnderTitle { it.Shown() } }
         }
     } else {
         Column(modifier.padding(vertical = RvSpace.rowTextInset)) {
             titleText.Shown(overflow = titleOverflow)
-            subtitleText?.let { UnderTitle { it.Shown(Rv.colors.textSecondary) } }
+            subtitleText?.let { UnderTitle { it.Shown() } }
         }
     }
 }
@@ -188,10 +233,10 @@ private fun LineWiseText(
             title.Shown(overflow = titleOverflow)
         }
         subtitle?.let {
-            UnderTitle { RowLine(subtitleEnd?.let(::onLine), it) { it.Shown(Rv.colors.textSecondary) } }
+            UnderTitle { RowLine(subtitleEnd?.let(::onLine), it) { it.Shown() } }
         }
     }
-    if (top) RowTextColumn(minHeight, modifier, lines) else Column(modifier.padding(vertical = RvSpace.rowTextInset)) { lines() }
+    if (top) RowTextColumn(minHeight, modifier, content = lines) else Column(modifier.padding(vertical = RvSpace.rowTextInset)) { lines() }
 }
 
 /**
@@ -199,14 +244,14 @@ private fun LineWiseText(
  * and below; it publishes where its first line starts ([RvTitleTop]), so the row's disc can stand on it (R9).
  */
 @Composable
-private fun RowTextColumn(minHeight: Dp, modifier: Modifier, content: @Composable () -> Unit) {
+private fun RowTextColumn(minHeight: Dp, modifier: Modifier, line: Dp? = null, content: @Composable () -> Unit) {
     Layout(content, modifier) { parts, constraints ->
         val inset = RvSpace.rowTextInset.roundToPx()
         val placed = parts.map { it.measure(constraints.copy(minWidth = 0, minHeight = 0)) }
         val block = placed.sumOf { it.height }
         val height = max(minHeight.roundToPx(), block + inset * 2)
         val first = ((height - block) / 2f).roundToInt()
-        layout(constraints.maxWidth, height, mapOf(RvTitleTop to first)) {
+        layout(constraints.maxWidth, height, mapOf(RvTitleTop to first) + firstLineMiddle(line?.roundToPx(), first, block)) {
             var y = first
             placed.forEach {
                 it.place(0, y)
@@ -272,14 +317,25 @@ private fun BusyAtEnd(modifier: Modifier, text: @Composable () -> Unit) {
  * `IPLC`), unless only part of the end shows ([besideShown]).
  */
 @Composable
-private fun TextBesideEnd(titleText: RowText, subtitleText: RowText?, titleOverflow: TextOverflow, minHeight: Dp, endLine: Dp?, trailing: @Composable () -> Unit, top: Boolean, modifier: Modifier) {
+private fun TextBesideEnd(titleText: RowText, subtitleText: RowText?, titleOverflow: TextOverflow, endAt: EndAt, trailing: @Composable () -> Unit, top: Boolean, modifier: Modifier, minHeight: Dp) {
     val measurer = rememberTextMeasurer()
     val side = remember { RvEndSide() }
     Layout(
         {
             titleText.Shown(overflow = titleOverflow)
-            subtitleText?.Shown(Rv.colors.textSecondary)
-            Box(Modifier.testTag(RvRowPart.END)) { CompositionLocalProvider(LocalRvEndSide provides side, trailing) }
+            subtitleText?.Shown()
+            // A settings row's end stands in its first line's box, as tall as the line whatever the end draws (a chip, a
+            // remove target, taller than the line, overflow it centred), so the row's height stays the text's.
+            val room = endAt.line?.takeIf { endAt.settings && !endAt.tall }
+            // An in-card button takes its own width, not the row's (a button that fills what it is given).
+            val own = when {
+                room != null -> Modifier.wrapContentHeight(unbounded = true)
+                endAt.tall -> Modifier.wrapContentWidth(unbounded = true)
+                else -> Modifier
+            }
+            Box(Modifier.testTag(RvRowPart.END).then(room?.let { Modifier.height(it) } ?: Modifier), contentAlignment = Alignment.Center) {
+                Box(own) { CompositionLocalProvider(LocalRvEndSide provides side, trailing) }
+            }
         },
         modifier,
     ) { parts, constraints ->
@@ -290,8 +346,13 @@ private fun TextBesideEnd(titleText: RowText, subtitleText: RowText?, titleOverf
         val under = if (subtitleText != null) RvSpace.titleToSubtitle.roundToPx() else 0
         val end = parts.last().measure(Constraints(maxWidth = max(0, width - gap)))
         val beside = max(0, width - gap - end.width)
-        val titleFits = if (titleOverflow == TextOverflow.MiddleEllipsis) keepsHostEnds(titleText, beside) else rvReadsWell(measurer.layout(titleText, beside))
-        val fits = titleFits && (subtitleText == null || rvReadsWell(measurer.layout(subtitleText, beside)))
+        // Honk code wraps where it must and is read as code, not prose: beside its end it always reads (a skipped declaration).
+        val titleFits = when {
+            titleText.code -> true
+            titleOverflow == TextOverflow.MiddleEllipsis -> keepsHostEnds(titleText, beside)
+            else -> rvReadsWell(measurer.layout(titleText, beside))
+        }
+        val fits = endAt.settings || (titleFits && (subtitleText == null || rvReadsWell(measurer.layout(subtitleText, beside))))
         // Told before the end places its parts; read unobserved, so this layout does not run again for its own write.
         if (Snapshot.withoutReadObservation { side.under } == fits) side.under = !fits
         val textWidth = if (fits) measurer.besideShown(titleText, subtitleText, beside, width - gap - end.shownWidth()) else width
@@ -301,11 +362,14 @@ private fun TextBesideEnd(titleText: RowText, subtitleText: RowText?, titleOverf
             val text = titleLine.height + under + (subtitleLine?.height ?: 0) + inset * 2
             val height = maxOf(text, end.height, least)
             val first = Alignment.CenterVertically.align(text, height) + inset
-            layout(width, height, if (top) mapOf(RvTitleTop to first) else emptyMap()) {
+            val box = endAt.line?.roundToPx()
+            val middle = firstLineMiddle(box, first, text - inset * 2)
+            layout(width, height, (if (top) mapOf(RvTitleTop to first) else emptyMap()) + middle.takeIf { endAt.settings }.orEmpty()) {
                 titleLine.place(0, first)
                 subtitleLine?.place(0, first + titleLine.height + under)
                 // R11: a control stands on the title's first line, as Revolut's switch rows do; a value or chevron is centred.
-                val at = endLine?.let { first + it.roundToPx() / 2 - end.height / 2 } ?: Alignment.CenterVertically.align(end.height, height)
+                // An in-card button as tall as that line or taller stands as the disc does, its top on the title's top.
+                val at = box?.let { if (endAt.tall && subtitleText != null && end.height >= it) first else endOnLine(middle.getValue(RvFirstLineMiddle), it, end.height, endAt.settings) } ?: Alignment.CenterVertically.align(end.height, height)
                 end.place(width - end.width, at)
             }
         } else {
@@ -325,6 +389,22 @@ private fun TextBesideEnd(titleText: RowText, subtitleText: RowText?, titleOverf
  * and the end goes under the title, which then takes the whole line.
  */
 private fun Density.keepsHostEnds(title: RowText, beside: Int): Boolean = beside >= title.style.fontSize.toPx() * RV_HOST_MIN_EMS
+
+/**
+ * The middle of a row's first-line box ([RvFirstLineMiddle]), [box] px tall: its top is the title's top ([first]), or,
+ * where the text [block] is shorter than the box (a title of one line), the box holds the text centred, so its top
+ * stands above the title's. None without a box.
+ */
+private fun firstLineMiddle(box: Int?, first: Int, block: Int): Map<AlignmentLine, Int> = box?.let { mapOf<AlignmentLine, Int>(RvFirstLineMiddle to first - max(0, it - block) / 2 + it / 2) }.orEmpty()
+
+/**
+ * Where an end [height] px tall starts, centred on the first-line box of [box] px whose middle is [middle]: a settings
+ * row's offset in the box is rounded toward zero, as the settings row always placed it.
+ */
+private fun endOnLine(middle: Int, box: Int, height: Int, settings: Boolean): Int = if (settings) middle - box / 2 + (box - height) / 2 else middle - height / 2
+
+/** The middle of a settings row's first-line box ([firstLineMiddle]): its disc and end are centred on it. */
+private val RvFirstLineMiddle = HorizontalAlignmentLine(::min)
 
 /** Where a row's first text line starts, from the text part's top: the disc of a row with a subtitle stands on it. */
 internal val RvTitleTop = HorizontalAlignmentLine(::min)

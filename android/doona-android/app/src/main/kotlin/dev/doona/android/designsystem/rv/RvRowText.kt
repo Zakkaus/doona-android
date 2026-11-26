@@ -67,17 +67,21 @@ internal fun RowLine(end: (@Composable () -> Unit)?, text: RowText?, figure: Boo
 }
 
 /**
- * A row's text as it is laid out: its words, its role, how many lines it may take, whether its words are held
- * ([RvText]'s `keepWords`) and the exception that shows it whole; [words] is the text as its [RvText] takes it
- * ([rvWords]), taken once for the text.
+ * A row's text as it is laid out: its words, its role and [color], how many lines it may take, whether its words are held
+ * ([RvText]'s `keepWords`), the exception that shows it whole, and whether it is honk [code] ([RvCodeText]: a skipped
+ * declaration, which keeps the code view's line boxes); [words] is the text as its [RvText] takes it ([rvWords]), taken
+ * once for the text.
  */
-internal class RowText(val text: String, val style: TextStyle, val lines: Int, val keepWords: Boolean, val whole: RvWhole?) {
+internal class RowText(val text: String, val style: TextStyle, val lines: Int, val keepWords: Boolean, val whole: RvWhole?, val color: Color, val code: Boolean) {
     val words = rvWords(text, lines, keepWords)
 
-    /** The text in its role's Latin line box, as the row shows it. */
+    /** The text in its role's Latin line box (code in its own), as the row shows it. */
     @Composable
-    fun Shown(color: Color = Rv.colors.text, overflow: TextOverflow = TextOverflow.Ellipsis) =
+    fun Shown(overflow: TextOverflow = TextOverflow.Ellipsis) = if (code) {
+        RvCodeText(text, style, maxLines = lines)
+    } else {
         RvText(text, style, rvWhole(whole), color = color, maxLines = lines, overflow = overflow, lineBox = true, keepWords = keepWords)
+    }
 }
 
 /**
@@ -94,8 +98,8 @@ internal fun rvRequireWhole(whole: RvWhole?, lines: Int) =
     require(whole == null || lines == Int.MAX_VALUE) { "a text given $whole takes $lines lines: a text shown whole takes Int.MAX_VALUE" }
 
 @Composable
-internal fun rememberRowText(text: String, style: TextStyle, lines: Int, keepWords: Boolean, whole: RvWhole?) =
-    remember(text, style, lines, keepWords, whole) { RowText(text, style, lines, keepWords, whole) }
+internal fun rememberRowText(text: String, style: TextStyle, lines: Int, keepWords: Boolean, whole: RvWhole?, color: Color, code: Boolean = false) =
+    remember(text, style, lines, keepWords, whole, color, code) { RowText(text, style, lines, keepWords, whole, color, code) }
 
 /** [text] laid out [width] px wide as its [RvText] lays it out. */
 internal fun TextMeasurer.layout(text: RowText, width: Int) = rvLayout(text.words, text.style, text.lines, width)

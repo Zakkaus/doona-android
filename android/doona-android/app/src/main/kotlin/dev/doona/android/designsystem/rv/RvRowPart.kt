@@ -51,7 +51,7 @@ internal object RvRowPart {
     /** An item of a long-press menu ([RvLongPressMenu]). */
     const val MENU_ROW = "rv-menu-row"
 
-    /** A settings row's line of parts, inside its [RvPart.ROW] (`RvSettingsRow`). */
+    /** A settings row's text block, inside its [RvPart.ROW] (`RvRow` with `settings`, as `RvSettingsRow` draws it). */
     const val SETTINGS_ROW = "rv-settings-row"
 }
 
