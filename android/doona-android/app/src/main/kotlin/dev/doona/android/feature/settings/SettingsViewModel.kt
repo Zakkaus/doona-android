@@ -81,7 +81,7 @@ internal class SettingsViewModel(
                     dns = local.dnsServers?.let(::rvDnsUpstream),
                     language = local.language,
                     tileAdded = prefs.tileAdded,
-                    geoInterval = local.geoInterval ?: RvGeoInterval.Weekly,
+                    geoInterval = local.geoInterval ?: RvGeoInterval.Daily,
                     tileSheet = local.tileSheet,
                 ),
                 perAppLoaded = loaded,

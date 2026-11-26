@@ -55,8 +55,8 @@ internal enum class RvDnsUpstream(@StringRes val label: Int, val address: String
 }
 
 /**
- * How often the GeoIP/GeoSite data updates by itself while the VPN is up (GeoRefresh): never, each day, or each week,
- * the default (owner, 2026-11-26 07:13, q-p6a-geointerval).
+ * How often the GeoIP/GeoSite data updates by itself while the VPN is up (GeoRefresh): never, each day, the default
+ * (honk's own 24 hours, q-k4-geodefault), or each week (owner, 2026-11-26 07:13, q-p6a-geointerval).
  */
 internal enum class RvGeoInterval(@StringRes val label: Int) {
     Off(R.string.ui_off),
@@ -81,7 +81,7 @@ internal data class RvSettingsState(
     val language: RvLanguage = RvLanguage.TraditionalChinese,
     val tileAdded: Boolean = true,
     val tileSheet: Boolean = false,
-    val geoInterval: RvGeoInterval = RvGeoInterval.Weekly,
+    val geoInterval: RvGeoInterval = RvGeoInterval.Daily,
 ) {
     /** How many apps 依 App checked. */
     val proxiedApps: Int get() = perApp.packages.size

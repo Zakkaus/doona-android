@@ -18,7 +18,8 @@ import dev.doona.android.feature.model.RvGeoInterval
 
 /**
  * 自動更新 for the GeoIP/GeoSite data, a page of 設定's 更新 group (owner, 2026-11-26 07:13, q-p6a-geointerval), laid out
- * as 日誌等級: the large title, one card of the three intervals as radio rows, 每週 over 預設, and one footer line: the
+ * as 日誌等級: the large title, one card of the three intervals as radio rows, 每天 over 預設
+ * (honk's own 24 hours; owner, 2026-11-26, q-k4-geodefault), and one footer line: the
  * data updates only while the VPN is up, through the main node. [selected] is the stored interval; a choice goes to
  * [onSelect].
  */
@@ -31,7 +32,7 @@ internal fun RvGeoIntervalScreen(selected: RvGeoInterval, onSelect: (RvGeoInterv
         RvSettingsColumn {
             RvSettingsRadioCard {
                 RvGeoInterval.entries.forEach {
-                    val default = if (it == RvGeoInterval.Weekly) stringResource(R.string.rv_geo_interval_default) else null
+                    val default = if (it == RvGeoInterval.Daily) stringResource(R.string.rv_geo_interval_default) else null
                     RvSettingsRadioRow(stringResource(it.label), it == selected, { onSelect(it) }, subtitle = default)
                 }
             }

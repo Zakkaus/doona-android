@@ -262,7 +262,7 @@ class SettingsViewModelTest {
     fun `without honk the row shows the APK's date and 未連線, and 自動更新 its default`() = runTest {
         val vm = vm(honk = SettingsHonk())
         assertEquals(RvGeoData(LocalDate.of(2026, 11, 23), connected = false), vm.uiState.value.geoData)
-        assertEquals(RvGeoInterval.Weekly, vm.settings.geoInterval)
+        assertEquals("honk's own 24 hours", RvGeoInterval.Daily, vm.settings.geoInterval)
     }
 
     @Test
