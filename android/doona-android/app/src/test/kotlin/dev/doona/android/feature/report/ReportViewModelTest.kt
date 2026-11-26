@@ -61,11 +61,11 @@ class ReportViewModelTest : ExportFixture() {
     private fun zips(): List<File> = outDir.listFiles().orEmpty().filter { it.name.endsWith(".zip") }
 
     @Test
-    fun `the first report hides node addresses, own IPs and domains, and shows app names`() = runTest {
+    fun `the first report hides own IPs and domains, and shows app names`() = runTest {
         val (vm, reports) = page()
-        assertEquals(RvRedaction(nodes = true, ip = true, domains = true, apps = false), vm.uiState.value.redaction)
+        assertEquals(RvRedaction(ip = true, domains = true, apps = false), vm.uiState.value.redaction)
         advanceUntilIdle()
-        val expected = RedactionOptions(showNodeEndpoints = false, showOwnAddresses = false, showVisitedDomains = false, showAppNames = true)
+        val expected = RedactionOptions(showOwnAddresses = false, showVisitedDomains = false, showAppNames = true)
         assertEquals(listOf(expected), reports.options)
     }
 
@@ -150,12 +150,11 @@ class ReportViewModelTest : ExportFixture() {
 
     @Test
     fun `each switch shows or hides only its own part`() {
-        val shown = RvRedaction(nodes = false, ip = false, domains = false, apps = false).options()
-        assertEquals(RedactionOptions(showNodeEndpoints = true, showOwnAddresses = true, showVisitedDomains = true, showAppNames = true), shown)
-        assertEquals(shown.copy(showNodeEndpoints = false), RvRedaction(nodes = true, ip = false, domains = false, apps = false).options())
-        assertEquals(shown.copy(showOwnAddresses = false), RvRedaction(nodes = false, ip = true, domains = false, apps = false).options())
-        assertEquals(shown.copy(showVisitedDomains = false), RvRedaction(nodes = false, ip = false, domains = true, apps = false).options())
-        assertEquals(shown.copy(showAppNames = false), RvRedaction(nodes = false, ip = false, domains = false, apps = true).options())
+        val shown = RvRedaction(ip = false, domains = false, apps = false).options()
+        assertEquals(RedactionOptions(showOwnAddresses = true, showVisitedDomains = true, showAppNames = true), shown)
+        assertEquals(shown.copy(showOwnAddresses = false), RvRedaction(ip = true, domains = false, apps = false).options())
+        assertEquals(shown.copy(showVisitedDomains = false), RvRedaction(ip = false, domains = true, apps = false).options())
+        assertEquals(shown.copy(showAppNames = false), RvRedaction(ip = false, domains = false, apps = true).options())
     }
 
     @Test

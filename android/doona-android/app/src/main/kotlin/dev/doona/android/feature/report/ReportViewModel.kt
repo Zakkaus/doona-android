@@ -157,7 +157,6 @@ internal data class ReportUiState(
 
 /** The export's options for what the switches hide: each switch on hides its part. */
 internal fun RvRedaction.options() = RedactionOptions(
-    showNodeEndpoints = !nodes,
     showOwnAddresses = !ip,
     showVisitedDomains = !domains,
     showAppNames = !apps,

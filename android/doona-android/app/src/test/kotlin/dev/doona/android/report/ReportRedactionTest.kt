@@ -30,8 +30,6 @@ class ReportRedactionTest : ExportFixture() {
         val defaults = RedactionOptions()
         val cases = listOf(
             defaults to listOf(PACKAGE),
-            // honk names no node's server, so this switch has nothing in the report to show.
-            defaults.copy(showNodeEndpoints = true) to listOf(PACKAGE),
             defaults.copy(showOwnAddresses = true) to listOf(OWN_IP, PACKAGE),
             defaults.copy(showVisitedDomains = true) to listOf(VISITED, PACKAGE),
             defaults.copy(showAppNames = false) to emptyList(),
@@ -152,6 +150,6 @@ class ReportRedactionTest : ExportFixture() {
         private const val VISITED = "visited.example"
         private const val PACKAGE = "org.example.browser"
         private val FAILURE = ReportFailure(ErrorCode.Internal, "start", Instant.EPOCH)
-        private val SHOW_ALL = RedactionOptions(showNodeEndpoints = true, showOwnAddresses = true, showVisitedDomains = true, showAppNames = true)
+        private val SHOW_ALL = RedactionOptions(showOwnAddresses = true, showVisitedDomains = true, showAppNames = true)
     }
 }

@@ -39,8 +39,6 @@
         <item quantity="other">%1$d 份崩溃记录</item>
     </plurals>
     <string name="rv_report_redact">脱敏</string>
-    <string name="rv_redact_nodes">节点地址和端口</string>
-    <string name="rv_redact_nodes_sub">服务器的域名、IP 和端口</string>
     <string name="rv_redact_ip">我的 IP 地址</string>
     <string name="rv_redact_ip_sub">本机的公网和局域网 IP</string>
     <string name="rv_redact_domains">访问的域名</string>

@@ -50,8 +50,6 @@
         <item quantity="other">%1$d crash logs</item>
     </plurals>
     <string name="rv_report_redact">Redact</string>
-    <string name="rv_redact_nodes">Node addresses and ports</string>
-    <string name="rv_redact_nodes_sub">Server domains, IPs and ports</string>
     <string name="rv_redact_ip">My IP addresses</string>
     <string name="rv_redact_ip_sub">This device\'s public and local IPs</string>
     <string name="rv_redact_domains">Visited domains</string>
