@@ -133,6 +133,22 @@ class NativeCatalogTest {
         assertCode(ErrorCode.NotFound) { catalog.removeProvider("gone") }
     }
 
+    @Test
+    fun aProbeAsksForOneHttpRoundTripAndWaitsForItsOperation() = runTest {
+        api.on("POST", "/api/v1/probes", 202, HonkFixtures.body("operations/probe-queued"))
+        api.on("GET", "/api/v1/operations/op-01HZX4K8W9", 200, HonkFixtures.body("operations/probe-complete"))
+
+        catalog.probe(ProbeTarget.Group("g-Proxy"))
+        catalog.probe(ProbeTarget.Node("n-1"))
+
+        val (group, node) = api.calls.filter { it.method == "POST" }.map { Json.parseToJsonElement(checkNotNull(it.body)).jsonObject }
+        assertEquals("""{"type":"group","group_id":"g-Proxy"}""", group.getValue("target").toString())
+        assertEquals("""{"type":"node","node_id":"n-1"}""", node.getValue("target").toString())
+        assertEquals("http", group.getValue("kind").jsonPrimitive.content)
+        assertEquals("""["tcp"]""", group.getValue("transport").toString())
+        assertEquals(2, api.calls.count { it.path == "/api/v1/operations/op-01HZX4K8W9" })
+    }
+
     private inline fun assertCode(code: ErrorCode, block: () -> Unit) {
         val error = runCatching(block).exceptionOrNull()
         assertEquals(code, (error as? EngineException)?.code)

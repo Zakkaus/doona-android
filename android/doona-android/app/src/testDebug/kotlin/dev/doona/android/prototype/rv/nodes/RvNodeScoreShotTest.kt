@@ -10,7 +10,6 @@ import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.nodes.RvNodeDetail
 import dev.doona.android.feature.nodes.RvNodesPage
 import dev.doona.android.feature.nodes.RvScoreMarks
-import dev.doona.android.feature.nodes.rvScoreMarks
 import dev.doona.android.feature.nodes.ui.matches
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
@@ -190,8 +189,8 @@ class RvNodeScoreShotTest {
         RvNodeDetail(node, current = node.id in page.current, RvData.testTimes, onBack = {}, onUse = {}, onTest = {}, score = score)
 
     private companion object {
-        val marks = checkNotNull(rvScoreMarks(listOf(RvScoreSample.chosen)))
-        val both = checkNotNull(rvScoreMarks(listOf(RvScoreSample.agreed)))
+        val marks = RvScoreSample.chosen.let { RvScoreMarks(setOfNotNull(it.tcp.selectedId), setOfNotNull(it.udp.selectedId)) }
+        val both = RvScoreSample.agreed.let { RvScoreMarks(setOfNotNull(it.tcp.selectedId), setOfNotNull(it.udp.selectedId)) }
         val page = sampleNodesPage()
         val chosen: RvNode = page.nodes.first { it.id == RvScoreSample.chosen.tcp.selectedId }
 

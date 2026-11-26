@@ -5,218 +5,205 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import dev.doona.android.engine.Engine
-import dev.doona.android.engine.EngineException
-import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.GroupKind
-import dev.doona.android.engine.Network
-import dev.doona.android.engine.NodeInfo
+import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.feature.model.NodePlaces
+import dev.doona.android.vpn.NativeApi
+import dev.doona.android.vpn.honk.NativeCatalog
+import dev.doona.android.vpn.honk.NativeRouting
+import dev.doona.android.vpn.honk.ProbeTarget
+import dev.doona.android.vpn.honk.SelectionNetwork
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * The D30 picker's, 節點's, a node's page's and search's state, one instance scoped to 活動's entry and shared by the four
- * (plan 2.2). Each catalog revision reads the nodes' details (`nodes(ids)`) and maps every node once, on [work], into
- * immutable values, so nothing a page reads changes between revisions and 活動 under the picker is not composed again on
- * a tick. A pick switches the main group ([pick]); a test asks the core to test every group ([test]), or one group that
- * lists one node ([testNode]); the rows' menus copy a node's share link ([copyLink]) and update or delete a subscription
- * ([update], [remove]). A failure (of those, or of reading the nodes' details) stays until the same action next
- * succeeds, and [retry] runs it again. [clock] is now, for the subscriptions' end dates.
+ * (plan 2.2). honk pushes nothing, so the nodes, providers and groups are read on [io] at start, after each change made
+ * here and on 重試, and mapped once into immutable values. A pick selects the node in the main group ([pick], see
+ * [mainGroup]); a test probes every group's members ([test]) or one node ([testNode]); the rows' menus refresh or delete a
+ * provider ([update], [remove]). A failure stays until the same action next succeeds, and [retry] runs it again. [clock]
+ * is now, for the subscriptions' end dates. honk has no share links and no Score evidence, so the pages get neither.
  */
-@OptIn(ExperimentalCoroutinesApi::class)
 class NodesViewModel internal constructor(
-    private val engine: Engine,
-    work: CoroutineDispatcher,
-    places: NodePlaces,
+    private val api: NativeApi,
+    private val io: CoroutineDispatcher = Dispatchers.IO,
+    private val places: NodePlaces = CoreNodePlaces,
     private val clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
+    private val catalog = NativeCatalog(api)
+    private val read = MutableStateFlow<Read?>(null)
     private val failure = MutableStateFlow<NodesFailure?>(null)
     private val running = MutableStateFlow(false)
     private val updating = MutableStateFlow(emptySet<String>())
+    private var reading: Job? = null
 
-    /** The node of the last one-node test (null: every group's), the last share link asked for, the last subscription acted on. */
+    /** The node of the last one-node test (null: every group's), the last subscription acted on. */
     private var lastTest: String? = null
-    private var lastShare: Share? = null
     private var lastSub: String? = null
-
-    private class Share(val nodeId: String, val onLink: (String) -> Unit)
-
-    /** Bumped by [retry] after a failed read of the nodes' details, to read them again. */
-    private val reread = MutableStateFlow(0)
 
     /** The last pick that has not succeeded yet, with what to do once it does; [retry] makes it again after it failed. */
     private var lastPick: Pick? = null
 
-    private class Pick(val nodeId: String, val network: Network?, val onPicked: () -> Unit)
+    private class Pick(val nodeId: String, val network: SelectionNetwork, val onPicked: () -> Unit)
 
-    /**
-     * Each catalog mapped once, with every node's details read again (`nodes()`, the core's every node, grouped or not)
-     * and, while the catalog has a Score group, Score's choices. A failed read is reported (the pages show it with 重試):
-     * the nodes the catalog lists keep the last details read and Score keeps its last marks, but a node no group lists is
-     * shown only from a read that succeeded, so a node an older revision had (a deleted subscription's) never comes back
-     * as a row. A node never described shows none ([dev.doona.android.feature.model.RvNode.described]).
-     */
-    private val mapped: Flow<Mapped?> = flow {
-        var info = emptyMap<String, NodeInfo>()
-        var marks: RvScoreMarks? = null
-        emitAll(
-            combine(engine.catalog, reread) { catalog, _ -> catalog }.mapLatest { catalog ->
-                catalog ?: return@mapLatest null
-                val read = engine.nodes(null)
-                read.getOrNull()?.let { nodes -> info = nodes.associateBy { it.id } }
-                val scored = if (catalog.groups.any { it.kind == GroupKind.Score }) engine.scoreState() else null
-                marks = scored?.fold({ rvScoreMarks(it.groups) }, { marks })
-                (if (read.isFailure) read else scored ?: read).report(NodesAction.Read)
-                Mapped(nodesState(catalog, info, places, ungrouped = read.isSuccess), marks)
-            },
-        )
-    }.flowOn(work)
+    /** One read: the pages' state and every group's id, for [test]. */
+    private class Read(val state: NodesState, val groupIds: List<String>)
 
-    /** One revision as the pages show it, with Score's marks (null with no Score group). */
-    private class Mapped(val state: NodesState, val score: RvScoreMarks?)
-
-    private val testing: Flow<Boolean> = combine(running, engine.groups.map { all -> all.any { it.testing } }) { mine, core -> mine || core }
-        .distinctUntilChanged()
-
-    internal val ui: StateFlow<NodesUi> = combine(mapped, testing, failure, updating) { mapped, testing, failure, updating ->
+    internal val ui: StateFlow<NodesUi> = combine(read, running, failure, updating) { read, testing, failure, updating ->
         NodesUi(
-            mapped?.state ?: NodesState.Empty,
-            loaded = mapped != null,
+            read?.state ?: NodesState.Empty,
+            loaded = read != null,
             testing = testing,
             failure = failure,
-            score = mapped?.score,
             nowEpochMs = clock(),
             updating = updating,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), NodesUi())
 
+    init {
+        load()
+    }
+
     /**
-     * Makes [nodeId] the main group's node: on both networks, or only on [network] where the caller's 套用到 row chose one.
-     * [onPicked] runs once the core has switched, never after a failure (Busy included), so a page that closes on a pick
-     * stays open to show the failure and its 重試. Does nothing before the catalog is read, or when the catalog has no
-     * main group (the pages say so).
+     * Reads everything again. A failed read keeps what was shown under its banner; a first read that fails shows no node,
+     * so the pages leave their skeletons.
      */
-    fun pick(nodeId: String, network: Network? = null, onPicked: () -> Unit = {}) {
-        val catalog = engine.catalog.value ?: return
-        val main = catalog.mainGroupId.takeIf { id -> catalog.groups.any { it.id == id } } ?: return
+    private fun load() {
+        reading?.cancel()
+        reading = viewModelScope.launch {
+            var fresh: Read? = null
+            attempt(NodesAction.Read) { fresh = withContext(io) { readAll() } }
+            read.value = fresh ?: read.value ?: Read(NodesState.Empty, emptyList())
+        }
+    }
+
+    private fun readAll(): Read {
+        val groups = catalog.groups()
+        val state = nodesState(catalog.nodes(), catalog.providers(), mainGroup(groups, NativeRouting(api).rules()), places)
+        return Read(state, groups.map { it.id })
+    }
+
+    /**
+     * Makes [nodeId] the main group's node on [network] (both, unless the caller's 套用到 row chose one). [onPicked] runs
+     * once honk has switched, never after a failure (Busy included), so a page that closes on a pick stays open to show
+     * the failure and its 重試. Does nothing before the first read, or with no main group (the pages say so).
+     */
+    internal fun pick(nodeId: String, network: SelectionNetwork = SelectionNetwork.Both, onPicked: () -> Unit = {}) {
+        val main = read.value?.state?.mainGroupId ?: return
         val pick = Pick(nodeId, network, onPicked).also { lastPick = it }
         viewModelScope.launch {
-            val result = engine.select(main, nodeId, network)
-            result.report(NodesAction.Select)
+            val done = attempt(NodesAction.Select) { withContext(io) { catalog.select(main, nodeId, network) } }
             // A pick a later one superseded does not close the page while the later one is still switching.
-            if (result.isFailure || lastPick !== pick) return@launch
+            if (!done || lastPick !== pick) return@launch
             // Done: the page's callback is not kept past its pick.
             lastPick = null
+            load()
             onPicked()
         }
     }
 
-    /** Tests every group's nodes; the rows show the test running until the core's results arrive. */
-    fun test() {
+    /** Probes every group's members; the rows show the test running until honk has recorded the results. */
+    fun test() = probe(null)
+
+    /** Probes [nodeId] alone (a row's menu, the node's page). */
+    fun testNode(nodeId: String) = probe(nodeId)
+
+    private fun probe(nodeId: String?) {
         if (running.value) return
-        lastTest = null
+        lastTest = nodeId
         running.value = true
+        val groupIds = read.value?.groupIds.orEmpty()
         viewModelScope.launch {
             try {
-                engine.testLatency(null).report(NodesAction.Test)
+                val done = attempt(NodesAction.Test) {
+                    withContext(io) {
+                        if (nodeId != null) {
+                            catalog.probe(ProbeTarget.Node(nodeId))
+                        } else {
+                            groupIds.map { async { catalog.probe(ProbeTarget.Group(it)) } }.awaitAll()
+                        }
+                    }
+                }
+                if (done) load()
             } finally {
                 running.value = false
             }
         }
     }
 
-    /**
-     * Tests [nodeId] (a row's menu, the node's page) with one plan: the core probes a group's members, and each plan starts a new probe
-     * round for every node it reaches (a result from an older round is dropped), so this tests one group that lists the
-     * node, the main group when it does, or every group when none does.
-     */
-    fun testNode(nodeId: String) {
-        val catalog = engine.catalog.value
-        val holding = catalog?.groups.orEmpty().filter { group -> group.members.any { it.id == nodeId } }
-        val group = holding.firstOrNull { it.id == catalog?.mainGroupId } ?: holding.firstOrNull() ?: return test()
-        lastTest = nodeId
-        viewModelScope.launch { engine.testLatency(group.id).report(NodesAction.Test) }
-    }
-
-    /** Reads [nodeId]'s share link from the core and hands it to [onLink] (the page puts it on the clipboard); a node with none fails. */
-    fun copyLink(nodeId: String, onLink: (String) -> Unit) {
-        lastShare = Share(nodeId, onLink)
-        viewModelScope.launch {
-            val link = engine.nodeShareLink(nodeId)
-            link.report(NodesAction.Share)
-            link.getOrNull()?.let { onLink(it.uri) }
-        }
-    }
-
-    /** Updates subscription [id]; its row shows it updating until the core answers ([NodesUi.updating]). */
+    /** Refreshes provider [id]; its row shows it updating until honk has fetched it ([NodesUi.updating]). */
     fun update(id: String) {
         if (id in updating.value) return
         lastSub = id
         updating.update { it + id }
         viewModelScope.launch {
             try {
-                engine.updateSubscription(id).report(NodesAction.Update, subscriptionName(id))
+                if (attempt(NodesAction.Update, subscriptionName(id)) { withContext(io) { catalog.refreshProvider(id) } }) load()
             } finally {
                 updating.update { it - id }
             }
         }
     }
 
-    /** Deletes subscription [id], once its row's sheet has asked. */
+    /** Deletes provider [id], once its row's sheet has asked. */
     fun remove(id: String) {
         lastSub = id
-        viewModelScope.launch { engine.removeSubscription(id).report(NodesAction.Remove) }
+        viewModelScope.launch {
+            if (attempt(NodesAction.Remove) { withContext(io) { catalog.removeProvider(id) } }) load()
+        }
     }
 
-    /** Runs the failed action again: the last pick, test, read of the nodes' details, share link, update or deletion. */
+    /** Runs the failed action again: the last pick, test, read, update or deletion. */
     fun retry() {
         when (failure.value?.action) {
             NodesAction.Select -> lastPick?.let { pick(it.nodeId, it.network, it.onPicked) }
-            NodesAction.Test -> lastTest?.let(::testNode) ?: test()
-            NodesAction.Read -> reread.update { it + 1 }
-            NodesAction.Share -> lastShare?.let { copyLink(it.nodeId, it.onLink) }
+            NodesAction.Test -> probe(lastTest)
+            NodesAction.Read -> load()
             NodesAction.Update -> lastSub?.let(::update)
             NodesAction.Remove -> lastSub?.let(::remove)
             null -> Unit
         }
     }
 
-    private fun subscriptionName(id: String): String? = engine.catalog.value?.subscriptions?.firstOrNull { it.id == id }?.name
+    private fun subscriptionName(id: String): String? = read.value?.state?.subscriptions?.firstOrNull { it.id == id }?.name
 
-    /** A failure stands for [action] until it next succeeds; a success clears only its own action's failure. */
-    private fun Result<*>.report(action: NodesAction, subject: String? = null) {
-        val error = exceptionOrNull()
+    /** Runs [call]: a failure stands for [action] until it next succeeds; a success clears only its own action's failure. */
+    private suspend fun attempt(action: NodesAction, subject: String? = null, call: suspend () -> Unit): Boolean {
+        val error = try {
+            call()
+            null
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            error
+        }
         failure.update { last ->
             when {
-                error != null -> NodesFailure(action, (error as? EngineException)?.code ?: ErrorCode.Internal, subject)
+                error != null -> NodesFailure(action, error.errorCode(), subject)
                 last?.action == action -> null
                 else -> last
             }
         }
+        return error == null
     }
 
     companion object {
         private const val STOP_MS = 5_000L
 
-        internal fun factory(engine: Engine, places: NodePlaces = CoreNodePlaces): ViewModelProvider.Factory = viewModelFactory {
-            initializer { NodesViewModel(engine, Dispatchers.Default, places) }
+        internal fun factory(api: NativeApi): ViewModelProvider.Factory = viewModelFactory {
+            initializer { NodesViewModel(api) }
         }
     }
 }

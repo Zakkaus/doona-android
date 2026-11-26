@@ -1,0 +1,57 @@
+{
+  "operation_id": "op-01HZX4K8W9",
+  "kind": "probe",
+  "status": "succeeded",
+  "created_at": "2026-08-15T09:59:59Z",
+  "started_at": "2026-08-15T10:00:00Z",
+  "finished_at": "2026-08-15T10:00:01Z",
+  "result": {
+    "target": {
+      "type": "group",
+      "group_id": "group-proxy"
+    },
+    "selection_changed": {
+      "tcp": false,
+      "udp": false
+    },
+    "selection_before": {
+      "tcp": "node-hk-01",
+      "udp": null
+    },
+    "selection_after": {
+      "tcp": "node-hk-01",
+      "udp": null
+    },
+    "results": [
+      {
+        "member_id": "node-hk-01",
+        "resolved_leaf_node_id": "node-hk-01",
+        "kind": "dns",
+        "purpose": "dns",
+        "transport": "udp",
+        "ip_version": "ipv4",
+        "warmth": "cold",
+        "state": "healthy",
+        "latency_ms": 45,
+        "health_updated": true,
+        "error": null,
+        "observed_at": "2026-08-15T10:00:00Z"
+      },
+      {
+        "member_id": "group-jp",
+        "resolved_leaf_node_id": "node-jp-01",
+        "kind": "dns",
+        "purpose": "dns",
+        "transport": "udp",
+        "ip_version": "ipv4",
+        "warmth": "cold",
+        "state": "unavailable",
+        "latency_ms": null,
+        "health_updated": true,
+        "error": "udp_probe_timeout",
+        "observed_at": "2026-08-15T10:00:00Z"
+      }
+    ]
+  },
+  "error": null
+}
