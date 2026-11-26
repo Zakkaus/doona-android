@@ -29,6 +29,7 @@ internal fun rvStatsSample(score: RvStatsScore? = null) = RvStatsState(
     nowEpochMs = RvData.nowEpochMs,
     nowHour = RvData.nowHour,
     score = score,
+    daily = true,
 )
 
 /** The same page before the first byte of the day, with no subscription quota and no test run yet. */
@@ -42,6 +43,7 @@ internal fun rvStatsQuiet() = RvStatsState(
     split = null,
     nowEpochMs = RvData.nowEpochMs,
     nowHour = RvData.nowHour,
+    daily = true,
 )
 
 /**

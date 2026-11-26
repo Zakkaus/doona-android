@@ -33,7 +33,7 @@ internal class StatsInput(
 
 /**
  * honk's profile as the 統計 page's model. Pure: the same input gives the same page. [places] tells where a node is from
- * its name. honk keeps no usage by the day, so the traffic cards show their empty state (q-usage, q-direct-proxy).
+ * its name. honk keeps no usage by the day, so the page hides 已用流量 and the paged tiles (q-usage).
  */
 internal fun rvStatsState(input: StatsInput, places: NodePlaces = CoreNodePlaces): RvStatsState {
     val profile = input.profile

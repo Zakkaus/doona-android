@@ -131,11 +131,9 @@ class ActivityModelTest {
     }
 
     @Test
-    fun `the cards read the clock, the rule count and the groups' kinds, and honk has no bytes by the day`() {
+    fun `the cards read the clock, the rule count and the groups' kinds, and honk has no usage by the day to show`() {
         val cards = map(data()).cards
-        // 13.5 falls in hour 13: hours 0 to 13 are drawn, the 10 still to come are not.
-        assertEquals(14, cards.today.down.size)
-        assertEquals(0L, cards.today.total)
+        assertNull("今日用量 is hidden (q-usage)", cards.today)
         assertEquals(0L, cards.yesterdayByNow)
         assertEquals(13.5f, cards.nowHour)
         assertEquals(1_000L, cards.nowEpochMs)

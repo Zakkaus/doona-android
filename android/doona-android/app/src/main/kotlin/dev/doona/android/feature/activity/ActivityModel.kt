@@ -10,7 +10,6 @@ import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RV_TESTS
-import dev.doona.android.feature.model.RvDay
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvSubscription
@@ -102,8 +101,8 @@ internal fun honkActivityNodes(profile: HonkProfile?, places: NodePlaces): Activ
 
 /**
  * Maps [data] to 活動's lists over [profileNodes], the same profile's nodes. The main node is what the main group's TCP
- * selection ends on (the group the rules fall back to), none in Direct. honk keeps no usage by the day, so 今日用量 has
- * no bytes and yesterday none by now.
+ * selection ends on (the group the rules fall back to), none in Direct. honk keeps no usage by the day, so 今日用量 is
+ * hidden (owner, 2026-11-26, q-usage).
  */
 internal fun activityCatalog(data: ActivityData, profileNodes: ActivityNodes): ActivityCatalog {
     val profile = data.profile
@@ -113,7 +112,7 @@ internal fun activityCatalog(data: ActivityData, profileNodes: ActivityNodes): A
     val byId = profileNodes.byId
     val mainLeaf = main?.runtime?.selection?.tcp?.resolvedLeafNodeId?.let(byId::get)
     val cards = RvActivityCards(
-        today = rvDay(data.nowHour),
+        today = null,
         nowHour = data.nowHour,
         yesterdayByNow = 0L,
         nowEpochMs = data.nowEpochMs,
@@ -309,12 +308,4 @@ private fun memberHistory(member: Member): List<Int?> = when {
     else -> emptyList()
 }
 
-/** Today by the hour up to the current one, [nowHour]'s: honk keeps no usage by the day, so every hour has no bytes. */
-private fun rvDay(nowHour: Float): RvDay {
-    val hours = (nowHour.toInt() + 1).coerceIn(1, HOURS)
-    return RvDay(List(hours) { 0L }, List(hours) { 0L }, null)
-}
-
 private const val DIRECT = "direct"
-
-private const val HOURS = 24

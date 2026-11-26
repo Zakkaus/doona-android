@@ -7,8 +7,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasTestTag
@@ -18,9 +16,6 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipe
-import androidx.compose.ui.unit.toSize
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.R
@@ -38,7 +33,6 @@ import dev.doona.android.vpn.ActivityHonkFixtures.untested
 import dev.doona.android.vpn.FakeHonk
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -142,32 +136,9 @@ class AppRvStatsShotTest {
     fun subscriptionEnLight() = shot("stats-sub-en", dark = false) { Page(::scoring, subscription = PICKED) }
 
     /**
-     * 本週 with the tiles paged on: 連線次數 in view with its 今天 tag (past days keep no flows). The drag runs across the
-     * whole window at the tiles' height (a caption is too narrow to move the pager), and the test fails unless 連線次數's
-     * tile then sits wholly in the window and 下載's has left it.
+     * The range chip stays while 已用流量 and the tiles are hidden (q-usage): 本週 and 本月 tag 分流比例 今天, and a picked
+     * subscription tags it 全部訂閱 too.
      */
-    @Test
-    @Config(qualifiers = WINDOW)
-    fun weekTilesPagedLight() = shot("stats-week-tiles", dark = false, before = {
-        val y = bounds(R.string.ui_download).center.y
-        compose.onRoot().performTouchInput { swipe(Offset(width * SWIPE_FROM, y), Offset(width * SWIPE_TO, y), SWIPE_MS) }
-        compose.waitForIdle()
-        val window = compose.onRoot().fetchSemanticsNode().boundsInRoot
-        val connections = bounds(R.string.rv_stats_connections)
-        assertTrue("連線次數 in view: $connections", connections.left >= 0f && connections.right <= window.right)
-        assertTrue("下載 paged out: ${bounds(R.string.ui_download)}", bounds(R.string.ui_download).right <= 0f)
-        val tags = laidOut(R.string.rv_stats_today)
-        val tag = tags.any { it.left >= connections.right && it.right <= window.right && it.top < connections.bottom && it.bottom > connections.top }
-        assertTrue("連線次數's 今天 tag in view beside it: $tags", tag)
-    }) { Page(::scoring, RvStatsRange.Week) }
-
-    /** Where each text [id] is laid out, unclipped: boundsInRoot stops at the window, so a caption half out of view would read as in it. */
-    private fun laidOut(id: Int) = compose.onAllNodes(hasText(text(id)), useUnmergedTree = true).fetchSemanticsNodes().map { Rect(it.positionInRoot, it.size.toSize()) }
-
-    /** The top-most text [id]: the tiles' caption, above any card further down with the same word. */
-    private fun bounds(id: Int) = laidOut(id).minBy { it.top }
-
-    /** 本週 and 本月 say what 連線次數 and 分流比例 count (今天), and a picked subscription tags the traffic cards 全部訂閱. */
     @Test
     @Config(qualifiers = WINDOW)
     fun longerRangesAndAPickedSubscriptionSaySo() {
@@ -178,26 +149,25 @@ class AppRvStatsShotTest {
         assertEquals("the range chip", 1, count(R.string.rv_stats_today))
         range = RvStatsRange.Week
         compose.waitForIdle()
-        assertEquals("連線次數's and 分流比例's tags", 2, count(R.string.rv_stats_today))
+        assertEquals("分流比例's tag", 1, count(R.string.rv_stats_today))
         range = RvStatsRange.Month
         compose.waitForIdle()
         assertEquals("a month compares with nothing", 0, count(R.string.rv_stats_vs_last_week, true) + count(R.string.rv_stats_vs_yesterday, true))
         subscription = PICKED
         compose.waitForIdle()
-        // 已用流量's tag; 分流比例's joins both scopes, and the chip names the subscription.
-        assertEquals(1, count(R.string.rv_stats_all_subscriptions))
+        // 分流比例's tag joins both scopes, and the chip names the subscription.
+        assertEquals(1, count(R.string.rv_stats_all_subscriptions, true))
         compose.onNode(hasText("Lantern Net"), useUnmergedTree = true).assertExists()
     }
 
-    /** The empty state keeps its cards and says so in words (owner, 2026-11-24 15:24, q-stats A). */
+    /** honk keeps no usage by the day, so neither 已用流量 nor the tiles are drawn, even empty (owner, 2026-11-26, q-usage). */
     @Test
     @Config(qualifiers = WINDOW_EMPTY)
-    fun emptySaysSo() {
+    fun theUsageCardsAreHidden() {
         compose.rvContent(dark = false) { Page(::quiet) }
-        compose.onAllNodes(hasTestTag(RV_SPENT_CHART), useUnmergedTree = true).fetchSemanticsNodes().let { assertEquals(1, it.size) }
-        val nothing = compose.onAllNodes(hasText(text(R.string.rv_stats_nothing_today)), useUnmergedTree = true).fetchSemanticsNodes().size
-        // 已用流量's line under its figure, then the tiles' lines on their empty grids: 下載, 上傳 and, peeking, 連線次數.
-        assertEquals(CARD_AND_TILES, nothing)
+        assertEquals(0, compose.onAllNodes(hasTestTag(RV_SPENT_CHART), useUnmergedTree = true).fetchSemanticsNodes().size)
+        assertEquals(0, compose.onAllNodes(hasText(text(R.string.rv_stats_nothing_today)), useUnmergedTree = true).fetchSemanticsNodes().size)
+        assertEquals(0, compose.onAllNodes(hasText(text(R.string.rv_stats_connections)), useUnmergedTree = true).fetchSemanticsNodes().size)
     }
 
     /** A subscription without quota draws no legend (no `0/0 B`) and no date it runs out (none at the epoch, 1970). */
@@ -268,12 +238,7 @@ class AppRvStatsShotTest {
     private companion object {
         val SHOTS: String = System.getProperty("doona.shots") ?: "src/test/screenshots"
         const val PERCENT = 100
-        const val CARD_AND_TILES = 4
         const val PICKED = "s2"
-
-        const val SWIPE_FROM = 0.9f
-        const val SWIPE_TO = 0.1f
-        const val SWIPE_MS = 300L
 
         /** Windows as tall as each page whole, rounded up to a whole dp (measured: 2350.5, 2770, 2386.5, 1948.5, 2107). */
         const val WINDOW = "+h2351dp"

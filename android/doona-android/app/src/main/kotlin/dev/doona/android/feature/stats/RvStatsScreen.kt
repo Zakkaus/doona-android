@@ -41,8 +41,9 @@ import java.text.NumberFormat
 
 /**
  * The 統計 page in the language of Revolut's Analytics page: the back disc and the large title, the subscription
- * and range chips, then the cards: 已用流量 and the paged tiles (the app-side daily history), 訂閱流量 (the
- * subscriptions' quota), 節點分布 (node names and flags), 延遲分布 (latency results), 分流比例 and the tools. Where
+ * and range chips, then the cards: 已用流量 and the paged tiles (the daily history, only where it is kept:
+ * [RvStatsState.daily]), 訂閱流量 (the subscriptions' quota), 節點分布 (node names and flags), 延遲分布 (latency
+ * results), 分流比例 and the tools. Where
  * each figure comes from is noted on [RvStatsState], not on the page (N-14). With a Score group ([RvStatsState.score]), a
  * 綜合評分 card follows 延遲分布. The chips open menus of the subscriptions ([onSubscription], null for all) and of the
  * ranges ([onRange]); the tools test every node, update every subscription and open the export. A [banner] (a tool that
@@ -64,11 +65,13 @@ internal fun RvStatsScreen(
     val title = stringResource(R.string.rv_stats_title)
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         RvPageHeader(title, titleBlock, insets, control = { Chips(state, onSubscription, onRange) })
-        RvGutter(banner = banner) { RvSpentCard(state) }
-        Spacer(Modifier.height(RvSpace.cardGap))
-        DayTiles(state)
-        Spacer(Modifier.height(RvSpace.cardGap))
-        RvGutter {
+        if (state.daily) {
+            RvGutter(banner = banner) { RvSpentCard(state) }
+            Spacer(Modifier.height(RvSpace.cardGap))
+            DayTiles(state)
+            Spacer(Modifier.height(RvSpace.cardGap))
+        }
+        RvGutter(banner = banner.takeUnless { state.daily }) {
             RvQuotaCard(state.shownSubscriptions, state.nowEpochMs)
             RvNodeMapCard(state)
             RvLatencyCard(state)

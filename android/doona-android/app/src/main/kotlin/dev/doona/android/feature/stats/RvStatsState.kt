@@ -21,6 +21,8 @@ import dev.doona.android.feature.model.RvSubscription
  *   outbound only since it started (q-direct-proxy).
  * - [score]: honk's Score groups and what each chose per network; null when no group uses Score.
  * - [period]: 本週 or 本月 by the day; null for 今天.
+ * - [daily]: whether the usage by the day is kept, which 已用流量 and the paged tiles need; honk keeps none yet, so the
+ *   app hides them (owner, 2026-11-26, q-usage) and only the prototype's sample shows them.
  * - [subscriptionId]: the subscription the chip picked, null for all. It narrows the cards the catalog can split
  *   ([shownSubscriptions], [shownNodes]); traffic is counted for all subscriptions together, so the traffic cards stay
  *   at all of them and say so (unwired-rows 4.4, reduced).
@@ -39,6 +41,7 @@ internal class RvStatsState(
     val score: RvStatsScore? = null,
     val period: RvStatsPeriod? = null,
     val subscriptionId: String? = null,
+    val daily: Boolean = false,
 ) {
     /** The subscriptions 訂閱流量 shows: the picked one, or all. */
     val shownSubscriptions: List<RvSubscription> get() = subscriptions.filter { subscriptionId == null || it.id == subscriptionId }
