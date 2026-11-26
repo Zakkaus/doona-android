@@ -21,8 +21,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -111,6 +113,8 @@ internal fun RvSheetLayout(progress: () -> Float, onDismiss: () -> Unit, label: 
     var height by remember { mutableFloatStateOf(0f) }
     val fling = with(density) { RvSheetSize.fling.toPx() }
     val bottom = with(density) { RvSheetSize.bottom.toPx() }
+    // A sheet taller than the window keeps clear of the status bar, as far from it as from the screen's bottom edge.
+    val top = with(density) { (LocalFrameInsets.current ?: WindowInsets.systemBars).getTop(this).toDp() } + RvSheetSize.bottom
     val drags = rememberDraggableState { drag = (drag + it).coerceAtLeast(0f) }
     // What the scrim does is close the sheet, whatever the sheet is about: it must not read as its title (S2).
     val dismiss = stringResource(R.string.ui_dismiss)
@@ -129,7 +133,7 @@ internal fun RvSheetLayout(progress: () -> Float, onDismiss: () -> Unit, label: 
         RvSheetPanel(
             Modifier
                 .align(Alignment.BottomCenter)
-                .padding(start = RvSheetSize.inset, end = RvSheetSize.inset, bottom = RvSheetSize.bottom)
+                .padding(start = RvSheetSize.inset, top = top, end = RvSheetSize.inset, bottom = RvSheetSize.bottom)
                 .graphicsLayer {
                     height = size.height
                     translationY = drag + (1f - progress()) * (size.height + bottom)
@@ -147,7 +151,10 @@ internal fun RvSheetLayout(progress: () -> Float, onDismiss: () -> Unit, label: 
     }
 }
 
-/** The sheet's card: the card's fill, its rim in dark, the handle, and [content] on the page's edge line. */
+/**
+ * The sheet's card: the card's fill, its rim in dark, the handle, and [content] on the page's edge line. Content taller
+ * than the window scrolls under the fixed handle; content that fits does not scroll, so a drag on it moves the sheet.
+ */
 @Composable
 internal fun RvSheetPanel(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     val colors = Rv.colors
@@ -158,10 +165,14 @@ internal fun RvSheetPanel(modifier: Modifier = Modifier, content: @Composable Co
     val bar = with(density) { insets.getBottom(this).toDp() }
     val last = maxOf(RvSheetSize.lastPad, bar - RvSheetSize.bottom)
     val rim = colors.raisedRim?.let { Modifier.border(RvChrome.ring, it, shape) } ?: Modifier
-    Column(modifier.fillMaxWidth().clip(shape).background(colors.card).then(rim).padding(start = RvSheetSize.edge, end = RvSheetSize.edge, bottom = last)) {
+    Column(modifier.fillMaxWidth().clip(shape).background(colors.card).then(rim).padding(horizontal = RvSheetSize.edge)) {
         Spacer(Modifier.height(RvSheetSize.handleTop))
         Box(Modifier.align(Alignment.CenterHorizontally).size(RvSheetSize.handleWidth, RvSheetSize.handleHeight).clip(CircleShape).background(colors.track))
-        content()
+        // Scrolling only on overflow: an enabled scroll takes the drag even with nothing to scroll, which would leave a
+        // sheet that fits no way to be dragged down. The last gap sits inside the scroll, whose clip would otherwise cut
+        // the shadow the last button casts into it.
+        val scroll = rememberScrollState()
+        Column(Modifier.fillMaxWidth().weight(1f, fill = false).verticalScroll(scroll, enabled = scroll.maxValue > 0).padding(bottom = last), content = content)
     }
 }
 
