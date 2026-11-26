@@ -5,7 +5,7 @@ prototype/rv/connections/RvConnectionDetail.kt	RvText(host + PORT + connection.p
 prototype/rv/connections/RvConnectionDetail.kt	RvText(stringResource(R.string.rv_conn_no_domain), Rv.type.rowSub, color = secondary, align = TextAlign.Center)	the centred header's no-domain line, above the first card
 prototype/rv/connections/RvConnectionsPage.kt	RvText(age, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a connection row's age at the row's end, inside the card
 feature/nodes/RvLatencyDots.kt	RvText(empty, Rv.type.rowSub, color = colors.textSecondary, align = TextAlign.Center)	the latency card's empty line, centred inside the card
-feature/policies/RvPolicyParts.kt	RvText(end ?: bytes, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a rule row's bytes at the row's end, inside the card
+feature/policies/RvPolicyParts.kt	RvText(it, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a rule row's end text (a template change, a held rule) at the row's end, inside the card
 feature/policies/RvPolicyScreen.kt	RvText(stringResource(R.string.rv_policy_rules_order), Rv.type.rowSub, Modifier.padding(horizontal = RvSpace.rowPadding)	the rules card's line under its header, inside the card
 feature/policies/RvPolicyScreen.kt	RvText(value, Rv.type.rowSub, color = Rv.colors.textSecondary)	a policy row's value, inside the card
 feature/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_median, values.size), Rv.type.rowSub, color = Rv.colors.textSecondary)	a stat card's own line, inside the card

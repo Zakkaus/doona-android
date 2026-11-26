@@ -15,7 +15,6 @@ import androidx.compose.ui.semantics.Role
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvAddMenuButton
-import dev.doona.android.designsystem.rv.RvAddRow
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
@@ -69,7 +68,7 @@ internal class RvRulesRoutes(
  * or the rules could not be read) stands in [RvGutter]'s slot over the rules a failed reread kept, or in place of the
  * cards when none were kept; the title, the bar and the bottom action stay. While [loading] (the first read) a skeleton
  * of the rules card stands in for the cards, and they fade in over it. [removable] ends every rule but the last with
- * the remove control and the rules card with 新增規則.
+ * the remove control; new rules come from the bottom 新增 (q-add-primary).
  */
 @Composable
 internal fun RvRulesPage(
@@ -166,7 +165,6 @@ private fun RulesCard(rules: List<RvPolicyRule>, editing: Boolean, routes: RvRul
                 else -> RvLongPressMenu(ruleMenu(rule, { routes.open(i) }, { routes.toggle(i) }, { deleting = i }), { routes.open(i) }) { RvRuleRow(rule, it, remove = remove) }
             }
         }
-        if (removable) RvAddRow(stringResource(R.string.rv_policy_new_rule), routes.newRule)
     }
     val target = deleting?.let(rules::getOrNull)
     RvConfirmSheet(
