@@ -310,7 +310,7 @@ internal fun RvSkeletonChips(labels: List<String>, selected: Int, modifier: Modi
  */
 @Composable
 internal fun RvSkeletonStatRow(label: String, index: Int) {
-    Row(Modifier.fillMaxWidth().heightIn(min = RvSize.rowOneLine).padding(horizontal = RvSpace.rowPadding), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().testTag(RvPart.STAT).heightIn(min = RvSize.rowOneLine).padding(horizontal = RvSpace.rowPadding), verticalAlignment = Alignment.CenterVertically) {
         RvSkeletonLabel(label, Rv.type.statLabel, maxLines = RV_ROW_TITLE_LINES)
         Spacer(Modifier.weight(1f))
         Box(Modifier.fillMaxWidth(RvSkeletonSize.subtitles[index % RvSkeletonSize.subtitles.size]), contentAlignment = Alignment.CenterEnd) {
