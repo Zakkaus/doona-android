@@ -141,7 +141,7 @@ private fun ConnectionCard(session: RvTrafficSession?, upload: Boolean, format: 
     }
 }
 
-/** A Key stats row for one direction's [value] (a dash without one), read as 峰值，下載 7.84 MB/s. */
+/** A Key stats row for one direction's [value] (a dash without one), read as 10 分鐘峰值，下載 7.84 MB/s. */
 @Composable
 private fun DirectedRow(@StringRes label: Int, value: String?, upload: Boolean) {
     val name = stringResource(label)
@@ -153,4 +153,4 @@ private fun DirectedRow(@StringRes label: Int, value: String?, upload: Boolean) 
 private fun direction(upload: Boolean): Int = if (upload) R.string.rv_a11y_upload else R.string.rv_a11y_download
 
 /** The ranges under the chart, in the order of [RV_TRAFFIC_RANGE_SECONDS]. */
-private val RANGES: List<Int> = listOf(R.string.rv_range_1m, R.string.rv_range_5m, R.string.rv_range_15m, R.string.rv_range_1h)
+private val RANGES: List<Int> = listOf(R.string.rv_range_1m, R.string.rv_range_5m, R.string.rv_range_10m)

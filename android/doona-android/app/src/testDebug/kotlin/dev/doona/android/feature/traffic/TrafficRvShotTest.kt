@@ -37,7 +37,7 @@ import kotlin.math.roundToInt
 /**
  * 流量詳情 as the app draws it: rvSampleEngine's traffic as honk serves it ([sampleHonk]) through [TrafficViewModel] to the page, at the sample's 10:24 UTC.
  * Goldens `app-rv-traffic-*` beside the prototype's `proto-rv-traffic-*`: the live minute in light, dark, fs115, fs200
- * and English, scrubbed, the 1 小時 window, a stopped tunnel and an engine whose reads fail; and the whole page in
+ * and English, scrubbed, the 10 分 window, a stopped tunnel and an engine whose reads fail; and the whole page in
  * light, dark, fs200 and English for the review panels, with the prototype's whole page where it has none.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -66,9 +66,9 @@ class TrafficRvShotTest {
 
     @Test fun scrubDark() = shot("traffic-scrub", dark = true, scrub = SCRUB)
 
-    /** 1 小時: the sample engine's hour, read as the core answers it (300 points of 12 s), drawn as 60 of a minute. */
+    /** 10 分: the 600 s honk keeps, drawn as 60 points of ten seconds, with the sample's peak 400 s ago. */
     @Test
-    fun hourLight() = shot("traffic-1h") { compose.onNodeWithText(rvText(R.string.rv_range_1h)).performClick() }
+    fun tenMinutesLight() = shot("traffic-10m") { compose.onNodeWithText(rvText(R.string.rv_range_10m)).performClick() }
 
     /** Stopped: the minute the core kept, no history of the app's own, and no session in the card. */
     @Test

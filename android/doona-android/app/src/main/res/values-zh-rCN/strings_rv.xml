@@ -9,7 +9,7 @@
     <string name="rv_expires">%1$s 到期</string>
     <string name="rv_updated">%1$s 更新</string>
     <string name="rv_peak">峰值 %1$s</string>
-    <string name="rv_stat_peak">峰值</string>
+    <string name="rv_stat_peak">10 分钟峰值</string>
     <string name="rv_stat_average">平均</string>
     <string name="rv_now">现在</string>
     <string name="rv_no_traffic">当前没有流量</string>
@@ -21,8 +21,7 @@
     <string name="rv_duration">%1$d 小时 %2$d 分</string>
     <string name="rv_range_1m">1 分</string>
     <string name="rv_range_5m">5 分</string>
-    <string name="rv_range_15m">15 分</string>
-    <string name="rv_range_1h">1 小时</string>
+    <string name="rv_range_10m">10 分</string>
     <string name="rv_search_nodes">搜索节点</string>
     <string name="rv_stats">打开统计</string>
     <string name="rv_subscriptions">订阅</string>
