@@ -1,0 +1,39 @@
+{
+  "observed_at": "2026-08-15T10:00:00Z",
+  "source": "config",
+  "log": {
+    "level": "info",
+    "buffered_records": 4096
+  },
+  "dns_log": {
+    "max_records": 2048
+  },
+  "flows": {
+    "max_flows": 10000,
+    "retention_seconds": 300
+  },
+  "geodata": {
+    "source": "default",
+    "geosite": {
+      "urls": [
+        "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/release/geosite.dat",
+        "https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geosite.dat"
+      ]
+    },
+    "geoip": {
+      "urls": [
+        "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/release/geoip.dat",
+        "https://fastly.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.dat"
+      ]
+    },
+    "auto_update": {
+      "enabled": true,
+      "interval_hours": 24
+    },
+    "download": {
+      "route": "routing",
+      "group_id": null
+    },
+    "verify_checksum": true
+  }
+}

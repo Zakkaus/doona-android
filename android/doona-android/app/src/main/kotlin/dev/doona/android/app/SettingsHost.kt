@@ -11,7 +11,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import dev.doona.android.data.settings.AppSettings
-import dev.doona.android.data.settings.GeoUpdateInterval
 import dev.doona.android.data.settings.LanguageSettings
 import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.data.settings.ThemeAccent
@@ -22,14 +21,12 @@ import dev.doona.android.data.settings.UpdateInterval
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.rvSystemSchemes
 import dev.doona.android.engine.Engine
-import dev.doona.android.engine.LogLevel
 import dev.doona.android.feature.activity.RvActivityCards
 import dev.doona.android.feature.activity.RvActivityRoutes
 import dev.doona.android.feature.activity.RvActivityScreen
 import dev.doona.android.feature.activity.RvActivityState
 import dev.doona.android.feature.model.RvAppearance
 import dev.doona.android.feature.model.RvDay
-import dev.doona.android.feature.model.RvGeoInterval
 import dev.doona.android.feature.model.RvThemeMode
 import dev.doona.android.feature.report.AppReportFacts
 import dev.doona.android.feature.report.ReportRoute
@@ -46,6 +43,7 @@ import dev.doona.android.feature.settings.RvAboutScreen
 import dev.doona.android.feature.settings.RvAboutVersions
 import dev.doona.android.feature.settings.RvLicenseText
 import dev.doona.android.feature.settings.RvLicensesScreen
+import dev.doona.android.feature.settings.RvLogLevel
 import dev.doona.android.feature.settings.RvThemePreviewPage
 import dev.doona.android.feature.settings.SettingsNav
 import dev.doona.android.feature.settings.SettingsRoute
@@ -54,6 +52,7 @@ import dev.doona.android.feature.settings.SettingsSystem
 import dev.doona.android.feature.settings.ThemeRoute
 import dev.doona.android.feature.settings.TileAnswer
 import dev.doona.android.feature.settings.rvLicenseEntries
+import dev.doona.android.vpn.NativeSettings
 import dev.doona.android.vpn.QuickTile
 import dev.doona.android.vpn.QuickTileResult
 import kotlinx.coroutines.CoroutineScope
@@ -108,10 +107,6 @@ internal class AppSettingsStore(
 
     override fun setPerformanceMode(enabled: Boolean) = write { settings.setPerformanceMode(enabled) }
 
-    override val geoInterval: Flow<RvGeoInterval> = settings.geoUpdateInterval.map(::rvGeoInterval)
-
-    override fun setGeoInterval(interval: RvGeoInterval) = write { settings.setGeoUpdateInterval(geoUpdateInterval(interval)) }
-
     private fun write(edit: suspend () -> Unit) {
         writes.launch { edit() }
     }
@@ -127,20 +122,6 @@ internal class AppSettingsStore(
         @Volatile
         private var startedPerformance: Boolean? = null
     }
-}
-
-/** GeoRefresh's interval as 自動更新 shows it. */
-internal fun rvGeoInterval(interval: GeoUpdateInterval) = when (interval) {
-    GeoUpdateInterval.Off -> RvGeoInterval.Off
-    GeoUpdateInterval.Daily -> RvGeoInterval.Daily
-    GeoUpdateInterval.Weekly -> RvGeoInterval.Weekly
-}
-
-/** The page's choice as GeoRefresh reads it; [rvGeoInterval]'s inverse. */
-internal fun geoUpdateInterval(interval: RvGeoInterval) = when (interval) {
-    RvGeoInterval.Off -> GeoUpdateInterval.Off
-    RvGeoInterval.Daily -> GeoUpdateInterval.Daily
-    RvGeoInterval.Weekly -> GeoUpdateInterval.Weekly
 }
 
 /** 主題's choices as the page shows them: the accent is the swatch's place, the scheme's own first. */
@@ -199,9 +180,9 @@ internal class ActivitySettingsSystem(private val activity: Activity, private va
 
 /** 日誌等級's levels: the app's process-wide [controller]. */
 internal class AppLogLevels(private val controller: LogLevelController) : LogLevels {
-    override val level: StateFlow<LogLevel> get() = controller.level
+    override val level: StateFlow<RvLogLevel> get() = controller.level
 
-    override suspend fun set(level: LogLevel): Result<Unit> = controller.set(level)
+    override suspend fun set(level: RvLogLevel): Result<Unit> = controller.set(level)
 }
 
 /**
@@ -279,10 +260,10 @@ internal fun EntryProviderScope<NavKey>.settingsEntries(backStack: MutableList<N
                 lab = { backStack.push(LabKey) },
             )
         }
-        SettingsRoute(engine, rememberSettingsStore(), APP_RELEASES, rememberLogLevels(), rememberSettingsSystem(), nav, version, onTab)
+        SettingsRoute(engine, rememberNativeSettings(), rememberSettingsStore(), APP_RELEASES, rememberLogLevels(), rememberSettingsSystem(), nav, version, onTab)
     }
     entry<LogLevelKey> { key -> LogLevelRoute(rememberLogLevels(), onBack = { backStack.pop(key) }) }
-    entry<GeoIntervalKey> { key -> GeoIntervalRoute(rememberSettingsStore(), onBack = { backStack.pop(key) }) }
+    entry<GeoIntervalKey> { key -> GeoIntervalRoute(rememberNativeSettings(), onBack = { backStack.pop(key) }) }
     entry<ReportKey> { key ->
         val context = LocalContext.current
         val facts = remember(context) { AppReportFacts(context.applicationContext) }
@@ -315,6 +296,9 @@ private fun container(): AppContainer = (LocalContext.current.applicationContext
 
 @Composable
 private fun rememberSettingsStore(): SettingsStore = container().settingsStore
+
+@Composable
+private fun rememberNativeSettings(): NativeSettings = container().nativeSettings
 
 @Composable
 private fun rememberLogLevels(): LogLevels {

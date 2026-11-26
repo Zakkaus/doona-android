@@ -14,11 +14,14 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.data.settings.MemoryPreferences
-import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.permissions.Permission
 import dev.doona.android.feature.permissions.PermissionStep
 import dev.doona.android.feature.permissions.PermissionViewModel
+import dev.doona.android.feature.settings.RvLogLevel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -56,15 +59,28 @@ class MainActivityTest {
     fun `resuming after deep sleep ends an expired capture`() {
         Robolectric.buildActivity(MainActivity::class.java).setup().use { activity ->
             val levels = app.container.logLevels
-            runBlocking { levels.set(LogLevel.Debug).getOrThrow() }
+            // The level goes to honk off the main thread and lands on it, so the main looper runs while the test waits.
+            val set = CoroutineScope(Dispatchers.Unconfined).async { levels.set(RvLogLevel.Debug) }
+            settle { set.isCompleted }
+            runBlocking { set.await().getOrThrow() }
             activity.pause()
             ShadowSystemClock.simulateDeepSleep(Duration.ofHours(1))
-            assertEquals(LogLevel.Debug, levels.level.value)
+            assertEquals(RvLogLevel.Debug, levels.level.value)
             assertEquals(0L, levels.remainingMs())
 
             activity.resume()
-            assertEquals(LogLevel.Info, levels.level.value)
+            settle { levels.level.value == RvLogLevel.Info }
         }
+    }
+
+    /** Runs the main looper until [done], for at most 5 s of real time: work that hops to `Dispatchers.IO` and back. */
+    private fun settle(done: () -> Boolean) {
+        val until = System.nanoTime() + 5_000_000_000L
+        while (!done() && System.nanoTime() < until) {
+            shadowOf(Looper.getMainLooper()).idle()
+            Thread.sleep(1)
+        }
+        assertTrue(done())
     }
 
     @Test

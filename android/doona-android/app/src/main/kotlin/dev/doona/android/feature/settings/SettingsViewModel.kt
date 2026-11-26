@@ -5,34 +5,26 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import dev.doona.android.engine.ConfigAssets
 import dev.doona.android.engine.Engine
-import dev.doona.android.engine.EngineException
-import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.LogLevel
-import dev.doona.android.engine.Status
 import dev.doona.android.feature.model.RvAppearance
 import dev.doona.android.feature.model.RvGeoData
 import dev.doona.android.feature.model.RvGeoInterval
 import dev.doona.android.feature.model.RvGeoUpdate
 import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.model.RvSettingsState
+import dev.doona.android.vpn.NativeSettings
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -53,32 +45,32 @@ internal data class SettingsUiState(
 )
 
 /**
- * 設定 over the app's [store] and the [engine]: the switches set the store, 依 App's row reads the engine's policy, the
- * DNS row the servers the core reports in its effective config, and the GeoIP/GeoSite row reads the core's data and
- * runs its update, asking the core where it stands every [poll] until it ends or [followFor] has passed, which the row
- * then shows as a failure (重試 follows it again). The DNS servers and the geo data are read at the start, when the page
- * shows again, and when the core comes up: a page opened before the core runs fills in once it does. 檢查更新 asks
- * [releases] for the latest release when the user taps it, and only then. 日誌等級's row follows the core's [levels],
- * which 除錯's return to 資訊 changes by itself; a test that does not look at it gets a core that stays at 資訊.
+ * 設定 over the app's [store], [honk] and the [engine]: the switches set the store, 依 App's row reads the engine's
+ * policy, the DNS row the servers the core reports in its effective config. The GeoIP/GeoSite row and 自動更新's row
+ * read honk ([load]: at the start, when the page shows again, and after an update), and 更新 asks honk to update,
+ * reading where it stands every [poll] until honk reports the attempt or [followFor] has passed, which the row then
+ * shows as a failure (重試 asks again). honk answers only while it runs, so until it does the row shows the APK's date
+ * and 未連線. 檢查更新 asks [releases] for the latest release when the user taps it, and only then. 日誌等級's row
+ * follows the core's [levels], which 除錯's return to 資訊 changes by itself; a test that does not look at it gets a
+ * core that stays at 資訊.
  */
 internal class SettingsViewModel(
     private val engine: Engine,
+    private val honk: NativeSettings,
     private val store: SettingsStore,
     private val releases: ReleaseCheck = ReleaseCheck { Result.success(null) },
     private val levels: LogLevels = InfoLevels,
     private val poll: Duration = 1.seconds,
     private val followFor: Duration = 10.minutes,
+    private val io: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
     private val local = MutableStateFlow(Local(language = RvLanguage.of(store.languageTags())))
     private var geoJob: Job? = null
 
-    private val prefs = combine(store.notifyOnDrop, store.autoUpdate, store.updateHours, store.appearance, combine(store.tileAdded, store.geoInterval, ::Pair)) {
-            notify, auto, hours, appearance, (tile, geo) ->
-        Prefs(notify, auto, hours, appearance, tile, geo)
-    }
+    private val prefs = combine(store.notifyOnDrop, store.autoUpdate, store.updateHours, store.appearance, store.tileAdded, ::Prefs)
 
     val uiState: StateFlow<SettingsUiState> =
-        combine(prefs, engine.settings, engine.perAppLoaded, engine.status, local) { prefs, settings, loaded, status, local ->
+        combine(prefs, engine.settings, engine.perAppLoaded, local) { prefs, settings, loaded, local ->
             SettingsUiState(
                 RvSettingsState(
                     notifyOnDrop = prefs.notifyOnDrop,
@@ -89,24 +81,18 @@ internal class SettingsViewModel(
                     dns = local.dnsServers?.let(::rvDnsUpstream),
                     language = local.language,
                     tileAdded = prefs.tileAdded,
-                    geoInterval = prefs.geoInterval,
+                    geoInterval = local.geoInterval ?: RvGeoInterval.Weekly,
                     tileSheet = local.tileSheet,
                 ),
                 perAppLoaded = loaded,
                 dnsLoaded = local.dnsServers != null,
-                geoData = geoData(local, status is Status.Running),
+                geoData = geoData(local),
                 update = local.update,
             )
-        }.combine(levels.level) { state, level -> state.copy(logLevel = rvLogLevel(level)) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initialState())
+        }.combine(levels.level) { state, level -> state.copy(logLevel = level) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initialState())
 
     init {
-        viewModelScope.launch { readGeo() }
-        viewModelScope.launch { readDns() }
-        // The first value is the status at the start, which the reads above cover; each later turn to Running reads again.
-        engine.status.map { it is Status.Running }.distinctUntilChanged().drop(1).filter { it }.onEach {
-            readDns()
-            readGeo()
-        }.launchIn(viewModelScope)
+        load()
     }
 
     /**
@@ -125,28 +111,22 @@ internal class SettingsViewModel(
         if (answer == TileAnswer.Failed) local.update { it.copy(tileSheet = true) }
     }
 
-    /** The page shows again: the language may have changed in Android's settings meanwhile, and the DNS servers on DNS's page. */
+    /**
+     * The page shows again: the language may have changed in Android's settings meanwhile, the DNS servers on DNS's
+     * page, and honk may have started, stopped or updated the data by itself.
+     */
     fun onResume() {
         local.update { it.copy(language = RvLanguage.of(store.languageTags())) }
-        viewModelScope.launch { readDns() }
+        load()
     }
 
-    /** 更新 (or 重試) on the GeoIP/GeoSite row: the core fetches through the VPN, and the row follows it to the end. */
+    /** 更新 (or 重試) on the GeoIP/GeoSite row: honk downloads through the VPN, and the row follows it to the end. */
     fun updateGeo() {
         if (geoJob?.isActive == true) return
         geoJob = viewModelScope.launch {
             local.update { it.copy(geoAsked = RvGeoUpdate.Updating) }
-            val started = engine.updateConfigAssets()
-            val failure = started.exceptionOrNull()
-            // A busy core already holds newer data for its next start: the row shows that, not a failure.
-            val busy = (failure as? EngineException)?.code == ErrorCode.Busy
-            if (failure != null && !busy) {
-                local.update { it.copy(geoAsked = RvGeoUpdate.Failed) }
-                return@launch
-            }
-            // The row stays Updating until the core's first read says where the update stands.
-            started.getOrNull()?.let { assets -> local.update { it.copy(geo = assets) } }
-            followGeo()
+            val updated = runCatching { withTimeout(followFor) { withContext(io) { honk.updateGeo(poll) } } }.getOrNull()
+            local.update { it.copy(geo = updated ?: it.geo, geoAsked = RvGeoUpdate.Failed.takeIf { updated == null }) }
         }
     }
 
@@ -168,27 +148,14 @@ internal class SettingsViewModel(
         }
     }
 
-    private suspend fun readGeo() {
-        engine.configAssets().onSuccess { assets ->
-            local.update { it.copy(geo = assets) }
-            if (rvGeoUpdate(assets.lastResult) == RvGeoUpdate.Updating && geoJob?.isActive != true) {
-                geoJob = viewModelScope.launch { followGeo() }
-            }
-        }
-    }
-
-    /** Follows the core's update to its end; a failed read, or [followFor] gone by with the core still at it, is a failure. */
-    private suspend fun followGeo() {
-        if (withTimeoutOrNull(followFor) { readGeoUntilEnded() } != true) local.update { it.copy(geoAsked = RvGeoUpdate.Failed) }
-    }
-
-    /** Reads the core's geo data every [poll] while it updates: true once the update ended, false when a read fails. */
-    private suspend fun readGeoUntilEnded(): Boolean {
-        while (true) {
-            val assets = engine.configAssets().getOrNull() ?: return false
-            local.update { it.copy(geo = assets, geoAsked = null) }
-            if (rvGeoUpdate(assets.lastResult) != RvGeoUpdate.Updating) return true
-            delay(poll)
+    /** Reads the DNS servers and honk's data and schedule; honk not answering shows as 未連線, with no data of its own. */
+    private fun load() {
+        viewModelScope.launch { readDns() }
+        viewModelScope.launch {
+            val read = runCatching { withContext(io) { honk.geoData() to honk.geoInterval() } }.getOrNull()
+            // An update under way keeps its own state until it ends.
+            if (geoJob?.isActive == true) return@launch
+            local.update { it.copy(geo = read?.first, geoInterval = read?.second ?: it.geoInterval, geoAsked = null) }
         }
     }
 
@@ -197,8 +164,8 @@ internal class SettingsViewModel(
         engine.effectiveConfig().onSuccess { config -> local.update { it.copy(dnsServers = config.dnsUpstreams) } }
     }
 
-    private fun geoData(local: Local, connected: Boolean): RvGeoData {
-        val data = rvGeoData(local.geo, store.shippedGeoDate, connected)
+    private fun geoData(local: Local): RvGeoData {
+        val data = rvGeoData(local.geo, store.shippedGeoDate)
         return local.geoAsked?.let { data.copy(update = it) } ?: data
     }
 
@@ -206,8 +173,8 @@ internal class SettingsViewModel(
         settings = null,
         perAppLoaded = engine.perAppLoaded.value,
         dnsLoaded = false,
-        geoData = geoData(local.value, engine.status.value is Status.Running),
-        logLevel = rvLogLevel(levels.level.value),
+        geoData = geoData(local.value),
+        logLevel = levels.level.value,
     )
 
     /** The store's values the page shows. */
@@ -217,33 +184,35 @@ internal class SettingsViewModel(
         val updateHours: Int,
         val appearance: RvAppearance,
         val tileAdded: Boolean,
-        val geoInterval: RvGeoInterval,
     )
 
     /**
      * What the ViewModel itself holds: the language as last read, the tile sheet, the core's DNS servers ([dnsServers],
-     * null until read), the core's geo data as last read, the update's own outcome while the core has not reported
-     * it ([geoAsked]: under way, or a request that failed), and where 檢查更新 stands ([update]).
+     * null until read), honk's geo data as last read (null while honk does not answer), its schedule ([geoInterval],
+     * null until honk first answers), the update's own outcome while it runs or after it failed ([geoAsked]), and
+     * where 檢查更新 stands ([update]).
      */
     private data class Local(
         val language: RvLanguage,
         val tileSheet: Boolean = false,
         val dnsServers: List<String>? = null,
-        val geo: ConfigAssets? = null,
+        val geo: RvGeoData? = null,
+        val geoInterval: RvGeoInterval? = null,
         val geoAsked: RvGeoUpdate? = null,
         val update: RvUpdate = RvUpdate.Idle,
     )
 
     companion object {
-        fun factory(engine: Engine, store: SettingsStore, releases: ReleaseCheck, levels: LogLevels): ViewModelProvider.Factory = viewModelFactory {
-            initializer { SettingsViewModel(engine, store, releases, levels = levels) }
-        }
+        fun factory(engine: Engine, honk: NativeSettings, store: SettingsStore, releases: ReleaseCheck, levels: LogLevels): ViewModelProvider.Factory =
+            viewModelFactory {
+                initializer { SettingsViewModel(engine, honk, store, releases, levels = levels) }
+            }
     }
 }
 
 /** A core that logs at 資訊 and takes no other level: the [SettingsViewModel] default for tests of other rows. */
 private object InfoLevels : LogLevels {
-    override val level: StateFlow<LogLevel> = MutableStateFlow(LogLevel.Info)
+    override val level: StateFlow<RvLogLevel> = MutableStateFlow(RvLogLevel.Info)
 
-    override suspend fun set(level: LogLevel): Result<Unit> = Result.failure(UnsupportedOperationException("a fixed level"))
+    override suspend fun set(level: RvLogLevel): Result<Unit> = Result.failure(UnsupportedOperationException("a fixed level"))
 }

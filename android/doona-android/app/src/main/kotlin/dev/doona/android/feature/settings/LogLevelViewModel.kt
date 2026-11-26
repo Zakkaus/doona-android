@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import dev.doona.android.engine.LogLevel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -19,9 +18,9 @@ import kotlinx.coroutines.launch
  * after an hour by itself (owner, 2026-11-24 15:19).
  */
 internal interface LogLevels {
-    val level: StateFlow<LogLevel>
+    val level: StateFlow<RvLogLevel>
 
-    suspend fun set(level: LogLevel): Result<Unit>
+    suspend fun set(level: RvLogLevel): Result<Unit>
 }
 
 /** What 日誌等級 shows: the core's level, and the choice it [refused] last, until a later choice goes through. */
@@ -35,11 +34,11 @@ internal data class LogLevelUiState(val level: RvLogLevel, val refused: RvLogLev
 internal class LogLevelViewModel(private val levels: LogLevels) : ViewModel() {
     private val refused = MutableStateFlow<RvLogLevel?>(null)
 
-    val uiState: StateFlow<LogLevelUiState> = combine(levels.level, refused) { level, refused -> LogLevelUiState(rvLogLevel(level), refused) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LogLevelUiState(rvLogLevel(levels.level.value)))
+    val uiState: StateFlow<LogLevelUiState> = combine(levels.level, refused) { level, refused -> LogLevelUiState(level, refused) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LogLevelUiState(levels.level.value))
 
     fun select(level: RvLogLevel) {
-        viewModelScope.launch { refused.value = if (levels.set(level.engineLevel()).isFailure) level else null }
+        viewModelScope.launch { refused.value = if (levels.set(level).isFailure) level else null }
     }
 
     /** Asks the core again for the level it refused. */

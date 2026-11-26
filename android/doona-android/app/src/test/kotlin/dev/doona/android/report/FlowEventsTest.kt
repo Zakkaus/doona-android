@@ -7,6 +7,7 @@ import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.RecentFlow
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
+import dev.doona.android.feature.settings.RvLogLevel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -86,9 +87,9 @@ class FlowEventsTest : ExportFixture() {
         val engine = object : Engine by fake {
             override suspend fun recentFlows() = fake.recentFlows().also { reads.add(testScheduler.currentTime) }
         }
-        val levels = LogLevelController(fake::setLogLevel, backgroundScope) { testScheduler.currentTime }
+        val levels = LogLevelController({ fake.setLogLevel(LogLevel.valueOf(it.name)) }, backgroundScope) { testScheduler.currentTime }
         backgroundScope.launch { producer(engine).followCapture(levels) }
-        levels.set(LogLevel.Debug).getOrThrow()
+        levels.set(RvLogLevel.Debug).getOrThrow()
         advanceTimeBy(4_000)
         assertTrue(reads.isEmpty())
 
@@ -101,10 +102,10 @@ class FlowEventsTest : ExportFixture() {
         runCurrent()
         assertEquals(listOf(4_000L, 6_000L), reads)
 
-        levels.set(LogLevel.Info).getOrThrow()
+        levels.set(RvLogLevel.Info).getOrThrow()
         advanceTimeBy(4_000)
         assertEquals(listOf(4_000L, 6_000L), reads)
-        levels.set(LogLevel.Debug).getOrThrow()
+        levels.set(RvLogLevel.Debug).getOrThrow()
         runCurrent()
         fake.disconnect()
         advanceTimeBy(4_000)
@@ -119,10 +120,10 @@ class FlowEventsTest : ExportFixture() {
             override suspend fun recentFlows() = fake.recentFlows().also { lastReadMs = testScheduler.currentTime }
         }
         val levels = LogLevelController({ level ->
-            if (level == LogLevel.Debug) fake.setLogLevel(level) else Result.failure(IllegalStateException("refused"))
+            if (level == RvLogLevel.Debug) fake.setLogLevel(LogLevel.valueOf(level.name)) else Result.failure(IllegalStateException("refused"))
         }, backgroundScope) { testScheduler.currentTime }
         backgroundScope.launch { producer(engine).followCapture(levels) }
-        levels.set(LogLevel.Debug).getOrThrow()
+        levels.set(RvLogLevel.Debug).getOrThrow()
         advanceTimeBy(3_605_000)
         assertEquals(3_598_000L, lastReadMs)
     }

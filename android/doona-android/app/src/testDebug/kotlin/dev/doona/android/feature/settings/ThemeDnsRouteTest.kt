@@ -17,7 +17,6 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.text.TextLayoutResult
 import dev.doona.android.app.rvAppearance
 import dev.doona.android.app.themeAppearance
-import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.model.RvAppearance
 import dev.doona.android.feature.model.RvGeoInterval
@@ -26,6 +25,9 @@ import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.seedSchemes
 import dev.doona.android.prototype.rv.settings.RV_SAMPLE_THEME_PREVIEW
+import dev.doona.android.vpn.NativeSettings
+import dev.doona.android.vpn.SettingsHonk
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
@@ -139,29 +141,33 @@ class ThemeDnsRouteTest {
 
     /**
      * 自動更新 under GeoIP/GeoSite (q-p6a-geointerval, 2026-11-26 07:13) names the stored interval and opens its page,
-     * where a choice is stored at once.
+     * where a choice goes to honk.
      */
     @Test
     fun theGeoIntervalRowNamesTheChoiceAndItsPageStoresOne() {
         var opened = 0
-        val store = FakeSettingsStore(geoInterval = RvGeoInterval.Daily)
-        val vm = SettingsViewModel(FakeEngine(), store)
+        val honk = SettingsHonk.running()
+        val native = NativeSettings(honk)
+        val vm = SettingsViewModel(FakeEngine(), native, FakeSettingsStore(), io = Dispatchers.Unconfined)
+        val interval = GeoIntervalViewModel(native, Dispatchers.Unconfined)
         val nav = SettingsNav({}, {}, {}, {}, {}, geoInterval = { opened++ }, {}, {}, {}, {}, {})
         var page by mutableStateOf(false)
         compose.rvContent(dark = false) {
-            if (page) GeoIntervalRoute(store, onBack = {}) else SettingsPage(vm, NoSystem, nav, "0.1.0", onTab = {})
+            if (page) GeoIntervalPage(interval, onBack = {}) else SettingsPage(vm, NoSystem, nav, "0.1.0", onTab = {})
         }
         compose.onNodeWithText(DAILY).performScrollTo().performClick()
         assertEquals(1, opened)
 
         page = true
         compose.waitForIdle()
+        honk.now("GET", "/api/v1/runtime/settings", 200, SettingsHonk.runtimeSettings(enabled = false))
         compose.onNodeWithText(OFF).performClick()
         compose.waitForIdle()
-        assertEquals(RvGeoInterval.Off, store.geoInterval.value)
+        assertEquals(RvGeoInterval.Off, interval.selected.value)
+        assertEquals("""{"geodata":{"auto_update":{"enabled":false}}}""", honk.calls.last { it.method == "PATCH" }.body)
         compose.onNodeWithText(WEEKLY).performClick()
         compose.waitForIdle()
-        assertEquals(RvGeoInterval.Weekly, store.geoInterval.value)
+        assertEquals("""{"geodata":{"auto_update":{"enabled":true,"interval_hours":168}}}""", honk.calls.last { it.method == "PATCH" }.body)
     }
 
     /** 日誌等級's row under 回報問題 (q-p6a-logrow, 2026-11-26 07:13) names the core's level and opens its page. */
@@ -169,11 +175,11 @@ class ThemeDnsRouteTest {
     fun theLogLevelRowNamesTheLevelAndOpensItsPage() {
         var opened = 0
         val levels = object : LogLevels {
-            override val level: StateFlow<LogLevel> = MutableStateFlow(LogLevel.Debug)
+            override val level: StateFlow<RvLogLevel> = MutableStateFlow(RvLogLevel.Debug)
 
-            override suspend fun set(level: LogLevel): Result<Unit> = Result.success(Unit)
+            override suspend fun set(level: RvLogLevel): Result<Unit> = Result.success(Unit)
         }
-        val vm = SettingsViewModel(FakeEngine(), FakeSettingsStore(), levels = levels)
+        val vm = SettingsViewModel(FakeEngine(), NativeSettings(SettingsHonk.running()), FakeSettingsStore(), levels = levels, io = Dispatchers.Unconfined)
         val nav = SettingsNav({}, {}, {}, {}, logLevel = { opened++ }, {}, {}, {}, {}, {}, {})
         compose.rvContent(dark = false) { SettingsPage(vm, NoSystem, nav, "0.1.0", onTab = {}) }
         compose.onNodeWithText(DEBUG).performScrollTo().assertExists()
@@ -198,7 +204,7 @@ class ThemeDnsRouteTest {
 
             override fun requestTile(onAnswer: (TileAnswer) -> Unit) = Unit
         }
-        val vm = SettingsViewModel(FakeEngine(), FakeSettingsStore(), releases = { Result.success("v9.0.0") })
+        val vm = SettingsViewModel(FakeEngine(), NativeSettings(SettingsHonk.running()), FakeSettingsStore(), releases = { Result.success("v9.0.0") }, io = Dispatchers.Unconfined)
         compose.rvContent(dark = false) { SettingsPage(vm, system, SettingsNav({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}), "0.1.0", onTab = {}) }
         // 檢查更新 is both the hero's action and the row; either checks.
         compose.onAllNodesWithText(CHECK).onFirst().performScrollTo().performClick()

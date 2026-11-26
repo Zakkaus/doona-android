@@ -3,6 +3,7 @@ package dev.doona.android.feature.settings
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.res.stringResource
@@ -24,7 +25,6 @@ import dev.doona.android.engine.CrashFile
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.rvSampleEngine
@@ -64,6 +64,8 @@ import dev.doona.android.report.ReportZip
 import dev.doona.android.report.nodeMembers
 import dev.doona.android.report.testFlowEvents
 import dev.doona.android.testing.drawFully
+import dev.doona.android.vpn.NativeSettings
+import dev.doona.android.vpn.SettingsHonk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
@@ -78,6 +80,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.time.ZoneId
 
 private val SHOTS = System.getProperty("doona.shots") ?: "src/test/screenshots"
 
@@ -192,13 +195,13 @@ class SettingsAppShotTest {
     @Test fun logLevelFs200() = compose.app("settings-log-level", fontScale = RV_FS200) { LogLevel() }
 
     /** GeoIP/GeoSite's 自動更新 (sample, q-p6a-geointerval): the stored 每週. */
-    @Test fun geoIntervalLight() = compose.app("settings-geo-interval", dark = false) { GeoIntervalRoute(FakeSettingsStore(), onBack = {}) }
+    @Test fun geoIntervalLight() = compose.app("settings-geo-interval", dark = false) { GeoIntervalPage(remember { sampleInterval() }, onBack = {}) }
 
-    @Test fun geoIntervalDark() = compose.app("settings-geo-interval", dark = true) { GeoIntervalRoute(FakeSettingsStore(), onBack = {}) }
+    @Test fun geoIntervalDark() = compose.app("settings-geo-interval", dark = true) { GeoIntervalPage(remember { sampleInterval() }, onBack = {}) }
 
-    @Test fun geoIntervalFs115() = compose.app("settings-geo-interval", fontScale = RV_FS115) { GeoIntervalRoute(FakeSettingsStore(), onBack = {}) }
+    @Test fun geoIntervalFs115() = compose.app("settings-geo-interval", fontScale = RV_FS115) { GeoIntervalPage(remember { sampleInterval() }, onBack = {}) }
 
-    @Test fun geoIntervalFs200() = compose.app("settings-geo-interval", fontScale = RV_FS200) { GeoIntervalRoute(FakeSettingsStore(), onBack = {}) }
+    @Test fun geoIntervalFs200() = compose.app("settings-geo-interval", fontScale = RV_FS200) { GeoIntervalPage(remember { sampleInterval() }, onBack = {}) }
 
     /** The core refuses 除錯: the banner says so, with 重試. */
     @Test fun logLevelRefusedLight() = compose.app("settings-log-level-refused", dark = false, before = { pickDebug() }) { RefusedLogLevel() }
@@ -353,7 +356,7 @@ class SettingsAppEnShotTest {
 
     @Test fun logLevel() = compose.app("settings-log-level-en", dark = false) { LogLevelRoute(InfoLevels, onBack = {}) }
 
-    @Test fun geoInterval() = compose.app("settings-geo-interval-en", dark = false) { GeoIntervalRoute(FakeSettingsStore(), onBack = {}) }
+    @Test fun geoInterval() = compose.app("settings-geo-interval-en", dark = false) { GeoIntervalPage(remember { sampleInterval() }, onBack = {}) }
 
     @Test fun logLevelSample() = compose.sample("settings-log-level-en") { RvLogLevelScreen(RvLogLevel.Info, onSelect = {}, onBack = {}) }
 
@@ -406,7 +409,7 @@ private fun ComposeContentTestRule.sample(name: String, content: @Composable () 
 
 /** 設定 on its ViewModel over the sample engine and store, the ViewModel made before the page is composed. */
 private fun settingsPage(): @Composable () -> Unit {
-    val vm = SettingsViewModel(settingsEngine(), sampleStore())
+    val vm = SettingsViewModel(settingsEngine(), sampleHonk(), sampleStore(), io = Dispatchers.Unconfined)
     return { SettingsPage(vm, NoSystem, noNav(), rvSampleVersions.app, onTab = {}) }
 }
 
@@ -429,6 +432,12 @@ private fun sampleStore() = FakeSettingsStore(
     shippedGeoDate = RV_SAMPLE_GEO_SHIPPED.toString(),
     languages = "zh-TW",
 )
+
+/** honk with the sample's GeoIP/GeoSite data (the copy the sample ships) and its 每週 schedule, the day read in UTC. */
+private fun sampleHonk() = NativeSettings(SettingsHonk.sample()) { ZoneId.of("UTC") }
+
+/** 自動更新 over [sampleHonk]. */
+private fun sampleInterval() = GeoIntervalViewModel(sampleHonk(), Dispatchers.Unconfined)
 
 /** The RV sample engine, connected, with the sample's saved per-app policy. */
 private fun settingsEngine(): Engine {
@@ -497,7 +506,7 @@ private fun shotExport(tmp: TemporaryFolder): ReportExport {
         { app },
         scope,
         Dispatchers.Unconfined,
-        LogLevelController(engine::setLogLevel, scope) { 0L },
+        LogLevelController({ Result.success(Unit) }, scope) { 0L },
         testFlowEvents(Dispatchers.Unconfined),
         { emptyList() },
     ) { 0L }
@@ -507,16 +516,16 @@ private const val ISSUE = "https://github.com/Zakkaus/doona-android/issues/new"
 
 /** The core at 資訊, as the sample's 日誌等級 shows it. */
 private object InfoLevels : LogLevels {
-    override val level = MutableStateFlow(LogLevel.Info)
+    override val level = MutableStateFlow(RvLogLevel.Info)
 
-    override suspend fun set(level: LogLevel): Result<Unit> = Result.success(Unit)
+    override suspend fun set(level: RvLogLevel): Result<Unit> = Result.success(Unit)
 }
 
 /** A core at 資訊 that refuses every other level. */
 private class RefusingLevels : LogLevels {
-    override val level = MutableStateFlow(LogLevel.Info)
+    override val level = MutableStateFlow(RvLogLevel.Info)
 
-    override suspend fun set(level: LogLevel): Result<Unit> = Result.failure(EngineException(ErrorCode.Internal))
+    override suspend fun set(level: RvLogLevel): Result<Unit> = Result.failure(EngineException(ErrorCode.Internal))
 }
 
 /** Android, which a golden never reaches. */

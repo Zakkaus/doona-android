@@ -80,7 +80,7 @@ abstract class ExportFixture {
         engine: Engine,
         now: Long = 1_795_300_200_000,
         scope: CoroutineScope = this,
-        logLevels: LogLevelController = LogLevelController(engine::setLogLevel, scope) { testScheduler.currentTime },
+        logLevels: LogLevelController = LogLevelController({ engine.setLogLevel(LogLevel.valueOf(it.name)) }, scope) { testScheduler.currentTime },
         ownAddresses: () -> List<InetAddress> = { emptyList() },
         flowEvents: FlowEvents = testFlowEvents(StandardTestDispatcher(testScheduler)),
     ): ReportExport {

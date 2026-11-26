@@ -2,7 +2,7 @@ package dev.doona.android.data.settings
 
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.LogLevel
+import dev.doona.android.feature.settings.RvLogLevel
 import dev.doona.android.report.AppEvents
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -15,17 +15,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/** The process-local core log level. A fresh core starts at Info; no preference is read or saved. */
+/** The process-local level honk logs at. A fresh honk starts at Info; no preference is read or saved. */
 class LogLevelController(
-    private val applyLevel: suspend (LogLevel) -> Result<Unit>,
+    private val applyLevel: suspend (RvLogLevel) -> Result<Unit>,
     private val scope: CoroutineScope,
     private val clock: () -> Long,
 ) {
     private val edits = Mutex()
     private var expiry: Job? = null
     private var resetStarted = false // Guarded by edits; prevents another reset while the retry is pending.
-    private val current = MutableStateFlow(LogLevel.Info)
-    val level: StateFlow<LogLevel> = current.asStateFlow()
+    private val current = MutableStateFlow(RvLogLevel.Info)
+    val level: StateFlow<RvLogLevel> = current.asStateFlow()
 
     private val deadline = MutableStateFlow<Long?>(null)
 
@@ -35,14 +35,14 @@ class LogLevelController(
     fun remainingMs(): Long = deadline.value?.let { (it - clock()).coerceAtLeast(0) } ?: 0
 
     // The core can commit even if the caller leaves; the process scope then publishes the result and owns the timer.
-    suspend fun set(level: LogLevel): Result<Unit> = scope.async {
+    suspend fun set(level: RvLogLevel): Result<Unit> = scope.async {
         edits.withLock {
             applyLevel(level).onSuccess {
                 expiry?.cancel()
                 resetStarted = false
-                deadline.value = if (level == LogLevel.Debug) clock() + DEBUG_CAPTURE_MS else null
+                deadline.value = if (level == RvLogLevel.Debug) clock() + DEBUG_CAPTURE_MS else null
                 current.value = level
-                expiry = if (level == LogLevel.Debug) {
+                expiry = if (level == RvLogLevel.Debug) {
                     scope.launch {
                         delay(remainingMs())
                         expireIfDue()
@@ -68,7 +68,7 @@ class LogLevelController(
     private fun due(): Boolean = deadline.value?.let { clock() >= it } == true
 
     private suspend fun reset() {
-        if (current.value != LogLevel.Debug || resetStarted) return
+        if (current.value != RvLogLevel.Debug || resetStarted) return
         resetStarted = true
         expiry?.cancel()
         expiry = null
@@ -85,9 +85,9 @@ class LogLevelController(
         }
     }
 
-    private suspend fun applyReset(): Result<Unit> = applyLevel(LogLevel.Info).onSuccess {
+    private suspend fun applyReset(): Result<Unit> = applyLevel(RvLogLevel.Info).onSuccess {
         deadline.value = null
-        current.value = LogLevel.Info
+        current.value = RvLogLevel.Info
     }
 
     companion object {

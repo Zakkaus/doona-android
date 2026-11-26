@@ -2,22 +2,22 @@ package dev.doona.android.feature.settings
 
 import dev.doona.android.designsystem.rv.RvFormat
 import dev.doona.android.engine.AppPolicy
-import dev.doona.android.engine.ConfigAssets
 import dev.doona.android.engine.EffectiveConfig
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.PerApp
-import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvDnsUpstream
+import dev.doona.android.feature.model.RvGeoData
 import dev.doona.android.feature.model.RvGeoInterval
 import dev.doona.android.feature.model.RvGeoUpdate
 import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.model.RvPerApp
 import dev.doona.android.feature.model.RvSettingsState
+import dev.doona.android.vpn.NativeSettings
+import dev.doona.android.vpn.SettingsHonk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -41,8 +41,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Locale
 import java.util.TimeZone
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -59,6 +61,26 @@ class SettingsViewModelTest {
         return vm
     }
 
+/** A collected [SettingsViewModel] over [honk], which runs on the test's clock, as every other argument the page's defaults. */
+    private fun TestScope.vm(
+        engine: Engine = FakeEngine(),
+        store: SettingsStore = FakeSettingsStore(),
+        releases: ReleaseCheck = ReleaseCheck { Result.success(null) },
+        levels: LogLevels? = null,
+        honk: SettingsHonk = SettingsHonk.running(),
+        poll: Duration = 1.seconds,
+        followFor: Duration = 10.minutes,
+    ): SettingsViewModel {
+        val io = UnconfinedTestDispatcher(testScheduler)
+        val native = NativeSettings(honk) { ZoneId.of("UTC") }
+        val vm = if (levels == null) {
+            SettingsViewModel(engine, native, store, releases, poll = poll, followFor = followFor, io = io)
+        } else {
+            SettingsViewModel(engine, native, store, releases, levels, poll, followFor, io)
+        }
+        return collected(vm)
+    }
+
     /** The page's state once the store has answered. */
     private val SettingsViewModel.settings: RvSettingsState get() = checkNotNull(uiState.value.settings) { "the store has not answered" }
 
@@ -69,7 +91,7 @@ class SettingsViewModelTest {
         val store = object : SettingsStore by fake {
             override val notifyOnDrop: Flow<Boolean> = answered
         }
-        val vm = collected(SettingsViewModel(FakeEngine(), store))
+        val vm = vm(FakeEngine(), store)
         assertNull("no switch or interval before the store answers", vm.uiState.value.settings)
         answered.emit(false)
         assertFalse(vm.settings.notifyOnDrop)
@@ -83,7 +105,7 @@ class SettingsViewModelTest {
         val store = object : SettingsStore by fake {
             override val tileAdded: Flow<Boolean> = tile
         }
-        val vm = collected(SettingsViewModel(FakeEngine(), store))
+        val vm = vm(FakeEngine(), store)
         assertNull("nothing drawn before the tile store answers", vm.uiState.value.settings)
         tile.emit(false)
         assertFalse("the first drawn state offers the tile row", vm.settings.tileAdded)
@@ -92,7 +114,7 @@ class SettingsViewModelTest {
     @Test
     fun `a second tap on the same switch from the same drawing writes the same value`() = runTest {
         val store = FakeSettingsStore()
-        val vm = collected(SettingsViewModel(FakeEngine(), store))
+        val vm = vm(FakeEngine(), store)
         val drawn = vm.settings
         // Two taps on 中斷連線時通知 before the page shows the first: both say off, so it stays off.
         vm.onChange(drawn, drawn.copy(notifyOnDrop = false))
@@ -107,39 +129,9 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `a page opened before the core runs reads the DNS servers and the geo data once it does`() = runTest {
-        val fake = FakeEngine(status = Status.Stopped)
-        var geoReads = 0
-        val engine = object : Engine by fake {
-            override suspend fun effectiveConfig(): Result<EffectiveConfig> =
-                if (fake.status.value is Status.Running) fake.effectiveConfig() else Result.failure(EngineException(ErrorCode.Internal))
-
-            override suspend fun configAssets(): Result<ConfigAssets> {
-                geoReads++
-                return Result.success(assets("up_to_date"))
-            }
-        }
-        val vm = collected(SettingsViewModel(engine, FakeSettingsStore()))
-        assertFalse(vm.uiState.value.dnsLoaded)
-        assertEquals(1, geoReads)
-
-        fake.status.value = Status.Running(sinceEpochMs = 0)
-        assertTrue(vm.uiState.value.dnsLoaded)
-        assertEquals(RvDnsUpstream.Cloudflare, vm.settings.dns)
-        assertEquals(2, geoReads)
-        assertEquals(RvGeoUpdate.Latest, vm.uiState.value.geoData.update)
-
-        // Stopping reads nothing; the next start reads again.
-        fake.status.value = Status.Stopped
-        assertEquals(2, geoReads)
-        fake.status.value = Status.Running(sinceEpochMs = 0)
-        assertEquals(3, geoReads)
-    }
-
-    @Test
     fun `the switches go to the store and the page shows the store's values`() = runTest {
         val store = FakeSettingsStore(updateHours = 6, tileAdded = false)
-        val vm = collected(SettingsViewModel(FakeEngine(), store))
+        val vm = vm(FakeEngine(), store)
         val shown = vm.settings
         assertEquals(6, shown.updateHours)
         assertFalse(shown.tileAdded)
@@ -157,7 +149,7 @@ class SettingsViewModelTest {
     @Test
     fun `two quick turns write only the switch each turned`() = runTest {
         val store = FakeSettingsStore()
-        val vm = collected(SettingsViewModel(FakeEngine(), store))
+        val vm = vm(FakeEngine(), store)
         val drawn = vm.settings
         vm.onChange(drawn, drawn.copy(notifyOnDrop = false))
         assertFalse(vm.settings.notifyOnDrop)
@@ -170,7 +162,7 @@ class SettingsViewModelTest {
     @Test
     fun `the DNS row reads the servers the core reports, and again when the page shows again`() = runTest {
         val engine = FakeEngine()
-        val vm = collected(SettingsViewModel(engine, FakeSettingsStore()))
+        val vm = vm(engine, FakeSettingsStore())
         assertTrue(vm.uiState.value.dnsLoaded)
         assertEquals("the core's default, 1.1.1.1:53 then 8.8.8.8:53", RvDnsUpstream.Cloudflare, vm.settings.dns)
 
@@ -190,7 +182,7 @@ class SettingsViewModelTest {
         val engine = object : Engine by FakeEngine() {
             override suspend fun effectiveConfig(): Result<EffectiveConfig> = Result.failure(EngineException(ErrorCode.Internal))
         }
-        val vm = collected(SettingsViewModel(engine, FakeSettingsStore()))
+        val vm = vm(engine, FakeSettingsStore())
         assertFalse(vm.uiState.value.dnsLoaded)
     }
 
@@ -207,7 +199,7 @@ class SettingsViewModelTest {
     @Test
     fun `依 App's row carries the engine's policy, and none before the policy is read`() = runTest {
         val engine = FakeEngine()
-        val vm = collected(SettingsViewModel(engine, FakeSettingsStore()))
+        val vm = vm(engine, FakeSettingsStore())
         assertEquals(RvPerApp(RvAppPolicy.All, emptySet()), vm.settings.perApp)
         assertTrue(vm.uiState.value.perAppLoaded)
 
@@ -218,58 +210,6 @@ class SettingsViewModelTest {
 
         engine.perAppLoaded.value = false
         assertFalse(vm.uiState.value.perAppLoaded)
-    }
-
-    @Test
-    fun `each lastResult the core reports is the row's state`() {
-        val expected = mapOf(
-            "checking" to RvGeoUpdate.Updating,
-            "downloading" to RvGeoUpdate.Updating,
-            "verifying" to RvGeoUpdate.Updating,
-            "up_to_date" to RvGeoUpdate.Latest,
-            "ready_on_next_start" to RvGeoUpdate.Updated,
-            "activated" to RvGeoUpdate.Updated,
-            "failed" to RvGeoUpdate.Failed,
-            "idle" to RvGeoUpdate.Idle,
-            "something_new" to RvGeoUpdate.Idle,
-        )
-        for ((word, state) in expected) assertEquals(word, state, rvGeoUpdate(word))
-    }
-
-    @Test
-    fun `the row's date is the core's release, else the APK's copy`() {
-        val day = LocalDate.of(2026, 11, 23)
-        assertEquals(day, rvGeoData(null, "2026-11-23", connected = false).date)
-        val builtin = ConfigAssets("builtin", null, "idle", null, false)
-        assertEquals(day, rvGeoData(builtin, "2026-11-23", connected = true).date)
-        val download = ConfigAssets("download", "2026-11-30", "activated", null, false)
-        val row = rvGeoData(download, "2026-11-23", connected = true)
-        assertEquals(LocalDate.of(2026, 11, 30), row.date)
-        assertEquals(RvGeoUpdate.Updated, row.update)
-        assertTrue(row.connected)
-        val odd = ConfigAssets("download", "20261130", "idle", null, false)
-        assertEquals("a release that is no date falls back", day, rvGeoData(odd, "2026-11-23", connected = true).date)
-    }
-
-    @Test
-    fun `the release day reads the same at UTC+14 and UTC-12`() {
-        val zone = TimeZone.getDefault()
-        try {
-            for (id in listOf("Pacific/Kiritimati", "Etc/GMT+12", "UTC")) {
-                TimeZone.setDefault(TimeZone.getTimeZone(id))
-                val date = checkNotNull(rvGeoData(null, "2026-11-23", connected = true).date)
-                assertEquals(id, "11/23/26", RvFormat(Locale.US).date(date))
-            }
-        } finally {
-            TimeZone.setDefault(zone)
-        }
-    }
-
-    @Test
-    fun `no date at all when neither the core's release nor the APK's is a date, rather than ending the page`() {
-        val odd = ConfigAssets("download", "20261130", "idle", null, false)
-        assertNull(rvGeoData(odd, "unknown", connected = true).date)
-        assertNull(rvGeoData(null, "", connected = false).date)
     }
 
     @Test
@@ -293,7 +233,7 @@ class SettingsViewModelTest {
             asked++
             if (asked == 1) answer.await() else Result.success("v0.2.0")
         }
-        val vm = collected(SettingsViewModel(FakeEngine(), FakeSettingsStore(), releases))
+        val vm = vm(FakeEngine(), FakeSettingsStore(), releases)
         assertEquals(RvUpdate.Idle, vm.uiState.value.update)
 
         vm.checkUpdate("0.1.0")
@@ -312,87 +252,73 @@ class SettingsViewModelTest {
 
     @Test
     fun `nothing newer on GitHub is Latest`() = runTest {
-        val vm = collected(SettingsViewModel(FakeEngine(), FakeSettingsStore(), ReleaseCheck { Result.success("v0.1.0") }))
+        val vm = vm(FakeEngine(), FakeSettingsStore(), ReleaseCheck { Result.success("v0.1.0") })
         vm.checkUpdate("0.1.0")
         runCurrent()
         assertEquals(RvUpdate.Latest, vm.uiState.value.update)
     }
 
     @Test
-    fun `an update shows Updating at once and follows the core every poll until it ends`() = runTest {
-        val engine = GeoEngine(
-            started = Result.success(assets("checking")),
-            reads = listOf(assets("idle"), assets("downloading"), assets("verifying"), assets("ready_on_next_start")),
-        )
-        val vm = collected(SettingsViewModel(engine, FakeSettingsStore(), poll = 1.seconds))
+    fun `without honk the row shows the APK's date and 未連線, and 自動更新 its default`() = runTest {
+        val vm = vm(honk = SettingsHonk())
+        assertEquals(RvGeoData(LocalDate.of(2026, 11, 23), connected = false), vm.uiState.value.geoData)
+        assertEquals(RvGeoInterval.Weekly, vm.settings.geoInterval)
+    }
+
+    @Test
+    fun `the row shows honk's date and schedule, read again when the page shows again`() = runTest {
+        val honk = SettingsHonk.running()
+        val vm = vm(honk = honk)
+        assertEquals(RvGeoData(LocalDate.of(2026, 8, 14)), vm.uiState.value.geoData)
+        assertEquals("the contract's 24 hours", RvGeoInterval.Daily, vm.settings.geoInterval)
+
+        honk.now("GET", "/api/v1/runtime/settings", 200, SettingsHonk.runtimeSettings(enabled = false))
+            .now("GET", "/api/v1/geodata", 200, SettingsHonk.geoData(error = SettingsHonk.GEODATA_ERROR))
+        vm.onResume()
+        assertEquals(RvGeoInterval.Off, vm.settings.geoInterval)
+        assertEquals(RvGeoUpdate.Failed, vm.uiState.value.geoData.update)
+    }
+
+    @Test
+    fun `an update shows Updating at once and reads honk every poll until it reports the attempt`() = runTest {
+        val replaced = SettingsHonk.geoData(checked = "2026-08-15T10:00:09Z", updated = "2026-08-15T10:00:08Z", modified = "2026-08-15T10:00:08Z")
+        val honk = SettingsHonk.running().on("GET", "/api/v1/geodata", 200, SettingsHonk.GEODATA).on("GET", "/api/v1/geodata", 200, SettingsHonk.GEODATA)
+            .on("GET", "/api/v1/geodata", 200, replaced)
+        val vm = vm(honk = honk, poll = 1.seconds)
         assertEquals(RvGeoUpdate.Idle, vm.uiState.value.geoData.update)
-        assertTrue(vm.uiState.value.geoData.connected)
 
         vm.updateGeo()
         assertEquals(RvGeoUpdate.Updating, vm.uiState.value.geoData.update)
-        assertEquals("the first read follows the start at once", 2, engine.read)
         advanceTimeBy(1.seconds)
         runCurrent()
-        assertEquals(3, engine.read)
-        assertEquals(RvGeoUpdate.Updating, vm.uiState.value.geoData.update)
+        assertEquals("the first read is still the attempt before", RvGeoUpdate.Updating, vm.uiState.value.geoData.update)
         advanceTimeBy(1.seconds)
         runCurrent()
-        assertEquals(RvGeoUpdate.Updated, vm.uiState.value.geoData.update)
+        assertEquals(RvGeoData(LocalDate.of(2026, 8, 15), RvGeoUpdate.Updated), vm.uiState.value.geoData)
+        val reads = honk.calls.size
         advanceTimeBy(5.seconds)
         runCurrent()
-        assertEquals("no read after the update ended", 4, engine.read)
+        assertEquals("no read after the update ended", reads, honk.calls.size)
     }
 
     @Test
-    fun `an update the core refuses shows the failure on the row, and 重試 asks again`() = runTest {
-        val engine = GeoEngine(started = Result.failure(EngineException(ErrorCode.FetchFailed)), reads = listOf(assets("idle")))
-        val vm = collected(SettingsViewModel(engine, FakeSettingsStore()))
+    fun `an update honk refuses shows the failure on the row, and 重試 asks again`() = runTest {
+        val honk = SettingsHonk.running().now("POST", "/api/v1/geodata/update", 500, "").on("POST", "/api/v1/geodata/update", 202, SettingsHonk.GEODATA_QUEUED)
+        val vm = vm(honk = honk)
         vm.updateGeo()
         assertEquals(RvGeoUpdate.Failed, vm.uiState.value.geoData.update)
-        assertEquals("no read follows a refused start", 1, engine.read)
 
-        engine.started = Result.success(assets("up_to_date"))
-        engine.reads = listOf(assets("up_to_date"))
+        honk.on("GET", "/api/v1/geodata", 200, SettingsHonk.geoData(checked = "2026-08-15T10:00:09Z"))
         vm.updateGeo()
-        assertEquals(RvGeoUpdate.Latest, vm.uiState.value.geoData.update)
-    }
-
-    @Test
-    fun `a busy core shows where it stands, not a failure`() = runTest {
-        val engine = GeoEngine(started = Result.failure(EngineException(ErrorCode.Busy)), reads = listOf(assets("idle"), assets("ready_on_next_start")))
-        val vm = collected(SettingsViewModel(engine, FakeSettingsStore()))
-        vm.updateGeo()
-        assertEquals(RvGeoUpdate.Updated, vm.uiState.value.geoData.update)
-    }
-
-    @Test
-    fun `a page opened during an update follows it`() = runTest {
-        val engine = GeoEngine(started = Result.success(assets("checking")), reads = listOf(assets("downloading"), assets("downloading"), assets("up_to_date")))
-        val vm = collected(SettingsViewModel(engine, FakeSettingsStore(), poll = 1.seconds))
-        assertEquals(RvGeoUpdate.Updating, vm.uiState.value.geoData.update)
         advanceTimeBy(1.seconds)
         runCurrent()
         assertEquals(RvGeoUpdate.Latest, vm.uiState.value.geoData.update)
     }
 
     @Test
-    fun `the row stays Updating until the core's first read, whatever it held before`() = runTest {
-        val engine = GeoEngine(started = Result.failure(EngineException(ErrorCode.Busy)), reads = listOf(assets("up_to_date")))
-        val vm = collected(SettingsViewModel(engine, FakeSettingsStore(), poll = 1.seconds))
-        assertEquals(RvGeoUpdate.Latest, vm.uiState.value.geoData.update)
-        engine.gate = CompletableDeferred()
-        engine.reads = listOf(assets("downloading"))
-        vm.updateGeo()
-        assertEquals("not the Latest read before the update", RvGeoUpdate.Updating, vm.uiState.value.geoData.update)
-        engine.gate!!.complete(Unit)
-        runCurrent()
-        assertEquals(RvGeoUpdate.Updating, vm.uiState.value.geoData.update)
-    }
-
-    @Test
-    fun `an update the core never ends stops being followed and shows the failure`() = runTest {
-        val engine = GeoEngine(started = Result.success(assets("checking")), reads = listOf(assets("idle"), assets("downloading")))
-        val vm = collected(SettingsViewModel(engine, FakeSettingsStore(), poll = 1.seconds, followFor = 1.minutes))
+    fun `an update honk never reports stops being followed and shows the failure`() = runTest {
+        val honk = SettingsHonk.running()
+        val vm = vm(honk = honk, poll = 1.seconds, followFor = 1.minutes)
         vm.updateGeo()
         advanceTimeBy(59.seconds)
         runCurrent()
@@ -400,54 +326,77 @@ class SettingsViewModelTest {
         advanceTimeBy(2.seconds)
         runCurrent()
         assertEquals(RvGeoUpdate.Failed, vm.uiState.value.geoData.update)
-        val reads = engine.read
+        val reads = honk.calls.size
         advanceTimeBy(10.seconds)
         runCurrent()
-        assertEquals("no read after it gave up", reads, engine.read)
+        assertEquals("no read after it gave up", reads, honk.calls.size)
     }
 
     @Test
-    fun `the row is not connected while the VPN is off`() = runTest {
-        val vm = collected(SettingsViewModel(FakeEngine(status = Status.Stopped), FakeSettingsStore()))
-        assertFalse(vm.uiState.value.geoData.connected)
+    fun `自動更新 opens on honk's schedule and sends each choice, then reads it again`() = runTest {
+        val honk = SettingsHonk.running()
+        val vm = GeoIntervalViewModel(NativeSettings(honk), UnconfinedTestDispatcher(testScheduler))
+        assertEquals(RvGeoInterval.Daily, vm.selected.value)
+
+        honk.now("GET", "/api/v1/runtime/settings", 200, SettingsHonk.runtimeSettings(hours = 168))
+        vm.select(RvGeoInterval.Weekly)
+        assertEquals(RvGeoInterval.Weekly, vm.selected.value)
+        assertEquals("PATCH", honk.calls[honk.calls.lastIndex - 1].method)
     }
 
     @Test
-    fun `自動更新's row names the stored GeoIP_GeoSite interval, 每週 at first`() = runTest {
-        val store = FakeSettingsStore()
-        val vm = collected(SettingsViewModel(FakeEngine(), store))
-        assertEquals(RvGeoInterval.Weekly, vm.settings.geoInterval)
-        store.setGeoInterval(RvGeoInterval.Off)
-        assertEquals(RvGeoInterval.Off, vm.settings.geoInterval)
-        // A switch turned on the page after it does not write the interval back.
-        val drawn = vm.settings
-        vm.onChange(drawn, drawn.copy(notifyOnDrop = !drawn.notifyOnDrop))
-        assertEquals(RvGeoInterval.Off, store.geoInterval.value)
+    fun `自動更新 waits for honk rather than showing a choice it has not made`() = runTest {
+        val vm = GeoIntervalViewModel(NativeSettings(SettingsHonk()), UnconfinedTestDispatcher(testScheduler))
+        assertNull(vm.selected.value)
+    }
+
+    @Test
+    fun `the row's date is honk's, else the APK's copy, and no date when neither is one`() {
+        val day = LocalDate.of(2026, 11, 23)
+        assertEquals(RvGeoData(day, connected = false), rvGeoData(null, "2026-11-23"))
+        assertEquals(RvGeoData(day), rvGeoData(RvGeoData(null), "2026-11-23"))
+        assertEquals(RvGeoData(LocalDate.of(2026, 8, 14), RvGeoUpdate.Updated), rvGeoData(RvGeoData(LocalDate.of(2026, 8, 14), RvGeoUpdate.Updated), "2026-11-23"))
+        assertNull(rvGeoData(null, "20261123").date)
+        assertNull(rvGeoData(RvGeoData(null), "").date)
+    }
+
+    @Test
+    fun `the APK's day reads the same at UTC+14 and UTC-12`() {
+        val zone = TimeZone.getDefault()
+        try {
+            for (id in listOf("Pacific/Kiritimati", "Etc/GMT+12", "UTC")) {
+                TimeZone.setDefault(TimeZone.getTimeZone(id))
+                val date = checkNotNull(rvGeoData(null, "2026-11-23").date)
+                assertEquals(id, "11/23/26", RvFormat(Locale.US).date(date))
+            }
+        } finally {
+            TimeZone.setDefault(zone)
+        }
     }
 
     @Test
     fun `日誌等級's row names the core's level, 資訊 at first, and follows it`() = runTest {
-        val core = MutableStateFlow(LogLevel.Info)
+        val core = MutableStateFlow(RvLogLevel.Info)
         val levels = object : LogLevels {
-            override val level: StateFlow<LogLevel> = core
+            override val level: StateFlow<RvLogLevel> = core
 
-            override suspend fun set(level: LogLevel): Result<Unit> = Result.success(Unit).also { core.value = level }
+            override suspend fun set(level: RvLogLevel): Result<Unit> = Result.success(Unit).also { core.value = level }
         }
-        val vm = SettingsViewModel(FakeEngine(), FakeSettingsStore(), levels = levels)
+        val vm = SettingsViewModel(FakeEngine(), NativeSettings(SettingsHonk()), FakeSettingsStore(), levels = levels, io = UnconfinedTestDispatcher(testScheduler))
         assertEquals("before the page collects", RvLogLevel.Info, vm.uiState.value.logLevel)
         collected(vm)
-        core.value = LogLevel.Debug
+        core.value = RvLogLevel.Debug
         assertEquals(RvLogLevel.Debug, vm.uiState.value.logLevel)
         // 除錯's hour ends: the controller returns to 資訊 by itself.
-        core.value = LogLevel.Info
+        core.value = RvLogLevel.Info
         assertEquals(RvLogLevel.Info, vm.uiState.value.logLevel)
-        core.value = LogLevel.Warn
+        core.value = RvLogLevel.Warn
         assertEquals(RvLogLevel.Warn, vm.uiState.value.logLevel)
     }
 
     @Test
     fun `a failed tile request opens the sheet, which the page closes`() = runTest {
-        val vm = collected(SettingsViewModel(FakeEngine(), FakeSettingsStore(tileAdded = false)))
+        val vm = vm(FakeEngine(), FakeSettingsStore(tileAdded = false))
         vm.tileAnswer(TileAnswer.Kept)
         assertFalse(vm.settings.tileSheet)
         vm.tileAnswer(TileAnswer.Failed)
@@ -460,7 +409,7 @@ class SettingsViewModelTest {
     @Test
     fun `the language is read again when the page shows again`() = runTest {
         val store = FakeSettingsStore(languages = "")
-        val vm = collected(SettingsViewModel(FakeEngine(), store))
+        val vm = vm(FakeEngine(), store)
         assertEquals(RvLanguage.System, vm.settings.language)
         store.languages = "en-AU"
         assertEquals(RvLanguage.System, vm.settings.language)
@@ -478,23 +427,5 @@ class SettingsViewModelTest {
         vm.select(1)
         assertEquals(1, store.updateHours.value)
         assertEquals(1, vm.uiState.value?.selected)
-    }
-
-    private fun assets(lastResult: String) = ConfigAssets("builtin", null, lastResult, null, false)
-
-    /** A running engine whose geo update starts as [started] and whose reads answer [reads] in turn, the last one again. */
-    private class GeoEngine(var started: Result<ConfigAssets>, var reads: List<ConfigAssets>, private val fake: FakeEngine = FakeEngine(status = Status.Running(0))) :
-        Engine by fake {
-        var read = 0
-
-        /** Set, each read waits for it. */
-        var gate: CompletableDeferred<Unit>? = null
-
-        override suspend fun configAssets(): Result<ConfigAssets> {
-            gate?.await()
-            return Result.success(reads[minOf(read++, reads.lastIndex)])
-        }
-
-        override suspend fun updateConfigAssets(): Result<ConfigAssets> = started
     }
 }

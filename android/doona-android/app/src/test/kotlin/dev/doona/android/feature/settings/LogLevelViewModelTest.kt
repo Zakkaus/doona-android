@@ -2,7 +2,6 @@ package dev.doona.android.feature.settings
 
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.LogLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,10 +20,10 @@ import org.junit.Test
 class LogLevelViewModelTest {
     /** The core's level; with [fails] set the core refuses each set. */
     private class FakeLevels(var fails: Boolean = false) : LogLevels {
-        override val level = MutableStateFlow(LogLevel.Info)
-        val sets = mutableListOf<LogLevel>()
+        override val level = MutableStateFlow(RvLogLevel.Info)
+        val sets = mutableListOf<RvLogLevel>()
 
-        override suspend fun set(level: LogLevel): Result<Unit> {
+        override suspend fun set(level: RvLogLevel): Result<Unit> {
             sets += level
             if (fails) return Result.failure(EngineException(ErrorCode.Internal))
             this.level.value = level
@@ -53,7 +52,7 @@ class LogLevelViewModelTest {
             vm.select(level)
             assertEquals(level, vm.uiState.value.level)
         }
-        assertEquals(listOf(LogLevel.Error, LogLevel.Warn, LogLevel.Info, LogLevel.Debug), levels.sets)
+        assertEquals(listOf(RvLogLevel.Error, RvLogLevel.Warn, RvLogLevel.Info, RvLogLevel.Debug), levels.sets)
     }
 
     @Test
@@ -68,7 +67,7 @@ class LogLevelViewModelTest {
         levels.fails = false
         vm.retry()
         assertEquals(LogLevelUiState(RvLogLevel.Debug), vm.uiState.value)
-        assertEquals(listOf(LogLevel.Debug, LogLevel.Debug), levels.sets)
+        assertEquals(listOf(RvLogLevel.Debug, RvLogLevel.Debug), levels.sets)
     }
 
     @Test
@@ -77,12 +76,7 @@ class LogLevelViewModelTest {
         val vm = LogLevelViewModel(levels)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
         vm.select(RvLogLevel.Debug)
-        levels.level.value = LogLevel.Info
+        levels.level.value = RvLogLevel.Info
         assertEquals(RvLogLevel.Info, vm.uiState.value.level)
-    }
-
-    @Test
-    fun `the page's levels and the core's map one to one`() {
-        for (level in LogLevel.entries) assertEquals(level, rvLogLevel(level).engineLevel())
     }
 }
