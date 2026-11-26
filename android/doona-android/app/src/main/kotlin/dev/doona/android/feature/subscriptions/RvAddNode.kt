@@ -58,8 +58,8 @@ internal fun RvInlineCard(nodes: List<RvNode>, actions: RvInlineActions) {
 /**
  * 新增節點's sheet (panel s1125f-addnode-sheet), the library's confirm sheet: what to paste, the clipboard's row while the
  * field is empty and the clipboard may hold a link, the link field (up to [LINK_LINES] lines that wrap, then it scrolls
- * inside; one link per line) with what the core will add or why it cannot, then 新增 and 取消. 新增 waits for the core's
- * preview and for an add already sent.
+ * inside; one link per line) with what it will add or why it cannot, then 新增 and 取消. 新增 waits for an add already
+ * sent.
  */
 @Composable
 internal fun RvAddNodeSheet(sheet: RvAddNodeSheet?, actions: RvInlineActions) {
@@ -104,7 +104,7 @@ private fun supporting(check: RvAddNodeCheck): String? = when (check) {
     else -> null
 }
 
-/** Why nothing can be added: no line is a share link (doona web's `nodes.linkInvalid`), the lines the core refused, or its error. */
+/** Why nothing can be added: no line is a share link (doona web's `nodes.linkInvalid`), the lines honk refused, or its error. */
 @Composable
 private fun error(check: RvAddNodeCheck): String? = when (check) {
     is RvAddNodeCheck.Refused ->
@@ -139,13 +139,12 @@ private fun listed(parts: List<String>): String {
 private fun sentences(parts: List<String>): String = parts.joinToString(if (LocalConfiguration.current.locales[0].language == "zh") "" else " ")
 
 /**
- * After an add: how many nodes it added and which groups took them, with 查看策略群組; Info when every line was added, an
- * error that also counts the lines it did not add when some were not, as an action that partly failed (the sheet said why
- * before 新增; the reason keeps to the groups, so it stays within the banner's lines at 2.0×).
+ * After an add: how many nodes it added and which groups took them, by honk's names, with 查看策略群組; Info when every
+ * line was added, an error that also counts the lines it did not add when some were not, as an action that partly failed
+ * (the sheet said why before 新增; the reason keeps to the groups, so it stays within the banner's lines at 2.0×).
  */
 @Composable
 internal fun rvAddedBanner(added: RvAddedNodes, onViewGroups: () -> Unit): RvNotice {
-    val names = added.groups.map { groupLabel(it) }
     val skipped = added.skipped.count + added.skipped.unread
     return RvNotice(
         if (skipped == 0) RvNoticeKind.Info else RvNoticeKind.Error,
@@ -154,24 +153,14 @@ internal fun rvAddedBanner(added: RvAddedNodes, onViewGroups: () -> Unit): RvNot
         } else {
             pluralStringResource(R.plurals.rv_addnode_added_partial, added.count, added.count, skipped)
         },
-        if (names.isEmpty()) null else stringResource(R.string.rv_addnode_joined, listed(names)),
+        if (added.groups.isEmpty()) null else stringResource(R.string.rv_addnode_joined, listed(added.groups)),
         stringResource(R.string.rv_addnode_view_groups),
         onViewGroups,
         reasonKeepWords = false,
     )
 }
 
-@Composable
-private fun groupLabel(name: RvGroupName): String = when (name) {
-    RvGroupName.Main -> stringResource(R.string.rv_main_node)
-    RvGroupName.Auto -> stringResource(R.string.rv_policy_group_auto)
-    RvGroupName.Streaming -> stringResource(R.string.rv_rule_streaming)
-    RvGroupName.Ai -> stringResource(R.string.rv_rule_ai)
-    is RvGroupName.Place -> stringResource(name.place.label)
-    is RvGroupName.Named -> name.name
-}
-
-/** The banner of a node the core would not delete, an error: why (the engine's error text), and 重試 deletes it again. */
+/** The banner of a node honk would not delete, an error: why (its error's text), and 重試 deletes it again. */
 @Composable
 internal fun rvNodeDeleteFailedBanner(failed: RvNodeDeleteFailed, onRetry: () -> Unit) = RvNotice(
     RvNoticeKind.Error,

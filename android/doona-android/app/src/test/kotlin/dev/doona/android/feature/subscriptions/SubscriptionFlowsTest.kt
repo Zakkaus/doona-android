@@ -193,11 +193,11 @@ class SubscriptionFlowsTest {
             entry<ActivityKey> { FirstRunGate(remember { FirstRunViewModel(engine, NO_NODES, Dispatchers.Unconfined) }, onAdd = { backStack.push(SubAddKey) }, frame = { it() }) { Text(ACTIVITY) } }
             entry<SubscriptionsKey> { key ->
                 SubscriptionsRoute(
-                    engine,
                     onBack = { backStack.pop(key) },
                     onOpen = { backStack.push(SubDetailKey(it)) },
                     onAdd = { backStack.push(SubAddKey) },
                     viewModel = remember { SubscriptionsViewModel(honk, io = Dispatchers.Unconfined) },
+                    nodes = remember { AddNodeViewModel(honk, HeldClipboard(), io = Dispatchers.Unconfined) },
                 )
             }
             entry<SubAddKey> { key ->

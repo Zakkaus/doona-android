@@ -16,18 +16,13 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.core.app.ApplicationProvider
 import dev.doona.android.R
-import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.StaticNodeDraft
-import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.rvShot
-import dev.doona.android.vpn.HonkFixtures
-import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -35,11 +30,12 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import kotlin.coroutines.CoroutineContext
 
 /**
  * 訂閱's 新增節點 and 刪除節點 as wired (`app-rv-addnode-*`, `app-rv-node-*`; approved panels s1125f-addnode-sheet and
- * -pages, the several-link stages of samples5 round 2): the sample engine with the core's static node commands
- * ([StaticNodesEngine]), through the route, the view model and the page, driven as the user drives them: the card's row
+ * -pages, the several-link stages of samples5 round 2): honk's sample profile with its inline nodes ([InlineHonk]),
+ * through the route, the view model and the page, driven as the user drives them: the card's row
  * tapped, the clipboard's row tapped, a line typed, 新增 tapped; a node's row held, 刪除節點 picked, the sheet's 刪除
  * tapped. The sheets and the menu are windows of their own, so those goldens capture every window, at the phone's size.
  * Window heights are each page's whole height, measured.
@@ -87,7 +83,7 @@ class AppRvAddNodeShotTest {
     @Config(qualifiers = EN)
     fun clipboardEn() = sheet("addnode-clipboard", { open(TOKYO) }, english = true)
 
-    // The clipboard's link taken: the name the core gives it.
+    // The clipboard's link taken: the name it is filed under.
     @Test
     @Config(qualifiers = ZH)
     fun readyLight() = sheet("addnode-ready", { paste(TOKYO) })
@@ -138,7 +134,7 @@ class AppRvAddNodeShotTest {
     @Config(qualifiers = EN)
     fun manyReadyEn() = sheet("addnode-many-ready", { paste(MANY) }, english = true)
 
-    // The core could not be asked: the engine's error under the field, the sheet kept.
+    // honk could not take the add: its error under the field, the sheet kept.
     @Test
     @Config(qualifiers = ZH)
     fun errorLight() = sheet("addnode-error", { failAdd() }) { failing() }
@@ -189,22 +185,22 @@ class AppRvAddNodeShotTest {
     @Config(qualifiers = MANY_ADDED_EN)
     fun manyAddedEn() = page("addnode-many-added", { add(MANY) }, english = true) { Subs() }
 
-    // Several links, one of which the core refused when adding although the preview took it: a warning naming both.
+    // Several links, one of which honk refused when adding although the sheet took it: a warning naming both.
     @Test
     @Config(qualifiers = PARTIAL)
-    fun partialLight() = page("addnode-partial", { add(MANY) }) { Subs(::refusing) }
+    fun partialLight() = page("addnode-partial", { add(MANY) }) { Subs(build = ::refusing) }
 
     @Test
     @Config(qualifiers = PARTIAL)
-    fun partialDark() = page("addnode-partial", { add(MANY) }, dark = true) { Subs(::refusing) }
+    fun partialDark() = page("addnode-partial", { add(MANY) }, dark = true) { Subs(build = ::refusing) }
 
     @Test
     @Config(qualifiers = PARTIAL_FS200)
-    fun partialFs200() = page("addnode-partial", { add(MANY) }, fontScale = RV_FS200) { Subs(::refusing) }
+    fun partialFs200() = page("addnode-partial", { add(MANY) }, fontScale = RV_FS200) { Subs(build = ::refusing) }
 
     @Test
     @Config(qualifiers = PARTIAL_EN)
-    fun partialEn() = page("addnode-partial", { add(MANY) }, english = true) { Subs(::refusing) }
+    fun partialEn() = page("addnode-partial", { add(MANY) }, english = true) { Subs(build = ::refusing) }
 
     // 東京 03 held: the node menu, 刪除節點 set apart at its end.
     @Test
@@ -240,7 +236,7 @@ class AppRvAddNodeShotTest {
     @Config(qualifiers = EN)
     fun deleteEn() = sheet("node-delete", { pickDelete() }, english = true) { seeded() }
 
-    // The sheet's 刪除 tapped and the core refused: the banner with why, and 重試.
+    // The sheet's 刪除 tapped and honk refused: the banner with why, and 重試.
     @Test
     @Config(qualifiers = DELETE_FAILED)
     fun deleteFailedLight() = page("node-delete-failed", { confirmDelete() }) { Subs { seeded(fails = true) } }
@@ -274,18 +270,18 @@ class AppRvAddNodeShotTest {
     @Config(qualifiers = EN)
     fun unreadEn() = sheet("addnode-unread", { paste(OVER_CAP) }, english = true)
 
-    // 新增 tapped while the core takes its time: the field and 新增 are held until it answers (round 2, fix 9).
+    // 新增 tapped while honk takes its time: the field and 新增 are held until it answers (round 2, fix 9).
     @Test
     @Config(qualifiers = ZH)
-    fun addingLight() = sheet("addnode-adding", { add(TOKYO) }, build = ::slow)
+    fun addingLight() = sheet("addnode-adding", { add(TOKYO) }, io = Never)
 
     @Test
     @Config(qualifiers = ZH)
-    fun addingDark() = sheet("addnode-adding", { add(TOKYO) }, dark = true, build = ::slow)
+    fun addingDark() = sheet("addnode-adding", { add(TOKYO) }, dark = true, io = Never)
 
     @Test
     @Config(qualifiers = EN)
-    fun addingEn() = sheet("addnode-adding", { add(TOKYO) }, english = true, build = ::slow)
+    fun addingEn() = sheet("addnode-adding", { add(TOKYO) }, english = true, io = Never)
 
     /** A whole page: its own window, every row inside it. */
     private fun page(
@@ -308,7 +304,8 @@ class AppRvAddNodeShotTest {
         dark: Boolean = false,
         fontScale: Float = 1f,
         english: Boolean = false,
-        build: () -> StaticNodesEngine = ::engine,
+        io: CoroutineDispatcher = Dispatchers.Unconfined,
+        build: () -> InlineHonk = ::honk,
     ) {
         // The sheet's dialog and the menu's popup are windows of their own, which read the font scale from the
         // configuration, as on a phone, not from the page's composition.
@@ -316,15 +313,16 @@ class AppRvAddNodeShotTest {
         compose.rvShot(name, dark, before = {
             before()
             waitForIdle()
-        }, fontScale = fontScale, prefix = APP, english = english, windows = true) { Subs(build) }
+        }, fontScale = fontScale, prefix = APP, english = english, windows = true) { Subs(io, build) }
     }
 
-    /** 訂閱 with its subscriptions from honk's RV sample profile; the 組態內 card reads [build]'s engine. */
+    /** 訂閱 on [build]'s honk, the 組態內 card reading it on [io]. */
     @Composable
-    private fun Subs(build: () -> StaticNodesEngine = ::engine) {
-        val engine = remember { build() }
-        val subscriptions = remember { SubscriptionsViewModel(HonkFixtures.rvSample(), clock = { RvData.nowEpochMs }, io = Dispatchers.Unconfined) }
-        SubscriptionsRoute(engine, onBack = {}, onOpen = {}, onAdd = {}, clock = { RvData.nowEpochMs }, viewModel = subscriptions)
+    private fun Subs(io: CoroutineDispatcher = Dispatchers.Unconfined, build: () -> InlineHonk = ::honk) {
+        val honk = remember { build() }
+        val subscriptions = remember { SubscriptionsViewModel(honk, clock = { RvData.nowEpochMs }, io = Dispatchers.Unconfined) }
+        val nodes = remember { AddNodeViewModel(honk, AndroidClipboardLinks(clipboard()), io) }
+        SubscriptionsRoute(onBack = {}, onOpen = {}, onAdd = {}, clock = { RvData.nowEpochMs }, viewModel = subscriptions, nodes = nodes)
     }
 
     /** The card's 新增節點 tapped, the clipboard holding [clip]. */
@@ -355,10 +353,10 @@ class AppRvAddNodeShotTest {
         waitForIdle()
     }
 
-    /** The link pasted while the core answers, then 新增 tapped as it stops answering. */
+    /** The link pasted, then 新增 tapped as honk fails every add. */
     private fun ComposeContentTestRule.failAdd() {
         paste(TOKYO)
-        failingEngine?.failing = ErrorCode.Internal
+        failingHonk?.addStatus = 500
         onNodeWithText(string(R.string.rv_add_import)).performClick()
         waitForIdle()
     }
@@ -380,21 +378,23 @@ class AppRvAddNodeShotTest {
         waitForIdle()
     }
 
-    /** The engine of [failAdd], kept to make it fail after the preview. */
-    private var failingEngine: StaticNodesEngine? = null
+    /** The honk of [failAdd], kept to make it fail once the link is in the field. */
+    private var failingHonk: InlineHonk? = null
 
-    private fun failing() = engine().also { failingEngine = it }
+    private fun failing() = honk().also { failingHonk = it }
 
-    /** An add that never answers. */
-    private fun slow() = engine().apply { addGate = CompletableDeferred() }
+    /** honk refuses Singapore's link although the sheet took it. */
+    private fun refusing() = honk().apply { refused += SINGAPORE }
 
-    /** The add refuses Singapore although the preview took it. */
-    private fun refusing() = engine().apply { refused += SINGAPORE }
+    /** 東京 03 already added; with [fails] honk refuses to delete it. */
+    private fun seeded(fails: Boolean = false) = honk().apply {
+        add(TOKYO_NAME, TOKYO)
+        if (fails) deleteStatus = 500
+    }
 
-    /** 東京 03 already added; with [fails] the core refuses to delete it. */
-    private fun seeded(fails: Boolean = false) = engine().apply {
-        runBlocking { addStaticNodes(listOf(StaticNodeDraft.Link(TOKYO))) }
-        if (fails) deleteFailing = ErrorCode.Internal
+    /** A dispatcher that never runs what it is given: honk's answer never comes. */
+    private object Never : CoroutineDispatcher() {
+        override fun dispatch(context: CoroutineContext, block: Runnable) = Unit
     }
 
     private companion object {
@@ -427,10 +427,10 @@ class AppRvAddNodeShotTest {
         /** Two lines past the cap, every one a link of its own. */
         val OVER_CAP = (1..ADD_NODE_LINES + 2).joinToString("\n") { "vless://b831381d-6324-4d53-ad4f-8cda48b30811@203.0.113.24:${1000 + it}?security=tls#%E6%9D%B1%E4%BA%AC%20$it" }
 
-        /** The regions the core reads from these names. */
+        /** The regions these names give, whose groups take them. */
         val REGIONS = mapOf("東京" to "JP", "新加坡" to "SG", "法蘭克福" to "DE")
 
-        fun engine() = StaticNodesEngine(rvSampleEngine()) { name -> REGIONS.entries.firstOrNull { name.startsWith(it.key) }?.value }
+        fun honk() = InlineHonk { name -> REGIONS.entries.firstOrNull { name.startsWith(it.key) }?.value }
 
         fun clipboard(): ClipboardManager = ApplicationProvider.getApplicationContext<android.content.Context>().getSystemService(ClipboardManager::class.java)
 

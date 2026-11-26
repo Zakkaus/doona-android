@@ -14,7 +14,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.app.nativeApi
 import dev.doona.android.designsystem.rv.LocalRvUpdating
-import dev.doona.android.engine.Engine
 import dev.doona.android.feature.nodes.ui.LocalRvRowActions
 import dev.doona.android.feature.nodes.ui.RvRowActions
 import kotlinx.coroutines.flow.Flow
@@ -23,11 +22,11 @@ import kotlinx.coroutines.flow.Flow
  * 訂閱: the subscriptions, which open their page ([onOpen], also the menu's 編輯) and lead to 新增訂閱 ([onAdd]); under
  * them the 組態內 card, whose nodes open their page ([onOpenNode]) and whose 新增節點 opens its sheet. After an add the
  * banner's 查看策略群組 runs [onViewGroups]. End dates count from [clock]. The subscriptions are honk's, read through the
- * app's [nativeApi] unless a caller (a test) gives its own [viewModel].
+ * app's [nativeApi] unless a caller (a test) gives its own [viewModel]; so are the 組態內 card's nodes, unless it gives
+ * its own [nodes].
  */
 @Composable
 internal fun SubscriptionsRoute(
-    engine: Engine,
     onBack: () -> Unit,
     onOpen: (String) -> Unit,
     onAdd: () -> Unit,
@@ -35,9 +34,11 @@ internal fun SubscriptionsRoute(
     onViewGroups: () -> Unit = {},
     clock: () -> Long = System::currentTimeMillis,
     viewModel: SubscriptionsViewModel = nativeApi().let { api -> viewModel(factory = viewModelFactory { initializer { SubscriptionsViewModel(api, clock) } }) },
+    nodes: AddNodeViewModel = nativeApi().let { api ->
+        val clipboard = LocalContext.current.applicationContext.getSystemService(ClipboardManager::class.java)
+        viewModel(factory = viewModelFactory { initializer { AddNodeViewModel(api, AndroidClipboardLinks(clipboard)) } })
+    },
 ) {
-    val clipboard = LocalContext.current.applicationContext.getSystemService(ClipboardManager::class.java)
-    val nodes: AddNodeViewModel = viewModel(factory = viewModelFactory { initializer { AddNodeViewModel(engine, AndroidClipboardLinks(clipboard)) } })
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val inline by nodes.uiState.collectAsStateWithLifecycle()
     val actions = remember(viewModel, nodes, onBack, onOpen, onAdd) {
@@ -65,7 +66,7 @@ internal fun SubscriptionsRoute(
         RvInlineActions(nodes::open, nodes::close, nodes::edit, nodes::paste, nodes::add, onOpenNode, nodes::delete, nodes::confirmDelete, onViewGroups)
     }
     val banner = inline.deleteFailed?.let { rvNodeDeleteFailedBanner(it) { nodes.confirmDelete(it.id) } } ?: inline.added?.let { rvAddedBanner(it, onViewGroups) }
-    // No 複製分享連結: the core keeps a share link only for a share-link subscription's node, never a 組態內 one.
+    // No 複製分享連結: honk gives no node's share link.
     CompositionLocalProvider(LocalRvUpdating provides state.updating, LocalRvRowActions provides remember(nodes) { RvRowActions(deleteNode = nodes::delete) }) {
         RvSubsPage(state.page, actions, loading = state.loading, extra = { RvInlineCard(inline.nodes, inlineActions) }, extraKeepsPage = inline.nodes.isNotEmpty(), banner = banner, addNode = inlineActions.add)
         RvAddNodeSheet(inline.sheet, inlineActions)

@@ -149,7 +149,6 @@ internal fun DoonaApp(
             entry<EffectiveConfigKey> { key -> EffectiveConfigRoute(engine, onBack = { backStack.pop(key) }, onRules = { backStack.push(RulesKey) }) }
             entry<SubscriptionsKey> { key ->
                 SubscriptionsRoute(
-                    engine,
                     onBack = { backStack.pop(key) },
                     onOpen = { backStack.push(SubDetailKey(it)) },
                     onAdd = { backStack.push(SubAddKey) },

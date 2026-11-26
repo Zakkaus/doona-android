@@ -25,10 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import dev.doona.android.R
 import dev.doona.android.designsystem.theme.DoonaTheme
-import dev.doona.android.engine.Engine
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.fake.FakeEngine
-import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.feature.localnetwork.LocalNetworkAccess
 import dev.doona.android.feature.localnetwork.LocalNetworkHost
 import dev.doona.android.feature.localnetwork.LocalNetworkPrompts
@@ -475,17 +473,18 @@ class AppRvSubsShotTest {
         ) { Add(answer) }
     }
 
-    /** 訂閱 on [honk]; the 組態內 card under the subscriptions still reads [engine]. */
+    /** 訂閱 on [honk], the 組態內 card under the subscriptions too. */
     @Composable
-    private fun Subs(engine: () -> Engine = ::rvSampleEngine, honk: () -> FakeHonk = ::sampleHonk) {
-        val sample = remember { engine() }
-        val viewModel = remember { SubscriptionsViewModel(honk(), clock = { RvData.nowEpochMs }, io = Dispatchers.Unconfined) }
-        SubscriptionsRoute(sample, onBack = {}, onOpen = {}, onAdd = {}, clock = { RvData.nowEpochMs }, viewModel = viewModel)
+    private fun Subs(honk: () -> FakeHonk = ::sampleHonk) {
+        val api = remember { honk() }
+        val viewModel = remember { SubscriptionsViewModel(api, clock = { RvData.nowEpochMs }, io = Dispatchers.Unconfined) }
+        val nodes = remember { AddNodeViewModel(api, HeldClipboard(), io = Dispatchers.Unconfined) }
+        SubscriptionsRoute(onBack = {}, onOpen = {}, onAdd = {}, clock = { RvData.nowEpochMs }, viewModel = viewModel, nodes = nodes)
     }
 
     /** No subscription and no node of the configuration's own. */
     @Composable
-    private fun SubsEmpty() = Subs({ FakeEngine(subscriptions = emptyList()) }) {
+    private fun SubsEmpty() = Subs {
         sampleHonk().apply { on("GET", "/api/v1/providers", 200, HonkFixtures.body("providers/empty")) }
     }
 

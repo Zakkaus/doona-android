@@ -52,7 +52,7 @@ internal fun OldShellApp(engine: Engine, installedApps: InstalledApps, start: Li
                 entry<GroupKey> { key ->
                     GroupRoute(key.groupId, onBack = { backStack.pop(key) })
                 }
-                entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, onBack = { backStack.pop(key) }, onOpen = {}, onAdd = {}) }
+                entry<SubscriptionsKey> { key -> SubscriptionsRoute(onBack = { backStack.pop(key) }, onOpen = {}, onAdd = {}) }
                 entry<PerAppKey> { key -> PerAppRoute(engine, installedApps, onConnect = {}, onAddSubscription = {}, onCheckUpdate = {}, onBack = { backStack.pop(key) }) }
                 // 設定 is an RV page now (RvSettingsScreen), with goldens of its own.
                 entry<SettingsKey> {}

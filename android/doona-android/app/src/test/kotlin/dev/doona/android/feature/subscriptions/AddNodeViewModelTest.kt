@@ -2,18 +2,19 @@ package dev.doona.android.feature.subscriptions
 
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.Group
-import dev.doona.android.engine.GroupKind
-import dev.doona.android.engine.StaticNodeReason
-import dev.doona.android.engine.StaticNodeResult
-import dev.doona.android.engine.fake.rvSampleEngine
-import kotlinx.coroutines.CompletableDeferred
+import dev.doona.android.vpn.honk.Node
+import dev.doona.android.vpn.honk.Provider
+import dev.doona.android.vpn.honk.ProviderKind
+import dev.doona.android.vpn.honk.ProviderStatus
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -32,11 +33,12 @@ class AddNodeViewModelTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun TestScope.model(engine: StaticNodesEngine = engine(), clipboard: ClipboardLinks = HeldClipboard()) = AddNodeViewModel(engine, clipboard).also { vm ->
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
-    }
+    private fun TestScope.model(honk: InlineHonk = honk(), clipboard: ClipboardLinks = HeldClipboard(), io: CoroutineDispatcher = UnconfinedTestDispatcher(testScheduler)) =
+        AddNodeViewModel(honk, clipboard, io).also { vm ->
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        }
 
-    private fun engine() = StaticNodesEngine(rvSampleEngine(), regionOf = { name -> REGIONS.entries.firstOrNull { name.startsWith(it.key) }?.value })
+    private fun honk() = InlineHonk { name -> REGIONS.entries.firstOrNull { name.startsWith(it.key) }?.value }
 
     private val AddNodeViewModel.sheet get() = uiState.value.sheet!!
 
@@ -61,69 +63,55 @@ class AddNodeViewModelTest {
     }
 
     @Test
-    fun previewsOneLinkByTheNameTheCoreGives() = runTest {
-        val engine = engine()
-        val vm = model(engine)
+    fun oneLinkIsNamedByWhatItCarriesWithoutAskingHonk() = runTest {
+        val honk = honk()
+        val vm = model(honk)
         vm.open()
         vm.edit(TOKYO)
         assertEquals(RvAddNodeCheck.One("東京 03"), vm.sheet.check)
-        assertEquals(listOf(listOf(TOKYO)), engine.previews)
-        assertTrue(engine.fake.groups.value.none { group -> group.members.any { it.subscriptionId == null && !it.isGroup } })
+        assertTrue(honk.links.isEmpty())
     }
 
     @Test
-    fun aLineThatIsNoLinkIsRefusedWithoutAskingTheCore() = runTest {
-        val engine = engine()
-        val vm = model(engine)
+    fun aLineThatIsNoLinkIsRefused() = runTest {
+        val vm = model()
         vm.open()
         vm.edit("203.0.113.24:443")
         assertEquals(RvAddNodeCheck.Refused(RvSkipped(notLink = listOf(1))), vm.sheet.check)
-        assertTrue(engine.previews.isEmpty())
         assertFalse(vm.sheet.check.addable)
     }
 
     @Test
-    fun previewsSeveralLinesWithTheCountAndTheLinesSkipped() = runTest {
-        val engine = engine()
-        val vm = model(engine)
+    fun severalLinesGiveTheCountAndTheLinesSkipped() = runTest {
+        val vm = model()
         vm.open()
-        vm.edit("$TOKYO\n\n$SINGAPORE\nftp://x.example/a\n203.0.113.24:443")
-        assertEquals(RvAddNodeCheck.Many(2, RvSkipped(notLink = listOf(4, 5))), vm.sheet.check)
-        assertEquals(listOf(listOf(TOKYO, SINGAPORE, "ftp://x.example/a")), engine.previews)
-    }
-
-    @Test
-    fun aFailedPreviewSaysWhy() = runTest {
-        val engine = engine().apply { failing = ErrorCode.Busy }
-        val vm = model(engine)
-        vm.open()
-        vm.edit(TOKYO)
-        assertEquals(RvAddNodeCheck.Failed(ErrorCode.Busy), vm.sheet.check)
-        assertFalse(vm.sheet.check.addable)
+        vm.edit("$TOKYO\n\n$SINGAPORE\nftp://x.example/a\n203.0.113.24:443\n$TOKYO")
+        // ftp:// may be a link honk reads; only honk can say. The second 東京 03 would take a name in use.
+        assertEquals(RvAddNodeCheck.Many(3, RvSkipped(notLink = listOf(5), duplicate = listOf(6))), vm.sheet.check)
     }
 
     @Test
     fun addsListsTheNodesAndNamesTheGroupsThatTookThem() = runTest {
-        val engine = engine()
-        val vm = model(engine)
+        val honk = honk()
+        val vm = model(honk)
         vm.open()
         vm.edit("$TOKYO\n$SINGAPORE\nnot a link")
         vm.add()
+        assertEquals(listOf(TOKYO, SINGAPORE), honk.links)
         val state = vm.uiState.value
         assertNull(state.sheet)
         assertEquals(listOf("東京 03", "新加坡 05"), state.nodes.map { it.name })
         assertEquals(listOf(RvPlace.JP, RvPlace.SG), state.nodes.map { it.place })
         assertEquals(listOf("VLESS", "Trojan"), state.nodes.map { it.protocol })
         assertTrue(state.nodes.all { it.subscription.isEmpty() })
-        // The sample's template: Proxy (the main group), Auto, Streaming, AI, then HK, TW, JP and US; no Singapore group.
-        val groups = listOf(RvGroupName.Main, RvGroupName.Auto, RvGroupName.Streaming, RvGroupName.Ai, RvGroupName.Place(RvPlace.JP))
-        assertEquals(RvAddedNodes(2, groups, RvSkipped()), state.added)
+        // honk's groups by their names, in honk's order; the sample has no Singapore group.
+        assertEquals(RvAddedNodes(2, listOf("Proxy", "Auto", "Streaming", "AI", "JP"), RvSkipped()), state.added)
     }
 
     @Test
-    fun aPartialAddListsWhatItAddedAndTheLinesItSkipped() = runTest {
-        val engine = engine().apply { refused += SINGAPORE }
-        val vm = model(engine)
+    fun aPartialAddListsWhatItAddedAndTheLinesHonkRefused() = runTest {
+        val honk = honk().apply { refused += SINGAPORE }
+        val vm = model(honk)
         vm.open()
         vm.edit("$TOKYO\n$SINGAPORE\nnot a link")
         assertEquals(RvAddNodeCheck.Many(2, RvSkipped(notLink = listOf(3))), vm.sheet.check)
@@ -131,37 +119,37 @@ class AddNodeViewModelTest {
         val state = vm.uiState.value
         assertNull(state.sheet)
         assertEquals(listOf("東京 03"), state.nodes.map { it.name })
-        // Line 3 was skipped as the sheet said before 新增; only line 2, refused by the add, is news.
-        assertEquals(RvSkipped(duplicate = listOf(2)), state.added?.skipped)
+        // Line 3 was skipped as the sheet said before 新增; only line 2, refused by honk, is news.
+        assertEquals(RvSkipped(other = listOf(2)), state.added?.skipped)
         assertEquals(1, state.added?.count)
     }
 
     @Test
     fun anAddThatTakesNothingKeepsTheSheetAndSaysWhy() = runTest {
-        val engine = engine().apply { refused += TOKYO }
-        val vm = model(engine)
+        val honk = honk().apply { refused += TOKYO }
+        val vm = model(honk)
         vm.open()
         vm.edit(TOKYO)
         vm.add()
-        assertEquals(RvAddNodeCheck.Refused(RvSkipped(duplicate = listOf(1))), vm.sheet.check)
+        assertEquals(RvAddNodeCheck.Refused(RvSkipped(other = listOf(1))), vm.sheet.check)
         assertFalse(vm.sheet.adding)
         assertNull(vm.uiState.value.added)
     }
 
     @Test
-    fun aFailedAddKeepsTheSheetWithTheEnginesReason() = runTest {
-        val engine = engine()
-        val vm = model(engine)
+    fun aFailedAddKeepsTheSheetWithHonksReason() = runTest {
+        val honk = honk()
+        val vm = model(honk)
         vm.open()
         vm.edit(TOKYO)
-        engine.failing = ErrorCode.Internal
+        honk.addStatus = 500
         vm.add()
         assertEquals(RvAddNodeCheck.Failed(ErrorCode.Internal), vm.sheet.check)
         assertTrue(vm.uiState.value.nodes.isEmpty())
     }
 
     @Test
-    fun aLinkAddedBeforeIsADuplicate() = runTest {
+    fun aNameInUseIsADuplicate() = runTest {
         val vm = model()
         vm.open()
         vm.edit(TOKYO)
@@ -189,17 +177,17 @@ class AddNodeViewModelTest {
 
     @Test
     fun aRefusedDeleteKeepsTheNodeWithTheBannerAndRetries() = runTest {
-        val engine = engine()
-        val vm = model(engine)
+        val honk = honk()
+        val vm = model(honk)
         vm.open()
         vm.edit(TOKYO)
         vm.add()
         val id = vm.uiState.value.nodes.single().id
-        engine.deleteFailing = ErrorCode.Internal
+        honk.deleteStatus = 500
         vm.confirmDelete(id)
         assertEquals(RvNodeDeleteFailed(id, "東京 03", ErrorCode.Internal), vm.uiState.value.deleteFailed)
         assertEquals(1, vm.uiState.value.nodes.size)
-        engine.deleteFailing = null
+        honk.deleteStatus = null
         vm.confirmDelete(id)
         assertNull(vm.uiState.value.deleteFailed)
         assertTrue(vm.uiState.value.nodes.isEmpty())
@@ -215,6 +203,16 @@ class AddNodeViewModelTest {
     }
 
     @Test
+    fun aLineIsNamedByItsFragmentElseItsHostElseItself() {
+        assertEquals("東京 03", AddNodeLine(1, TOKYO).name)
+        assertEquals("203.0.113.40", AddNodeLine(1, "trojan://pass@203.0.113.40:443?sni=a.example").name)
+        assertEquals("203.0.113.40", AddNodeLine(1, "trojan://pass@203.0.113.40:443#%20").name)
+        assertEquals("eyJ2IjoiMiJ9", AddNodeLine(1, "vmess://eyJ2IjoiMiJ9").name)
+        assertEquals("ss:/", AddNodeLine(1, "ss:/").name)
+        assertEquals(64, AddNodeLine(1, "ss://a@h:1#" + "x".repeat(80)).name.length)
+    }
+
+    @Test
     fun linesPastTheCapAreCountedAsNotRead() = runTest {
         val vm = model()
         vm.open()
@@ -227,21 +225,23 @@ class AddNodeViewModelTest {
 
     @Test
     fun anAddThatSucceedsStillCountsTheLinesPastTheCap() = runTest {
-        val vm = model()
+        val honk = honk()
+        val vm = model(honk)
         vm.open()
         vm.edit((listOf(TOKYO) + List(ADD_NODE_LINES - 1) { "not a link" } + SINGAPORE).joinToString("\n"))
         vm.add()
         // The sheet closes, so the banner is what says the line past the cap was never read.
         val state = vm.uiState.value
         assertNull(state.sheet)
+        assertEquals(listOf(TOKYO), honk.links)
         assertEquals(1, state.added?.count)
         assertEquals(RvSkipped(unread = 1), state.added?.skipped)
     }
 
     @Test
     fun anAddsLateResultLeavesASheetOpenedSince() = runTest {
-        val engine = engine().apply { addGate = CompletableDeferred() }
-        val vm = model(engine)
+        val vm = model(io = StandardTestDispatcher(testScheduler))
+        runCurrent()
         vm.open()
         vm.edit(TOKYO)
         vm.add()
@@ -251,52 +251,39 @@ class AddNodeViewModelTest {
         vm.close()
         vm.open()
         vm.edit(SINGAPORE)
-        engine.addGate!!.complete(Unit)
+        runCurrent()
         // The first add's nodes are in and its banner shows, but the new sheet stays as the user left it.
         val state = vm.uiState.value
         assertEquals(SINGAPORE, state.sheet?.text)
         assertFalse(state.sheet!!.adding)
         assertEquals(RvAddNodeCheck.One("新加坡 05"), state.sheet.check)
         assertEquals(1, state.added?.count)
+        assertEquals(listOf("東京 03"), state.nodes.map { it.name })
     }
 
     @Test
     fun anAddsLateFailureLeavesASheetOpenedSince() = runTest {
-        val engine = engine().apply { addGate = CompletableDeferred() }
-        val vm = model(engine)
+        val honk = honk()
+        val vm = model(honk, io = StandardTestDispatcher(testScheduler))
+        runCurrent()
         vm.open()
         vm.edit(TOKYO)
         vm.add()
         vm.close()
         vm.open()
-        engine.failing = ErrorCode.Internal
-        engine.addGate!!.complete(Unit)
+        honk.addStatus = 500
+        runCurrent()
         assertEquals(RvAddNodeSheet(), vm.sheet)
         assertNull(vm.uiState.value.added)
     }
 
     @Test
-    fun theCoresReasonsSortTheSkippedLines() {
-        val lines = addNodeLines("a://1\nb://2\nc://3\nd://4\ne://5\nplain")
-        val results = listOf(
-            StaticNodeResult.Invalid(StaticNodeReason.Link),
-            StaticNodeResult.Invalid(StaticNodeReason.Protocol),
-            StaticNodeResult.Invalid(StaticNodeReason.Credentials),
-            StaticNodeResult.Unsupported(StaticNodeReason.Protocol),
-            StaticNodeResult.Duplicate("x"),
-        )
-        val (taken, skipped) = sortRows(lines, results)
-        assertTrue(taken.isEmpty())
-        // A link or protocol the core cannot read is no share link; any other reason, and an unsupported one, is other.
-        assertEquals(RvSkipped(notLink = listOf(1, 2, 6), duplicate = listOf(5), other = listOf(3, 4)), skipped)
-    }
-
-    @Test
-    fun aGroupTheUserWroteKeepsItsName() {
-        fun group(id: String, name: String) = Group(id, name, GroupKind.Selector, emptyList(), Group.Selection(null, pinned = false))
-        assertEquals(RvGroupName.Main, rvGroupName(group("main", "Proxy"), "main"))
-        assertEquals(RvGroupName.Named("Work"), rvGroupName(group("g9", "Work"), "main"))
-        assertEquals(RvGroupName.Auto, rvGroupName(group("g1", "Auto"), "main"))
+    fun inlineNodesAreTheOnesOfNoProviderOrTheInlineOne() {
+        fun node(id: String, provider: String?) = Node(id, id, "vless", subscriptionTag = null, providerId = provider, groupIds = emptyList(), health = emptyList())
+        fun provider(id: String, kind: ProviderKind) = Provider(id, id, kind, null, 0, null, null, null, ProviderStatus.Ok, null)
+        val nodes = listOf(node("a", null), node("b", "inline"), node("c", "s1"), node("d", "f1"))
+        val providers = listOf(provider("inline", ProviderKind.Inline), provider("s1", ProviderKind.Subscription), provider("f1", ProviderKind.File))
+        assertEquals(listOf("a", "b"), inlineNodes(nodes, providers).map { it.id })
     }
 
     private companion object {
