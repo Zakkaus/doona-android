@@ -35,7 +35,7 @@ internal fun RvLabScreen(performance: Boolean, onBack: () -> Unit = {}) {
     var on by remember { mutableStateOf(performance) }
     RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
-        Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
             RvSettingsCard {
                 RvSwitchRow(
                     R.drawable.rv_sym_speed,
@@ -49,7 +49,7 @@ internal fun RvLabScreen(performance: Boolean, onBack: () -> Unit = {}) {
                     onChange = { on = it },
                 )
             }
-            RvFootnote(sampleText("這些選項可能變動或移除。", "这些选项可能变动或移除。", "These options may change or go away."), inset = RvSpace.gutter - RvSettingsSpace.margin)
+            RvFootnote(sampleText("這些選項可能變動或移除。", "这些选项可能变动或移除。", "These options may change or go away."), inset = RvSpace.gutter - RvSpace.gutter)
         }
     }
 }

@@ -44,7 +44,7 @@ internal fun RvSettingsText(
 }
 
 /**
- * A settings page's body: its section titles, cards and footnotes on [RvSettingsSpace.margin] from each side. A
+ * A settings page's body: its section titles, cards and footnotes on [RvSpace.gutter] from each side. A
  * [RvFootnote] in it takes that margin off its own inset, so a page never passes one.
  */
 @Composable
@@ -53,8 +53,8 @@ internal fun RvSettingsColumn(
     verticalArrangement: Arrangement.Vertical = Arrangement.Top,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    CompositionLocalProvider(LocalRvColumnInset provides RvSettingsSpace.margin) {
-        Column(modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin), verticalArrangement, content = content)
+    CompositionLocalProvider(LocalRvColumnInset provides RvSpace.gutter) {
+        Column(modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter), verticalArrangement, content = content)
     }
 }
 
@@ -120,7 +120,7 @@ internal fun RvSettingsRow(
             .fillMaxWidth()
             .testTag(RvPart.ROW)
             .heightIn(min = if (subtitle == null) RvSize.rowOneLine else RvSize.rowTwoLine)
-            .padding(horizontal = RvSettingsSpace.rowInset),
+            .padding(horizontal = RvSpace.rowPadding),
         contentAlignment = Alignment.CenterStart,
     ) {
         val text = rowText(SettingsRowWords(title, subtitle, titleKeepWords, subtitleKeepWords, subtitleLines, titleWhole, subtitleWhole), code, titleLines, error, SettingsRowEnds(icon, action, trailing, remove, removeLabel))
@@ -170,11 +170,11 @@ private fun rowText(words: SettingsRowWords, code: Boolean, titleLines: Int, err
             }
         }
         ends.action?.let {
-            Spacer(Modifier.width(RvSettingsSpace.trailingGap))
+            Spacer(Modifier.width(RvSpace.trailingGap))
             Tall(line, top, content = it)
         }
         (rvRemoveTrailing(ends.remove, ends.removeLabel) ?: ends.trailing)?.let {
-            Spacer(Modifier.width(RvSettingsSpace.trailingGap))
+            Spacer(Modifier.width(RvSpace.trailingGap))
             FirstLine(line, it)
         }
     }

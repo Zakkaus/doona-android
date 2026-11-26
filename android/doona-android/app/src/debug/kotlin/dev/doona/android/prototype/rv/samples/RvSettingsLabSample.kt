@@ -100,7 +100,7 @@ internal fun RvSettingsLabSample(
         rvUpdateNotice(update, version, routes.release)?.let {
             RvBanner(it, Modifier.padding(start = RvSpace.gutter, top = RvSpace.sectionAbove, end = RvSpace.gutter))
         }
-        Column(Modifier.fillMaxWidth().padding(horizontal = RvSettingsSpace.margin)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
             ConnectionGroup(state, onChange, routes)
             SubscriptionGroup(state, onChange)
             AppearanceGroup(state, onOpenTheme, routes.language)
@@ -199,7 +199,7 @@ private fun ConnectionGroup(state: RvSettingsState, onChange: (RvSettingsState) 
         RvSwitchRow(R.drawable.rv_settings_ic_notifications, stringResource(R.string.rv_settings_notify_drop), state.notifyOnDrop, onChange = { onChange(state.copy(notifyOnDrop = it)) })
         RvSettingsNavRow(stringResource(R.string.rv_settings_per_app), R.drawable.rv_sym_apps, routes.perApp, perAppValue(state.perApp))
     }
-    RvFootnote(stringResource(R.string.rv_settings_connection_footer), inset = RvSpace.gutter - RvSettingsSpace.margin)
+    RvFootnote(stringResource(R.string.rv_settings_connection_footer), inset = RvSpace.gutter - RvSpace.gutter)
 }
 
 @Composable

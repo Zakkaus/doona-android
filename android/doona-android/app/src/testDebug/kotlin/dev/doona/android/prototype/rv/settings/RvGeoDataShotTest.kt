@@ -25,7 +25,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvControlSize
 import dev.doona.android.designsystem.rv.RvFormat
 import dev.doona.android.designsystem.rv.RvPart
-import dev.doona.android.designsystem.rv.RvSettingsSpace
+import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.feature.model.RvGeoData
 import dev.doona.android.feature.model.RvGeoUpdate
@@ -260,7 +260,7 @@ class RvGeoDataShotTest {
             val button = compose.onNode(hasText(rvText(label)) and hasClickAction()).getBoundsInRoot()
             assertEquals("$label top", title.top.value, button.top.value, HALF_DP)
             assertEquals("$label top as the disc's", disc.top.value, button.top.value, HALF_DP)
-            assertEquals("$label end", (row.right - RvSettingsSpace.rowInset).value, button.right.value, HALF_DP)
+            assertEquals("$label end", (row.right - RvSpace.rowPadding).value, button.right.value, HALF_DP)
             assertEquals("$label height", RvControlSize.secondary.value, (button.bottom - button.top).value, HALF_DP)
         }
     }
