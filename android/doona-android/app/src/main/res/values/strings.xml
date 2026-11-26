@@ -89,6 +89,10 @@
     <string name="error_dns_failed">DNS lookup failed</string>
     <string name="error_storage_full">Storage is full</string>
     <string name="error_write_failed">Could not write the data file</string>
+    <string name="error_conflict">A newer configuration was applied</string>
+    <string name="error_source_limit">Too many or too large files</string>
+    <string name="error_non_native_source">Not a honk configuration</string>
+    <string name="error_activation_failed">The configuration could not be activated</string>
     <string name="local_network_ask_title">Allow local network access</string>
     <string name="local_network_ask_body">doona needs this permission to reach subscriptions and nodes on your local network.</string>
     <string name="local_network_ask_continue">Continue</string>

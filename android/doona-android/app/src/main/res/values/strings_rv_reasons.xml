@@ -14,5 +14,9 @@
     <string name="rv_reason_dns_failed">The DNS lookup failed.</string>
     <string name="rv_reason_storage_full">The phone\'s storage is full.</string>
     <string name="rv_reason_write_failed">doona could not write its data file.</string>
+    <string name="rv_reason_conflict">A newer configuration was applied first.</string>
+    <string name="rv_reason_source_limit">There are too many files, or they are too large.</string>
+    <string name="rv_reason_non_native_source">It is not a honk configuration.</string>
+    <string name="rv_reason_activation_failed">The configuration could not be activated.</string>
     <string name="rv_sentences">%1$s %2$s</string>
 </resources>

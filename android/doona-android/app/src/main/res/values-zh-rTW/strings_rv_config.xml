@@ -71,4 +71,18 @@
     <string name="rv_template_group_cn">回國節點</string>
     <string name="rv_config_create">新增設定檔</string>
     <string name="rv_config_kind_note">%1$s：%2$s</string>
+    <string name="rv_config_read_failed">無法讀取設定檔</string>
+    <string name="rv_config_apply_failed">無法套用</string>
+    <string name="rv_config_export_title">匯出設定檔？</string>
+    <string name="rv_config_export_body">檔案可能含有密碼與金鑰。</string>
+    <string name="rv_config_export_confirm">匯出</string>
+    <string name="rv_config_export_archive">完整封存</string>
+    <string name="rv_config_export_archive_line">每個檔案原樣保留。</string>
+    <string name="rv_config_export_portable">可攜版本</string>
+    <string name="rv_config_export_portable_line">在另一台裝置上也能直接載入。</string>
+    <string name="rv_config_export_refused_title">無法匯出可攜版本</string>
+    <string name="rv_config_export_refused_reason">設定檔用到範圍外的檔案：%1$s。</string>
+    <string name="rv_config_export_archive_action">改為匯出完整封存</string>
+    <string name="rv_config_export_partial_title">封存未包含部分檔案</string>
+    <string name="rv_config_export_partial_reason">設定檔仍指向 %1$s，請另外複製這些檔案。</string>
 </resources>

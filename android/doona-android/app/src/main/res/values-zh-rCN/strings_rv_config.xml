@@ -71,4 +71,18 @@
     <string name="rv_template_group_cn">回国节点</string>
     <string name="rv_config_create">新建配置文件</string>
     <string name="rv_config_kind_note">%1$s：%2$s</string>
+    <string name="rv_config_read_failed">无法读取配置文件</string>
+    <string name="rv_config_apply_failed">无法应用</string>
+    <string name="rv_config_export_title">导出配置文件？</string>
+    <string name="rv_config_export_body">文件可能含有密码与密钥。</string>
+    <string name="rv_config_export_confirm">导出</string>
+    <string name="rv_config_export_archive">完整归档</string>
+    <string name="rv_config_export_archive_line">每个文件原样保留。</string>
+    <string name="rv_config_export_portable">可移植版本</string>
+    <string name="rv_config_export_portable_line">在另一台设备上也能直接加载。</string>
+    <string name="rv_config_export_refused_title">无法导出可移植版本</string>
+    <string name="rv_config_export_refused_reason">配置文件用到范围外的文件：%1$s。</string>
+    <string name="rv_config_export_archive_action">改为导出完整归档</string>
+    <string name="rv_config_export_partial_title">归档未包含部分文件</string>
+    <string name="rv_config_export_partial_reason">配置文件仍指向 %1$s，请另外复制这些文件。</string>
 </resources>
