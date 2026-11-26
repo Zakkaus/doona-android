@@ -142,7 +142,7 @@ class SubAddViewModelTest {
     }
 
     @Test
-    fun `honk's refusals of an add show their reasons and keep what was typed`() = runTest {
+    fun `the refusals honk gives an add show their reasons and keep what was typed`() = runTest {
         val answers = listOf(
             Triple(409, CONFLICT, RvAddFailure.Unreachable),
             Triple(413, HonkFixtures.body("errors/request-too-large"), RvAddFailure.TooLarge),
@@ -280,7 +280,7 @@ class SubAddViewModelTest {
      * groups need not name them).
      */
     @Test
-    fun `the done card counts honk's nodes of the new provider`() = runTest {
+    fun `the done card counts the nodes honk holds of the new provider`() = runTest {
         val nodes = listOf(node("a", "s9", "vless"), node("b", "s1", "shadowsocks"), node("c", "s9", "trojan"), node("d", null, "shadowsocks"), node("e", "s9", "vless"))
         honk.on("GET", "/api/v1/nodes", 200, """{"nodes":[${nodes.joinToString(",")}],"next_cursor":null}""")
         val vm = page()

@@ -72,32 +72,34 @@ class NodesRouteTest {
         val name: String = "Proxy",
         val fallback: String = name,
     ) : NativeApi {
-        override fun call(method: String, path: String, body: String?, headers: Map<String, String>): NativeResponse = when {
-            method == "GET" && path == "/api/v1/nodes" -> if (readsFail) NativeResponse(500, ERROR) else ok("""{"nodes":[${nodes.joinToString(",") { node(it) }}],"next_cursor":null}""")
+        override fun call(method: String, path: String, body: String?, headers: Map<String, String>): NativeResponse = when (method) {
+            "GET" -> read(path)
+            "PUT" -> if (path == "/api/v1/groups/$group/selection") select(Json.parseToJsonElement(body!!).jsonObject) else NativeResponse(404, ERROR)
+            "POST" -> post(path, body)
+            else -> NativeResponse(404, ERROR)
+        }
 
-            method == "GET" && path == "/api/v1/providers" -> ok("""{"providers":[${providers.joinToString(",") { provider(it) }}],"next_cursor":null}""")
+        private fun read(path: String): NativeResponse = when (path) {
+            "/api/v1/nodes" -> if (readsFail) NativeResponse(500, ERROR) else ok("""{"nodes":[${nodes.joinToString(",") { node(it) }}],"next_cursor":null}""")
+            "/api/v1/providers" -> ok("""{"providers":[${providers.joinToString(",") { provider(it) }}],"next_cursor":null}""")
+            "/api/v1/groups" -> ok("""[{"id":"$group","name":"$name"}]""")
+            "/api/v1/groups/$group" -> ok(groupBody())
+            "/api/v1/rules" -> ok("""{"generation_id":"1","rules":[],"fallback":{"outbound":"$fallback","source":null}}""")
+            "/api/v1/operations/op-probe" -> ok(succeeded("{}"))
+            "/api/v1/operations/op-refresh" -> ok(succeeded(provider(providers.first())))
+            else -> NativeResponse(404, ERROR)
+        }
 
-            method == "GET" && path == "/api/v1/groups" -> ok("""[{"id":"$group","name":"$name"}]""")
-
-            method == "GET" && path == "/api/v1/groups/$group" -> ok(groupBody())
-
-            method == "GET" && path == "/api/v1/rules" -> ok("""{"generation_id":"1","rules":[],"fallback":{"outbound":"$fallback","source":null}}""")
-
-            method == "PUT" && path == "/api/v1/groups/$group/selection" -> select(Json.parseToJsonElement(body!!).jsonObject)
-
-            method == "POST" && path == "/api/v1/probes" -> {
+        private fun post(path: String, body: String?): NativeResponse = when {
+            path == "/api/v1/probes" -> {
                 tested += Json.parseToJsonElement(body!!).jsonObject.getValue("target").toString()
                 if (testsFail) NativeResponse(500, ERROR) else NativeResponse(202, accepted("op-probe"))
             }
 
-            method == "GET" && path == "/api/v1/operations/op-probe" -> ok(succeeded("{}"))
-
-            method == "POST" && path.endsWith("/refresh") -> {
+            path.endsWith("/refresh") -> {
                 updated += path.removePrefix("/api/v1/providers/").removeSuffix("/refresh")
                 NativeResponse(202, accepted("op-refresh"))
             }
-
-            method == "GET" && path == "/api/v1/operations/op-refresh" -> ok(succeeded(provider(providers.first())))
 
             else -> NativeResponse(404, ERROR)
         }

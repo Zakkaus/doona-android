@@ -232,8 +232,7 @@ class AppRvSubsShotTest {
 
     @Test
     @Config(qualifiers = WHOLE_DETAIL)
-    fun detailDeleteFailedFs200() =
-        shot("sub-detail-delete-failed", fontScale = RV_FS200, whole = false, before = { confirmDeleteFromPage(ErrorCode.WriteFailed) }) { Detail { deleteFails() } }
+    fun detailDeleteFailedFs200() = shot("sub-detail-delete-failed", fontScale = RV_FS200, whole = false, before = { confirmDeleteFromPage(ErrorCode.WriteFailed) }) { Detail { deleteFails() } }
 
     @Test
     @Config(qualifiers = RV_EN)
@@ -245,13 +244,11 @@ class AppRvSubsShotTest {
 
     @Test
     @Config(qualifiers = WHOLE_DETAIL)
-    fun detailDeleteFullFs200() =
-        shot("sub-detail-delete-full", fontScale = RV_FS200, whole = false, before = { confirmDeleteFromPage() }) { Detail { deleteRefused() } }
+    fun detailDeleteFullFs200() = shot("sub-detail-delete-full", fontScale = RV_FS200, whole = false, before = { confirmDeleteFromPage() }) { Detail { deleteRefused() } }
 
     @Test
     @Config(qualifiers = RV_EN)
-    fun detailDeleteFullEn() =
-        shot("sub-detail-delete-full", english = true, whole = false, before = { confirmDeleteFromPage() }) { Detail { deleteRefused() } }
+    fun detailDeleteFullEn() = shot("sub-detail-delete-full", english = true, whole = false, before = { confirmDeleteFromPage() }) { Detail { deleteRefused() } }
 
     /** 立即更新 on Harbor Cloud's page while honk cannot take the request (503; honk has no `storage_full`): the banner says why, and its nodes stay. */
     @Test
@@ -260,8 +257,7 @@ class AppRvSubsShotTest {
 
     @Test
     @Config(qualifiers = WHOLE_DETAIL)
-    fun detailUpdateFullFs200() =
-        shot("sub-detail-update-full", fontScale = RV_FS200, whole = false, before = { tap(R.string.rv_sub_update_now) }) { Detail { writeRefused() } }
+    fun detailUpdateFullFs200() = shot("sub-detail-update-full", fontScale = RV_FS200, whole = false, before = { tap(R.string.rv_sub_update_now) }) { Detail { writeRefused() } }
 
     @Test
     @Config(qualifiers = RV_EN)
@@ -274,8 +270,7 @@ class AppRvSubsShotTest {
 
     @Test
     @Config(qualifiers = WHOLE_DETAIL)
-    fun detailAgentFullFs200() =
-        shot("sub-detail-agent-full", fontScale = RV_FS200, whole = false, before = { saveSheet(R.string.rv_sub_user_agent) }) { Detail { writeRefused() } }
+    fun detailAgentFullFs200() = shot("sub-detail-agent-full", fontScale = RV_FS200, whole = false, before = { saveSheet(R.string.rv_sub_user_agent) }) { Detail { writeRefused() } }
 
     @Test
     @Config(qualifiers = RV_EN)
@@ -392,8 +387,7 @@ class AppRvSubsShotTest {
         if (waitFor != null) waitForReason(waitFor)
     }
 
-    private fun ComposeContentTestRule.waitForReason(code: ErrorCode) =
-        waitUntil(POLL_WAIT_MS) { onAllNodesWithText(string(code.reasonRes()), substring = true).fetchSemanticsNodes().isNotEmpty() }
+    private fun ComposeContentTestRule.waitForReason(code: ErrorCode) = waitUntil(POLL_WAIT_MS) { onAllNodesWithText(string(code.reasonRes()), substring = true).fetchSemanticsNodes().isNotEmpty() }
 
     /** 刪除訂閱 and its sheet; with [waitFor], until the banner says why the delete failed with that code. */
     private fun ComposeContentTestRule.confirmDeleteFromPage(waitFor: ErrorCode? = null) {
@@ -520,8 +514,7 @@ class AppRvSubsShotTest {
     }
 
     /** The sample, whose delete of Harbor Cloud honk refuses now. */
-    private fun deleteRefused(): FakeHonk =
-        sampleHonk().apply { on("DELETE", "/api/v1/providers/s1", 503, HonkFixtures.body("errors/temporarily-unavailable")) }
+    private fun deleteRefused(): FakeHonk = sampleHonk().apply { on("DELETE", "/api/v1/providers/s1", 503, HonkFixtures.body("errors/temporarily-unavailable")) }
 
     /** The sample, whose refresh of Harbor Cloud and replacement of its configuration file honk refuses now. */
     private fun writeRefused(): FakeHonk = sampleHonk().apply {
@@ -533,10 +526,7 @@ class AppRvSubsShotTest {
     private lateinit var focus: FocusManager
 
     @Composable
-    private fun Welcome() {
-        val engine = remember { FakeEngine(subscriptions = emptyList()) }
-        FirstRunGate(remember { FirstRunViewModel(engine, NO_NODES, Dispatchers.Unconfined) }, onAdd = {}, frame = { it() }) {}
-    }
+    private fun Welcome() = FirstRunGate(remember { FirstRunViewModel(FakeEngine(subscriptions = emptyList()), NO_NODES, Dispatchers.Unconfined) }, onAdd = {}, frame = { it() }) {}
 
     /** How honk answers an add. */
     private sealed interface Answer {

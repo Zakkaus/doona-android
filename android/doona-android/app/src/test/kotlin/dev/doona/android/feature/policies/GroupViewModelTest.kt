@@ -56,30 +56,35 @@ class GroupViewModelTest {
 
         override fun call(method: String, path: String, body: String?, headers: Map<String, String>): NativeResponse {
             val id = path.removePrefix("/api/v1/groups/").substringBefore("/").substringBefore("?")
-            return when {
-                method == "GET" && path == "/api/v1/nodes" -> if (failNodes) NativeResponse(500, ERROR) else ok(NODE_LIST)
-
-                method == "GET" && path == "/api/v1/providers" -> ok(PROVIDERS)
-
-                method == "GET" && path == "/api/v1/groups/$id" -> groups[id]?.let { ok(json(it)) } ?: NativeResponse(404, ERROR)
-
-                method == "PUT" -> change("select $id ${field(body, "member_id")} ${field(body, "network")}") {
-                    val group = groups.getValue(id)
-                    val member = field(body, "member_id")
-                    if (field(body, "network") != "udp") group.tcp = member
-                    if (field(body, "network") != "tcp") group.udp = member
-                    group.pinned = group.kind != "selector"
-                }
-
-                method == "DELETE" -> change("clear $id ${path.substringAfter("network=")}") { groups.getValue(id).pinned = false }
-
-                method == "POST" && path == "/api/v1/probes" -> change("test ${Json.parseToJsonElement(body!!).jsonObject.getValue("target").jsonObject.getValue("group_id").jsonPrimitive.content}") {}
-                    .let { if (it.status == 200) NativeResponse(202, ACCEPTED) else it }
-
-                method == "GET" && path == "/api/v1/operations/op-1" -> ok("""{"operation_id":"op-1","kind":"probe","status":"succeeded","result":{},"error":null}""")
-
+            return when (method) {
+                "GET" -> read(path, id)
+                "PUT" -> select(id, body)
+                "DELETE" -> change("clear $id ${path.substringAfter("network=")}") { groups.getValue(id).pinned = false }
+                "POST" -> probe(path, body)
                 else -> NativeResponse(404, ERROR)
             }
+        }
+
+        private fun read(path: String, id: String): NativeResponse = when (path) {
+            "/api/v1/nodes" -> if (failNodes) NativeResponse(500, ERROR) else ok(NODE_LIST)
+            "/api/v1/providers" -> ok(PROVIDERS)
+            "/api/v1/groups/$id" -> groups[id]?.let { ok(json(it)) } ?: NativeResponse(404, ERROR)
+            "/api/v1/operations/op-1" -> ok("""{"operation_id":"op-1","kind":"probe","status":"succeeded","result":{},"error":null}""")
+            else -> NativeResponse(404, ERROR)
+        }
+
+        private fun select(id: String, body: String?): NativeResponse = change("select $id ${field(body, "member_id")} ${field(body, "network")}") {
+            val group = groups.getValue(id)
+            val member = field(body, "member_id")
+            if (field(body, "network") != "udp") group.tcp = member
+            if (field(body, "network") != "tcp") group.udp = member
+            group.pinned = group.kind != "selector"
+        }
+
+        private fun probe(path: String, body: String?): NativeResponse {
+            if (path != "/api/v1/probes") return NativeResponse(404, ERROR)
+            val target = Json.parseToJsonElement(body!!).jsonObject.getValue("target").jsonObject.getValue("group_id").jsonPrimitive.content
+            return change("test $target") {}.let { if (it.status == 200) NativeResponse(202, ACCEPTED) else it }
         }
 
         private fun change(call: String, apply: () -> Unit): NativeResponse {
