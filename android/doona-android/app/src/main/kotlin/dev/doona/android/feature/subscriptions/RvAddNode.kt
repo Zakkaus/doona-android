@@ -1,5 +1,6 @@
 package dev.doona.android.feature.subscriptions
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -112,7 +113,8 @@ internal fun RvAddNodeSheet(sheet: RvAddNodeSheet?, actions: RvInlineActions) {
 @Composable
 private fun GroupPicks(sheet: RvAddNodeSheet, pick: (String) -> Unit) {
     Column(Modifier.padding(top = RvSpace.gutter)) {
-        RvCaption(stringResource(R.string.rv_addnode_groups))
+        // On the line 節點連結 starts on, the card's text (owner, q-group-heading 2026-11-26).
+        Box(Modifier.padding(horizontal = RvSpace.rowPadding)) { RvCaption(stringResource(R.string.rv_addnode_groups)) }
         Spacer(Modifier.height(RvSpace.tight))
         RvCard {
             sheet.groups.forEach { group ->
