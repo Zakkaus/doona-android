@@ -47,6 +47,14 @@ plant add 'RvRow({ RvIconDisc(R.drawable.rv_sym_add) }, stringResource(R.string.
 plant add 'RvGlyph(R.drawable.rv_sym_add, RvSize.removeGlyph, Rv.colors.card)'
 # An action row that borrows the add glyph (導入設定 before its own glyph).
 plant add 'RvSettingsNavRow("import", R.drawable.rv_sym_add, {})'
+# A page-built switch or radio row (設定's and 依 App's rows before RvSwitchRow and RvRadioRow).
+plant rowctl 'RvRow({ RvIconDisc(R.drawable.x) }, "t", null, Modifier.rvRowToggle(on, {}), endFirstLine = true) { RvSwitch(on) }'
+plant rowctl 'RvRow({ RvIconDisc(R.drawable.x) }, "t", null, Modifier.rvRowSelect(on, {})) { RvRadio(on) }'
+# A hand-built value and chevron (策略's ValueRow), with a blank line between the gap and the chevron.
+plant navend "$(printf 'Row {\n        RvText(value, Rv.type.rowSub)\n        Spacer(Modifier.width(RvSpace.trailingGap))\n\n        RvChevron()\n    }')"
+# A disc coloured per call: the delete disc in error on one page, in text on another.
+plant tint 'RvIconDisc(R.drawable.rv_sym_delete, Rv.colors.error)'
+plant tint 'RvIconDisc(R.drawable.rv_sym_delete, color = Rv.colors.error)'
 # A `//` inside a string literal starts no comment, so what follows the string is still read.
 plant widget 'val note = "see https://doona.dev // the site"; Text("a raw Text")'
 plant dp "val quote = '\"'; Box(Modifier.padding(13.dp))"
@@ -96,6 +104,18 @@ printf '@Composable\ninternal fun RvTwo() {\n    Text("a")\n}\n' > "$page/RvTwo.
 printf '%s|widget|1|one raw text\n' "$f" > "$tmp/lowered.allow"
 out=$(ratchet lowered) || { echo "FAIL: a lowered count was refused: $out" >&2; exit 1; }
 echo "ok: a lowered count passes"
+# A rule the base allowlist did not name (its `# rules:` line, or the first six without one) is a first freeze: its
+# lines are not compared; once the base names it, an added line of it fails.
+printf '@Composable\ninternal fun RvTwo() {\n    Text("a")\n    RvRadio(on)\n}\n' > "$page/RvTwo.kt"
+printf '%s|widget|1|one raw text\n%s|rowctl|1|a new rule'"'"'s first freeze\n' "$f" "$f" > "$tmp/fresh.allow"
+out=$(ratchet fresh) || { echo "FAIL: a new rule's first freeze was refused: $out" >&2; exit 1; }
+echo "ok: a new rule's first freeze passes"
+{ printf '# rules: dp colour style widget click add rowctl\n'; cat "$tmp/lowered.allow"; } > "$tmp/base.allow"
+git -C "$tmp" add base.allow
+git -C "$tmp" -c user.name=gate -c user.email=gate@invalid -c commit.gpgsign=false commit -q -m rules
+{ printf '# rules: dp colour style widget click add rowctl\n'; cat "$tmp/fresh.allow"; } > "$tmp/named.allow"
+if out=$(ratchet named); then echo "FAIL: an added line of a rule the base names passed" >&2; exit 1; fi
+case $out in *"rowctl: added to the allowlist, not in HEAD"*) echo "ok: an added line of a named rule fails" ;; *) echo "FAIL: named rule not named in: $out" >&2; exit 1 ;; esac
 
 "$here/check-components.sh" > /dev/null
 echo "check-components negative control: the gate fails on each planted violation, passes a clean page, keeps the allowlist from growing, and the real tree passes"

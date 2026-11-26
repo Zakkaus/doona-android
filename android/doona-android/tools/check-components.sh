@@ -12,14 +12,21 @@
 #           from the library's `rvPress`, `rvRowPress`, `rvRowSelect`, `rvRowToggle` and `rvPressSelect`;
 #   add     names the add glyph (`R.drawable.rv_sym_add`) at all: every 新增 X entry is the library's `RvAddRow` or
 #           `RvSettingsAddRow` (owner 2026-11-26: one add component for list cards and empty states), and an action
-#           that is not one (導入設定) takes its own glyph.
+#           that is not one (導入設定) takes its own glyph;
+#   rowctl  calls `RvSwitch(` or `RvRadio(`: a switch row is `RvSwitchRow` and a radio row `RvRadioRow` (unify-1126),
+#           not a page's RvRow with the control as its end;
+#   navend  ends a hand-built row end with `RvChevron()` on the line after a `trailingGap` spacer (a value or busy bar,
+#           the gap, the chevron): the row's end comes from the library;
+#   tint    gives `RvIconDisc` a colour of `Rv.colors` per call: a disc's colour is its role's, one per role.
 # Comments are not read: a comment line, and the rest of a line after a `//` outside a string literal. Each existing
 # exception is a line of tools/check-components.allow:
 #   <file under app/src>|<rule>|<count>|<reason>
 # The count is the number of hits of that rule in that file. A hit past it fails, and so does a count above the
 # measure: lower it, or delete the line, once the page uses the library.
 # The allowlist only shrinks, as android/scripts/limits-ratchet.txt does: with --base-rev it is also compared with the
-# one at that revision, and a line not there, or a count above its count there, fails.
+# one at that revision, and a line not there, or a count above its count there, fails. The allowlist's `# rules:` line
+# names the rules it measures; a line of a rule the base did not name is a new rule's first freeze, not compared (a base
+# with no such line measured the first six).
 #
 #   check-components.sh                    check against the allowlist
 #   check-components.sh --base-rev <rev>   the same, and the allowlist against the one at <rev>
@@ -40,6 +47,11 @@ style='TextStyle\(|\bfontSize\b|\bFontWeight\.'
 widget='(^|[^A-Za-z_.])(Text|BasicText|Icon|Image|IconButton|Switch|Button|TextButton|OutlinedButton|Card|Surface|TextField|OutlinedTextField|RadioButton|Checkbox|HorizontalDivider|Divider)\('
 click='(^|[^A-Za-z_])(clickable|selectable|toggleable|combinedClickable)[[:space:]]*[({]'
 add='\bR\.drawable\.rv_sym_add\b'
+rowctl='(^|[^A-Za-z_.])(RvSwitch|RvRadio)\('
+tint='RvIconDisc\([^)]*,[[:space:]]*(color[[:space:]]*=[[:space:]]*)?Rv\.colors\.'
+# navend is read over two lines: `RvChevron()` on the line after one that spaces a `trailingGap` (blank lines between).
+# shellcheck disable=SC2016 # an awk program: its $0 is awk's
+navend='$0 ~ /(^|[^A-Za-z_.])RvChevron\(\)/ && prev ~ /trailingGap/ { print NR ":" $0 } $0 !~ /^[[:space:]]*$/ { prev = $0 }'
 # A class, object or interface of a widget's name (`data class Icon(`): a declaration, read past by the widget rule.
 declared='^[0-9]+:.*\b(class|interface)[[:space:]]+(Text|BasicText|Icon|Image|IconButton|Switch|Button|TextButton|OutlinedButton|Card|Surface|TextField|OutlinedTextField|RadioButton|Checkbox|HorizontalDivider|Divider)\('
 
@@ -91,11 +103,12 @@ for f in $pages; do
     # Comment lines, imports and trailing comments are blanked, not removed, so the line numbers stay. A trailing comment
     # starts at a `//` outside a string literal: `"https://..."` and `"a // b"` are a string's text, and what follows them is read.
     awk "$uncomment" "$f" > "$stripped"
-    for rule in dp colour style widget click add; do
+    for rule in dp colour style widget click add rowctl tint; do
         eval "pattern=\$$rule"
         # A declaration is no call: `data class Icon(` names a type, it draws nothing.
         grep -nE "$pattern" "$stripped" | { [ "$rule" = widget ] && grep -vE "$declared" || cat; } | sed -E "s#^([0-9]+):#$rel:\1:$rule:#" || true
     done
+    awk "$navend" "$stripped" | sed -E "s#^([0-9]+):#$rel:\1:navend:#"
 done > "$hits"
 
 if [ "${1:-}" = "--list" ]; then
@@ -134,8 +147,11 @@ if [ -n "$base_rev" ]; then
     git -C "$dir" rev-parse --verify --quiet "$base_rev^{commit}" > /dev/null || { echo "check-components: cannot resolve base revision $base_rev" >&2; exit 2; }
     path=$(git -C "$dir" rev-parse --show-prefix)$(basename "$allow")
     if base=$(git -C "$dir" show "$base_rev:$path" 2> /dev/null); then
+        known=$(printf '%s\n' "$base" | sed -n 's/^# rules: //p')
+        known=" ${known:-dp colour style widget click add} "
         grew=$(
             grep -vE '^[[:space:]]*(#|$)' "$allow" | while IFS='|' read -r file rule allowed reason; do
+                case $known in *" $rule "*) ;; *) continue ;; esac
                 was=$(printf '%s\n' "$base" | awk -F'|' -v f="$file" -v r="$rule" '$1 == f && $2 == r { print $3 }')
                 if [ -z "$was" ]; then
                     echo "$file|$rule: added to the allowlist, not in $base_rev"
