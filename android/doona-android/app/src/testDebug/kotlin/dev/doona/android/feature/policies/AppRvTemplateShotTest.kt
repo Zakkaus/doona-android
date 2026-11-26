@@ -258,7 +258,7 @@ class AppRvTemplateShotTest {
     private companion object {
         val SHOTS: String = System.getProperty("doona.shots") ?: "src/test/screenshots"
 
-        /** Taller than 生效設定 whole, as `proto-rv-effective-config-*`'s window (+h2106dp) and the app's longer rules need. */
+        /** Taller than 生效設定 whole, as `proto-rv-effective-config-*`'s window (+h2186dp) and the app's longer rules need. */
         const val WHOLE_EFFECTIVE = "+h2600dp"
         const val WHOLE_EFFECTIVE_REREAD = "+h2600dp"
 

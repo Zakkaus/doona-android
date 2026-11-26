@@ -47,6 +47,7 @@ import dev.doona.android.feature.perapp.PerAppRoute
 import dev.doona.android.feature.policies.EffectiveConfigRoute
 import dev.doona.android.feature.policies.GroupRoute
 import dev.doona.android.feature.policies.PoliciesRoute
+import dev.doona.android.feature.policies.RouteTraceRoute
 import dev.doona.android.feature.policies.RulesRoute
 import dev.doona.android.feature.policies.RvPolicyRoutes
 import dev.doona.android.feature.policies.RvRulesRoutes
@@ -148,7 +149,10 @@ fun DoonaApp(
             entry<TemplateImpactKey> { key ->
                 TemplateImpactRoute(key.templateId, onBack = { backStack.pop(key) }, onApplied = { backStack.push(PoliciesKey) })
             }
-            entry<EffectiveConfigKey> { key -> EffectiveConfigRoute(engine, onBack = { backStack.pop(key) }, onRules = { backStack.push(RulesKey) }) }
+            entry<EffectiveConfigKey> { key ->
+                EffectiveConfigRoute(engine, onBack = { backStack.pop(key) }, onRules = { backStack.push(RulesKey) }, onTrace = { backStack.push(RouteTraceKey) })
+            }
+            entry<RouteTraceKey> { key -> RouteTraceRoute(onBack = { backStack.pop(key) }, onOpenSource = { backStack.push(ConfigSourceKey(it)) }) }
             configEntries(backStack)
             entry<SubscriptionsKey> { key ->
                 SubscriptionsRoute(

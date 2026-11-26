@@ -227,4 +227,5 @@
     <string name="rv_trace_no">No</string>
     <string name="rv_trace_skipped_title">A rule was skipped</string>
     <string name="rv_trace_skipped_reason">The rule on line %2$d of %1$s comes first but does not apply on the phone.</string>
+    <string name="rv_trace_failed">Couldn’t run the route test</string>
 </resources>

@@ -207,4 +207,5 @@
     <string name="rv_trace_no">否</string>
     <string name="rv_trace_skipped_title">有一條規則已略過</string>
     <string name="rv_trace_skipped_reason">%1$s 第 %2$d 行的規則排在前面，但手機上沒有套用。</string>
+    <string name="rv_trace_failed">無法執行路由測試</string>
 </resources>

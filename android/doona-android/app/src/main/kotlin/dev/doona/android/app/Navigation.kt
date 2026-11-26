@@ -65,6 +65,10 @@ data class TemplateImpactKey(val templateId: String) : AppKey
 @Serializable
 data object EffectiveConfigKey : AppKey
 
+/** 路由測試, from 生效設定. */
+@Serializable
+data object RouteTraceKey : AppKey
+
 /** 設定檔, the configuration's overview. */
 @Serializable
 data object ConfigKey : AppKey

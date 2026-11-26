@@ -219,6 +219,7 @@ class HonkFixtureContractTest {
             "geodata/update-in-flight" to "#/components/schemas/ErrorResponse",
             "revisions/.*" to "GET /api/v1/x-honk/config/revisions 200",
             "config-validate/.*" to "POST /api/v1/config/validate 200",
+            "routing-trace/.*" to "POST /api/v1/routing/trace 200",
             "connections/connections-.*" to "GET /api/v1/connections 200",
             "connections/close-all-.*" to "DELETE /api/v1/connections 200",
             "connections/close-gone-.*" to "#/components/schemas/ErrorResponse",

@@ -170,6 +170,6 @@ class RvRulesShotTest {
 
         /** Telegram's range with a prefix past /32: the field says how to write it, and 套用 is off. */
         val BAD_RANGE = RvRuleDraft(RvMatchKind.Cidr, "91.108.56.0/33", "main")
-        const val WHOLE_EFFECTIVE = "+h2106dp"
+        const val WHOLE_EFFECTIVE = "+h2186dp"
     }
 }

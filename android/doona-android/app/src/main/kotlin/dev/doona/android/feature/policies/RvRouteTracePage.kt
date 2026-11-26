@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.policy
+package dev.doona.android.feature.policies
 
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
@@ -29,6 +29,7 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.feature.model.RV_BLOCK
+import dev.doona.android.feature.model.RV_DIRECT
 
 /** The transport a trace asks about. */
 internal enum class RvTraceProto(val label: String) {
@@ -63,7 +64,7 @@ internal data class RvTraceResult(
  * the bottom asks the core without dialing. The answer names the statement that decided, as the source line it is
  * (a tap opens the file there), under 符合的規則, or under 其餘流量 when no rule matched, so a fallback never reads as
  * a rule; then where the traffic goes (拒絕 for `block`), the mode, and whether it passes through the VPN. A skipped
- * statement before the winner heads the answer as a warning that opens its line.
+ * statement before the winner heads the answer as a warning that opens its line. [banner] tells why a trace failed.
  */
 @Composable
 internal fun RvRouteTracePage(
@@ -73,6 +74,7 @@ internal fun RvRouteTracePage(
     result: RvTraceResult? = null,
     onTrace: () -> Unit = {},
     onOpenSource: (String, Int) -> Unit = { _, _ -> },
+    banner: RvNotice? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_trace_title)
@@ -85,7 +87,7 @@ internal fun RvRouteTracePage(
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         RvSectionTitle(stringResource(R.string.rv_trace_target), Modifier.padding(horizontal = RvSpace.gutter), first = true)
-        RvGutter {
+        RvGutter(banner = banner) {
             RvFieldStack {
                 RvTextField(query.host, { onQuery(query.copy(host = it)) }, label = stringResource(R.string.rv_trace_host))
                 RvTextField(
@@ -136,6 +138,5 @@ private fun sendTo(result: RvTraceResult): String = when (result.target) {
     else -> listOfNotNull(result.target, result.node).joinToString(TARGET_SEPARATOR)
 }
 
-internal const val RV_DIRECT = "direct"
 private const val TARGET_SEPARATOR = " › "
 private val PORTS = 1..65_535
