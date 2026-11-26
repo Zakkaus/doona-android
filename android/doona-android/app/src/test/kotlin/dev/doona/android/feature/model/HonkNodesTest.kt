@@ -1,0 +1,38 @@
+package dev.doona.android.feature.model
+
+import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.vpn.honk.Node
+import dev.doona.android.vpn.honk.Provider
+import dev.doona.android.vpn.nativeJson
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class HonkNodesTest {
+    @Test
+    fun aNodeOfHonksInlineProviderIsAddedByItsLink() {
+        val providers = listOf(provider("inline", "inline", "inline"), provider("s1", "Harbor Cloud", "subscription")).associateBy { it.id }
+
+        val inline = rvNode(node("inline"), providers, NOWHERE)
+        val harbor = rvNode(node("s1"), providers, NOWHERE)
+        val none = rvNode(node(null), providers, NOWHERE)
+
+        assertEquals(RV_INLINE to "", inline.subscriptionId to inline.subscription)
+        assertEquals(RV_INLINE to "", none.subscriptionId to none.subscription)
+        assertEquals("s1" to "Harbor Cloud", harbor.subscriptionId to harbor.subscription)
+    }
+
+    private fun node(providerId: String?) = nativeJson.decodeFromString(
+        Node.serializer(),
+        """{"id":"n1","name":"hk-03","protocol":"trojan","subscription_tag":null,"provider_id":${providerId?.let { "\"$it\"" }},"group_ids":[],"health":[]}""",
+    )
+
+    private fun provider(id: String, name: String, kind: String) = nativeJson.decodeFromString(
+        Provider.serializer(),
+        """{"id":"$id","name":"$name","kind":"$kind","url_redacted":null,"node_count":1,"updated_at":null,"expires_at":null,""" +
+            """"traffic":null,"status":"ok","last_error":null}""",
+    )
+
+    private companion object {
+        val NOWHERE = NodePlaces { NodePlace(RvPlace.Other, null, it) }
+    }
+}

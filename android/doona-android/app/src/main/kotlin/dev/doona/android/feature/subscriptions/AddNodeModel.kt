@@ -3,10 +3,10 @@ package dev.doona.android.feature.subscriptions
 import androidx.compose.runtime.Immutable
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.isInline
 import dev.doona.android.vpn.honk.Group
 import dev.doona.android.vpn.honk.Node
 import dev.doona.android.vpn.honk.Provider
-import dev.doona.android.vpn.honk.ProviderKind
 import java.net.URLDecoder
 
 /**
@@ -110,8 +110,8 @@ internal fun joinedGroups(groups: List<Group>, ids: Set<String>): List<String> =
 
 /** honk's [nodes] that no subscription or file brought: the ones added by their link, the 組態內 source. */
 internal fun inlineNodes(nodes: List<Node>, providers: List<Provider>): List<Node> {
-    val inline = providers.filter { it.kind == ProviderKind.Inline }.mapTo(HashSet()) { it.id }
-    return nodes.filter { it.providerId == null || it.providerId in inline }
+    val byId = providers.associateBy { it.id }
+    return nodes.filter { it.isInline(byId) }
 }
 
 /** After an add: how many nodes it added, the groups they joined, and the lines honk refused. */
