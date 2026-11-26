@@ -27,6 +27,7 @@ import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.NetworkState
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.Status
+import dev.doona.android.testing.runBlockingWithMainLooper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -123,7 +124,7 @@ class DoonaVpnServiceTest {
     @Test
     fun lockdownStopsTheSystemStartAndExplainsWhyEvenWithDropAlertsOff() = withService { service, app, engine ->
         shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
-        runBlocking { AppSettings.get(app).setNotifyOnDrop(false) }
+        runBlockingWithMainLooper { AppSettings.get(app).setNotifyOnDrop(false) }
         Shadow.extract<VpnPolicy>(service).lockdown = true
 
         service.onStartCommand(Intent(VpnService.SERVICE_INTERFACE), 0, 1)
@@ -138,7 +139,7 @@ class DoonaVpnServiceTest {
     @Test
     fun aSystemStartWithoutConsentStopsAndNotifiesWithoutPrompting() = withService { service, app, engine ->
         shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
-        runBlocking { AppSettings.get(app).setNotifyOnDrop(false) }
+        runBlockingWithMainLooper { AppSettings.get(app).setNotifyOnDrop(false) }
         ShadowVpnService.setPrepareResult(Intent("dev.doona.test.CONSENT"))
 
         service.onStartCommand(Intent(VpnService.SERVICE_INTERFACE), 0, 1)
@@ -224,7 +225,7 @@ class DoonaVpnServiceTest {
     @Test
     fun aBackgroundRestartDeniedForegroundPostsAnExplanationWithDropAlertsOff() = withService { service, app, engine ->
         shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
-        runBlocking { AppSettings.get(app).setNotifyOnDrop(false) }
+        runBlockingWithMainLooper { AppSettings.get(app).setNotifyOnDrop(false) }
         shadowOf(service).setThrowInStartForeground(ForegroundServiceStartNotAllowedException("background start refused"))
         service.onStartCommand(Intent(VpnService.SERVICE_INTERFACE), Service.START_FLAG_REDELIVERY, 1)
         val failure = engine.awaitSession { it.status is Status.Failed }
