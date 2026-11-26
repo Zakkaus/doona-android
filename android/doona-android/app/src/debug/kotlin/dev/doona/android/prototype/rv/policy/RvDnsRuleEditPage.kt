@@ -85,7 +85,7 @@ internal fun RvDnsRuleEditPage(
 private fun ActionField(draft: RvDnsRuleDraft, onAction: (RvDnsAction) -> Unit) {
     val actions = draft.list.actions
     Column(Modifier.padding(horizontal = RvSpace.gutter)) {
-        RvSegmented(actions.map { stringResource(label(draft.list, it)) }, actions.indexOf(draft.action), { onAction(actions[it]) })
+        RvSegmented(actions.map { stringResource(rvDnsActionLabel(draft.list, it)) }, actions.indexOf(draft.action), { onAction(actions[it]) })
         Spacer(Modifier.height(RvSpace.controlStack))
         val line = stringResource(line(draft.list, draft.action))
         RvChoiceLine(line, Modifier.rvInkStart(line, Rv.type.rowSub))
@@ -99,7 +99,7 @@ private val RvDnsList.actions: List<RvDnsAction>
     }
 
 @StringRes
-private fun label(list: RvDnsList, action: RvDnsAction): Int = when (action) {
+internal fun rvDnsActionLabel(list: RvDnsList, action: RvDnsAction): Int = when (action) {
     RvDnsAction.Reject -> R.string.rv_policy_reject
     RvDnsAction.AsIs -> R.string.rv_dns_action_original
     RvDnsAction.Accept -> R.string.rv_dns_action_accept

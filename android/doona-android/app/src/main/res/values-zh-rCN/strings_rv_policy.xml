@@ -193,4 +193,7 @@
     <string name="rv_dns_response_reject_line">舍弃这个响应，改回复空结果</string>
     <string name="rv_dns_response_requery_line">改向下方选定的 DNS 服务器重新查询</string>
     <string name="rv_dns_private_line">响应中的私有地址</string>
+    <string name="rv_dns_rules_title">DNS 规则</string>
+    <string name="rv_dns_rest_query">其余查询</string>
+    <string name="rv_dns_rest_response">其余响应</string>
 </resources>

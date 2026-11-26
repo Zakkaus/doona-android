@@ -88,6 +88,27 @@ internal object RvNativeSample {
     /** The only response rule, `upstream(remote) && ip(geoip: private) -> backup`: a private answer is asked again. */
     val dnsPrivate = RvDnsRuleDraft(RvDnsList.Response, RvRuleDraft(RvMatchKind.Private, "", ""), RvDnsAction.Upstream, "backup")
 
+    /**
+     * dns.dae's lists as DNS 規則 shows them: four query statements (the ad block paused) before `fallback: remote`, and
+     * the one response statement before the response list's default, which accepts.
+     */
+    val dnsLists = RvDnsLists(
+        query = listOf(
+            RvDnsRow("qname(geosite: category-ads-all)", RvDnsAction.Reject, paused = true),
+            RvDnsRow("qname(geosite:cn)", RvDnsAction.Upstream, "local"),
+            RvDnsRow("qname(suffix: corp.example)", RvDnsAction.Upstream, "local"),
+            RvDnsRow("qname(suffix: lan)", RvDnsAction.AsIs),
+            RvDnsRow(null, RvDnsAction.Upstream, "remote"),
+        ),
+        response = listOf(
+            RvDnsRow("upstream(remote) && ip(geoip: private)", RvDnsAction.Upstream, "backup"),
+            RvDnsRow(null, RvDnsAction.Accept),
+        ),
+    )
+
+    /** [dnsLists] after the last statement of each list went: the fallbacks alone. */
+    val dnsListsEmpty = RvDnsLists(dnsLists.query.takeLast(1), dnsLists.response.takeLast(1))
+
     /** [group]'s copy that also holds [nested] as members, for 策略's groups card, whose rows count them. */
     private fun RvPolicyGroup.holding(vararg nested: RvPolicyGroup) =
         RvPolicyGroup(id, name, kind, members, selectedId, nested.map { RvMemberGroup(it.id, it.name, it.kind, it.selected) })
