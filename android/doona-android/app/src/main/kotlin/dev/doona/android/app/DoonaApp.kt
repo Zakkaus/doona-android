@@ -33,7 +33,6 @@ import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.InstalledApps
 import dev.doona.android.engine.NetworkState
-import dev.doona.android.feature.NOT_WIRED
 import dev.doona.android.feature.activity.ActivityRoute
 import dev.doona.android.feature.activity.ActivityRoutes
 import dev.doona.android.feature.activity.ConnectRefusals
@@ -162,13 +161,11 @@ fun DoonaApp(
             entry<SubDetailKey> { key ->
                 val context = LocalContext.current
                 val updateHours = remember { AppSettings.get(context).subscriptionUpdate.map(::updateHoursOf) }
-                // 更新間隔 (p6a) has no entry yet, so the auto-update row is not wired.
-                SubDetailRoute(engine, updateHours, key.subscriptionId, onBack = { backStack.pop(key) }, onAutoUpdate = NOT_WIRED)
+                SubDetailRoute(engine, updateHours, key.subscriptionId, onBack = { backStack.pop(key) }, onAutoUpdate = { backStack.push(IntervalKey) })
             }
             // 設定 and its pages draw their own floating nav.
             settingsEntries(backStack, engine, version, onTab)
-            // 回報問題 (p6a) has no entry yet, so the export is not wired.
-            entry<StatsKey> { key -> StatsRoute(engine, onBack = { backStack.pop(key) }, onOpenReport = NOT_WIRED) }
+            entry<StatsKey> { key -> StatsRoute(engine, onBack = { backStack.pop(key) }, onOpenReport = { backStack.push(ReportKey) }) }
             entry<PerAppKey> { key ->
                 PerAppRoute(
                     engine,
@@ -204,8 +201,8 @@ fun DoonaApp(
 enum class SystemSettings { Vpn, Network, Notifications }
 
 /**
- * Where 活動 leads: the pages with an entry here, the 策略 tab for the mode, 設定 for 更多 and 檢查更新 (q-actmore), and
- * the system's settings for the notices that need them. The report has no entry yet, so it is not wired.
+ * Where 活動 leads: the pages with an entry here, the 策略 tab for the mode, 設定 for 更多 and 檢查更新 (q-actmore), 回報問題
+ * for the crash notice's 匯出報告, and the system's settings for the notices that need them.
  */
 private fun activityRoutes(backStack: MutableList<NavKey>, onSystemSettings: (SystemSettings) -> Unit) = ActivityRoutes(
     traffic = { backStack.push(TrafficKey) },
@@ -222,7 +219,7 @@ private fun activityRoutes(backStack: MutableList<NavKey>, onSystemSettings: (Sy
     addSubscription = { backStack.push(SubAddKey) },
     perApp = { backStack.push(PerAppKey) },
     checkUpdate = { backStack.selectTab(Tab.Settings) },
-    exportReport = NOT_WIRED,
+    exportReport = { backStack.push(ReportKey) },
     networkSettings = { onSystemSettings(SystemSettings.Network) },
     notifySettings = { onSystemSettings(SystemSettings.Notifications) },
     vpnSettings = { onSystemSettings(SystemSettings.Vpn) },

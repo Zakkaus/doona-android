@@ -25,16 +25,23 @@ import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeInstalledApps
 import dev.doona.android.engine.fake.FakeRuleMode
+import dev.doona.android.report.CrashFiles
+import dev.doona.android.report.CrashHandler
+import dev.doona.android.report.CrashOffer
 import dev.doona.android.testing.SeedTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class NavigationTest {
     @get:Rule
     val compose = createComposeRule()
+
+    @get:Rule
+    val tmp = TemporaryFolder()
 
     /** Waits for [text]: the pages read the engine off the main thread, which waitForIdle does not wait for. */
     private fun appears(text: String) = compose.waitUntil(READ_MS) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
@@ -88,6 +95,39 @@ class NavigationTest {
         compose.onNodeWithContentDescription("Back").performClick()
         compose.onNodeWithText("Per-app").assertExists()
         compose.onNodeWithText("Save").assertDoesNotExist()
+    }
+
+    @Test
+    fun `生效設定 on 設定 opens the effective config`() {
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS), FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, SettingsKey)) } }
+        compose.onNodeWithText(string(R.string.rv_effective_open)).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        appears(string(R.string.rv_effective_title))
+    }
+
+    @Test
+    fun `自動更新 on a subscription's page opens 更新間隔`() {
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS), FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, SubscriptionsKey, SubDetailKey("s1"))) } }
+        appears(string(R.string.rv_sub_auto_update))
+        compose.onNode(hasClickAction() and hasText(string(R.string.rv_sub_auto_update))).performSemanticsAction(SemanticsActions.OnClick)
+        appears(string(R.string.rv_settings_update_interval))
+    }
+
+    @Test
+    fun `匯出診斷 on 統計 opens 回報問題`() {
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS), FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, StatsKey)) } }
+        compose.onNode(hasClickAction() and hasText(string(R.string.rv_stats_export))).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        appears(string(R.string.rv_report_title))
+    }
+
+    @Test
+    fun `匯出報告 on 活動's crash notice opens 回報問題`() {
+        val crashes = CrashFiles(tmp.root.resolve("crash"))
+        CrashHandler(crashes, "v", { _, _ -> }) { true }.uncaughtException(Thread.currentThread(), IllegalStateException())
+        val offer = CrashOffer(crashes, tmp.root.resolve("crash-offered")).also { it.check() }
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS), FakeInstalledApps(), onConnect = {}, crashOffer = offer) } }
+        appears(string(R.string.rv_crash_export))
+        compose.onNode(hasClickAction() and hasText(string(R.string.rv_crash_export))).performSemanticsAction(SemanticsActions.OnClick)
+        appears(string(R.string.rv_report_title))
     }
 
     @Test
