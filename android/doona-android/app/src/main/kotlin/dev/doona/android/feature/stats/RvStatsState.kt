@@ -3,23 +3,24 @@ package dev.doona.android.feature.stats
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import dev.doona.android.R
-import dev.doona.android.engine.ScoreState
 import dev.doona.android.feature.model.RvDay
 import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvScorePick
 import dev.doona.android.feature.model.RvSplit
 import dev.doona.android.feature.model.RvSubscription
 
 /**
- * What the 統計 page shows, and where it comes from ([rvStatsState] maps the engine's reads):
- * - [today]: `usage().today` by the hour up to the current one; its [RvDay.connections] are the flows opened each hour.
- * - [yesterdaySoFar]: yesterday's bytes by the same time of day (`today.yesterdayByNow`), null when not kept.
- * - [subscriptions]: `usedBytes`, `totalBytes` and `expiresAtEpochMs` of the engine's subscriptions.
- * - [nodes] and [selectedId]: the catalog's nodes with their last latency, and the main group's node.
- * - [nowHour]: the local time of day in hours (10.4 at 10:24), where today's running total ends; the hour buckets are
- *   local (`DayUsage`), so a zone 30 or 45 minutes off UTC moves it.
- * - [split]: today's bytes that went direct (`outbounds` id `direct`) against the rest; null before the first byte.
- * - [score]: honk's `scoreState` with the Score groups' names and members; null when no group uses Score.
- * - [period]: 本週 or 本月 by the day, from `usage().days` and today; null for 今天.
+ * What the 統計 page shows, and where it comes from ([rvStatsState] maps honk's reads):
+ * - [today]: by the hour up to the current one, with [RvDay.connections] the flows opened each hour. honk keeps no usage
+ *   by the day (its traffic history spans ten minutes and its counters restart with it), so every hour is zero (q-usage).
+ * - [yesterdaySoFar]: yesterday's bytes by the same time of day; null, since honk keeps none.
+ * - [subscriptions]: the quota and expiry of honk's providers.
+ * - [nodes] and [selectedId]: honk's nodes with their last probe, and the node the main group's TCP selection ends on.
+ * - [nowHour]: the local time of day in hours (10.4 at 10:24), where today's running total ends.
+ * - [split]: today's bytes that went direct against the rest; null (the card's empty state), since honk counts bytes per
+ *   outbound only since it started (q-direct-proxy).
+ * - [score]: honk's Score groups and what each chose per network; null when no group uses Score.
+ * - [period]: 本週 or 本月 by the day; null for 今天.
  * - [subscriptionId]: the subscription the chip picked, null for all. It narrows the cards the catalog can split
  *   ([shownSubscriptions], [shownNodes]); traffic is counted for all subscriptions together, so the traffic cards stay
  *   at all of them and say so (unwired-rows 4.4, reduced).
@@ -43,7 +44,7 @@ internal class RvStatsState(
     val shownSubscriptions: List<RvSubscription> get() = subscriptions.filter { subscriptionId == null || it.id == subscriptionId }
 
     /** The nodes 節點分布 and 延遲分布 show: the picked subscription's, or all. */
-    val shownNodes: List<RvNode> get() = nodes.filter { subscriptionId == null || it.subscription == subscriptionId }
+    val shownNodes: List<RvNode> get() = nodes.filter { subscriptionId == null || it.subscriptionId == subscriptionId }
 }
 
 /**
@@ -73,10 +74,16 @@ internal enum class RvStatsRange(@StringRes val label: Int, @StringRes val quiet
 @Immutable
 internal class RvStatsAgainst(@StringRes val line: Int, @StringRes val up: Int, @StringRes val down: Int)
 
-/** What the Score card reads: honk's `scoreState`, and each Score group's name and members. */
+/**
+ * What the Score card reads: the connections the Score groups started ([starts]), the trials run to compare their nodes
+ * that succeeded ([trialsOk]) and failed ([trialsFailed]), and each Score group's choice per network.
+ */
 @Immutable
-internal class RvStatsScore(val state: ScoreState, val groups: List<RvStatsScoreGroup>)
+internal class RvStatsScore(val starts: Long, val trialsOk: Long, val trialsFailed: Long, val groups: List<RvStatsScoreGroup>)
 
-/** A Score group as the card names it when there are several, and its members, to find the node each network chose. */
+/**
+ * A Score group as the card names it when there are several, what it chose on each network ([tcp], [udp]), and the nodes
+ * to find that choice among ([members]).
+ */
 @Immutable
-internal class RvStatsScoreGroup(val id: String, val name: String, val members: List<RvNode>)
+internal class RvStatsScoreGroup(val id: String, val name: String, val members: List<RvNode>, val tcp: RvScorePick, val udp: RvScorePick)

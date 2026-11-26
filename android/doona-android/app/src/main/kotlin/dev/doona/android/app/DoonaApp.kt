@@ -178,7 +178,7 @@ fun DoonaApp(
             }
             // 設定 and its pages draw their own floating nav.
             settingsEntries(backStack, engine, version, onTab)
-            entry<StatsKey> { key -> StatsRoute(engine, onBack = { backStack.pop(key) }, onOpenReport = { backStack.push(ReportKey) }) }
+            entry<StatsKey> { key -> StatsRoute(onBack = { backStack.pop(key) }, onOpenReport = { backStack.push(ReportKey) }) }
             entry<PerAppKey> { key ->
                 PerAppRoute(
                     engine,

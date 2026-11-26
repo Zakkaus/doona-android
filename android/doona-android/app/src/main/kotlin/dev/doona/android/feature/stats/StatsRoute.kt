@@ -2,17 +2,24 @@ package dev.doona.android.feature.stats
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.doona.android.engine.Engine
+import dev.doona.android.app.nativeApi
 
 /**
  * 統計, opened from 活動. [onOpenReport] opens 回報問題, where the export runs. A tool that failed heads the page with
- * its banner until it next succeeds. The chips pick the range and the subscription.
+ * its banner until it next succeeds. The chips pick the range and the subscription. honk's profile is read each time the
+ * page starts.
  */
 @Composable
-fun StatsRoute(engine: Engine, onBack: () -> Unit, onOpenReport: () -> Unit) {
-    StatsRoute(viewModel<StatsViewModel>(factory = StatsViewModel.factory(engine)), onBack, onOpenReport)
+fun StatsRoute(onBack: () -> Unit, onOpenReport: () -> Unit) {
+    val viewModel = viewModel<StatsViewModel>(factory = StatsViewModel.factory(nativeApi()))
+    LifecycleStartEffect(viewModel) {
+        viewModel.load()
+        onStopOrDispose {}
+    }
+    StatsRoute(viewModel, onBack, onOpenReport)
 }
 
 @Composable

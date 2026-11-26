@@ -7,8 +7,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.engine.ScoreCounters
-import dev.doona.android.engine.ScoreState
 import dev.doona.android.feature.NOT_WIRED
+import dev.doona.android.feature.model.rvScorePick
 import dev.doona.android.feature.stats.RvStatsRange
 import dev.doona.android.feature.stats.RvStatsScore
 import dev.doona.android.feature.stats.RvStatsScoreGroup
@@ -55,8 +55,9 @@ internal fun rvStatsScore(): RvStatsScore {
         udp = chosen.udp.copy(state = "provisional", waitReason = "comparableTraffic", counters = ScoreCounters(BUSINESS_UDP, TRIALS_OK_UDP, 0, 0)),
     )
     // One group, so the card never shows its name; the sample's name is a string resource, and the id stands in.
-    val members = RvStatsScoreGroup(RvScoreSample.group.id, RvScoreSample.group.id, RvScoreSample.group.members)
-    return RvStatsScore(ScoreState(BUSINESS_ROOT, listOf(group)), listOf(members))
+    val members = RvStatsScoreGroup(RvScoreSample.group.id, RvScoreSample.group.id, RvScoreSample.group.members, rvScorePick(group.tcp), rvScorePick(group.udp))
+    val networks = listOf(group.tcp, group.udp)
+    return RvStatsScore(BUSINESS_ROOT, networks.sumOf { it.counters.trialSuccess }, networks.sumOf { it.counters.trialFailure }, listOf(members))
 }
 
 private const val BUSINESS_TCP = 128L
