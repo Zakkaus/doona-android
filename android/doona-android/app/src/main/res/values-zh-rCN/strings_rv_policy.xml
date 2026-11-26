@@ -196,4 +196,15 @@
     <string name="rv_dns_rules_title">DNS 规则</string>
     <string name="rv_dns_rest_query">其余查询</string>
     <string name="rv_dns_rest_response">其余响应</string>
+    <string name="rv_trace_title">路由测试</string>
+    <string name="rv_trace_target">目的地</string>
+    <string name="rv_trace_host">域名或 IP</string>
+    <string name="rv_trace_run">测试</string>
+    <string name="rv_trace_matched">匹配的规则</string>
+    <string name="rv_trace_result">结果</string>
+    <string name="rv_trace_captured">经过 VPN</string>
+    <string name="rv_trace_yes">是</string>
+    <string name="rv_trace_no">否</string>
+    <string name="rv_trace_skipped_title">有一条规则已跳过</string>
+    <string name="rv_trace_skipped_reason">%1$s 第 %2$d 行的规则排在前面，但手机上没有应用。</string>
 </resources>

@@ -1,6 +1,7 @@
 package dev.doona.android.prototype.rv.policy
 
 import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.feature.model.RV_BLOCK
 import dev.doona.android.feature.model.RvDnsServer
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvLabel
@@ -68,6 +69,25 @@ internal object RvNativeSample {
             RvMemberRef.Direct,
         ),
     )
+
+    /** 路由測試 as it opens: no destination yet, port 443 over TCP. */
+    val traceEmpty = RvTraceQuery("", "443")
+
+    /** api.openai.com, decided by the keyword rule: 美國 and the node it picks. */
+    val traceRuleQuery = RvTraceQuery("api.openai.com", "443")
+    val traceRule = RvTraceResult("config.dae", TRACE_RULE_LINE, "domain(keyword: openai) -> 美國", US, "San Jose 01")
+
+    /** ads.example, refused by a `block` rule. */
+    val traceBlockQuery = RvTraceQuery("ads.example", "443")
+    val traceBlock = RvTraceResult("config.dae", TRACE_BLOCK_LINE, "domain(suffix: ads.example) -> block", RV_BLOCK)
+
+    /** example.org over UDP, which no rule matches: the routing fallback, 海外. */
+    val traceFallbackQuery = RvTraceQuery("example.org", "443", RvTraceProto.Udp)
+    val traceFallback = RvTraceResult("config.dae", TRACE_FALLBACK_LINE, "fallback: 海外", OVERSEAS, "Singapore 01", fallback = true)
+
+    /** 172.16.5.4, decided in rules/lan.dae after the statement the phone skips (its process and MAC match, line 3). */
+    val traceSkippedQuery = RvTraceQuery("172.16.5.4", "22")
+    val traceSkipped = RvTraceResult("rules/lan.dae", 4, "dip(172.16.0.0/12) -> direct", RV_DIRECT, skipped = "rules/lan.dae" to 3)
 
     /** The rules in file order, the last one routing whatever no rule above matched. */
     val rules: List<RvPolicyRule> = listOf(
@@ -164,5 +184,8 @@ internal object RvNativeSample {
     const val STREAMING = "影音"
     const val TOKYO = "東京"
     const val NEW_GROUP = "串流"
+    private const val TRACE_RULE_LINE = 23
+    private const val TRACE_BLOCK_LINE = 27
+    private const val TRACE_FALLBACK_LINE = 29
     private const val PROFILE_RULES = 4
 }
