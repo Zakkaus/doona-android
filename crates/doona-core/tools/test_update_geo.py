@@ -78,6 +78,40 @@ class GeoBundleTest(unittest.TestCase):
             [{"name": "geoip.dat", "digest": "sha256:" + "a" * 64, "size": 10}],
         )
 
+    def run_current(self):
+        assets = [
+            {"name": name, "digest": f"sha256:{pin['sha256']}", "size": 1}
+            for name, pin in self.expected["files"].items()
+        ]
+        metadata = {
+            "releases/latest": {
+                "published_at": "2026-11-25T02:58:26Z",
+                "assets": assets,
+            },
+            "branches/release": {"commit": {"sha": "b" * 40}},
+        }
+        with (
+            patch.object(update_geo, "PINS", self.pins),
+            patch.object(update_geo, "get_json", side_effect=metadata.__getitem__),
+            patch.object(update_geo, "urlopen", side_effect=AssertionError),
+        ):
+            update_geo.main(["--current"])
+
+    def test_current_accepts_same_bytes_from_a_newer_release(self):
+        self.run_current()
+
+    def test_current_rejects_pins_behind_the_latest_release(self):
+        self.expected["files"]["geosite.dat"]["sha256"] = "c" * 64
+        error = io.StringIO()
+        with contextlib.redirect_stderr(error), self.assertRaises(SystemExit) as result:
+            self.run_current()
+        self.assertEqual(result.exception.code, 1)
+        self.assertIn(
+            "geosite.dat: the 2026-11-23 pins are behind the 2026-11-25 MetaCubeX "
+            "release; dispatch the geo-bundle workflow first",
+            error.getvalue(),
+        )
+
     def test_manifest_and_check(self):
         self.fetch()
         self.assertEqual(

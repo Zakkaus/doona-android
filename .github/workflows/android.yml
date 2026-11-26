@@ -3,6 +3,7 @@ name: Android
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -13,6 +14,22 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # A release tag must carry the newest Geo data. The weekly geo-bundle workflow moves the pins.
+  geo-current:
+    name: Geo pins are the newest release
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+      - name: Fail when a newer MetaCubeX release exists
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: uv run crates/doona-core/tools/update_geo.py --current
+
   android:
     name: honk-android + tunbench
     runs-on: ubuntu-latest
@@ -191,6 +208,10 @@ jobs:
 
   doona-release:
     name: doona-android release APK
+    # Stale Geo pins on a tag stop the release build. geo-current is skipped on every other ref,
+    # and `needs` alone would then skip this job too.
+    needs: geo-current
+    if: ${{ !cancelled() && (needs.geo-current.result == 'success' || needs.geo-current.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

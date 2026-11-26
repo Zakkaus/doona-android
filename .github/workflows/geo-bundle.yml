@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: geo-bundle-v1-base
+  group: geo-bundle-main
 
 jobs:
   verify:
@@ -21,14 +21,15 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: v1/base
+          ref: main
           persist-credentials: false
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
-      - name: Test the update tool and check the honk pin
+      - name: Test the update and notices tools and check the honk pin
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
           uv run --no-project --python '>=3.11' python -m unittest discover -s crates/doona-core/tools -p test_update_geo.py
+          uv run --no-project --python '>=3.11' python -m unittest discover -s android/doona-android/tools -p test_notices.py
           uv run --no-project --python '>=3.11' python - <<'PY'
           import tomllib
           from pathlib import Path
@@ -72,37 +73,57 @@ jobs:
             printf 'pins=%s\n' "$pins" >> "$GITHUB_OUTPUT"
           fi
 
-  propose:
+  update:
     needs: verify
     if: needs.verify.outputs.pins != ''
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       contents: write
-      pull-requests: write
+      actions: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: v1/base
+          ref: main
           persist-credentials: false
-      - name: Stage verified pins
+      - name: Commit the verified pins to main
         env:
           BASE_INPUTS: ${{ needs.verify.outputs.base_inputs }}
           PINS: ${{ needs.verify.outputs.pins }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+          # These inputs include geo-pins.json, so this also stops when main's pins have changed.
           inputs=$(git ls-tree HEAD -- crates/doona-core/{tools,Cargo.toml,rust-toolchain.toml,.cargo})
           if [ "$(git hash-object --stdin <<< "$inputs")" != "$BASE_INPUTS" ]; then
             echo 'Geo verifier inputs changed during verification. Dispatch the workflow again.' >&2
             exit 1
           fi
-          jq . <<< "$PINS" > crates/doona-core/tools/geo-pins.json
-      - name: Open or update the pins pull request
-        uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8.1.3
-        with:
-          base: v1/base
-          branch: automation/geo-bundle-pins
-          add-paths: crates/doona-core/tools/geo-pins.json
-          sign-commits: true
-          commit-message: 'build(geo): update MetaCubeX pins'
-          title: 'build(geo): update MetaCubeX pins'
-          body: 'Refresh the MetaCubeX release snapshot after verifying both DAT checksums and required geo labels with the pinned honk.'
+          pins_file=crates/doona-core/tools/geo-pins.json
+          index=android/doona-android/app/src/main/assets/licenses/index.json
+          files=("$pins_file" THIRD_PARTY_NOTICES.md "$index")
+          jq . <<< "$PINS" > "$pins_file"
+          # The licence data follows the pins; the release job compares it with a full rebuild.
+          python3 android/doona-android/tools/notices.py --geo-pins
+          others=$(git status --porcelain -- . "${files[@]/#/:(exclude)}")
+          if [ -n "$others" ]; then
+            printf 'The notices changed files that this commit leaves out:\n%s\n' "$others" >&2
+            exit 1
+          fi
+          # GitHub signs a commit made by this mutation. It fails if main has moved past
+          # expectedHeadOid. The file contents go through pipes: they exceed the argument limit.
+          for file in "${files[@]}"; do
+            jq -n --arg path "$file" --rawfile contents <(base64 -w0 "$file") '{$path, $contents}'
+          done | jq -s \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg head "$(git rev-parse HEAD)" \
+            --arg headline "build(geo): update MetaCubeX pins to $(jq -r .release_date "$pins_file")" \
+            '{query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid } } }",
+              variables: {input: {
+                branch: {repositoryNameWithOwner: $repository, branchName: "main"},
+                expectedHeadOid: $head,
+                message: {headline: $headline},
+                fileChanges: {additions: .}}}}' |
+            gh api graphql --input - --jq '.data.createCommitOnBranch.commit.oid'
+          # A commit made with GITHUB_TOKEN starts no push workflow; a dispatch does start one.
+          gh workflow run android.yml --repo "$GITHUB_REPOSITORY" --ref main

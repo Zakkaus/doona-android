@@ -107,14 +107,40 @@ def fetch(directory, manifest):
             (stage / name).replace(directory / name)
 
 
+def check_current():
+    pinned = json.loads(PINS.read_text(encoding="utf-8"))
+    latest = latest_pins()
+    # Compare the bytes: upstream may publish the same DAT again under a new commit.
+    if behind := [
+        name
+        for name in FILES
+        if pinned["files"][name]["sha256"] != latest["files"][name]["sha256"]
+    ]:
+        raise ValueError(
+            f"{', '.join(behind)}: the {pinned['release_date']} pins are behind the "
+            f"{latest['release_date']} MetaCubeX release; dispatch the geo-bundle "
+            "workflow first, then tag a commit that has the new pins"
+        )
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--check", action="store_true", help="verify an existing bundle")
     mode.add_argument("--latest", action="store_true", help="stage the latest release")
-    parser.add_argument("directory", type=Path, help="geo bundle directory")
+    mode.add_argument(
+        "--current",
+        action="store_true",
+        help="fail if the pins are behind the latest release; takes no directory",
+    )
+    parser.add_argument("directory", type=Path, nargs="?", help="geo bundle directory")
     args = parser.parse_args(argv)
+    if args.current != (args.directory is None):
+        parser.error("--current takes no directory; every other mode needs one")
     try:
+        if args.current:
+            check_current()
+            return
         if args.latest:
             manifest = latest_pins()
         else:
