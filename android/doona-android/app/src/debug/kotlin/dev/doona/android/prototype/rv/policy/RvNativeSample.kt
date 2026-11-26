@@ -5,12 +5,15 @@ import dev.doona.android.feature.model.RvDnsServer
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvMatchKind
+import dev.doona.android.feature.model.RvMemberGroup
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvRuleEnd
 import dev.doona.android.feature.model.RvRuleMatch
+import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.feature.model.RvRuleState
+import dev.doona.android.feature.policies.RvPolicyProfile
 import dev.doona.android.prototype.rv.data.RvData
 
 /**
@@ -85,9 +88,41 @@ internal object RvNativeSample {
     /** The only response rule, `upstream(remote) && ip(geoip: private) -> backup`: a private answer is asked again. */
     val dnsPrivate = RvDnsRuleDraft(RvDnsList.Response, RvRuleDraft(RvMatchKind.Private, "", ""), RvDnsAction.Upstream, "backup")
 
+    /** [group]'s copy that also holds [nested] as members, for 策略's groups card, whose rows count them. */
+    private fun RvPolicyGroup.holding(vararg nested: RvPolicyGroup) =
+        RvPolicyGroup(id, name, kind, members, selectedId, nested.map { RvMemberGroup(it.id, it.name, it.kind, it.selected) })
+
+    /**
+     * 策略 on this config: 海外 is the main node's group (the last rule's), holding 日本 and 美國; 日本 holds 東京; 影音
+     * stands alone. Every group but 東京 is a rule's target, so only 東京 can go without changing a rule first.
+     */
+    val profile = RvPolicyProfile(
+        main = overseasGroup.holding(japanGroup, usGroup),
+        groups = listOf(japanGroup.holding(tokyoGroup), tokyoGroup, usGroup, streamingGroup),
+        rules = rules.take(PROFILE_RULES),
+        ruleCount = rules.size,
+        nodes = nodes,
+        subscriptions = RvData.subscriptions,
+        nowEpochMs = RvData.nowEpochMs,
+        source = RvRuleSource.File,
+    )
+
+    /** [profile] after the last group went: no group, so no main node; the rules left send to 直連 or refuse. */
+    val profileNoGroups = RvPolicyProfile(
+        main = null,
+        groups = emptyList(),
+        rules = rules.filter { it.group == null } + RvPolicyRule(RvRuleMatch.Rest, null, rules.last().bytes),
+        ruleCount = 4,
+        nodes = nodes,
+        subscriptions = RvData.subscriptions,
+        nowEpochMs = RvData.nowEpochMs,
+        source = RvRuleSource.File,
+    )
+
     const val OVERSEAS = "海外"
     const val JAPAN = "日本"
     const val US = "美國"
     const val STREAMING = "影音"
     const val TOKYO = "東京"
+    private const val PROFILE_RULES = 4
 }

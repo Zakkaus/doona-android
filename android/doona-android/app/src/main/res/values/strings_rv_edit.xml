@@ -19,4 +19,13 @@
     <string name="rv_group_member_remove_title">Remove %1$s?</string>
     <string name="rv_group_member_remove_body">Its traffic goes to the group’s other members.</string>
     <string name="rv_group_member_remove_confirm">Remove</string>
+    <string name="rv_group_new">Create group</string>
+    <string name="rv_group_delete_title">Delete %1$s?</string>
+    <string name="rv_group_delete_body">The group is removed from the configuration.</string>
+    <string name="rv_group_delete_body_member">The group is removed from the configuration and from the members of %1$s.</string>
+    <plurals name="rv_group_delete_refused_rules">
+        <item quantity="one">%1$d rule still sends traffic to it, so nothing changed. Change that rule first.</item>
+        <item quantity="other">%1$d rules still send traffic to it, so nothing changed. Change those rules first.</item>
+    </plurals>
+    <string name="rv_group_delete_refused_action">View rules</string>
 </resources>

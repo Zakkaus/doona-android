@@ -19,4 +19,12 @@
     <string name="rv_group_member_remove_title">移除 %1$s？</string>
     <string name="rv_group_member_remove_body">它的流量改由群组的其他成员处理。</string>
     <string name="rv_group_member_remove_confirm">移除</string>
+    <string name="rv_group_new">新建群组</string>
+    <string name="rv_group_delete_title">删除 %1$s？</string>
+    <string name="rv_group_delete_body">这个群组会从配置文件移除。</string>
+    <string name="rv_group_delete_body_member">这个群组会从配置文件移除，也不再是 %1$s 的成员。</string>
+    <plurals name="rv_group_delete_refused_rules">
+        <item quantity="other">还有 %1$d 条规则发往它，没有任何变动。请先修改这些规则。</item>
+    </plurals>
+    <string name="rv_group_delete_refused_action">查看规则</string>
 </resources>

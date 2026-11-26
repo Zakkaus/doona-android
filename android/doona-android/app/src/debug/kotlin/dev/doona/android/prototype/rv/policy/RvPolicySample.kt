@@ -13,6 +13,7 @@ import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.model.RvTemplate
 import dev.doona.android.feature.policies.RvEffectiveConfig
 import dev.doona.android.feature.policies.RvEffectiveConfigPage
+import dev.doona.android.feature.policies.RvGroupsEdit
 import dev.doona.android.feature.policies.RvPolicyProfile
 import dev.doona.android.feature.policies.RvPolicyRoutes
 import dev.doona.android.feature.policies.RvPolicyScreen
@@ -41,7 +42,9 @@ internal fun RvPolicyScreenSample(
     configRev: Int? = null,
     loading: Boolean = false,
     banner: RvNotice? = null,
-) = RvPolicyScreen(state, onChange, routes, noSubscription, configRev, loading, banner, rvSamplePolicyProfile)
+    groupsEdit: RvGroupsEdit? = null,
+    profile: RvPolicyProfile = rvSamplePolicyProfile,
+) = RvPolicyScreen(state, onChange, routes, noSubscription, configRev, loading, banner, profile, groupsEdit)
 
 /** Where the sample's quick rule and rule page can send: the main node's group, then every other group. */
 internal val rvSampleTargets: List<RvPolicyGroup> = listOf(RvPolicyData.main) + RvPolicyData.groups

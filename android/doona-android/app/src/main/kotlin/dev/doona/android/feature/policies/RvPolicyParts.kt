@@ -211,7 +211,7 @@ private const val TARGETS = 4
 /**
  * A group as a row, on 策略's groups card and among a group page's members: its kind's [glyph] (flagged while [current]),
  * its [name] over its [line], and at the end the [node] its choice ends on with that node's latency; nothing there when
- * the choice leads to no node.
+ * the choice leads to no node. With [remove] (策略's edit mode) the row starts with the remove disc, read as [removeLabel].
  */
 @Composable
 internal fun RvGroupRow(
@@ -222,9 +222,11 @@ internal fun RvGroupRow(
     modifier: Modifier,
     current: Boolean = false,
     trailing: (@Composable () -> Unit)? = null,
+    remove: RvRowRemove? = null,
+    removeLabel: String = name,
 ) {
     RvRow(
-        { RvIconDisc(glyph, current = current) },
+        { RvRemovableLeading(remove, removeLabel) { RvIconDisc(glyph, current = current) } },
         name,
         line,
         modifier,
