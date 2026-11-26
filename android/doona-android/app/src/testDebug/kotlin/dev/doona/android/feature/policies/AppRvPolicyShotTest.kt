@@ -169,7 +169,7 @@ class AppRvPolicyShotTest {
         const val SAMPLE_NOW = 1_795_343_040_000L
 
         /** `proto-rv-policy-{light,dark}`'s window, as tall as the page whole. */
-        const val WHOLE_RULE = "+h1990dp"
+        const val WHOLE_RULE = "+h2008dp"
         const val WHOLE_RULE_EN = "en-w412dp-h2200dp-notnight-xhdpi"
     }
 }

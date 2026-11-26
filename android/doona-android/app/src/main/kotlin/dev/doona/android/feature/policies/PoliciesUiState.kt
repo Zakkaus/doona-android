@@ -8,7 +8,7 @@ import dev.doona.android.feature.model.RvPolicyState
  * The 策略 actions that reach the engine, and the first read of the profile; a failure names the one that failed, so the
  * banner can say which.
  */
-internal enum class PolicyAction { Read, Mode, Ads, Quic, MainNode, TestAll, Update }
+internal enum class PolicyAction { Read, Mode, Ads, Quic, MainNode, TestAll, Update, RemoveGroup }
 
 /** A failed [action] and its [code], shown in the banner until the next attempt of any action succeeds (plan 8). */
 @Immutable

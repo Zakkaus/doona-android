@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.engine.Engine
+import dev.doona.android.engine.EngineException
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Mode
 import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.model.CoreNodePlaces
@@ -136,6 +138,19 @@ internal class PoliciesViewModel(
             retry = error?.let { { perform(action, reread, call) } }
             failure.value = error?.let { PolicyFailure(action, it.errorCode()) }
             if (reread) load()
+        }
+    }
+
+    /**
+     * The groups card's remove control: deletes the group's block from the file that writes it. honk checks the file
+     * before it takes it, so a group a rule or another group still names is refused, with the banner.
+     */
+    fun removeGroup(id: String) {
+        val name = read.value?.policies?.groups?.firstOrNull { it.id == id }?.name ?: return
+        perform(PolicyAction.RemoveGroup) {
+            val native = NativeConfig(api)
+            val (source, block) = groupBlock(native.config(), name) ?: throw EngineException(ErrorCode.NotFound)
+            native.replace(source, source.content.lines().filterIndexed { i, _ -> i !in block }.joinToString("\n"))
         }
     }
 
