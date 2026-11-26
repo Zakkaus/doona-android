@@ -7,6 +7,8 @@ import android.database.sqlite.SQLiteException
 import android.net.ConnectivityManager
 import android.os.Build
 import android.os.SystemClock
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.work.WorkManager
 import dev.doona.android.data.network.ownAddresses
 import dev.doona.android.data.settings.AppSettings
@@ -214,3 +216,7 @@ class AppContainer(
     private fun localNetworkGranted(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.CINNAMON_BUN ||
         application.checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED
 }
+
+/** [AppContainer.nativeApi] for a page: the one instance, from the application. */
+@Composable
+internal fun nativeApi(): NativeApi = (LocalContext.current.applicationContext as DoonaApplication).container.nativeApi
