@@ -25,7 +25,7 @@
           "state": "healthy",
           "latency_ms": 33,
           "moving_avg_ms": 33,
-          "avg10_ms": null,
+          "avg10_ms": 39.6,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -55,7 +55,7 @@
           "state": "healthy",
           "latency_ms": 32,
           "moving_avg_ms": 32,
-          "avg10_ms": null,
+          "avg10_ms": 34.5,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -85,7 +85,7 @@
           "state": "healthy",
           "latency_ms": 46,
           "moving_avg_ms": 46,
-          "avg10_ms": null,
+          "avg10_ms": 46.1,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -115,7 +115,7 @@
           "state": "healthy",
           "latency_ms": 49,
           "moving_avg_ms": 49,
-          "avg10_ms": null,
+          "avg10_ms": 54.6,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -145,7 +145,7 @@
           "state": "healthy",
           "latency_ms": 36,
           "moving_avg_ms": 36,
-          "avg10_ms": null,
+          "avg10_ms": 42.0,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -175,7 +175,7 @@
           "state": "healthy",
           "latency_ms": 73,
           "moving_avg_ms": 73,
-          "avg10_ms": null,
+          "avg10_ms": 75.9,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -206,7 +206,7 @@
           "state": "healthy",
           "latency_ms": 27,
           "moving_avg_ms": 27,
-          "avg10_ms": null,
+          "avg10_ms": 24.4,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -237,7 +237,7 @@
           "state": "healthy",
           "latency_ms": 27,
           "moving_avg_ms": 27,
-          "avg10_ms": null,
+          "avg10_ms": 24.5,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -268,7 +268,7 @@
           "state": "healthy",
           "latency_ms": 33,
           "moving_avg_ms": 33,
-          "avg10_ms": null,
+          "avg10_ms": 35.1,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -299,7 +299,7 @@
           "state": "healthy",
           "latency_ms": 26,
           "moving_avg_ms": 26,
-          "avg10_ms": null,
+          "avg10_ms": 27.1,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -330,7 +330,7 @@
           "state": "healthy",
           "latency_ms": 50,
           "moving_avg_ms": 50,
-          "avg10_ms": null,
+          "avg10_ms": 44.5,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -361,7 +361,7 @@
           "state": "healthy",
           "latency_ms": 61,
           "moving_avg_ms": 61,
-          "avg10_ms": null,
+          "avg10_ms": 58.6,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -392,7 +392,7 @@
           "state": "healthy",
           "latency_ms": 49,
           "moving_avg_ms": 49,
-          "avg10_ms": null,
+          "avg10_ms": 60.9,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -423,7 +423,7 @@
           "state": "healthy",
           "latency_ms": 61,
           "moving_avg_ms": 61,
-          "avg10_ms": null,
+          "avg10_ms": 80.0,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -454,7 +454,7 @@
           "state": "healthy",
           "latency_ms": 59,
           "moving_avg_ms": 59,
-          "avg10_ms": null,
+          "avg10_ms": 63.9,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -485,7 +485,7 @@
           "state": "healthy",
           "latency_ms": 78,
           "moving_avg_ms": 78,
-          "avg10_ms": null,
+          "avg10_ms": 79.0,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -516,7 +516,7 @@
           "state": "healthy",
           "latency_ms": 51,
           "moving_avg_ms": 51,
-          "avg10_ms": null,
+          "avg10_ms": 60.2,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -544,7 +544,7 @@
           "state": "healthy",
           "latency_ms": 79,
           "moving_avg_ms": 79,
-          "avg10_ms": null,
+          "avg10_ms": 79.0,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -572,7 +572,7 @@
           "state": "healthy",
           "latency_ms": 88,
           "moving_avg_ms": 88,
-          "avg10_ms": null,
+          "avg10_ms": 89.0,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -600,7 +600,7 @@
           "state": "healthy",
           "latency_ms": 93,
           "moving_avg_ms": 93,
-          "avg10_ms": null,
+          "avg10_ms": 94.7,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -630,7 +630,7 @@
           "state": "healthy",
           "latency_ms": 77,
           "moving_avg_ms": 77,
-          "avg10_ms": null,
+          "avg10_ms": 84.0,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -660,7 +660,7 @@
           "state": "healthy",
           "latency_ms": 86,
           "moving_avg_ms": 86,
-          "avg10_ms": null,
+          "avg10_ms": 124.5,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -690,7 +690,7 @@
           "state": "healthy",
           "latency_ms": 186,
           "moving_avg_ms": 186,
-          "avg10_ms": null,
+          "avg10_ms": 128.5,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -720,7 +720,7 @@
           "state": "healthy",
           "latency_ms": 108,
           "moving_avg_ms": 108,
-          "avg10_ms": null,
+          "avg10_ms": 106.1,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -750,7 +750,7 @@
           "state": "healthy",
           "latency_ms": 103,
           "moving_avg_ms": 103,
-          "avg10_ms": null,
+          "avg10_ms": 114.2,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -781,7 +781,7 @@
           "state": "healthy",
           "latency_ms": 142,
           "moving_avg_ms": 142,
-          "avg10_ms": null,
+          "avg10_ms": 150.6,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -812,7 +812,7 @@
           "state": "healthy",
           "latency_ms": 162,
           "moving_avg_ms": 162,
-          "avg10_ms": null,
+          "avg10_ms": 167.2,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -843,7 +843,7 @@
           "state": "healthy",
           "latency_ms": 174,
           "moving_avg_ms": 174,
-          "avg10_ms": null,
+          "avg10_ms": 196.1,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -874,7 +874,7 @@
           "state": "healthy",
           "latency_ms": 166,
           "moving_avg_ms": 166,
-          "avg10_ms": null,
+          "avg10_ms": 161.6,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -936,7 +936,7 @@
           "state": "healthy",
           "latency_ms": 193,
           "moving_avg_ms": 193,
-          "avg10_ms": null,
+          "avg10_ms": 204.6,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -964,7 +964,7 @@
           "state": "healthy",
           "latency_ms": 173,
           "moving_avg_ms": 173,
-          "avg10_ms": null,
+          "avg10_ms": 179.9,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -992,7 +992,7 @@
           "state": "healthy",
           "latency_ms": 226,
           "moving_avg_ms": 226,
-          "avg10_ms": null,
+          "avg10_ms": 256.0,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -1020,7 +1020,7 @@
           "state": "healthy",
           "latency_ms": 233,
           "moving_avg_ms": 233,
-          "avg10_ms": null,
+          "avg10_ms": 238.4,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -1048,7 +1048,7 @@
           "state": "healthy",
           "latency_ms": 259,
           "moving_avg_ms": 259,
-          "avg10_ms": null,
+          "avg10_ms": 255.8,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -1076,7 +1076,7 @@
           "state": "healthy",
           "latency_ms": 254,
           "moving_avg_ms": 254,
-          "avg10_ms": null,
+          "avg10_ms": 258.1,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -1104,7 +1104,7 @@
           "state": "healthy",
           "latency_ms": 291,
           "moving_avg_ms": 291,
-          "avg10_ms": null,
+          "avg10_ms": 255.4,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -1132,7 +1132,7 @@
           "state": "healthy",
           "latency_ms": 243,
           "moving_avg_ms": 243,
-          "avg10_ms": null,
+          "avg10_ms": 223.5,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -1160,7 +1160,7 @@
           "state": "healthy",
           "latency_ms": 267,
           "moving_avg_ms": 267,
-          "avg10_ms": null,
+          "avg10_ms": 230.5,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -1188,7 +1188,7 @@
           "state": "healthy",
           "latency_ms": 261,
           "moving_avg_ms": 261,
-          "avg10_ms": null,
+          "avg10_ms": 241.0,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -1216,7 +1216,7 @@
           "state": "healthy",
           "latency_ms": 223,
           "moving_avg_ms": 223,
-          "avg10_ms": null,
+          "avg10_ms": 241.6,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -1244,7 +1244,7 @@
           "state": "healthy",
           "latency_ms": 247,
           "moving_avg_ms": 247,
-          "avg10_ms": null,
+          "avg10_ms": 249.9,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -1272,7 +1272,7 @@
           "state": "healthy",
           "latency_ms": 271,
           "moving_avg_ms": 271,
-          "avg10_ms": null,
+          "avg10_ms": 268.9,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -1300,7 +1300,7 @@
           "state": "healthy",
           "latency_ms": 237,
           "moving_avg_ms": 237,
-          "avg10_ms": null,
+          "avg10_ms": 240.1,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -1328,7 +1328,7 @@
           "state": "healthy",
           "latency_ms": 232,
           "moving_avg_ms": 232,
-          "avg10_ms": null,
+          "avg10_ms": 220.9,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -1356,7 +1356,7 @@
           "state": "healthy",
           "latency_ms": 123,
           "moving_avg_ms": 123,
-          "avg10_ms": null,
+          "avg10_ms": 129.6,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -1384,7 +1384,7 @@
           "state": "healthy",
           "latency_ms": 135,
           "moving_avg_ms": 135,
-          "avg10_ms": null,
+          "avg10_ms": 145.4,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }
@@ -1412,7 +1412,7 @@
           "state": "healthy",
           "latency_ms": 120,
           "moving_avg_ms": 120,
-          "avg10_ms": null,
+          "avg10_ms": 132.2,
           "observed_at": "2026-11-22T10:00:00Z",
           "error": null
         }

@@ -10,8 +10,9 @@ import kotlin.math.roundToInt
 /**
  * honk's [node] as the pages show it. honk reports each node's last probe, not a series, so the history is that one
  * result: its latency, a timeout for a node honk found unavailable, none before a probe. honk's nodes carry no server,
- * port or TLS, so the node reads as not [RvNode.described] and has no share link. [providers] names the subscription by
- * id; a node added by its link ([isInline]) is 組態內.
+ * port or TLS, so the node reads as not [RvNode.described] and has no share link. Its trend is the probe's latency less
+ * the average of its last ten (owner, q-latency-trend 2026-11-26); none before ten. [providers] names the subscription
+ * by id; a node added by its link ([isInline]) is 組態內.
  */
 internal fun rvNode(node: Node, providers: Map<String, Provider>, places: NodePlaces): RvNode {
     val placed = places.of(node.name)
@@ -22,6 +23,7 @@ internal fun rvNode(node: Node, providers: Map<String, Provider>, places: NodePl
         HealthState.Unavailable -> listOf(null)
         HealthState.Unknown, null -> emptyList()
     }
+    val trend = probe?.takeIf { it.state == HealthState.Healthy }?.let { p -> p.latencyMs?.let { ms -> p.avg10Ms?.let { (ms - it).roundToInt() } } }
     return RvNode(
         id = node.id,
         name = node.name,
@@ -37,6 +39,7 @@ internal fun rvNode(node: Node, providers: Map<String, Provider>, places: NodePl
         subscriptionId = if (inline) RV_INLINE else node.providerId.orEmpty(),
         history = history,
         shareable = false,
+        trendMs = trend,
     )
 }
 

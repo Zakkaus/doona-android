@@ -82,6 +82,8 @@ internal class HealthObservation(
     val transport: Transport,
     val state: HealthState,
     @SerialName("latency_ms") val latencyMs: Double?,
+    /** The average of the last ten probes; null until there are ten. */
+    @SerialName("avg10_ms") val avg10Ms: Double? = null,
     @SerialName("observed_at") val observedAt: String,
     val error: String?,
 )
