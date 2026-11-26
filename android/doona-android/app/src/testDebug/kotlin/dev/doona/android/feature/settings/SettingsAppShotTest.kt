@@ -64,6 +64,7 @@ import dev.doona.android.report.ReportZip
 import dev.doona.android.report.nodeMembers
 import dev.doona.android.report.testFlowEvents
 import dev.doona.android.testing.drawFully
+import dev.doona.android.vpn.PolicyHonkFixtures
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
@@ -245,13 +246,17 @@ class SettingsAppShotTest {
     @Config(qualifiers = THEME_PAGE_FS200)
     fun themeFs200() = compose.app("settings-theme", fontScale = RV_FS200, whole = true) { Theme() }
 
-    @Test fun dnsLight() = compose.app("settings-dns", dark = false) { DnsRoute(FakeEngine(), onBack = {}) }
+    @Test fun dnsLight() = compose.app("settings-dns", dark = false) { DnsRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onServers = {}) }
 
-    @Test fun dnsDark() = compose.app("settings-dns", dark = true) { DnsRoute(FakeEngine(), onBack = {}) }
+    @Test fun dnsDark() = compose.app("settings-dns", dark = true) { DnsRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onServers = {}) }
 
-    @Test fun dnsFs200() = compose.app("settings-dns", fontScale = RV_FS200) { DnsRoute(FakeEngine(), onBack = {}) }
+    @Test fun dnsFs200() = compose.app("settings-dns", fontScale = RV_FS200) { DnsRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onServers = {}) }
 
     /** 自訂 open on the core's two servers, over the page. */
+    @Test fun dnsServersLight() = compose.app("settings-dns-servers", dark = false) { DnsServersRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onRules = {}) }
+
+    @Test fun dnsServersDark() = compose.app("settings-dns-servers", dark = true) { DnsServersRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onRules = {}) }
+
     @Test fun dnsCustomLight() = compose.app("settings-dns-custom", dark = false) { DnsCustom(DnsUiState(SERVERS, true, TYPED)) }
 
     @Test fun dnsCustomDark() = compose.app("settings-dns-custom", dark = true) { DnsCustom(DnsUiState(SERVERS, true, TYPED)) }
@@ -268,7 +273,7 @@ class SettingsAppShotTest {
     @Composable
     private fun DnsCustom(state: DnsUiState) {
         Box(Modifier.fillMaxSize()) {
-            RvDnsScreen(rvDnsUpstream(state.servers), onSelect = {}, onBack = {}, onCustom = {})
+            RvDnsScreen(rvDnsUpstream(state.servers), onSelect = {}, onBack = {}, onCustom = {}, onServers = {})
             RvSheetLayout({ 1f }, {}, stringResource(R.string.rv_settings_dns_custom_title)) { RvDnsCustomContent(state, onText = {}, onSave = {}, onDismiss = {}) }
         }
     }

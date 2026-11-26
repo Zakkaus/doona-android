@@ -31,6 +31,7 @@ import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSettingsCard
 import dev.doona.android.designsystem.rv.RvSettingsColumn
+import dev.doona.android.designsystem.rv.RvSettingsNavRow
 import dev.doona.android.designsystem.rv.RvSettingsRadioRow
 import dev.doona.android.designsystem.rv.RvSettingsRow
 import dev.doona.android.designsystem.rv.RvSettingsSection
@@ -39,18 +40,19 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvRowPress
 import dev.doona.android.designsystem.rv.rvSystemScheme
-import dev.doona.android.engine.Engine
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.messageRes
 import dev.doona.android.feature.model.RvDnsUpstream
+import dev.doona.android.vpn.NativeApi
 
 /**
  * The page 進階 → DNS opens, in 主題's language: the large title, then one titled card of servers, each its name over
  * its address with a radio, and 自訂 last, which opens [RvDnsCustomSheet]; a footer says the query goes out through the
- * main node (rule-mode decision 10). A [selected] null (servers no preset names) leaves every radio empty.
+ * main node (rule-mode decision 10). A [selected] null (servers no preset names) leaves every radio empty. Under 設定檔,
+ * DNS 伺服器 opens the servers the config declares ([onServers]; owner 2026-11-26 13:53, q-dns-servers).
  */
 @Composable
-internal fun RvDnsScreen(selected: RvDnsUpstream?, onSelect: (RvDnsUpstream) -> Unit, onBack: () -> Unit, onCustom: () -> Unit) {
+internal fun RvDnsScreen(selected: RvDnsUpstream?, onSelect: (RvDnsUpstream) -> Unit, onBack: () -> Unit, onCustom: () -> Unit, onServers: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_settings_dns)
     RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
@@ -66,16 +68,18 @@ internal fun RvDnsScreen(selected: RvDnsUpstream?, onSelect: (RvDnsUpstream) -> 
                 }
             }
             RvFootnote(stringResource(R.string.rv_settings_dns_footer))
+            RvSettingsSection(stringResource(R.string.rv_config_title))
+            RvSettingsCard { RvSettingsNavRow(stringResource(R.string.rv_config_dns_servers), R.drawable.rv_sym_dns, onServers) }
         }
     }
 }
 
-/** DNS in the app: the core's servers, a tap on a preset saves it, and 自訂 opens the sheet that saves typed ones. */
+/** DNS in the app: honk's server, a tap on a preset saves it, 自訂 opens the sheet that saves a typed one. */
 @Composable
-internal fun DnsRoute(engine: Engine, onBack: () -> Unit) {
-    val viewModel: DnsViewModel = viewModel(factory = DnsViewModel.factory(engine))
+internal fun DnsRoute(api: NativeApi, onBack: () -> Unit, onServers: () -> Unit) {
+    val viewModel: DnsViewModel = viewModel(factory = DnsViewModel.factory(api))
     val state = viewModel.uiState.collectAsStateWithLifecycle().value ?: return RvSettingsLoading()
-    RvDnsScreen(rvDnsUpstream(state.servers), viewModel::select, onBack, onCustom = viewModel::openCustom)
+    RvDnsScreen(rvDnsUpstream(state.servers), viewModel::select, onBack, onCustom = viewModel::openCustom, onServers = onServers)
     RvDnsCustomSheet(state, viewModel::editCustom, viewModel::saveCustom, viewModel::dismissCustom)
 }
 
@@ -113,5 +117,5 @@ private val PLACEHOLDER = "${RvDnsUpstream.Cloudflare.address}, ${RvDnsUpstream.
 private fun RvDnsScreenPreview() {
     val dark = isSystemInDarkTheme()
     var selected by remember { mutableStateOf(RvDnsUpstream.Cloudflare) }
-    RvTheme(rvSystemScheme(dark), dark) { RvDnsScreen(selected, { selected = it }, onBack = {}, onCustom = {}) }
+    RvTheme(rvSystemScheme(dark), dark) { RvDnsScreen(selected, { selected = it }, onBack = {}, onCustom = {}, onServers = {}) }
 }

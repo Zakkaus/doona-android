@@ -115,6 +115,10 @@ data object ThemeKey : AppKey
 @Serializable
 data object DnsKey : AppKey
 
+/** DNS 伺服器, from 設定 › DNS. */
+@Serializable
+data object DnsServersKey : AppKey
+
 @Serializable
 data object LogLevelKey : AppKey
 

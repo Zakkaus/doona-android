@@ -188,7 +188,7 @@ class RvLayoutTest {
     }
 
     @Test
-    fun dns() = measure("settings-dns", Top.Title) { RvDnsScreen(RvDnsUpstream.Cloudflare, onSelect = {}, onBack = {}, onCustom = {}) }
+    fun dns() = measure("settings-dns", Top.Title) { RvDnsScreen(RvDnsUpstream.Cloudflare, onSelect = {}, onBack = {}, onCustom = {}, onServers = {}) }
 
     @Test
     fun connections() = measure("connections", Top.Tab) { RvConnectionsPage(RvPolicyData.connections) }

@@ -1,4 +1,4 @@
-package dev.doona.android.prototype.rv.policy
+package dev.doona.android.feature.settings
 
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.systemBars
@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
@@ -18,6 +19,7 @@ import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvListEdit
 import dev.doona.android.designsystem.rv.RvNotice
+import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvRowRemove
 import dev.doona.android.designsystem.rv.RvScrollPage
@@ -27,7 +29,7 @@ import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.feature.model.RvDnsServer
 
 /**
- * DNS 伺服器 (config plan row 17; no prototype, sample only): the servers dns.dae declares in `dns.upstream`, in file
+ * DNS 伺服器 (config plan row 17; owner 2026-11-26 13:53, q-dns-servers: its own page from 設定 › DNS): the servers dns.dae declares in `dns.upstream`, in file
  * order, each its name over its address; a tap opens it ([onOpen]). With [edit] each server ends with the remove
  * control and 新增伺服器 ends the card; 新增伺服器 opens [adding], whose 新增 hands [onCreate] the server. A removal asks first; a server a DNS rule still names is refused by the caller through [banner], as a group
  * is. [adding] is the new server's sheet, typed through [onAdding] (null closes it).
@@ -137,3 +139,17 @@ internal fun rvDnsAddressValid(address: String): Boolean {
 }
 
 private val DNS_SCHEMES = setOf("udp", "tcp", "tcp+udp", "tls", "https", "h3", "quic")
+
+/**
+ * The banner of a group or DNS server the configuration would not lose, an error: [rules] rules still send traffic to
+ * it, so nothing changed; 查看規則 opens the rules.
+ */
+@Composable
+internal fun rvDeleteRefusedBanner(name: String, rules: Int, onRules: () -> Unit) = RvNotice(
+    RvNoticeKind.Error,
+    stringResource(R.string.rv_list_delete_failed_title, name),
+    pluralStringResource(R.plurals.rv_list_delete_refused_rules, rules, rules),
+    stringResource(R.string.rv_list_delete_refused_action),
+    onRules,
+    titleKeepWords = false,
+)

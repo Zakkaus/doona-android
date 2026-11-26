@@ -59,7 +59,7 @@ class EffectiveConfigViewModelTest {
     @Test
     fun `a server that names no group goes direct`() = runTest {
         val sample = HonkFixtures.body("config/rv-sample")
-        honk.on("GET", "/api/v1/config", 200, sample.replace("'udp://8.8.8.8:53' -> Proxy", "'udp://8.8.8.8:53'"))
+        honk.on("GET", "/api/v1/config", 200, sample.replace("'udp://1.1.1.1:53' -> Proxy", "'udp://1.1.1.1:53'"))
 
         assertEquals(RvLabel.Res(R.string.mode_direct), collected().uiState.value.config?.dnsVia)
     }

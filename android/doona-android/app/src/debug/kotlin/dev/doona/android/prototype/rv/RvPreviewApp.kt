@@ -256,7 +256,7 @@ private fun RvSamplePage(
         THEME -> RvThemeScreen(settings.appearance, { onSettings(settings.copy(appearance = it)) }, rvSystemSchemes(), RV_SAMPLE_THEME_PREVIEW, onBack = pages.pop)
 
         // The sandbox has no core to check typed servers, so 自訂 does nothing here.
-        DNS -> RvDnsScreen(settings.dns, { onSettings(settings.copy(dns = it)) }, onBack = pages.pop, onCustom = {})
+        DNS -> RvDnsScreen(settings.dns, { onSettings(settings.copy(dns = it)) }, onBack = pages.pop, onCustom = {}, onServers = {})
 
         PERAPP, LICENSES, LICENSE -> AboutAppsPage(route, settings, onSettings, pages)
 

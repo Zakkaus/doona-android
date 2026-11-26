@@ -114,17 +114,3 @@ internal object RvNetworkSample {
 }
 
 private const val UDP_NODE = "hk-01"
-
-/**
- * The banner of a group or DNS server the configuration would not lose, an error: [rules] rules still send traffic to
- * it, so nothing changed; 查看規則 opens the rules.
- */
-@Composable
-internal fun rvDeleteRefusedBanner(name: String, rules: Int, onRules: () -> Unit) = RvNotice(
-    RvNoticeKind.Error,
-    stringResource(R.string.rv_list_delete_failed_title, name),
-    pluralStringResource(R.plurals.rv_list_delete_refused_rules, rules, rules),
-    stringResource(R.string.rv_list_delete_refused_action),
-    onRules,
-    titleKeepWords = false,
-)
