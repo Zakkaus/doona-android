@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.feature.config.RvConfigData
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.policies.RvPolicyRoutes
 import dev.doona.android.feature.policies.RvPolicyScreen

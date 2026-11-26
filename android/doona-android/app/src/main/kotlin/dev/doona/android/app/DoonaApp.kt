@@ -128,6 +128,7 @@ internal fun DoonaApp(
                         mainNode = { backStack.push(MainNodeChoiceKey) },
                         rules = { backStack.push(RulesKey) },
                         template = { backStack.push(TemplateKey) },
+                        config = { backStack.push(ConfigKey) },
                         tab = onTab,
                         search = { backStack.push(NodeSearchKey) },
                     ),
@@ -147,6 +148,7 @@ internal fun DoonaApp(
                 TemplateImpactRoute(engine, key.templateId, onBack = { backStack.pop(key) }, onApplied = { backStack.push(PoliciesKey) })
             }
             entry<EffectiveConfigKey> { key -> EffectiveConfigRoute(engine, onBack = { backStack.pop(key) }, onRules = { backStack.push(RulesKey) }) }
+            configEntries(engine, backStack)
             entry<SubscriptionsKey> { key ->
                 SubscriptionsRoute(
                     onBack = { backStack.pop(key) },

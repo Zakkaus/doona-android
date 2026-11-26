@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_list_remove">Delete %1$s</string>
+    <string name="rv_member_remove">Remove %1$s from the group</string>
+    <string name="rv_list_delete_failed_title">Couldn’t delete %1$s</string>
+    <string name="rv_list_delete_failed_storage">The phone is out of storage. Nothing changed.</string>
+    <string name="rv_group_edit_title">Edit group</string>
+    <string name="rv_group_edit_name">Name</string>
+    <string name="rv_group_edit_policy">Policy</string>
+    <string name="rv_group_edit_members">Members</string>
+    <string name="rv_group_edit_add_member">Add member</string>
+    <string name="rv_group_edit_options">Options</string>
+    <string name="rv_group_edit_default">Default</string>
+    <string name="rv_group_edit_final">When none is available</string>
+    <string name="rv_group_edit_exit">Exit node</string>
+    <string name="rv_group_edit_unset">Not set</string>
+    <string name="rv_group_member_node">Node</string>
+    <string name="rv_group_member_group">Group · %1$s</string>
+    <string name="rv_group_member_remove_title">Remove %1$s?</string>
+    <string name="rv_group_member_remove_body">Its traffic goes to the group’s other members.</string>
+    <string name="rv_group_member_remove_confirm">Remove</string>
+    <string name="rv_group_new">Create group</string>
+    <string name="rv_list_delete_title">Delete %1$s?</string>
+    <string name="rv_group_delete_body">The group is removed from the configuration.</string>
+    <string name="rv_group_delete_body_member">The group is removed from the configuration and from the members of %1$s.</string>
+    <plurals name="rv_list_delete_refused_rules">
+        <item quantity="one">%1$d rule still sends traffic to it, so nothing changed. Change that rule first.</item>
+        <item quantity="other">%1$d rules still send traffic to it, so nothing changed. Change those rules first.</item>
+    </plurals>
+    <string name="rv_list_delete_refused_action">View rules</string>
+    <string name="rv_config_file_new">Create file</string>
+    <string name="rv_config_file_new_body">A line that includes it is added to %1$s. You see the change before it applies.</string>
+    <string name="rv_config_file_new_placeholder" translatable="false">rules/new.dae</string>
+    <string name="rv_list_create">Create</string>
+    <string name="rv_config_file_delete_body">The line in %1$s that includes it goes too. You see the change before it applies.</string>
+    <string name="rv_config_file_delete_body_nested">The line in %1$s that includes it goes too, and so does %2$s, which it includes. You see the change before it applies.</string>
+    <string name="rv_list_create_failed_title">Couldn’t create %1$s</string>
+    <string name="rv_group_name_taken">A group already has this name.</string>
+    <string name="rv_dns_server_new">Add server</string>
+    <string name="rv_dns_server_address">Address</string>
+    <string name="rv_dns_server_delete_body">The server is removed from the configuration.</string>
+    <string name="rv_dns_server_name_taken">A server already has this name.</string>
+    <string name="rv_dns_server_address_bad">Start with udp://, tcp://, tcp+udp://, tls://, https://, h3:// or quic://.</string>
+</resources>

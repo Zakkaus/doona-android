@@ -338,6 +338,7 @@ class CoreDtoTest {
         val core = listOf(
             "invalid_argument", "not_found", "fetch_failed", "too_large", "parse_failed", "no_nodes", "busy", "internal",
             "local_network", "dns_failed", "storage_full", "write_failed",
+            "conflict", "source_limit", "non_native_source", "activation_failed",
         )
         assertEquals(ErrorCode.entries.toList(), core.map(::errorCodeOf))
         assertEquals(ErrorCode.Internal, errorCodeOf("a_later_code"))

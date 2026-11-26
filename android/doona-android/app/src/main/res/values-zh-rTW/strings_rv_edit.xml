@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rv_list_remove">刪除 %1$s</string>
+    <string name="rv_member_remove">從群組移除 %1$s</string>
+    <string name="rv_list_delete_failed_title">無法刪除 %1$s</string>
+    <string name="rv_list_delete_failed_storage">手機儲存空間不足，沒有任何變動。</string>
+    <string name="rv_group_edit_title">編輯群組</string>
+    <string name="rv_group_edit_name">名稱</string>
+    <string name="rv_group_edit_policy">策略</string>
+    <string name="rv_group_edit_members">成員</string>
+    <string name="rv_group_edit_add_member">新增成員</string>
+    <string name="rv_group_edit_options">選項</string>
+    <string name="rv_group_edit_default">預設</string>
+    <string name="rv_group_edit_final">全部不可用時</string>
+    <string name="rv_group_edit_exit">出口節點</string>
+    <string name="rv_group_edit_unset">未設定</string>
+    <string name="rv_group_member_node">節點</string>
+    <string name="rv_group_member_group">群組 · %1$s</string>
+    <string name="rv_group_member_remove_title">移除 %1$s？</string>
+    <string name="rv_group_member_remove_body">它的流量改由群組的其他成員處理。</string>
+    <string name="rv_group_member_remove_confirm">移除</string>
+    <string name="rv_group_new">新增群組</string>
+    <string name="rv_list_delete_title">刪除 %1$s？</string>
+    <string name="rv_group_delete_body">這個群組會從設定檔移除。</string>
+    <string name="rv_group_delete_body_member">這個群組會從設定檔移除，也不再是 %1$s 的成員。</string>
+    <plurals name="rv_list_delete_refused_rules">
+        <item quantity="other">還有 %1$d 條規則送往它，沒有任何變動。請先修改這些規則。</item>
+    </plurals>
+    <string name="rv_list_delete_refused_action">查看規則</string>
+    <string name="rv_config_file_new">新增檔案</string>
+    <string name="rv_config_file_new_body">會在 %1$s 加上引入這個檔案的一行，套用前會先顯示變更。</string>
+    <string name="rv_list_create">新增</string>
+    <string name="rv_config_file_delete_body">%1$s 中引入它的那一行會一起刪除，套用前會先顯示變更。</string>
+    <string name="rv_config_file_delete_body_nested">%1$s 中引入它的那一行會一起刪除，它引入的 %2$s 也會刪除。套用前會先顯示變更。</string>
+    <string name="rv_list_create_failed_title">無法新增 %1$s</string>
+    <string name="rv_group_name_taken">已有同名的群組。</string>
+    <string name="rv_dns_server_new">新增伺服器</string>
+    <string name="rv_dns_server_address">位址</string>
+    <string name="rv_dns_server_delete_body">這個伺服器會從設定檔移除。</string>
+    <string name="rv_dns_server_name_taken">已有同名的伺服器。</string>
+    <string name="rv_dns_server_address_bad">位址須以 udp://、tcp://、tcp+udp://、tls://、https://、h3:// 或 quic:// 開頭。</string>
+</resources>

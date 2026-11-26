@@ -136,6 +136,10 @@ class SubAddViewModelTest {
             ErrorCode.Internal to RvAddFailure.Unreachable,
             ErrorCode.StorageFull to RvAddFailure.NotSaved(ErrorCode.StorageFull),
             ErrorCode.WriteFailed to RvAddFailure.NotSaved(ErrorCode.WriteFailed),
+            ErrorCode.Conflict to RvAddFailure.Unreachable,
+            ErrorCode.SourceLimit to RvAddFailure.Unreachable,
+            ErrorCode.NonNativeSource to RvAddFailure.Unreachable,
+            ErrorCode.ActivationFailed to RvAddFailure.Unreachable,
         )
         assertEquals(ErrorCode.entries.toSet(), expected.keys)
         expected.forEach { (code, failure) -> assertEquals(code.name, failure, rvAddFailure(code)) }

@@ -8,6 +8,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.text.TextLayoutResult
+import dev.doona.android.designsystem.rv.RvEditPart
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvRowPart
 import java.io.File
@@ -103,9 +104,13 @@ private fun SemanticsNode.firstLine(density: Float): RvFirstLine? {
 /** Every row of the tree: the library's rows ([RvPart.ROW]) and the row-like parts it tags (a notice, a menu item). */
 internal fun rvRowsOf(nodes: List<RvNode>): List<RvRowRead> = nodes.indices.mapNotNull { i ->
     val kind = when (nodes[i].tag) {
-        RvPart.ROW -> if (nodes.subtree(i).any { nodes[it].tag == RvRowPart.SETTINGS_ROW }) RvRowKind.Settings else RvRowKind.List
+        // An add row's own tag ([RvEditPart.ADD]) stands in the row's: it is a row of its card like the others.
+        RvPart.ROW, RvEditPart.ADD -> if (nodes.subtree(i).any { nodes[it].tag == RvRowPart.SETTINGS_ROW }) RvRowKind.Settings else RvRowKind.List
+
         RvRowPart.NOTICE_ROW -> RvRowKind.Notice
+
         RvRowPart.MENU_ROW -> RvRowKind.Menu
+
         else -> null
     }
     kind?.let { nodes.readRow(i, it) }
@@ -140,9 +145,11 @@ private fun RvNode.shown() = box.width > 0f && box.height > 0f
 private fun List<RvNode>.readRow(i: Int, kind: RvRowKind): RvRowRead? {
     val inRow = subtree(i).drop(1)
     // A text inside a leading visual (the fallback flag's code, a dash) is its drawing, not the row's text.
-    val leads = leadOf(inRow)
+    // An editable list's remove control is not the row's text; R16 reads its disc on its own.
+    val removes = inRow.filter { this[it].tag == RvEditPart.REMOVE }.flatMap { subtree(it) }.toSet()
+    val leads = leadOf(inRow.filter { it !in removes })
     val inLead = leads.flatMap { subtree(it) }.toSet()
-    val texts = inRow.filter { this[it].text != null && this[it].shown() && it !in inLead }
+    val texts = inRow.filter { this[it].text != null && this[it].shown() && it !in inLead && it !in removes }
     if (texts.isEmpty()) return null
     val firstText = texts.minOf { this[it].box.left }
     val lead = leads.firstOrNull { this[it].box.right <= firstText + HALF }
@@ -172,7 +179,7 @@ private fun List<RvNode>.readRow(i: Int, kind: RvRowKind): RvRowRead? {
     val unlisted = ids.filter { it.second !in RV_LAYOUT_EXCEPTIONS }.map { it.second.ifEmpty { "(no id)" } }
     val room = inRow.firstOrNull { this[it].tag == RvRowPart.END && this[it].shown() }?.let { this[it].box }
     val endLines = inRow.filter { this[it].tag == RvRowPart.LINE_END && this[it].shown() }.map { this[it].box }
-    return RvRowRead(kind, this[i].box, lead?.let { this[it] }, title, subtitles, end, tags, cardOf(i), this[i].cut || edge, edge, room ?: ends?.second, lineEnds, code, room, endLines, whole, unlisted)
+    return RvRowRead(kind, this[i].box, lead?.let { this[it] }, title, subtitles, end, tags, cardOf(i), this[i].cut || edge, edge, room ?: ends?.second, lineEnds, code, room, endLines, whole = whole, unlisted = unlisted)
 }
 
 /** The bounds of the card [i] stands in, if it stands in one. */
@@ -215,7 +222,8 @@ private fun List<RvNode>.ink(i: Int): Rect {
     subtree(i).filter { this[it].tag == RvPart.BUSY && this[it].shown() }.takeIf { it.isNotEmpty() }?.let { bars ->
         return bars.map { this[it].box }.reduce { a, b -> Rect(minOf(a.left, b.left), minOf(a.top, b.top), maxOf(a.right, b.right), maxOf(a.bottom, b.bottom)) }
     }
-    if (subtree(i).none { this[it].tag == RvRowPart.TARGET }) return this[i].box
+    // A touch target ([RvRowPart.TARGET], a remove control's [RvEditPart.REMOVE]) draws only what it holds.
+    if (subtree(i).none { this[it].tag == RvRowPart.TARGET || this[it].tag == RvEditPart.REMOVE }) return this[i].box
     val inside = this[i].kids.filter { this[it].shown() }.map { ink(it) }
     return inside.reduceOrNull { a, b -> Rect(minOf(a.left, b.left), minOf(a.top, b.top), maxOf(a.right, b.right), maxOf(a.bottom, b.bottom)) } ?: this[i].box
 }
@@ -244,13 +252,11 @@ private fun RvRowRead.leadKind(): RvRowBreak? {
 }
 
 /** R5: the leading visual starts 16 dp inside the row (a row's box is the card's width). */
-private fun RvRowRead.leadX(): RvRowBreak? {
-    val lead = lead ?: return null
-    return off("R5", lead.box.left - row.left - INSET)
-}
+private fun RvRowRead.leadX(): RvRowBreak? = lead?.let { off("R5", it.box.left - row.left - INSET) }
 
-/** R6: the text column starts 16 dp after the leading visual, or 16 dp inside a row without one. */
-private fun RvRowRead.textX(): RvRowBreak? = if (edge && lead == null) null else off("R6", textLeft - (lead?.box?.right?.plus(GAP) ?: (row.left + INSET)))
+/** R6: the text column starts 16 dp after the leading visual, or on a row without one 16 dp inside the row. */
+private fun RvRowRead.textX(): RvRowBreak? =
+    if (edge && lead == null) null else off("R6", textLeft - (lead?.box?.right?.plus(GAP) ?: (row.left + INSET)))
 
 /** R8 and R9: one line, the leading visual centred on the row; with a subtitle, its top on the title's top. */
 private fun RvRowRead.leadY(): RvRowBreak? {

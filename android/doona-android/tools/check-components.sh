@@ -9,7 +9,10 @@
 #   widget  calls `Text(`, `BasicText(`, `Icon(`, `Image(` or a Material control where an Rv component exists (RvText,
 #           RvGlyph, RvSwitch, RvPrimaryButton, ...);
 #   click   calls `clickable(`, `selectable(`, `toggleable(` or `combinedClickable(`: a press and its focus outline come
-#           from the library's `rvPress`, `rvRowPress`, `rvRowSelect`, `rvRowToggle` and `rvPressSelect`.
+#           from the library's `rvPress`, `rvRowPress`, `rvRowSelect`, `rvRowToggle` and `rvPressSelect`;
+#   add     names the add glyph (`R.drawable.rv_sym_add`) at all: every 新增 X entry is the library's `RvAddRow` or
+#           `RvSettingsAddRow` (owner 2026-11-26: one add component for list cards and empty states), and an action
+#           that is not one (導入設定) takes its own glyph.
 # Comments are not read: a comment line, and the rest of a line after a `//` outside a string literal. Each existing
 # exception is a line of tools/check-components.allow:
 #   <file under app/src>|<rule>|<count>|<reason>
@@ -36,6 +39,7 @@ colour='Color\(0x|\b0x[0-9A-Fa-f]{8}\b|\bColor\.[A-Z]|MaterialTheme\.'
 style='TextStyle\(|\bfontSize\b|\bFontWeight\.'
 widget='(^|[^A-Za-z_.])(Text|BasicText|Icon|Image|IconButton|Switch|Button|TextButton|OutlinedButton|Card|Surface|TextField|OutlinedTextField|RadioButton|Checkbox|HorizontalDivider|Divider)\('
 click='(^|[^A-Za-z_])(clickable|selectable|toggleable|combinedClickable)[[:space:]]*[({]'
+add='\bR\.drawable\.rv_sym_add\b'
 # A class, object or interface of a widget's name (`data class Icon(`): a declaration, read past by the widget rule.
 declared='^[0-9]+:.*\b(class|interface)[[:space:]]+(Text|BasicText|Icon|Image|IconButton|Switch|Button|TextButton|OutlinedButton|Card|Surface|TextField|OutlinedTextField|RadioButton|Checkbox|HorizontalDivider|Divider)\('
 
@@ -87,7 +91,7 @@ for f in $pages; do
     # Comment lines, imports and trailing comments are blanked, not removed, so the line numbers stay. A trailing comment
     # starts at a `//` outside a string literal: `"https://..."` and `"a // b"` are a string's text, and what follows them is read.
     awk "$uncomment" "$f" > "$stripped"
-    for rule in dp colour style widget click; do
+    for rule in dp colour style widget click add; do
         eval "pattern=\$$rule"
         # A declaration is no call: `data class Icon(` names a type, it draws nothing.
         grep -nE "$pattern" "$stripped" | { [ "$rule" = widget ] && grep -vE "$declared" || cat; } | sed -E "s#^([0-9]+):#$rel:\1:$rule:#" || true

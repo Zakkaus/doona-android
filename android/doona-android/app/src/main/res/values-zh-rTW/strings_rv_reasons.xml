@@ -14,5 +14,9 @@
     <string name="rv_reason_dns_failed">DNS 查詢失敗。</string>
     <string name="rv_reason_storage_full">手機儲存空間不足。</string>
     <string name="rv_reason_write_failed">無法寫入 doona 的資料檔。</string>
+    <string name="rv_reason_conflict">已先套用較新的設定檔。</string>
+    <string name="rv_reason_source_limit">檔案過多或過大。</string>
+    <string name="rv_reason_non_native_source">這不是 honk 設定檔。</string>
+    <string name="rv_reason_activation_failed">設定檔無法啟用。</string>
     <string name="rv_sentences">%1$s%2$s</string>
 </resources>

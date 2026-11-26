@@ -52,6 +52,9 @@ internal object RvSpace {
      */
     val searchGap = 16.dp
 
+    /** Between two stacked fields of one form (LAYOUT-RULES, Field: 16 to the next). */
+    val fieldGap = 16.dp
+
     /** Between the blocks of a tab home (a caption, a control row, the first card), as Revolut's flat tabs set them. */
     val tabBlockGap = 16.dp
 
@@ -169,6 +172,10 @@ internal object RvSize {
     /** A list card's 'See all' row (S7-12, Revolut's 56 dp). */
     val seeAll = 56.dp
     val touch = 48.dp
+
+    /** A list's remove mark (owner question 2026-11-26, A and B): a filled disc at a row's start, or a disc at its end. */
+    val removeDisc = 24.dp
+    val removeGlyph = 18.dp
     val navGlyph = 24.dp
     val progress = 5.dp
 

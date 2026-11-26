@@ -13,6 +13,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RV_NODE_LINK_PLACEHOLDER
+import dev.doona.android.designsystem.rv.RvAddRow
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCheckRow
@@ -45,18 +46,20 @@ internal class RvInlineActions(
  * The card under the subscriptions (decision 2026-11-25 23:52, panel s1125f-addnode-pages). Before any node is added, one
  * row: 新增節點 over what it takes, which opens the sheet. Once one is, the card is the 組態內 source: the link disc over
  * its node count, its nodes (a tap, the info mark or the menu's 詳情 opens the node's page, 節點's `NodeKey` route, which
- * reads the same catalog; a long press opens the node menu, with 刪除節點), then 新增節點.
+ * reads the same catalog; a long press opens the node menu, with 刪除節點), then 新增節點 over what it takes.
  */
 @Composable
 internal fun RvInlineCard(nodes: List<RvNode>, actions: RvInlineActions) {
     val add = stringResource(R.string.rv_addnode)
+    // 新增節點 keeps its line under it in both forms of the card, so the row is one height.
+    val line = stringResource(R.string.rv_addnode_line)
     RvCard {
-        if (nodes.isEmpty()) return@RvCard RvRow({ RvIconDisc(R.drawable.rv_sym_add) }, add, stringResource(R.string.rv_addnode_line), onClick = actions.add)
+        if (nodes.isEmpty()) return@RvCard RvAddRow(add, actions.add, subtitle = line)
         RvRow({ RvIconDisc(R.drawable.rv_sym_link) }, stringResource(R.string.rv_inline_source), pluralStringResource(R.plurals.rv_nodes_nodes, nodes.size, nodes.size))
         nodes.forEachIndexed { order, node ->
             RvNodePickRow(node, stringResource(node.place.label), current = false, order = order, onPick = actions.openNode, onDetail = actions.openNode, pickInMenu = false)
         }
-        RvRow({ RvIconDisc(R.drawable.rv_sym_add) }, add, null, onClick = actions.add)
+        RvAddRow(add, actions.add, subtitle = line)
     }
 }
 
