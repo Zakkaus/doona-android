@@ -23,6 +23,9 @@ internal object NativeCore : CoreBridge, NativeApi {
     override fun call(method: String, path: String, body: String?, headers: Map<String, String>) = api(method, path, body, headers)
 
     private external fun api(method: String, path: String, body: String?, headers: Map<String, String>): NativeResponse
+
+    /** The ISO code doona-core's region table reads from each of [names], in order; `""` where it finds none. */
+    external fun regions(names: Array<String>): Array<String>
 }
 
 /**
