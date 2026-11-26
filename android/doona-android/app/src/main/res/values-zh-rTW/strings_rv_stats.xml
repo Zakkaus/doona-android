@@ -3,6 +3,7 @@
     <string name="rv_stats_title">統計</string>
     <string name="rv_stats_all_subscriptions">全部訂閱</string>
     <string name="rv_stats_today">今天</string>
+    <string name="rv_stats_since_start">本次啟動</string>
     <string name="rv_stats_week">本週</string>
     <string name="rv_stats_month">本月</string>
     <string name="rv_stats_used">已用流量</string>

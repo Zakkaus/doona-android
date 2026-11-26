@@ -143,12 +143,14 @@ private fun DayTiles(state: RvStatsState) {
 }
 
 /**
- * What 分流比例 counts when it differs from the chips: 今天 in a longer range (past days keep no route targets), and all
- * subscriptions while one is picked (bytes are not counted by subscription); empty when it follows them.
+ * What 分流比例 counts when it differs from the chips: 本次啟動 where no usage by the day is kept (honk counts since it
+ * started), 今天 in a longer range (past days keep no route targets), and all subscriptions while one is picked (bytes
+ * are not counted by subscription); empty when it follows them.
  */
 @Composable
 private fun splitScope(state: RvStatsState): List<String> = listOfNotNull(
-    stringResource(R.string.rv_stats_today).takeIf { state.period != null },
+    stringResource(R.string.rv_stats_since_start).takeIf { !state.daily },
+    stringResource(R.string.rv_stats_today).takeIf { state.daily && state.period != null },
     stringResource(R.string.rv_stats_all_subscriptions).takeIf { state.subscriptionId != null },
 )
 

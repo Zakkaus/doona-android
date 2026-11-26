@@ -4,6 +4,7 @@
     <string name="rv_stats_title">Statistics</string>
     <string name="rv_stats_all_subscriptions">All subscriptions</string>
     <string name="rv_stats_today">Today</string>
+    <string name="rv_stats_since_start">Since start</string>
     <string name="rv_stats_week">This week</string>
     <string name="rv_stats_month">This month</string>
     <string name="rv_stats_used">Data used</string>

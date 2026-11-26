@@ -12,6 +12,8 @@ import dev.doona.android.vpn.NativeApi
 import dev.doona.android.vpn.honk.NativeCatalog
 import dev.doona.android.vpn.honk.NativeProbes
 import dev.doona.android.vpn.honk.NativeRouting
+import dev.doona.android.vpn.honk.NativeRuntime
+import dev.doona.android.vpn.honk.OutboundTraffic
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +37,7 @@ import java.time.temporal.WeekFields
 import java.util.Locale
 
 /**
- * The 統計 page: reads honk's profile ([api]: providers, nodes, groups, rules) by [load] and maps it with [rvStatsState]
+ * The 統計 page: reads honk's profile ([api]: providers, nodes, groups, rules) and its bytes per outbound by [load] and maps it with [rvStatsState]
  * by the chips' picks (the range, the subscription) on [work]. honk keeps no usage to poll, so nothing is read while the
  * page stays open. A read that fails keeps the last answer. The tools probe every group's members and refresh every
  * provider, then read the profile again; a tool that fails leaves its [failure] until it next succeeds. A week starts on
@@ -52,14 +54,16 @@ internal class StatsViewModel(
     private val catalog = NativeCatalog(api)
     private val routing = NativeRouting(api)
     private val probes = NativeProbes(api)
+    private val runtime = NativeRuntime(api)
+    private val outbounds = MutableStateFlow<List<OutboundTraffic>?>(null)
     private val profile = MutableStateFlow<HonkProfile?>(null)
     private var reading: Job? = null
 
     private val range = MutableStateFlow(RvStatsRange.Today)
     private val subscription = MutableStateFlow<String?>(null)
 
-    val uiState: StateFlow<RvStatsState> = combine(profile, range, subscription) { profile, range, subscription ->
-        rvStatsState(StatsInput(profile, clock(), zone(), range, subscription, firstDay()))
+    val uiState: StateFlow<RvStatsState> = combine(profile, outbounds, range, subscription) { profile, outbounds, range, subscription ->
+        rvStatsState(StatsInput(profile, clock(), zone(), range, subscription, firstDay(), outbounds))
     }
         .flowOn(work)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), rvStatsState(StatsInput(null, clock(), zone(), firstDay = firstDay())))
@@ -69,10 +73,13 @@ internal class StatsViewModel(
     /** The last tool that failed, shown as a banner until that tool next succeeds. */
     val failure: StateFlow<StatsFailure?> = failed.asStateFlow()
 
-    /** Reads honk's profile; a failed read keeps the last one. */
+    /** Reads honk's profile and its bytes per outbound; a failed read keeps the last one. */
     fun load() {
         reading?.cancel()
-        reading = viewModelScope.launch { withContext(io) { runCatching { readHonkProfile(catalog, routing) } }.onSuccess { profile.value = it } }
+        reading = viewModelScope.launch {
+            withContext(io) { runCatching { readHonkProfile(catalog, routing) } }.onSuccess { profile.value = it }
+            withContext(io) { runCatching { runtime.outbounds() } }.onSuccess { outbounds.value = it }
+        }
     }
 
     /** The range chip's pick: 今天, 本週 or 本月. */

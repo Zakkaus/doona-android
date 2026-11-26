@@ -17,8 +17,8 @@ import dev.doona.android.feature.model.RvSubscription
  * - [subscriptions]: the quota and expiry of honk's providers.
  * - [nodes] and [selectedId]: honk's nodes with their last probe, and the node the main group's TCP selection ends on.
  * - [nowHour]: the local time of day in hours (10.4 at 10:24), where today's running total ends.
- * - [split]: today's bytes that went direct against the rest; null (the card's empty state), since honk counts bytes per
- *   outbound only since it started (q-direct-proxy).
+ * - [split]: the bytes that went direct against the rest since honk started, labelled so (q-direct-proxy); null (the
+ *   card's empty state) before any byte or any read.
  * - [score]: honk's Score groups and what each chose per network; null when no group uses Score.
  * - [period]: 本週 or 本月 by the day; null for 今天.
  * - [daily]: whether the usage by the day is kept, which 已用流量 and the paged tiles need; honk keeps none yet, so the

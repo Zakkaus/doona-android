@@ -136,8 +136,8 @@ class AppRvStatsShotTest {
     fun subscriptionEnLight() = shot("stats-sub-en", dark = false) { Page(::scoring, subscription = PICKED) }
 
     /**
-     * The range chip stays while 已用流量 and the tiles are hidden (q-usage): 本週 and 本月 tag 分流比例 今天, and a picked
-     * subscription tags it 全部訂閱 too.
+     * The range chip stays while 已用流量 and the tiles are hidden (q-usage); 分流比例 counts since honk started in every
+     * range and says 本次啟動 (q-direct-proxy), and a picked subscription tags it 全部訂閱 too.
      */
     @Test
     @Config(qualifiers = WINDOW)
@@ -149,7 +149,8 @@ class AppRvStatsShotTest {
         assertEquals("the range chip", 1, count(R.string.rv_stats_today))
         range = RvStatsRange.Week
         compose.waitForIdle()
-        assertEquals("分流比例's tag", 1, count(R.string.rv_stats_today))
+        assertEquals("only the chip says 本週", 0, count(R.string.rv_stats_today))
+        assertEquals("分流比例's tag", 1, count(R.string.rv_stats_since_start))
         range = RvStatsRange.Month
         compose.waitForIdle()
         assertEquals("a month compares with nothing", 0, count(R.string.rv_stats_vs_last_week, true) + count(R.string.rv_stats_vs_yesterday, true))

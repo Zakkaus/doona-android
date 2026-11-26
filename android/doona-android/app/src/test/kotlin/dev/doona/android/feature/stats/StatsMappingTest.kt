@@ -2,11 +2,14 @@ package dev.doona.android.feature.stats
 
 import dev.doona.android.feature.activity.HonkProfile
 import dev.doona.android.feature.activity.readHonkProfile
+import dev.doona.android.feature.model.RvSplit
 import dev.doona.android.vpn.ActivityHonkFixtures
 import dev.doona.android.vpn.ActivityHonkFixtures.scoring
 import dev.doona.android.vpn.FakeHonk
 import dev.doona.android.vpn.honk.NativeCatalog
 import dev.doona.android.vpn.honk.NativeRouting
+import dev.doona.android.vpn.honk.OutboundKind
+import dev.doona.android.vpn.honk.OutboundTraffic
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -27,7 +30,8 @@ class StatsMappingTest {
         range: RvStatsRange = RvStatsRange.Today,
         subscriptionId: String? = null,
         firstDay: DayOfWeek = DayOfWeek.MONDAY,
-    ) = StatsInput(profile, SAMPLE_NOW, zone, range, subscriptionId, firstDay)
+        outbounds: List<OutboundTraffic>? = null,
+    ) = StatsInput(profile, SAMPLE_NOW, zone, range, subscriptionId, firstDay, outbounds)
 
     @Test
     fun `the sample's providers, nodes and main node, over a day with no bytes`() {
@@ -36,13 +40,26 @@ class StatsMappingTest {
         assertTrue(state.subscriptions.all { it.totalBytes > 0 })
         assertEquals(48, state.nodes.size)
         assertEquals("n-0001938f00000000", state.selectedId)
-        // honk keeps no usage by the day: hours 0 to 10 so far, all zero, and nothing from yesterday or for the split.
+        // honk keeps no usage by the day: hours 0 to 10 so far, all zero, and nothing from yesterday; no outbounds read.
         assertEquals(11, state.today.hours.size)
         assertTrue(state.today.quiet)
         assertNull(state.yesterdaySoFar)
         assertNull(state.split)
         assertNull(state.score)
         assertNull(state.period)
+    }
+
+    @Test
+    fun `the split is direct against every group and node since honk started, without block`() {
+        val outbounds = listOf(
+            OutboundTraffic("direct", OutboundKind.Builtin, up = 10, down = 90),
+            OutboundTraffic("block", OutboundKind.Builtin, up = 0, down = 500),
+            OutboundTraffic("Streaming", OutboundKind.Group, up = 50, down = 250),
+            OutboundTraffic("Taipei 04", OutboundKind.Node, up = 0, down = 100),
+        )
+        assertEquals(RvSplit(proxyBytes = 400, directBytes = 100), rvStatsState(input(outbounds = outbounds)).split)
+        // Nothing carried yet: the card's empty state.
+        assertNull(rvStatsState(input(outbounds = listOf(OutboundTraffic("direct", OutboundKind.Builtin, 0, 0)))).split)
     }
 
     @Test

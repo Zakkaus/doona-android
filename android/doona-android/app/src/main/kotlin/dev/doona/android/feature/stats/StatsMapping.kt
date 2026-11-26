@@ -7,10 +7,13 @@ import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RvDay
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvScorePick
+import dev.doona.android.feature.model.RvSplit
 import dev.doona.android.feature.subscriptions.rvSubscription
 import dev.doona.android.vpn.honk.Group
 import dev.doona.android.vpn.honk.GroupSelection
 import dev.doona.android.vpn.honk.HealthState
+import dev.doona.android.vpn.honk.OutboundKind
+import dev.doona.android.vpn.honk.OutboundTraffic
 import dev.doona.android.vpn.honk.PolicyKind
 import dev.doona.android.vpn.honk.Transport
 import java.time.DayOfWeek
@@ -20,7 +23,7 @@ import java.time.temporal.TemporalAdjusters
 
 /**
  * What the 統計 page reads from honk at one instant, and what its chips picked; [profile] is null until the first read
- * answers. A week starts on [firstDay], the locale's.
+ * answers, and [outbounds] (the bytes per outbound since honk started) until its first read does. A week starts on [firstDay], the locale's.
  */
 internal class StatsInput(
     val profile: HonkProfile?,
@@ -29,6 +32,7 @@ internal class StatsInput(
     val range: RvStatsRange = RvStatsRange.Today,
     val subscriptionId: String? = null,
     val firstDay: DayOfWeek = DayOfWeek.MONDAY,
+    val outbounds: List<OutboundTraffic>? = null,
 )
 
 /**
@@ -49,7 +53,7 @@ internal fun rvStatsState(input: StatsInput, places: NodePlaces = CoreNodePlaces
         subscriptions = providers.map { rvSubscription(it, userAgent = null) },
         nodes = nodes,
         selectedId = main?.runtime?.selection?.tcp?.resolvedLeafNodeId,
-        split = null,
+        split = input.outbounds?.let(::rvSplit),
         nowEpochMs = input.nowEpochMs,
         nowHour = now.toLocalTime().toSecondOfDay().toFloat() / SECONDS_PER_HOUR,
         score = rvStatsScore(profile?.groups.orEmpty(), nodes),
@@ -57,6 +61,18 @@ internal fun rvStatsState(input: StatsInput, places: NodePlaces = CoreNodePlaces
         // A subscription deleted since it was picked leaves the chip at all of them.
         subscriptionId = input.subscriptionId?.takeIf { id -> providers.any { it.id == id } },
     )
+}
+
+/**
+ * 分流比例 since honk started (labelled 本次啟動: owner, 2026-11-26, q-direct-proxy): `direct` against every group and
+ * node, as honk files each connection once under the outbound its rules picked; `block` carries nothing. Null before
+ * any byte, so the card shows its empty state.
+ */
+private fun rvSplit(outbounds: List<OutboundTraffic>): RvSplit? {
+    val bytes = { outbound: OutboundTraffic -> outbound.up + outbound.down }
+    val direct = outbounds.filter { it.kind == OutboundKind.Builtin && it.name == DIRECT }.sumOf(bytes)
+    val proxy = outbounds.filter { it.kind != OutboundKind.Builtin }.sumOf(bytes)
+    return RvSplit(proxyBytes = proxy, directBytes = direct).takeIf { proxy + direct > 0 }
 }
 
 /**
@@ -111,6 +127,8 @@ private fun scorePick(group: Group, transport: Transport): RvScorePick {
         challengers = emptyList(),
     )
 }
+
+private const val DIRECT = "direct"
 
 internal const val DAYS_PER_WEEK = 7
 private const val SECONDS_PER_DAY = 86_400
