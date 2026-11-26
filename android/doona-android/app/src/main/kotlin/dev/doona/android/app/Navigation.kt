@@ -47,6 +47,10 @@ data class NodeKey(val nodeId: String) : AppKey
 @Serializable
 data class GroupKey(val groupId: String) : AppKey
 
+/** The group editor (the group page's 編輯) of honk's group [groupId]. */
+@Serializable
+data class GroupEditKey(val groupId: String) : AppKey
+
 @Serializable
 data object MainNodeChoiceKey : AppKey
 

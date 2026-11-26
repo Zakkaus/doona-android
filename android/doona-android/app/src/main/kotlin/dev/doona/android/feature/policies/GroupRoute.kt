@@ -32,7 +32,8 @@ import dev.doona.android.feature.messageRes
  * has loaded, as after process death, the group is only not read yet and the page is a skeleton under its name; a
  * first read that fails shows its banner with 重試 under the name instead.
  * [onNodeDetail] opens a node's detail (a wiring point: the 節點 lane's page). A member group is a row a tap chooses;
- * its own page opens from 策略's groups card, so this page opens none.
+ * its own page opens from 策略's groups card, so this page opens none. [onEdit], when set, is the bar's 編輯: the group
+ * editor (owner, q-group-edit-entry 2026-11-26).
  */
 @Composable
 fun GroupRoute(
@@ -40,14 +41,15 @@ fun GroupRoute(
     groupId: String,
     onBack: () -> Unit,
     onNodeDetail: (String) -> Unit = {},
+    onEdit: (() -> Unit)? = null,
 ) {
     val viewModel: GroupViewModel = viewModel(factory = GroupViewModel.factory(engine, groupId))
-    GroupRoute(viewModel, groupId, onBack, onNodeDetail)
+    GroupRoute(viewModel, groupId, onBack, onNodeDetail, onEdit)
 }
 
 /** A group's page on a given [viewModel]: the page as [GroupRoute] draws it, for a caller (a test) that makes its own. */
 @Composable
-internal fun GroupRoute(viewModel: GroupViewModel, groupId: String, onBack: () -> Unit, onNodeDetail: (String) -> Unit = {}) {
+internal fun GroupRoute(viewModel: GroupViewModel, groupId: String, onBack: () -> Unit, onNodeDetail: (String) -> Unit = {}, onEdit: (() -> Unit)? = null) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     val group = ui.group
     val choice = ui.choice
@@ -56,7 +58,7 @@ internal fun GroupRoute(viewModel: GroupViewModel, groupId: String, onBack: () -
         group != null && choice != null -> CompositionLocalProvider(LocalRvTesting provides ui.testing) {
             RvGroupPage(
                 RvGroupContent(group, ui.subscriptions, choice, ui.apply, ui.isScore, ui.nowEpochMs, ui.score),
-                RvGroupActions(onBack, viewModel::onTap, onNodeDetail, viewModel::onApart, viewModel::onApply, viewModel::onTest),
+                RvGroupActions(onBack, viewModel::onTap, onNodeDetail, viewModel::onApart, viewModel::onApply, viewModel::onTest, onEdit),
                 banner = failure?.let { groupBanner(it, viewModel::retry) },
             )
         }

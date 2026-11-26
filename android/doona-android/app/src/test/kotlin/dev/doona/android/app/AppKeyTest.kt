@@ -16,7 +16,7 @@ import org.junit.Test
 class AppKeyTest {
     private val keys: List<AppKey> = listOf(
         ActivityKey, PoliciesKey, SettingsKey, TrafficKey, StatsKey, NodesKey, NodeSearchKey, NodeKey("n-1"), GroupKey("g-Proxy"),
-        MainNodeChoiceKey, RulesKey, RuleEditKey("traffic:0"), RuleEditKey(null), TemplateKey, ServiceRulesKey, TemplateImpactKey("t-1"), EffectiveConfigKey, RouteTraceKey, SubscriptionsKey, SubAddKey,
+        GroupEditKey("g-Proxy"), MainNodeChoiceKey, RulesKey, RuleEditKey("traffic:0"), RuleEditKey(null), TemplateKey, ServiceRulesKey, TemplateImpactKey("t-1"), EffectiveConfigKey, RouteTraceKey, SubscriptionsKey, SubAddKey,
         SubDetailKey("s-1"), PerAppKey, ReportKey, AboutKey, LanguageKey, IntervalKey, LabKey, ThemeKey, DnsKey, DnsServersKey, DnsRulesKey, DnsRuleEditKey("request", "dns_request:0"), DnsRuleEditKey("response", null), LicensesKey,
         LicenseTextKey("0"), LogLevelKey, GeoIntervalKey, ConfigKey, ConfigSkippedKey, ConfigSourceKey("config.dae"),
         ConfigHistoryKey, ConfigRevisionKey(9),
