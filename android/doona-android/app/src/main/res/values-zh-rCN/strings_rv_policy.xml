@@ -206,6 +206,6 @@
     <string name="rv_trace_yes">是</string>
     <string name="rv_trace_no">否</string>
     <string name="rv_trace_skipped_title">有一条规则已跳过</string>
-    <string name="rv_trace_skipped_reason">%1$s 第 %2$d 行的规则排在前面，但手机上没有应用。</string>
+    <string name="rv_trace_skipped_reason">%1$s 第 %2$d 行的规则排在前面，但这条规则需要 App 信息，测试无法判断。</string>
     <string name="rv_trace_failed">无法执行路由测试</string>
 </resources>
