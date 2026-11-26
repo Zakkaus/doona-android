@@ -1,16 +1,17 @@
-//! Each mode's route for a new flow, against a published catalog of three nodes: Direct and
-//! Global as before, Rule by the template's rules with names from the generation's DNS answers.
+//! Each mode's route for a new flow, against a published catalog of three nodes: honk's engine
+//! decides by its rules, with names from the generation's DNS answers, and a group it names dials
+//! the node the catalog selects for that group.
 
 use super::*;
 use crate::catalog::{Model, entries};
+use crate::dto::Network;
 use crate::outbounds::Routing;
 use crate::rules::policy::Policy;
 use crate::rules::template::Options;
-use crate::rules::tests::{group, rule};
-use crate::rules::{Network, RuleSet};
 use crate::state::State;
 use crate::stats::meter::Tally;
 use crate::subscription::parse::parse;
+use crate::testutil::engine;
 use std::collections::HashMap;
 use std::sync::Weak;
 use std::time::Duration;
@@ -23,7 +24,7 @@ fn routing(model: &Model, mode: Mode) -> Routing {
 }
 
 /// Three SOCKS5 nodes, published with the template's groups and a policy of `options`.
-fn published(options: Options) -> (Outbounds, Model) {
+pub(crate) fn published(options: Options) -> (Outbounds, Model) {
     let links = b"socks5://127.0.0.1:1#a\nsocks5://127.0.0.1:2#b\nsocks5://127.0.0.1:3#c\n";
     published_links(links, options, Mode::Rule)
 }
@@ -50,47 +51,80 @@ fn publish(outbounds: &Outbounds, model: &Model, mode: Mode) {
     outbounds.select(routing(model, mode));
 }
 
-/// What a commit does with `model` under `mode`: the mode cell first, then the routing.
-fn commit(cell: &ModeCell, outbounds: &Outbounds, model: &Model, mode: Mode) {
-    cell.set(mode);
-    publish(outbounds, model, mode);
-}
-
 fn session() -> Arc<Session> {
     Arc::new(Session::new(1, Weak::new()))
 }
 
 /// A destination for a route whose mode does not look at it.
-pub(crate) const ANYWHERE: (SocketAddr, Network) = (
+pub(crate) const ANYWHERE: (SocketAddr, SocketAddr, Network) = (
+    APP,
     SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(192, 0, 2, 1)), 443),
     Network::Tcp,
 );
 
 const ABROAD: [u8; 4] = [104, 16, 0, 1];
-const CN: [u8; 4] = [223, 5, 5, 5];
+const NAMED_A: [u8; 4] = [104, 16, 0, 2];
+const NAMED_B: [u8; 4] = [104, 16, 0, 3];
 
-fn tcp(ip: [u8; 4], port: u16) -> (SocketAddr, Network) {
-    ((ip, port).into(), Network::Tcp)
+/// Grouped negation, a must, a block, a direct row and the fallback, over the catalog template's
+/// `Proxy` and `Auto` (the catalog's `g-Proxy` and `g-Auto`).
+const ROUTES: &str = "\
+node {
+    a: 'socks5://127.0.0.1:1'
+    b: 'socks5://127.0.0.1:2'
+}
+group {
+    Proxy {
+        filter: name(a, b)
+        policy: fixed(0)
+    }
+    Auto {
+        filter: name(a, b)
+        policy: fixed(0)
+    }
+}
+routing {
+    dport(22) -> direct(must)
+    dport(25) -> block
+    dport(443) && !domain(suffix: a.test, suffix: b.test) -> Auto
+    domain(suffix: a.test) -> direct
+    fallback: Proxy
+}
+";
+
+/// A session whose DNS answers named `NAMED_A` and `NAMED_B`.
+fn named() -> Arc<Session> {
+    let session = session();
+    session.names().map(NAMED_A.into(), "www.a.test");
+    session.names().map(NAMED_B.into(), "www.b.test");
+    session
 }
 
-fn udp(ip: [u8; 4], port: u16) -> (SocketAddr, Network) {
-    ((ip, port).into(), Network::Udp)
+/// The app's end of every flow.
+const APP: SocketAddr = SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(10, 0, 0, 2)), 40000);
+
+fn tcp(ip: [u8; 4], port: u16) -> (SocketAddr, SocketAddr, Network) {
+    (APP, (ip, port).into(), Network::Tcp)
 }
 
-/// The group a route goes through, `direct`, or `refused`.
-fn target(route: &Route) -> &str {
+fn udp(ip: [u8; 4], port: u16) -> (SocketAddr, SocketAddr, Network) {
+    (APP, (ip, port).into(), Network::Udp)
+}
+
+/// The upstream DNS the core answers is sent to in these tests.
+const UPSTREAM: SocketAddr = SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(9, 9, 9, 9)), 53);
+
+/// The group or node a route goes through, `direct`, or `refused`; for DNS the core answers,
+/// the route of its dial to [`UPSTREAM`].
+fn target(route: &Route) -> String {
     match route {
-        Route::Direct | Route::RuleDirect(_) => "direct",
-        Route::Proxy(d, _) => &d.group,
-        Route::Resolver(view, _) => view.policy().main(),
-        Route::Refuse => "refused",
-        Route::Blocked => "blocked",
+        Route::Direct | Route::RuleDirect(_) => "direct".to_owned(),
+        Route::Proxy(d, _) => d.group.to_string(),
+        Route::Resolver(r) => target(&r.route(UPSTREAM, None)),
+        Route::Refuse => "refused".to_owned(),
     }
 }
 
-/// Each set leaves its mode and its count in the one word a snapshot reads, so a snapshot pairs a
-/// mode with the count of the set that left it, and a decision taken under it can tell the mode was
-/// set since.
 #[test]
 fn mode_cell_round_trips() {
     let cell = ModeCell::new(Mode::Direct);
@@ -111,79 +145,136 @@ fn mode_cell_round_trips() {
     }
 }
 
+/// Grouped negation, the fallback and a direct row in Rule; `must` and `block` hold in every mode,
+/// and Global and Direct override the rest.
 #[test]
-fn direct_and_global_route_as_before_and_rule_follows_the_rules() {
-    let (outbounds, model) = published(Options::default());
-    let session = session();
-    session.names().map(ABROAD.into(), "www.netflix.com");
-    session.names().map([104, 18, 0, 1].into(), "chatgpt.com");
-    session.names().map([104, 19, 0, 1].into(), "example.org");
-    let route = |dst, mode| {
-        publish(&outbounds, &model, mode);
-        Route::of(Inbound::Tun, dst, mode, &outbounds, &session)
+fn honk_decides_every_flow_in_each_mode() {
+    let (outbounds, _model) = published(Options::default());
+    let (session, engine) = (named(), engine(ROUTES));
+    let route = |flow, mode| {
+        target(&Route::of(
+            Inbound::Tun,
+            flow,
+            mode,
+            Some(&*engine),
+            &outbounds,
+            &session,
+        ))
+        .to_owned()
     };
-    for dst in [tcp(ABROAD, 443), tcp(CN, 443), tcp([10, 0, 0, 1], 80)] {
-        assert_eq!(target(&route(dst, Mode::Direct)), "direct");
-        assert_eq!(target(&route(dst, Mode::Global)), "g-Proxy");
+    let rule = [
+        (tcp(ABROAD, 443), "g-Auto"),
+        (udp(ABROAD, 443), "g-Auto"),
+        (tcp(NAMED_A, 443), "direct"),
+        (tcp(NAMED_B, 443), "g-Proxy"),
+        (tcp(ABROAD, 80), "g-Proxy"),
+        (tcp(ABROAD, 22), "direct"),
+        (tcp(ABROAD, 25), "refused"),
+    ];
+    for (flow, want) in rule {
+        assert_eq!(route(flow, Mode::Rule), want, "{flow:?}");
     }
-    for (dst, to) in [
-        // Names from the generation's DNS answers.
-        (tcp(ABROAD, 443), "g-Streaming"),
-        (udp(ABROAD, 443), "g-Streaming"),
-        (tcp([104, 18, 0, 1], 443), "g-AI"),
-        (tcp([104, 19, 0, 1], 443), "g-Proxy"),
-        // No name (strict Private DNS, an app's own DoH): the address decides, else the last rule.
-        (tcp([104, 20, 0, 1], 443), "g-Proxy"),
-        (tcp(CN, 443), "direct"),
-        (tcp([192, 168, 1, 2], 443), "direct"),
-    ] {
-        assert_eq!(target(&route(dst, Mode::Rule)), to, "{dst:?}");
+    for (mode, rest) in [(Mode::Global, "g-Proxy"), (Mode::Direct, "direct")] {
+        assert_eq!(route(tcp(ABROAD, 22), mode), "direct", "{mode:?}: must");
+        assert_eq!(route(tcp(ABROAD, 25), mode), "refused", "{mode:?}: block");
+        for flow in [tcp(ABROAD, 443), tcp(NAMED_A, 443), tcp(ABROAD, 80)] {
+            assert_eq!(route(flow, mode), rest, "{mode:?} {flow:?}");
+        }
     }
-    // A route is metered by the group it goes through.
-    let streaming = route(tcp(ABROAD, 443), Mode::Global);
-    let meter = streaming.meter(&session).unwrap();
-    assert!(Arc::ptr_eq(&meter, &session.meters().get("g-Proxy")));
+    // The engine runs whichever mode the flow read; going back to Rule decides by the rules again.
+    assert_eq!(route(tcp(ABROAD, 443), Mode::Rule), "g-Auto");
 }
 
-/// Rule meters a flow under the row that routed it as well as under its target, so a fold gives
-/// `byRule` each row's bytes, equal to its target's, and its flows; Global, Direct and DNS give
-/// none.
+/// A group honk names dials the node the catalog selects for it: a pin moves new flows.
 #[test]
-fn rule_flows_are_metered_under_the_row_that_routed_them() {
+fn a_group_dials_the_leaf_the_catalog_selects() {
     let (outbounds, model) = published(Options::default());
-    let session = session();
-    session.names().map(ABROAD.into(), "www.netflix.com");
-    let flow = |route: Route, up, down| {
+    let (session, engine) = (session(), engine(ROUTES));
+    let leaf = |pin: &str| {
+        let state = State {
+            mode: Mode::Rule,
+            selections: [("g-Proxy".to_owned(), pin.to_owned())].into(),
+            ..State::default()
+        };
+        outbounds.select(model.routing(&state));
+        match Route::of(
+            Inbound::Tun,
+            tcp(ABROAD, 80),
+            Mode::Rule,
+            Some(&*engine),
+            &outbounds,
+            &session,
+        ) {
+            Route::Proxy(d, _) => (d.group.to_string(), d.node.name.clone()),
+            _ => panic!("through a node"),
+        }
+    };
+    for (i, node) in model.nodes.iter().enumerate().take(2) {
+        let name = ["a", "b"][i];
+        assert_eq!(leaf(&node.id), ("g-Proxy".to_owned(), name.to_owned()));
+    }
+}
+
+/// Each flow honk sends direct or through a group by a row is metered under that row's meter as
+/// well; the fallback has one too, and a mode that overrode the rules charges none.
+#[test]
+fn flows_are_metered_under_the_row_that_routed_them() {
+    let (outbounds, _model) = published(Options::default());
+    let (session, engine) = (named(), engine(ROUTES));
+    let charge = |flow, mode, (up, down)| {
+        let route = Route::of(
+            Inbound::Tun,
+            flow,
+            mode,
+            Some(&*engine),
+            &outbounds,
+            &session,
+        );
         let tally = Tally::new(route.meter(&session));
         tally.up(up);
         tally.down(down);
     };
-    let route = |dst, mode| Route::of(Inbound::Tun, dst, mode, &outbounds, &session);
-    flow(route(tcp(CN, 443), Mode::Rule), 10, 20);
-    flow(route(tcp(ABROAD, 443), Mode::Rule), 30, 40);
-    // The template's rows: 1 sends streaming names to g-Streaming, 3 China's addresses direct.
-    let rows = &model.policy.listing().rows;
-    let (streaming, cn) = (rows[1].id.to_string(), rows[3].id.to_string());
+    let row = |flow: (SocketAddr, SocketAddr, Network)| {
+        let (src, dst, _) = flow;
+        let flow = runtime::Flow {
+            network: runtime::Network::Tcp,
+            source: src,
+            destination: dst,
+            domain: session.names().name(dst.ip()).map(|n| n.to_string()),
+            domain_verified: true,
+            process_name: None,
+            mac: None,
+            dscp: None,
+        };
+        engine
+            .decide_in(runtime::Mode::Rule, &flow)
+            .row
+            .unwrap()
+            .meter
+            .unwrap()
+            .to_string()
+    };
+    charge(tcp(NAMED_A, 443), Mode::Rule, (10, 20));
+    charge(tcp(ABROAD, 443), Mode::Rule, (30, 40));
+    charge(tcp(ABROAD, 80), Mode::Rule, (50, 60));
     let mut taken = session.meters().take();
     taken.rules.sort();
     taken.outbounds.sort();
-    let mut rules = vec![(cn, [10, 20, 1]), (streaming, [30, 40, 1])];
+    let mut rules = vec![
+        (row(tcp(NAMED_A, 443)), [10, 20, 1]),
+        (row(tcp(ABROAD, 443)), [30, 40, 1]),
+        (row(tcp(ABROAD, 80)), [50, 60, 1]),
+    ];
     rules.sort();
     assert_eq!(taken.rules, rules);
-    let targets = [
+    let outbounds_taken = [
         ("direct".to_owned(), 10, 20),
-        ("g-Streaming".to_owned(), 30, 40),
+        ("g-Auto".to_owned(), 30, 40),
+        ("g-Proxy".to_owned(), 50, 60),
     ];
-    assert_eq!(taken.outbounds, targets);
-    flow(
-        Route::dns(Inbound::Tun, Mode::Rule, &outbounds, &session),
-        5,
-        6,
-    );
-    // The published routing's mode decides, so Global is published before its flow.
-    publish(&outbounds, &model, Mode::Global);
-    flow(route(tcp(ABROAD, 443), Mode::Global), 1, 2);
-    flow(route(tcp(CN, 443), Mode::Direct), 3, 4);
+    assert_eq!(taken.outbounds, outbounds_taken);
+    charge(tcp(ABROAD, 443), Mode::Global, (1, 2));
+    charge(tcp(ABROAD, 443), Mode::Direct, (3, 4));
     let taken = session.meters().take();
     assert!(taken.rules.is_empty(), "{taken:?}");
     assert_eq!(taken.outbounds.len(), 2, "{taken:?}");
@@ -193,97 +284,89 @@ fn rule_flows_are_metered_under_the_row_that_routed_them() {
 #[test]
 fn a_generation_matches_names_from_its_own_answers_only() {
     let (outbounds, _model) = published(Options::default());
-    let (old, new) = (session(), session());
-    old.names().map(ABROAD.into(), "netflix.com");
-    let route = |s| Route::of(Inbound::Tun, tcp(ABROAD, 443), Mode::Rule, &outbounds, s);
-    assert_eq!(target(&route(&old)), "g-Streaming");
-    assert_eq!(target(&route(&new)), "g-Proxy");
-}
-
-#[test]
-fn reject_and_a_group_without_a_node_are_refused_never_direct() {
-    let (outbounds, model) = published(Options::default());
-    let groups = [group("Proxy", &[&model.nodes[0].id]), group("Empty", &[])];
-    let rules = [
-        rule("IP-CIDR", &["198.51.100.0/24"], "REJECT"),
-        rule("IP-CIDR", &["203.0.113.0/24"], "Empty"),
-    ];
-    let set = RuleSet::compile(&groups, &|id| model.has(id), &rules).unwrap();
-    let policy = Arc::new(Policy::new("g-Proxy", Some(set), Options::default()));
-    let selected = model.leaves(&State::default());
-    let mode = Mode::Rule;
-    outbounds.select(Routing {
-        score: Arc::clone(&model.score),
-        selected,
-        policy,
-        mode,
-    });
-    let session = session();
-    let route = |dst| Route::of(Inbound::Tun, dst, Mode::Rule, &outbounds, &session);
-    for dst in [
-        tcp([198, 51, 100, 7], 443),
-        udp([198, 51, 100, 7], 443),
-        tcp([203, 0, 113, 7], 443),
-        udp([203, 0, 113, 7], 53),
-    ] {
-        let r = route(dst);
-        assert!(
-            r.refused() && !r.carries_udp() && r.meter(&session).is_none(),
-            "{dst:?}"
-        );
-    }
-    assert_eq!(target(&route(tcp(ABROAD, 443))), "g-Proxy");
-    // With no node at all, Rule refuses what the main group would carry, as Global does.
-    let empty = Outbounds::new(Arc::default(), 2).unwrap();
-    let route = Route::of(Inbound::Tun, tcp(ABROAD, 443), Mode::Rule, &empty, &session);
-    assert!(route.refused());
-    let route = Route::of(
-        Inbound::Tun,
-        tcp(ABROAD, 443),
-        Mode::Global,
-        &empty,
-        &session,
-    );
-    assert!(route.refused());
-}
-
-/// The last subscription removed: the catalog publishes no node and no group. Rule still sends
-/// direct what its rules send direct (private and China's addresses), and refuses what a group
-/// would carry, DNS included; Global refuses everything (rule-mode.md decision 9).
-#[test]
-fn without_a_node_rule_keeps_its_direct_rows_and_refuses_the_rest() {
-    let model = Model::new(Vec::new(), HashMap::new());
-    let outbounds = Outbounds::new(Arc::default(), 2).unwrap();
-    let built = outbounds.build(&model.nodes);
-    outbounds.replace(built, routing(&model, Mode::Rule));
-    let session = session();
-    session.names().map(ABROAD.into(), "www.netflix.com");
-    let route = |dst, mode| {
-        publish(&outbounds, &model, mode);
-        Route::of(Inbound::Tun, dst, mode, &outbounds, &session)
+    let (old, new, engine) = (named(), session(), engine(ROUTES));
+    let route = |s| {
+        Route::of(
+            Inbound::Tun,
+            tcp(NAMED_A, 443),
+            Mode::Rule,
+            Some(&*engine),
+            &outbounds,
+            s,
+        )
     };
-    for dst in [
-        tcp([192, 168, 1, 1], 80),
-        udp([192, 168, 1, 1], 5353),
-        tcp(CN, 443),
-        udp(CN, 443),
-    ] {
-        assert_eq!(target(&route(dst, Mode::Rule)), "direct", "{dst:?}");
-        assert!(route(dst, Mode::Global).refused(), "{dst:?}");
-    }
-    for dst in [
-        tcp(ABROAD, 443),
-        tcp([104, 20, 0, 1], 443),
-        udp(ABROAD, 8443),
-    ] {
-        assert!(route(dst, Mode::Rule).refused(), "{dst:?}");
-    }
-    publish(&outbounds, &model, Mode::Rule);
-    assert!(Route::dns(Inbound::Tun, Mode::Rule, &outbounds, &session).refused());
+    assert_eq!(target(&route(&old)), "direct");
+    assert_eq!(target(&route(&new)), "g-Auto");
 }
 
-/// A Direct flow is routed while a catalog swap holds the routing table's write lock, here
-/// rebuilding a registry built on a table published since: Direct reads no table.
+/// A group without a node is refused, never sent direct, in Rule and Global; Direct still sends
+/// the flow straight out.
+#[test]
+fn a_group_without_a_node_is_refused_never_direct() {
+    let empty = Outbounds::new(Arc::default(), 2).unwrap();
+    let (session, engine) = (session(), engine(ROUTES));
+    let route = |flow, mode| Route::of(Inbound::Tun, flow, mode, Some(&*engine), &empty, &session);
+    for mode in [Mode::Rule, Mode::Global] {
+        let r = route(tcp(ABROAD, 80), mode);
+        assert!(r.refused() && !r.carries_udp(), "{mode:?}");
+    }
+    assert!(matches!(
+        route(tcp(ABROAD, 80), Mode::Direct),
+        Route::Direct
+    ));
+    assert!(matches!(
+        route(tcp(ABROAD, 22), Mode::Rule),
+        Route::RuleDirect(_)
+    ));
+}
+
+/// GLOBAL with no target blocks every flow but `must`.
+#[test]
+fn global_without_a_target_refuses_all_but_must() {
+    use crate::honkconf::Capabilities;
+    let (outbounds, _model) = published(Options::default());
+    let dir = crate::testutil::TempDir::new("untargeted");
+    let store = crate::testutil::honk_store(dir.path(), ROUTES);
+    let engine = Arc::new(Runtime::load(&store, &Capabilities::linked(), dir.path()).unwrap());
+    let session = session();
+    let route = |flow| {
+        Route::of(
+            Inbound::Tun,
+            flow,
+            Mode::Global,
+            Some(&*engine),
+            &outbounds,
+            &session,
+        )
+    };
+    assert!(route(tcp(ABROAD, 80)).refused());
+    assert!(matches!(route(tcp(ABROAD, 22)), Route::RuleDirect(_)));
+}
+
+/// A fallback that keeps a direct fwmark cannot be honoured on the TUN: it is refused in Rule and
+/// Direct, never dialed direct unmarked; GLOBAL overrides it.
+#[test]
+fn a_marked_fallback_is_refused() {
+    let (outbounds, _model) = published(Options::default());
+    let marked = ROUTES.replace("fallback: Proxy", "fallback: direct(mark: 256)");
+    let (session, engine) = (session(), engine(&marked));
+    let proxy = crate::honkconf::runtime::GlobalTarget::Group("Proxy".into());
+    engine.set_global_target(proxy).unwrap();
+    let route = |mode| {
+        Route::of(
+            Inbound::Tun,
+            tcp(ABROAD, 80),
+            mode,
+            Some(&*engine),
+            &outbounds,
+            &session,
+        )
+    };
+    assert!(route(Mode::Rule).refused());
+    assert!(route(Mode::Direct).refused());
+    assert_eq!(target(&route(Mode::Global)), "g-Proxy");
+}
+
 #[test]
 fn direct_routes_while_a_swap_holds_the_table() {
     let (outbounds, model) = published(Options::default());
@@ -296,7 +379,7 @@ fn direct_routes_while_a_swap_holds_the_table() {
         inside.send(()).unwrap();
         let _ = released.recv();
     });
-    let session = session();
+    let (session, engine) = (session(), engine(ROUTES));
     let (routed, got) = std::sync::mpsc::channel();
     std::thread::scope(|s| {
         s.spawn(|| outbounds.replace(stale, routing(&model, Mode::Rule)));
@@ -305,7 +388,14 @@ fn direct_routes_while_a_swap_holds_the_table() {
             .recv_timeout(wait)
             .expect("the swap rebuilds under the lock");
         s.spawn(|| {
-            let route = Route::of(Inbound::Tun, ANYWHERE, Mode::Direct, &outbounds, &session);
+            let route = Route::of(
+                Inbound::Tun,
+                ANYWHERE,
+                Mode::Direct,
+                Some(&*engine),
+                &outbounds,
+                &session,
+            );
             routed.send(target(&route).to_owned()).unwrap();
         });
         let direct = got.recv_timeout(Duration::from_secs(2));
@@ -314,188 +404,159 @@ fn direct_routes_while_a_swap_holds_the_table() {
     });
 }
 
+/// DNS the core answers is decided per upstream as a TCP flow to its port 53: the fallback's
+/// group in Rule, the GLOBAL target in Global, straight out in Direct, and a `block` row for port
+/// 53 holds in every mode. With no configuration only Direct resolves.
 #[test]
-fn block_quic_refuses_quic_bound_for_a_group() {
-    let (outbounds, model) = published(Options { block_quic: true });
-    let session = session();
-    session.names().map(ABROAD.into(), "youtube.com");
-    let route = |dst, mode| {
-        publish(&outbounds, &model, mode);
-        Route::of(Inbound::Tun, dst, mode, &outbounds, &session)
-    };
-    for dst in [udp(ABROAD, 443), udp([104, 20, 0, 1], 443)] {
-        let blocked = route(dst, Mode::Rule);
-        assert!(blocked.refused() && !blocked.carries_udp(), "{dst:?}");
-        assert_eq!(target(&blocked), "blocked", "{dst:?}");
-    }
-    assert_eq!(target(&route(udp(CN, 443), Mode::Rule)), "direct");
-    assert_eq!(target(&route(tcp(ABROAD, 443), Mode::Rule)), "g-Streaming");
-    assert_eq!(target(&route(udp(ABROAD, 8443), Mode::Rule)), "g-Streaming");
-    // The option belongs to the rules: Global carries QUIC through its group as before.
-    assert_eq!(target(&route(udp(ABROAD, 443), Mode::Global)), "g-Proxy");
-}
-
-/// A new UDP/443 flow reads mode Rule and pauses; Direct, then blockQuic off, are committed in
-/// turn; the flow resumes. It goes as one committed setting sends it, never through a group: the
-/// old one refused it, the new one sends it direct.
-#[test]
-fn a_flow_paused_across_two_commits_routes_by_one_of_them() {
-    let (outbounds, mut model) = published(Options { block_quic: true });
-    let cell = ModeCell::new(Mode::Rule);
-    let session = session();
-    session.names().map(ABROAD.into(), "youtube.com");
-    let (mode, _) = cell.snapshot();
-    commit(&cell, &outbounds, &model, Mode::Direct);
-    model.policy = template(&model, Options { block_quic: false });
-    commit(&cell, &outbounds, &model, Mode::Direct);
-    let route = Route::of(Inbound::Tun, udp(ABROAD, 443), mode, &outbounds, &session);
-    let to = target(&route);
-    assert!(matches!(to, "blocked" | "direct"), "went {to}");
-}
-
-/// DNS the core answers goes through the main group in Rule as in Global (rule-mode.md
-/// decision 10), whatever server the query was sent to.
-#[test]
-fn dns_goes_through_the_main_group_unless_direct() {
-    use honk_outbound::alive::{IpVersion, ProbeDomain};
+fn dns_is_decided_like_a_flow_to_its_upstream() {
     let (outbounds, model) = published(Options::default());
     let session = session();
-    let dns = |mode| {
+    let dns = |mode, engine: Option<Arc<Runtime>>| {
         publish(&outbounds, &model, mode);
-        Route::dns(Inbound::Tun, mode, &outbounds, &session)
+        target(&Route::dns(
+            Inbound::Tun,
+            (mode, engine),
+            &[UPSTREAM],
+            &outbounds,
+            &session,
+        ))
     };
-    assert_eq!(target(&dns(Mode::Rule)), "g-Proxy");
-    assert_eq!(target(&dns(Mode::Global)), "g-Proxy");
-    assert_eq!(target(&dns(Mode::Direct)), "direct");
-    let empty = Outbounds::new(Arc::default(), 2).unwrap();
-    assert!(Route::dns(Inbound::Tun, Mode::Rule, &empty, &session).refused());
-    for family in [IpVersion::V4, IpVersion::V6] {
-        assert!(
-            !dns(Mode::Global).refused(),
-            "a resolver family is still usable"
-        );
-        for node in &model.nodes {
-            model
-                .score
-                .alive
-                .report_unavailable_forced(node.uuid, ProbeDomain::Tcp, family);
-        }
+    let routes = engine(ROUTES);
+    assert_eq!(dns(Mode::Rule, Some(Arc::clone(&routes))), "g-Proxy");
+    assert_eq!(dns(Mode::Global, Some(Arc::clone(&routes))), "g-Proxy");
+    assert_eq!(dns(Mode::Direct, Some(Arc::clone(&routes))), "direct");
+    let blocked = engine(&ROUTES.replace("dport(25) -> block", "dport(53) -> block"));
+    for mode in [Mode::Rule, Mode::Global, Mode::Direct] {
+        assert_eq!(dns(mode, Some(Arc::clone(&blocked))), "refused", "{mode:?}");
     }
+    assert_eq!(dns(Mode::Direct, None), "direct");
+    assert_eq!(dns(Mode::Rule, None), "refused");
+    let none = Route::dns(
+        Inbound::Tun,
+        (Mode::Rule, None),
+        &[UPSTREAM],
+        &outbounds,
+        &session,
+    );
     assert!(
-        dns(Mode::Global).refused(),
-        "main group has no usable TCP node"
+        none.refused(),
+        "no configuration outside Direct: refused up front"
     );
-}
-
-#[tokio::test]
-async fn global_without_a_node_is_refused_never_sent_direct() {
-    let outbounds = Outbounds::new(Arc::default(), 2).unwrap();
-    let session = session();
-    let global = Route::of(
+    let empty = Outbounds::new(Arc::default(), 2).unwrap();
+    let route = Route::dns(
         Inbound::Tun,
-        tcp(ABROAD, 443),
-        Mode::Global,
-        &outbounds,
+        (Mode::Rule, Some(routes)),
+        &[UPSTREAM],
+        &empty,
         &session,
     );
-    assert!(global.refused() && !global.carries_udp());
-    let direct = Route::of(
-        Inbound::Tun,
-        tcp(ABROAD, 443),
-        Mode::Direct,
-        &outbounds,
-        &session,
-    );
-    assert!(matches!(direct, Route::Direct) && direct.carries_udp());
+    assert!(route.refused(), "every upstream refused: refused up front");
 }
 
-/// The mean time `f` takes per flow of `flows`, over enough rounds to take about half a second.
-fn per_flow<T>(f: impl Fn((SocketAddr, Network)) -> T, flows: &[(SocketAddr, Network)]) -> u128 {
-    for &d in flows.iter().take(10_000) {
-        std::hint::black_box(f(d));
-    }
-    let mut rounds = 0u32;
-    let start = std::time::Instant::now();
-    while start.elapsed() < Duration::from_millis(500) {
-        for &d in flows {
-            std::hint::black_box(f(std::hint::black_box(d)));
-        }
-        rounds += 1;
-    }
-    (start.elapsed() / (rounds * flows.len() as u32)).as_nanos()
-}
-
-/// What a new flow's route costs in each mode, for `rules-r2-STATE.md`: the template over 200
-/// nodes, a full names cache (a quarter of it after the streaming list, a quarter after the AI
-/// list), and 100,000 flows, 60 % to a named address, 20 % to China, 20 % to an unnamed one
-/// abroad, one in ten over UDP. A route through a group includes its dialer, made and dropped.
-/// Release: `bench` is in the name.
+/// A node chosen as the GLOBAL target is dialed: the catalog node with that honk endpoint,
+/// metered under its id. Rule still routes by the rules.
 #[test]
-#[ignore = "a release-mode measurement; see rules-r2-STATE.md"]
-fn bench_route_per_flow() {
-    use crate::dns::names::CAPACITY;
-    use crate::rules::template::{AI, STREAMING};
-    let links: String = (0..200)
-        .map(|i| format!("socks5://127.0.0.1:{}#n{i}\n", 1000 + i))
-        .collect();
-    let nodes = entries("s1", parse(links.as_bytes()).unwrap().nodes);
-    let model = Model::new(nodes, HashMap::from([("s1".to_owned(), 1)]));
-    let outbounds = Outbounds::new(Arc::default(), 2).unwrap();
-    outbounds.replace(outbounds.build(&model.nodes), routing(&model, Mode::Rule));
+fn a_global_node_target_dials_that_node() {
+    use crate::honkconf::runtime::GlobalTarget;
+    let (outbounds, model) = published(Options::default());
+    let (session, engine) = (session(), engine(ROUTES));
+    let flow = runtime::Flow {
+        network: runtime::Network::Tcp,
+        source: APP,
+        destination: tcp(ABROAD, 80).1,
+        domain: None,
+        domain_verified: true,
+        process_name: None,
+        mac: None,
+        dscp: None,
+    };
+    let leaf = engine
+        .decide_in(runtime::Mode::Rule, &flow)
+        .decision
+        .candidates[0]
+        .clone();
+    engine
+        .set_global_target(GlobalTarget::Node(leaf.node_id))
+        .unwrap();
+    let route = |mode| {
+        Route::of(
+            Inbound::Tun,
+            tcp(ABROAD, 80),
+            mode,
+            Some(&*engine),
+            &outbounds,
+            &session,
+        )
+    };
+    let Route::Proxy(d, _) = route(Mode::Global) else {
+        panic!("through the node");
+    };
+    let node = model.nodes.iter().find(|n| n.name == leaf.node).unwrap();
+    assert_eq!((&*d.group, d.node.name.as_str()), (node.id.as_str(), "a"));
+    assert_eq!(target(&route(Mode::Rule)), "g-Proxy");
+    assert!(
+        Route::of(
+            Inbound::Tun,
+            tcp(ABROAD, 80),
+            Mode::Global,
+            Some(&*engine),
+            &Outbounds::new(Arc::default(), 2).unwrap(),
+            &session
+        )
+        .refused()
+    );
+}
+
+/// A configuration with no group and a direct fallback: Rule sends flows direct by the fallback's
+/// row and refuses `block`; Global has no target and refuses all but `must`; Direct goes direct.
+#[test]
+fn zero_groups_route_direct_by_the_fallback() {
+    const NO_GROUPS: &str = "\
+node {
+    a: 'socks5://127.0.0.1:1'
+}
+routing {
+    dport(22) -> direct(must)
+    dport(25) -> block
+    fallback: direct
+}
+";
+    let (outbounds, _model) = published(Options::default());
+    let (session, engine) = (session(), engine(NO_GROUPS));
+    assert_eq!(engine.fallback_group(), None);
+    let route = |flow, mode| {
+        Route::of(
+            Inbound::Tun,
+            flow,
+            mode,
+            Some(&*engine),
+            &outbounds,
+            &session,
+        )
+    };
+    assert!(matches!(
+        route(tcp(ABROAD, 80), Mode::Rule),
+        Route::RuleDirect(_)
+    ));
+    assert!(route(tcp(ABROAD, 25), Mode::Rule).refused());
+    assert!(route(tcp(ABROAD, 80), Mode::Global).refused());
+    assert!(matches!(
+        route(tcp(ABROAD, 22), Mode::Global),
+        Route::RuleDirect(_)
+    ));
+    assert!(matches!(
+        route(tcp(ABROAD, 80), Mode::Direct),
+        Route::Direct
+    ));
+}
+
+/// Without a committed configuration only Direct routes, straight out.
+#[test]
+fn no_configuration_routes_only_direct() {
+    let (outbounds, _model) = published(Options::default());
     let session = session();
-    let named: Vec<Ipv4Addr> = (0..CAPACITY as u32)
-        .map(|i| {
-            let ip = Ipv4Addr::from(0x6800_0000 + i);
-            let n = i as usize;
-            let name = match i % 4 {
-                0 => format!("v{i}.{}", STREAMING[n % STREAMING.len()]),
-                1 => format!("a{i}.{}", AI[n % AI.len()]),
-                _ => format!("h{i}.example{}.com", i % 97),
-            };
-            session.names().map(ip, &name);
-            ip
-        })
-        .collect();
-    let cn = [
-        [223, 5, 5, 5],
-        [114, 114, 114, 114],
-        [119, 29, 29, 29],
-        [180, 76, 76, 76],
-    ];
-    let mut rng = crate::rules::tests::Rng(0x0005_eed5);
-    let flows: Vec<(SocketAddr, Network)> = (0..100_000)
-        .map(|_| {
-            let ip = match rng.below(10) {
-                0..6 => named[rng.below(named.len() as u64) as usize],
-                6 | 7 => Ipv4Addr::from(cn[rng.below(4) as usize]),
-                _ => Ipv4Addr::from(0x6900_0000 + rng.below(1 << 20) as u32),
-            };
-            let network = if rng.below(10) == 0 {
-                Network::Udp
-            } else {
-                Network::Tcp
-            };
-            ((ip, 443).into(), network)
-        })
-        .collect();
-    for mode in [Mode::Direct, Mode::Global, Mode::Rule] {
-        publish(&outbounds, &model, mode);
-        let route = |dst| Route::of(Inbound::Tun, dst, mode, &outbounds, &session);
-        println!("route, {mode:?}: {} ns/flow", per_flow(route, &flows));
-    }
-    let lookup = |(dst, _): (SocketAddr, Network)| session.names().name(dst.ip());
-    println!(
-        "route, the name lookup alone: {} ns/flow",
-        per_flow(lookup, &flows)
-    );
-    // What the rules' groups add to the catalog a snapshot carries (these node names are short).
-    let catalog = model.catalog(&crate::state::State::default());
-    let ruled: usize = (catalog.groups.iter())
-        .filter(|g| g.id == "g-Streaming" || g.id == "g-AI")
-        .map(|g| serde_json::to_vec(g).unwrap().len())
-        .sum();
-    let total = serde_json::to_vec(&catalog).unwrap().len();
-    println!(
-        "route, catalog over 200 nodes: {total} bytes of JSON, {ruled} of them Streaming and AI"
-    );
+    let route = |mode| Route::of(Inbound::Tun, ANYWHERE, mode, None, &outbounds, &session);
+    assert!(matches!(route(Mode::Direct), Route::Direct));
+    assert!(route(Mode::Rule).refused());
+    assert!(route(Mode::Global).refused());
 }

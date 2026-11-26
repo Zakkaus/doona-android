@@ -62,6 +62,12 @@ impl Disk {
             failed,
         )
     }
+    /// The active generation's directory; with none active, the asset root, which holds no data
+    /// file, so a configuration that reads one does not build.
+    pub fn data_root(&self) -> PathBuf {
+        self.active()
+            .map_or_else(|| self.root.clone(), |g| self.slot(g.slot))
+    }
     pub fn active(&self) -> Option<&Generation> {
         self.journal.active.as_ref()
     }

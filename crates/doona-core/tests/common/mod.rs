@@ -76,3 +76,34 @@ pub mod socks;
 pub mod ss;
 pub mod stop_wait;
 pub mod tuic;
+
+/// A honk configuration that sends every flow through `Proxy`, the catalog template's main
+/// group, over two placeholder nodes; the catalog selects the node it dials.
+const HONK: &str = "\
+node {
+    a: 'socks5://127.0.0.1:1'
+    b: 'socks5://127.0.0.1:2'
+}
+group {
+    Proxy {
+        filter: name(a, b)
+        policy: fixed(0)
+    }
+}
+routing {
+    fallback: Proxy
+}
+";
+
+/// `dir` as a core's data directory, with [`HONK`] committed as its honk configuration unless one
+/// is already.
+pub fn seeded(dir: &TempDir) -> &str {
+    use doonacore::honkconf::{Capabilities, HonkStore};
+    let mut store = HonkStore::open(dir.path()).unwrap();
+    if store.head().is_none() {
+        let id = store.draft(None).unwrap();
+        store.edit(id, Path::new("config.dae"), HONK).unwrap();
+        store.apply(id, &Capabilities::linked()).unwrap();
+    }
+    dir.path().to_str().unwrap()
+}

@@ -1,10 +1,10 @@
 //! From a source to a [`RuleSet`]: the limits and the group graph first, then every target, then
-//! each row's values into the index of its kind. Any failure refuses the whole source.
+//! each row's values, each read as its kind reads it. Any failure refuses the whole source.
 
+use super::dat::Data;
 use super::limits::{self, Origin};
-use super::{Kind, NONE, Network, Row, RuleSet, RuleSpec, Target, domain, geoip, graph};
-use super::{lpm, ports};
-use crate::dto::ErrorCode;
+use super::{Kind, Row, RuleSet, RuleSpec, Target, domain, geoip, graph, ports};
+use crate::dto::{ErrorCode, Network};
 use crate::groups::GroupDef;
 use std::net::IpAddr;
 
@@ -13,7 +13,7 @@ pub(super) fn compile(
     groups: &[GroupDef],
     is_node: &dyn Fn(&str) -> bool,
     rules: &[RuleSpec],
-    data: Option<&super::dat::Data>,
+    data: Option<&Data>,
 ) -> Result<RuleSet, ErrorCode> {
     limits::check(origin, groups, rules)?;
     let ids = graph::check(groups, is_node)?;
@@ -23,37 +23,22 @@ pub(super) fn compile(
     }
     let mut set = RuleSet {
         rows: Vec::with_capacity(rules.len()),
-        domains: domain::Index::default(),
-        ips: lpm::Trie::default(),
-        geo: Vec::new(),
-        loaded: Default::default(),
         missing: Default::default(),
-        ports: ports::Index::default(),
-        networks: [NONE; 2],
-        any: NONE,
     };
     for (row, rule) in rules.iter().enumerate() {
-        let skipped = set.add(row as u32, rule, data)?;
+        let skipped = set.read(row as u32, rule, data)?;
         set.rows.push(Row {
             kind: rule.kind.clone(),
             target: rule.target.clone(),
             skipped,
         });
     }
-    set.domains.finish()?;
-    set.ips.shrink();
-    set.ports.finish();
     Ok(set)
 }
 
 impl RuleSet {
-    /// Adds the values of `rule`, row `row`; returns how many lines it skipped.
-    fn add(
-        &mut self,
-        row: u32,
-        rule: &RuleSpec,
-        data: Option<&super::dat::Data>,
-    ) -> Result<u32, ErrorCode> {
+    /// Reads the values of `rule`, row `row`; returns how many lines it skipped.
+    fn read(&mut self, row: u32, rule: &RuleSpec, data: Option<&Data>) -> Result<u32, ErrorCode> {
         let values = &rule.values;
         // A kind not compiled is skipped whole: a line a value, or one for a row without values,
         // as the limits count it. `limits::check` keeps the count under `MAX_LINES`.
@@ -66,75 +51,47 @@ impl RuleSet {
         }
         let mut skipped = 0;
         for (column, value) in values.iter().enumerate() {
-            let added = match rule.kind {
-                Kind::GeoIp | Kind::GeoSite => self.add_geo(&rule.kind, value, row, data),
-                _ => self.add_value(&rule.kind, value, row)?,
+            let read = match rule.kind {
+                Kind::GeoIp | Kind::GeoSite => geo(&rule.kind, value, data),
+                _ => check(&rule.kind, value).map(|()| true)?,
             };
-            if !added {
+            if !read {
                 self.missing.insert((row, column as u32));
                 skipped += 1;
             }
         }
-        if rule.kind == Kind::Match {
-            self.any = self.any.min(row);
-        }
         Ok(skipped)
-    }
-
-    /// Adds one value of a `kind` row; `false` when it was skipped.
-    fn add_value(&mut self, kind: &Kind, value: &str, row: u32) -> Result<bool, ErrorCode> {
-        let added = match kind {
-            Kind::Domain => self.domains.add_full(value, row),
-            Kind::DomainSuffix => self.domains.add_suffix(value, row),
-            Kind::DomainKeyword => self.domains.add_keyword(value, row),
-            Kind::IpCidr => cidr(value).map(|(addr, len)| self.ips.insert(addr, len, row)),
-            Kind::GeoIp | Kind::GeoSite => unreachable!("handled by add_geo"),
-            Kind::DstPort => self.add_ports(value, row),
-            Kind::Network => network(value).map(|n| {
-                let slot = &mut self.networks[n as usize];
-                *slot = (*slot).min(row);
-            }),
-            // `add` takes these before any value.
-            Kind::Match | Kind::Skipped { .. } => Ok(()),
-        };
-        added.map(|()| true)
-    }
-
-    /// Bind usable records even when some were skipped; return true only for a complete value.
-    fn add_geo(
-        &mut self,
-        kind: &Kind,
-        value: &str,
-        row: u32,
-        data: Option<&super::dat::Data>,
-    ) -> bool {
-        let invert = value.starts_with('!');
-        let builtin = geoip::Code::parse(value.strip_prefix('!').unwrap_or(value));
-        let use_builtin = *kind == Kind::GeoIp
-            && (data.is_none() || matches!(builtin, Some(geoip::Code::Private | geoip::Code::Lan)));
-        if !use_builtin {
-            return data.is_some_and(|d| self.loaded.add(d, kind, value, row));
-        }
-        let Some(code) = builtin else {
-            return false;
-        };
-        // Rows come in order: the first of a code is the one that can match.
-        if !self.geo.iter().any(|g| g.1 == code && g.2 == invert) {
-            self.geo.push((row, code, invert));
-        }
-        true
-    }
-
-    fn add_ports(&mut self, value: &str, row: u32) -> Result<(), ErrorCode> {
-        ports::parse(value, |first, last| self.ports.add(first, last, row))
     }
 }
 
-/// `addr/len`, either family; bits past `len` are ignored, as Clash masks them. A prefix within
-/// `::ffff:0:0/96` stays IPv6, as `netip.ParsePrefix` keeps it (`rules/common/ipcidr.go:59`,
-/// Mihomo `100ff73a`). Flows are matched with mapped addresses as IPv4, as Mihomo unmaps them
-/// (`tunnel/tunnel.go:282-289`), and `Prefix.Contains` never matches across families (Go
-/// `net/netip/netip.go:1423`), so such a prefix matches no flow.
+/// Reads one value of a `kind` row, or refuses it.
+fn check(kind: &Kind, value: &str) -> Result<(), ErrorCode> {
+    match kind {
+        Kind::Domain | Kind::DomainSuffix => domain::rule_name(value).map(drop),
+        Kind::DomainKeyword => domain::keyword(value),
+        Kind::IpCidr => cidr(value).map(drop),
+        Kind::DstPort => ports::parse(value),
+        Kind::Network => network(value).map(drop),
+        // `skipped` takes these before any value.
+        Kind::GeoIp | Kind::GeoSite | Kind::Match | Kind::Skipped { .. } => Ok(()),
+    }
+}
+
+/// Whether a GeoIP or GeoSite value has data: the loaded generation's, or without one (and for
+/// `private` and `LAN` always) the codes known without geodata.
+fn geo(kind: &Kind, value: &str, data: Option<&Data>) -> bool {
+    let builtin = geoip::Code::parse(value.strip_prefix('!').unwrap_or(value));
+    let use_builtin = *kind == Kind::GeoIp
+        && (data.is_none() || matches!(builtin, Some(geoip::Code::Private | geoip::Code::Lan)));
+    if use_builtin {
+        builtin.is_some()
+    } else {
+        data.is_some_and(|d| d.holds(kind, value))
+    }
+}
+
+/// `addr/len`, either family, with `len` no wider than the family; bits past `len` are ignored,
+/// as Clash masks them.
 fn cidr(value: &str) -> Result<(IpAddr, u8), ErrorCode> {
     let refused = ErrorCode::ParseFailed;
     let (addr, len) = value.split_once('/').ok_or(refused)?;

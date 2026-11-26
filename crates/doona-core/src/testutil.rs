@@ -250,3 +250,84 @@ fn socks_target(client: &mut std::net::TcpStream) -> std::io::Result<String> {
     client.read_exact(&mut port)?;
     Ok(format!("{host}:{}", u16::from_be_bytes(port)))
 }
+
+/// A honk configuration for a core under test: the template's group names over two placeholder
+/// nodes, so honk names `Proxy` and `Auto` and the catalog's `g-Proxy` and `g-Auto` dial them, and
+/// everything else goes through `Proxy`.
+pub const HONK: &str = "\
+node {
+    a: 'socks5://127.0.0.1:1'
+    b: 'socks5://127.0.0.1:2'
+}
+group {
+    Proxy {
+        filter: name(a, b)
+        policy: fixed(0)
+    }
+    Auto {
+        filter: name(a, b)
+        policy: fixed(0)
+    }
+}
+routing {
+    fallback: Proxy
+}
+";
+
+/// Opens the honk store of `dir`. Two tests run the test binary again in a child process; until
+/// the child execs it holds a copy of every open descriptor, the store lock of a test running
+/// alongside included, so an open in that window fails `WouldBlock`. It is retried for up to two
+/// seconds.
+pub fn open_store(dir: &Path) -> crate::honkconf::HonkStore {
+    use crate::honkconf::{HonkStore, StoreError};
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    loop {
+        match HonkStore::open(dir) {
+            Err(StoreError::Io(e))
+                if e.kind() == std::io::ErrorKind::WouldBlock
+                    && std::time::Instant::now() < deadline =>
+            {
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            store => return store.unwrap(),
+        }
+    }
+}
+
+/// Commits `config` as the honk configuration of the data directory `dir`.
+pub fn honk_store(dir: &Path, config: &str) -> crate::honkconf::HonkStore {
+    use crate::honkconf::Capabilities;
+    let mut store = open_store(dir);
+    let id = store.draft(None).unwrap();
+    store.edit(id, Path::new("config.dae"), config).unwrap();
+    store.apply(id, &Capabilities::linked()).unwrap();
+    store
+}
+
+/// honk's engine for `config` as committed, with the fallback's group as its GLOBAL target, as a
+/// start sets it, and a geo data root that holds no data file. honk reads the data root only
+/// while it builds the engine (`Engine::new`), so the directory may go once this returns.
+pub fn engine(config: &str) -> std::sync::Arc<crate::honkconf::runtime::Runtime> {
+    use crate::honkconf::Capabilities;
+    use crate::honkconf::runtime::{GlobalTarget, Runtime};
+    let dir = TempDir::new("engine");
+    let store = honk_store(dir.path(), config);
+    let engine = Runtime::load(&store, &Capabilities::linked(), dir.path()).unwrap();
+    if let Some(group) = engine.fallback_group() {
+        engine
+            .set_global_target(GlobalTarget::Group(group))
+            .unwrap();
+    }
+    std::sync::Arc::new(engine)
+}
+
+/// `dir` as a core's data directory, with [`HONK`] committed as its honk configuration unless one
+/// is already.
+pub fn seeded(dir: &TempDir) -> &str {
+    let store = open_store(dir.path());
+    if store.head().is_none() {
+        drop(store);
+        honk_store(dir.path(), HONK);
+    }
+    dir.path().to_str().unwrap()
+}

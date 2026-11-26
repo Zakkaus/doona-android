@@ -1,7 +1,7 @@
-//! The UDP five-tuples `blockQuic` refused lately. An app retransmits a refused QUIC Initial to the
-//! same address and port, and each retransmit would look its name up and run the rules again to
-//! be refused the same way, so for [`HOLD`] after a refusal the driver refuses that five-tuple at
-//! once. A mode change, a new routing (a policy or a selection), or an answer put in the names, as
+//! The UDP five-tuples whose route was refused lately. An app retransmits a refused QUIC Initial
+//! to the same address and port, and each retransmit would look its name up and run honk's engine
+//! again to be refused the same way, so for [`HOLD`] after a refusal the driver refuses that five-tuple at
+//! once. A mode change, a new routing (a selection or a node set), or an answer put in the names, as
 //! a name learned since may route the five-tuple otherwise, drops every refusal held. At most
 //! [`MAX`] are held; nothing runs on a timer: a refusal past its time is dropped when it is looked
 //! up, or when the table is full.

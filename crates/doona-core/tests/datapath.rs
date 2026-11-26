@@ -43,7 +43,7 @@ fn setup(mode: &str, upstreams: Vec<SocketAddr>) -> Setup {
 
 fn setup_with(mode: &str, options: Options) -> Setup {
     let dir = TempDir::new("datapath");
-    let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
+    let core = Core::with_options(common::seeded(&dir), options).unwrap();
     let reply = core.call("setMode", &format!(r#"{{"mode":"{mode}"}}"#));
     assert_eq!(reply, r#"{"ok":{}}"#);
     let (tun, peer) = seqpacket_pair();

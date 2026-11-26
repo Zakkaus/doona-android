@@ -27,7 +27,7 @@ fn open_fds() -> usize {
 }
 
 fn new_core(dir: &TempDir) -> Core {
-    let core = Core::new(dir.path().to_str().unwrap()).unwrap();
+    let core = Core::new(common::seeded(dir)).unwrap();
     assert_eq!(core.call("setMode", r#"{"mode":"Direct"}"#), r#"{"ok":{}}"#);
     core
 }
@@ -164,7 +164,7 @@ fn global_without_a_node_does_not_start() {
     let _s = serial();
     let dir = TempDir::new("life-no-nodes");
     // A fresh state.json is in Global, and there is no subscription.
-    let core = Core::new(dir.path().to_str().unwrap()).unwrap();
+    let core = Core::new(common::seeded(&dir)).unwrap();
     let (tun, peer) = seqpacket_pair();
     assert_eq!(start(&core, &tun, CONFIG), Err(ErrorCode::NoNodes));
     drop(tun);

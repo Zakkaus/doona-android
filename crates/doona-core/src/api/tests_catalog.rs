@@ -117,7 +117,7 @@ fn node_ids(c: &Catalog) -> Vec<(String, String)> {
 }
 
 pub(super) fn path(dir: &TempDir) -> &str {
-    dir.path().to_str().unwrap()
+    crate::testutil::seeded(dir)
 }
 
 #[test]

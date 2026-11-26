@@ -14,7 +14,7 @@
 
 pub(crate) mod names;
 
-use crate::rules::Network;
+use crate::dto::Network;
 use crate::tunnel::route::Route;
 use honk_outbound::group::{ScoreContinuation, ScoreOutcome};
 use names::{Learned, Mapping, Names};
@@ -461,7 +461,7 @@ pub(crate) mod tests {
         let (outbounds, model) =
             published_links(links.as_bytes(), Default::default(), Mode::Global);
         let session = Arc::new(Session::new(0, Default::default()));
-        let route = Route::dns(Inbound::Tun, Mode::Global, &outbounds, &session);
+        let engine = Some(crate::testutil::engine(crate::testutil::HONK));
         let wrong_id = upstream_with(|q| {
             let mut a = answer_to(q, 1);
             a[0] ^= 1;
@@ -469,6 +469,13 @@ pub(crate) mod tests {
         });
         let q = query(71, "dns.example", None);
         let servers = [wrong_id, upstream()];
+        let route = Route::dns(
+            Inbound::Tun,
+            (Mode::Global, engine),
+            &servers,
+            &outbounds,
+            &session,
+        );
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()

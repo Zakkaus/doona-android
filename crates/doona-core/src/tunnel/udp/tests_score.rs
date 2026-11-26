@@ -25,8 +25,9 @@ async fn association(outbounds: &Outbounds, peer: &UdpSocket, reply: Reply, pack
     let open = || {
         Some(Route::of(
             Inbound::Tun,
-            (remote, Network::Udp),
+            (pair.0, remote, Network::Udp),
             Mode::Global,
+            Some(&crate::testutil::engine(crate::testutil::HONK)),
             outbounds,
             &session,
         ))

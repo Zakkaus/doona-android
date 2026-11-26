@@ -15,8 +15,8 @@ use super::tcp::{self, Step, Stop, TcpFlow};
 use super::udp::{self, Budget, Nat};
 use super::{Gen, Session, Settings, StartSignal, Tun};
 use crate::dns::names::Learned;
+use crate::dto::Network;
 use crate::dto::recent::Protocol;
-use crate::rules::Network;
 use crate::stats::meter::Tally;
 use crate::sys;
 use honk_netstack::{
@@ -80,7 +80,7 @@ struct Driver {
     /// The deadlines of the flows of `tcp` whose drain has begun.
     drains: Drains,
     nat: Nat,
-    /// The UDP five-tuples blockQuic refused lately.
+    /// The UDP five-tuples whose route was refused lately.
     blocked: Blocked,
     dns_slots: Arc<Semaphore>,
     /// Tun input, stack output, and the buffer flows are read into.
@@ -318,8 +318,9 @@ impl Driver {
             let route = if to_resolver {
                 dns_route(settings, session)
             } else {
-                let (to, mode) = ((dst, Network::Tcp), settings.mode.get());
-                Route::of(Inbound::Tun, to, mode, &settings.outbounds, session)
+                let (flow, mode) = ((syn.client, dst, Network::Tcp), settings.mode.get());
+                let (engine, outbounds) = (settings.engine.as_deref(), &settings.outbounds);
+                Route::of(Inbound::Tun, flow, mode, engine, outbounds, session)
             };
             if route.refused() {
                 self.stack.tcp_refuse(syn.id, Refuse::Rst);
@@ -451,7 +452,7 @@ impl Driver {
 
     /// A datagram from an app: UDP/53 to any address is DNS the core answers; nothing else
     /// listens on the virtual resolver; other datagrams follow the route their association
-    /// opened with. A five-tuple blockQuic refused lately is refused again without a route, unless
+    /// opened with. A five-tuple refused lately is refused again without a route, unless
     /// the mode was set, a routing published or an answer put in the names since.
     fn on_datagram(&mut self, src: SocketAddr, dst: SocketAddr, payload: &[u8]) {
         if dst.port() == 53 {
@@ -476,9 +477,10 @@ impl Driver {
                 if blocked.holds((src, dst), stamp, now) {
                     return None;
                 }
-                let to = (dst, Network::Udp);
-                let route = Route::of(Inbound::Tun, to, mode, &settings.outbounds, session);
-                if let Route::Blocked = route {
+                let (flow, engine) = ((src, dst, Network::Udp), settings.engine.as_deref());
+                let outbounds = &settings.outbounds;
+                let route = Route::of(Inbound::Tun, flow, mode, engine, outbounds, session);
+                if route.refused() {
                     blocked.refuse((src, dst), stamp, now);
                 }
                 Some(route).filter(Route::carries_udp)
@@ -571,7 +573,14 @@ enum Sent {
 /// The route of DNS the core answers for `session`'s generation.
 fn dns_route(settings: &Settings, session: &Arc<Session>) -> Route {
     let mode = settings.mode.get();
-    Route::dns(Inbound::Tun, mode, &settings.outbounds, session)
+    let (engine, upstreams) = (settings.engine.clone(), settings.dns_upstreams.borrow());
+    Route::dns(
+        Inbound::Tun,
+        (mode, engine),
+        &upstreams,
+        &settings.outbounds,
+        session,
+    )
 }
 
 /// A tun write that failed for lack of memory or room loses its packet, as hev does for

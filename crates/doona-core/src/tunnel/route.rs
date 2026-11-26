@@ -1,12 +1,13 @@
 //! Where a new flow goes: a function of the inbound it arrived on, the committed mode and the flow's
-//! destination, never of an app or a uid (ARCH D24). Direct sends it straight out. Global sends it
-//! through the node the main group (`mainGroupId`, `g-Proxy` under the template) selects when the
-//! flow opens, dialed on that node's carriers (see `outbounds.rs`), and refuses it while the group
-//! has none: a Global flow is never sent direct. Rule matches the flow once, by the name the
-//! generation's DNS answers gave its address, its address, port and transport, and takes the first
-//! matching rule's target: direct, reject, or a group, refused while that group has no node and
-//! never sent direct instead (rule-mode.md decision 9). DNS the core answers goes through the main
-//! group in Rule as in Global (decision 10).
+//! five-tuple, never of an app or a uid (ARCH D24). honk's engine decides every captured flow (see
+//! `honkconf/runtime.rs`): its rules, fallback, `must` and `block`, and the mode on top of them.
+//! Without a committed configuration only Direct routes, straight out. DNS the core answers is
+//! decided the same way for each upstream it dials, as a TCP flow to that upstream's port 53.
+//!
+//! Which node a group or a node target dials is still the catalog's, through one bridge
+//! ([`dial`]): a group by its name, a node by its honk endpoint. honk item 03b's dial plan and
+//! lane c7's projection replace that bridge; a target the catalog does not hold is refused,
+//! never sent direct instead.
 //!
 //! A flow keeps the route it opened with, so a mode or selection change applies to new flows only.
 //! doona excludes its own package from the VPN, so these sockets need no `protect()`. What a dial
@@ -17,15 +18,16 @@
 use super::Session;
 use super::udp::UdpUpstream;
 use crate::dto::Mode;
+use crate::dto::Network;
+use crate::honkconf::runtime::{self, Flow, Runtime, Target};
+use crate::ids;
 use crate::localnet::{self, Trace};
 use crate::outbounds::{Dialer, Outbounds, View};
-use crate::rules::policy::Choice;
-use crate::rules::{Flow, Network};
 use crate::stats::meter::{DIRECT, Meter};
 use honk_outbound::group::ScoreContinuation;
 use honk_outbound::proxy::AsyncReadWrite;
 use std::io::{self, ErrorKind};
-use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
 use std::time::Duration;
@@ -90,101 +92,87 @@ pub(crate) enum Inbound {
 #[derive(Clone)]
 pub(crate) enum Route {
     Direct,
-    /// Direct by this rule in Rule mode: as `Direct`, metered under the rule as well.
+    /// Direct by a rule or the fallback: as `Direct`, metered under that row's meter as well.
     RuleDirect(Arc<str>),
     /// Through this node; what each dial showed on its way to the node goes to the session.
     Proxy(Arc<Dialer>, Arc<Session>),
-    /// The DNS session keeps its routing publication but selects for each upstream socket.
-    Resolver(View, Arc<Session>),
-    /// A rule's reject; Global or a rule's group while it has no node. TCP is reset, datagrams
-    /// are dropped.
+    /// DNS the core answers: each upstream dial is decided as a flow to that upstream.
+    Resolver(Arc<Resolver>),
+    /// honk's refusal (`block`, a marked fallback, GLOBAL with no target), a target the catalog
+    /// has no node for, or no configuration outside Direct. TCP is reset, datagrams are dropped, and the driver refuses the same
+    /// five-tuple again for a while without deciding it (see `blocked.rs`).
     Refuse,
-    /// QUIC bound for a group, which `blockQuic` refuses: as `Refuse`, and the driver refuses the
-    /// same five-tuple again for a while without routing it (see `blocked.rs`).
-    Blocked,
 }
 
 /// An upstream byte stream: a socket, or a node's protocol over one.
 pub(crate) type Upstream = Box<dyn AsyncReadWrite>;
 
+/// What DNS the core answers routes by: the mode and engine it was asked under and the routing
+/// publication, kept for each upstream the query is sent to.
+pub(crate) struct Resolver {
+    mode: Mode,
+    engine: Option<Arc<Runtime>>,
+    view: View,
+    session: Arc<Session>,
+}
+
+/// The source of a flow the core opens itself, such as a DNS upstream dial.
+const CORE: SocketAddr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0));
+
+impl Resolver {
+    fn route(&self, dst: SocketAddr, original: Option<&ScoreContinuation>) -> Route {
+        let flow = (CORE, dst, Network::Tcp);
+        let engine = self.engine.as_deref();
+        let view = || self.view.clone();
+        decided(engine, self.mode, flow, view, &self.session, original)
+    }
+}
+
 impl Route {
-    /// The route of a new flow of `session`'s generation from `inbound` to `dst` over `network`.
-    /// `mode` is the mode cell's reading, taken first: Direct sends the flow straight out, which a
-    /// committed setting does, as the cell is set before the routing is published. Any other
-    /// reading routes by the mode and the policy the routing holds, published together, so a flow
-    /// that paused across commits never pairs one commit's mode with another's policy. Called once
-    /// a flow, when it opens.
+    /// The route of a new flow of `session`'s generation from `inbound`, `src` to `dst` over
+    /// `network`, as `engine` decides it under `mode`, the mode cell's reading. The domain is the
+    /// name the generation's DNS answers gave `dst`, so it resolves to `dst` by construction.
+    /// No mode short-cuts the engine: `must` and `block` hold in Direct and Global too. Called
+    /// once a flow, when it opens.
     pub fn of(
         inbound: Inbound,
-        (dst, network): (SocketAddr, Network),
+        flow: (SocketAddr, SocketAddr, Network),
         mode: Mode,
+        engine: Option<&Runtime>,
         outbounds: &Outbounds,
         session: &Arc<Session>,
     ) -> Route {
         let Inbound::Tun = inbound;
-        // Direct reads no routing, so it never waits for a catalog swap that holds the table.
-        if mode == Mode::Direct {
-            return Route::Direct;
-        }
-        let view = outbounds.view();
-        let mode = view.mode().unwrap_or(mode);
-        if mode == Mode::Direct {
-            return Route::Direct;
-        }
-        let policy = view.policy();
-        let name = std::cell::OnceCell::new();
-        let domain = || {
-            name.get_or_init(|| session.names().name(dst.ip()))
-                .as_deref()
-        };
-        let (group, rule) = if mode == Mode::Rule {
-            let flow = Flow {
-                domain: if policy.wants_names() { domain() } else { None },
-                ip: dst.ip(),
-                port: dst.port(),
-                network,
-            };
-            match policy.decide(&flow) {
-                (Choice::Direct, rule) => return Route::RuleDirect(rule),
-                (Choice::Reject, _) => return Route::Refuse,
-                (Choice::Blocked, _) => return Route::Blocked,
-                (Choice::Group(group), rule) => (group, Some(rule)),
-            }
-        } else {
-            (policy.main(), None)
-        };
-        Route::through(
-            view.for_flow(group, dst, network, domain, None),
-            rule,
-            session,
-        )
+        // The publication is read only to dial: Direct does not wait for a swap.
+        decided(engine, mode, flow, || outbounds.view(), session, None)
     }
 
-    /// The route of DNS the core answers for `session`'s generation: straight out in Direct, else
-    /// through the main group, whatever server the query was sent to. `mode` is read as in
-    /// [`Route::of`].
+    /// The route of DNS the core answers for `session`'s generation: each of `upstreams` it
+    /// dials is decided by `engine` under `mode` as a TCP flow to that upstream, whatever server
+    /// the query was sent to (rule-mode.md decision 10 until lane c9's DNS hookup). Refused up
+    /// front when there are upstreams and every one is; with none, each query fails on its own.
     pub fn dns(
         inbound: Inbound,
-        mode: Mode,
+        (mode, engine): (Mode, Option<Arc<Runtime>>),
+        upstreams: &[SocketAddr],
         outbounds: &Outbounds,
         session: &Arc<Session>,
     ) -> Route {
         let Inbound::Tun = inbound;
-        if mode == Mode::Direct {
-            return Route::Direct;
+        let resolver = Resolver {
+            mode,
+            engine,
+            view: outbounds.view(),
+            session: Arc::clone(session),
+        };
+        let refused = |&u: &SocketAddr| resolver.route(u, None).refused();
+        if !upstreams.is_empty() && upstreams.iter().all(refused) {
+            return Route::Refuse;
         }
-        let view = outbounds.view();
-        match view.mode().unwrap_or(mode) {
-            Mode::Direct => Route::Direct,
-            Mode::Global | Mode::Rule if view.has_main_node() => {
-                Route::Resolver(view, Arc::clone(session))
-            }
-            _ => Route::Refuse,
-        }
+        Route::Resolver(Arc::new(resolver))
     }
 
-    /// Through the node `group` selects in `view`, chosen by `rule` in Rule mode; refused while
-    /// the group has no node, never direct.
+    /// Through `dialer`, charging `rule`'s meter as well; refused without a dialer, never direct.
     fn through(dialer: Option<Dialer>, rule: Option<Arc<str>>, session: &Arc<Session>) -> Route {
         dialer.map_or(Route::Refuse, |mut d| {
             d.rule = rule;
@@ -193,22 +181,21 @@ impl Route {
     }
 
     pub fn refused(&self) -> bool {
-        matches!(self, Route::Refuse | Route::Blocked)
+        matches!(self, Route::Refuse)
     }
 
-    /// The meter of this route's target in `session`, the group it goes through or `direct`,
-    /// and of the rule that chose it in Rule mode.
+    /// The meter of this route's target in `session`, the group or node it goes through or
+    /// `direct`, and of the row that chose it. DNS the core answers is not metered here.
     pub fn meter(&self, session: &Session) -> Option<Arc<Meter>> {
         let meters = session.meters();
         match self {
             Route::Direct => Some(meters.get(DIRECT)),
             Route::RuleDirect(rule) => Some(meters.get_ruled(DIRECT, rule)),
-            Route::Resolver(view, _) => Some(meters.get(view.policy().main())),
             Route::Proxy(d, _) => Some(match &d.rule {
                 Some(rule) => meters.get_ruled(&d.group, rule),
                 None => meters.get(&d.group),
             }),
-            Route::Refuse | Route::Blocked => None,
+            Route::Resolver(_) | Route::Refuse => None,
         }
     }
 
@@ -218,7 +205,7 @@ impl Route {
         match self {
             Route::Direct | Route::RuleDirect(_) => true,
             Route::Proxy(d, _) => d.supports_udp(),
-            Route::Resolver(..) | Route::Refuse | Route::Blocked => false,
+            Route::Resolver(..) | Route::Refuse => false,
         }
     }
 
@@ -253,7 +240,15 @@ impl Route {
         deadline: Instant,
         original: &mut Option<ScoreContinuation>,
     ) -> io::Result<connect::Connected> {
-        match self {
+        let decided;
+        let route = match self {
+            Route::Resolver(r) => {
+                decided = r.route(dst, original.as_ref());
+                &decided
+            }
+            route => route,
+        };
+        match route {
             Route::Direct | Route::RuleDirect(_) => {
                 let s = timeout_at(deadline, TcpStream::connect(dst)).await??;
                 // The app's own segments arrive already sized; Nagle would only add delay.
@@ -263,19 +258,7 @@ impl Route {
             Route::Proxy(d, session) => {
                 connect::connect(d, session, (dst, None), deadline, original).await
             }
-            Route::Resolver(view, session) => {
-                let dialer = view
-                    .for_flow(
-                        view.policy().main(),
-                        dst,
-                        Network::Tcp,
-                        || None,
-                        original.as_ref(),
-                    )
-                    .ok_or(ErrorKind::PermissionDenied)?;
-                connect::connect(&dialer, session, (dst, None), deadline, original).await
-            }
-            Route::Refuse | Route::Blocked => Err(ErrorKind::PermissionDenied.into()),
+            Route::Resolver(_) | Route::Refuse => Err(ErrorKind::PermissionDenied.into()),
         }
     }
 
@@ -321,10 +304,81 @@ impl Route {
                     reporter,
                 ))
             }
-            Route::Resolver(..) | Route::Refuse | Route::Blocked => {
-                Err(ErrorKind::PermissionDenied.into())
-            }
+            Route::Resolver(..) | Route::Refuse => Err(ErrorKind::PermissionDenied.into()),
         }
+    }
+}
+
+/// The route `engine` gives a flow under `mode`, dialed through the publication `view` reads;
+/// refused outside Direct without an engine.
+fn decided(
+    engine: Option<&Runtime>,
+    mode: Mode,
+    (src, dst, network): (SocketAddr, SocketAddr, Network),
+    view: impl FnOnce() -> View,
+    session: &Arc<Session>,
+    original: Option<&ScoreContinuation>,
+) -> Route {
+    let Some(engine) = engine else {
+        return match mode {
+            Mode::Direct => Route::Direct,
+            Mode::Rule | Mode::Global => Route::Refuse,
+        };
+    };
+    let domain = session.names().name(dst.ip());
+    let flow = Flow {
+        network: match network {
+            Network::Tcp => runtime::Network::Tcp,
+            Network::Udp => runtime::Network::Udp,
+        },
+        source: src,
+        destination: dst,
+        domain: domain.as_deref().map(str::to_owned),
+        domain_verified: true,
+        process_name: None,
+        mac: None,
+        dscp: None,
+    };
+    let mode = match mode {
+        Mode::Rule => runtime::Mode::Rule,
+        Mode::Global => runtime::Mode::Global,
+        Mode::Direct => runtime::Mode::Direct,
+    };
+    let verdict = engine.decide_in(mode, &flow);
+    let meter = verdict.row.and_then(|row| row.meter);
+    match verdict.target {
+        Target::Direct => meter.map_or(Route::Direct, Route::RuleDirect),
+        Target::Refuse => Route::Refuse,
+        target => {
+            let dialer = dial(
+                &view(),
+                &target,
+                (dst, network),
+                domain.as_deref(),
+                original,
+            );
+            Route::through(dialer, meter, session)
+        }
+    }
+}
+
+/// The catalog's dialer for honk's group or node `target`: the one place honk's targets meet the
+/// catalog. A group dials the node the publication selects for `g-<name>`, a node the catalog
+/// node with that honk endpoint. Waits on honk item 03b (group choice and dial plan in honk) and
+/// lane c7 (catalog ids from the projection); `None` for anything else.
+pub(crate) fn dial(
+    view: &View,
+    target: &Target,
+    (dst, network): (SocketAddr, Network),
+    domain: Option<&str>,
+    original: Option<&ScoreContinuation>,
+) -> Option<Dialer> {
+    match target {
+        Target::Group(name) => {
+            view.for_flow(&ids::group_id(name), dst, network, || domain, original)
+        }
+        Target::Node(endpoint) => view.node(*endpoint),
+        Target::Direct | Target::Refuse => None,
     }
 }
 

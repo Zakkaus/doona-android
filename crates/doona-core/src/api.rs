@@ -5,6 +5,7 @@ use crate::bootstrap;
 use crate::catalog::{self, CatalogState, Shared};
 use crate::diag::{Count, Diag, Event, crash};
 use crate::dto::{self, Empty, ErrorCode, GroupArgs, IdArgs, Mode, ModeArgs, Reply, StartConfig};
+use crate::honkconf::runtime as honk;
 use crate::outbounds::Outbounds;
 use crate::probe::{self, Prober, Probes};
 use crate::state::{State, Store};
@@ -24,6 +25,7 @@ use tokio::runtime::Runtime;
 
 mod assets;
 mod diagnostics;
+mod engine;
 #[cfg(feature = "fault-hook")]
 mod fault;
 mod init;
@@ -251,7 +253,9 @@ impl Core {
         deadline: Instant,
         dns_revision: u64,
     ) -> Result<i64, ErrorCode> {
-        let (settings, resolvers) = self.settings(&config)?;
+        // Checked before anything stops the running generation: a start that cannot route
+        // leaves it running.
+        let (resolvers, engine) = self.checked(&config)?;
         let rt = self.runtime.handle();
         let tun = Tun::new(tun, rt).map_err(|_| ErrorCode::Internal)?;
         let gate = Gate::new();
@@ -261,7 +265,13 @@ impl Core {
             old.wait(rt, deadline);
             self.retire(&session);
         }
-        self.activate_assets(config.geo_asset_dir, &gate, deadline)?;
+        self.activate_assets(config.geo_asset_dir.clone(), &gate, deadline)?;
+        // An activation that switched the asset generation needs the engine read from it.
+        let engine = match engine {
+            Some((_, read)) if read != self.assets.data_root() => self.engine(self.mode.get())?,
+            engine => engine,
+        };
+        let settings = self.settings(&config, engine.map(|(engine, _)| engine));
         let started = Tunnel::start(
             rt,
             tun,
@@ -348,37 +358,20 @@ impl Core {
         Err(code)
     }
 
-    /// What a generation runs with, and the resolvers that serve host lookups once it is up (also
-    /// after `stop`). A malformed address or a nonempty list with no surviving scope is
-    /// `invalid_argument`. Global with no node in the main group is `no_nodes`, as it would refuse
-    /// every flow. Rule may still send flows direct and refuse those bound for a group with no node.
-    fn settings(&self, config: &StartConfig) -> Result<(Settings, Vec<SocketAddr>), ErrorCode> {
-        if config.mtu < MIN_MTU {
-            return Err(ErrorCode::InvalidArgument);
-        }
-        let (port, fallback) = (
-            self.options.bootstrap_port,
-            &self.options.bootstrap_fallback,
-        );
-        let resolvers = bootstrap::servers(&config.bootstrap_dns, port, Some(fallback))
-            .ok_or(ErrorCode::InvalidArgument)?;
-        let view = self.shared.outbounds.view();
-        if self.mode.get() == Mode::Global && view.dialer(view.policy().main()).is_none() {
-            return Err(ErrorCode::NoNodes);
-        }
-        let settings = Settings {
+    fn settings(&self, config: &StartConfig, engine: Option<Arc<honk::Runtime>>) -> Settings {
+        Settings {
             mtu: config.mtu,
             dns: config.dns,
             dns_upstreams: self.dns_upstreams.subscribe(),
             udp_idle: self.options.udp_idle,
             tcp_drain: self.options.tcp_drain,
             mode: Arc::clone(&self.mode),
+            engine,
             outbounds: Arc::clone(&self.shared.outbounds),
             panics: Arc::clone(&self.panics),
             catalog: Arc::downgrade(&self.shared),
             stats: Arc::clone(&self.stats),
-        };
-        Ok((settings, resolvers))
+        }
     }
 
     /// Ends the running generation, if any, within 1 s, and cancels a `start` under way. Every

@@ -1,8 +1,8 @@
 use super::tests::{echo, ping};
 use super::tests_catalog::{Feeds, add, call, catalog, path};
 use super::{Core, lock};
+use crate::dto::Network;
 use crate::dto::{ErrorCode, Mode};
-use crate::rules::Network;
 use crate::score::Score;
 use crate::testutil::{TempDir, client::Client, socks5, socks5_with, tuic, tun_and_peer};
 use crate::tunnel::Session;
@@ -20,8 +20,9 @@ fn route(core: &Core, dst: SocketAddr) -> Route {
     }
     Route::of(
         Inbound::Tun,
-        (dst, Network::Tcp),
+        (([10, 0, 0, 2], 40000).into(), dst, Network::Tcp),
         core.mode.get(),
+        Some(&crate::testutil::engine(crate::testutil::HONK)),
         &core.shared.outbounds,
         &session,
     )
@@ -69,7 +70,7 @@ fn global_and_rule_follow_score_pins_then_return_to_automatic() {
     feeds.set("/sub", b"socks5://127.0.0.1:1#a\nsocks5://127.0.0.1:2#b");
     add(&core, &feeds, "/sub").unwrap();
     let dst = ([104, 16, 0, 1], 443).into();
-    for (mode, group) in [(Mode::Global, "g-Proxy"), (Mode::Rule, "g-Streaming")] {
+    for (mode, group) in [(Mode::Global, "g-Proxy"), (Mode::Rule, "g-Proxy")] {
         core.set_mode(mode).unwrap();
         let chosen = || {
             let Route::Proxy(d, _) = route(&core, dst) else {

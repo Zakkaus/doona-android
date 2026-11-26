@@ -1,5 +1,7 @@
 use super::*;
-use crate::rules::{Flow, Network, policy::Choice};
+use crate::honkconf::meters::RevisionMeters;
+use crate::honkconf::runtime::{Flow, Network, Runtime, Target};
+use crate::honkconf::{Capabilities, load};
 use crate::testutil::{TempDir, tun_and_peer};
 use serde_json::{Value, json};
 use std::io::Cursor;
@@ -67,20 +69,39 @@ fn verified_hash_of_malformed_unreferenced_record_does_not_activate() {
     let _peer = start(&core, bundle.path());
     assert_eq!(status(&core)["source"], "builtin");
     assert_eq!(status(&core)["reason"], "invalid_generation");
+    // No generation is active, so the data root holds no file and a geoip rule does not build.
     assert!(!direct(&core, "8.8.8.8"));
-    assert!(direct(&core, "223.5.5.5"));
+    assert!(!direct(&core, "223.5.5.5"));
 }
 fn status(core: &Core) -> Value {
     serde_json::from_str::<Value>(&core.call("configAssets", "{}")).unwrap()["ok"].clone()
 }
+/// A honk configuration that sends China's addresses direct and refuses the rest.
+const CN_DIRECT: &str = "routing {\n    dip(geoip:cn) -> direct\n    fallback: block\n}\n";
+
+/// Whether honk's engine, built from the data root a start reads, sends `ip` direct; `false`
+/// when that root has no usable data and the engine does not build.
 fn direct(core: &Core, ip: &str) -> bool {
-    let c = lock(&core.shared.catalog);
-    c.model.policy.choose(&Flow {
-        domain: None,
-        ip: ip.parse().unwrap(),
+    let dir = TempDir::new("geo-route");
+    let entry = dir.path().join("config.dae");
+    fs::write(&entry, CN_DIRECT).unwrap();
+    let doc = load(&entry).unwrap();
+    let root = core.assets.data_root();
+    let caps = Capabilities::linked();
+    let Ok(engine) = Runtime::new(&doc, &caps, &RevisionMeters::new(), &root) else {
+        return false;
+    };
+    let flow = Flow {
         network: Network::Tcp,
-        port: 443,
-    }) == Choice::Direct
+        source: "172.19.0.1:40000".parse().unwrap(),
+        destination: (ip.parse::<std::net::IpAddr>().unwrap(), 443).into(),
+        domain: None,
+        domain_verified: true,
+        process_name: None,
+        mac: None,
+        dscp: None,
+    };
+    engine.decide(&flow).target == Target::Direct
 }
 fn start(core: &Core, dir: &Path) -> std::os::fd::OwnedFd {
     let args = json!({"mtu":8500,"ipv4":"172.19.0.1","dns":"172.19.0.2","bootstrapDns":[],"geoAssetDir":dir});
@@ -89,7 +110,7 @@ fn start(core: &Core, dir: &Path) -> std::os::fd::OwnedFd {
     peer
 }
 fn core(dir: &TempDir, apk: &Fixture) -> Core {
-    let mut core = Core::new(dir.path().to_str().unwrap()).unwrap();
+    let mut core = Core::new(crate::testutil::seeded(dir)).unwrap();
     core.assets = Arc::new(Assets::with_pins(dir.path(), apk.pins()));
     assert_eq!(core.call("setMode", r#"{"mode":"Rule"}"#), r#"{"ok":{}}"#);
     core
@@ -183,7 +204,7 @@ fn same_size_corruption_after_staging_keeps_active_pair_across_process_restart()
 #[test]
 fn offline_command_returns_reason_without_starting_download() {
     let dir = TempDir::new("geo-status");
-    let core = Core::new(dir.path().to_str().unwrap()).unwrap();
+    let core = Core::new(crate::testutil::seeded(&dir)).unwrap();
     let fixture: Value = serde_json::from_str(include_str!(
         "../../../../../contracts/doona-core/call-ok-config-assets.json"
     ))

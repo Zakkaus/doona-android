@@ -45,6 +45,7 @@ fn route(core: &Core) -> Route {
         Inbound::Tun,
         crate::tunnel::route::tests::ANYWHERE,
         Mode::Global,
+        Some(&crate::testutil::engine(crate::testutil::HONK)),
         &core.shared.outbounds,
         &session,
     )

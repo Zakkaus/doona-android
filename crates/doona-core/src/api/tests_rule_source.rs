@@ -6,8 +6,6 @@ use super::rules::effective;
 use super::tests_catalog::{Feeds, add, call, catalog, path};
 use super::{Core, lock};
 use crate::dto::{ErrorCode, Snapshot};
-use crate::rules::policy::Choice;
-use crate::rules::{Flow, Network};
 use crate::testutil::TempDir;
 use serde_json::{Value, json};
 use std::os::unix::fs::MetadataExt;
@@ -117,20 +115,10 @@ fn revision(core: &Core) -> i64 {
         .revision
 }
 
-/// Where the published policy sends QUIC to an address abroad, which the template leaves to Proxy.
-fn quic_abroad(core: &Core) -> String {
+/// Whether the publication flows are routed against carries `blockQuic`.
+fn published_block_quic(core: &Core) -> bool {
     let view = core.shared.outbounds.view();
-    let flow = Flow {
-        domain: None,
-        ip: [104, 16, 0, 1].into(),
-        port: 443,
-        network: Network::Udp,
-    };
-    match view.policy().choose(&flow) {
-        Choice::Blocked => "blocked".to_owned(),
-        Choice::Group(id) => id.to_owned(),
-        other => format!("{other:?}"),
-    }
+    view.policy().source().options.block_quic
 }
 
 fn block_quic(on: bool) -> Value {
@@ -142,26 +130,26 @@ fn block_quic_is_written_published_and_kept_across_a_restart() {
     let dir = TempDir::new("rules-set-source");
     let core = Core::new(path(&dir)).unwrap();
     let before = revision(&core);
-    assert_eq!(quic_abroad(&core), "g-Proxy");
+    assert!(!published_block_quic(&core));
     assert_eq!(
         call(&core, "setRuleSource", block_quic(true)),
         Ok(json!({}))
     );
     assert!(revision(&core) > before);
-    assert_eq!(quic_abroad(&core), "blocked");
+    assert!(published_block_quic(&core));
     assert!(catalog(&core).rule_source.options.block_quic);
     let saved = std::fs::read_to_string(dir.path().join("state.json")).unwrap();
     let saved: Value = serde_json::from_str(&saved).unwrap();
     assert_eq!(saved["ruleSource"], block_quic(true));
     drop(core);
     let again = Core::new(path(&dir)).unwrap();
-    assert_eq!(quic_abroad(&again), "blocked");
+    assert!(published_block_quic(&again));
     assert!(catalog(&again).rule_source.options.block_quic);
     assert_eq!(
         call(&again, "setRuleSource", block_quic(false)),
         Ok(json!({}))
     );
-    assert_eq!(quic_abroad(&again), "g-Proxy");
+    assert!(!published_block_quic(&again));
 }
 
 #[test]
@@ -288,7 +276,7 @@ fn the_set_rule_source_fixture_turns_block_quic_on() {
     let core = Core::new(path(&dir)).unwrap();
     let args = contract_text("call-set-rule-source-args.json");
     assert_eq!(core.call("setRuleSource", &args), r#"{"ok":{}}"#);
-    assert_eq!(quic_abroad(&core), "blocked");
+    assert!(published_block_quic(&core));
 }
 
 /// Nodes whose display names a filter on names would let through (ARCH D21): an expanded IPv6

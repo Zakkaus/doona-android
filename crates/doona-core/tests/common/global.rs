@@ -36,7 +36,7 @@ impl Global {
     /// [`Global::new`] with the core's `options`.
     pub fn with_options(links: &[String], options: Options) -> Global {
         let dir = TempDir::new("global");
-        let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
+        let core = Core::with_options(super::seeded(&dir), options).unwrap();
         let feed = servers::feed(links.join("\n"));
         let reply = core.call(
             "addSubscription",

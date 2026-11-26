@@ -174,7 +174,7 @@ mod tests {
         }
 
         let dir = TempDir::new("lost-scope");
-        let core = Core::new(dir.path().to_str().unwrap()).unwrap();
+        let core = Core::new(crate::testutil::seeded(&dir)).unwrap();
         assert_eq!(core.call("setMode", r#"{"mode":"Direct"}"#), r#"{"ok":{}}"#);
         let start = |list: &str| {
             let (fd, _peer) = tun();

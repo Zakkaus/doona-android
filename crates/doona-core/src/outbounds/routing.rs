@@ -3,11 +3,11 @@
 
 use super::{Dialer, Published};
 use crate::dto::Mode;
-use crate::rules::Network;
+use crate::dto::Network;
 use crate::rules::policy::Policy;
 use crate::score::{Score, family};
 use honk_config::node::Node;
-use honk_outbound::alive::{IpVersion, ProbeDomain};
+use honk_outbound::alive::ProbeDomain;
 use honk_outbound::group::{
     ScoreAttempt, ScoreContinuation, ScoreSelectionContext, ScoreSelectionEntry, ScoreTarget,
     SelectionNetwork,
@@ -113,35 +113,6 @@ impl View {
         &self.table.policy
     }
 
-    /// The mode published with the policy; `None` before the first publication.
-    pub fn mode(&self) -> Option<Mode> {
-        self.table.mode
-    }
-
-    pub fn has_main_node(&self) -> bool {
-        let table = &self.table;
-        if table.published.is_none() {
-            return false;
-        }
-        match table
-            .selected
-            .get(self.policy().main())
-            .and_then(|pair| pair.tcp.as_ref())
-        {
-            Some(Leaf::Node(_)) => true,
-            Some(Leaf::Score(owner)) => table.score.as_ref().is_some_and(|score| {
-                [IpVersion::V4, IpVersion::V6].into_iter().any(|family| {
-                    !score
-                        .manager
-                        .peek_selection_plan_for_domain(owner, ProbeDomain::Tcp, family)
-                        .nodes
-                        .is_empty()
-                })
-            }),
-            None => false,
-        }
-    }
-
     /// The node `group` (an id such as `g-Proxy`) sends traffic to, and what dials it; `None`
     /// while the group does not exist or has no node.
     pub fn dialer(&self, group: &str) -> Option<Dialer> {
@@ -149,6 +120,20 @@ impl View {
         let leaf = pair.tcp.as_ref()?;
         self.table
             .dialer(group, leaf.peek(self.table.score.as_deref()?)?, None)
+    }
+
+    /// What dials the catalog node whose honk endpoint is `endpoint`, metered under the node's
+    /// id; `None` when the catalog holds no such node. Two subscriptions holding one endpoint
+    /// give the first in feed order.
+    pub fn node(&self, endpoint: uuid::Uuid) -> Option<Dialer> {
+        let score = self.table.score.as_ref()?;
+        let entry = score
+            .entries
+            .values()
+            .filter(|e| e.node.id == endpoint)
+            .min_by_key(|e| (e.subscription.clone(), e.feed_index))?;
+        self.table
+            .dialer(&Arc::from(entry.id.as_str()), &entry.node, None)
     }
 
     pub fn for_flow<'a>(

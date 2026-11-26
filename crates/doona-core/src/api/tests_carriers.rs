@@ -13,6 +13,7 @@ use crate::tunnel::{Gen, Launch, STOP_WAIT, Session, Settings, StartSignal, TunH
 use futures_util::future::BoxFuture;
 use serde_json::json;
 use std::net::SocketAddr;
+use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 use std::time::{Duration, Instant};
@@ -94,6 +95,7 @@ fn stop_closes_an_established_quic_connection_while_the_workers_are_held() {
         Inbound::Tun,
         crate::tunnel::route::tests::ANYWHERE,
         Mode::Global,
+        Some(&crate::testutil::engine(crate::testutil::HONK)),
         &core.shared.outbounds,
         &Arc::new(Session::new(0, std::sync::Weak::new())),
     );
@@ -145,6 +147,7 @@ fn dial_proxy(core: &Core) {
         Inbound::Tun,
         crate::tunnel::route::tests::ANYWHERE,
         Mode::Global,
+        Some(&crate::testutil::engine(crate::testutil::HONK)),
         &core.shared.outbounds,
         &session,
     );
@@ -176,7 +179,7 @@ fn nodes_of_one_id_keep_their_own_alpn_through_probes_and_a_restart() {
         probe_url: "http://127.0.0.1:9/generate_204".into(),
         ..Options::default()
     };
-    let store = crate::state::Store::new(dir.path());
+    let store = crate::state::Store::new(Path::new(crate::testutil::seeded(&dir)));
     let launch = (idle as Launch, Duration::from_secs(10));
     let core = Core::build(store, options, launch, crate::probe::urltest()).unwrap();
     add(&core, &feeds, "/h3").unwrap();

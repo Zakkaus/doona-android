@@ -84,6 +84,11 @@ pub(super) struct Assets {
     pins: Release,
 }
 impl Assets {
+    /// The directory honk's engine reads geo data from: the active generation's.
+    pub(super) fn data_root(&self) -> PathBuf {
+        lock(&self.disk).data_root()
+    }
+
     pub(super) fn new(data_dir: &Path) -> Self {
         Self::with_pins(
             data_dir,

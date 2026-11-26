@@ -26,6 +26,7 @@ use crate::catalog::Shared;
 use crate::diag::{Count, Event};
 use crate::dns::names::Names;
 use crate::dto::{ErrorCode, Traffic};
+use crate::honkconf::runtime::Runtime;
 use crate::localnet::Trace;
 use crate::outbounds::{Ended, Outbounds};
 use crate::stats::meter::Meters;
@@ -68,7 +69,9 @@ pub struct Settings {
     pub tcp_drain: Duration,
     /// The committed mode; each new flow reads it.
     pub mode: Arc<ModeCell>,
-    /// Each group's current node and what dials it; a new Global flow goes through `g-Proxy`'s.
+    /// honk's engine, which decides each new flow; `None` without a committed configuration.
+    pub engine: Option<Arc<Runtime>>,
+    /// Each group's current node and what dials it, for the groups and nodes honk's engine names.
     pub outbounds: Arc<Outbounds>,
     /// The panics on the core's runtime threads so far (see `panics.rs`).
     pub panics: Arc<AtomicU64>,

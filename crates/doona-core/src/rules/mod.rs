@@ -1,14 +1,11 @@
-//! Rule mode's rules (`plans/v1/rule-mode.md`, slices R1 to R3): the model of a rule source, its
-//! limits, the compiled set a flow is matched against, doona's template, the policy `Route::of`
-//! chooses a group by, and the rows as the contract lists them.
+//! Rule mode's rules (`plans/v1/rule-mode.md`, slices R1 to R3) as the rules page shows them: the
+//! model of a rule source, its limits, doona's template, and the rows as the contract lists them.
+//! honk's engine routes every flow (`honkconf::runtime`); nothing here matches one.
 //!
 //! A source is groups ([`GroupDef`]) and rows of rules ([`RuleSpec`]). [`RuleSet::compile_source`]
-//! checks the whole source before it builds anything ([`limits`]) and refuses it as
-//! `parse_failed` past a limit, when a member, a group or a target is missing, when groups form a
-//! cycle or when a value does not parse. A kind or a GeoIP code without data is skipped and
-//! counted, never guessed. The set keeps one index per matcher, each giving the first row it
-//! matches; the smallest of them is the first rule that matches the flow. A flow is matched once,
-//! when it opens, never per packet. DAT selectors share their compiled matchers across rows.
+//! checks the whole source ([`limits`]) and refuses it as `parse_failed` past a limit, when a
+//! member, a group or a target is missing, when groups form a cycle or when a value does not
+//! parse. A kind or a GeoIP code without data is skipped and counted, never guessed.
 
 mod compile;
 pub(crate) mod dat;
@@ -18,7 +15,6 @@ mod geoip;
 mod graph;
 pub(crate) mod limits;
 pub(crate) mod listing;
-mod lpm;
 pub(crate) mod policy;
 mod ports;
 pub(crate) mod template;
@@ -26,10 +22,6 @@ pub(crate) mod template;
 use crate::dto::ErrorCode;
 use crate::groups::GroupDef;
 use limits::Origin;
-use std::net::IpAddr;
-
-/// No row: the indexes' "nothing matched".
-const NONE: u32 = u32::MAX;
 
 /// What a row matches, by the names of Clash rules.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -131,19 +123,7 @@ pub(crate) struct RuleSpec {
     pub target: Target,
 }
 
-pub(crate) use crate::dto::Network;
-
-/// What a flow is matched on.
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct Flow<'a> {
-    /// The name the flow's address answered, when the core knows it.
-    pub domain: Option<&'a str>,
-    pub ip: IpAddr,
-    pub port: u16,
-    pub network: Network,
-}
-
-/// A compiled row: what it matched and where it sends, and how many of its lines were skipped.
+/// A checked row: its kind, where it sends, and how many of its lines were skipped.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Row {
     pub kind: Kind,
@@ -151,21 +131,12 @@ pub(crate) struct Row {
     pub skipped: u32,
 }
 
-/// A compiled source.
+/// A checked source: its rows, each with the lines skipped, and the values skipped by row and
+/// column.
 #[derive(Clone, Debug)]
 pub(crate) struct RuleSet {
     rows: Vec<Row>,
-    domains: domain::Index,
-    ips: lpm::Trie,
-    /// The first row of each GeoIP code compiled, by row.
-    geo: Vec<(u32, geoip::Code, bool)>,
-    loaded: dat::Matches,
     missing: std::collections::HashSet<(u32, u32)>,
-    ports: ports::Index,
-    /// The first `NETWORK` row of TCP and of UDP.
-    networks: [u32; 2],
-    /// The first `MATCH` row.
-    any: u32,
 }
 
 impl RuleSet {
@@ -202,32 +173,8 @@ impl RuleSet {
         compile::compile(Origin::Template, groups, is_node, rules, None)
     }
 
-    /// The first row that matches `flow`, `None` when no row does: the caller's main group then.
-    /// Rows that need a name miss a flow without one; the others still apply.
-    pub(crate) fn matched(&self, flow: &Flow<'_>) -> Option<usize> {
-        let mut best = self.any.min(self.networks[flow.network as usize]);
-        best = best.min(self.ports.first(flow.port));
-        let ip = flow.ip.to_canonical();
-        best = best.min(self.ips.first(ip));
-        for &(row, code, invert) in &self.geo {
-            if row < best && code.contains(ip) != invert {
-                best = row;
-            }
-        }
-        best = self.loaded.first(flow, best);
-        if let Some(name) = flow.domain {
-            best = self.domains.first(name, best);
-        }
-        (best != NONE).then_some(best as usize)
-    }
-
     pub(crate) fn rows(&self) -> &[Row] {
         &self.rows
-    }
-
-    /// Whether a row matches names: without one, a flow's name changes nothing.
-    pub(crate) fn has_names(&self) -> bool {
-        self.domains.len() > 0 || self.loaded.has_names()
     }
 
     /// The lines skipped in all rows.
@@ -236,8 +183,6 @@ impl RuleSet {
     }
 }
 
-#[cfg(test)]
-mod bench;
 #[cfg(test)]
 pub(crate) mod tests;
 #[cfg(test)]

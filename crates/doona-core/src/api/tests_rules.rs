@@ -1,19 +1,12 @@
-//! Rule mode through the real driver, with a SOCKS5 node on loopback that counts its dials: every
-//! switch between Global, Direct and Rule applies to new flows only and keeps the generation; a
-//! name the generation's DNS answer gave routes a flow by a domain rule, and the next generation
-//! starts without it; a rule's reject, and a group without a node, reset the flow instead of
-//! sending it anywhere.
+//! Mode switches through the real driver, with a SOCKS5 node on loopback that counts its dials:
+//! every switch between Global, Direct and Rule applies to new flows only and keeps the
+//! generation. The rules themselves are honk's (see `tunnel/route/tests.rs`).
 
 use super::tests::echo;
 use super::tests_catalog::{Feeds, add, path};
 use super::{Core, Life, Options, lock};
 use crate::dns::tests::{answer_to, query};
-use crate::groups::GroupDef;
 use crate::probe;
-use crate::rules::policy::Policy;
-use crate::rules::template;
-use crate::rules::tests::{group, rule};
-use crate::rules::{RuleSet, RuleSpec};
 use crate::state::Store;
 use crate::testutil::client::Client;
 use crate::testutil::{TempDir, socks5, tun_and_peer};
@@ -44,7 +37,13 @@ struct Rig {
 
 impl Rig {
     fn new(tag: &str, options: Options) -> Rig {
+        Rig::with(tag, options, crate::testutil::HONK)
+    }
+
+    /// As `new`, with `honk` committed as the core's honk configuration.
+    fn with(tag: &str, options: Options, honk: &str) -> Rig {
         let dir = TempDir::new(tag);
+        crate::testutil::honk_store(dir.path(), honk);
         let (proxy, dials) = socks5();
         let feeds = Feeds::new();
         feeds.set("/sub", format!("socks5://{proxy}#s5\n").as_bytes());
@@ -91,22 +90,6 @@ impl Rig {
             Life::Running(t) => (t.session().generation, Arc::as_ptr(t.session()) as usize),
             _ => panic!("not running"),
         }
-    }
-
-    /// Makes the catalog's policy the template's groups plus `extra`, under `rules`.
-    fn rules(&self, extra: &[GroupDef], rules: &[crate::rules::RuleSpec]) {
-        self.rules_with(extra, rules, template::Options::default());
-    }
-
-    /// As `rules`, with the template's `options`.
-    fn rules_with(&self, extra: &[GroupDef], rules: &[RuleSpec], options: template::Options) {
-        let mut c = lock(&self.core.shared.catalog);
-        let mut groups = c.model.groups.clone();
-        groups.extend_from_slice(extra);
-        let set = RuleSet::compile(&groups, &|id| c.model.has(id), rules).unwrap();
-        let policy = Policy::new("g-Proxy", Some(set), options);
-        c.model.policy = Arc::new(policy);
-        self.core.shared.publish(&c);
     }
 }
 
@@ -178,8 +161,9 @@ fn resolver(ip: [u8; 4]) -> SocketAddr {
     addr
 }
 
-/// The echo server is on loopback, which the template's first rule sends direct, so a new flow to
-/// it reaches the node only in Global. Every flow opened before a switch keeps its route.
+/// The honk configuration sends every flow through `Proxy` but in Direct, so a new flow to the
+/// echo server reaches the node in Global and Rule. Every flow opened before a switch keeps its
+/// route.
 #[test]
 fn every_mode_switch_applies_to_new_flows_and_keeps_the_tunnel() {
     let mut r = Rig::new("rules-switch", Options::default());
@@ -198,7 +182,8 @@ fn every_mode_switch_applies_to_new_flows_and_keeps_the_tunnel() {
             round_trip(&mut r.client, id, mode.as_bytes()),
             mode.as_bytes()
         );
-        through_node += u32::from(mode == "Global");
+        // The honk configuration sends every flow but a Direct one through `Proxy`.
+        through_node += u32::from(mode != "Direct");
         assert_eq!(r.dials(), through_node, "a new {mode} flow");
         flows.push((id, mode));
         for &(id, opened) in &flows {
@@ -277,9 +262,18 @@ fn tcp_dns_address(client: &mut Client, id: FlowId) -> [u8; 4] {
     reply[reply.len() - 4..].try_into().unwrap()
 }
 
-/// rule-mode.md, R2: an answer of the core's DNS names its address, a flow to it takes the domain
-/// rule, and the next generation starts without the name. In Rule, DNS goes through the main
-/// group.
+/// Two placeholder nodes in `Proxy`, an empty group, and `rules` ahead of a fallback to `Proxy`.
+fn honk(rules: &str) -> String {
+    format!(
+        "node {{\n    a: 'socks5://127.0.0.1:1'\n    b: 'socks5://127.0.0.1:2'\n}}\n\
+         group {{\n    Proxy {{\n        filter: name(a, b)\n        policy: fixed(0)\n    }}\n\
+         \x20   Empty {{\n        filter: name(zzz)\n        policy: fixed(0)\n    }}\n}}\n\
+         routing {{\n{rules}    fallback: Proxy\n}}\n"
+    )
+}
+
+/// A name from the generation's DNS answers routes a flow by honk's domain rule; unnamed, the
+/// same address goes by its address rule, and a new generation has no names yet.
 #[test]
 fn a_name_from_the_generations_dns_routes_a_flow_by_a_domain_rule() {
     let (echo, accepted) = counted_echo([127, 0, 0, 3]);
@@ -287,34 +281,30 @@ fn a_name_from_the_generations_dns_routes_a_flow_by_a_domain_rule() {
         dns_upstreams: vec![resolver([127, 0, 0, 3])],
         ..Options::default()
     };
-    let mut r = Rig::new("rules-names", options);
-    let rules = [
-        rule("DOMAIN", &["echo.test"], "Streaming"),
-        rule("GEOIP", &["private"], "DIRECT"),
-        rule("MATCH", &[], "Proxy"),
-    ];
-    r.rules(&[], &rules);
+    let rules = format!(
+        "    domain(suffix: echo.test) -> Proxy\n    dport({}) -> direct\n",
+        echo.port()
+    );
+    let mut r = Rig::with("rules-names", options, &honk(&rules));
     r.set_mode("Rule");
-    // Unnamed, the loopback address is private: direct.
     let id = r.client.connect(echo);
     assert_eq!(round_trip(&mut r.client, id, b"unnamed"), b"unnamed");
     assert_eq!((r.dials(), accepted.load(SeqCst)), (0, 1));
-    // The query goes to the node, the answer names the address.
+    // The resolver dial takes the fallback, `Proxy`; the answer names the address.
     r.client.send_udp(RESOLVER, &query(9, "Echo.Test", None));
     let answer = r
         .client
         .recv_udp(RESOLVER, Duration::from_secs(10))
         .unwrap();
     assert_eq!(answer[answer.len() - 4..], [127, 0, 0, 3]);
-    assert_eq!(r.dials(), 1, "DNS through the main group");
+    assert_eq!(r.dials(), 1, "DNS by the fallback");
     let id = r.client.connect(echo);
     assert_eq!(round_trip(&mut r.client, id, b"named"), b"named");
     assert_eq!(
         (r.dials(), accepted.load(SeqCst)),
         (2, 2),
-        "through Streaming's node"
+        "through Proxy's node"
     );
-    // A new generation has no names yet.
     let (tun, peer) = tun_and_peer();
     r.core.start(tun, CONFIG).unwrap();
     let mut client = Client::new(peer);
@@ -323,20 +313,21 @@ fn a_name_from_the_generations_dns_routes_a_flow_by_a_domain_rule() {
     assert_eq!((r.dials(), accepted.load(SeqCst)), (2, 3), "direct again");
 }
 
-/// A rule's reject, and a rule's group with no node, reset a TCP flow and drop datagrams: nothing
-/// reaches the node or the destination. A switch to Direct then shows the destinations answer.
+/// honk's `block`, and a group with no node, reset a TCP flow and drop datagrams through the real
+/// driver: nothing reaches the node or the destination. `block` holds in Direct too; the group
+/// without a node goes direct there.
 #[test]
-fn a_rejected_flow_and_a_group_without_a_node_are_refused() {
+fn a_blocked_flow_and_a_group_without_a_node_are_refused() {
     let (echo, accepted) = counted_echo([127, 0, 0, 1]);
     let (empty_echo, empty_accepted) = counted_echo([127, 0, 0, 4]);
     let udp = udp_echo();
-    let mut r = Rig::new("rules-reject", Options::default());
-    let rules = [
-        rule("IP-CIDR", &["127.0.0.1/32"], "REJECT"),
-        rule("IP-CIDR", &["127.0.0.4/32"], "Empty"),
-        rule("MATCH", &[], "DIRECT"),
-    ];
-    r.rules(&[group("Empty", &[])], &rules);
+    let rules = format!(
+        "    dport({}, {}) -> block\n    dport({}) -> Empty\n",
+        echo.port(),
+        udp.port(),
+        empty_echo.port()
+    );
+    let mut r = Rig::with("rules-block", Options::default(), &honk(&rules));
     r.set_mode("Rule");
     for dst in [echo, empty_echo] {
         let id = r.client.connect(dst);
@@ -351,69 +342,29 @@ fn a_rejected_flow_and_a_group_without_a_node_are_refused() {
     assert_eq!(r.dials(), 0);
     assert_eq!((accepted.load(SeqCst), empty_accepted.load(SeqCst)), (0, 0));
     r.set_mode("Direct");
-    for dst in [echo, empty_echo] {
-        let id = r.client.connect(dst);
-        assert_eq!(r.client.exchange(id, b"direct").unwrap(), b"direct");
-    }
-    r.client.send_udp(udp, b"direct");
-    let reply = r.client.recv_udp(udp, Duration::from_secs(10));
-    assert_eq!(reply.as_deref(), Some(&b"direct"[..]));
-}
-
-/// The last subscription removed in Rule: the template's direct rows still carry private and
-/// China's addresses, and a flow a group would carry is reset without a dial. `start` then refuses
-/// Global with `no_nodes`, not Rule.
-#[test]
-fn rule_without_a_node_keeps_the_template_direct_rows() {
-    let (echo, accepted) = counted_echo([127, 0, 0, 1]);
-    let mut r = Rig::new("rules-no-node", Options::default());
-    r.set_mode("Rule");
-    let removed = r.core.call("removeSubscription", r#"{"id":"s1"}"#);
-    assert_eq!(removed, r#"{"ok":{}}"#);
     let id = r.client.connect(echo);
-    assert_eq!(round_trip(&mut r.client, id, b"private"), b"private");
-    let abroad = SocketAddr::from(([104, 16, 0, 1], 443));
-    let id = r.client.connect(abroad);
-    let refused = r.client.exchange(id, b"abroad");
-    assert!(
-        matches!(refused, Err(StreamError::Reset | StreamError::Unreachable)),
-        "{refused:?}"
-    );
-    assert_eq!((r.dials(), accepted.load(SeqCst)), (0, 1));
-    r.core.stop();
-    let (tun, peer) = tun_and_peer();
-    assert_eq!(r.core.start(tun, CONFIG), Ok(()));
-    let mut client = Client::new(peer);
-    let id = client.connect(echo);
-    assert_eq!(round_trip(&mut client, id, b"again"), b"again");
-    r.core.stop();
-    r.set_mode("Global");
-    let (tun, _peer) = tun_and_peer();
-    assert_eq!(
-        r.core.start(tun, CONFIG),
-        Err(crate::dto::ErrorCode::NoNodes)
-    );
+    let refused = r.client.exchange(id, b"still blocked");
+    assert!(refused.is_err(), "block holds in Direct: {refused:?}");
+    let id = r.client.connect(empty_echo);
+    assert_eq!(r.client.exchange(id, b"direct").unwrap(), b"direct");
 }
 
-/// blockQuic refuses a QUIC five-tuple, and refuses its retransmits for a few seconds without
-/// another lookup, until a name learned since, a mode change or a new policy may route it
-/// otherwise. A UDP echo the rules send direct shows the driver has handled every datagram sent
-/// before it.
+/// A refused UDP five-tuple is refused again without a decision for a while, until a name learned
+/// since or a mode change may route it otherwise. A UDP echo honk sends direct shows the driver has
+/// handled every datagram sent before it.
 #[test]
-fn a_five_tuple_block_quic_refused_stays_refused_until_a_name_mode_or_policy_changes() {
+fn a_refused_five_tuple_stays_refused_until_a_name_or_mode_changes() {
     let options = Options {
         dns_upstreams: vec![resolver([127, 0, 0, 5])],
         ..Options::default()
     };
-    let mut r = Rig::new("rules-quic", options);
     let echo = udp_echo();
-    let mut rules = vec![
-        rule("IP-CIDR", &["127.0.0.1/32"], "DIRECT"),
-        rule("DOMAIN", &["quic.test"], "DIRECT"),
-        rule("MATCH", &[], "Proxy"),
-    ];
-    let block = template::Options { block_quic: true };
-    r.rules_with(&[], &rules, block);
+    let rules = format!(
+        "    dport({}) -> direct\n    domain(suffix: quic.test) -> direct\n    \
+         dport(444) -> Empty\n    dport(443) -> block\n",
+        echo.port()
+    );
+    let mut r = Rig::with("rules-refused", options, &honk(&rules));
     r.set_mode("Rule");
     let settle = |r: &mut Rig| {
         r.client.send_udp(echo, b"settle");
@@ -431,7 +382,7 @@ fn a_five_tuple_block_quic_refused_stays_refused_until_a_name_mode_or_policy_cha
         base,
         "the retransmit is refused as the first was"
     );
-    // The answer names the address quic.test, which the rules send direct.
+    // The answer names the address quic.test, which honk sends direct.
     r.client.send_udp(RESOLVER, &query(9, "quic.test", None));
     assert!(
         r.client
@@ -441,8 +392,8 @@ fn a_five_tuple_block_quic_refused_stays_refused_until_a_name_mode_or_policy_cha
     r.client.send_udp(quic, b"after the name");
     settle(&mut r);
     assert_eq!(r.opened(), base + 1, "direct by the name learned since");
-    // An address the rules send to Proxy, until a switch to Direct.
-    let other = SocketAddr::from(([127, 0, 0, 6], 443));
+    // An address honk sends to the group without a node, until a switch to Direct.
+    let other = SocketAddr::from(([127, 0, 0, 6], 444));
     r.client.send_udp(other, b"initial");
     settle(&mut r);
     assert_eq!(r.opened(), base + 1);
@@ -450,15 +401,4 @@ fn a_five_tuple_block_quic_refused_stays_refused_until_a_name_mode_or_policy_cha
     r.client.send_udp(other, b"after a switch");
     settle(&mut r);
     assert_eq!(r.opened(), base + 2, "direct after the switch");
-    r.set_mode("Rule");
-    // Another, until a new policy sends it direct.
-    let third = SocketAddr::from(([127, 0, 0, 7], 443));
-    r.client.send_udp(third, b"initial");
-    settle(&mut r);
-    assert_eq!(r.opened(), base + 2);
-    rules.insert(0, rule("IP-CIDR", &["127.0.0.7/32"], "DIRECT"));
-    r.rules_with(&[], &rules, block);
-    r.client.send_udp(third, b"after the policy");
-    settle(&mut r);
-    assert_eq!(r.opened(), base + 3, "direct by the new policy");
 }

@@ -22,7 +22,7 @@ use super::flow::{DEPTH, Event, Events, Key, Waker};
 use super::route::Route;
 use crate::dns;
 use crate::dns::names::Learned;
-use crate::rules::Network;
+use crate::dto::Network;
 use crate::stats::meter::{Meter, Tally};
 use bytes::Bytes;
 use honk_outbound::proxy::PacketTransport;

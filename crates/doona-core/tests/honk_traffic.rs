@@ -13,7 +13,7 @@ use std::time::Duration;
 use common::TempDir;
 use doonacore::honkconf::meters::RevisionMeters;
 use doonacore::honkconf::runtime::{Flow, GlobalTarget, Mode, Network, Runtime, Target, Verdict};
-use doonacore::honkconf::{Capabilities, HonkConfig, HonkStore, load};
+use doonacore::honkconf::{Capabilities, HonkConfig, HonkConfigError, HonkStore, load};
 use honk_config::config::{BLOCK_NODE_ID, DIRECT_NODE_ID};
 use honk_outbound::alive::{AliveDialerSet, IpVersion, ProbeDomain};
 use honk_outbound::group::{GroupManager, SelectionNetwork, SelectorNetworks};
@@ -171,7 +171,9 @@ fn compare(case: &Value, expected: &Value, geo: &Path) {
     let doc = match load(Path::new(REFERENCE).join(case["config"].as_str().unwrap())) {
         Ok(doc) => doc,
         Err(error) => {
-            assert!(REFUSED.contains(&name), "{name}: {error:?}");
+            // Refused by honk's validation, not by the loader's budget or format checks.
+            let validated = matches!(error, HonkConfigError::ParseFailed { .. });
+            assert!(REFUSED.contains(&name) && validated, "{name}: {error:?}");
             return;
         }
     };
@@ -182,28 +184,35 @@ fn compare(case: &Value, expected: &Value, geo: &Path) {
         || GlobalTarget::Node(doc.config().nodes[0].id),
         |g| GlobalTarget::Group(g.name.clone()),
     );
-    for (probe, want) in case["probes"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .zip(expected["probes"].as_array().unwrap())
-    {
+    let (probes, wanted) = (
+        case["probes"].as_array().unwrap(),
+        expected["probes"].as_array().unwrap(),
+    );
+    assert_eq!(
+        probes.len(),
+        wanted.len(),
+        "{name}: probes against the report"
+    );
+    for (probe, want) in probes.iter().zip(wanted) {
         let label = probe["name"].as_str().unwrap();
         let (network, flow) = probe_flow(probe);
         runtime.set_mode(Mode::Rule);
         let ruled = runtime.decide(&flow);
         if name == "mark-must" {
             mark_must(&ruled, label);
-            continue;
+        } else {
+            let got = report(&ruled, leaf(&ruled, &live, &doc, network), label);
+            assert_eq!(&got, want, "{name}/{label}");
         }
-        let got = report(&ruled, leaf(&ruled, &live, &doc, network), label);
-        assert_eq!(&got, want, "{name}/{label}");
 
+        // A marked fallback keeps its mark in Direct, which the TUN refuses (see `mark_must`).
         let kept = ruled.decision.must || ruled.decision.outbound == "block";
         runtime.set_mode(Mode::Direct);
         let direct = runtime.decide(&flow);
         let want = if kept {
             ruled.target.clone()
+        } else if ruled.decision.mark.is_some() {
+            Target::Refuse
         } else {
             Target::Direct
         };
@@ -232,12 +241,12 @@ fn corpus(geo: Option<&Path>) {
     let (corpus, expected) = (read("corpus.json"), read("expected.json"));
     let empty = TempDir::new("honk-traffic-nogeo");
     let mut ran = 0;
-    for (case, want) in corpus["cases"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .zip(expected["cases"].as_array().unwrap())
-    {
+    let (cases, wanted) = (
+        corpus["cases"].as_array().unwrap(),
+        expected["cases"].as_array().unwrap(),
+    );
+    assert_eq!(cases.len(), wanted.len(), "cases against the report");
+    for (case, want) in cases.iter().zip(wanted) {
         assert_eq!(case["name"], want["name"]);
         let config =
             fs::read_to_string(Path::new(REFERENCE).join(case["config"].as_str().unwrap()))
@@ -361,4 +370,41 @@ fn a_matched_rule_charges_its_rows_meter() {
     let verdict = runtime.decide(&flow(Network::Tcp, "203.0.113.9:443", Some("www.a.test")));
     assert_eq!(verdict.row.unwrap().meter, meter_of("fallback: direct"));
     assert_ne!(meter_of("dport(80) -> block"), meter_of("fallback: direct"));
+}
+
+/// The valid form of the corpus's `zero-groups`: nodes and no group, the fallback `direct`.
+/// Rule sends every flow but `block` direct by the fallback's row; GLOBAL has no group to target
+/// and blocks what is not `must`.
+#[test]
+fn zero_groups_with_a_direct_fallback_route_direct() {
+    let (_dir, doc) = doc("\
+node {
+    lone: 'socks5://10.10.6.1:1080'
+}
+routing {
+    dport(22) -> direct(must)
+    dport(25) -> block
+    fallback: direct
+}
+");
+    assert!(doc.config().groups.is_empty());
+    let runtime = runtime(&doc, Path::new("/nonexistent"));
+    assert_eq!(runtime.fallback_group(), None);
+    let flow = |port| Flow {
+        network: Network::Tcp,
+        source: "10.0.0.2:40000".parse().unwrap(),
+        destination: ([203, 0, 113, 9], port).into(),
+        domain: None,
+        domain_verified: true,
+        process_name: None,
+        mac: None,
+        dscp: None,
+    };
+    let fallback = runtime.decide(&flow(443));
+    assert_eq!(fallback.target, Target::Direct);
+    assert_eq!(fallback.row.unwrap().rule, None, "the fallback's row");
+    assert_eq!(runtime.decide(&flow(25)).target, Target::Refuse);
+    runtime.set_mode(Mode::Global);
+    assert_eq!(runtime.decide(&flow(443)).target, Target::Refuse);
+    assert_eq!(runtime.decide(&flow(22)).target, Target::Direct);
 }

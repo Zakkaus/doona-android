@@ -48,8 +48,8 @@ unsafe-libyaml = "0.2.11"
 url = "2"
 uuid = { version = "1", features = ["v5"] }
 webpki-root-certs = "1"
-# Rule mode's DOMAIN-KEYWORD: one automaton over every keyword of a source. Already in the graph
-# through regex.
+# Region keywords in node names (regions.rs): one automaton over all of them. Already in the
+# graph through regex.
 aho-corasick = "1"
 regex = "1"
 # Rule mode's names of DNS answers, least recently used first out. Already in the graph through

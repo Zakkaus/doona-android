@@ -10,6 +10,7 @@ use crate::probe::{ProbeJob, Prober};
 use crate::testutil::{TempDir, fixture, socks5};
 use futures_util::FutureExt;
 use serde_json::json;
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering::SeqCst};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -73,7 +74,7 @@ fn setup(stand: &Stand) -> (TempDir, Feeds, Core) {
     let dir = TempDir::new("api-latency");
     let feeds = Feeds::new();
     feeds.set("/sub", &fixture("links.txt"));
-    let core = Core::with_prober(dir.path().to_str().unwrap(), stand.prober());
+    let core = Core::with_prober(crate::testutil::seeded(&dir), stand.prober());
     add(&core, &feeds, "/sub").unwrap();
     super::lock(&core.shared.catalog).model.groups[1].kind = crate::dto::GroupKind::UrlTest;
     (dir, feeds, core)
@@ -190,7 +191,7 @@ fn a_probe_refused_on_its_way_to_a_local_node_says_so() {
         probe_url: format!("http://{closed}/generate_204"),
         ..Options::default()
     };
-    let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
+    let core = Core::with_options(crate::testutil::seeded(&dir), options).unwrap();
     add(&core, &feeds, "/lan").unwrap();
     call(&core, "testLatency", json!({"group": null})).unwrap();
     let after = wait_for(&core, |c| {
@@ -217,7 +218,7 @@ fn at_most_32_probes_run_at_once() {
         .map(|i| format!("trojan://secret@192.0.2.{i}:443#n{i}\n"))
         .collect();
     feeds.set("/many", feed.as_bytes());
-    let core = Core::with_prober(dir.path().to_str().unwrap(), stand.prober());
+    let core = Core::with_prober(crate::testutil::seeded(&dir), stand.prober());
     add(&core, &feeds, "/many").unwrap();
     call(&core, "testLatency", json!({"group": null})).unwrap();
     wait_started(&stand, 32);
@@ -245,7 +246,7 @@ fn honk_probes_a_node_through_its_outbound() {
         probe_url: format!("http://{target}/generate_204"),
         ..Options::default()
     };
-    let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
+    let core = Core::with_options(crate::testutil::seeded(&dir), options).unwrap();
     add(&core, &feeds, "/local").unwrap();
     call(&core, "testLatency", json!({"group": "g-Auto"})).unwrap();
     let after = wait_for(&core, |c| !testing(c));
@@ -314,7 +315,7 @@ fn probes_whose_carriers_end_under_them_record_nothing() {
     let dir = TempDir::new("api-latency-ended");
     let feeds = Feeds::new();
     feeds.set("/sub", &fixture("links.txt"));
-    let store = crate::state::Store::new(dir.path());
+    let store = crate::state::Store::new(Path::new(crate::testutil::seeded(&dir)));
     let bound = Duration::from_millis(300);
     let launch = (never_ready as crate::tunnel::Launch, bound);
     let core = Core::build(store, Options::default(), launch, stand.prober()).unwrap();
@@ -365,7 +366,7 @@ fn a_test_registered_across_a_refresh_probes_the_new_nodes_through_their_registr
     let dir = TempDir::new("api-latency-refresh");
     let feeds = Feeds::new();
     feeds.set("/sub", b"trojan://secret@192.0.2.1:443#A\n");
-    let core = Core::with_prober(dir.path().to_str().unwrap(), through_registry());
+    let core = Core::with_prober(crate::testutil::seeded(&dir), through_registry());
     add(&core, &feeds, "/sub").unwrap();
     feeds.set("/sub", b"trojan://secret@192.0.2.2:443#B\n");
     core.hooks.on_registering(|core| {
@@ -424,7 +425,7 @@ fn each_round_adds_a_test_to_every_node_it_probed_and_a_restart_keeps_them() {
     // A new process reads the tests back.
     let id = sg["id"].clone();
     drop(core);
-    let again = Core::with_prober(dir.path().to_str().unwrap(), stand.prober());
+    let again = Core::with_prober(crate::testutil::seeded(&dir), stand.prober());
     let reply = call(&again, "nodes", json!({"ids": [id, "n-gone"]})).unwrap();
     assert_eq!(reply["nodes"].as_array().unwrap().len(), 1);
     assert_eq!(reply["nodes"][0]["tests"], sg["tests"]);
@@ -470,7 +471,7 @@ fn the_tests_of_nodes_that_left_go_with_the_catalog_that_drops_them() {
     let feeds = Feeds::new();
     let a = b"trojan://secret@192.0.2.1:443#A\n";
     feeds.set("/sub", a);
-    let core = Core::with_prober(dir.path().to_str().unwrap(), stand.prober());
+    let core = Core::with_prober(crate::testutil::seeded(&dir), stand.prober());
     add(&core, &feeds, "/sub").unwrap();
     call(&core, "testLatency", json!({"group": null})).unwrap();
     wait_for(&core, |c| !testing(c));
@@ -496,7 +497,7 @@ fn a_node_that_comes_back_never_finds_its_old_tests_on_disk() {
     let feeds = Feeds::new();
     let a = b"trojan://secret@192.0.2.1:443#A\n";
     feeds.set("/sub", a);
-    let open = || Core::with_prober(dir.path().to_str().unwrap(), stand.prober());
+    let open = || Core::with_prober(crate::testutil::seeded(&dir), stand.prober());
     let core = open();
     add(&core, &feeds, "/sub").unwrap();
     call(&core, "testLatency", json!({"group": null})).unwrap();

@@ -150,7 +150,7 @@ fn panics_later(
 
 /// A core in Direct, which starts without nodes, whose generations run `launch`.
 fn core(dir: &TempDir, launch: crate::tunnel::Launch, bound: Duration) -> Arc<Core> {
-    let core = Core::with_launch(dir.path().to_str().unwrap(), launch, bound);
+    let core = Core::with_launch(crate::testutil::seeded(dir), launch, bound);
     core.set_mode(Mode::Direct).unwrap();
     Arc::new(core)
 }
@@ -532,6 +532,7 @@ fn a_late_cleanup_leaves_the_next_generations_carriers_alone() {
             Inbound::Tun,
             crate::tunnel::route::tests::ANYWHERE,
             Mode::Global,
+            Some(&crate::testutil::engine(crate::testutil::HONK)),
             &core.shared.outbounds,
             &Arc::new(Session::new(0, std::sync::Weak::new())),
         );

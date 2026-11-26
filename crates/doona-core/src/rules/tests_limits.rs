@@ -141,14 +141,10 @@ fn a_port_value_is_bounded_before_it_is_split() {
         Ok(())
     );
     let at = format!("{}80", "0".repeat(MAX_PORT_VALUE - 2));
-    let set = RuleSet::compile(&proxy(), &|_| true, &[rule("DST-PORT", &[&at], "Proxy")]);
-    let flow = |port| Flow {
-        domain: None,
-        ip: std::net::Ipv4Addr::new(192, 0, 2, 1).into(),
-        port,
-        network: Network::Tcp,
-    };
-    assert_eq!(set.unwrap().matched(&flow(80)), Some(0));
+    assert_eq!(
+        compiles(&proxy(), &[rule("DST-PORT", &[&at], "Proxy")]),
+        Ok(())
+    );
     for value in [format!("0{at}"), format!("{}80", "0".repeat(1 << 20))] {
         let rules = [rule("DST-PORT", &[&value], "Proxy")];
         let groups = proxy();

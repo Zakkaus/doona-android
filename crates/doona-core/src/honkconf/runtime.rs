@@ -41,6 +41,8 @@ pub enum RuntimeError {
     Asset(std::io::Error),
     /// honk refused the configuration. The message is honk's.
     Config(anyhow::Error),
+    /// A source of the tree is not under the entry file's directory.
+    Layout(PathBuf),
 }
 
 impl From<anyhow::Error> for RuntimeError {
@@ -61,6 +63,7 @@ impl fmt::Display for RuntimeError {
             Self::Store(e) => write!(f, "committed honk configuration: {e}"),
             Self::Asset(e) => write!(f, "honk geo asset: {e}"),
             Self::Config(e) => write!(f, "honk configuration: {e:#}"),
+            Self::Layout(path) => write!(f, "honk source outside the tree: {}", path.display()),
         }
     }
 }
@@ -71,7 +74,7 @@ impl std::error::Error for RuntimeError {
             Self::Store(e) => Some(e),
             Self::Asset(e) => Some(e),
             Self::Config(e) => Some(e.as_ref()),
-            Self::NoRevision => None,
+            Self::NoRevision | Self::Layout(_) => None,
         }
     }
 }
@@ -127,6 +130,14 @@ pub struct Runtime {
     groups: HashSet<String>,
 }
 
+impl fmt::Debug for Runtime {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Runtime")
+            .field("revision", &self.revision)
+            .finish_non_exhaustive()
+    }
+}
+
 impl Runtime {
     /// Builds the engine for the store's committed revision against `caps`. `data_root` holds
     /// `geoip.dat` and `geosite.dat`.
@@ -153,20 +164,24 @@ impl Runtime {
         meters: &RevisionMeters,
         data_root: &Path,
     ) -> Result<Self, RuntimeError> {
-        let rows = Rows::new(doc, meters);
+        let rows = Rows::new(doc, meters)?;
         let skipped = skipped(doc, caps);
         let mut config = doc.config().clone();
         let mut rules = Vec::new();
-        let mut ordinal = 0..;
-        config.routing.rules.retain(|_| {
-            let i = ordinal.next().unwrap();
-            let kept = !skipped[i];
-            if kept {
-                rules.push(rows.row(Some(i), &doc.index.rules[i]));
+        for (i, at) in doc.index.rules.iter().enumerate() {
+            if !skipped[i] {
+                rules.push(rows.row(Some(i), at)?);
             }
-            kept
-        });
-        let fallback = doc.index.fallback.as_ref().map(|at| rows.row(None, at));
+        }
+        let mut ordinal = 0..;
+        config
+            .routing
+            .rules
+            .retain(|_| ordinal.next().is_some_and(|i| !skipped[i]));
+        let fallback = match &doc.index.fallback {
+            Some(at) => Some(rows.row(None, at)?),
+            None => None,
+        };
         let groups = config.groups.iter().map(|g| g.name.clone()).collect();
         Ok(Self {
             revision: None,
@@ -196,6 +211,13 @@ impl Runtime {
         state.mode = mode;
     }
 
+    /// The group the fallback sends flows to, `None` when it sends them to `direct` or `block`.
+    pub fn fallback_group(&self) -> Option<String> {
+        let state = self.state.read().unwrap();
+        let outbound = &state.engine.config().routing.default_outbound;
+        self.groups.contains(outbound).then(|| outbound.clone())
+    }
+
     /// `None` until a target is set: GLOBAL then blocks every flow that is not `must`.
     pub fn global_target(&self) -> Option<GlobalTarget> {
         self.state.read().unwrap().global.clone()
@@ -212,6 +234,27 @@ impl Runtime {
 
     pub fn decide(&self, flow: &Flow) -> Verdict {
         let decision = self.state.read().unwrap().engine.decide(flow);
+        self.verdict(decision)
+    }
+
+    /// Decides `flow` under `mode`, the committed mode a flow reads once when it opens; the
+    /// engine takes it first when it runs another.
+    pub fn decide_in(&self, mode: Mode, flow: &Flow) -> Verdict {
+        {
+            let state = self.state.read().unwrap();
+            if state.mode == mode {
+                return self.verdict(state.engine.decide(flow));
+            }
+        }
+        let mut state = self.state.write().unwrap();
+        state.engine.set_mode(mode);
+        state.mode = mode;
+        let decision = state.engine.decide(flow);
+        drop(state);
+        self.verdict(decision)
+    }
+
+    fn verdict(&self, decision: Decision) -> Verdict {
         let row = match &decision.rule {
             _ if decision.mode != ModeResult::Unchanged => None,
             Some(hit) => Some(self.rules[hit.index as usize].clone()),
@@ -264,21 +307,28 @@ struct Rows<'a> {
 }
 
 impl<'a> Rows<'a> {
-    fn new(doc: &'a HonkConfig, meters: &'a RevisionMeters) -> Self {
-        let root = doc.sources()[0].path.parent().unwrap();
-        Self {
+    fn new(doc: &'a HonkConfig, meters: &'a RevisionMeters) -> Result<Self, RuntimeError> {
+        let root = Self::root(doc)?;
+        Ok(Self {
             doc,
             rows: carry::tree_rows(&doc.loaded, root),
             meters,
-        }
+        })
     }
 
-    fn row(&self, rule: Option<usize>, at: &RuleSourceLocation) -> Row {
-        let root = self.doc.sources()[0].path.parent().unwrap();
-        let path = self.doc.sources()[at.source_index]
-            .path
-            .strip_prefix(root)
-            .unwrap();
+    /// The entry file's directory, which every source of the tree is under.
+    fn root(doc: &HonkConfig) -> Result<&Path, RuntimeError> {
+        let entry = &doc.sources()[0].path;
+        entry
+            .parent()
+            .ok_or_else(|| RuntimeError::Layout(entry.clone()))
+    }
+
+    fn row(&self, rule: Option<usize>, at: &RuleSourceLocation) -> Result<Row, RuntimeError> {
+        let source = &self.doc.sources()[at.source_index].path;
+        let path = source
+            .strip_prefix(Self::root(self.doc)?)
+            .map_err(|_| RuntimeError::Layout(source.clone()))?;
         let meter = self.rows.get(path).and_then(|rows| {
             let row = rows
                 .iter()
@@ -288,11 +338,11 @@ impl<'a> Rows<'a> {
                 .get(&row.id)
                 .map(|m| Arc::from(m.as_str()))
         });
-        Row {
+        Ok(Row {
             rule,
             source: at.source_index,
             bytes: at.bytes.clone(),
             meter,
-        }
+        })
     }
 }

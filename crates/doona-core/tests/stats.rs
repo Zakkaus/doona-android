@@ -34,7 +34,7 @@ fn setup_in(dir: TempDir) -> Setup {
 }
 
 fn setup_with(dir: TempDir, options: Options) -> Setup {
-    let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
+    let core = Core::with_options(common::seeded(&dir), options).unwrap();
     assert_eq!(core.call("setMode", r#"{"mode":"Direct"}"#), r#"{"ok":{}}"#);
     let (tun, peer) = seqpacket_pair();
     core.start(sys::dup_cloexec(tun.as_raw_fd()).unwrap(), CONFIG)

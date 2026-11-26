@@ -29,6 +29,7 @@ fn driver(dir: &TempDir) -> (Driver, Arc<Tun>, OwnedFd, mpsc::UnboundedReceiver<
         udp_idle: udp::IDLE,
         tcp_drain: Duration::from_secs(30),
         mode: Arc::new(ModeCell::new(Mode::Direct)),
+        engine: Some(crate::testutil::engine(crate::testutil::HONK)),
         outbounds: Arc::new(Outbounds::new(Arc::default(), 2).unwrap()),
         panics: Arc::default(),
         catalog: Weak::new(),

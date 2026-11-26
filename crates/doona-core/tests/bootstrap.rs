@@ -30,7 +30,7 @@ fn new_core(dir: &TempDir, port: u16, fallback: Vec<SocketAddr>) -> Core {
         bootstrap_fallback: fallback,
         ..Options::default()
     };
-    Core::with_options(dir.path().to_str().unwrap(), options).unwrap()
+    Core::with_options(common::seeded(dir), options).unwrap()
 }
 
 fn subscribe(core: &Core, url: &str) -> Result<(), ErrorCode> {
@@ -275,7 +275,7 @@ fn a_subscription_host_on_the_local_network_is_local_network() {
             subscription_bound: Duration::from_secs(2),
             ..Options::default()
         };
-        let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
+        let core = Core::with_options(common::seeded(&dir), options).unwrap();
         let url = format!("http://192-168-8-161.lan.doona.test:{}/sub", closed.port());
         assert_eq!(subscribe(&core, &url), Err(want), "{answer}");
         assert!(queries(&seen) >= 1);
@@ -345,7 +345,7 @@ fn a_probe_counts_the_address_it_dialed_not_an_earlier_lookup() {
         probe_url: format!("http://{closed}/generate_204"),
         ..Options::default()
     };
-    let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
+    let core = Core::with_options(common::seeded(&dir), options).unwrap();
     subscribe(&core, &format!("http://{feed}/sub")).unwrap();
     let nas = |code: serde_json::Value| vec![("nas".to_owned(), code)];
     assert_eq!(probed(&core), nas("local_network".into()));
@@ -368,7 +368,7 @@ fn a_probe_whose_target_does_not_resolve_reports_dns_failure() {
         probe_url: "http://probe.doona.test/generate_204".to_owned(),
         ..Options::default()
     };
-    let core = Core::with_options(dir.path().to_str().unwrap(), options).unwrap();
+    let core = Core::with_options(common::seeded(&dir), options).unwrap();
     subscribe(&core, &format!("http://{feed}/sub")).unwrap();
     assert_eq!(probed(&core), vec![("lan".to_owned(), "dns_failed".into())]);
 }
