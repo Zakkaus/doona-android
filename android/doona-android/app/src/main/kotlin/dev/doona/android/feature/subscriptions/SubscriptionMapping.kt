@@ -5,7 +5,9 @@ import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.feature.model.RvSubFormat
 import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.vpn.honk.Provider
 import java.net.URI
+import java.time.OffsetDateTime
 
 /**
  * The engine's subscription as the RV pages show it. A provider that sends no quota leaves used and total at 0, which
@@ -24,6 +26,27 @@ internal fun rvSubscription(sub: Subscription): RvSubscription = RvSubscription(
     format = sub.lastFetch?.let { rvSubFormat(it.format) },
     userAgent = sub.userAgent,
 )
+
+/**
+ * honk's [provider] as the RV pages show it. Used is upload plus download from the `subscription-userinfo` header; a
+ * provider that sent none leaves used and total at 0, which the pages read as no quota ([RvSubscription.hasQuota]).
+ * honk names no body format, so [RvSubscription.format] is null. [userAgent] is the entry's `ua` in honk's
+ * configuration, null for honk's default. The link is reduced to its host, since the rest of a link carries its token.
+ */
+internal fun rvSubscription(provider: Provider, userAgent: String?): RvSubscription = RvSubscription(
+    id = provider.id,
+    name = provider.name,
+    nodes = provider.nodeCount,
+    updatedAtEpochMs = provider.updatedAt?.let(::epochMs),
+    usedBytes = provider.traffic?.let { (it.uploadBytes?.toLong() ?: 0L) + (it.downloadBytes?.toLong() ?: 0L) } ?: 0L,
+    totalBytes = provider.traffic?.totalBytes?.toLong() ?: 0L,
+    expiresAtEpochMs = provider.expiresAt?.let(::epochMs),
+    host = provider.urlRedacted?.let(::subscriptionHost).orEmpty(),
+    format = null,
+    userAgent = userAgent,
+)
+
+private fun epochMs(timestamp: String): Long = OffsetDateTime.parse(timestamp).toInstant().toEpochMilli()
 
 internal fun rvSubFormat(format: SubscriptionFormat): RvSubFormat = when (format) {
     SubscriptionFormat.Clash -> RvSubFormat.Clash

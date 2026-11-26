@@ -70,6 +70,7 @@ internal class Node(
     val id: String,
     val name: String,
     val protocol: String?,
+    @SerialName("stream_transport") val streamTransport: String? = null,
     @SerialName("subscription_tag") val subscriptionTag: String?,
     @SerialName("provider_id") val providerId: String? = null,
     @SerialName("group_ids") val groupIds: List<String>,
