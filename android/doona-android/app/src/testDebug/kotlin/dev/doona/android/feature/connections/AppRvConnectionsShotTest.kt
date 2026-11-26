@@ -1,5 +1,7 @@
 package dev.doona.android.feature.connections
 
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.prototype.rv.RV_EN
@@ -81,7 +83,7 @@ class AppRvConnectionsShotTest {
     private fun list(screen: String, dark: Boolean = false, fontScale: Float = 1f, query: String? = null, connected: Boolean = true, whole: Boolean = false) {
         if (connected) model.load()
         compose.rvShot(screen, dark, before = { if (whole) assertWhole() }, fontScale = fontScale, prefix = APP) {
-            val ui = model.ui.value
+            val ui by model.ui.collectAsState()
             RvConnectionsPage(ui.connections, query = query, connected = connected, nowEpochMs = ui.nowEpochMs, loaded = ui.loaded)
         }
     }
