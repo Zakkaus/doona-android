@@ -163,7 +163,7 @@ fun DoonaApp(
             entry<SubDetailKey> { key ->
                 val context = LocalContext.current
                 val updateHours = remember { AppSettings.get(context).subscriptionUpdate.map(::updateHoursOf) }
-                SubDetailRoute(engine, updateHours, key.subscriptionId, onBack = { backStack.pop(key) }, onAutoUpdate = { backStack.push(IntervalKey) })
+                SubDetailRoute(updateHours, key.subscriptionId, onBack = { backStack.pop(key) }, onAutoUpdate = { backStack.push(IntervalKey) })
             }
             // 設定 and its pages draw their own floating nav.
             settingsEntries(backStack, engine, version, onTab)

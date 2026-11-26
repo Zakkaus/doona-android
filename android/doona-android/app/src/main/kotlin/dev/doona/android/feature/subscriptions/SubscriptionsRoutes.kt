@@ -96,11 +96,17 @@ fun SubAddRoute(engine: Engine, imports: SubscriptionImports, lanAsking: Flow<Bo
 /**
  * Subscription [id]'s page; it leaves ([onBack]) once the subscription is gone, deleted here or elsewhere. The
  * auto-update interval in hours comes from [updateHours] (the app's settings; null while auto-update is off), and the
- * row shows no value until its first; the row runs [onAutoUpdate], which opens 更新間隔.
+ * row shows no value until its first; the row runs [onAutoUpdate], which opens 更新間隔. The subscription is honk's,
+ * read through the app's [nativeApi] unless a caller (a test) gives its own [viewModel].
  */
 @Composable
-fun SubDetailRoute(engine: Engine, updateHours: Flow<Int?>, id: String, onBack: () -> Unit, onAutoUpdate: () -> Unit) {
-    val viewModel: SubDetailViewModel = viewModel(factory = viewModelFactory { initializer { SubDetailViewModel(engine, updateHours, id) } })
+internal fun SubDetailRoute(
+    updateHours: Flow<Int?>,
+    id: String,
+    onBack: () -> Unit,
+    onAutoUpdate: () -> Unit,
+    viewModel: SubDetailViewModel = nativeApi().let { api -> viewModel(factory = viewModelFactory { initializer { SubDetailViewModel(api, updateHours, id) } }) },
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     if (state.gone) LaunchedEffect(Unit) { onBack() }
     val sub = state.sub ?: return

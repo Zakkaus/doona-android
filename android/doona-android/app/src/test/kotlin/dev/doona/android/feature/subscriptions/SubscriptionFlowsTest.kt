@@ -193,7 +193,11 @@ class SubscriptionFlowsTest {
                 )
             }
             entry<SubAddKey> { key -> SubAddRoute(engine, imports, flowOf(false), onBack = { backStack.pop(key) }) }
-            entry<SubDetailKey> { key -> SubDetailRoute(engine, MutableStateFlow(12), key.subscriptionId, onBack = { backStack.pop(key) }, onAutoUpdate = {}) }
+            entry<SubDetailKey> { key ->
+                val hours = MutableStateFlow(12)
+                val viewModel = remember { SubDetailViewModel(honk, hours, key.subscriptionId, io = Dispatchers.Unconfined) }
+                SubDetailRoute(hours, key.subscriptionId, onBack = { backStack.pop(key) }, onAutoUpdate = {}, viewModel = viewModel)
+            }
         }
     }
 

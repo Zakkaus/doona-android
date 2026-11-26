@@ -225,72 +225,72 @@ class AppRvSubsShotTest {
     @Config(qualifiers = RV_EN)
     fun deleteFullEn() = shot("subs-delete-full", english = true, before = { confirmDeleteFromMenu() }) { Subs { deleteRefused() } }
 
-    /** The same from Harbor Cloud's page: its 刪除訂閱 row, then the sheet's 刪除. */
+    /** The same from Harbor Cloud's page: its 刪除訂閱 row, then the sheet's 刪除 (`store_unavailable`, then a 503). */
     @Test
     @Config(qualifiers = WHOLE_DETAIL_BANNER)
-    fun detailDeleteFailedLight() = shot("sub-detail-delete-failed", before = { confirmDeleteFromPage() }) { Detail(build = { DeleteFails() }) }
+    fun detailDeleteFailedLight() = shot("sub-detail-delete-failed", before = { confirmDeleteFromPage(ErrorCode.Internal) }) { Detail { deleteFails() } }
 
     @Test
     @Config(qualifiers = WHOLE_DETAIL_BANNER)
-    fun detailDeleteFailedDark() = shot("sub-detail-delete-failed", dark = true, before = { confirmDeleteFromPage() }) { Detail(build = { DeleteFails() }) }
+    fun detailDeleteFailedDark() = shot("sub-detail-delete-failed", dark = true, before = { confirmDeleteFromPage(ErrorCode.Internal) }) { Detail { deleteFails() } }
 
     @Test
     @Config(qualifiers = WHOLE_DETAIL)
     fun detailDeleteFailedFs200() =
-        shot("sub-detail-delete-failed", fontScale = RV_FS200, whole = false, before = { confirmDeleteFromPage() }) { Detail(build = { DeleteFails() }) }
+        shot("sub-detail-delete-failed", fontScale = RV_FS200, whole = false, before = { confirmDeleteFromPage(ErrorCode.Internal) }) { Detail { deleteFails() } }
 
     @Test
     @Config(qualifiers = RV_EN)
-    fun detailDeleteFailedEn() = shot("sub-detail-delete-failed", english = true, whole = false, before = { confirmDeleteFromPage() }) { Detail(build = { DeleteFails() }) }
+    fun detailDeleteFailedEn() = shot("sub-detail-delete-failed", english = true, whole = false, before = { confirmDeleteFromPage(ErrorCode.Internal) }) { Detail { deleteFails() } }
 
     @Test
     @Config(qualifiers = WHOLE_DETAIL_BANNER)
-    fun detailDeleteFullLight() = shot("sub-detail-delete-full", before = { confirmDeleteFromPage() }) { Detail(build = { DeleteFails(ErrorCode.StorageFull) }) }
+    fun detailDeleteFullLight() = shot("sub-detail-delete-full", before = { confirmDeleteFromPage() }) { Detail { deleteRefused() } }
 
     @Test
     @Config(qualifiers = WHOLE_DETAIL)
     fun detailDeleteFullFs200() =
-        shot("sub-detail-delete-full", fontScale = RV_FS200, whole = false, before = { confirmDeleteFromPage() }) { Detail(build = { DeleteFails(ErrorCode.StorageFull) }) }
+        shot("sub-detail-delete-full", fontScale = RV_FS200, whole = false, before = { confirmDeleteFromPage() }) { Detail { deleteRefused() } }
 
     @Test
     @Config(qualifiers = RV_EN)
     fun detailDeleteFullEn() =
-        shot("sub-detail-delete-full", english = true, whole = false, before = { confirmDeleteFromPage() }) { Detail(build = { DeleteFails(ErrorCode.StorageFull) }) }
+        shot("sub-detail-delete-full", english = true, whole = false, before = { confirmDeleteFromPage() }) { Detail { deleteRefused() } }
 
-    /** 立即更新 on Harbor Cloud's page while the phone's storage is full: the banner says why, and its nodes stay. */
+    /** 立即更新 on Harbor Cloud's page while honk cannot take the request (503; honk has no `storage_full`): the banner says why, and its nodes stay. */
     @Test
     @Config(qualifiers = WHOLE_DETAIL_BANNER)
-    fun detailUpdateFullLight() = shot("sub-detail-update-full", before = { tap(R.string.rv_sub_update_now) }) { Detail(build = { WriteFails() }) }
+    fun detailUpdateFullLight() = shot("sub-detail-update-full", before = { tap(R.string.rv_sub_update_now) }) { Detail { writeRefused() } }
 
     @Test
     @Config(qualifiers = WHOLE_DETAIL)
     fun detailUpdateFullFs200() =
-        shot("sub-detail-update-full", fontScale = RV_FS200, whole = false, before = { tap(R.string.rv_sub_update_now) }) { Detail(build = { WriteFails() }) }
+        shot("sub-detail-update-full", fontScale = RV_FS200, whole = false, before = { tap(R.string.rv_sub_update_now) }) { Detail { writeRefused() } }
 
     @Test
     @Config(qualifiers = RV_EN)
-    fun detailUpdateFullEn() = shot("sub-detail-update-full", english = true, whole = false, before = { tap(R.string.rv_sub_update_now) }) { Detail(build = { WriteFails() }) }
+    fun detailUpdateFullEn() = shot("sub-detail-update-full", english = true, whole = false, before = { tap(R.string.rv_sub_update_now) }) { Detail { writeRefused() } }
 
-    /** The User-Agent sheet saved while the storage is full: the banner says why, and the User-Agent stays. */
+    /** The User-Agent sheet saved while honk cannot take the file's replacement (503): the banner says why, and the User-Agent stays. */
     @Test
     @Config(qualifiers = WHOLE_DETAIL_BANNER)
-    fun detailAgentFullLight() = shot("sub-detail-agent-full", before = { saveSheet(R.string.rv_sub_user_agent) }) { Detail(build = { WriteFails() }) }
+    fun detailAgentFullLight() = shot("sub-detail-agent-full", before = { saveSheet(R.string.rv_sub_user_agent) }) { Detail { writeRefused() } }
 
     @Test
     @Config(qualifiers = WHOLE_DETAIL)
     fun detailAgentFullFs200() =
-        shot("sub-detail-agent-full", fontScale = RV_FS200, whole = false, before = { saveSheet(R.string.rv_sub_user_agent) }) { Detail(build = { WriteFails() }) }
+        shot("sub-detail-agent-full", fontScale = RV_FS200, whole = false, before = { saveSheet(R.string.rv_sub_user_agent) }) { Detail { writeRefused() } }
 
     @Test
     @Config(qualifiers = RV_EN)
-    fun detailAgentFullEn() = shot("sub-detail-agent-full", english = true, whole = false, before = { saveSheet(R.string.rv_sub_user_agent) }) { Detail(build = { WriteFails() }) }
+    fun detailAgentFullEn() = shot("sub-detail-agent-full", english = true, whole = false, before = { saveSheet(R.string.rv_sub_user_agent) }) { Detail { writeRefused() } }
 
-    /** The rename sheet saved while the storage is full: it opens again on the name, why under the field. */
-    @Test fun renameFullLight() = shot("sub-detail-rename-full", whole = false, windows = true, before = { saveSheet(R.string.rv_sub_name) }) { Detail(build = { WriteFails() }) }
+    /** The rename sheet saved while honk cannot take the file's replacement (503): it opens again on the name, why under the field. */
+    @Test fun renameFullLight() = shot("sub-detail-rename-full", whole = false, windows = true, before = { saveSheet(R.string.rv_sub_name) }) { Detail { writeRefused() } }
 
     @Test
     @Config(qualifiers = RV_EN)
-    fun renameFullEn() = shot("sub-detail-rename-full", english = true, whole = false, windows = true, before = { saveSheet(R.string.rv_sub_name) }) { Detail(build = { WriteFails() }) }
+    fun renameFullEn() = shot("sub-detail-rename-full", english = true, whole = false, windows = true, before = { saveSheet(R.string.rv_sub_name) }) { Detail { writeRefused() } }
 
     /** Harbor Cloud's card held where the prototype's finger held it; the menu opens at the finger. */
     @Test fun menuLight() = shot("subs-menu", whole = false, windows = true, before = { holdHarbor() }) { Subs() }
@@ -392,12 +392,17 @@ class AppRvSubsShotTest {
     private fun ComposeContentTestRule.confirmDeleteFromMenu(waitFor: ErrorCode? = null) {
         pickDelete()
         confirmSheetDelete()
-        if (waitFor != null) waitUntil(POLL_WAIT_MS) { onAllNodesWithText(string(waitFor.reasonRes()), substring = true).fetchSemanticsNodes().isNotEmpty() }
+        if (waitFor != null) waitForReason(waitFor)
     }
 
-    private fun ComposeContentTestRule.confirmDeleteFromPage() {
+    private fun ComposeContentTestRule.waitForReason(code: ErrorCode) =
+        waitUntil(POLL_WAIT_MS) { onAllNodesWithText(string(code.reasonRes()), substring = true).fetchSemanticsNodes().isNotEmpty() }
+
+    /** 刪除訂閱 and its sheet; with [waitFor], until the banner says why the delete failed with that code. */
+    private fun ComposeContentTestRule.confirmDeleteFromPage(waitFor: ErrorCode? = null) {
         onNodeWithText(string(R.string.rv_sub_delete)).performScrollTo().performClick()
         confirmSheetDelete()
+        if (waitFor != null) waitForReason(waitFor)
     }
 
     /**
@@ -474,7 +479,7 @@ class AppRvSubsShotTest {
 
     /** 訂閱 on [honk]; the 組態內 card under the subscriptions still reads [engine]. */
     @Composable
-    private fun Subs(engine: () -> Engine = ::rvSampleEngine, honk: () -> FakeHonk = { HonkFixtures.rvSample() }) {
+    private fun Subs(engine: () -> Engine = ::rvSampleEngine, honk: () -> FakeHonk = ::sampleHonk) {
         val sample = remember { engine() }
         val viewModel = remember { SubscriptionsViewModel(honk(), clock = { RvData.nowEpochMs }, io = Dispatchers.Unconfined) }
         SubscriptionsRoute(sample, onBack = {}, onOpen = {}, onAdd = {}, clock = { RvData.nowEpochMs }, viewModel = viewModel)
@@ -483,13 +488,14 @@ class AppRvSubsShotTest {
     /** No subscription and no node of the configuration's own. */
     @Composable
     private fun SubsEmpty() = Subs({ FakeEngine(subscriptions = emptyList()) }) {
-        HonkFixtures.rvSample().apply { on("GET", "/api/v1/providers", 200, HonkFixtures.body("providers/empty")) }
+        sampleHonk().apply { on("GET", "/api/v1/providers", 200, HonkFixtures.body("providers/empty")) }
     }
 
+    /** Harbor Cloud's page on [honk]. */
     @Composable
-    private fun Detail(hours: Flow<Int?> = TWELVE_HOURS, build: () -> Engine = ::rvSampleEngine) {
-        val (engine, id) = remember { build().let { it to it.subscriptions.value.first().id } }
-        SubDetailRoute(engine, hours, id, onBack = {}, onAutoUpdate = {})
+    private fun Detail(hours: Flow<Int?> = TWELVE_HOURS, honk: () -> FakeHonk = ::sampleHonk) {
+        val viewModel = remember { SubDetailViewModel(honk(), hours, "s1", io = Dispatchers.Unconfined) }
+        SubDetailRoute(hours, "s1", onBack = {}, onAutoUpdate = {}, viewModel = viewModel)
     }
 
     @Composable
@@ -499,18 +505,27 @@ class AppRvSubsShotTest {
         SubAddRoute(engine, rememberImports(engine), lanAsking, onBack = {})
     }
 
+    /** honk's RV sample profile with its configuration file, whose entries set no User-Agent. */
+    private fun sampleHonk(): FakeHonk = HonkFixtures.rvSample().apply { on("GET", "/api/v1/config", 200, HonkFixtures.body("config/rv-sample")) }
+
     /** The sample with Harbor Cloud's last fetch failed. */
-    private fun failedHonk(): FakeHonk = HonkFixtures.rvSample().apply { on("GET", "/api/v1/providers", 200, HonkFixtures.body("providers/rv-sample-failed")) }
+    private fun failedHonk(): FakeHonk = sampleHonk().apply { on("GET", "/api/v1/providers", 200, HonkFixtures.body("providers/rv-sample-failed")) }
 
     /** The sample, whose delete of Harbor Cloud honk accepts and then fails, as its configuration store cannot be written. */
-    private fun deleteFails(): FakeHonk = HonkFixtures.rvSample().apply {
+    private fun deleteFails(): FakeHonk = sampleHonk().apply {
         on("DELETE", "/api/v1/providers/s1", 202, HonkFixtures.body("operations/provider-delete-accepted"))
         on("GET", "/api/v1/operations/op-delete", 200, HonkFixtures.body("operations/provider-delete-store-unavailable"))
     }
 
     /** The sample, whose delete of Harbor Cloud honk refuses now. */
     private fun deleteRefused(): FakeHonk =
-        HonkFixtures.rvSample().apply { on("DELETE", "/api/v1/providers/s1", 503, HonkFixtures.body("errors/temporarily-unavailable")) }
+        sampleHonk().apply { on("DELETE", "/api/v1/providers/s1", 503, HonkFixtures.body("errors/temporarily-unavailable")) }
+
+    /** The sample, whose refresh of Harbor Cloud and replacement of its configuration file honk refuses now. */
+    private fun writeRefused(): FakeHonk = sampleHonk().apply {
+        on("POST", "/api/v1/providers/s1/refresh", 503, HonkFixtures.body("errors/temporarily-unavailable"))
+        on("PUT", "/api/v1/config/sources/source-main", 503, HonkFixtures.body("errors/temporarily-unavailable"))
+    }
 
     /** The page's focus, to put the keyboard away after typing; taken once the page has composed. */
     private lateinit var focus: FocusManager
@@ -538,20 +553,6 @@ class AppRvSubsShotTest {
         data object Harbor : Answer
 
         data class Fails(val code: ErrorCode) : Answer
-    }
-
-    /** The sample, with every delete refused as the core refuses one it cannot write. */
-    private class DeleteFails(private val code: ErrorCode = ErrorCode.WriteFailed, private val sample: FakeEngine = rvSampleEngine()) : Engine by sample {
-        override suspend fun removeSubscription(id: String): Result<Unit> = Result.failure(EngineException(code))
-    }
-
-    /** The sample, with every update, rename and User-Agent refused as the core refuses one it cannot write. */
-    private class WriteFails(private val code: ErrorCode = ErrorCode.StorageFull, private val sample: FakeEngine = rvSampleEngine()) : Engine by sample {
-        override suspend fun updateSubscription(id: String): Result<Subscription> = Result.failure(EngineException(code))
-
-        override suspend fun renameSubscription(id: String, name: String): Result<Subscription> = Result.failure(EngineException(code))
-
-        override suspend fun setSubscriptionUserAgent(id: String, userAgent: String?): Result<Subscription> = Result.failure(EngineException(code))
     }
 
     private class Answering(private val answer: Answer, private val sample: FakeEngine = rvSampleEngine()) : Engine by sample {
