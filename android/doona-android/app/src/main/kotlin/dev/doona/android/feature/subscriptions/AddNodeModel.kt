@@ -23,7 +23,7 @@ internal data class AddNodeLine(val line: Int, val link: String) {
      */
     val name: String
         get() {
-            val fragment = link.substringAfter('#', "").let { runCatching { URLDecoder.decode(it, Charsets.UTF_8) }.getOrDefault(it) }.trim()
+            val fragment = link.substringAfter('#', "").let { runCatching { URLDecoder.decode(it, "UTF-8") }.getOrDefault(it) }.trim()
             return fragment.ifEmpty { subscriptionHost(link) }.ifEmpty { link }.take(NODE_NAME_MAX)
         }
 }
