@@ -162,7 +162,7 @@ private fun AddFileSheet(state: RvConfigState, add: RvConfigAddFile?) {
         visible = add != null,
         title = stringResource(R.string.rv_config_file_new),
         body = stringResource(R.string.rv_config_file_new_body, entry),
-        confirm = stringResource(R.string.rv_config_file_create),
+        confirm = stringResource(R.string.rv_list_create),
         dismiss = stringResource(R.string.rv_cancel),
         onConfirm = {
             add?.onCreate(path)

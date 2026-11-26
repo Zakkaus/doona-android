@@ -29,7 +29,9 @@
     <string name="rv_group_delete_refused_action">查看规则</string>
     <string name="rv_config_file_new">新建文件</string>
     <string name="rv_config_file_new_body">会在 %1$s 加上引入这个文件的一行，应用前会先显示变更。</string>
-    <string name="rv_config_file_create">新建</string>
+    <string name="rv_list_create">新建</string>
     <string name="rv_config_file_delete_body">%1$s 中引入它的那一行会一起删除，应用前会先显示变更。</string>
     <string name="rv_config_file_delete_body_nested">%1$s 中引入它的那一行会一起删除，它引入的 %2$s 也会删除。应用前会先显示变更。</string>
+    <string name="rv_list_create_failed_title">无法新建 %1$s</string>
+    <string name="rv_group_name_taken">已有同名的群组。</string>
 </resources>

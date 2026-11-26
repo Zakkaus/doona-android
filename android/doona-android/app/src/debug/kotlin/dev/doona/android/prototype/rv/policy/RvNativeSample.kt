@@ -54,6 +54,21 @@ internal object RvNativeSample {
         finalId = RvMemberRef.Direct.id,
     )
 
+    /** 新增群組 as it opens: no name, honk's first policy, no member yet. */
+    val newGroup = RvGroupDraft(name = "", policy = RvHonkPolicy.Selector, members = emptyList())
+
+    /** A new 串流 group being filled in: Score over the nested 日本 and 美國, a node, and `direct` last. */
+    val newStreaming = RvGroupDraft(
+        name = NEW_GROUP,
+        policy = RvHonkPolicy.Score,
+        members = listOf(
+            RvMemberRef.Group("g-日本", JAPAN, RvHonkPolicy.UrlTest),
+            RvMemberRef.Group("g-美國", US, RvHonkPolicy.LoadBalance),
+            RvMemberRef.Node("n-hk2", "Hong Kong 02 IPLC", "hk"),
+            RvMemberRef.Direct,
+        ),
+    )
+
     /** The rules in file order, the last one routing whatever no rule above matched. */
     val rules: List<RvPolicyRule> = listOf(
         RvPolicyRule(RvRuleMatch.Value(RvMatchKind.Suffix, "github.com"), overseasGroup, 812_400_000L),
@@ -145,5 +160,6 @@ internal object RvNativeSample {
     const val US = "美國"
     const val STREAMING = "影音"
     const val TOKYO = "東京"
+    const val NEW_GROUP = "串流"
     private const val PROFILE_RULES = 4
 }

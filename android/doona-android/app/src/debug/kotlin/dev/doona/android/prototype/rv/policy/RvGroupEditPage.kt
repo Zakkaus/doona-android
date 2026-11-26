@@ -19,6 +19,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvAddRow
+import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvChevron
 import dev.doona.android.designsystem.rv.RvConfirmSheet
@@ -27,6 +28,7 @@ import dev.doona.android.designsystem.rv.RvGlassButton
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLargeTitle
+import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvRadio
 import dev.doona.android.designsystem.rv.RvRemovableLeading
@@ -86,6 +88,10 @@ internal data class RvGroupDraft(
  * `direct` or `block` as honk writes them), each removable, with 新增成員 at the card's end; and `default`, `final` and
  * `exit`, each a row that opens its picker. [removeStyle] is the owner's open question: A puts the remove discs in edit
  * mode, which the bar's pencil turns on and 完成 ends; B shows a remove control at every member's end.
+ *
+ * With [create] the page is 新增群組 (the groups list's add row): every member is new, so the discs and 新增成員 show
+ * without the pencil, and the bottom 新增 is enabled once the group has a name nobody else uses and one member.
+ * [nameError] is the name field's error; a [banner] (a group the phone could not stage) heads the sections.
  */
 @Composable
 internal fun RvGroupEditPage(
@@ -97,23 +103,35 @@ internal fun RvGroupEditPage(
     onBack: () -> Unit,
     removing: RvMemberRef? = null,
     onRemoving: (RvMemberRef?) -> Unit = {},
+    create: Boolean = false,
+    nameError: String? = null,
+    banner: RvNotice? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    val title = stringResource(R.string.rv_group_edit_title)
+    val title = stringResource(if (create) R.string.rv_group_new else R.string.rv_group_edit_title)
     val editLabel = stringResource(R.string.rv_rule_menu_edit)
-    val inEdit = removeStyle == RvRemoveStyle.Editing && editing
+    val inEdit = removeStyle == RvRemoveStyle.Editing && (editing || create)
     RvScrollPage(
         title,
         insets,
         onBack = onBack,
-        actions = if (removeStyle == RvRemoveStyle.Editing && !editing) ({ glass -> RvGlassButton(glass, R.drawable.rv_sym_edit, editLabel) { onEdit(true) } }) else null,
+        actions = if (removeStyle == RvRemoveStyle.Editing && !inEdit) ({ glass -> RvGlassButton(glass, R.drawable.rv_sym_edit, editLabel) { onEdit(true) } }) else null,
         bottomAction = {
-            if (inEdit) RvPrimaryButton(stringResource(R.string.rv_rules_done), { onEdit(false) }) else RvPrimaryButton(stringResource(R.string.rv_policy_apply), NOT_WIRED)
+            when {
+                create -> RvPrimaryButton(
+                    stringResource(R.string.rv_list_create),
+                    NOT_WIRED,
+                    enabled = draft.name.isNotBlank() && nameError == null && draft.members.isNotEmpty(),
+                )
+                inEdit -> RvPrimaryButton(stringResource(R.string.rv_rules_done), { onEdit(false) })
+                else -> RvPrimaryButton(stringResource(R.string.rv_policy_apply), NOT_WIRED)
+            }
         },
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
-        RvSectionTitle(stringResource(R.string.rv_group_edit_name), Modifier.padding(horizontal = RvSpace.gutter), first = true)
-        RvGutter { RvTextField(draft.name, { onChange(draft.copy(name = it)) }, label = null) }
+        RvBannerSlot(banner, RvSpace.none)
+        RvSectionTitle(stringResource(R.string.rv_group_edit_name), Modifier.padding(horizontal = RvSpace.gutter), first = banner == null)
+        RvGutter { RvTextField(draft.name, { onChange(draft.copy(name = it)) }, label = null, error = nameError) }
         RvSectionTitle(stringResource(R.string.rv_group_edit_policy), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter { PolicyCard(draft.policy) { onChange(draft.copy(policy = it)) } }
         RvSectionTitle(stringResource(R.string.rv_group_edit_members), Modifier.padding(horizontal = RvSpace.gutter))
@@ -121,7 +139,9 @@ internal fun RvGroupEditPage(
             RvCard {
                 val shown = removeStyle == RvRemoveStyle.Trailing || inEdit
                 draft.members.forEach { member ->
-                    MemberRow(member, if (shown) RvRowRemove(removeStyle) { onRemoving(member) } else null)
+                    // A member of a group being created was added on this page: it goes at once, with no sheet.
+                    val remove = { if (create) onChange(draft.copy(members = draft.members - member)) else onRemoving(member) }
+                    MemberRow(member, if (shown) RvRowRemove(removeStyle, remove) else null)
                 }
                 if (shown) RvAddRow(stringResource(R.string.rv_group_edit_add_member), NOT_WIRED)
             }
