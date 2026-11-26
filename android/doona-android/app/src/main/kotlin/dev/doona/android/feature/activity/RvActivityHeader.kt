@@ -191,11 +191,11 @@ internal fun HeroActions(state: RvActivityState, onAction: (ActivityAction) -> U
     BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
         val style = rvActionRowFit(labels, maxWidth / labels.size)
         Row(Modifier.fillMaxWidth()) {
-            val other = state.mode.toggled()
+            val next = state.mode.next()
             val toggle = if (on) ({ onAction(ActivityAction.Disconnect) }) else onConnect
             // A disconnect under way takes no second one: the tap would only start it again.
             RvAction(R.drawable.rv_sym_power, labels[0], toggle, Modifier.weight(1f), busy = state.status.busy, labelStyle = style, enabled = state.status != Status.Stopping)
-            RvAction(R.drawable.rv_sym_directions, labels[1], { onAction(ActivityAction.SetMode(other)) }, Modifier.weight(1f), labelStyle = style, description = modeName)
+            RvAction(R.drawable.rv_sym_directions, labels[1], { onAction(ActivityAction.SetMode(next)) }, Modifier.weight(1f), labelStyle = style, description = modeName)
             RvAction(R.drawable.rv_sym_speed, labels[2], routes.test, Modifier.weight(1f), labelStyle = style, description = testName)
             RvAction(R.drawable.rv_sym_more_horiz, labels[3], routes.more, Modifier.weight(1f), labelStyle = style)
         }
