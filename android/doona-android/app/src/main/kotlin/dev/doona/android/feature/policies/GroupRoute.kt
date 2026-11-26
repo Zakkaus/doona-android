@@ -19,11 +19,6 @@ import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvScrollPage
-import dev.doona.android.designsystem.rv.RvSkeletonCard
-import dev.doona.android.designsystem.rv.RvSkeletonEnd
-import dev.doona.android.designsystem.rv.RvSkeletonHeader
-import dev.doona.android.designsystem.rv.RvSkeletonRow
-import dev.doona.android.designsystem.rv.RvSkeletonText
 import dev.doona.android.feature.messageRes
 
 /**
@@ -62,25 +57,9 @@ internal fun GroupRoute(viewModel: GroupViewModel, groupId: String, onBack: () -
 
         failure?.action == GroupAction.Read -> GroupUnread(groupId.removePrefix(GROUP_ID_PREFIX), onBack, groupBanner(failure, viewModel::retry))
 
-        ui.loading -> GroupSkeleton(groupId.removePrefix(GROUP_ID_PREFIX), onBack)
+        ui.loading -> RvGroupSkeleton(groupId.removePrefix(GROUP_ID_PREFIX), onBack)
 
         else -> LaunchedEffect(Unit) { onBack() }
-    }
-}
-
-/** The page before the group is read: its name (a group's id is `g-` and its name), 使用中, and rows of nodes. */
-@Composable
-private fun GroupSkeleton(title: String, onBack: () -> Unit) {
-    val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
-        RvPageHeader(title, titleBlock, insets)
-        RvGutter {
-            RvSkeletonCard {
-                RvSkeletonHeader(stringResource(R.string.rv_nodes_in_use))
-                RvSkeletonRow(0, RvSkeletonText.Mixed, RvSkeletonEnd.Latency)
-            }
-            RvSkeletonCard { repeat(SKELETON_ROWS) { RvSkeletonRow(it + 1, RvSkeletonText.Mixed, RvSkeletonEnd.Latency) } }
-        }
     }
 }
 
@@ -114,4 +93,3 @@ private val GroupAction.title: Int
     }
 
 private const val GROUP_ID_PREFIX = "g-"
-private const val SKELETON_ROWS = 6

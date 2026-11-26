@@ -11,12 +11,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
@@ -34,11 +36,19 @@ import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSearchField
 import dev.doona.android.designsystem.rv.RvSearchSlot
 import dev.doona.android.designsystem.rv.RvSegmented
+import dev.doona.android.designsystem.rv.RvSkeletonCard
+import dev.doona.android.designsystem.rv.RvSkeletonEnd
+import dev.doona.android.designsystem.rv.RvSkeletonHeader
+import dev.doona.android.designsystem.rv.RvSkeletonLine
+import dev.doona.android.designsystem.rv.RvSkeletonRow
+import dev.doona.android.designsystem.rv.RvSkeletonSize
+import dev.doona.android.designsystem.rv.RvSkeletonText
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rvMarkName
 import dev.doona.android.designsystem.rv.rvRowSelect
+import dev.doona.android.designsystem.rv.rvShimmer
 import dev.doona.android.designsystem.rv.rvShownName
 import dev.doona.android.engine.ScoreGroup
 import dev.doona.android.feature.model.RV_INLINE
@@ -54,6 +64,7 @@ import dev.doona.android.feature.nodes.ui.RvApplyCard
 import dev.doona.android.feature.nodes.ui.RvApplyTo
 import dev.doona.android.feature.nodes.ui.RvNodePickRow
 import dev.doona.android.feature.nodes.ui.RvNodeSection
+import dev.doona.android.feature.nodes.ui.RvNodeSectionSkeleton
 import dev.doona.android.feature.nodes.ui.RvRowsComposed
 import dev.doona.android.feature.nodes.ui.RvScoreCard
 import dev.doona.android.feature.nodes.ui.matches
@@ -181,6 +192,36 @@ internal fun RvGroupPage(
             group.members.isNotEmpty() && matching.isEmpty() ->
                 RvGutter { RvEmptyCaption(stringResource(R.string.rv_group_no_match), stringResource(R.string.rv_conn_none_line)) }
         }
+    }
+}
+
+/**
+ * The page before the group is read, row for row as it comes (owner, q-group-skeleton 2026-11-26): its name (a group's
+ * id is `g-` and its name) over the caption's bar; 使用中 with the 分開選擇 TCP/UDP switch's row and the node's; the
+ * search field and the two chips as they start (every subscription, by latency); a subscription's section as the node
+ * pickers draw it before their catalog ([RvNodeSectionSkeleton]); and 測試群組, which waits for the group.
+ */
+@Composable
+internal fun RvGroupSkeleton(title: String, onBack: () -> Unit) {
+    val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
+    val test = stringResource(R.string.rv_policy_test_group)
+    RvScrollPage(title, insets, onBack = onBack, bottomAction = { RvPrimaryButton(test, {}, enabled = false) }) { titleBlock ->
+        RvPageHeader(title, titleBlock, insets, caption = { RvSkeletonLine(Rv.type.rowSub, RvSkeletonSize.CAPTION, Modifier.rvShimmer(), RvSkeletonText.Mixed) })
+        RvGutter {
+            RvSkeletonCard {
+                RvSkeletonHeader(stringResource(R.string.rv_nodes_in_use))
+                RvSkeletonRow(0, subtitle = null, title = stringResource(R.string.rv_group_apart))
+                RvSkeletonRow(1, RvSkeletonText.Mixed, RvSkeletonEnd.Latency, titleKeepWords = false)
+            }
+        }
+        Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
+            var typed by remember { mutableStateOf("") }
+            RvSearchSlot { RvSearchField(null, typed, { typed = it }, it) }
+            val (subChip, orderChip) = rvNodeChips(emptyList(), emptyList(), null, RvNodeSort.Latency, {}, {})
+            RvFilterChipRow(subChip, orderChip)
+            Spacer(Modifier.height(RvSpace.controlGap))
+        }
+        RvNodeSectionSkeleton()
     }
 }
 
