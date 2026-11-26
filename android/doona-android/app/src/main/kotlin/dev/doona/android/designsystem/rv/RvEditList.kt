@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -129,10 +130,29 @@ internal fun rvRemoveTrailing(remove: RvRowRemove?, description: String): (@Comp
  */
 internal class RvRowRemove(val style: RvRemoveStyle, val onRemove: (() -> Unit)?)
 
-/** The last row of an editable list's card: the accent plus on the card's disc, then what it adds; it opens the add form. */
+/**
+ * The last row of an editable list's card in style A's edit mode (owner 2026-11-26: the add row is the same row as the
+ * rows above it): a list row of their height, insets and title, whose start is theirs too. The accent add disc stands
+ * where the red remove disc stands, as large, and the leading visual's place after it stays empty, so the title starts
+ * on the card's text column; nothing at its end. A tap opens the add form.
+ */
 @Composable
 internal fun RvAddRow(label: String, onClick: () -> Unit) {
-    RvRow({ RvIconDisc(R.drawable.rv_sym_add, color = Rv.colors.positive) }, label, null, Modifier.testTag(RvEditPart.ADD), onClick = onClick) { RvChevron() }
+    RvRow({ RvAddStart() }, label, null, Modifier.testTag(RvEditPart.ADD), onClick = onClick)
+}
+
+/** [RvAddRow]'s start: the add disc in the remove disc's place, then the leading visual's place, empty. */
+@Composable
+private fun RvAddStart() {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.height(RvSize.rowDisc), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(RvSize.removeDisc).testTag(RvEditPart.ADD_DISC).clip(CircleShape).background(Rv.colors.positive), contentAlignment = Alignment.Center) {
+                RvGlyph(R.drawable.rv_sym_add, RvSize.removeGlyph, Rv.colors.card)
+            }
+        }
+        Spacer(Modifier.width(RvSpace.rowGap))
+        Spacer(Modifier.size(RvSize.rowDisc).testTag(RvEditPart.ADD_PLACE))
+    }
 }
 
 /**
@@ -161,4 +181,8 @@ internal object RvEditPart {
      * rules gate measures (LAYOUT-RULES.md R5, R16).
      */
     const val REMOVE_DISC = "rv-remove-disc"
+
+    /** [RvAddRow]'s 24 dp add disc, in the remove disc's place, and the empty place of the leading visual after it. */
+    const val ADD_DISC = "rv-add-disc"
+    const val ADD_PLACE = "rv-add-place"
 }

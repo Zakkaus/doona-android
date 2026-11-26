@@ -117,10 +117,10 @@ internal fun rvRowsOf(nodes: List<RvNode>): List<RvRowRead> = nodes.indices.mapN
 /** The parts that stand on a text line as its end: a line end, and the busy bar that replaces one. */
 private val LINE_ENDS = setOf(RvRowPart.LINE_END, RvPart.BUSY)
 
-private val LEADS = setOf(RvPart.DISC, RvRowPart.ICON_DISC, RvRowPart.FLAG, RvRowPart.APP_DISC, RvRowPart.GLYPH)
+private val LEADS = setOf(RvPart.DISC, RvRowPart.ICON_DISC, RvRowPart.FLAG, RvRowPart.APP_DISC, RvRowPart.GLYPH, RvEditPart.ADD_PLACE)
 
 /** The 40 dp leading visuals of the iconstyle rule (R4); a bare glyph is not one. */
-private val DISCS = setOf(RvPart.DISC, RvRowPart.ICON_DISC, RvRowPart.FLAG, RvRowPart.APP_DISC)
+private val DISCS = setOf(RvPart.DISC, RvRowPart.ICON_DISC, RvRowPart.FLAG, RvRowPart.APP_DISC, RvEditPart.ADD_PLACE)
 
 private fun List<RvNode>.subtree(i: Int): List<Int> {
     val out = mutableListOf<Int>()
@@ -145,7 +145,7 @@ private fun List<RvNode>.readRow(i: Int, kind: RvRowKind): RvRowRead? {
     // A text inside a leading visual (the fallback flag's code, a dash) is its drawing, not the row's text.
     // An editable list's remove disc (A) stands before the leading visual; R5 reads it on its own.
     val removes = inRow.filter { this[it].tag == RvEditPart.REMOVE }.flatMap { subtree(it) }.toSet()
-    val removeDisc = inRow.firstOrNull { this[it].tag == RvEditPart.REMOVE_DISC && this[it].shown() }?.let { this[it].box }
+    val removeDisc = inRow.firstOrNull { (this[it].tag == RvEditPart.REMOVE_DISC || this[it].tag == RvEditPart.ADD_DISC) && this[it].shown() }?.let { this[it].box }
     val leads = leadOf(inRow.filter { it !in removes })
     val inLead = leads.flatMap { subtree(it) }.toSet()
     val texts = inRow.filter { this[it].text != null && this[it].shown() && it !in inLead && it !in removes }
@@ -399,8 +399,15 @@ internal fun rvColumnBreaks(rows: List<RvRowRead>): List<RvRowBreak> {
         card.groupBy { "${it.lead?.tag} ${it.lead?.box?.width?.let(::dp)}" }.values.flatMap { same ->
             val x = same.groupingBy { dp(it.textLeft) }.eachCount().maxBy { it.value }.key
             same.filter { dp(it.textLeft) != x }.map { it.broken("R7", "x ${dp(it.textLeft)} vs $x") }
-        }
+        } + card.addRowBreaks()
     }
+}
+
+/** R7 for an add row ([RvEditPart.ADD_PLACE]): its title starts on the text column of the card's other rows. */
+private fun List<RvRowRead>.addRowBreaks(): List<RvRowBreak> {
+    val (adds, rows) = partition { it.lead?.tag == RvEditPart.ADD_PLACE }
+    val x = rows.groupingBy { dp(it.textLeft) }.eachCount().maxByOrNull { it.value }?.key ?: return emptyList()
+    return adds.filter { dp(it.textLeft) != x }.map { it.broken("R7", "add row x ${dp(it.textLeft)} vs $x") }
 }
 
 /**
