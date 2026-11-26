@@ -9,6 +9,7 @@ import dev.doona.android.vpn.read
 import kotlinx.coroutines.delay
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -26,12 +27,13 @@ internal class NativeConfig(private val api: NativeApi) {
     suspend fun replace(source: HonkSource, content: String) {
         val body = buildJsonObject { put("content", content) }.toString()
         val accepted = api.expect("PUT", "/api/v1/config/sources/${source.id}", body, headers = mapOf("If-Match" to "\"${source.sha256}\""))
-        val operation = nativeJson.decodeFromString(HonkAccepted.serializer(), accepted).href
+        val operation = nativeJson.decodeFromString(OperationAccepted.serializer(), accepted).href
         while (true) {
             delay(POLL_MS)
-            when (api.read("GET", operation, HonkReload.serializer()).status) {
-                "succeeded" -> return
-                "failed", "cancelled" -> throw EngineException(ErrorCode.InvalidArgument)
+            when (api.read("GET", operation, Operation.serializer(JsonElement.serializer())).status) {
+                OperationStatus.Succeeded -> return
+                OperationStatus.Failed -> throw EngineException(ErrorCode.InvalidArgument)
+                OperationStatus.Queued, OperationStatus.Running -> Unit
             }
         }
     }
@@ -55,9 +57,3 @@ internal class HonkSource(
     val content: String,
     val writable: Boolean,
 )
-
-@Serializable
-internal class HonkAccepted(val href: String)
-
-@Serializable
-internal class HonkReload(val status: String)

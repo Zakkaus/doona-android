@@ -1,5 +1,7 @@
-package dev.doona.android.vpn
+package dev.doona.android.vpn.honk
 
+import dev.doona.android.vpn.NativeApi
+import dev.doona.android.vpn.read
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

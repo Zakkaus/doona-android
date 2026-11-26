@@ -1,10 +1,10 @@
 package dev.doona.android.feature.policies
 
-import dev.doona.android.vpn.HonkDnsRule
-import dev.doona.android.vpn.HonkDnsRules
-import dev.doona.android.vpn.HonkSourceAt
 import dev.doona.android.vpn.honk.HonkConfig
+import dev.doona.android.vpn.honk.HonkDnsRule
+import dev.doona.android.vpn.honk.HonkDnsRules
 import dev.doona.android.vpn.honk.HonkSource
+import dev.doona.android.vpn.honk.HonkSourceAt
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

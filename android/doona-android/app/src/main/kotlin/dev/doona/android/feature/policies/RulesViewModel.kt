@@ -15,7 +15,7 @@ import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.NativeRouting
+import dev.doona.android.vpn.honk.NativeRouting
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
