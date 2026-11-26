@@ -162,7 +162,7 @@ class AppRvGroupShotTest {
     @Test
     fun theButtonTestsTheGroup() {
         val honk = HonkFixtures.rvSample().apply {
-            on("POST", "/api/v1/probes", 202, HonkFixtures.body("operations/probe-queued"))
+            on("POST", "/api/v1/probes", 202, HonkFixtures.body("probes/queued"))
             on("GET", "/api/v1/operations/op-01HZX4K8W9", 200, HonkFixtures.body("operations/probe-complete"))
         }
         compose.rvContent(dark = false) { Page({ honk }) }

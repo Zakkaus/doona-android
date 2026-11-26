@@ -243,7 +243,7 @@ class NodesViewModelTest {
 
         /** [api] with a probe honk accepts and finishes. */
         fun probing(api: FakeHonk) = api.apply {
-            on("POST", "/api/v1/probes", 202, HonkFixtures.body("operations/probe-queued"))
+            on("POST", "/api/v1/probes", 202, HonkFixtures.body("probes/queued"))
             on("GET", "/api/v1/operations/op-01HZX4K8W9", 200, HonkFixtures.body("operations/probe-complete"))
         }
 

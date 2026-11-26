@@ -10,15 +10,13 @@ import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.vpn.NativeApi
 import dev.doona.android.vpn.honk.NativeCatalog
+import dev.doona.android.vpn.honk.NativeProbes
 import dev.doona.android.vpn.honk.NativeRouting
-import dev.doona.android.vpn.honk.ProbeTarget
 import dev.doona.android.vpn.honk.SelectionNetwork
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -43,6 +41,7 @@ class NodesViewModel internal constructor(
     private val clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
     private val catalog = NativeCatalog(api)
+    private val probes = NativeProbes(api)
     private val read = MutableStateFlow<Read?>(null)
     private val failure = MutableStateFlow<NodesFailure?>(null)
     private val running = MutableStateFlow(false)
@@ -129,11 +128,7 @@ class NodesViewModel internal constructor(
             try {
                 val done = attempt(NodesAction.Test) {
                     withContext(io) {
-                        if (nodeId != null) {
-                            catalog.probe(ProbeTarget.Node(nodeId))
-                        } else {
-                            groupIds.map { async { catalog.probe(ProbeTarget.Group(it)) } }.awaitAll()
-                        }
+                        if (nodeId != null) probes.node(nodeId) else probes.groups(groupIds)
                     }
                 }
                 if (done) load()

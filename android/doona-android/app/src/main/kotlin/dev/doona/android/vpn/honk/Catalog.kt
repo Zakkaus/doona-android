@@ -205,13 +205,6 @@ internal enum class SelectionNetwork {
     Both,
 }
 
-/** What a probe tests: one node, or the members of a group. */
-internal sealed interface ProbeTarget {
-    class Node(val id: String) : ProbeTarget
-
-    class Group(val id: String) : ProbeTarget
-}
-
 /** honk's answer to a change it runs in the background: poll [href] for the [Operation]. */
 @Serializable
 internal class OperationAccepted(@SerialName("operation_id") val operationId: String, val href: String)

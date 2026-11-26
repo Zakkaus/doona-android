@@ -19,8 +19,8 @@ import dev.doona.android.vpn.NativeApi
 import dev.doona.android.vpn.honk.Group
 import dev.doona.android.vpn.honk.MemberKind
 import dev.doona.android.vpn.honk.NativeCatalog
+import dev.doona.android.vpn.honk.NativeProbes
 import dev.doona.android.vpn.honk.PolicyKind
-import dev.doona.android.vpn.honk.ProbeTarget
 import dev.doona.android.vpn.honk.SelectionNetwork
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -53,6 +53,7 @@ internal class GroupViewModel(
     private val io: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
     private val catalog = NativeCatalog(api)
+    private val probes = NativeProbes(api)
     private val local = MutableStateFlow(Local(apart = false, apply = RvApplyTo.Tcp))
     private val failure = MutableStateFlow<GroupFailure?>(null)
     private val read = MutableStateFlow<Read?>(null)
@@ -123,7 +124,7 @@ internal class GroupViewModel(
         testing.value = true
         perform(GroupAction.Test) {
             try {
-                catalog.probe(ProbeTarget.Group(groupId))
+                probes.groups(listOf(groupId))
             } finally {
                 testing.value = false
             }
