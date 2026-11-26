@@ -1,9 +1,12 @@
 package dev.doona.android.feature.subscriptions
 
+import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -37,20 +40,23 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
-import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.onboarding.FirstRunGate
 import dev.doona.android.vpn.NativeApi
 import dev.doona.android.vpn.NativeResponse
-import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.CountDownLatch
 
 /**
  * 訂閱, 新增訂閱, a subscription's page and the first run's welcome page as a user moves through them, each route on its
@@ -66,8 +72,9 @@ class SubscriptionFlowsTest {
 
     private fun string(id: Int, vararg args: Any): String = ApplicationProvider.getApplicationContext<Context>().getString(id, *args)
 
-    private fun show(engine: Engine, vararg start: NavKey, honk: ProvidersHonk = ProvidersHonk()) {
-        compose.setContent { RvTheme(rvSystemScheme(false), false) { Host(engine, honk, start.toList().ifEmpty { listOf(ActivityKey) }) } }
+    /** The routes on [engine] and [honk], whose adds run on [io]. */
+    private fun show(engine: Engine, vararg start: NavKey, honk: ProvidersHonk = ProvidersHonk(), io: CoroutineDispatcher = Dispatchers.Unconfined) {
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { Host(engine, honk, io, start.toList().ifEmpty { listOf(ActivityKey) }) } }
     }
 
     /** Types [url] into 新增訂閱's link field, the first field that takes text. */
@@ -78,9 +85,16 @@ class SubscriptionFlowsTest {
     private fun shows(text: String) = compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
 
     @Test
-    fun `a subscription is removed from its menu on 訂閱`() {
-        val honk = ProvidersHonk(ProvidersHonk.provider("p1", "example.invalid", url))
+    fun `a subscription is added from 訂閱 and removed from its menu`() {
+        val honk = ProvidersHonk()
         show(FakeEngine(subscriptions = emptyList()), ActivityKey, SubscriptionsKey, honk = honk)
+        compose.onNodeWithText(string(R.string.rv_empty_subscription)).assertExists()
+
+        compose.onNodeWithText(string(R.string.rv_add_subscription)).performClick()
+        typeUrl()
+        compose.onNodeWithText(string(R.string.rv_add_import)).performClick()
+        compose.runOnIdle { assertEquals(1, honk.providers.size) }
+        compose.onNodeWithText(string(R.string.rv_done)).performClick()
 
         compose.onNodeWithText("example.invalid").performTouchInput { longClick() }
         compose.onNodeWithText(string(R.string.rv_menu_delete)).performClick()
@@ -92,12 +106,12 @@ class SubscriptionFlowsTest {
     }
 
     @Test
-    fun `a link with an upper-case scheme can be added, as the core reads it`() {
-        val engine = FakeEngine(subscriptions = emptyList())
-        show(engine, ActivityKey, SubAddKey)
+    fun `a link with an upper-case scheme can be added, as honk reads it`() {
+        val honk = ProvidersHonk()
+        show(FakeEngine(subscriptions = emptyList()), ActivityKey, SubAddKey, honk = honk)
         compose.onAllNodes(hasSetTextAction() and isEnabled())[0].performTextInput("HTTPS://example.invalid/x")
         compose.onNodeWithText(string(R.string.rv_add_import)).assertIsEnabled().performClick()
-        compose.runOnIdle { assertEquals(listOf("HTTPS://example.invalid/x"), engine.subscriptions.value.map { it.url }) }
+        compose.runOnIdle { assertEquals(listOf("HTTPS://example.invalid/x"), honk.added) }
     }
 
     @Test
@@ -119,20 +133,19 @@ class SubscriptionFlowsTest {
         compose.onNodeWithText(string(R.string.rv_add_import)).assertIsNotEnabled()
     }
 
+    /** The gate still reads the engine's subscriptions, so honk's add does not hand over to 活動 until the gate reads honk. */
     @Test
-    fun `the first run's welcome page leads to 新增訂閱, and the first import hands over to 活動`() {
-        val engine = FakeEngine(subscriptions = emptyList())
-        show(engine)
+    fun `the first run's welcome page leads to 新增訂閱, whose import adds to honk`() {
+        val honk = ProvidersHonk()
+        show(FakeEngine(subscriptions = emptyList()), honk = honk)
         assertTrue("the welcome page", shows(string(R.string.rv_welcome_title)))
         compose.onAllNodesWithText(ACTIVITY).assertCountEquals(0)
 
         compose.onNodeWithText(string(R.string.rv_add_subscription)).performClick()
         typeUrl()
         compose.onNodeWithText(string(R.string.rv_add_import)).performClick()
-        compose.onNodeWithText(string(R.string.rv_done)).performClick()
-
-        compose.onNodeWithText(ACTIVITY).assertExists()
-        assertTrue("no welcome page", !shows(string(R.string.rv_welcome_title)))
+        compose.onNodeWithText(string(R.string.rv_done)).assertExists()
+        compose.runOnIdle { assertEquals(listOf(url), honk.added) }
     }
 
     @Test
@@ -145,21 +158,12 @@ class SubscriptionFlowsTest {
 
     @Test
     fun `leaving 新增訂閱 during a slow add and coming back imports once`() {
-        val gate = CompletableDeferred<Unit>()
-        val fake = FakeEngine(subscriptions = emptyList())
-        var calls = 0
-        val engine = object : Engine by fake {
-            override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> {
-                calls++
-                gate.await()
-                return fake.addSubscription(url, name, userAgent)
-            }
-        }
-        show(engine, ActivityKey, SubscriptionsKey)
+        val honk = ProvidersHonk(gate = CountDownLatch(1))
+        show(FakeEngine(subscriptions = emptyList()), ActivityKey, SubscriptionsKey, honk = honk, io = Dispatchers.IO)
         compose.onNodeWithText(string(R.string.rv_add_subscription)).performClick()
         typeUrl()
         compose.onNodeWithText(string(R.string.rv_add_import)).performClick()
-        compose.runOnIdle { assertEquals(1, calls) }
+        compose.waitUntil(READ_MS) { honk.adds == 1 }
 
         compose.onNodeWithContentDescription(string(R.string.ui_back)).performClick()
         compose.onNodeWithText(string(R.string.rv_add_subscription)).performClick()
@@ -168,19 +172,20 @@ class SubscriptionFlowsTest {
         compose.onAllNodes(hasSetTextAction() and isEnabled()).assertCountEquals(0)
         compose.onAllNodes(hasText(string(R.string.rv_add_import)) and isEnabled()).assertCountEquals(0)
 
-        compose.runOnIdle { gate.complete(Unit) }
-        compose.waitForIdle()
+        honk.gate!!.countDown()
+        compose.waitUntil(READ_MS) { shows(string(R.string.rv_done)) }
         compose.runOnIdle {
-            assertEquals("one fetch for the one import", 1, calls)
-            assertEquals(1, fake.subscriptions.value.size)
+            assertEquals("one add for the one import", 1, honk.adds)
+            assertEquals(1, honk.providers.size)
         }
     }
 
     /** The subscription routes on their own entries, as DoonaApp routes them; 活動 is [ACTIVITY]. */
     @Composable
-    private fun Host(engine: Engine, honk: NativeApi, start: List<NavKey>) {
+    private fun Host(engine: Engine, honk: NativeApi, io: CoroutineDispatcher, start: List<NavKey>) {
         val backStack = rememberNavBackStack(*start.toTypedArray())
-        val imports = rememberSubscriptionImports(engine)
+        val scope = rememberCoroutineScope()
+        val imports = remember { SubscriptionImports(honk, scope, io) }
         RvNavHost(backStack) {
             entry<ActivityKey> { FirstRunGate(engine, onAdd = { backStack.push(SubAddKey) }, frame = { it() }) { Text(ACTIVITY) } }
             entry<SubscriptionsKey> { key ->
@@ -192,7 +197,11 @@ class SubscriptionFlowsTest {
                     viewModel = remember { SubscriptionsViewModel(honk, io = Dispatchers.Unconfined) },
                 )
             }
-            entry<SubAddKey> { key -> SubAddRoute(engine, imports, flowOf(false), onBack = { backStack.pop(key) }) }
+            entry<SubAddKey> { key ->
+                val clipboard = LocalContext.current.applicationContext.getSystemService(ClipboardManager::class.java)
+                val viewModel = remember { SubAddViewModel(honk, imports, AndroidClipboardLinks(clipboard), flowOf(false), io = Dispatchers.Unconfined) }
+                SubAddRoute(imports, flowOf(false), onBack = { backStack.pop(key) }, viewModel = viewModel)
+            }
             entry<SubDetailKey> { key ->
                 val hours = MutableStateFlow(12)
                 val viewModel = remember { SubDetailViewModel(honk, hours, key.subscriptionId, io = Dispatchers.Unconfined) }
@@ -203,16 +212,42 @@ class SubscriptionFlowsTest {
 
     private companion object {
         const val ACTIVITY = "活動"
+
+        /** How long an add on another thread may take to show. */
+        const val READ_MS = 5_000L
     }
 }
 
-/** honk keeping its providers as the test's [providers] (honk-shaped JSON objects): GET lists them, DELETE removes one. */
-internal class ProvidersHonk(vararg providers: String) : NativeApi {
+/**
+ * honk keeping its providers as the test's [providers] (honk-shaped JSON objects): GET lists them, POST adds one named
+ * as asked (each link in [added]; with a [gate], once it opens), DELETE removes one. It has no nodes.
+ */
+internal class ProvidersHonk(vararg providers: String, val gate: CountDownLatch? = null) : NativeApi {
     val providers = providers.toMutableList()
+    val added = mutableListOf<String>()
 
-    @Synchronized
-    override fun call(method: String, path: String, body: String?, headers: Map<String, String>): NativeResponse = when {
+    @Volatile
+    var adds = 0
+
+    override fun call(method: String, path: String, body: String?, headers: Map<String, String>): NativeResponse {
+        if (method == "POST" && path == "/api/v1/providers") {
+            adds++
+            gate?.await()
+        }
+        return synchronized(this) { answer(method, path, body) }
+    }
+
+    private fun answer(method: String, path: String, body: String?): NativeResponse = when {
         method == "GET" && path == "/api/v1/providers" -> NativeResponse(200, """{"providers":[${providers.joinToString(",")}],"next_cursor":null}""")
+
+        method == "GET" && path == "/api/v1/nodes" -> NativeResponse(200, """{"nodes":[],"next_cursor":null}""")
+
+        method == "POST" && path == "/api/v1/providers" -> {
+            val request = Json.parseToJsonElement(body!!).jsonObject
+            val url = request.getValue("url").jsonPrimitive.content
+            added += url
+            provider("p${providers.size + 1}", request.getValue("name").jsonPrimitive.content, url).also { providers += it }.let { NativeResponse(201, it) }
+        }
 
         method == "DELETE" && path.startsWith(PROVIDER) -> {
             val removed = providers.removeAll { it.contains(""""id":"${path.removePrefix(PROVIDER)}"""") }

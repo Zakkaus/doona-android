@@ -1,0 +1,6 @@
+{
+  "operation_id": "op-create",
+  "kind": "provider_create",
+  "status": "queued",
+  "href": "/api/v1/operations/op-create"
+}

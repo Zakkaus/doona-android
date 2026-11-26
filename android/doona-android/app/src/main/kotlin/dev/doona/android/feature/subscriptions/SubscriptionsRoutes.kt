@@ -76,14 +76,19 @@ internal fun SubscriptionsRoute(
 /**
  * 新增訂閱 over [imports], the app's import in flight; 完成 and back run [onBack]. The clipboard is asked whether it may
  * hold a link each time the page comes to the front. [lanAsking] is whether the local network prompt is up: an import
- * waiting on it leaves the form as it is under the prompt.
+ * waiting on it leaves the form as it is under the prompt. The import adds to honk; the page counts the new
+ * subscription's nodes through the app's [nativeApi] unless a caller (a test) gives its own [viewModel].
  */
 @Composable
-fun SubAddRoute(engine: Engine, imports: SubscriptionImports, lanAsking: Flow<Boolean>, onBack: () -> Unit) {
-    val clipboard = LocalContext.current.applicationContext.getSystemService(ClipboardManager::class.java)
-    val viewModel: SubAddViewModel = viewModel(
-        factory = viewModelFactory { initializer { SubAddViewModel(engine, imports, AndroidClipboardLinks(clipboard), lanAsking) } },
-    )
+internal fun SubAddRoute(
+    imports: SubscriptionImports,
+    lanAsking: Flow<Boolean>,
+    onBack: () -> Unit,
+    viewModel: SubAddViewModel = nativeApi().let { api ->
+        val clipboard = LocalContext.current.applicationContext.getSystemService(ClipboardManager::class.java)
+        viewModel(factory = viewModelFactory { initializer { SubAddViewModel(api, imports, AndroidClipboardLinks(clipboard), lanAsking) } })
+    },
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val protocols by viewModel.protocols.collectAsStateWithLifecycle()
     LifecycleResumeEffect(viewModel) {

@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "request_too_large",
+    "message": "The subscription body is larger than the engine accepts.",
+    "details": null
+  },
+  "request_id": "request-01HZX4K8WA"
+}
