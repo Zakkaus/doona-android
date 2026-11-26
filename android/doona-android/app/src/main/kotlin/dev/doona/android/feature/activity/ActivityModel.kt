@@ -224,21 +224,22 @@ private fun failureNotice(status: Status.Failed): RvActivityNotice = when (statu
 }
 
 /**
- * The bytes each outbound carried since honk started, a row per group or 直連, the most first. Left out: the main group
- * (the main node's row stands for it), `block` (it reaches no outbound), outbounds that carried nothing, single nodes
- * (their bytes are counted again under their group) and groups the profile no longer has.
+ * A row per group or 直連 that carried traffic since honk started, the most first by honk's bytes per outbound. The rows
+ * carry no bytes (honk counts none per rule, so the row shows [dev.doona.android.designsystem.rv.RV_NO_VALUE]: owner,
+ * 2026-11-27, keep-1127). Left out: the main group (the main node's row stands for it), `block` (it reaches no outbound),
+ * outbounds that carried nothing, single nodes (their bytes are counted again under their group) and groups the profile
+ * no longer has.
  */
 private fun ruleRows(profile: HonkProfile, outbounds: List<OutboundTraffic>): List<RvActivityRule> {
     val groups = profile.groups.associateBy { it.name }
-    return outbounds.mapNotNull { outbound ->
-        val bytes = outbound.up + outbound.down
+    return outbounds.sortedByDescending { it.up + it.down }.mapNotNull { outbound ->
         when {
-            bytes == 0L || outbound.name == profile.mainGroup -> null
-            outbound.kind == OutboundKind.Builtin -> if (outbound.name == DIRECT) RvActivityRule(null, null, null, bytes, null) else null
-            outbound.kind == OutboundKind.Group -> groups[outbound.name]?.let { groupRule(it, bytes) }
+            outbound.up + outbound.down == 0L || outbound.name == profile.mainGroup -> null
+            outbound.kind == OutboundKind.Builtin -> if (outbound.name == DIRECT) RvActivityRule(null, null, null, null, null) else null
+            outbound.kind == OutboundKind.Group -> groups[outbound.name]?.let(::groupRule)
             else -> null
         }
-    }.sortedByDescending { it.bytes }
+    }
 }
 
 /**
@@ -268,10 +269,10 @@ internal fun ruleLead(node: RvNode?, udp: RvNode?): RuleLead = when {
 }
 
 /** A group's row: its TCP node, and its UDP node when that is another one, as honk resolves each selection. */
-private fun groupRule(group: Group, bytes: Long): RvActivityRule {
+private fun groupRule(group: Group): RvActivityRule {
     val tcp = group.runtime.selection.tcp?.resolvedLeafNodeId
     val udp = group.runtime.selection.udp?.resolvedLeafNodeId
-    return RvActivityRule(group.name, group.id, tcp, bytes, udp?.takeIf { it != tcp })
+    return RvActivityRule(group.name, group.id, tcp, null, udp?.takeIf { it != tcp })
 }
 
 /** Whether honk found [this] unavailable at its last probe over TCP (or over any network when it has no TCP one). */

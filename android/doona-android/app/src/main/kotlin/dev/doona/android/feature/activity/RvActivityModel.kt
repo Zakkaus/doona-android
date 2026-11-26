@@ -52,7 +52,7 @@ internal fun Mode.routeMode(): RvRouteMode = when (this) {
  * ways that today's rules sent there.
  */
 @Immutable
-internal data class RvActivityRule(val label: String?, val groupId: String?, val nodeId: String?, val bytes: Long, val udpNodeId: String?)
+internal data class RvActivityRule(val label: String?, val groupId: String?, val nodeId: String?, val bytes: Long?, val udpNodeId: String?)
 
 /**
  * What 活動's cards read besides [RvActivityState] and its lists: today's bytes by the hour, where now falls in the day

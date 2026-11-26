@@ -75,12 +75,12 @@ class ActivityModelTest {
     }
 
     @Test
-    fun `rule rows are honk's bytes per group and direct, the most first, without the main group and block`() {
+    fun `rule rows follow honk's bytes per group and direct, the most first, without the main group and block, and carry no bytes`() {
         assertEquals(
             listOf(
-                RvActivityRule("Streaming", "g-Streaming", "n-0001c21100000000", 1_196_420_000, null),
-                RvActivityRule(null, null, null, 769_273_359, null),
-                RvActivityRule("AI", "g-AI", "n-00019bac00000000", 182_350_000, null),
+                RvActivityRule("Streaming", "g-Streaming", "n-0001c21100000000", null, null),
+                RvActivityRule(null, null, null, null, null),
+                RvActivityRule("AI", "g-AI", "n-00019bac00000000", null, null),
             ),
             map(data()).rules,
         )

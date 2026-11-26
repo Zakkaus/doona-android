@@ -30,7 +30,7 @@ import dev.doona.android.feature.model.fastest
 /**
  * 活動's cards while it loads, each part on the lines of what replaces it: the outbound card's rows (出站模式 over the
  * [mode] and its chevron's room; the main [node] over its role and its latency and change; the rule groups, which today's
- * traffic picks, with no figure: q-rule-bytes) and its see-all line, then the two traffic tiles under their captions. The words the
+ * traffic picks, over their bytes) and its see-all line, then the two traffic tiles under their captions. The words the
  * page knows before its data (the mode, the node in use) take their lines, so a name that wraps keeps its row's height.
  */
 @Composable
@@ -39,7 +39,7 @@ internal fun ActivitySkeleton(mode: RvRouteMode, node: String) {
         RvSkeletonRow(0, chevron = true, title = stringResource(R.string.act_mode), subtitleText = stringResource(mode.label))
         val role = stringResource(if (mode == RvRouteMode.Rule) R.string.rv_main_node else R.string.nav_nodes)
         RvSkeletonRow(1, end = RvSkeletonEnd.Latency, title = node, subtitleText = role, titleKeepWords = false)
-        repeat(RULE_ROWS) { RvSkeletonRow(it + 2) }
+        repeat(RULE_ROWS) { RvSkeletonRow(it + 2, end = RvSkeletonEnd.Value) }
         RvSkeletonSeeAll()
     }
     RvSkeletonTiles(listOf(stringResource(R.string.ui_download), stringResource(R.string.ui_upload)))
