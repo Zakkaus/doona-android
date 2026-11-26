@@ -1,0 +1,33 @@
+{
+  "observed_at": "2026-08-15T10:00:00Z",
+  "nodes": [
+    {
+      "id": "node-hk-01",
+      "name": "hk-01",
+      "protocol": "vless",
+      "stream_transport": "xhttp",
+      "subscription_tag": "provider-a",
+      "provider_id": "provider-a",
+      "group_ids": [
+        "group-proxy"
+      ],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "cold",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 45,
+          "moving_avg_ms": 47.5,
+          "avg10_ms": null,
+          "observed_at": "2026-08-15T10:00:00Z",
+          "error": null
+        }
+      ]
+    }
+  ],
+  "next_cursor": null
+}

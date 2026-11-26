@@ -1,0 +1,19 @@
+{
+  "generation_id": "generation-42",
+  "revision": "17",
+  "sources": [
+    {
+      "id": "source-main",
+      "path": "config.dae",
+      "kind": "main",
+      "content_sha256": "d1f62f00c6da9ec33956e66b8cc3b4670f164556fc12453193904af23451dec1",
+      "bytes": 31,
+      "writable": true,
+      "loaded_at": "2026-08-15T09:30:00Z",
+      "content": "routing {\n  fallback: direct\n}\n",
+      "line_count": 3
+    }
+  ],
+  "diagnostics": [],
+  "secrets_redacted": false
+}

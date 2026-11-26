@@ -1,0 +1,295 @@
+{
+  "id": "g-Auto",
+  "name": "Auto",
+  "icon": null,
+  "config_revision": "1",
+  "policy": {
+    "kind": "urltest",
+    "native": "urltest"
+  },
+  "members": [
+    {
+      "id": "n-0001938e00000000",
+      "name": "Hong Kong 01",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001938f00000000",
+      "name": "Hong Kong 02 IPLC",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001939000000000",
+      "name": "Hong Kong 03",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001939100000000",
+      "name": "Hong Kong 04",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001939200000000",
+      "name": "Hong Kong 05 IEPL",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001939300000000",
+      "name": "Hong Kong 06",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001c20e00000000",
+      "name": "Taipei 01",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001c20f00000000",
+      "name": "Taipei 02",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001c21000000000",
+      "name": "Taichung 03",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001c21100000000",
+      "name": "Taipei 04",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001c21200000000",
+      "name": "Kaohsiung 05",
+      "kind": "node"
+    },
+    {
+      "id": "n-00019bab00000000",
+      "name": "Tokyo 01",
+      "kind": "node"
+    },
+    {
+      "id": "n-00019bac00000000",
+      "name": "Tokyo 02",
+      "kind": "node"
+    },
+    {
+      "id": "n-00019bad00000000",
+      "name": "Osaka 03",
+      "kind": "node"
+    },
+    {
+      "id": "n-00019bae00000000",
+      "name": "Tokyo 04 IPLC",
+      "kind": "node"
+    },
+    {
+      "id": "n-00019baf00000000",
+      "name": "Osaka 05",
+      "kind": "node"
+    },
+    {
+      "id": "n-00019bb000000000",
+      "name": "Tokyo 06",
+      "kind": "node"
+    },
+    {
+      "id": "n-00019faa00000000",
+      "name": "Seoul 01",
+      "kind": "node"
+    },
+    {
+      "id": "n-00019fab00000000",
+      "name": "Seoul 02",
+      "kind": "node"
+    },
+    {
+      "id": "n-00019fac00000000",
+      "name": "Chuncheon 03",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001bc5d00000000",
+      "name": "Singapore 01",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001bc5e00000000",
+      "name": "Singapore 02",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001bc5f00000000",
+      "name": "Singapore 03",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001bc6000000000",
+      "name": "Singapore 04",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001bc6100000000",
+      "name": "Singapore 05",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001c55300000000",
+      "name": "Los Angeles 01",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001c55400000000",
+      "name": "San Jose 02",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001c55500000000",
+      "name": "Seattle 03",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001c55600000000",
+      "name": "Los Angeles 04",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001c55700000000",
+      "name": "New York 05",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001c55800000000",
+      "name": "Dallas 06",
+      "kind": "node"
+    },
+    {
+      "id": "n-00017f9300000000",
+      "name": "Vancouver 01",
+      "kind": "node"
+    },
+    {
+      "id": "n-00017f9400000000",
+      "name": "Toronto 02",
+      "kind": "node"
+    },
+    {
+      "id": "n-00018eb600000000",
+      "name": "London 01",
+      "kind": "node"
+    },
+    {
+      "id": "n-00018eb700000000",
+      "name": "London 02",
+      "kind": "node"
+    },
+    {
+      "id": "n-00018eb800000000",
+      "name": "Manchester 03",
+      "kind": "node"
+    },
+    {
+      "id": "n-00018eb900000000",
+      "name": "London 04",
+      "kind": "node"
+    },
+    {
+      "id": "n-000183d000000000",
+      "name": "Frankfurt 01",
+      "kind": "node"
+    },
+    {
+      "id": "n-000183d100000000",
+      "name": "Frankfurt 02",
+      "kind": "node"
+    },
+    {
+      "id": "n-000183d200000000",
+      "name": "Berlin 03",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001aa3300000000",
+      "name": "Amsterdam 01",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001aa3400000000",
+      "name": "Amsterdam 02",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001aa3500000000",
+      "name": "Rotterdam 03",
+      "kind": "node"
+    },
+    {
+      "id": "n-00018ce500000000",
+      "name": "Paris 01",
+      "kind": "node"
+    },
+    {
+      "id": "n-00018ce600000000",
+      "name": "Marseille 02",
+      "kind": "node"
+    },
+    {
+      "id": "n-00017a7d00000000",
+      "name": "Sydney 01",
+      "kind": "node"
+    },
+    {
+      "id": "n-00017a7e00000000",
+      "name": "Melbourne 02",
+      "kind": "node"
+    },
+    {
+      "id": "n-00017a7f00000000",
+      "name": "Sydney 03",
+      "kind": "node"
+    }
+  ],
+  "config": {
+    "default_member_id": null,
+    "final_outbound": null,
+    "check_url": null,
+    "check_interval": 300,
+    "tolerance": 50,
+    "idle_timeout": null,
+    "interrupt_connections": false
+  },
+  "runtime": {
+    "selection": {
+      "tcp": {
+        "member_id": "n-0001c21100000000",
+        "resolved_leaf_node_id": "n-0001c21100000000",
+        "source": "health"
+      },
+      "udp": {
+        "member_id": "n-0001c21100000000",
+        "resolved_leaf_node_id": "n-0001c21100000000",
+        "source": "health"
+      }
+    },
+    "health": []
+  },
+  "capabilities": {
+    "can_select": false,
+    "can_override": true,
+    "supports_nested_groups": true,
+    "mutable_config": [
+      "policy",
+      "default_member_id",
+      "final_outbound",
+      "check_url",
+      "check_interval",
+      "tolerance",
+      "idle_timeout",
+      "interrupt_connections"
+    ],
+    "probe_transports": [
+      "tcp",
+      "udp"
+    ]
+  }
+}

@@ -1,0 +1,210 @@
+{
+  "generation_id": "generation-1",
+  "rules": [
+    {
+      "rule_id": "traffic:0",
+      "index": 0,
+      "expression": "domain(netflix.com, netflix.net, nflxext.com, nflximg.net, nflxso.net, nflxvideo.net, youtube.com, googlevideo.com, ytimg.com, disneyplus.com, bamgrid.com, dssott.com) -> Streaming",
+      "outbound": "Streaming",
+      "must": false,
+      "source": {
+        "file": "routing.dae",
+        "source_id": "source-main",
+        "line": 3,
+        "column": 5
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "traffic:1",
+      "index": 1,
+      "expression": "domain(openai.com, chatgpt.com, oaistatic.com, oaiusercontent.com, anthropic.com, claude.ai) -> AI",
+      "outbound": "AI",
+      "must": false,
+      "source": {
+        "file": "routing.dae",
+        "source_id": "source-main",
+        "line": 4,
+        "column": 5
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "traffic:2",
+      "index": 2,
+      "expression": "dip(geoip:CN) -> direct",
+      "outbound": "direct",
+      "must": false,
+      "source": {
+        "file": "routing.dae",
+        "source_id": "source-main",
+        "line": 5,
+        "column": 5
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "traffic:3",
+      "index": 3,
+      "expression": "dip(geoip:private) -> direct",
+      "outbound": "direct",
+      "must": false,
+      "source": {
+        "file": "routing.dae",
+        "source_id": "source-main",
+        "line": 6,
+        "column": 5
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "traffic:4",
+      "index": 4,
+      "expression": "domain(full:gemini.google.com) -> AI",
+      "outbound": "AI",
+      "must": false,
+      "source": {
+        "file": "routing.dae",
+        "source_id": "source-main",
+        "line": 7,
+        "column": 5
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "traffic:5",
+      "index": 5,
+      "expression": "domain(suffix:github.com) -> Proxy",
+      "outbound": "Proxy",
+      "must": false,
+      "source": {
+        "file": "routing.dae",
+        "source_id": "source-main",
+        "line": 8,
+        "column": 5
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "traffic:6",
+      "index": 6,
+      "expression": "domain(keyword:gamer) -> TW",
+      "outbound": "TW",
+      "must": false,
+      "source": {
+        "file": "routing.dae",
+        "source_id": "source-main",
+        "line": 9,
+        "column": 5
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "traffic:7",
+      "index": 7,
+      "expression": "dip(91.108.56.0/22) -> Proxy",
+      "outbound": "Proxy",
+      "must": false,
+      "source": {
+        "file": "routing.dae",
+        "source_id": "source-main",
+        "line": 10,
+        "column": 5
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "traffic:8",
+      "index": 8,
+      "expression": "domain(geosite:google) -> Proxy",
+      "outbound": "Proxy",
+      "must": false,
+      "source": {
+        "file": "routing.dae",
+        "source_id": "source-main",
+        "line": 11,
+        "column": 5
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "traffic:9",
+      "index": 9,
+      "expression": "domain(suffix:icloud.com) -> direct",
+      "outbound": "direct",
+      "must": false,
+      "source": {
+        "file": "routing.dae",
+        "source_id": "source-main",
+        "line": 12,
+        "column": 5
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "traffic:10",
+      "index": 10,
+      "expression": "domain(suffix:steamcontent.com) -> direct",
+      "outbound": "direct",
+      "must": false,
+      "source": {
+        "file": "routing.dae",
+        "source_id": "source-main",
+        "line": 13,
+        "column": 5
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "traffic:11",
+      "index": 11,
+      "expression": "domain(geosite:apple-cn) -> direct",
+      "outbound": "direct",
+      "must": false,
+      "source": {
+        "file": "routing.dae",
+        "source_id": "source-main",
+        "line": 14,
+        "column": 5
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "traffic:12",
+      "index": 12,
+      "expression": "domain(suffix:nintendo.net) -> JP",
+      "outbound": "JP",
+      "must": false,
+      "source": {
+        "file": "routing.dae",
+        "source_id": "source-main",
+        "line": 15,
+        "column": 5
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "traffic:13",
+      "index": 13,
+      "expression": "fallback: Proxy",
+      "outbound": "Proxy",
+      "must": false,
+      "source": {
+        "file": "routing.dae",
+        "source_id": "source-main",
+        "line": 16,
+        "column": 5
+      },
+      "kind": "fallback"
+    }
+  ],
+  "fallback": {
+    "outbound": "Proxy",
+    "source": {
+      "file": "routing.dae",
+      "source_id": "source-main",
+      "line": 16,
+      "column": 5
+    }
+  }
+}

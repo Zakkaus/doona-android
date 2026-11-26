@@ -1,0 +1,86 @@
+{
+  "id": "group-proxy",
+  "name": "proxy",
+  "icon": "https://icons.example/proxy.png",
+  "config_revision": "17",
+  "policy": {
+    "kind": "urltest",
+    "native": "urltest"
+  },
+  "members": [
+    {
+      "id": "node-hk-01",
+      "name": "hk-01",
+      "kind": "node"
+    },
+    {
+      "id": "group-jp",
+      "name": "jp",
+      "kind": "group"
+    }
+  ],
+  "config": {
+    "default_member_id": null,
+    "final_outbound": "direct",
+    "check_url": null,
+    "check_interval": 30,
+    "tolerance": 50,
+    "idle_timeout": null,
+    "interrupt_connections": false
+  },
+  "runtime": {
+    "selection": {
+      "tcp": {
+        "member_id": "node-hk-01",
+        "resolved_leaf_node_id": "node-hk-01",
+        "source": "health"
+      },
+      "udp": null
+    },
+    "health": [
+      {
+        "member_id": "node-hk-01",
+        "resolved_leaf_node_id": "node-hk-01",
+        "transport": "tcp",
+        "purpose": "shared",
+        "ip_version": "ipv4",
+        "warmth": "unknown",
+        "measurement": "http_round_trip",
+        "sample_source": "probe",
+        "state": "healthy",
+        "latency_ms": 45,
+        "moving_avg_ms": 47.5,
+        "avg10_ms": null,
+        "sorting_latency_ms": 72.5,
+        "ranking": {
+          "metric": "moving_avg_ms",
+          "recovery_penalty_ms": 10,
+          "group_offset_ms": 15,
+          "score": null,
+          "reason": "minimum_with_hysteresis"
+        },
+        "observed_at": "2026-08-15T10:00:00Z",
+        "error": null
+      }
+    ]
+  },
+  "capabilities": {
+    "can_select": false,
+    "can_override": true,
+    "supports_nested_groups": true,
+    "mutable_config": [
+      "policy",
+      "default_member_id",
+      "final_outbound",
+      "check_url",
+      "check_interval",
+      "tolerance",
+      "idle_timeout",
+      "interrupt_connections"
+    ],
+    "probe_transports": [
+      "tcp",
+      "udp"
+    ]
+  }
+}

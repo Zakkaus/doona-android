@@ -1,0 +1,25 @@
+{
+  "providers": [
+    {
+      "id": "provider-a",
+      "name": "provider-a",
+      "kind": "subscription",
+      "url_redacted": "https://subscriptions.example.com/a/sub?token=secret-a",
+      "node_count": 1,
+      "updated_at": "2026-08-15T10:00:00Z",
+      "expires_at": "2026-10-01T00:00:00Z",
+      "traffic": {
+        "upload_bytes": "1048576",
+        "download_bytes": "2097152",
+        "total_bytes": "107374182400"
+      },
+      "status": "ok",
+      "last_error": null,
+      "download": {
+        "route": "routing",
+        "group_id": null
+      }
+    }
+  ],
+  "next_cursor": null
+}
