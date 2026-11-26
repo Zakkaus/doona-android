@@ -44,7 +44,6 @@
     <string name="rv_import_add">Add</string>
     <!-- 新增節點 on 訂閱 (p5d; approved s1125f-addnode-*, except the lines marked new) -->
     <string name="rv_addnode">Add node</string>
-    <string name="rv_addnode_line">Paste a node\'s share link</string>
     <string name="rv_addnode_help">Paste a node\'s share link. The node is named after the link\'s #fragment, else its host.</string>
     <string name="rv_addnode_link">Node link</string>
     <string name="rv_addnode_as">Will be added as “%1$s”</string>
@@ -88,4 +87,6 @@
     <string name="rv_addnode_group_readonly">Read-only file</string>
     <string name="rv_node_delete">Delete node</string>
     <string name="rv_node_delete_body">The node leaves the configuration and every group it is in.</string>
+    <string name="rv_subs_add_subscription">Subscription</string>
+    <string name="rv_subs_add_node">Node</string>
 </resources>

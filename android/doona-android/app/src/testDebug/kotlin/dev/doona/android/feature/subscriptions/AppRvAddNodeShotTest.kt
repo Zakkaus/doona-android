@@ -12,7 +12,7 @@ import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -55,22 +55,22 @@ class AppRvAddNodeShotTest {
     @get:Rule
     val utc = Utc()
 
-    // The card under the subscriptions, before any node is added.
+    // 訂閱's one 新增, its menu of 訂閱 and 節點 open.
     @Test
     @Config(qualifiers = ZH)
-    fun entryLight() = page("addnode-entry") { Subs() }
+    fun entryLight() = sheet("addnode-entry", { menu() })
 
     @Test
     @Config(qualifiers = ZH)
-    fun entryDark() = page("addnode-entry", dark = true) { Subs() }
+    fun entryDark() = sheet("addnode-entry", { menu() }, dark = true)
 
     @Test
-    @Config(qualifiers = ZH)
-    fun entryFs200() = page("addnode-entry", fontScale = RV_FS200) { Subs() }
+    @Config(qualifiers = ZH_927)
+    fun entryFs200() = sheet("addnode-entry", { menu() }, fontScale = RV_FS200)
 
     @Test
     @Config(qualifiers = EN)
-    fun entryEn() = page("addnode-entry", english = true) { Subs() }
+    fun entryEn() = sheet("addnode-entry", { menu() }, english = true)
 
     // The sheet, empty, the clipboard holding a link.
     @Test
@@ -132,7 +132,7 @@ class AppRvAddNodeShotTest {
         compose.rvContent(dark = false) { Subs(build = { honk }) }
         compose.pickGroup(TOKYO, "HK")
         compose.onNodeWithText(string(R.string.rv_cancel)).assertIsNotDisplayed().performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText(string(R.string.rv_add_import)).performScrollTo().assertIsDisplayed().performClick()
+        compose.onAllNodesWithText(string(R.string.rv_add_import)).onLast().performScrollTo().assertIsDisplayed().performClick()
         compose.waitForIdle()
         assertEquals(listOf("source-regions"), honk.writes.map { it.first })
     }
@@ -362,10 +362,17 @@ class AppRvAddNodeShotTest {
         SubscriptionsRoute(onBack = {}, onOpen = {}, onAdd = {}, clock = { RvData.nowEpochMs }, viewModel = subscriptions, nodes = nodes)
     }
 
-    /** The card's 新增節點 tapped, the clipboard holding [clip]. */
+    /** The page's 新增 tapped: its menu of 訂閱 and 節點. */
+    private fun ComposeContentTestRule.menu() {
+        onNodeWithText(string(R.string.rv_list_create)).performClick()
+        waitForIdle()
+    }
+
+    /** 新增's 節點 picked, the clipboard holding [clip]. */
     private fun ComposeContentTestRule.open(clip: String?) {
         clipboard().apply { if (clip == null) clearPrimaryClip() else setPrimaryClip(ClipData.newPlainText("link", clip)) }
-        onAllNodesWithText(string(R.string.rv_addnode)).onFirst().performClick()
+        menu()
+        onNodeWithText(string(R.string.rv_subs_add_node)).performClick()
         waitForIdle()
     }
 
@@ -404,9 +411,12 @@ class AppRvAddNodeShotTest {
 
     private fun ComposeContentTestRule.tapAdd() = tap(string(R.string.rv_add_import))
 
-    /** [text] tapped, scrolled to first when off the window: 加入群組 runs the sheet past a phone's window. */
+    /**
+     * [text] tapped, scrolled to first when off the window: 加入群組 runs the sheet past a phone's window. The sheet's
+     * window is the last, so its 新增 is the last of the page's and its own.
+     */
     private fun ComposeContentTestRule.tap(text: String) {
-        val node = onNodeWithText(text)
+        val node = onAllNodesWithText(text).onLast()
         if (!node.isDisplayed()) node.performScrollTo()
         node.performClick()
         waitForIdle()

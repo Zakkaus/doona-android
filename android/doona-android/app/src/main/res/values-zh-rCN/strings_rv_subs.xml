@@ -40,7 +40,6 @@
     <string name="rv_import_add">添加</string>
     <!-- 新增節點 on 訂閱 (p5d; approved s1125f-addnode-*, except the lines marked new) -->
     <string name="rv_addnode">添加节点</string>
-    <string name="rv_addnode_line">粘贴节点的分享链接</string>
     <string name="rv_addnode_help">粘贴节点的分享链接。节点名称取自链接的 #⁠片段，没有则取主机名。</string>
     <string name="rv_addnode_link">节点链接</string>
     <string name="rv_addnode_as">将添加为「%1$s」</string>
@@ -77,4 +76,6 @@
     <string name="rv_addnode_group_readonly">只读文件</string>
     <string name="rv_node_delete">删除节点</string>
     <string name="rv_node_delete_body">节点会从配置内与它所在的组移除。</string>
+    <string name="rv_subs_add_subscription">订阅</string>
+    <string name="rv_subs_add_node">节点</string>
 </resources>

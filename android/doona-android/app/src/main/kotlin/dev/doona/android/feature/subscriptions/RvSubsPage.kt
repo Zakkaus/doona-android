@@ -20,7 +20,7 @@ import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.LocalRvUpdating
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
-import dev.doona.android.designsystem.rv.RvAddEntry
+import dev.doona.android.designsystem.rv.RvAddMenuButton
 import dev.doona.android.designsystem.rv.RvBusy
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvChevron
@@ -119,7 +119,12 @@ internal fun RvSubsPage(
     } else {
         { glass -> RvGlassButton(glass, R.drawable.rv_stats_ic_sync, stringResource(R.string.rv_stats_update_all), actions.updateAll) }
     }
-    val add: (@Composable () -> Unit)? = if (empty) null else ({ RvPrimaryButton(stringResource(R.string.rv_add_subscription), actions.add) })
+    // One 新增 for both kinds, the same menu as 全部規則's (owner, 2026-11-26 21:58).
+    val items = listOfNotNull(
+        RvMenuItem(stringResource(R.string.rv_subs_add_subscription), R.drawable.rv_sym_rss_feed, onClick = actions.add),
+        addNode?.let { RvMenuItem(stringResource(R.string.rv_subs_add_node), R.drawable.rv_sym_link, onClick = it) },
+    )
+    val add: @Composable () -> Unit = { RvAddMenuButton(stringResource(R.string.rv_list_create), items) }
     // A failed update's banner waits for the cards: while they load it is not known yet.
     val failed = if (loading) {
         null
@@ -131,13 +136,7 @@ internal fun RvSubsPage(
         RvLargeTitle(title, titleBlock, insets)
         RvGutter(banner = rvFirstNotice(failed, banner.takeUnless { loading })) {
             if (empty) {
-                RvEmptyState(
-                    stringResource(R.string.rv_empty_subscription),
-                    stringResource(R.string.rv_empty_subscription_line),
-                    stringResource(R.string.rv_add_subscription),
-                    actions.add,
-                    second = addNode?.let { RvAddEntry(stringResource(R.string.rv_addnode), it) },
-                )
+                RvEmptyState(stringResource(R.string.rv_empty_subscription), stringResource(R.string.rv_empty_subscription_line), null, {})
             } else {
                 RvSkeletonCards(loading, { SubsSkeleton(state.subscriptions) }) {
                     state.subscriptions.forEach { sub ->
