@@ -1,0 +1,15 @@
+{
+  "policy": {
+    "kind": "urltest",
+    "native": "urltest"
+  },
+  "config": {
+    "default_member_id": null,
+    "final_outbound": "direct",
+    "check_url": null,
+    "check_interval": 30,
+    "tolerance": 50,
+    "idle_timeout": null,
+    "interrupt_connections": false
+  }
+}
