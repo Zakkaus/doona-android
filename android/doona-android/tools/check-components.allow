@@ -6,5 +6,3 @@ main/kotlin/dev/doona/android/feature/settings/RvThemeScreen.kt|rowctl|1|the rad
 main/kotlin/dev/doona/android/feature/policies/RvPolicyScreen.kt|navend|1|ValueRow's grey value and chevron: owner question q-e8 (unify-1126), the library's RvRowEndName is black rowValue
 main/kotlin/dev/doona/android/feature/subscriptions/RvSubsPage.kt|navend|1|busy bar before the chevron while a subscription updates: waits on q-e8 (unify-1126), the same row end
 main/kotlin/dev/doona/android/feature/subscriptions/RvSubAdd.kt|tint|1|done disc in good while node detail's check is positive: owner question q-item4 (unify-1126)
-main/kotlin/dev/doona/android/feature/subscriptions/RvSubDetail.kt|tint|1|delete disc in error while the rules page's discard disc is text: owner question q-e4 (unify-1126)
-debug/kotlin/dev/doona/android/prototype/rv/connections/RvConnectionDetail.kt|tint|1|close disc in error, the same role as q-e4 (unify-1126)

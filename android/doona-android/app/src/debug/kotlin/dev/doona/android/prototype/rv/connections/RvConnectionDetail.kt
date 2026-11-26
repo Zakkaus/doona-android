@@ -75,7 +75,7 @@ internal fun RvConnectionDetail(
         RvGutter {
             PathCard(connection)
             RvCard { RvAddRow(stringResource(R.string.rv_policy_new_rule), onNewRule) }
-            RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_close, Rv.colors.error) }, stringResource(R.string.rv_conn_close), null, onClick = onClose) }
+            RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_close, destructive = true) }, stringResource(R.string.rv_conn_close), null, onClick = onClose) }
         }
     }
 }

@@ -346,13 +346,23 @@ internal object RvPart {
 
 /**
  * A row's leading disc: a glyph on the raised fill (a header takes [RvSize.headerDisc]; [glyph] keeps the row's proportion
- * unless it says otherwise, a notice's [RvSize.noticeGlyph]); the [current] node's carries the flag's check badge.
+ * unless it says otherwise, a notice's [RvSize.noticeGlyph]); the [current] node's carries the flag's check badge. A
+ * [destructive] row's disc (delete, discard, close) draws its glyph in the error hue, as a destructive menu entry does,
+ * and its title stays in ink (owner, q-e4 2026-11-26).
  */
 @Composable
-internal fun RvIconDisc(@DrawableRes icon: Int, color: Color = Rv.colors.text, size: Dp = RvSize.rowDisc, glyph: Dp = RvSize.rowGlyph * (size / RvSize.rowDisc), current: Boolean = false) {
+internal fun RvIconDisc(
+    @DrawableRes icon: Int,
+    color: Color = Rv.colors.text,
+    size: Dp = RvSize.rowDisc,
+    glyph: Dp = RvSize.rowGlyph * (size / RvSize.rowDisc),
+    current: Boolean = false,
+    destructive: Boolean = false,
+) {
+    val tint = if (destructive) Rv.colors.error else color
     Box(Modifier.size(size).testTag(RvRowPart.ICON_DISC)) {
         Box(Modifier.matchParentSize().clip(CircleShape).background(Rv.colors.discOnCard), contentAlignment = Alignment.Center) {
-            RvGlyph(icon, glyph, color)
+            RvGlyph(icon, glyph, tint)
         }
         if (current) RvCurrentBadge(Rv.colors.card, Modifier.align(Alignment.BottomEnd).offset(RvSize.badgeOverhang, RvSize.badgeOverhang))
     }
