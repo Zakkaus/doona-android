@@ -16,12 +16,6 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Mode
-import dev.doona.android.engine.RuleKind
-import dev.doona.android.engine.RulePage
-import dev.doona.android.engine.RuleRow
-import dev.doona.android.engine.RuleTarget
-import dev.doona.android.engine.fake.FakeEngine
-import dev.doona.android.engine.fake.RvSampleRules
 import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
@@ -29,7 +23,11 @@ import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvRowRules
 import dev.doona.android.testing.drawFully
+import dev.doona.android.vpn.FakeHonk
+import dev.doona.android.vpn.HonkFixtures
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.test.StandardTestDispatcher
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -39,11 +37,10 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * 策略 as the app draws it: an engine, PoliciesViewModel, the mapper, then the page (goldens `app-rv-policy-*`). On the RV
- * sample engine in 規則 it is the page of `proto-rv-policy-*`, in the same windows; before the engine is ready it is the
- * skeleton of `proto-rv-policy-loading-*`, and with no subscription the empty state of `proto-rv-policy-empty-*`. The
- * engine's own sample instant, 2026-11-22 10:24 UTC, is the page's now. No place mapper is wired yet (P3c), so every
- * node is 其他.
+ * 策略 as the app draws it: honk's native API ([HonkFixtures]), PoliciesViewModel, the mapper, then the page (goldens
+ * `app-rv-policy-*`); the mode is the sample engine's. On the RV sample in 規則 it is the page of `proto-rv-policy-*`, in
+ * the same windows; before the first read ends it is the skeleton of `proto-rv-policy-loading-*`, and with no
+ * subscription the empty state of `proto-rv-policy-empty-*`. The sample instant, 2026-11-22 10:24 UTC, is the page's now.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -57,35 +54,35 @@ class AppRvPolicyShotTest {
 
     @Test
     @Config(qualifiers = WHOLE_RULE)
-    fun ruleLight() = shot("policy", dark = false, whole = true) { Page(::rvSampleEngine) }
+    fun ruleLight() = shot("policy", dark = false, whole = true) { Page(HonkFixtures::rvSample) }
 
     @Test
     @Config(qualifiers = WHOLE_RULE)
-    fun ruleDark() = shot("policy", dark = true, whole = true) { Page(::rvSampleEngine) }
+    fun ruleDark() = shot("policy", dark = true, whole = true) { Page(HonkFixtures::rvSample) }
 
     @Test
-    fun ruleFs200() = shot("policy", dark = false, fontScale = RV_FS200) { Page(::rvSampleEngine) }
+    fun ruleFs200() = shot("policy", dark = false, fontScale = RV_FS200) { Page(HonkFixtures::rvSample) }
 
     @Test
     @Config(qualifiers = WHOLE_RULE_EN)
-    fun ruleEnLight() = shot("policy-en", dark = false, whole = true) { Page(::rvSampleEngine) }
+    fun ruleEnLight() = shot("policy-en", dark = false, whole = true) { Page(HonkFixtures::rvSample) }
 
     /**
-     * Groups as a user writes them in honk by hand ([honkGroupsEngine]): no main group, nested groups, a fallback, an empty
+     * Groups as a user writes them in honk by hand ([HonkFixtures.honkGroups]): no main group, nested groups, a fallback, an empty
      * group. Its rules lead with a REJECT (拒絕), and the sample's rules name groups this profile lacks (找不到群組).
      */
     @Test
-    fun honkGroupsLight() = shot("policy-honk", dark = false) { Page(::honkRules) }
+    fun honkGroupsLight() = shot("policy-honk", dark = false) { Page(HonkFixtures::honkGroups) }
 
     /** The first read failed: the banner with 重試 in place of the cards, no skeleton left standing. */
     @Test
     fun readFailedLight() = shot("policy-read-failed", dark = false) { Page(::unreadable) }
 
     @Test
-    fun loadingLight() = shot("policy-loading", dark = false) { Page(::notReady) }
+    fun loadingLight() = shot("policy-loading", dark = false) { Page(HonkFixtures::rvSample, io = StandardTestDispatcher()) }
 
     @Test
-    fun loadingDark() = shot("policy-loading", dark = true) { Page(::notReady) }
+    fun loadingDark() = shot("policy-loading", dark = true) { Page(HonkFixtures::rvSample, io = StandardTestDispatcher()) }
 
     @Test
     fun emptyLight() = shot("policy-empty", dark = false) { Page(::noSubscription) }
@@ -104,7 +101,7 @@ class AppRvPolicyShotTest {
                 return answer
             }
         }
-        compose.rvContent(dark = false) { Page({ failing }) }
+        compose.rvContent(dark = false) { Page(HonkFixtures::rvSample, engine = failing) }
         compose.onAllNodes(hasText(text(R.string.rv_failed_switch_mode)), useUnmergedTree = true).fetchSemanticsNodes().let { assertEquals(0, it.size) }
         // The mode switch heads the page; the rules below it can also go 直連.
         compose.onAllNodes(hasText(text(R.string.mode_direct)), useUnmergedTree = true)[0].performClick()
@@ -143,36 +140,32 @@ class AppRvPolicyShotTest {
         compose.onRoot().captureToImage().asAndroidBitmap().captureRoboImage("$SHOTS/$name.png")
     }
 
-    /** The route on a view model with the sample's clock, reading on the test's thread. */
+    /** The route on a view model with the sample's clock, reading [honk] on [io] (the test's thread by default). */
     @Composable
-    private fun Page(engine: () -> Engine, onOpenSubscriptions: () -> Unit = {}) {
-        val vm = remember { PoliciesViewModel(engine(), clock = { SAMPLE_NOW }, reads = Dispatchers.Unconfined) }
+    private fun Page(
+        honk: () -> FakeHonk,
+        onOpenSubscriptions: () -> Unit = {},
+        engine: Engine = rvSampleEngine(),
+        io: CoroutineDispatcher = Dispatchers.Unconfined,
+    ) {
+        val vm = remember { PoliciesViewModel(engine, honk(), clock = { SAMPLE_NOW }, io = io) }
         PoliciesRoute(vm, onOpenGroup = {}, onOpenSubscriptions = onOpenSubscriptions)
     }
 
-    /** The sample engine before it is ready: the page waits as a skeleton. */
-    private fun notReady(): FakeEngine = rvSampleEngine().apply { ready.value = false }
-
-    /** [honkGroupsEngine] whose rules start with one that refuses its flows. */
-    private fun honkRules(): Engine = object : Engine by honkGroupsEngine() {
-        override suspend fun rules(offset: Int, limit: Int): Result<RulePage> = Result.success(
-            RulePage(1L, RvSampleRules.rows.size + 1, listOf(REJECT_ADS) + RvSampleRules.rows.take(limit - 1)),
-        )
+    /** The sample whose rules honk cannot read. */
+    private fun unreadable(): FakeHonk = HonkFixtures.rvSample().apply {
+        on("GET", "/api/v1/rules", 503, HonkFixtures.body("errors/snapshot-unavailable"))
     }
 
-    /** The sample engine whose rules cannot be read. */
-    private fun unreadable(): Engine = object : Engine by rvSampleEngine() {
-        override suspend fun rules(offset: Int, limit: Int): Result<RulePage> = Result.failure(EngineException(ErrorCode.Busy))
+    /** The sample with no subscription: nothing to route. */
+    private fun noSubscription(): FakeHonk = HonkFixtures.rvSample().apply {
+        on("GET", "/api/v1/providers", 200, """{"providers": [], "next_cursor": null}""")
     }
-
-    /** The sample engine's groups with no subscription: nothing to route. */
-    private fun noSubscription(): FakeEngine = rvSampleEngine().apply { subscriptions.value = emptyList() }
 
     private companion object {
         val SHOTS: String = System.getProperty("doona.shots") ?: "src/test/screenshots"
         const val PERCENT = 100
         const val SAMPLE_NOW = 1_795_343_040_000L
-        val REJECT_ADS = RuleRow("r-ads", 0, RuleKind.DomainSuffix, "DomainSuffix", "ads.example", 1, RuleTarget.Reject)
 
         /** `proto-rv-policy-{light,dark}`'s window, as tall as the page whole. */
         const val WHOLE_RULE = "+h1990dp"

@@ -7,7 +7,9 @@ import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvMemberGroup
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
+import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.protocolName
+import dev.doona.android.feature.subscriptions.subscriptionHost
 import dev.doona.android.vpn.honk.Group
 import dev.doona.android.vpn.honk.HealthState
 import dev.doona.android.vpn.honk.MemberKind
@@ -15,6 +17,7 @@ import dev.doona.android.vpn.honk.Node
 import dev.doona.android.vpn.honk.PolicyKind
 import dev.doona.android.vpn.honk.Provider
 import dev.doona.android.vpn.honk.Transport
+import java.time.OffsetDateTime
 
 /**
  * A honk node as the pages draw it. honk keeps one health observation per network, so the history is the latest TCP one
@@ -71,3 +74,33 @@ internal fun rvPolicyGroup(group: Group, groups: Map<String, Group>, nodes: Map<
 
 /** The node this group's TCP selection ends on, through any nested groups, as honk resolves it; null before it chose one. */
 internal fun Group.leafNodeId(): String? = runtime.selection.tcp?.resolvedLeafNodeId
+
+/**
+ * The member of [group] to select so that it carries [nodeId]: the node itself when it is a member, else the first member
+ * group whose selection ends on it, as the pages list member groups by their leaf node.
+ */
+internal fun memberFor(group: Group, nodeId: String, groups: Map<String, Group>): String =
+    group.members.firstOrNull { it.kind == MemberKind.Node && it.id == nodeId }?.id
+        ?: group.members.firstOrNull { it.kind == MemberKind.Group && groups[it.id]?.leafNodeId() == nodeId }?.id
+        ?: nodeId
+
+/**
+ * A honk subscription as the pages draw it. honk sends neither the subscription's format nor its user agent; a figure the
+ * provider's `subscription-userinfo` left out counts as 0, as the pages read a missing quota.
+ */
+internal fun rvSubscription(provider: Provider): RvSubscription {
+    val traffic = provider.traffic
+    return RvSubscription(
+        id = provider.id,
+        name = provider.name,
+        nodes = provider.nodeCount,
+        updatedAtEpochMs = provider.updatedAt?.let(::epochMs),
+        usedBytes = (traffic?.uploadBytes?.toLong() ?: 0L) + (traffic?.downloadBytes?.toLong() ?: 0L),
+        totalBytes = traffic?.totalBytes?.toLong() ?: 0L,
+        expiresAtEpochMs = provider.expiresAt?.let(::epochMs),
+        host = provider.urlRedacted?.let(::subscriptionHost).orEmpty(),
+        format = null,
+    )
+}
+
+private fun epochMs(rfc3339: String): Long = OffsetDateTime.parse(rfc3339).toInstant().toEpochMilli()

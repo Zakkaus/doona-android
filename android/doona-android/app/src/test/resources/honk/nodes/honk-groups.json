@@ -1,0 +1,1259 @@
+{
+  "observed_at": "2026-11-22T10:00:00Z",
+  "nodes": [
+    {
+      "id": "n-0001938e00000000",
+      "name": "Hong Kong 01",
+      "protocol": "trojan",
+      "stream_transport": "tcp",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [
+        "g-出口",
+        "g-香港"
+      ],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 33,
+          "moving_avg_ms": 33,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001938f00000000",
+      "name": "Hong Kong 02 IPLC",
+      "protocol": "vless",
+      "stream_transport": "grpc",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [
+        "g-出口",
+        "g-香港"
+      ],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 32,
+          "moving_avg_ms": 32,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001939000000000",
+      "name": "Hong Kong 03",
+      "protocol": "ss",
+      "stream_transport": "tcp",
+      "subscription_tag": "s2",
+      "provider_id": "s2",
+      "group_ids": [
+        "g-香港"
+      ],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 46,
+          "moving_avg_ms": 46,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001939100000000",
+      "name": "Hong Kong 04",
+      "protocol": "hysteria2",
+      "stream_transport": "quic",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [
+        "g-香港"
+      ],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 49,
+          "moving_avg_ms": 49,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001939200000000",
+      "name": "Hong Kong 05 IEPL",
+      "protocol": "trojan",
+      "stream_transport": "ws",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [
+        "g-香港"
+      ],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 36,
+          "moving_avg_ms": 36,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001939300000000",
+      "name": "Hong Kong 06",
+      "protocol": "vmess",
+      "stream_transport": "ws",
+      "subscription_tag": "s2",
+      "provider_id": "s2",
+      "group_ids": [
+        "g-香港"
+      ],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 73,
+          "moving_avg_ms": 73,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001c20e00000000",
+      "name": "Taipei 01",
+      "protocol": "trojan",
+      "stream_transport": "tcp",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 27,
+          "moving_avg_ms": 27,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001c20f00000000",
+      "name": "Taipei 02",
+      "protocol": "hysteria2",
+      "stream_transport": "quic",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 27,
+          "moving_avg_ms": 27,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001c21000000000",
+      "name": "Taichung 03",
+      "protocol": "ss",
+      "stream_transport": "tcp",
+      "subscription_tag": "s2",
+      "provider_id": "s2",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 33,
+          "moving_avg_ms": 33,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001c21100000000",
+      "name": "Taipei 04",
+      "protocol": "vless",
+      "stream_transport": "grpc",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 26,
+          "moving_avg_ms": 26,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001c21200000000",
+      "name": "Kaohsiung 05",
+      "protocol": "tuic",
+      "stream_transport": "quic",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 50,
+          "moving_avg_ms": 50,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-00019bab00000000",
+      "name": "Tokyo 01",
+      "protocol": "vless",
+      "stream_transport": "grpc",
+      "subscription_tag": "s2",
+      "provider_id": "s2",
+      "group_ids": [
+        "g-日本"
+      ],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 61,
+          "moving_avg_ms": 61,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-00019bac00000000",
+      "name": "Tokyo 02",
+      "protocol": "trojan",
+      "stream_transport": "tcp",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [
+        "g-日本"
+      ],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 49,
+          "moving_avg_ms": 49,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-00019bad00000000",
+      "name": "Osaka 03",
+      "protocol": "hysteria2",
+      "stream_transport": "quic",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [
+        "g-日本"
+      ],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 61,
+          "moving_avg_ms": 61,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-00019bae00000000",
+      "name": "Tokyo 04 IPLC",
+      "protocol": "ss",
+      "stream_transport": "tcp",
+      "subscription_tag": "s2",
+      "provider_id": "s2",
+      "group_ids": [
+        "g-日本"
+      ],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 59,
+          "moving_avg_ms": 59,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-00019baf00000000",
+      "name": "Osaka 05",
+      "protocol": "vmess",
+      "stream_transport": "ws",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [
+        "g-日本"
+      ],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 78,
+          "moving_avg_ms": 78,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-00019bb000000000",
+      "name": "Tokyo 06",
+      "protocol": "tuic",
+      "stream_transport": "quic",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [
+        "g-日本"
+      ],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 51,
+          "moving_avg_ms": 51,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-00019faa00000000",
+      "name": "Seoul 01",
+      "protocol": "trojan",
+      "stream_transport": "tcp",
+      "subscription_tag": "s2",
+      "provider_id": "s2",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 79,
+          "moving_avg_ms": 79,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-00019fab00000000",
+      "name": "Seoul 02",
+      "protocol": "vless",
+      "stream_transport": "grpc",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 88,
+          "moving_avg_ms": 88,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-00019fac00000000",
+      "name": "Chuncheon 03",
+      "protocol": "ss",
+      "stream_transport": "tcp",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 93,
+          "moving_avg_ms": 93,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001bc5d00000000",
+      "name": "Singapore 01",
+      "protocol": "trojan",
+      "stream_transport": "tcp",
+      "subscription_tag": "s2",
+      "provider_id": "s2",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 77,
+          "moving_avg_ms": 77,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001bc5e00000000",
+      "name": "Singapore 02",
+      "protocol": "hysteria2",
+      "stream_transport": "quic",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 86,
+          "moving_avg_ms": 86,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001bc5f00000000",
+      "name": "Singapore 03",
+      "protocol": "vless",
+      "stream_transport": "grpc",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 186,
+          "moving_avg_ms": 186,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001bc6000000000",
+      "name": "Singapore 04",
+      "protocol": "ss",
+      "stream_transport": "tcp",
+      "subscription_tag": "s2",
+      "provider_id": "s2",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 108,
+          "moving_avg_ms": 108,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001bc6100000000",
+      "name": "Singapore 05",
+      "protocol": "trojan",
+      "stream_transport": "ws",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 103,
+          "moving_avg_ms": 103,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001c55300000000",
+      "name": "Los Angeles 01",
+      "protocol": "vless",
+      "stream_transport": "grpc",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 142,
+          "moving_avg_ms": 142,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001c55400000000",
+      "name": "San Jose 02",
+      "protocol": "trojan",
+      "stream_transport": "tcp",
+      "subscription_tag": "s2",
+      "provider_id": "s2",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 162,
+          "moving_avg_ms": 162,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001c55500000000",
+      "name": "Seattle 03",
+      "protocol": "hysteria2",
+      "stream_transport": "quic",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 174,
+          "moving_avg_ms": 174,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001c55600000000",
+      "name": "Los Angeles 04",
+      "protocol": "ss",
+      "stream_transport": "tcp",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 166,
+          "moving_avg_ms": 166,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001c55700000000",
+      "name": "New York 05",
+      "protocol": "vmess",
+      "stream_transport": "ws",
+      "subscription_tag": "s2",
+      "provider_id": "s2",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "unavailable",
+          "latency_ms": null,
+          "moving_avg_ms": null,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": "timeout"
+        }
+      ]
+    },
+    {
+      "id": "n-0001c55800000000",
+      "name": "Dallas 06",
+      "protocol": "tuic",
+      "stream_transport": "quic",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 193,
+          "moving_avg_ms": 193,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-00017f9300000000",
+      "name": "Vancouver 01",
+      "protocol": "trojan",
+      "stream_transport": "tcp",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 173,
+          "moving_avg_ms": 173,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-00017f9400000000",
+      "name": "Toronto 02",
+      "protocol": "vless",
+      "stream_transport": "grpc",
+      "subscription_tag": "s2",
+      "provider_id": "s2",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 226,
+          "moving_avg_ms": 226,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-00018eb600000000",
+      "name": "London 01",
+      "protocol": "trojan",
+      "stream_transport": "tcp",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 233,
+          "moving_avg_ms": 233,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-00018eb700000000",
+      "name": "London 02",
+      "protocol": "hysteria2",
+      "stream_transport": "quic",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 259,
+          "moving_avg_ms": 259,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-00018eb800000000",
+      "name": "Manchester 03",
+      "protocol": "ss",
+      "stream_transport": "tcp",
+      "subscription_tag": "s2",
+      "provider_id": "s2",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 254,
+          "moving_avg_ms": 254,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-00018eb900000000",
+      "name": "London 04",
+      "protocol": "vless",
+      "stream_transport": "grpc",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 291,
+          "moving_avg_ms": 291,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-000183d000000000",
+      "name": "Frankfurt 01",
+      "protocol": "vless",
+      "stream_transport": "grpc",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 243,
+          "moving_avg_ms": 243,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-000183d100000000",
+      "name": "Frankfurt 02",
+      "protocol": "trojan",
+      "stream_transport": "tcp",
+      "subscription_tag": "s2",
+      "provider_id": "s2",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 267,
+          "moving_avg_ms": 267,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-000183d200000000",
+      "name": "Berlin 03",
+      "protocol": "tuic",
+      "stream_transport": "quic",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 261,
+          "moving_avg_ms": 261,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001aa3300000000",
+      "name": "Amsterdam 01",
+      "protocol": "trojan",
+      "stream_transport": "tcp",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 223,
+          "moving_avg_ms": 223,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001aa3400000000",
+      "name": "Amsterdam 02",
+      "protocol": "ss",
+      "stream_transport": "tcp",
+      "subscription_tag": "s2",
+      "provider_id": "s2",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 247,
+          "moving_avg_ms": 247,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-0001aa3500000000",
+      "name": "Rotterdam 03",
+      "protocol": "vmess",
+      "stream_transport": "ws",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 271,
+          "moving_avg_ms": 271,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-00018ce500000000",
+      "name": "Paris 01",
+      "protocol": "vless",
+      "stream_transport": "grpc",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 237,
+          "moving_avg_ms": 237,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-00018ce600000000",
+      "name": "Marseille 02",
+      "protocol": "hysteria2",
+      "stream_transport": "quic",
+      "subscription_tag": "s2",
+      "provider_id": "s2",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 232,
+          "moving_avg_ms": 232,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-00017a7d00000000",
+      "name": "Sydney 01",
+      "protocol": "trojan",
+      "stream_transport": "tcp",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 123,
+          "moving_avg_ms": 123,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-00017a7e00000000",
+      "name": "Melbourne 02",
+      "protocol": "vless",
+      "stream_transport": "grpc",
+      "subscription_tag": "s1",
+      "provider_id": "s1",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 135,
+          "moving_avg_ms": 135,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-00017a7f00000000",
+      "name": "Sydney 03",
+      "protocol": "ss",
+      "stream_transport": "tcp",
+      "subscription_tag": "s2",
+      "provider_id": "s2",
+      "group_ids": [],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 120,
+          "moving_avg_ms": 120,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    },
+    {
+      "id": "n-home-relay",
+      "name": "Home Relay",
+      "protocol": "trojan",
+      "stream_transport": "tcp",
+      "subscription_tag": null,
+      "provider_id": null,
+      "group_ids": [
+        "g-出口"
+      ],
+      "health": [
+        {
+          "transport": "tcp",
+          "purpose": "shared",
+          "ip_version": "ipv4",
+          "warmth": "warm",
+          "measurement": "http_round_trip",
+          "sample_source": "probe",
+          "state": "healthy",
+          "latency_ms": 48,
+          "moving_avg_ms": 48,
+          "avg10_ms": null,
+          "observed_at": "2026-11-22T10:00:00Z",
+          "error": null
+        }
+      ]
+    }
+  ],
+  "next_cursor": null
+}

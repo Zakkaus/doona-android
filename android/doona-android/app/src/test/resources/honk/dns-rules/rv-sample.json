@@ -1,0 +1,58 @@
+{
+  "generation_id": "generation-42",
+  "request": [
+    {
+      "rule_id": "dns_request:0",
+      "index": 0,
+      "expression": "qname(geosite:category-ads-all) -> reject",
+      "action": "reject",
+      "upstream": null,
+      "source": {
+        "file": "config.dae",
+        "source_id": "source-main",
+        "line": 78,
+        "column": 13
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "dns_request:1",
+      "index": 1,
+      "expression": "qname(geosite:cn) -> alidns",
+      "action": "upstream",
+      "upstream": "alidns",
+      "source": {
+        "file": "config.dae",
+        "source_id": "source-main",
+        "line": 80,
+        "column": 13
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "dns_request:2",
+      "index": 2,
+      "expression": "fallback: cloudflare",
+      "action": "upstream",
+      "upstream": "cloudflare",
+      "source": {
+        "file": "config.dae",
+        "source_id": "source-main",
+        "line": 81,
+        "column": 13
+      },
+      "kind": "fallback"
+    }
+  ],
+  "response": [
+    {
+      "rule_id": "dns_response:0",
+      "index": 0,
+      "expression": "fallback: accept",
+      "action": "accept",
+      "upstream": null,
+      "source": null,
+      "kind": "fallback"
+    }
+  ]
+}

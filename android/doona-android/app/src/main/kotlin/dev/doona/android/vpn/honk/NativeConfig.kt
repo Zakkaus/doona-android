@@ -6,10 +6,8 @@ import dev.doona.android.vpn.NativeApi
 import dev.doona.android.vpn.expect
 import dev.doona.android.vpn.nativeJson
 import dev.doona.android.vpn.read
-import kotlinx.coroutines.delay
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -28,19 +26,7 @@ internal class NativeConfig(private val api: NativeApi) {
         val body = buildJsonObject { put("content", content) }.toString()
         val accepted = api.expect("PUT", "/api/v1/config/sources/${source.id}", body, headers = mapOf("If-Match" to "\"${source.sha256}\""))
         val operation = nativeJson.decodeFromString(OperationAccepted.serializer(), accepted).href
-        while (true) {
-            delay(POLL_MS)
-            when (api.read("GET", operation, Operation.serializer(JsonElement.serializer())).status) {
-                OperationStatus.Succeeded -> return
-                OperationStatus.Failed -> throw EngineException(ErrorCode.InvalidArgument)
-                OperationStatus.Queued, OperationStatus.Running -> Unit
-            }
-        }
-    }
-
-    private companion object {
-        /** honk's operations ask to be polled no more than once a second (`Retry-After: 1`). */
-        const val POLL_MS = 1_000L
+        if (api.finished(operation).status == OperationStatus.Failed) throw EngineException(ErrorCode.InvalidArgument)
     }
 }
 

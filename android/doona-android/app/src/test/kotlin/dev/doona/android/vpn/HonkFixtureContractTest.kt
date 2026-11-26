@@ -200,8 +200,8 @@ class HonkFixtureContractTest {
         /** Each fixture (path under honk/, no `.json`) and the operation whose response it is. */
         val FIXTURES: Map<Regex, String> = mapOf(
             "errors/.*" to "#/components/schemas/ErrorResponse",
-            "groups/(list|rv-sample|rv-sample-long)" to "GET /api/v1/groups 200",
-            "groups/(group-proxy|rv-sample(-long)?-g-.+)" to "GET /api/v1/groups/{group_id} 200",
+            "groups/(list|rv-sample|rv-sample-long|honk-groups)" to "GET /api/v1/groups 200",
+            "groups/(group-proxy|(rv-sample(-long)?|honk-groups)-g-.+)" to "GET /api/v1/groups/{group_id} 200",
             "nodes/.*" to "GET /api/v1/nodes 200",
             "providers/.*" to "GET /api/v1/providers 200",
             "rules/.*" to "GET /api/v1/rules 200",
@@ -212,6 +212,7 @@ class HonkFixtureContractTest {
             "config/.*" to "GET /api/v1/config 200",
             "config-replace/.*" to "PUT /api/v1/config/sources/{source_id} 202",
             "operations/.*" to "GET /api/v1/operations/{operation_id} 200",
+            "probes/.*" to "POST /api/v1/probes 202",
         ).mapKeys { Regex(it.key) }
     }
 }

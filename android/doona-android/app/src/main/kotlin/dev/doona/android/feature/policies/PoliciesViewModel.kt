@@ -5,205 +5,181 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.Engine
-import dev.doona.android.engine.EngineException
-import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.RulePage
+import dev.doona.android.engine.Mode
 import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RvPolicyState
+import dev.doona.android.vpn.NativeApi
+import dev.doona.android.vpn.honk.HonkConfig
+import dev.doona.android.vpn.honk.HonkDnsRules
+import dev.doona.android.vpn.honk.NativeCatalog
+import dev.doona.android.vpn.honk.NativeConfig
+import dev.doona.android.vpn.honk.NativeProbes
+import dev.doona.android.vpn.honk.NativeRouting
+import dev.doona.android.vpn.honk.SelectionNetwork
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.channelFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
- * 策略: the engine's catalog as the page's profile, and the page's changes as engine calls. Each new catalog is read into
- * a profile on [reads], off the main thread, with the nodes' details, the card's rules, today's bytes per rule and
- * 封鎖廣告. A read that fails keeps the profile shown and shows its failure with 重試, which reads again. [places] places the nodes by name; [clock] is now, for the subscriptions' end
- * dates.
+ * 策略 on honk's native API: its groups, nodes, subscriptions, rules, the file its routing is in and its DNS rules, read
+ * into a profile on [io] at start, after each change made here, and on 重試. The changes go to honk; the mode alone stays
+ * the [engine]'s. A read that fails keeps the profile shown and shows its failure with 重試. [places] places the nodes by
+ * name; [clock] is now, for the subscriptions' end dates.
  */
 internal class PoliciesViewModel(
     private val engine: Engine,
+    private val api: NativeApi,
     private val clock: () -> Long = System::currentTimeMillis,
     private val places: NodePlaces = CoreNodePlaces,
-    private val reads: CoroutineDispatcher = Dispatchers.Default,
+    private val io: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
-    /** The node order, which the engine does not have, and 封鎖廣告 as last read or set. */
+    /** The node order, which honk does not have. */
     private val local = MutableStateFlow(RvPolicyState())
+    private val read = MutableStateFlow<PolicyRead?>(null)
     private val failure = MutableStateFlow<PolicyFailure?>(null)
 
     /** The call that failed last, for the banner's 重試; null once an attempt succeeds. */
     private var retry: (() -> Unit)? = null
+    private var reading: Job? = null
 
-    /** The last profile read, kept while the screen is away, so coming back shows it rather than the skeleton. */
-    private val profile = MutableStateFlow<RvPolicyProfile?>(null)
+    val uiState: StateFlow<PoliciesUiState> =
+        combine(engine.catalog, read, local, failure) { catalog, read, local, failure -> policiesUiState(catalog?.mode, read, local, failure) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), current())
 
-    /** The card's rules at their revision; only the reader touches it, one catalog at a time. */
-    private var rulePage: RulePage? = null
+    init {
+        load()
+    }
 
-    /** Bumped by 重試 after a failed first read, to read the same catalog again. */
-    private val again = MutableStateFlow(0)
-
-    val uiState: StateFlow<PoliciesUiState> = channelFlow {
-        launch(reads) {
-            combine(engine.catalog.filterNotNull().distinctUntilChanged(), again) { catalog, _ -> catalog }.collectLatest { catalog ->
-                read(catalog).onSuccess { (read, ads) ->
-                    local.update { it.copy(blockAds = ads) }
-                    shown(read)
-                }.onFailure(::unread)
+    /** Reads honk again; a read still running gives way to it. */
+    fun load() {
+        reading?.cancel()
+        reading = viewModelScope.launch {
+            try {
+                read.value = withContext(io) { readPolicies() }
+                failure.update { it?.takeIf { failed -> failed.action != PolicyAction.Read } }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                retry = ::load
+                failure.value = PolicyFailure(PolicyAction.Read, error.errorCode())
             }
         }
-        combine(engine.ready, engine.catalog, profile, local, failure, ::policiesUiState).collect { send(it) }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), current())
+    }
 
     /**
-     * The page changed its state to [next]. What differs from the state shown goes to the engine: the mode, the two
-     * switches and the main group's node. A tap on the mode already shown changes nothing, so it calls nothing (16c22b3). The order
+     * The page changed its state to [next]. What differs from the state shown goes out: the mode to the engine, the two
+     * switches and the main group's node to honk. A tap on the mode already shown changes nothing (16c22b3). The order
      * stays here.
      */
     fun onChange(next: RvPolicyState) {
         val shown = uiState.value
         local.update { it.copy(nodeSort = next.nodeSort) }
-        val catalog = engine.catalog.value ?: return
-        if (next.mode != shown.state.mode) perform(PolicyAction.Mode) { engine.setMode(engineMode(next.mode)) }
-        if (next.blockAds != shown.state.blockAds) setAdBlock(next.blockAds)
-        if (next.blockQuic != shown.state.blockQuic) setBlockQuic(catalog, next.blockQuic)
+        if (next.mode != shown.state.mode) perform(PolicyAction.Mode, reread = false) { engine.setMode(engineMode(next.mode)).getOrThrow() }
+        val read = read.value ?: return
+        if (next.blockAds != shown.state.blockAds) {
+            perform(PolicyAction.Ads) { adsEdit(read.config, read.dns, next.blockAds)?.let { (source, text) -> NativeConfig(api).replace(source, text) } }
+        }
+        val routing = read.routing
+        if (next.blockQuic != shown.state.blockQuic && routing?.template != null) {
+            perform(PolicyAction.Quic) { NativeConfig(api).replace(routing.source, routing.withBlockQuic(next.blockQuic)) }
+        }
         val main = shown.profile?.main ?: return
         val picked = next.choices[main.id]
         if (picked != null && picked != main.selectedId) {
-            val groups = catalog.groups.associateBy { it.id }
-            val member = groups[catalog.mainGroupId]?.let { memberFor(it, picked, groups) } ?: picked
-            perform(PolicyAction.MainNode) { engine.select(catalog.mainGroupId, member, null) }
+            val groups = read.policies.groups.associateBy { it.id }
+            val member = groups[main.id]?.let { memberFor(it, picked, groups) } ?: picked
+            perform(PolicyAction.MainNode) { NativeCatalog(api).select(main.id, member, SelectionNetwork.Both) }
         }
     }
 
     /** Probes the members of every group. */
-    fun testAll() = perform(PolicyAction.TestAll) { engine.testLatency(null) }
+    fun testAll() {
+        val ids = read.value?.policies?.groups?.map { it.id } ?: return
+        perform(PolicyAction.TestAll) { NativeProbes(api).groups(ids) }
+    }
 
-    /** Refreshes every subscription, one after another in the catalog's order; the first failure is the one shown. */
+    /** Refreshes every subscription, one after another in honk's order; the first failure is the one shown. */
     fun updateSubscriptions() {
-        val ids = engine.catalog.value?.subscriptions?.map { it.id } ?: return
+        val ids = read.value?.policies?.subscriptions?.map { it.id } ?: return
         perform(PolicyAction.Update) {
-            ids.map { engine.updateSubscription(it) }.firstOrNull { it.isFailure } ?: Result.success(Unit)
+            val catalog = NativeCatalog(api)
+            ids.map { id -> runCatching { catalog.refreshProvider(id) } }.firstOrNull { it.isFailure }?.getOrThrow()
         }
-    }
-
-    /** Turns 封鎖廣告 [on]; the switch follows once the engine has it. */
-    private fun setAdBlock(on: Boolean) = perform(PolicyAction.Ads) {
-        engine.setAdBlock(on).onSuccess { local.update { it.copy(blockAds = on) } }
-    }
-
-    /** Keeps the template and changes its option. Only a template has the option, so the page shows no switch for another source. */
-    private fun setBlockQuic(catalog: Catalog, on: Boolean) {
-        val template = catalog.ruleSource.template ?: return
-        perform(PolicyAction.Quic) { engine.setRuleSource(template, catalog.ruleSource.options.copy(blockQuic = on)) }
     }
 
     /**
-     * Hands an engine call over at once, in tap order, and shows its failure when it ends, or clears the banner when it
-     * succeeds. The engine keeps the order of what it is handed and does not drop it when this screen is left.
+     * Runs [call] on [io] at once, in tap order, and shows its failure when it ends, or clears the banner when it
+     * succeeds; honk's changes are read back after it ([reread]).
      */
-    private fun perform(action: PolicyAction, call: suspend () -> Result<*>) {
+    private fun perform(action: PolicyAction, reread: Boolean = true, call: suspend () -> Unit) {
         viewModelScope.launch {
-            val error = call().exceptionOrNull()
-            retry = error?.let { { perform(action, call) } }
+            val error = try {
+                withContext(io) { call() }
+                null
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                error
+            }
+            retry = error?.let { { perform(action, reread, call) } }
             failure.value = error?.let { PolicyFailure(action, it.errorCode()) }
+            if (reread) load()
         }
     }
 
-    /** The banner's 重試: hands the failed call to the engine again, as it was first made. */
+    /** The banner's 重試: makes the failed call again, as it was first made. */
     fun retry() {
         retry?.invoke()
     }
 
-    /** A profile read: it shows, and a failed read's banner goes. */
-    private fun shown(read: RvPolicyProfile) {
-        profile.value = read
-        failure.update { it?.takeIf { failed -> failed.action != PolicyAction.Read } }
+    private fun readPolicies(): PolicyRead {
+        val policies = HonkPolicyRead.read(api)
+        val config = NativeConfig(api).config()
+        val dns = NativeRouting(api).dnsRules()
+        val routing = HonkRouting.of(config)
+        return PolicyRead(policies, config, dns, routing, policies.profile(places, clock(), routing))
     }
 
-    /** A read failed: it shows with 重試, over the profile last read if there is one. */
-    private fun unread(error: Throwable) {
-        retry = { again.update { it + 1 } }
-        failure.value = PolicyFailure(PolicyAction.Read, error.errorCode())
-    }
-
-    /** The profile of [catalog] and whether 封鎖廣告 is on; a newer catalog cancels the read, which is no failure. */
-    private suspend fun read(catalog: Catalog): Result<Pair<RvPolicyProfile, Boolean>> = try {
-        val ids = catalog.groups.flatMap { it.members }.filterNot { it.isGroup }.map { it.id }.distinct()
-        val infos = engine.nodes(ids).getOrThrow().associateBy { it.id }
-        val page = rules(catalog.ruleSource.rulesRevision)
-        val byRule = engine.usage().getOrThrow().today.byRule.associate { it.id to it.up + it.down }
-        val ads = engine.adBlock().getOrThrow()
-        Result.success(rvPolicyProfile(catalog, infos, page.rows, page.total, byRule, clock(), places) to ads)
-    } catch (cancelled: CancellationException) {
-        throw cancelled
-    } catch (error: Exception) {
-        Result.failure(error)
-    }
-
-    /**
-     * The card's rows at [revision]: the last page while the revision holds, else a new read. A page read at another
-     * revision is stale (the source changed between the catalog and the read), so it is read again, a few times at most;
-     * then the read fails as busy, and a newer catalog reads again anyway.
-     */
-    private suspend fun rules(revision: Long): RulePage {
-        rulePage?.takeIf { it.rulesRevision == revision }?.let { return it }
-        repeat(RULE_READS) {
-            val page = engine.rules(0, RV_POLICY_CARD_RULES).getOrThrow()
-            if (page.rulesRevision == revision) return page.also { rulePage = it }
-        }
-        throw EngineException(ErrorCode.Busy)
-    }
-
-    /** The engine's flows are StateFlows, so the first frame already shows real values. */
-    private fun current() = policiesUiState(engine.ready.value, engine.catalog.value, profile.value, local.value, failure.value)
+    private fun current() = policiesUiState(engine.catalog.value?.mode, read.value, local.value, failure.value)
 
     companion object {
-        fun factory(engine: Engine): ViewModelProvider.Factory = viewModelFactory {
-            initializer { PoliciesViewModel(engine) }
+        fun factory(engine: Engine, api: NativeApi): ViewModelProvider.Factory = viewModelFactory {
+            initializer { PoliciesViewModel(engine, api) }
         }
     }
 }
 
-/**
- * The page's state from the engine's: the mode and 阻擋 QUIC from [catalog], 封鎖廣告 and the order from [local]. The
- * choices stay empty: the profile carries each group's real selection.
- */
-private fun policiesUiState(
-    ready: Boolean,
-    catalog: Catalog?,
-    profile: RvPolicyProfile?,
-    local: RvPolicyState,
-    failure: PolicyFailure?,
-): PoliciesUiState {
-    val state = RvPolicyState(
-        mode = catalog?.mode?.let(::rvRouteMode) ?: local.mode,
-        blockAds = local.blockAds,
-        blockQuic = catalog?.ruleSource?.options?.blockQuic ?: false,
-        nodeSort = local.nodeSort,
-    )
-    return PoliciesUiState(
-        loading = !ready || catalog == null || (profile == null && failure?.action != PolicyAction.Read),
-        noSubscription = ready && catalog?.subscriptions?.isEmpty() == true,
-        state = state,
-        profile = profile,
-        failure = failure,
-    )
-}
+/** One read of honk for 策略: what the profile was drawn from, kept for the changes made on it. */
+private class PolicyRead(
+    val policies: HonkPolicyRead,
+    val config: HonkConfig,
+    val dns: HonkDnsRules,
+    val routing: HonkRouting?,
+    val profile: RvPolicyProfile,
+)
 
-/** How often a stale page of rules is read again before the read counts as failed; a newer catalog starts over anyway. */
-private const val RULE_READS = 3
+/** The page's state: the mode as the engine has it, the two switches as honk runs them, the order from [local]. */
+private fun policiesUiState(mode: Mode?, read: PolicyRead?, local: RvPolicyState, failure: PolicyFailure?) = PoliciesUiState(
+    loading = read == null && failure?.action != PolicyAction.Read,
+    noSubscription = read?.policies?.subscriptions?.isEmpty() == true,
+    state = RvPolicyState(
+        mode = mode?.let(::rvRouteMode) ?: local.mode,
+        blockAds = read?.dns?.let(::blocksAds) ?: false,
+        blockQuic = read?.routing?.blockQuic ?: false,
+        nodeSort = local.nodeSort,
+    ),
+    profile = read?.profile,
+    failure = failure,
+)

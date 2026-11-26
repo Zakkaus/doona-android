@@ -22,10 +22,12 @@ internal object HonkFixtures {
         on("GET", "/api/v1/rules", 200, body("rules/running"))
         on("GET", "/api/v1/dns/rules", 200, body("dns-rules/running"))
         on("GET", "/api/v1/runtime", 200, body("runtime/runtime-example"))
+        on("GET", "/api/v1/config", 200, body("config/editable"))
     }
 
     /**
-     * The RV sample profile (the app's `rvSampleEngine` content: its 48 nodes, 8 groups, 2 subscriptions and 14 rules) as
+     * The RV sample profile (the app's `rvSampleEngine` content: its 48 nodes, 8 groups, 2 subscriptions, 14 rules, template
+     * `cn-direct` with 封鎖廣告 on) as
      * a running honk serves it; [long] names three of its groups at length, zh and en mixed, as users name them by hand.
      */
     fun rvSample(long: Boolean = false): FakeHonk = FakeHonk().apply {
@@ -40,6 +42,23 @@ internal object HonkFixtures {
         on("GET", "/api/v1/providers", 200, body("providers/rv-sample"))
         on("GET", "/api/v1/rules", 200, body("rules/$variant"))
         on("GET", "/api/v1/runtime", 200, body("runtime/runtime-example"))
+        on("GET", "/api/v1/config", 200, body("config/rv-sample"))
+        on("GET", "/api/v1/dns/rules", 200, body("dns-rules/rv-sample"))
+    }
+
+    /**
+     * The sample's honk-shaped groups (testDebug `honkGroupsEngine`): 出口 over 香港 and 日本, two subscription nodes
+     * and Home Relay, added by hand; 香港, a url-test; 日本, a fallback; 空, a selector with no member. Its rules start
+     * with one that refuses its flows, and their groups are not among these.
+     */
+    fun honkGroups(): FakeHonk = rvSample().apply {
+        val groups = body("groups/honk-groups")
+        on("GET", "/api/v1/groups", 200, groups)
+        for (id in Json.parseToJsonElement(groups).jsonArray.map { it.jsonObject.getValue("id").jsonPrimitive.content }) {
+            on("GET", "/api/v1/groups/$id", 200, body("groups/honk-groups-$id"))
+        }
+        on("GET", "/api/v1/nodes", 200, body("nodes/honk-groups"))
+        on("GET", "/api/v1/rules", 200, body("rules/honk-groups"))
     }
 
     private fun exists(name: String) = HonkFixtures::class.java.getResource("/honk/$name.json") != null
