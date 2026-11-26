@@ -4,12 +4,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.doona.android.engine.Engine
+import dev.doona.android.app.nativeApi
 
-/** The 流量詳情 entry (`TrafficKey`): the ViewModel on [engine], its state collected while the page is started. */
+/** The 流量詳情 entry (`TrafficKey`): the ViewModel on honk's native API, its state collected while the page is started. */
 @Composable
-internal fun TrafficRoute(engine: Engine, onBack: () -> Unit) {
-    val viewModel: TrafficViewModel = viewModel(factory = TrafficViewModel.factory(engine))
+internal fun TrafficRoute(onBack: () -> Unit) {
+    val viewModel: TrafficViewModel = viewModel(factory = TrafficViewModel.factory(nativeApi()))
     val state by viewModel.ui.collectAsStateWithLifecycle()
     RvTrafficScreen(state, onRange = viewModel::onRange, onBack = onBack)
 }

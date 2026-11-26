@@ -1,0 +1,3607 @@
+{
+    "observed_at": "2026-11-22T10:24:00Z",
+    "window_seconds": 600,
+    "sampled_every_seconds": 1,
+    "samples": [
+        {
+            "sampled_at": "2026-11-22T10:14:01Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:02Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:03Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:04Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:05Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:06Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:07Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:08Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:09Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:10Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:11Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:12Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:13Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:14Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:15Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:16Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:17Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:18Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:19Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:20Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:21Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:22Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:23Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:24Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:25Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:26Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:27Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:28Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:29Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:30Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:31Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:32Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:33Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:34Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:35Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:36Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:37Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:38Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:39Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:40Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:41Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:42Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:43Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:44Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:45Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:46Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:47Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:48Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404415",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:49Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:50Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:51Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:52Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:53Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:54Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:55Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:56Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:57Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:58Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:14:59Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:00Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:01Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:02Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:03Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:04Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:05Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:06Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:07Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:08Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:09Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:10Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:11Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:12Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:13Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:14Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:15Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:16Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:17Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:18Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:19Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:20Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:21Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:22Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:23Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:24Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:25Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:26Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:27Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:28Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:29Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:30Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:31Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:32Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:33Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:34Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:35Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:36Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:37Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:38Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:39Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:40Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:41Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:42Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:43Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:44Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:45Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:46Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:47Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:48Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:49Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:50Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:51Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:52Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:53Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:54Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:55Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:56Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:57Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:58Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:15:59Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:00Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:01Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:02Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:03Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:04Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:05Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:06Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:07Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:08Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:09Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:10Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:11Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:12Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:13Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:14Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:15Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:16Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:17Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:18Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:19Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:20Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:21Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:22Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:23Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:24Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:25Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:26Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:27Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:28Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:29Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:30Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:31Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:32Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:33Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:34Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:35Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:36Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:37Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:38Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:39Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:40Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:41Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:42Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:43Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:44Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:45Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:46Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:47Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:48Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:49Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:50Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:51Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:52Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:53Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:54Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:55Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:56Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:57Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:58Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:16:59Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:00Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:01Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:02Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:03Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:04Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:05Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:06Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:07Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:08Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:09Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:10Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:11Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:12Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:13Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:14Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:15Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:16Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:17Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:18Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:19Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:20Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:21Z",
+            "upload_bytes_per_second": "1314208",
+            "download_bytes_per_second": "7836412",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:22Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:23Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:24Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:25Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:26Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:27Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:28Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:29Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:30Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:31Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:32Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:33Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:34Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:35Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:36Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:37Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:38Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:39Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:40Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:41Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:42Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:43Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:44Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:45Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:46Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:47Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:48Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:49Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:50Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:51Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:52Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:53Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:54Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:55Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:56Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:57Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:58Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:17:59Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:00Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:01Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:02Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:03Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:04Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:05Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:06Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:07Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:08Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:09Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:10Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:11Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:12Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:13Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:14Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:15Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:16Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:17Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:18Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:19Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:20Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:21Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:22Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:23Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:24Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:25Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:26Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:27Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:28Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:29Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:30Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:31Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:32Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:33Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:34Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:35Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:36Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:37Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:38Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:39Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:40Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:41Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:42Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:43Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:44Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:45Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:46Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:47Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:48Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:49Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:50Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:51Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:52Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:53Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:54Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:55Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:56Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:57Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:58Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:18:59Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:00Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:01Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:02Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:03Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:04Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:05Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:06Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:07Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:08Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:09Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:10Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:11Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:12Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:13Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:14Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:15Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:16Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:17Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:18Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:19Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:20Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:21Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:22Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:23Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:24Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:25Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:26Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:27Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:28Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:29Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:30Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:31Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:32Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:33Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:34Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:35Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:36Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:37Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:38Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:39Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:40Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:41Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:42Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:43Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:44Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:45Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:46Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:47Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:48Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:49Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:50Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:51Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:52Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:53Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:54Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:55Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:56Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:57Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:58Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:19:59Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:00Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:01Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:02Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:03Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:04Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:05Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:06Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:07Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:08Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:09Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:10Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:11Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:12Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:13Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:14Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:15Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:16Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:17Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:18Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:19Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:20Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:21Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:22Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:23Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:24Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:25Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:26Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:27Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:28Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:29Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:30Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:31Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:32Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:33Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:34Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:35Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:36Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:37Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:38Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:39Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:40Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:41Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:42Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:43Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:44Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:45Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:46Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:47Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:48Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:49Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:50Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:51Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:52Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:53Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:54Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:55Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:56Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:57Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:58Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:20:59Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:00Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:01Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:02Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:03Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:04Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:05Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:06Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:07Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:08Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:09Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:10Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:11Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:12Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:13Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:14Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:15Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:16Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:17Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:18Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:19Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:20Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:21Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:22Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:23Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:24Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:25Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:26Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:27Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:28Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:29Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:30Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:31Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:32Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:33Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:34Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:35Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:36Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:37Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:38Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:39Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:40Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:41Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:42Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:43Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:44Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:45Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:46Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:47Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:48Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:49Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:50Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:51Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:52Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:53Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:54Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:55Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:56Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:57Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:58Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:21:59Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:00Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:01Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:02Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:03Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:04Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:05Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:06Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:07Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:08Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:09Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:10Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:11Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:12Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:13Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:14Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:15Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:16Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:17Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:18Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:19Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:20Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:21Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:22Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:23Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:24Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:25Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:26Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:27Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:28Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:29Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:30Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:31Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:32Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:33Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:34Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:35Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:36Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:37Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:38Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:39Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:40Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:41Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:42Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:43Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:44Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:45Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:46Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:47Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:48Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:49Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:50Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:51Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:52Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:53Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:54Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:55Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:56Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:57Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:58Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:22:59Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:00Z",
+            "upload_bytes_per_second": "24462",
+            "download_bytes_per_second": "404414",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:01Z",
+            "upload_bytes_per_second": "6713",
+            "download_bytes_per_second": "60321",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:02Z",
+            "upload_bytes_per_second": "7949",
+            "download_bytes_per_second": "42121",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:03Z",
+            "upload_bytes_per_second": "8093",
+            "download_bytes_per_second": "56590",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:04Z",
+            "upload_bytes_per_second": "8938",
+            "download_bytes_per_second": "40374",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:05Z",
+            "upload_bytes_per_second": "8135",
+            "download_bytes_per_second": "51589",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:06Z",
+            "upload_bytes_per_second": "8512",
+            "download_bytes_per_second": "60049",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:07Z",
+            "upload_bytes_per_second": "7006",
+            "download_bytes_per_second": "69860",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:08Z",
+            "upload_bytes_per_second": "142630",
+            "download_bytes_per_second": "4260180",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:09Z",
+            "upload_bytes_per_second": "53710",
+            "download_bytes_per_second": "2407345",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:10Z",
+            "upload_bytes_per_second": "7695",
+            "download_bytes_per_second": "2843577",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:11Z",
+            "upload_bytes_per_second": "6803",
+            "download_bytes_per_second": "1635753",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:12Z",
+            "upload_bytes_per_second": "7438",
+            "download_bytes_per_second": "943628",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:13Z",
+            "upload_bytes_per_second": "6400",
+            "download_bytes_per_second": "551220",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:14Z",
+            "upload_bytes_per_second": "5097",
+            "download_bytes_per_second": "328691",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:15Z",
+            "upload_bytes_per_second": "6058",
+            "download_bytes_per_second": "204952",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:16Z",
+            "upload_bytes_per_second": "6367",
+            "download_bytes_per_second": "124569",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:17Z",
+            "upload_bytes_per_second": "8118",
+            "download_bytes_per_second": "81159",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:18Z",
+            "upload_bytes_per_second": "8406",
+            "download_bytes_per_second": "73374",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:19Z",
+            "upload_bytes_per_second": "8183",
+            "download_bytes_per_second": "49462",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:20Z",
+            "upload_bytes_per_second": "189017",
+            "download_bytes_per_second": "1468069",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:21Z",
+            "upload_bytes_per_second": "154654",
+            "download_bytes_per_second": "2680508",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:22Z",
+            "upload_bytes_per_second": "198856",
+            "download_bytes_per_second": "3885718",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:23Z",
+            "upload_bytes_per_second": "169271",
+            "download_bytes_per_second": "3965654",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:24Z",
+            "upload_bytes_per_second": "143208",
+            "download_bytes_per_second": "3325904",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:25Z",
+            "upload_bytes_per_second": "154176",
+            "download_bytes_per_second": "4042465",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:26Z",
+            "upload_bytes_per_second": "201600",
+            "download_bytes_per_second": "4084166",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:27Z",
+            "upload_bytes_per_second": "134723",
+            "download_bytes_per_second": "3425618",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:28Z",
+            "upload_bytes_per_second": "183313",
+            "download_bytes_per_second": "3801706",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:29Z",
+            "upload_bytes_per_second": "171954",
+            "download_bytes_per_second": "4074039",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:30Z",
+            "upload_bytes_per_second": "136303",
+            "download_bytes_per_second": "3268289",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:31Z",
+            "upload_bytes_per_second": "155771",
+            "download_bytes_per_second": "3490110",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:32Z",
+            "upload_bytes_per_second": "137226",
+            "download_bytes_per_second": "4064086",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:33Z",
+            "upload_bytes_per_second": "97253",
+            "download_bytes_per_second": "2290133",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:34Z",
+            "upload_bytes_per_second": "61059",
+            "download_bytes_per_second": "1425076",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:35Z",
+            "upload_bytes_per_second": "30672",
+            "download_bytes_per_second": "567373",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:36Z",
+            "upload_bytes_per_second": "8446",
+            "download_bytes_per_second": "53413",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:37Z",
+            "upload_bytes_per_second": "7971",
+            "download_bytes_per_second": "51292",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:38Z",
+            "upload_bytes_per_second": "6513",
+            "download_bytes_per_second": "37789",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:39Z",
+            "upload_bytes_per_second": "5923",
+            "download_bytes_per_second": "42379",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:40Z",
+            "upload_bytes_per_second": "6253",
+            "download_bytes_per_second": "51138",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:41Z",
+            "upload_bytes_per_second": "5514",
+            "download_bytes_per_second": "43429",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:42Z",
+            "upload_bytes_per_second": "7663",
+            "download_bytes_per_second": "34830",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:43Z",
+            "upload_bytes_per_second": "133420",
+            "download_bytes_per_second": "5627513",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:44Z",
+            "upload_bytes_per_second": "49287",
+            "download_bytes_per_second": "3568086",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:45Z",
+            "upload_bytes_per_second": "9018",
+            "download_bytes_per_second": "3939813",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:46Z",
+            "upload_bytes_per_second": "9606",
+            "download_bytes_per_second": "2512361",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:47Z",
+            "upload_bytes_per_second": "8426",
+            "download_bytes_per_second": "1604672",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:48Z",
+            "upload_bytes_per_second": "9093",
+            "download_bytes_per_second": "1039958",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:49Z",
+            "upload_bytes_per_second": "9393",
+            "download_bytes_per_second": "672382",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:50Z",
+            "upload_bytes_per_second": "397094",
+            "download_bytes_per_second": "431357",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:51Z",
+            "upload_bytes_per_second": "724639",
+            "download_bytes_per_second": "279826",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:52Z",
+            "upload_bytes_per_second": "769078",
+            "download_bytes_per_second": "187332",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:53Z",
+            "upload_bytes_per_second": "732297",
+            "download_bytes_per_second": "151028",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:54Z",
+            "upload_bytes_per_second": "720069",
+            "download_bytes_per_second": "126141",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:55Z",
+            "upload_bytes_per_second": "758079",
+            "download_bytes_per_second": "96051",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:56Z",
+            "upload_bytes_per_second": "778716",
+            "download_bytes_per_second": "76777",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:57Z",
+            "upload_bytes_per_second": "344459",
+            "download_bytes_per_second": "64100",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:58Z",
+            "upload_bytes_per_second": "9350",
+            "download_bytes_per_second": "59508",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:23:59Z",
+            "upload_bytes_per_second": "131416",
+            "download_bytes_per_second": "3470713",
+            "connections": 7
+        },
+        {
+            "sampled_at": "2026-11-22T10:24:00Z",
+            "upload_bytes_per_second": "47617",
+            "download_bytes_per_second": "1981209",
+            "connections": 7
+        }
+    ]
+}

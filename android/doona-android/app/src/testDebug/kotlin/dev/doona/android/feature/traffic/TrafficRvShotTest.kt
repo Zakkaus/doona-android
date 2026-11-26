@@ -10,14 +10,6 @@ import androidx.compose.ui.test.performClick
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.R
-import dev.doona.android.engine.Engine
-import dev.doona.android.engine.EngineException
-import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.Status
-import dev.doona.android.engine.Traffic
-import dev.doona.android.engine.TrafficSeries
-import dev.doona.android.engine.fake.FakeEngine
-import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
@@ -31,6 +23,9 @@ import dev.doona.android.prototype.rv.rvSampleActivity
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.rvText
 import dev.doona.android.testing.drawFully
+import dev.doona.android.vpn.honk.NativeRuntime
+import dev.doona.android.vpn.sampleHonk
+import kotlinx.coroutines.Dispatchers
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -40,7 +35,7 @@ import org.robolectric.annotation.GraphicsMode
 import kotlin.math.roundToInt
 
 /**
- * 流量詳情 as the app draws it: [rvSampleEngine] through [TrafficViewModel] to the page, at the sample's 10:24 UTC.
+ * 流量詳情 as the app draws it: rvSampleEngine's traffic as honk serves it ([sampleHonk]) through [TrafficViewModel] to the page, at the sample's 10:24 UTC.
  * Goldens `app-rv-traffic-*` beside the prototype's `proto-rv-traffic-*`: the live minute in light, dark, fs115, fs200
  * and English, scrubbed, the 1 小時 window, a stopped tunnel and an engine whose reads fail; and the whole page in
  * light, dark, fs200 and English for the review panels, with the prototype's whole page where it has none.
@@ -77,11 +72,11 @@ class TrafficRvShotTest {
 
     /** Stopped: the minute the core kept, no history of the app's own, and no session in the card. */
     @Test
-    fun stoppedLight() = shot("traffic-stopped", engine = rvSampleEngine().apply { stop() })
+    fun stoppedLight() = shot("traffic-stopped", running = false)
 
     /** Stopped, and every read fails: no chart is drawn, only its grid, and the card has no figures. */
     @Test
-    fun emptyLight() = shot("traffic-empty", engine = Failing(rvSampleEngine().apply { stop() }))
+    fun emptyLight() = shot("traffic-empty", running = false, failing = true)
 
     @Test
     @Config(qualifiers = FULL_PAGE)
@@ -119,27 +114,17 @@ class TrafficRvShotTest {
     private fun prototypeFull(screen: String, dark: Boolean, fontScale: Float = 1f) =
         compose.rvShot(screen, dark, fontScale = fontScale, before = { assertWhole() }) { RvTrafficSample(rvSampleActivity(), RvData.session, onBack = {}) }
 
-    /** The engine stopped: no tunnel, no traffic. */
-    private fun FakeEngine.stop() {
-        status.value = Status.Stopped
-        traffic.value = Traffic()
-    }
-
-    /** [fake] whose every `trafficSeries` read fails. */
-    private class Failing(private val fake: FakeEngine) : Engine by fake {
-        override suspend fun trafficSeries(seconds: Long): Result<TrafficSeries> = Result.failure(EngineException(ErrorCode.Internal))
-    }
-
     private fun shot(
         screen: String,
         dark: Boolean = false,
         fontScale: Float = 1f,
         scrub: Int? = null,
         whole: Boolean = false,
-        engine: Engine = rvSampleEngine(),
+        running: Boolean = true,
+        failing: Boolean = false,
         then: () -> Unit = {},
     ) {
-        val model = TrafficViewModel(engine) { RvData.nowEpochMs }
+        val model = TrafficViewModel(NativeRuntime(sampleHonk(running, failing)), { RvData.nowEpochMs }, io = Dispatchers.Unconfined)
         compose.rvContent(dark, fontScale) {
             val state by model.ui.collectAsStateWithLifecycle()
             RvTrafficScreen(state, onRange = model::onRange, onBack = {}, initialScrub = scrub)

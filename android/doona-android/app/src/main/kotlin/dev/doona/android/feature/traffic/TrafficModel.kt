@@ -1,54 +1,40 @@
 package dev.doona.android.feature.traffic
 
-import dev.doona.android.engine.Status
-import dev.doona.android.engine.Traffic
-import dev.doona.android.engine.TrafficSeries
+import dev.doona.android.vpn.honk.RuntimeTraffic
+import dev.doona.android.vpn.honk.TrafficHistory
+
+/** One load of honk's traffic now and of the samples it keeps; each null when its read failed. */
+internal class TrafficRead(val traffic: RuntimeTraffic?, val history: TrafficHistory?)
 
 /**
- * One `trafficSeries` read for [range]: its [chart], null when the read failed, and for the live minute how many seconds
- * the engine's own history held when it was read ([historyAtRead]), so the read's older seconds can lead that history.
+ * [range]'s chart of [RV_TRAFFIC_POINTS] points from honk's samples: the samples of the range's last seconds, each chart
+ * point averaging as many of them as fit (10 over 10 分), which keeps the window's mean. honk keeps 600 s, so a longer
+ * range shows those. Null with no sample. A sample honk could not rate counts as 0, as the chart draws no gaps.
  */
-internal class SeriesRead(val range: Int, val chart: RvTrafficChart?, val historyAtRead: Int)
-
-/**
- * [series] as [range]'s chart of [RV_TRAFFIC_POINTS] points: the core sends up to 300 points, so each chart point
- * averages as many of them as fit (5 over 5 分), which keeps the window's mean; a series of no more points than that is
- * taken as it is.
- */
-internal fun trafficChart(range: Int, series: TrafficSeries): RvTrafficChart {
-    val per = (series.down.size / RV_TRAFFIC_POINTS).coerceAtLeast(1)
-    return RvTrafficChart(range, series.down.averaged(per), series.up.averaged(per), series.endEpochMs, series.stepSeconds * per * MS_PER_SECOND)
+internal fun trafficChart(range: Int, history: TrafficHistory): RvTrafficChart? {
+    val end = history.endEpochMs ?: return null
+    val count = (RV_TRAFFIC_RANGE_SECONDS[range] * MS_PER_SECOND / history.stepMs).toInt().coerceAtLeast(1)
+    val down = history.down.takeLast(count)
+    val up = history.up.takeLast(count)
+    val per = (down.size / RV_TRAFFIC_POINTS).coerceAtLeast(1)
+    return RvTrafficChart(range, down.averaged(per), up.averaged(per), end, history.stepMs * per)
 }
 
-/** The last whole groups of [per] points, each averaged. */
-private fun List<Long>.averaged(per: Int): List<Float> = takeLast(size / per * per).chunked(per) { group -> group.average().toFloat() }
+/** The last whole groups of [per] samples, each averaged. */
+private fun List<Long?>.averaged(per: Int): List<Float> = takeLast(size / per * per).chunked(per) { group -> group.map { it ?: 0L }.average().toFloat() }
 
 /**
- * The live minute at [nowEpochMs]: the engine's second-by-second history, led by the seconds of the [seed] read that came
- * before it ([historyAtRead] seconds of the seed are already in the history), the last [RV_TRAFFIC_POINTS] of them. Null
- * when there is neither, so the page keeps its last chart.
+ * The session's figures at [nowEpochMs]: each way's fastest sample honk keeps, the bytes since its counters started and
+ * their average over the seconds since then (at least one, so a session that has just started has no infinite rate).
+ * Null before honk counts.
  */
-internal fun liveMinute(seed: RvTrafficChart?, historyAtRead: Int, traffic: Traffic, nowEpochMs: Long): RvTrafficChart? {
-    if (traffic.downHistory.isEmpty()) return seed
-    val older = seed?.down?.dropLast(historyAtRead).orEmpty()
-    val olderUp = seed?.up?.dropLast(historyAtRead).orEmpty()
-    val down = (older + traffic.downHistory.map(Long::toFloat)).takeLast(RV_TRAFFIC_POINTS)
-    val up = (olderUp + traffic.upHistory.map(Long::toFloat)).takeLast(RV_TRAFFIC_POINTS)
-    return RvTrafficChart(RV_TRAFFIC_LIVE, down, up, nowEpochMs, MS_PER_SECOND)
-}
-
-/**
- * The running session's figures at [nowEpochMs], from the engine: the session's fastest second each way, its bytes and
- * their average over the seconds since it started (at least one, so a session that has just started has no infinite
- * rate). Null while no tunnel runs.
- */
-internal fun trafficSession(status: Status, traffic: Traffic, nowEpochMs: Long): RvTrafficSession? {
-    val since = (status as? Status.Running)?.sinceEpochMs ?: return null
+internal fun trafficSession(traffic: RuntimeTraffic, history: TrafficHistory?, nowEpochMs: Long): RvTrafficSession? {
+    val since = traffic.sinceEpochMs ?: return null
     val seconds = ((nowEpochMs - since) / MS_PER_SECOND).coerceAtLeast(0)
     val over = seconds.coerceAtLeast(1).toDouble()
     return RvTrafficSession(
-        peakDown = traffic.downPeak.toDouble(),
-        peakUp = traffic.upPeak.toDouble(),
+        peakDown = history?.down?.maxOfOrNull { it ?: 0L }?.toDouble() ?: 0.0,
+        peakUp = history?.up?.maxOfOrNull { it ?: 0L }?.toDouble() ?: 0.0,
         averageDown = traffic.downTotal / over,
         averageUp = traffic.upTotal / over,
         downTotal = traffic.downTotal,
@@ -58,13 +44,13 @@ internal fun trafficSession(status: Status, traffic: Traffic, nowEpochMs: Long):
 }
 
 /**
- * 流量詳情 at [nowEpochMs]: the second's rates, the chart of the last [read] (the live minute is built on each second's
- * traffic), or the [previous] chart when that read failed, and the session's figures. Nothing is drawn that the engine
- * did not send.
+ * 流量詳情 at [nowEpochMs]: the rates, [range]'s chart from the [read], or the [previous] chart when its samples could not
+ * be read, and the session's figures. Nothing is drawn that honk did not send.
  */
-internal fun trafficState(read: SeriesRead, status: Status, traffic: Traffic, previous: RvTrafficChart?, nowEpochMs: Long): RvTrafficState {
-    val chart = if (read.range == RV_TRAFFIC_LIVE) liveMinute(read.chart, read.historyAtRead, traffic, nowEpochMs) else read.chart
-    return RvTrafficState(traffic.downRate, traffic.upRate, chart ?: previous, trafficSession(status, traffic, nowEpochMs))
+internal fun trafficState(range: Int, read: TrafficRead, previous: RvTrafficChart?, nowEpochMs: Long): RvTrafficState {
+    val traffic = read.traffic
+    val chart = read.history?.let { trafficChart(range, it) } ?: previous
+    return RvTrafficState(traffic?.downRate ?: 0, traffic?.upRate ?: 0, chart, traffic?.let { trafficSession(it, read.history, nowEpochMs) })
 }
 
 private const val MS_PER_SECOND = 1_000L

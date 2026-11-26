@@ -1,0 +1,25 @@
+{
+  "observed_at": "2026-08-15T10:00:00Z",
+  "window_seconds": 60,
+  "sampled_every_seconds": 20,
+  "samples": [
+    {
+      "sampled_at": "2026-08-15T09:59:20Z",
+      "upload_bytes_per_second": "2048",
+      "download_bytes_per_second": "16384",
+      "connections": 162
+    },
+    {
+      "sampled_at": "2026-08-15T09:59:40Z",
+      "upload_bytes_per_second": null,
+      "download_bytes_per_second": null,
+      "connections": null
+    },
+    {
+      "sampled_at": "2026-08-15T10:00:00Z",
+      "upload_bytes_per_second": "4096",
+      "download_bytes_per_second": "32768",
+      "connections": 170
+    }
+  ]
+}
