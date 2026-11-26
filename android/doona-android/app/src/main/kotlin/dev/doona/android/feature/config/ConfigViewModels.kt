@@ -9,13 +9,13 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.designsystem.rv.RvDiffFile
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.ExportKind
 import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.policies.HonkPolicyRead
 import dev.doona.android.vpn.NativeApi
 import dev.doona.android.vpn.honk.NativeConfig
 import dev.doona.android.vpn.honk.NativeRevisions
 import dev.doona.android.vpn.honk.NativeRouting
+import dev.doona.android.vpn.honk.daeCode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -30,7 +30,7 @@ import kotlinx.coroutines.launch
 internal data class ConfigRead<T>(val value: T? = null, val failure: ErrorCode? = null)
 
 /** Reads [load] on [reads] into [state] now and on every [retry]; a failed read keeps what was read before. */
-internal abstract class ConfigReadViewModel<T>(private val reads: CoroutineDispatcher) : ViewModel() {
+internal abstract class ConfigReadViewModel<T>(protected val reads: CoroutineDispatcher) : ViewModel() {
     protected val state = MutableStateFlow(ConfigRead<T>())
     val uiState: StateFlow<ConfigRead<T>> = state.asStateFlow()
 
@@ -59,6 +59,11 @@ internal class ConfigOverviewViewModel(
     private val now: () -> Long = System::currentTimeMillis,
     reads: CoroutineDispatcher = Dispatchers.IO,
 ) : ConfigReadViewModel<RvConfigState>(reads) {
+    private val _imported = MutableStateFlow<RvConfigImport?>(null)
+
+    /** How the last 匯入 ended, until its banner is read. */
+    val imported: StateFlow<RvConfigImport?> = _imported.asStateFlow()
+
     init {
         retry()
     }
@@ -66,9 +71,95 @@ internal class ConfigOverviewViewModel(
     override suspend fun load(): RvConfigState =
         rvConfigState(NativeConfig(api).config(), HonkPolicyRead.read(api), NativeRouting(api).dnsRules(), now())
 
+    /**
+     * 匯入: honk checks [text] as the entry file ([NativeConfig.validate]); a file it accepts replaces the entry file and
+     * the page reads again, one it rejects changes nothing and says honk's first error (owner, q-import 2026-11-26).
+     * A write that fails says why.
+     */
+    fun import(text: String) {
+        _imported.value = null
+        viewModelScope.launch(reads) {
+            _imported.value = try {
+                val native = NativeConfig(api)
+                val main = native.config().main
+                val check = native.validate(listOf(main.path to text))
+                if (check.valid) {
+                    native.replace(main, text)
+                    state.value = ConfigRead(load())
+                    RvConfigImport.Done
+                } else {
+                    RvConfigImport.Rejected(check.diagnostics.firstOrNull { it.level == "error" }?.message ?: check.diagnostics.firstOrNull()?.message)
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                RvConfigImport.Failed(error.errorCode())
+            }
+        }
+    }
+
+    /** The import's banner was read. */
+    fun importSeen() {
+        _imported.value = null
+    }
+
+    private val _writeFailure = MutableStateFlow<ErrorCode?>(null)
+
+    /** Why the last removal did not land. */
+    val writeFailure: StateFlow<ErrorCode?> = _writeFailure.asStateFlow()
+
+    /**
+     * The files card's remove control (owner, q-edit-wire 2026-11-26): deletes the line of the `include { }` block that
+     * names [path] in the file that includes it, so the file and what it includes leave the configuration; honk checks
+     * the file before it takes it. The entry file cannot go.
+     */
+    fun removeFile(path: String) {
+        val parent = state.value.value?.files?.firstOrNull { it.path == path }?.parent ?: return
+        _writeFailure.value = null
+        viewModelScope.launch(reads) {
+            try {
+                val native = NativeConfig(api)
+                val source = native.config().files.firstOrNull { it.path == parent } ?: throw EngineException(ErrorCode.NotFound)
+                val lines = source.content.lines()
+                val at = includeLine(lines, path) ?: throw EngineException(ErrorCode.NotFound)
+                native.replace(source, lines.filterIndexed { i, _ -> i != at }.joinToString("\n"))
+                state.value = ConfigRead(load())
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                _writeFailure.value = error.errorCode()
+            }
+        }
+    }
+
     companion object {
         fun factory(api: NativeApi): ViewModelProvider.Factory = viewModelFactory { initializer { ConfigOverviewViewModel(api) } }
     }
+}
+
+/** The 0-based line of an `include { }` block in [lines] that names [path] (quotes aside), or null. */
+internal fun includeLine(lines: List<String>, path: String): Int? {
+    var inside = false
+    lines.forEachIndexed { i, line ->
+        val code = daeCode(line)
+        when {
+            !inside && INCLUDE_OPEN.matches(code) -> inside = true
+            inside && code == "}" -> inside = false
+            inside && code.trim('\'', '"', ',', ' ') == path -> return i
+        }
+    }
+    return null
+}
+
+private val INCLUDE_OPEN = Regex("""include\s*\{""")
+
+/** How 匯入 ended: the file replaced the entry file; honk rejected it ([message], its first error); the write failed. */
+internal sealed interface RvConfigImport {
+    data object Done : RvConfigImport
+
+    data class Rejected(val message: String?) : RvConfigImport
+
+    data class Failed(val code: ErrorCode) : RvConfigImport
 }
 
 /** 版本紀錄's content: the revisions newest first and the active one. */
@@ -110,8 +201,7 @@ internal class ConfigHistoryViewModel(
         _rename.value = null
     }
 
-    @Suppress("UNUSED_PARAMETER")
-    fun export(kind: ExportKind) {
+    fun export() {
         attempt { _exported.value = NativeConfig(api).export() }
     }
 

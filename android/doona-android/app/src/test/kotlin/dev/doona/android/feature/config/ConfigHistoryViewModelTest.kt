@@ -1,7 +1,6 @@
 package dev.doona.android.feature.config
 
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.ExportKind
 import dev.doona.android.engine.fake.RvSampleConfig
 import dev.doona.android.vpn.PolicyHonkFixtures
 import kotlinx.coroutines.Dispatchers
@@ -42,7 +41,7 @@ class ConfigHistoryViewModelTest {
     @Test
     fun anExportHandsHonksInlinedFilesToThePicker() {
         val vm = ConfigHistoryViewModel(honk, reads = Dispatchers.Unconfined)
-        vm.export(ExportKind.Portable)
+        vm.export()
         assertEquals(honk.call("GET", "/api/v1/x-honk/config/export", null, emptyMap()).body, vm.exported.value)
         assertNull(vm.exportNotice.value)
         vm.exportHandled()

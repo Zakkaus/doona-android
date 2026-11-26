@@ -168,7 +168,7 @@ class AppRvConfigShotTest {
         val BROKEN = RvSampleConfig.cn("stream", wiki = true)
 
         /** The windows of the approved goldens, as tall as each page whole. */
-        const val WHOLE_OVERVIEW = "+h1695dp"
+        const val WHOLE_OVERVIEW = "+h1748dp"
         const val WHOLE_OVERVIEW_EN = "en-w412dp-h1900dp-notnight-xhdpi"
         const val WHOLE_SOURCE = "+h1122dp"
         const val WHOLE_STALE = "+h1030dp"

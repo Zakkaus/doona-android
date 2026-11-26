@@ -29,7 +29,6 @@ import dev.doona.android.designsystem.rv.RvMenuSize
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvSheetLayout
 import dev.doona.android.designsystem.rv.RvTheme
-import dev.doona.android.engine.ExportKind
 import dev.doona.android.engine.fake.RvSampleConfig
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
@@ -354,15 +353,14 @@ class RvConfigHistoryShotTest {
     fun partialEn() = compose.rvShot("config-export-partial-en", dark = false) { Banner(refused = false) }
 
     @Test
-    fun theSheetExportsTheKindPicked() {
-        var kind by mutableStateOf(ExportKind.Archive)
-        var exported: ExportKind? = null
+    fun theSheetExportsWithNoKindToPick() {
+        var exported = false
         compose.setContent {
-            Themed { Column { RvConfigExportContent(kind, { kind = it }, { exported = kind }, {}) } }
+            Themed { Column { RvConfigExportContent({ exported = true }, {}) } }
         }
-        compose.onNodeWithText("可攜版本").performClick()
+        compose.onNodeWithText("可攜版本").assertDoesNotExist()
         compose.onNodeWithText("匯出").performClick()
-        assertEquals(ExportKind.Portable, exported)
+        assertEquals(true, exported)
     }
 
     @Test
@@ -385,7 +383,7 @@ class RvConfigHistoryShotTest {
     private fun Export() {
         Box(Modifier.fillMaxSize()) {
             History()
-            RvSheetLayout({ 1f }, {}, stringResource(R.string.rv_config_export_title)) { RvConfigExportContent(ExportKind.Archive, {}, {}, {}) }
+            RvSheetLayout({ 1f }, {}, stringResource(R.string.rv_config_export_title)) { RvConfigExportContent({}, {}) }
         }
     }
 
