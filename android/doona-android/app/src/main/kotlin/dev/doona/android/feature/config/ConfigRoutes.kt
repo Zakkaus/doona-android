@@ -26,6 +26,7 @@ import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.engine.ErrorCode
+import dev.doona.android.engine.ExportKind
 import dev.doona.android.feature.messageRes
 import dev.doona.android.feature.settings.changeBanner
 import dev.doona.android.vpn.NativeApi
@@ -168,8 +169,8 @@ internal fun ConfigHistoryRoute(api: NativeApi, onBack: () -> Unit, routes: Conf
     ConfigHistoryRoute(viewModel<ConfigHistoryViewModel>(factory = ConfigHistoryViewModel.factory(api)), onBack, routes)
 
 /**
- * 版本紀錄; 匯出設定檔 asks first, since the files can carry credentials, then stages honk's export; an export
- * banner's action reopens the sheet.
+ * 版本紀錄; 匯出設定檔 asks first, since the files can carry credentials, and which kind (honk makes the portable one
+ * alone: [HONK_EXPORT_KINDS]), then stages honk's export; an export banner's action reopens the sheet.
  */
 @Composable
 internal fun ConfigHistoryRoute(viewModel: ConfigHistoryViewModel, onBack: () -> Unit, routes: ConfigRoutes, confirmExport: Boolean = false) {
@@ -178,6 +179,7 @@ internal fun ConfigHistoryRoute(viewModel: ConfigHistoryViewModel, onBack: () ->
     val exported by viewModel.exported.collectAsStateWithLifecycle()
     val notice by viewModel.exportNotice.collectAsStateWithLifecycle()
     var asking by rememberSaveable { mutableStateOf(confirmExport) }
+    var kind by rememberSaveable { mutableStateOf(ExportKind.Portable) }
     LaunchedEffect(exported) {
         exported?.let {
             routes.export(it)
@@ -196,6 +198,8 @@ internal fun ConfigHistoryRoute(viewModel: ConfigHistoryViewModel, onBack: () ->
     RvConfigHistoryPage(history.revisions, history.headRev, history.nowEpochMs, onBack, routes.revision, { asking = true }, rename, viewModel::onRename, viewModel::saveName, banner)
     RvConfigExportSheet(
         visible = asking,
+        kind = kind,
+        onKind = { kind = it },
         onExport = {
             asking = false
             viewModel.export()

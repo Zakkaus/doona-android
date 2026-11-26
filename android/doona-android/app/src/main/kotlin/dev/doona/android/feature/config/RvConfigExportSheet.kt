@@ -8,20 +8,28 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvConfirmContent
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
+import dev.doona.android.designsystem.rv.RvSettingsRadioCard
+import dev.doona.android.designsystem.rv.RvSettingsRadioRow
 import dev.doona.android.designsystem.rv.RvSheet
+import dev.doona.android.engine.ExportKind
 
 /**
- * 匯出設定檔's sheet (config-plan row 16): the credential warning, then 匯出 ([onExport]). honk has one export, every
- * file merged as applied, so the sheet offers no kind (owner, q-export-kind 2026-11-26).
+ * 匯出設定檔's sheet (config-plan row 16): the credential warning, then the two kinds as a radio list, 完整封存 (every
+ * file as applied) and 可攜 (a closed tree that loads elsewhere), then 匯出, which stages [kind] ([onExport]). honk has
+ * one export, every file merged into one, the portable kind, so 完整封存 stays in its place but disabled until honk
+ * exports an archive (owner, 2026-11-27, keep-1127).
  */
 @Composable
-internal fun RvConfigExportSheet(visible: Boolean, onExport: () -> Unit, onDismiss: () -> Unit) {
-    RvSheet(visible, onDismiss, stringResource(R.string.rv_config_export_title)) { RvConfigExportContent(onExport, onDismiss) }
+internal fun RvConfigExportSheet(visible: Boolean, kind: ExportKind, onKind: (ExportKind) -> Unit, onExport: (ExportKind) -> Unit, onDismiss: () -> Unit) {
+    RvSheet(visible, onDismiss, stringResource(R.string.rv_config_export_title)) { RvConfigExportContent(kind, onKind, { onExport(kind) }, onDismiss) }
 }
+
+/** The export kinds honk can make: the portable one alone, every file merged. */
+internal val HONK_EXPORT_KINDS = setOf(ExportKind.Portable)
 
 /** What [RvConfigExportSheet] shows in its card. */
 @Composable
-internal fun ColumnScope.RvConfigExportContent(onExport: () -> Unit, onDismiss: () -> Unit) {
+internal fun ColumnScope.RvConfigExportContent(kind: ExportKind, onKind: (ExportKind) -> Unit, onExport: () -> Unit, onDismiss: () -> Unit) {
     RvConfirmContent(
         title = stringResource(R.string.rv_config_export_title),
         body = stringResource(R.string.rv_config_export_body),
@@ -29,7 +37,17 @@ internal fun ColumnScope.RvConfigExportContent(onExport: () -> Unit, onDismiss: 
         dismiss = stringResource(R.string.rv_cancel),
         onConfirm = onExport,
         onDismiss = onDismiss,
-    )
+    ) {
+        RvSettingsRadioCard {
+            ExportKind.entries.forEach { each ->
+                val (title, line) = when (each) {
+                    ExportKind.Archive -> R.string.rv_config_export_archive to R.string.rv_config_export_archive_line
+                    ExportKind.Portable -> R.string.rv_config_export_portable to R.string.rv_config_export_portable_line
+                }
+                RvSettingsRadioRow(stringResource(title), each == kind, { onKind(each) }, subtitle = stringResource(line), enabled = each in HONK_EXPORT_KINDS)
+            }
+        }
+    }
 }
 
 /**

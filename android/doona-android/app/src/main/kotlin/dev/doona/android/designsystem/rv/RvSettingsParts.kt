@@ -20,6 +20,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.testTag
@@ -260,10 +261,18 @@ internal fun RvSettingsRadioCard(modifier: Modifier = Modifier, content: @Compos
 
 /**
  * A row of a radio list (in an [RvSettingsRadioCard]): the title over an optional [subtitle], and the radio at the end;
- * [subtitleKeepWords] false for a subtitle that is an address (a DNS server's).
+ * [subtitleKeepWords] false for a subtitle that is an address (a DNS server's). Not [enabled] (a choice the core cannot
+ * make yet), the row stays in its place at [RvAlpha.DISABLED] and takes no press.
  */
 @Composable
-internal fun RvSettingsRadioRow(title: String, selected: Boolean, onSelect: () -> Unit, subtitle: String? = null, subtitleKeepWords: Boolean = true) {
-    val choose = Modifier.rvRowSelect(selected, onSelect)
+internal fun RvSettingsRadioRow(
+    title: String,
+    selected: Boolean,
+    onSelect: () -> Unit,
+    subtitle: String? = null,
+    subtitleKeepWords: Boolean = true,
+    enabled: Boolean = true,
+) {
+    val choose = Modifier.rvRowSelect(selected, onSelect, enabled).then(if (enabled) Modifier else Modifier.alpha(RvAlpha.DISABLED))
     RvSettingsRow(title, choose, subtitle = subtitle, subtitleKeepWords = subtitleKeepWords) { RvRadio(selected) }
 }
