@@ -83,8 +83,9 @@ internal fun RvStatsScreen(
 }
 
 /**
- * The two chips under the title, the library's filter row: the subscription at the start (its name once picked) and the
- * range at the end, each opening a menu of its choices, as the 節點 and group pages' chips do.
+ * The chips under the title, the library's filter row: the subscription at the start (its name once picked) and the
+ * range at the end, each opening a menu of its choices, as the 節點 and group pages' chips do. The range chip shows only
+ * with [RvStatsState.daily], since without the daily history no card follows the range (orchestrator, 2026-11-26 22:13).
  */
 @Composable
 private fun Chips(state: RvStatsState, onSubscription: (String?) -> Unit, onRange: (RvStatsRange) -> Unit) {
@@ -93,7 +94,8 @@ private fun Chips(state: RvStatsState, onSubscription: (String?) -> Unit, onRang
         state.subscriptions.map { sub -> RvMenuItem(sub.name, R.drawable.rv_sym_rss_feed) { onSubscription(sub.id) } }
     val ranges = RvStatsRange.entries.map { range -> RvMenuItem(stringResource(range.label), R.drawable.rv_sym_schedule) { onRange(range) } }
     val picked = state.subscriptions.firstOrNull { it.id == state.subscriptionId }?.name ?: all
-    RvFilterChipRow(RvChipPick(picked, items = subscriptions), RvChipPick(stringResource(state.range.label), items = ranges))
+    val range = RvChipPick(stringResource(state.range.label), items = ranges).takeIf { state.daily }
+    RvFilterChipRow(RvChipPick(picked, items = subscriptions), range)
 }
 
 /**

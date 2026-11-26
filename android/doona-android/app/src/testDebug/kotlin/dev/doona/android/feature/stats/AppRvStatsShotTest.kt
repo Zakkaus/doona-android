@@ -136,7 +136,7 @@ class AppRvStatsShotTest {
     fun subscriptionEnLight() = shot("stats-sub-en", dark = false) { Page(::scoring, subscription = PICKED) }
 
     /**
-     * The range chip stays while 已用流量 and the tiles are hidden (q-usage); 分流比例 counts since honk started in every
+     * The range chip is hidden with 已用流量 and the tiles (q-usage), as no card follows it; 分流比例 counts since honk started in every
      * range and says 本次啟動 (q-direct-proxy), and a picked subscription tags it 全部訂閱 too.
      */
     @Test
@@ -146,10 +146,10 @@ class AppRvStatsShotTest {
         var subscription by mutableStateOf<String?>(null)
         compose.rvContent(dark = false) { Page(::scoring, range, subscription) }
         fun count(id: Int, substring: Boolean = false) = compose.onAllNodes(hasText(text(id), substring), useUnmergedTree = true).fetchSemanticsNodes().size
-        assertEquals("the range chip", 1, count(R.string.rv_stats_today))
+        assertEquals("no range chip", 0, count(R.string.rv_stats_today))
         range = RvStatsRange.Week
         compose.waitForIdle()
-        assertEquals("only the chip says 本週", 0, count(R.string.rv_stats_today))
+        assertEquals("nothing says 今天", 0, count(R.string.rv_stats_today))
         assertEquals("分流比例's tag", 1, count(R.string.rv_stats_since_start))
         range = RvStatsRange.Month
         compose.waitForIdle()
