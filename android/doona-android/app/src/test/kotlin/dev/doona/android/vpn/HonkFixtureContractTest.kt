@@ -209,6 +209,9 @@ class HonkFixtureContractTest {
             "runtime/runtime-.*" to "GET /api/v1/runtime 200",
             "runtime/outbounds-.*" to "GET /api/v1/runtime/outbounds 200",
             "runtime/traffic-history-.*" to "GET /api/v1/runtime/traffic/history 200",
+            "config/.*" to "GET /api/v1/config 200",
+            "config-replace/.*" to "PUT /api/v1/config/sources/{source_id} 202",
+            "operations/.*" to "GET /api/v1/operations/{operation_id} 200",
         ).mapKeys { Regex(it.key) }
     }
 }
