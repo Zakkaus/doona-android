@@ -261,13 +261,3 @@ private suspend fun attempt(call: suspend () -> Unit): Exception? = try {
 
 /** Whether TCP and UDP use different members. */
 private val Group.networksDiffer: Boolean get() = runtime.selection.tcp?.memberId != runtime.selection.udp?.memberId
-
-/**
- * The member of [group] to select so that it carries [nodeId]: the node itself when it is a member, else the first member
- * group whose selection ends on it. The page lists member groups by their leaf node, so a tap names a node that may only
- * be reachable through a group. [groups] holds the member groups by id.
- */
-private fun memberFor(group: Group, nodeId: String, groups: Map<String, Group>): String =
-    group.members.firstOrNull { it.id == nodeId }?.id
-        ?: group.members.firstOrNull { it.kind == MemberKind.Group && groups[it.id]?.leafNodeId() == nodeId }?.id
-        ?: nodeId
