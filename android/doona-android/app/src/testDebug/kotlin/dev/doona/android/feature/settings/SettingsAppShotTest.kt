@@ -246,16 +246,20 @@ class SettingsAppShotTest {
     @Config(qualifiers = THEME_PAGE_FS200)
     fun themeFs200() = compose.app("settings-theme", fontScale = RV_FS200, whole = true) { Theme() }
 
-    @Test fun dnsLight() = compose.app("settings-dns", dark = false) { DnsRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onServers = {}) }
+    @Test fun dnsLight() = compose.app("settings-dns", dark = false) { DnsRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onServers = {}, onRules = {}) }
 
-    @Test fun dnsDark() = compose.app("settings-dns", dark = true) { DnsRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onServers = {}) }
+    @Test fun dnsDark() = compose.app("settings-dns", dark = true) { DnsRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onServers = {}, onRules = {}) }
 
-    @Test fun dnsFs200() = compose.app("settings-dns", fontScale = RV_FS200) { DnsRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onServers = {}) }
+    @Test fun dnsFs200() = compose.app("settings-dns", fontScale = RV_FS200) { DnsRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onServers = {}, onRules = {}) }
 
     /** 自訂 open on the core's two servers, over the page. */
     @Test fun dnsServersLight() = compose.app("settings-dns-servers", dark = false) { DnsServersRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onRules = {}) }
 
     @Test fun dnsServersDark() = compose.app("settings-dns-servers", dark = true) { DnsServersRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onRules = {}) }
+
+    @Test fun dnsRulesLight() = compose.app("settings-dns-rules", dark = false) { DnsRulesRoute(PolicyHonkFixtures.rvSample(), onBack = {}) }
+
+    @Test fun dnsRulesDark() = compose.app("settings-dns-rules", dark = true) { DnsRulesRoute(PolicyHonkFixtures.rvSample(), onBack = {}) }
 
     @Test fun dnsCustomLight() = compose.app("settings-dns-custom", dark = false) { DnsCustom(DnsUiState(SERVERS, true, TYPED)) }
 

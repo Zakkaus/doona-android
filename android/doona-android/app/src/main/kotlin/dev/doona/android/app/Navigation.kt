@@ -123,6 +123,10 @@ data object DnsKey : AppKey
 @Serializable
 data object DnsServersKey : AppKey
 
+/** DNS 規則, from 設定 › DNS and from a DNS server removal refused because rules name it. */
+@Serializable
+data object DnsRulesKey : AppKey
+
 @Serializable
 data object LogLevelKey : AppKey
 

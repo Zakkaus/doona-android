@@ -88,7 +88,7 @@ class ThemeDnsRouteTest {
     @Test
     fun aPresetAndATypedServerReachHonk() {
         val honk = honk()
-        compose.rvContent(dark = false) { DnsRoute(honk, onBack = {}, onServers = {}) }
+        compose.rvContent(dark = false) { DnsRoute(honk, onBack = {}, onServers = {}, onRules = {}) }
         compose.onNodeWithText(QUAD9).performClick()
         compose.waitForIdle()
         assertEquals("cloudflare: 'https://9.9.9.9/dns-query?tls_server_name=dns.quad9.net' -> Proxy", written(honk, 1))
@@ -109,7 +109,7 @@ class ThemeDnsRouteTest {
     @Test
     fun anIpv6ServerReachesHonkAndALinkLocalOneSaysWhy() {
         val honk = honk()
-        compose.rvContent(dark = false) { DnsRoute(honk, onBack = {}, onServers = {}) }
+        compose.rvContent(dark = false) { DnsRoute(honk, onBack = {}, onServers = {}, onRules = {}) }
         compose.onNodeWithText(CUSTOM).performClick()
         compose.waitForIdle()
         compose.onNodeWithText(V6_HINT, useUnmergedTree = true).assertFits()
@@ -133,7 +133,7 @@ class ThemeDnsRouteTest {
     fun atFs200TheHintAndTheErrorAreWhole() {
         // The sheet is a window of its own, which takes the system's font scale rather than the page's density.
         RuntimeEnvironment.setFontScale(RV_FS200)
-        compose.rvContent(dark = false, fontScale = RV_FS200) { DnsRoute(honk(), onBack = {}, onServers = {}) }
+        compose.rvContent(dark = false, fontScale = RV_FS200) { DnsRoute(honk(), onBack = {}, onServers = {}, onRules = {}) }
         compose.onNodeWithText(CUSTOM).performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNodeWithText(V6_HINT, useUnmergedTree = true).assertFits()

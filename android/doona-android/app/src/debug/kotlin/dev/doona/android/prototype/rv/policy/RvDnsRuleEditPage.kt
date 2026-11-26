@@ -28,15 +28,9 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvInkStart
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RvDnsServer
-
-/** The two DNS lists of honk's `dns.routing` (schema 4 §8): `request` (查詢) and `response` (回應). */
-internal enum class RvDnsList { Query, Response }
-
-/**
- * A DNS statement's action: `reject`, `asis` (to the server the query was addressed to) and an upstream for a query;
- * `accept`, `reject` and an upstream (asked again) for a response.
- */
-internal enum class RvDnsAction { Reject, AsIs, Accept, Upstream }
+import dev.doona.android.feature.settings.RvDnsAction
+import dev.doona.android.feature.settings.RvDnsList
+import dev.doona.android.feature.settings.rvDnsActionLabel
 
 /** A DNS rule being edited: its match and 啟用 as a traffic rule's (no `must`), its [action] and the [upstream] it names. */
 @Immutable
@@ -96,14 +90,6 @@ private val RvDnsList.actions: List<RvDnsAction>
         RvDnsList.Query -> listOf(RvDnsAction.Reject, RvDnsAction.AsIs, RvDnsAction.Upstream)
         RvDnsList.Response -> listOf(RvDnsAction.Accept, RvDnsAction.Reject, RvDnsAction.Upstream)
     }
-
-@StringRes
-internal fun rvDnsActionLabel(list: RvDnsList, action: RvDnsAction): Int = when (action) {
-    RvDnsAction.Reject -> R.string.rv_policy_reject
-    RvDnsAction.AsIs -> R.string.rv_dns_action_original
-    RvDnsAction.Accept -> R.string.rv_dns_action_accept
-    RvDnsAction.Upstream -> if (list == RvDnsList.Query) R.string.rv_dns_action_server else R.string.rv_dns_action_requery
-}
 
 @StringRes
 private fun line(list: RvDnsList, action: RvDnsAction): Int = when (action) {

@@ -49,10 +49,18 @@ import dev.doona.android.vpn.NativeApi
  * The page 進階 → DNS opens, in 主題's language: the large title, then one titled card of servers, each its name over
  * its address with a radio, and 自訂 last, which opens [RvDnsCustomSheet]; a footer says the query goes out through the
  * main node (rule-mode decision 10). A [selected] null (servers no preset names) leaves every radio empty. Under 設定檔,
- * DNS 伺服器 opens the servers the config declares ([onServers]; owner 2026-11-26 13:53, q-dns-servers).
+ * DNS 規則 opens the config's DNS lists ([onRules]) and DNS 伺服器 the servers it declares ([onServers]; owner 2026-11-26
+ * 13:53, q-dns-servers: the servers page sits beside DNS rules).
  */
 @Composable
-internal fun RvDnsScreen(selected: RvDnsUpstream?, onSelect: (RvDnsUpstream) -> Unit, onBack: () -> Unit, onCustom: () -> Unit, onServers: () -> Unit) {
+internal fun RvDnsScreen(
+    selected: RvDnsUpstream?,
+    onSelect: (RvDnsUpstream) -> Unit,
+    onBack: () -> Unit,
+    onCustom: () -> Unit,
+    onServers: () -> Unit,
+    onRules: () -> Unit = {},
+) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_settings_dns)
     RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
@@ -69,17 +77,20 @@ internal fun RvDnsScreen(selected: RvDnsUpstream?, onSelect: (RvDnsUpstream) -> 
             }
             RvFootnote(stringResource(R.string.rv_settings_dns_footer))
             RvSettingsSection(stringResource(R.string.rv_config_title))
-            RvSettingsCard { RvSettingsNavRow(stringResource(R.string.rv_config_dns_servers), R.drawable.rv_sym_dns, onServers) }
+            RvSettingsCard {
+                RvSettingsNavRow(stringResource(R.string.rv_dns_rules_title), R.drawable.rv_sym_rule, onRules)
+                RvSettingsNavRow(stringResource(R.string.rv_config_dns_servers), R.drawable.rv_sym_dns, onServers)
+            }
         }
     }
 }
 
 /** DNS in the app: honk's server, a tap on a preset saves it, 自訂 opens the sheet that saves a typed one. */
 @Composable
-internal fun DnsRoute(api: NativeApi, onBack: () -> Unit, onServers: () -> Unit) {
+internal fun DnsRoute(api: NativeApi, onBack: () -> Unit, onServers: () -> Unit, onRules: () -> Unit) {
     val viewModel: DnsViewModel = viewModel(factory = DnsViewModel.factory(api))
     val state = viewModel.uiState.collectAsStateWithLifecycle().value ?: return RvSettingsLoading()
-    RvDnsScreen(rvDnsUpstream(state.servers), viewModel::select, onBack, onCustom = viewModel::openCustom, onServers = onServers)
+    RvDnsScreen(rvDnsUpstream(state.servers), viewModel::select, onBack, onCustom = viewModel::openCustom, onServers = onServers, onRules = onRules)
     RvDnsCustomSheet(state, viewModel::editCustom, viewModel::saveCustom, viewModel::dismissCustom)
 }
 

@@ -13,6 +13,8 @@ import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.settings.RvDnsLists
+import dev.doona.android.feature.settings.RvDnsRulesPage
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole

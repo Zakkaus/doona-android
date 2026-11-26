@@ -1,6 +1,7 @@
-package dev.doona.android.prototype.rv.policy
+package dev.doona.android.feature.settings
 
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
@@ -33,6 +34,15 @@ import dev.doona.android.designsystem.rv.RvSettingsNavRow
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.SEPARATOR
 
+/** The two DNS lists of honk's `dns.routing` (schema 4 §8): `request` (查詢) and `response` (回應). */
+internal enum class RvDnsList { Query, Response }
+
+/**
+ * A DNS statement's action: `reject`, `asis` (to the server the query was addressed to) and an upstream for a query;
+ * `accept`, `reject` and an upstream (asked again) for a response.
+ */
+internal enum class RvDnsAction { Reject, AsIs, Accept, Upstream }
+
 /**
  * A statement of a DNS list as the list shows it: its match in honk text ([source], null for the list's fallback, the
  * last row), what it does and the server it names, and whether it is paused (commented out).
@@ -49,7 +59,7 @@ internal data class RvDnsLists(val query: List<RvDnsRow>, val response: List<RvD
  * as its own section in file order, how they are tried under the title. A row is the statement's match in honk text
  * (what the user finds in dns.dae), over its action and the server it names, after its action's glyph; a paused one
  * says so. The last row is the list's fallback (其餘查詢, 其餘回應), which stays. A tap opens the statement's page
- * ([RvDnsRuleEditPage]). With [edit] each statement ends with the remove control (the fallback keeps its place empty)
+ * (the DNS rule page). With [edit] each statement ends with the remove control (the fallback keeps its place empty)
  * and 新增規則 ends each card.
  * A [banner] (a removal the phone could not stage) heads the sections.
  */
@@ -144,3 +154,11 @@ private val RvDnsAction.glyph: Int
         RvDnsAction.AsIs -> R.drawable.rv_sym_arrow_right_alt
         RvDnsAction.Accept -> R.drawable.rv_sym_check
     }
+
+@StringRes
+internal fun rvDnsActionLabel(list: RvDnsList, action: RvDnsAction): Int = when (action) {
+    RvDnsAction.Reject -> R.string.rv_policy_reject
+    RvDnsAction.AsIs -> R.string.rv_dns_action_original
+    RvDnsAction.Accept -> R.string.rv_dns_action_accept
+    RvDnsAction.Upstream -> if (list == RvDnsList.Query) R.string.rv_dns_action_server else R.string.rv_dns_action_requery
+}

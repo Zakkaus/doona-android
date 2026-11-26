@@ -155,9 +155,9 @@ private fun failureBanner(failure: DnsServersFailure, viewModel: DnsServersViewM
 
 /** A change honk did not take, so nothing changed: its title, why, and 重試, which makes it again. */
 @Composable
-private fun changeBanner(title: String, code: ErrorCode, onRetry: () -> Unit) =
+internal fun changeBanner(title: String, code: ErrorCode, onRetry: () -> Unit) =
     RvNotice(RvNoticeKind.Error, title, stringResource(code.messageRes()), stringResource(R.string.rv_retry), onRetry, titleKeepWords = false)
 
 @Composable
-private fun readBanner(code: ErrorCode, onRetry: () -> Unit) =
+internal fun readBanner(code: ErrorCode, onRetry: () -> Unit) =
     RvNotice(RvNoticeKind.Error, stringResource(code.messageRes()), null, stringResource(R.string.rv_retry), onRetry)
