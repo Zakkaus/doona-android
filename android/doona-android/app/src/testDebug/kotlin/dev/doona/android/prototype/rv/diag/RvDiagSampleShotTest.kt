@@ -142,35 +142,35 @@ class RvDiagSampleShotTest {
     fun dnsRecordFs200() = compose.rvShot("diag-dns-record", dark = false, fontScale = RV_FS200, before = { assertWhole() }) { RvDnsRecordSample() }
 
     @Test
-    @Config(qualifiers = "+h2643dp")
+    @Config(qualifiers = "+h2223dp")
     fun dnsStatsLight() = compose.rvShot("diag-dns-stats", dark = false, before = { assertWhole() }) { RvDnsStatsSample() }
 
     @Test
-    @Config(qualifiers = "+h2643dp")
+    @Config(qualifiers = "+h2223dp")
     fun dnsStatsDark() = compose.rvShot("diag-dns-stats", dark = true, before = { assertWhole() }) { RvDnsStatsSample() }
 
     @Test
-    @Config(qualifiers = "en-w412dp-h2692dp-notnight-xhdpi")
+    @Config(qualifiers = "en-w412dp-h2256dp-notnight-xhdpi")
     fun dnsStatsEn() = compose.rvShot("diag-dns-stats", dark = false, english = true, before = { assertWhole() }) { RvDnsStatsSample() }
 
     @Test
-    @Config(qualifiers = "+h3378dp")
+    @Config(qualifiers = "+h2938dp")
     fun dnsStatsFs200() = compose.rvShot("diag-dns-stats", dark = false, fontScale = RV_FS200, before = { assertWhole() }) { RvDnsStatsSample() }
 
     @Test
-    @Config(qualifiers = "+h1961dp")
+    @Config(qualifiers = "+h2003dp")
     fun logsLight() = compose.rvShot("diag-logs", dark = false, before = { assertWhole() }) { RvLogsSample() }
 
     @Test
-    @Config(qualifiers = "+h1961dp")
+    @Config(qualifiers = "+h2003dp")
     fun logsDark() = compose.rvShot("diag-logs", dark = true, before = { assertWhole() }) { RvLogsSample() }
 
     @Test
-    @Config(qualifiers = "en-w412dp-h1958dp-notnight-xhdpi")
+    @Config(qualifiers = "en-w412dp-h2000dp-notnight-xhdpi")
     fun logsEn() = compose.rvShot("diag-logs", dark = false, english = true, before = { assertWhole() }) { RvLogsSample() }
 
     @Test
-    @Config(qualifiers = "+h3003dp")
+    @Config(qualifiers = "+h3045dp")
     fun logsFs200() = compose.rvShot("diag-logs", dark = false, fontScale = RV_FS200, before = { assertWhole() }) { RvLogsSample() }
 
     @Test

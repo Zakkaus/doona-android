@@ -15,8 +15,9 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * 日誌檢視's level map picks the lowest level shown, as the web's row headers do: the current minimum's row is selected,
- * and picking 警告 moves the chip to 警告及以上, drops the 資訊 row from the map and the counts, and keeps the rest.
+ * 日誌檢視's level rows pick the lowest level shown, as the web's row headers do: the current minimum's row is selected,
+ * and picking 警告 moves the chip to 警告及以上 and drops 資訊 from the counts; every level keeps its row, so 資訊 can be
+ * picked again.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -37,7 +38,7 @@ class RvLogsMinimumTest {
         compose.onNodeWithText("警告及以上").assertExists()
         compose.onNodeWithContentDescription("警告：目前的最低等級").assertIsSelected()
         compose.onNodeWithContentDescription("顯示錯誤及以上").assertExists()
-        compose.onNodeWithContentDescription("顯示資訊及以上").assertDoesNotExist()
+        compose.onNodeWithContentDescription("顯示資訊及以上").assertExists()
         compose.onNodeWithText("4 筆").assertDoesNotExist()
     }
 }

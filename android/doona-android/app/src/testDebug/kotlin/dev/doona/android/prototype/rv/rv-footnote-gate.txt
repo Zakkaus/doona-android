@@ -41,5 +41,6 @@ prototype/rv/diag/RvDiagParts.kt	RvCaption(it)	a diagnostic page header's captio
 prototype/rv/diag/RvDiagParts.kt	RvText(text, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a row's second value on its subtitle's line (RvEndSub), inside the card
 prototype/rv/diag/RvDnsPages.kt	RvCaption(record.type + SEPARATOR + clock)	a DNS record page header's caption
 prototype/rv/diag/RvDnsStatsPage.kt	RvText( sampleText("快取範圍：正向回答、負向回答；僅存於記憶體，重新啟動後清空", "Caches positive answers, negative answers; held in memory only, cle	DNS 統計's cache coverage inside the cache card, between its bar and 檢視快取
+prototype/rv/diag/RvDnsStatsPage.kt	RvText(sampleText("命中快取", "From the cache"), Rv.type.rowSub, color = Rv.colors.textSecondary)	回應結果's figure caption under the share, inside the card, as 分流比例's 經由代理
 prototype/rv/diag/RvFlowsPages.kt	RvCaption(flow.app + SEPARATOR + if (flow.udp) RV_UDP else RV_TCP)	a flow page header's caption
 prototype/rv/diag/RvFlowsPages.kt	RvCaption(sampleText("$total 筆流程", "$total flows"))	流量路徑's page header caption
