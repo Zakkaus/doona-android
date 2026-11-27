@@ -14,6 +14,7 @@ import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvLatencyScale
 import dev.doona.android.designsystem.rv.RvLatencySpread
 import dev.doona.android.designsystem.rv.RvLegendItem
+import dev.doona.android.designsystem.rv.RvMeterTrack
 import dev.doona.android.designsystem.rv.RvProgress
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvSeeAll
@@ -35,8 +36,8 @@ import kotlin.math.roundToInt
  * 上游查詢的延遲, the web's beeswarm as the library's latency dots ([RvLatencySpread]) on the web's log axis, each lookup
  * that reached an upstream in its outcome's colour with the timed-out failures at their five seconds, the outcomes' key,
  * a row per upstream with its count and median, and 開啟 DNS 組態; 回應結果, the web's waffle ([RvWaffle]) over the
- * shares as key-stats rows; 查詢排行 by device or by domain, a row each with its count that opens DNS 記錄 filtered to it,
- * the rest counted under it (the web's bars wait for the library's RvMeter); and 快取狀態, the entries against the
+ * shares as key-stats rows; 查詢排行 by device or by domain, a row each with its count that opens DNS 記錄 filtered to it
+ * and the web's bar under it ([RvMeterTrack], against the most asked), the rest counted under the card; and 快取狀態, the entries against the
  * capacity as the progress bar, what the cache keeps, and 檢視快取.
  */
 @Composable
@@ -118,11 +119,16 @@ private fun outcomeLabel(o: RvDnsOutcome): String = when (o) {
     RvDnsOutcome.Failed -> sampleText("失敗", "Failed")
 }
 
-/** 查詢排行: devices or domains, the most asked first, each with its count; the rest in one line under the card. */
+/**
+ * 查詢排行: devices or domains, the most asked first, each with its count and its bar against the first, in the web's two
+ * series' colours (devices the first, domains the second); the rest in one line under the card.
+ */
 @Composable
 private fun Ranking(s: RvDnsStats, byDomain: Boolean) {
     val ranking = if (byDomain) s.domains else s.devices
     val shown = ranking.sumOf { it.second }
+    val top = ranking.first().second.toFloat()
+    val ink = if (byDomain) Rv.colors.up.line else Rv.colors.down.line
     RvDiagSection(sampleText("查詢排行", "Top queries"))
     RvGutter {
         RvCard {
@@ -130,6 +136,7 @@ private fun Ranking(s: RvDnsStats, byDomain: Boolean) {
             ranking.forEach { (key, n) ->
                 val name = key ?: sampleText("解析器自身", "The resolver itself")
                 RvRow(null, name, null, onClick = key?.let { {} }, titleKeepWords = false, trailing = { RvEndValue(count(n)) })
+                RvMeterTrack(n / top, ink, Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding))
             }
         }
     }
