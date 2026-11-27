@@ -33,6 +33,9 @@ internal object RvStatsSize {
     const val BAR_SHARE = 0.56f
     val barStub = 3.dp
 
+    /** The same bars for one row of several, 日誌時間分布's a row per level: under half a tile's height. */
+    val rowBars = 24.dp
+
     /** The quota ring, Revolut's 'Total assets' (151 dp, 8 dp stroke), and the card-coloured gap between its parts (S05). */
     val ring = 132.dp
     val ringStroke = 8.dp

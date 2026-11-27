@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 
 /**
  * A meter's track, Revolut's analyst bar (web `MeterTrack`): an 8 dp pill track with [fraction] of it filled by a
@@ -34,13 +35,28 @@ internal fun RvMeterTrack(fraction: Float, color: Color, modifier: Modifier = Mo
 /**
  * A quantity in a known range (web `Meter`): [RvMeterTrack] with [fraction] filled in [color], then `[valueLabel]
  * [label]` after it, or the [label] alone and a bare track when the value is not [known]. The row grows past its height
- * when large text needs it, so the label is never cut. 分流比例 and the 評分 card show two each.
+ * when large text needs it, so the label is never cut. 分流比例 and the 評分 card show two each. Meters stacked with
+ * longer labels pass one [labelWidth]: each label then takes that width, wrapping onto more lines when it needs them,
+ * so their tracks stay the same length.
  */
 @Composable
-internal fun RvMeter(fraction: Float, valueLabel: String, label: String, color: Color, known: Boolean, modifier: Modifier = Modifier) {
+internal fun RvMeter(
+    fraction: Float,
+    valueLabel: String,
+    label: String,
+    color: Color,
+    known: Boolean,
+    modifier: Modifier = Modifier,
+    labelWidth: Dp? = null,
+) {
     Row(modifier.heightIn(min = RvStatsSize.ratingRow), verticalAlignment = Alignment.CenterVertically) {
         RvMeterTrack(if (known) fraction else 0f, color, Modifier.weight(1f))
         Spacer(Modifier.width(RvSpace.trailingGap))
-        RvText(if (known) "$valueLabel $label" else label, Rv.type.rowSub, Modifier.widthIn(min = RvStatsSize.ratingLabel), align = TextAlign.End)
+        val text = if (known) "$valueLabel $label" else label
+        if (labelWidth == null) {
+            RvText(text, Rv.type.rowSub, Modifier.widthIn(min = RvStatsSize.ratingLabel), align = TextAlign.End)
+        } else {
+            RvText(text, Rv.type.rowSub, Modifier.width(labelWidth), align = TextAlign.End, maxLines = Int.MAX_VALUE)
+        }
     }
 }

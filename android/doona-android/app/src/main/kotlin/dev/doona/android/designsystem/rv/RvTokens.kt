@@ -403,12 +403,6 @@ internal object RvAlpha {
     /** The ghost bars of a tile with no traffic, in the text colour. */
     const val GHOST = 0.05f
 
-    /**
-     * A heat map's five tones of its row's hue, over the card: the busiest cells in the hue itself, the quietest at a
-     * fifth of it (doona web's heat map, `charts.css` `.rp-heatmap .cell.t1`–`t5`). An empty cell is the track.
-     */
-    val HEAT = floatArrayOf(0.2f, 0.38f, 0.56f, 0.76f, 1f)
-
     /** The soft halo round the live point. */
     const val HALO = 0.22f
 
@@ -567,15 +561,6 @@ internal object RvUsageSize {
 
     /** The total sits at 80 % of the chart's height, so the day has room to grow. */
     const val HEADROOM = 1.25f
-}
-
-/**
- * The heat map ([RvHeatMap]): a cell as tall as doona web's (22 dp), the label column at most this share of the width,
- * so the cells keep the rest on a phone.
- */
-internal object RvHeatMapSize {
-    val cell = 22.dp
-    const val LABEL_SHARE = 0.4f
 }
 
 internal object RvHomeSize {

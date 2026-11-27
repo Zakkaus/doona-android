@@ -32,16 +32,16 @@ internal fun RvChartGrid(slots: Int, every: Int, modifier: Modifier = Modifier) 
 
 /**
  * A bar chart (web `Charts` bars), after Revolut's 'Income' card: one rounded bar per slot of [slots] (an hour of a day,
- * a day of a week or a month), in [color], scaled to the busiest of [values]; the slots past the end of [values] (still
- * to come) are short stubs on the track.
+ * a day of a week or a month), in [color], scaled to the busiest of [values]; a slot with no value (null, or past the
+ * end of [values]: still to come) is a short stub on the track.
  */
 @Composable
-internal fun RvBarChart(values: List<Long>, color: Color, modifier: Modifier = Modifier, slots: Int = RvUsageSize.HOURS) {
+internal fun RvBarChart(values: List<Long?>, color: Color, modifier: Modifier = Modifier, slots: Int = RvUsageSize.HOURS) {
     val stub = Rv.colors.track
     Canvas(modifier.fillMaxWidth().height(RvStatsSize.bars)) {
         val pitch = size.width / slots
         val bar = pitch * RvStatsSize.BAR_SHARE
-        val peak = values.maxOrNull()?.takeIf { it > 0 } ?: 1L
+        val peak = values.filterNotNull().maxOrNull()?.takeIf { it > 0 } ?: 1L
         val least = RvStatsSize.barStub.toPx()
         for (h in 0 until slots) {
             val value = values.getOrNull(h)
