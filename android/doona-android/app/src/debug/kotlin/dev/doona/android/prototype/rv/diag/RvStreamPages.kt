@@ -1,5 +1,6 @@
 package dev.doona.android.prototype.rv.diag
 
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,6 +20,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvBarChart
@@ -41,6 +43,7 @@ import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rememberRvFormat
+import dev.doona.android.designsystem.rv.rvBarSlots
 import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.prototype.rv.samples.sampleText
 
@@ -100,23 +103,31 @@ internal fun RvLogsSample(records: List<RvLogRecord> = RvDiagData.logs, initialM
 }
 
 /**
- * 日誌時間分布 over [records]: a row per level, 錯誤 to 除錯, each 統計's hour bars ([RvBarChart]) at a row's height, a
- * bar per stretch of time in the level's hue, scaled to the level's own busiest so three errors read beside a thousand
- * info records; a stretch with no records is a stub on the track. The labels share one column as wide as the widest, after a
+ * 日誌時間分布 over [records]: a row per level, 錯誤 to 除錯, each 統計's hour bars ([RvBarChart]) at a row's height, at
+ * 統計's bar width and gap, as many stretches of the span as fit ([rvBarSlots]), a bar per stretch in the level's hue,
+ * every row scaled to the busiest stretch of any level as 統計 scales its hours; a stretch with no records is 統計's stub. The labels share one column as wide as the widest, after a
  * check's room, and the span's first and last times stand under the last row in the caption type. A row sets the
  * minimum to its level ([onMinimum]); the current minimum's row carries the check, and a screen reader hears each row's
  * busy stretches with their counts.
  */
 @Composable
 private fun LogLevelBars(records: List<RvLogRecord>, minimum: RvLevel, onMinimum: (RvLevel) -> Unit) {
-    val format = rememberRvFormat()
-    val heat = rvLogHeat(records, RvLevel.entries)
-    val hues = mapOf(RvLevel.Error to Rv.colors.error, RvLevel.Warn to Rv.colors.fair, RvLevel.Info to Rv.colors.positive, RvLevel.Debug to Rv.colors.textSecondary)
-    val zh = sampleText("zh", "") == "zh"
     val measurer = rememberTextMeasurer()
     val style = Rv.type.tileCaption
     val density = LocalDensity.current
-    val widest = with(density) { heat.counts.maxOf { measurer.measure(it.first.word.text(), style).size.width }.toDp() }
+    val widest = with(density) { RvLevel.entries.maxOf { measurer.measure(it.word.text(), style).size.width }.toDp() }
+    val labelRoom = RvChartSize.segmentCheck + RvChartSize.segmentGlyphGap + widest + RvSpace.trailingGap
+    BoxWithConstraints { LogLevelRows(records, rvBarSlots(maxWidth - RvSpace.rowPadding * 2 - labelRoom), widest, minimum, onMinimum) }
+}
+
+@Composable
+private fun LogLevelRows(records: List<RvLogRecord>, slots: Int, widest: Dp, minimum: RvLevel, onMinimum: (RvLevel) -> Unit) {
+    val format = rememberRvFormat()
+    val heat = rvLogHeat(records, RvLevel.entries, slots)
+    val peak = heat.counts.maxOf { it.second.maxOrNull() ?: 0 }.toLong()
+    val hues = mapOf(RvLevel.Error to Rv.colors.error, RvLevel.Warn to Rv.colors.fair, RvLevel.Info to Rv.colors.positive, RvLevel.Debug to Rv.colors.textSecondary)
+    val zh = sampleText("zh", "") == "zh"
+    val style = Rv.type.tileCaption
     Column(Modifier.padding(top = RvSpace.tight)) {
         heat.counts.forEach { (level, counts) ->
             val word = level.word.text()
@@ -143,7 +154,7 @@ private fun LogLevelBars(records: List<RvLogRecord>, minimum: RvLevel, onMinimum
                 Spacer(Modifier.width(RvChartSize.segmentGlyphGap))
                 RvText(word, style, Modifier.widthIn(min = widest), maxLines = Int.MAX_VALUE)
                 Spacer(Modifier.width(RvSpace.trailingGap))
-                RvBarChart(counts.map { n -> n.toLong().takeIf { it > 0 } }, hues.getValue(level), Modifier.weight(1f).height(RvStatsSize.rowBars).semantics { contentDescription = heard }, slots = heat.starts.size.coerceAtLeast(1))
+                RvBarChart(counts.map { n -> n.toLong().takeIf { it > 0 } }, hues.getValue(level), Modifier.weight(1f).height(RvStatsSize.rowBars).semantics { contentDescription = heard }, slots = slots, barWidth = RvStatsSize.barWidth, peak = peak)
             }
         }
         if (heat.starts.isNotEmpty()) {

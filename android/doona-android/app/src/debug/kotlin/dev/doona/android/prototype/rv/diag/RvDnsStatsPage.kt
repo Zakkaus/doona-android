@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCard
+import dev.doona.android.designsystem.rv.RvCardHeader
 import dev.doona.android.designsystem.rv.RvFigure
 import dev.doona.android.designsystem.rv.RvFootnote
 import dev.doona.android.designsystem.rv.RvGutter
@@ -32,6 +33,7 @@ import dev.doona.android.designsystem.rv.RvStatsSize
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvUsageSize
 import dev.doona.android.feature.stats.RvStatsFigure
+import dev.doona.android.feature.stats.cardBody
 import dev.doona.android.prototype.rv.samples.sampleText
 import kotlin.math.ceil
 import kotlin.math.roundToInt
@@ -93,17 +95,17 @@ internal fun RvDnsStatsSample(byDomain: Boolean = true) {
 }
 
 /**
- * 回應結果, in 統計's 分流比例 grammar: the share served from the cache as the figure, and a meter each for the four
+ * 回應結果, in 統計's 分流比例 grammar: its title in the card ([RvCardHeader]), the share served from the cache as the figure, and a meter each for the four
  * outcomes with its count, filled to its share of what was loaded, in the outcomes' colours.
  */
 @Composable
 private fun Outcomes(s: RvDnsStats) {
     val ink = outcomeInk()
     val outcomes = listOf(RvDnsOutcome.Cached to s.CACHED, RvDnsOutcome.Answered to s.ANSWERED, RvDnsOutcome.NoSuchName to s.NXDOMAIN, RvDnsOutcome.Failed to s.FAILED)
-    RvDiagSection(sampleText("回應結果", "Outcomes"))
     RvGutter {
         RvCard {
-            Row(Modifier.padding(RvSpace.rowPadding), verticalAlignment = Alignment.CenterVertically) {
+            RvCardHeader(sampleText("回應結果", "Outcomes"))
+            Row(cardBody, verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     RvStatsFigure(RvFigure(percent(s.CACHED, s.LOADED), ""))
                     RvText(sampleText("命中快取", "From the cache"), Rv.type.rowSub, color = Rv.colors.textSecondary)
