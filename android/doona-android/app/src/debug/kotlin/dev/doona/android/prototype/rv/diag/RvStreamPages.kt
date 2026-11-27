@@ -1,17 +1,23 @@
 package dev.doona.android.prototype.rv.diag
 
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvChevron
 import dev.doona.android.designsystem.rv.RvChipPick
 import dev.doona.android.designsystem.rv.RvFilterChip
 import dev.doona.android.designsystem.rv.RvFilterChipRow
 import dev.doona.android.designsystem.rv.RvGutter
+import dev.doona.android.designsystem.rv.RvHeatMap
+import dev.doona.android.designsystem.rv.RvHeatRow
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvSettingsCard
 import dev.doona.android.designsystem.rv.RvSettingsNavRow
+import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.SEPARATOR
@@ -20,8 +26,8 @@ import dev.doona.android.prototype.rv.samples.sampleText
 
 /**
  * 日誌檢視 (doona web's 日誌, `GET /logs`): the caption says the level honk records from and the stream's state; the
- * chips pick the lowest level shown and a target prefix. 日誌時間分布 gives the web's level map in figures: the records
- * of each level and the busiest minute. Each record is its level's glyph, its message (with its typed fields), and its
+ * chips pick the lowest level shown and a target prefix. 日誌時間分布 draws the web's level map (a row per level, a column
+ * per ten seconds) over the records of each level and the busiest minute. Each record is its level's glyph, its message (with its typed fields), and its
  * time, level and target under it; a gap in the stream is a row of its own. 暫停 holds the list,
  * 匯出 writes it, 清空 empties it, 記錄設定 opens the recorder's mode and level.
  */
@@ -36,6 +42,7 @@ internal fun RvLogsSample(records: List<RvLogRecord> = RvDiagData.logs) {
         RvDiagSection(sampleText("日誌時間分布", "Log activity"))
         RvGutter {
             RvCard {
+                LogHeatMap(records)
                 RvDiagData.logCounts.forEach { (level, n) -> RvStatRow(level.word.text(), sampleText("$n 筆", if (n == 1) "1 record" else "$n records")) }
                 RvStatRow(sampleText("記錄最多的時段", "Busiest"), RvDiagData.LOG_PEAK)
             }
@@ -67,6 +74,37 @@ internal fun RvLogsSample(records: List<RvLogRecord> = RvDiagData.logs) {
         }
     }
 }
+
+/**
+ * The web's level map over [records]: a row per level the caption's minimum keeps (錯誤, 警告, 資訊), a column per ten
+ * seconds, in the level's hue; a screen reader hears each row's busy columns with their spans and counts.
+ */
+@Composable
+private fun LogHeatMap(records: List<RvLogRecord>) {
+    val format = rememberRvFormat()
+    val heat = rvLogHeat(records, LOG_LEVELS)
+    val hues = mapOf(RvLevel.Error to Rv.colors.error, RvLevel.Warn to Rv.colors.fair, RvLevel.Info to Rv.colors.positive, RvLevel.Debug to Rv.colors.textSecondary)
+    val zh = sampleText("zh", "") == "zh"
+    val rows = heat.counts.map { (level, counts) ->
+        val word = level.word.text()
+        val busy = counts.indices.filter { counts[it] > 0 }.joinToString(if (zh) "，" else "; ") { i ->
+            val span = format.clock(heat.starts[i]) + SPAN + format.clock(heat.starts[i] + heat.width)
+            val n = counts[i]
+            if (zh) {
+                "$span $n 筆"
+            } else if (n == 1) {
+                "$span, 1 record"
+            } else {
+                "$span, $n records"
+            }
+        }
+        RvHeatRow(word, hues.getValue(level), counts, (if (zh) "$word：" else "$word: ") + busy)
+    }
+    RvHeatMap(rows, heat.starts.map(format::clock), Modifier.padding(start = RvSpace.rowPadding, top = RvSpace.rowPadding, end = RvSpace.rowPadding))
+}
+
+private val LOG_LEVELS = listOf(RvLevel.Error, RvLevel.Warn, RvLevel.Info)
+private const val SPAN = "–"
 
 /**
  * 事件 (doona web's 事件, `GET /events`): the caption says how many events the page keeps, the stream's state and that

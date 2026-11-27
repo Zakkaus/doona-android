@@ -352,3 +352,28 @@ internal object RvDiagData {
     )
     const val EVENT_LIMIT = 50
 }
+
+/**
+ * 日誌時間分布's heat map over [records] as doona web builds it (`features/logs/heatmap.ts`): a count per level of
+ * [levels] (most severe first) per time column, the columns the smallest round width ([HEAT_WIDTHS]) whose aligned
+ * buckets over the records' span number at most [room]. A gap marker is no record.
+ */
+internal class RvLogHeat(val starts: List<Long>, val width: Long, val counts: List<Pair<RvLevel, List<Int>>>)
+
+internal fun rvLogHeat(records: List<RvLogRecord>, levels: List<RvLevel>, room: Int = HEAT_ROOM): RvLogHeat {
+    val kept = records.filter { !it.gap && it.level in levels }
+    if (kept.isEmpty()) return RvLogHeat(emptyList(), 0, levels.map { it to emptyList() })
+    val since = kept.minOf { it.atEpochMs }
+    val until = kept.maxOf { it.atEpochMs }
+    val width = HEAT_WIDTHS.firstOrNull { until / it - since / it + 1 <= room } ?: HEAT_WIDTHS.last()
+    val starts = generateSequence(since / width * width) { it + width }.takeWhile { it <= until }.toList()
+    val counts = levels.map { level ->
+        val row = IntArray(starts.size)
+        kept.filter { it.level == level }.forEach { row[((it.atEpochMs - starts[0]) / width).toInt().coerceAtMost(starts.lastIndex)]++ }
+        level to row.toList()
+    }
+    return RvLogHeat(starts, width, counts)
+}
+
+private const val HEAT_ROOM = 24
+private val HEAT_WIDTHS = listOf(10L, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 21600, 43200, 86400).map { it * 1_000 }

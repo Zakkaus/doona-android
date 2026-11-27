@@ -14,8 +14,9 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * The samples of the diagnostic pages (q-diag-pages), each a whole page: `proto-rv-diag-<screen>-<light|dark|en|fs200>`
- * for 流量紀錄 (`flows`), a flow (`flow`), 流量路徑 (`flows-map`), DNS 查詢 (`dns-query`), DNS 快取 (`dns-cache`),
- * DNS 紀錄 (`dns-log`), a DNS record (`dns-record`), 日誌檢視 (`logs`), 事件 (`events`) and 總覽 (`overview`). Each
+ * for 流量記錄 (`flows`), a flow (`flow`), 流量路徑 (`flows-map`), DNS 查詢 (`dns-query`), DNS 快取 (`dns-cache`),
+ * DNS 記錄 (`dns-log`), a DNS record (`dns-record`), DNS 統計 (`dns-stats`), 日誌檢視 (`logs`), 事件 (`events`) and
+ * 總覽 (`overview`). Each
  * window is as tall as its page, so the golden holds all of it.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -141,19 +142,35 @@ class RvDiagSampleShotTest {
     fun dnsRecordFs200() = compose.rvShot("diag-dns-record", dark = false, fontScale = RV_FS200, before = { assertWhole() }) { RvDnsRecordSample() }
 
     @Test
-    @Config(qualifiers = "+h1852dp")
+    @Config(qualifiers = "+h2153dp")
+    fun dnsStatsLight() = compose.rvShot("diag-dns-stats", dark = false, before = { assertWhole() }) { RvDnsStatsSample() }
+
+    @Test
+    @Config(qualifiers = "+h2153dp")
+    fun dnsStatsDark() = compose.rvShot("diag-dns-stats", dark = true, before = { assertWhole() }) { RvDnsStatsSample() }
+
+    @Test
+    @Config(qualifiers = "en-w412dp-h2213dp-notnight-xhdpi")
+    fun dnsStatsEn() = compose.rvShot("diag-dns-stats", dark = false, english = true, before = { assertWhole() }) { RvDnsStatsSample() }
+
+    @Test
+    @Config(qualifiers = "+h2874dp")
+    fun dnsStatsFs200() = compose.rvShot("diag-dns-stats", dark = false, fontScale = RV_FS200, before = { assertWhole() }) { RvDnsStatsSample() }
+
+    @Test
+    @Config(qualifiers = "+h1961dp")
     fun logsLight() = compose.rvShot("diag-logs", dark = false, before = { assertWhole() }) { RvLogsSample() }
 
     @Test
-    @Config(qualifiers = "+h1852dp")
+    @Config(qualifiers = "+h1961dp")
     fun logsDark() = compose.rvShot("diag-logs", dark = true, before = { assertWhole() }) { RvLogsSample() }
 
     @Test
-    @Config(qualifiers = "en-w412dp-h1848dp-notnight-xhdpi")
+    @Config(qualifiers = "en-w412dp-h1958dp-notnight-xhdpi")
     fun logsEn() = compose.rvShot("diag-logs", dark = false, english = true, before = { assertWhole() }) { RvLogsSample() }
 
     @Test
-    @Config(qualifiers = "+h2855dp")
+    @Config(qualifiers = "+h3003dp")
     fun logsFs200() = compose.rvShot("diag-logs", dark = false, fontScale = RV_FS200, before = { assertWhole() }) { RvLogsSample() }
 
     @Test
