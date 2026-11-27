@@ -181,7 +181,7 @@ class RvLargeTextTest {
         val state = rvSampleActivity()
         large { RvActivityScreenSample(state, onAction = {}, onConnect = {}) }
         val format = RvFormat(RuntimeEnvironment.getApplication().resources.configuration.locales[0])
-        val figures = listOf(state.downRate, state.upRate).map { format.rate(it.toDouble()).toString() }
+        val figures = listOf(state.downRate, state.upRate).map { format.liveRate(it.toDouble()).toString() }
         val tiles = listOf(R.string.ui_download, R.string.ui_upload).map { caption ->
             compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button).and(hasAnyDescendant(shows(rvText(caption)))), useUnmergedTree = true)
                 .fetchSemanticsNodes().single()

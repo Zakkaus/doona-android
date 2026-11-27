@@ -43,11 +43,11 @@ class RvRateGlideTest {
     fun aStoppedTunnelDropsToNothingAtOnce() {
         show()
         compose.mainClock.advanceTimeBy(SETTLE_MS)
-        assertEquals(format.rate(FAST).toString(), shown)
+        assertEquals(format.liveRate(FAST).toString(), shown)
 
         next(null)
 
-        assertEquals(format.rate(0.0).toString(), shown)
+        assertEquals(format.liveRate(0.0).toString(), shown)
     }
 
     @Test
@@ -59,7 +59,7 @@ class RvRateGlideTest {
 
         next(SLOW)
 
-        assertEquals(format.rate(SLOW).toString(), shown)
+        assertEquals(format.liveRate(SLOW).toString(), shown)
     }
 
     @Test
@@ -69,9 +69,9 @@ class RvRateGlideTest {
 
         next(SLOW)
 
-        assertNotEquals(format.rate(SLOW).toString(), shown)
+        assertNotEquals(format.liveRate(SLOW).toString(), shown)
         compose.mainClock.advanceTimeBy(SETTLE_MS)
-        assertEquals(format.rate(SLOW).toString(), shown)
+        assertEquals(format.liveRate(SLOW).toString(), shown)
     }
 
     private companion object {

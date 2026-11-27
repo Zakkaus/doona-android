@@ -48,28 +48,35 @@ internal class RvFormat(val locale: Locale) {
     /** A rate; one that is not a number or infinite (no time has passed) is written as none. */
     fun rate(bytesPerSecond: Double): RvAmount = scaled(BigDecimal.valueOf(finite(bytesPerSecond)), PER_SECOND)
 
-    /** A rate written in [unit] (an index of B/s, kB/s, MB/s …, from [rateUnit]); under one of it, to three decimals: `0.950 MB/s`. */
+    /**
+     * A live rate written in [unit] (an index of B/s, kB/s, MB/s …, from [rateUnit]), always to one decimal, so the
+     * number of digits changes only at a new leading one: `0.0 kB/s` … `999.9 kB/s`, `0.9 MB/s` in a held unit.
+     */
     fun rate(bytesPerSecond: Double, unit: Int): RvAmount =
-        RvAmount(digits(BigDecimal.valueOf(finite(bytesPerSecond)).movePointLeft(STEP * unit), unit), UNITS[unit] + PER_SECOND)
+        RvAmount(tenths(BigDecimal.valueOf(finite(bytesPerSecond)).movePointLeft(STEP * unit)), UNITS[unit] + PER_SECOND)
+
+    /** A live rate with no unit held yet, as [rate] in [rateUnit]'s unit: a scrubbed second, written as the live one is. */
+    fun liveRate(bytesPerSecond: Double): RvAmount = rate(bytesPerSecond, rateUnit(bytesPerSecond, held = -1))
 
     /**
-     * The unit a live rate shown in [held] (-1 for none yet) is written in next: up as soon as it rounds to a thousand,
-     * as [rate] steps, but down only once it is under [UNIT_HOLD] of [held]'s step (below 900 kB/s, not 1000), so a rate
-     * hovering at a step does not change its unit back and forth.
+     * The unit a live rate shown in [held] (-1 for none yet) is written in next, kB/s at least: up as soon as it rounds to
+     * a thousand at one decimal, but down only once it is under [UNIT_HOLD] of [held]'s step (below 900 kB/s, not 1000),
+     * so a rate hovering at a step does not change its unit back and forth.
      */
     fun rateUnit(bytesPerSecond: Double, held: Int): Int {
         val value = BigDecimal.valueOf(finite(bytesPerSecond))
-        val natural = unitOf(value)
+        var natural = KILO
+        while (natural < UNITS.lastIndex && value.movePointLeft(STEP * natural).setScale(1, RoundingMode.HALF_UP).abs() >= THOUSAND) natural++
         var unit = held.coerceAtMost(UNITS.lastIndex)
         while (unit > natural && value.abs() < UNIT_HOLD.movePointRight(STEP * unit)) unit--
         return maxOf(unit, natural)
     }
 
     /**
-     * The widest a rate is written in each unit, three digits and the decimal point (`999 B/s`, `9.99 kB/s` … `9.99 TB/s`):
-     * a place showing a rate that changes every second fits all of them, so its size holds as the rate moves.
+     * The widest a live rate is written in each of its units, `999.9 kB/s` … `999.9 TB/s`: a place showing a rate that
+     * changes every second fits all of them, so its size holds as the rate moves.
      */
-    fun widestRates(): List<RvAmount> = UNITS.indices.map { unit -> rate(if (unit == 0) WIDEST_BYTES else WIDEST_SCALED * THOUSAND.toDouble().pow(unit)) }
+    fun widestRates(): List<RvAmount> = (KILO..UNITS.lastIndex).map { unit -> rate(WIDEST_LIVE * THOUSAND.toDouble().pow(unit), unit) }
 
     /**
      * [used] as the used side of `used/total`, as doona web writes the pair: without its unit when [total] has the same
@@ -112,20 +119,26 @@ internal class RvFormat(val locale: Locale) {
         return unit
     }
 
-    /** Whole bytes, else three significant digits: three decimals under 1 (a held unit's), two under 10, one under 100, none above. */
+    /** Whole bytes, else three significant digits: two decimals under 10, one under 100, none above. */
     private fun digits(value: BigDecimal, unit: Int): String {
         val rounded = if (unit == 0) value.setScale(0, RoundingMode.HALF_UP) else significant(value)
         val decimals = when {
             unit == 0 || rounded.abs() >= HUNDRED -> 0
             rounded.abs() >= TEN -> 1
-            rounded.abs() >= BigDecimal.ONE || rounded.signum() == 0 -> 2
-            else -> 3
+            else -> 2
         }
         return NumberFormat.getNumberInstance(locale).apply {
             minimumFractionDigits = decimals
             maximumFractionDigits = decimals
         }.format(rounded.setScale(decimals, RoundingMode.HALF_UP))
     }
+
+    /** [value] to one decimal, without grouping (it stays under a thousand). */
+    private fun tenths(value: BigDecimal): String = NumberFormat.getNumberInstance(locale).apply {
+        minimumFractionDigits = 1
+        maximumFractionDigits = 1
+        isGroupingUsed = false
+    }.format(value.setScale(1, RoundingMode.HALF_UP))
 
     private fun significant(value: BigDecimal): BigDecimal = if (value.signum() == 0) value else value.round(MathContext(DIGITS, RoundingMode.HALF_UP))
 
@@ -150,8 +163,8 @@ internal class RvFormat(val locale: Locale) {
         val TEN: BigDecimal = BigDecimal.TEN
         const val PER_SECOND = "/s"
         val UNIT_HOLD: BigDecimal = BigDecimal("0.9")
-        const val WIDEST_BYTES = 999.0
-        const val WIDEST_SCALED = 9.99
+        const val WIDEST_LIVE = 999.9
+        const val KILO = 1
         const val STEP = 3
         const val DIGITS = 3
         const val SECONDS_PER_HOUR = 3_600L

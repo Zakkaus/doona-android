@@ -339,7 +339,7 @@ internal object RvPart {
     /** What a skeleton's block stands for: a chart's frame, a progress track, a range chip, the world map. */
     const val FRAME = "rv-frame"
 
-    /** A line of text set with a glyph before it ([RvInline]), measured as one line. */
+    /** A line of text set with a glyph before it ([RvInline]), or a live figure in its slots ([RvSteadyFigure]), measured as one line. */
     const val TEXT_LINE = "rv-text-line"
 }
 

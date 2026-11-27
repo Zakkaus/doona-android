@@ -29,7 +29,6 @@ import dev.doona.android.designsystem.rv.RvAmount
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvChartSize
 import dev.doona.android.designsystem.rv.RvDetailChart
-import dev.doona.android.designsystem.rv.RvFigureText
 import dev.doona.android.designsystem.rv.RvFormat
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvPart
@@ -39,8 +38,8 @@ import dev.doona.android.designsystem.rv.RvSectionTitle
 import dev.doona.android.designsystem.rv.RvSegmented
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
+import dev.doona.android.designsystem.rv.RvSteadyCardFigure
 import dev.doona.android.designsystem.rv.RvText
-import dev.doona.android.designsystem.rv.figure
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvGlidingRate
 
@@ -81,7 +80,7 @@ internal fun RvTrafficScreen(state: RvTrafficState, onRange: (Int) -> Unit, onBa
                 val rate = (shown?.let { values[it] } ?: live.toFloat()).toDouble()
                 // The live rate glides; a scrubbed second shows at once, as the finger moves.
                 val glided = rvGlidingRate(live.toDouble().takeIf { state.sampled }, key = upload)
-                Hero(if (at == null) glided else format.rate(rate), at, upload)
+                Hero(if (at == null) glided else format.liveRate(rate), at, upload, format)
             }
             Spacer(Modifier.height(RvSpace.chartGap))
             RvDetailChart(
@@ -108,9 +107,10 @@ internal fun RvTrafficScreen(state: RvTrafficState, onRange: (Int) -> Unit, onBa
  * point's time [at]. A screen reader hears which direction the rate is for (q-a11y-wording), as on 活動.
  */
 @Composable
-private fun Hero(rate: RvAmount, at: String?, upload: Boolean) {
+private fun Hero(rate: RvAmount, at: String?, upload: Boolean, format: RvFormat) {
     val spoken = stringResource(direction(upload), rate.toString())
-    RvFigureText(rate.figure(), Rv.type.cardValue, Rv.type.cardUnit, Modifier.semantics { contentDescription = spoken })
+    val widest = remember(format) { format.widestRates() }
+    RvSteadyCardFigure(rate, widest, spoken)
     Spacer(Modifier.height(RvSpace.subGap))
     RvText(at ?: stringResource(R.string.rv_now), Rv.type.sub, color = Rv.colors.textSecondary)
 }

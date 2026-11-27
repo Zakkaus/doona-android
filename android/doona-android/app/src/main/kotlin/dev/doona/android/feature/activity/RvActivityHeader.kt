@@ -53,8 +53,10 @@ import dev.doona.android.designsystem.rv.RvSkeletonFade
 import dev.doona.android.designsystem.rv.RvSkeletonHero
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatsDots
+import dev.doona.android.designsystem.rv.RvSteadyHero
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.figure
+import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvActionRowFit
 import dev.doona.android.designsystem.rv.rvGlidingRate
 import dev.doona.android.designsystem.rv.rvHeroArt
@@ -133,7 +135,9 @@ private fun HeroLines(ticking: State<RvActivityState>, mode: RvRouteMode) {
         Spacer(Modifier.height(RvSpace.tight))
         val down = rvGlidingRate(state.liveRate(state.downRate, state.downHistory))
         val spoken = stringResource(R.string.rv_a11y_download, down.toString())
-        RvHero(down, Modifier.semantics { contentDescription = spoken })
+        val format = rememberRvFormat()
+        val widest = remember(format) { format.widestRates() }
+        RvSteadyHero(down, widest, spoken)
         Spacer(Modifier.height(RvSpace.subGap))
         // The hero is the download rate, so the line under it carries the other direction only (N-10).
         val up = rvGlidingRate(state.liveRate(state.upRate, state.upHistory)).toString()
