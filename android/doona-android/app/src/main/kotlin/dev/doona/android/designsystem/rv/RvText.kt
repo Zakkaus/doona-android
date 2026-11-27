@@ -46,7 +46,6 @@ import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.toSize
 import java.lang.Character.UnicodeScript
 import java.util.Locale
-import kotlin.math.ceil
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -344,94 +343,8 @@ private const val WRAP_STEPS = 6
 /** [RvWrap.width] before any layout. */
 private const val NOT_LAID_OUT = -1
 
-/** A wrapped line ends on fewer letters than this only where nothing better fits. */
-private const val LAST_LINE_LETTERS = 3
-
-private const val META_SEPARATOR = " · "
-
-/** The letters and digits on the last of [layout]'s lines; none counted when it ends in an ellipsis. */
-private fun rvLastLetters(layout: TextLayoutResult): Int {
-    val last = layout.lineCount - 1
-    if (layout.isLineEllipsized(last)) return Int.MAX_VALUE
-    val line = layout.layoutInput.text.text.substring(layout.getLineStart(last), layout.getLineEnd(last))
-    return line.codePoints().filter(Character::isLetterOrDigit).count().toInt()
-}
-
-/** Whether a line of [layout] ends inside a word: a Latin letter, digit or sign on both sides of the break, no space. */
-private fun rvTorn(layout: TextLayoutResult): Boolean {
-    val text = layout.layoutInput.text.text
-    return (0 until layout.lineCount - 1).any { line ->
-        val end = layout.getLineEnd(line)
-        val before = text.substring(0, end).lastOrNull { it != WORD_JOINER_CHAR }
-        val after = text.substring(end).firstOrNull { it != WORD_JOINER_CHAR }
-        before != null && after != null && before.inWord() && after.inWord()
-    }
-}
-
-private fun Char.inWord() = !isWhitespace() && this != ZERO_WIDTH_SPACE && !rvCjk()
-
-/** Whether a line of [layout] but the last ends between two letters or digits (`…androi` over `d`). */
-private fun rvTornInWord(layout: TextLayoutResult): Boolean {
-    val text = layout.layoutInput.text.text
-    return (0 until layout.lineCount - 1).any { line ->
-        val end = layout.getLineEnd(line)
-        val before = text.substring(0, end).lastOrNull { it != WORD_JOINER_CHAR && it != ZERO_WIDTH_SPACE }
-        val after = text.substring(end).firstOrNull { it != WORD_JOINER_CHAR && it != ZERO_WIDTH_SPACE }
-        before != null && after != null && before.isLetterOrDigit() && after.isLetterOrDigit() && !before.rvCjk() && !after.rvCjk()
-    }
-}
-
-/** [text] with a break allowed after a hyphen between two letters or digits. */
-private fun rvHyphenBreaks(text: String): String = buildString {
-    text.forEachIndexed { i, c ->
-        append(c)
-        if (c == '-' && text.getOrNull(i - 1)?.isLetterOrDigit() == true && text.getOrNull(i + 1)?.isLetterOrDigit() == true) append(ZERO_WIDTH_SPACE)
-    }
-}
-
 /** [text] with no break inside a meta line's parts or before a separator: a word joiner after each space but the separators'. */
 private fun rvBind(text: String): String = text.split(META_SEPARATOR).joinToString(" $WORD_JOINER· ") { it.replace(" ", " $WORD_JOINER") }
-
-/** [text] with a break allowed after a dot between letters and before a colon that follows a letter and leads a number. */
-private fun rvSoftBreaks(text: String): String = buildString {
-    text.forEachIndexed { i, c ->
-        val before = text.getOrNull(i - 1)
-        val after = text.getOrNull(i + 1)
-        if (c == ':' && before?.isLetter() == true && after?.isDigit() == true) append(ZERO_WIDTH_SPACE)
-        append(c)
-        if (c == '.' && before?.isLetter() == true && after?.isLetter() == true) append(ZERO_WIDTH_SPACE)
-    }
-}
-
-/**
- * [text] with word joiners through the word that ends before [start] (the last line's start, spaces skipped) and on to
- * [start], so no break falls inside that word or between it and the last line; [text] as it is when that word starts it.
- * Words are ICU's, a dictionary's for CJK.
- */
-private fun rvJoinWord(text: String, start: Int): String {
-    var end = start
-    while (end > 0 && (text[end - 1].isWhitespace() || text[end - 1] == WORD_JOINER_CHAR)) end--
-    if (end == 0) return text
-    val words = BreakIterator.getWordInstance()
-    words.setText(text)
-    val from = words.preceding(end)
-    if (from <= 0) return text
-    return buildString {
-        text.forEachIndexed { i, c ->
-            if (i in from + 1..start && text[i - 1] != WORD_JOINER_CHAR && c != WORD_JOINER_CHAR) append(WORD_JOINER_CHAR)
-            append(c)
-        }
-    }
-}
-
-/**
- * The width of the last line of [layout], in whole px: a line that much narrower cannot keep the word that ended the
- * line before, since the last line did not fit after it.
- */
-private fun rvLastLineWidth(layout: TextLayoutResult): Int {
-    val last = layout.lineCount - 1
-    return ceil(layout.getLineRight(last) - layout.getLineLeft(last)).toInt()
-}
 
 /** [text] with a word joiner before its last letter: no line break can fall between it and the letter before. */
 private fun rvJoinLast(text: String): String {
@@ -468,8 +381,8 @@ internal fun rvCjkLetter(point: Int): Boolean = point >= 0 && when (UnicodeScrip
     else -> false
 }
 
-private const val ZERO_WIDTH_SPACE = '\u200B'
-private const val WORD_JOINER_CHAR = '\u2060'
+internal const val ZERO_WIDTH_SPACE = '\u200B'
+internal const val WORD_JOINER_CHAR = '\u2060'
 private const val WORD_JOINER = "\u2060"
 
 /**
