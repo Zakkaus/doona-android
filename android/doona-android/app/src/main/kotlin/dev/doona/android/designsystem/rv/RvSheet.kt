@@ -185,7 +185,8 @@ internal fun RvSheetPanel(modifier: Modifier = Modifier, content: @Composable Co
  * pill under it, as a card's notice sets its action: no action of the sheet is a coloured text link (the owner,
  * 2026-11-23). [titleKeepWords] and [bodyKeepWords] false for a title or body that quotes a name or an address
  * ([RvText]'s `keepWords`: 刪除「香港 01」?). Back and a tap above the sheet run [onDismissRequest], by default
- * [onDismiss]; a question whose secondary pill means no, while closing it means not yet, passes its own.
+ * [onDismiss]; a question whose secondary pill means no, while closing it means not yet, passes its own. While it
+ * closes it keeps the words it last showed open: what it asked about may already be gone (a deleted subscription).
  */
 @Composable
 internal fun RvConfirmSheet(
@@ -202,10 +203,18 @@ internal fun RvConfirmSheet(
     onDismissRequest: () -> Unit = onDismiss,
     extra: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    RvSheet(visible, onDismissRequest, title) {
-        RvConfirmContent(title, body, confirm, dismiss, onConfirm, onDismiss, confirmEnabled, titleKeepWords, bodyKeepWords, extra)
+    val words = remember { ShownWords(title, body) }
+    if (visible) {
+        words.title = title
+        words.body = body
+    }
+    RvSheet(visible, onDismissRequest, words.title) {
+        RvConfirmContent(words.title, words.body, confirm, dismiss, onConfirm, onDismiss, confirmEnabled, titleKeepWords, bodyKeepWords, extra)
     }
 }
+
+/** The [title] and [body] an [RvConfirmSheet] last showed open; plain fields, as the sheet's own composition sets them. */
+private class ShownWords(var title: String, var body: String?)
 
 /** What [RvConfirmSheet] shows in its card. */
 @Composable

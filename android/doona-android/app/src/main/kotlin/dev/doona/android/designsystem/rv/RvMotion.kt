@@ -151,10 +151,11 @@ internal object RvMotion {
     val backMargin = 8.dp
 
     /**
-     * A row coming into a list or leaving it (an import, a delete, 查看全部) grows or shrinks to its height and fades in
-     * [ITEM_MS]; rows arriving together start [STAGGER_MS] apart, [STAGGER_ROWS] at most, so a long list still lands at once.
+     * A row coming or going (an import, a delete, 查看全部) grows or shrinks in [ITEM_MS], [STAGGER_MS] apart ([STAGGER_ROWS]
+     * at most); a leaving row's words are gone in [ITEM_OUT_MS], before an arriving row's fade in over [FADE_MS] (RvItems).
      */
     const val ITEM_MS = 300
+    const val ITEM_OUT_MS = 75
     const val STAGGER_ROWS = 4
 
     /** A live number (a rate, a latency) rolls to its new value: up when it rose, down when it fell, in [ROLL_MS], by [ROLL_SHARE] of its height. */
