@@ -352,23 +352,3 @@ internal object RvDiagData {
     )
     const val EVENT_LIMIT = 50
 }
-
-/**
- * 日誌時間分布's counts over [records]: the records' span cut into [slots] equal stretches, and a count per level of
- * [levels] (most severe first) per stretch. A gap marker is no record.
- */
-internal class RvLogHeat(val starts: List<Long>, val width: Long, val counts: List<Pair<RvLevel, List<Int>>>)
-
-internal fun rvLogHeat(records: List<RvLogRecord>, levels: List<RvLevel>, slots: Int): RvLogHeat {
-    val kept = records.filter { !it.gap && it.level in levels }
-    if (kept.isEmpty()) return RvLogHeat(emptyList(), 0, levels.map { it to emptyList() })
-    val since = kept.minOf { it.atEpochMs }
-    val width = ((kept.maxOf { it.atEpochMs } - since) / slots + 1).coerceAtLeast(1)
-    val starts = List(slots) { since + it * width }
-    val counts = levels.map { level ->
-        val row = IntArray(slots)
-        kept.filter { it.level == level }.forEach { row[((it.atEpochMs - since) / width).toInt().coerceAtMost(slots - 1)]++ }
-        level to row.toList()
-    }
-    return RvLogHeat(starts, width, counts)
-}
