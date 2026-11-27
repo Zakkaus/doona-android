@@ -7,13 +7,14 @@ import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
 import dev.doona.android.designsystem.rv.RvHeatMap
+import dev.doona.android.designsystem.rv.RvHeatPick
 import dev.doona.android.designsystem.rv.RvHeatRow
 import dev.doona.android.designsystem.rv.RvSpace
 
 /**
  * The library's heat map (`proto-rv-heat-map`) as the log page's 日誌時間分布 draws it: a row per level from the most
  * severe, 24 columns of five minutes from 10:00, each row's hue in every one of its five tones and the empty track, and
- * the first, middle and last times under the cells.
+ * the first, middle and last times under the cells. Each row picks the lowest level shown, the last one now, with the check.
  */
 @Composable
 internal fun RvGalleryHeatMap() {
@@ -21,11 +22,18 @@ internal fun RvGalleryHeatMap() {
     RvCard {
         RvCardHeader(TITLE)
         RvHeatMap(
-            HEAT_LEVELS.indices.map { i -> RvHeatRow(HEAT_LEVELS[i], hues[i], HEAT_COUNTS[i], "${HEAT_LEVELS[i]}：${HEAT_COUNTS[i].sum()} 筆") },
+            HEAT_LEVELS.indices.map { i -> RvHeatRow(HEAT_LEVELS[i], hues[i], HEAT_COUNTS[i], "${HEAT_LEVELS[i]}：${HEAT_COUNTS[i].sum()} 筆", pick(i)) },
             HEAT_TIMES,
             Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding),
         )
     }
+}
+
+/** The last row is the current minimum, as 日誌檢視 starts at its lowest level. */
+private fun pick(i: Int) = if (i == HEAT_LEVELS.lastIndex) {
+    RvHeatPick(true, "${HEAT_LEVELS[i]}：目前的最低等級") {}
+} else {
+    RvHeatPick(false, "顯示${HEAT_LEVELS[i]}及以上") {}
 }
 
 private const val TITLE = "日誌時間分布"
