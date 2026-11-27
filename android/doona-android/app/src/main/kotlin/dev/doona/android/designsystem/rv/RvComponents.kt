@@ -203,8 +203,7 @@ internal fun RvHero(whole: String, part: String, modifier: Modifier = Modifier) 
         append(whole)
         withStyle(type.heroSmall.toSpanStyle()) { append(part) }
     }
-    val roll = rvRollText()
-    BasicText(text, modifier.then(roll.modifier), type.hero.copy(color = Rv.colors.text), onTextLayout = roll::laid, maxLines = 1)
+    BasicText(text, modifier, type.hero.copy(color = Rv.colors.text), maxLines = 1)
 }
 
 /** A figure split at its decimal separator: the integer, and the separator with the decimals (or nothing). */

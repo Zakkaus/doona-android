@@ -89,13 +89,11 @@ internal fun RvText(
     val given = remember { IntArray(1) }
     val box = if (lineBox && autoSize == null) rvLineBox(style) else null
     val shown = if (maxLines == 1) modifier else modifier.rvPlainNode(text).rvNarrower({ wrap.narrower }, given)
-    val roll = rvRollText()
     BasicText(
         scripted(cut?.text ?: wrap.text(words)),
-        (box?.let { shown.rvLineBoxes(it) } ?: shown).then(roll.modifier),
+        box?.let { shown.rvLineBoxes(it) } ?: shown,
         style.copy(color = color, textAlign = align),
         onTextLayout = { layout ->
-            roll.laid(layout)
             // The cut at a word is for one line ending in an ellipsis; any other line is the platform's.
             val kept = cut
             when {

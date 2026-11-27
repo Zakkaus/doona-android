@@ -100,7 +100,7 @@ internal fun RvTileRow(modifier: Modifier = Modifier, content: @Composable RowSc
 
 /**
  * One of Revolut's crypto home tiles, square as they are: [caption] at the top start, [icon] in the series' tinted 20 dp
- * disc at the top end, the [figure] in bold (rolling up or down as [value], the amount it shows, rose or fell), a secondary [note] under it, and the sparkline of [values] at the bottom
+ * disc at the top end, the [figure] in bold, a secondary [note] under it, and the sparkline of [values] at the bottom
  * (measured §10.2: 148 x 60 dp). With [quiet] (no
  * connection, or no traffic) the tile takes Revolut's empty chart card instead: a larger figure over ghost bars, and
  * [note] says why there is no line. The whole tile is one button.
@@ -114,7 +114,6 @@ internal fun RvSparkTile(
     caption: String,
     @DrawableRes icon: Int,
     figure: RvFigure,
-    value: Double,
     note: String,
     values: List<Float>,
     series: RvSeries,
@@ -135,10 +134,7 @@ internal fun RvSparkTile(
                 }
             }
             Spacer(Modifier.height(RvSpace.tight))
-            // Each second's rate rolls in instead of jumping.
-            RvRoll(figure.whole to figure.unit, value) { (whole, unit) ->
-                RvFigureText(RvFigure(whole, unit), type.tileValue, type.tileUnit, widest = widest)
-            }
+            RvFigureText(figure, type.tileValue, type.tileUnit, widest = widest)
             RvText(note, type.tileCaption, color = Rv.colors.textSecondary, maxLines = Int.MAX_VALUE)
             Spacer(Modifier.weight(1f))
             if (quiet) RvGhostBars(ghost) else RvSparkline(values, series.line)
@@ -173,8 +169,7 @@ internal fun RvFigureText(figure: RvFigure, style: TextStyle, unitStyle: TextSty
         unitStyle.toSpanStyle().copy(fontSize = share.em)
     }
     val all = remember(widest, unit) { widest.map { it.text(unit) } }
-    val roll = rvRollText()
-    BasicText(figure.text(unit), modifier.then(roll.modifier), style = style.copy(color = Rv.colors.text), onTextLayout = roll::laid, maxLines = 1, autoSize = rvFigureFit(style, all))
+    BasicText(figure.text(unit), modifier, style = style.copy(color = Rv.colors.text), maxLines = 1, autoSize = rvFigureFit(style, all))
 }
 
 /** The figure as one text, its unit in [unit]; a CJK unit (毫秒) in the CJK face, as every RV text sets one ([scripted]). */

@@ -55,8 +55,8 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatsDots
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.figure
-import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvActionRowFit
+import dev.doona.android.designsystem.rv.rvGlidingRate
 import dev.doona.android.designsystem.rv.rvHeroArt
 import dev.doona.android.designsystem.rv.rvMapPan
 import dev.doona.android.engine.FailureReason
@@ -115,8 +115,8 @@ private fun HeroBlock(state: RvActivityState, ticking: State<RvActivityState>, m
 
 /**
  * The state and the mode over the download rate, the upload rate under it; a new state fades through the old (the two
- * captions differ in length, so a cross-fade would lay them over each other), each second's rates replace the last in
- * place, with no motion: tabular figures to three significant digits keep the figure's width as it changes. Read
+ * captions differ in length, so a cross-fade would lay them over each other), the rates glide to each second's value
+ * ([rvGlidingRate]). Read
  * from [ticking] here, so that a tick recomposes the figures and not the header around them. While [loading], their
  * skeleton.
  */
@@ -128,16 +128,15 @@ private fun HeroFigure(ticking: State<RvActivityState>, mode: RvRouteMode, modif
 @Composable
 private fun HeroLines(ticking: State<RvActivityState>, mode: RvRouteMode) {
     val state = ticking.value
-    val format = rememberRvFormat()
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         RvFadeThrough("${stringResource(state.status.label)} · ${stringResource(mode.label)}", "caption", alignment = Alignment.TopCenter) { RvText(it, Rv.type.caption) }
         Spacer(Modifier.height(RvSpace.tight))
-        val down = format.rate(state.downRate.toDouble())
+        val down = rvGlidingRate(state.downRate.toDouble())
         val spoken = stringResource(R.string.rv_a11y_download, down.toString())
         RvHero(down, Modifier.semantics { contentDescription = spoken })
         Spacer(Modifier.height(RvSpace.subGap))
         // The hero is the download rate, so the line under it carries the other direction only (N-10).
-        val up = format.rate(state.upRate.toDouble()).toString()
+        val up = rvGlidingRate(state.upRate.toDouble()).toString()
         RvInline(R.drawable.rv_sym_arrow_upward, up, Rv.colors.textSecondary, Rv.type.sub, description = stringResource(R.string.rv_a11y_upload, up))
     }
 }

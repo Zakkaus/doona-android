@@ -29,20 +29,20 @@ import dev.doona.android.designsystem.rv.RvAmount
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvChartSize
 import dev.doona.android.designsystem.rv.RvDetailChart
-import dev.doona.android.designsystem.rv.RvFigure
 import dev.doona.android.designsystem.rv.RvFigureText
 import dev.doona.android.designsystem.rv.RvFormat
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvRangeRow
-import dev.doona.android.designsystem.rv.RvRoll
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSectionTitle
 import dev.doona.android.designsystem.rv.RvSegmented
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvText
+import dev.doona.android.designsystem.rv.figure
 import dev.doona.android.designsystem.rv.rememberRvFormat
+import dev.doona.android.designsystem.rv.rvGlidingRate
 
 /**
  * The page a traffic tile opens, 流量詳情 as the large title, in the language of Revolut's stock page: 下載 or 上傳
@@ -79,7 +79,9 @@ internal fun RvTrafficScreen(state: RvTrafficState, onRange: (Int) -> Unit, onBa
                 // A scrubbed point shows its rate and when it ended; lifting the finger brings back the live rate.
                 val at = if (chart != null && shown != null) format.clock(chart.endEpochMs - (values.lastIndex - shown) * chart.stepMs) else null
                 val rate = (shown?.let { values[it] } ?: live.toFloat()).toDouble()
-                Hero(format.rate(rate), rate, at, upload)
+                // The live rate glides; a scrubbed second shows at once, as the finger moves.
+                val glided = rvGlidingRate(live.toDouble(), key = upload)
+                Hero(if (at == null) glided else format.rate(rate), at, upload)
             }
             Spacer(Modifier.height(RvSpace.chartGap))
             RvDetailChart(
@@ -106,12 +108,9 @@ internal fun RvTrafficScreen(state: RvTrafficState, onRange: (Int) -> Unit, onBa
  * point's time [at]. A screen reader hears which direction the rate is for (q-a11y-wording), as on 活動.
  */
 @Composable
-private fun Hero(rate: RvAmount, value: Double, at: String?, upload: Boolean) {
-    // Each second's live rate rolls in; a scrubbed second follows the finger at once.
-    RvRoll(rate.number to rate.unit, value, live = at == null) { (number, unit) ->
-        val spoken = stringResource(direction(upload), "$number $unit")
-        RvFigureText(RvFigure(number, unit), Rv.type.cardValue, Rv.type.cardUnit, Modifier.semantics { contentDescription = spoken })
-    }
+private fun Hero(rate: RvAmount, at: String?, upload: Boolean) {
+    val spoken = stringResource(direction(upload), rate.toString())
+    RvFigureText(rate.figure(), Rv.type.cardValue, Rv.type.cardUnit, Modifier.semantics { contentDescription = spoken })
     Spacer(Modifier.height(RvSpace.subGap))
     RvText(at ?: stringResource(R.string.rv_now), Rv.type.sub, color = Rv.colors.textSecondary)
 }

@@ -98,7 +98,7 @@ class TrafficPageTest {
             RvTrafficScreen(state, onRange = {}, onBack = {})
         }
         val now = format.rate(4_000.0)
-        assertEquals("the hero", "下載 ${now.number} ${now.unit}", talkBack(view, hasContentDescription("下載 ${now.number}", substring = true)))
+        assertEquals("the hero", "下載 $now", talkBack(view, hasContentDescription("下載 ${now.number}", substring = true)))
         assertEquals("the peak row, its name kept", "峰值，下載 ${format.rate(9_100_000.0)}", talkBack(view, hasContentDescription(rvText(R.string.rv_stat_peak), substring = true)))
         compose.onNodeWithText(rvText(R.string.ui_upload)).performClick()
         assertEquals("the average row", "平均，上傳 ${format.rate(200.0)}", talkBack(view, hasContentDescription(rvText(R.string.rv_stat_average), substring = true)))

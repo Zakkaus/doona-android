@@ -158,9 +158,9 @@ internal object RvMotion {
     const val ITEM_OUT_MS = 75
     const val STAGGER_ROWS = 4
 
-    /** A live number (a rate, a latency) rolls to its new value: up when it rose, down when it fell, in [ROLL_MS], by [ROLL_SHARE] of its height. */
-    const val ROLL_MS = 250
-    const val ROLL_SHARE = 0.5f
+    /** A live rate glides to each new average of it (time constant [GLIDE_TAU_MS]) in [GLIDE_MS] ([rvGlidingRate]). */
+    const val GLIDE_MS = 700
+    const val GLIDE_TAU_MS = 2_000.0
 
     /** A drag dismisses a sheet past this share of its height, or when it lets go faster than [sheetFling] a second. */
     const val SHEET_DISMISS_SHARE = 0.33f
@@ -244,7 +244,7 @@ internal object RvMotion {
     val Accelerate: Easing = CubicBezierEasing(0.3f, 0f, 1f, 1f)
     val Standard: Easing = FastOutSlowInEasing
 
-    /** What arrives and settles (a row coming in, a number rolling): Material 3's emphasized decelerate. */
+    /** What arrives and settles (a row coming in): Material 3's emphasized decelerate. */
     val Emphasized: Easing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
 }
 
