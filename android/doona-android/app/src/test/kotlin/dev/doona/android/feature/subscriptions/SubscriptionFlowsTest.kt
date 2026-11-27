@@ -80,6 +80,12 @@ class SubscriptionFlowsTest {
         compose.setContent { RvTheme(rvSystemScheme(false), false) { Host(engine, honk, io, start.toList().ifEmpty { listOf(ActivityKey) }) } }
     }
 
+    /** Opens 新增訂閱 from 訂閱's 新增 menu. */
+    private fun addFromSubscriptions() {
+        compose.onNodeWithText(string(R.string.rv_list_create)).performClick()
+        compose.onNodeWithText(string(R.string.rv_subs_add_subscription)).performClick()
+    }
+
     /** Types [url] into 新增訂閱's link field, the first field that takes text. */
     private fun typeUrl() {
         compose.onAllNodes(hasSetTextAction() and isEnabled())[0].performTextInput(url)
@@ -93,7 +99,7 @@ class SubscriptionFlowsTest {
         show(FakeEngine(subscriptions = emptyList()), ActivityKey, SubscriptionsKey, honk = honk)
         compose.onNodeWithText(string(R.string.rv_empty_subscription)).assertExists()
 
-        compose.onNodeWithText(string(R.string.rv_add_subscription)).performClick()
+        addFromSubscriptions()
         typeUrl()
         compose.onNodeWithText(string(R.string.rv_add_import)).performClick()
         compose.runOnIdle { assertEquals(1, honk.providers.size) }
@@ -163,13 +169,13 @@ class SubscriptionFlowsTest {
     fun `leaving 新增訂閱 during a slow add and coming back imports once`() {
         val honk = ProvidersHonk(gate = CountDownLatch(1))
         show(FakeEngine(subscriptions = emptyList()), ActivityKey, SubscriptionsKey, honk = honk, io = Dispatchers.IO)
-        compose.onNodeWithText(string(R.string.rv_add_subscription)).performClick()
+        addFromSubscriptions()
         typeUrl()
         compose.onNodeWithText(string(R.string.rv_add_import)).performClick()
         compose.waitUntil(READ_MS) { honk.adds == 1 }
 
         compose.onNodeWithContentDescription(string(R.string.ui_back)).performClick()
-        compose.onNodeWithText(string(R.string.rv_add_subscription)).performClick()
+        addFromSubscriptions()
         // The import in flight is still the page's: it shows the import running, with no field or 新增 to start another.
         compose.onNodeWithText(string(R.string.rv_add_importing)).assertExists()
         compose.onAllNodes(hasSetTextAction() and isEnabled()).assertCountEquals(0)

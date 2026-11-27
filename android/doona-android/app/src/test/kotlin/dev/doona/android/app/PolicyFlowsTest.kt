@@ -111,7 +111,7 @@ class PolicyFlowsTest {
         synchronized(honk) {
             show(FakeEngine(), ActivityKey, PoliciesKey, GroupKey("g-Proxy"))
             compose.onNodeWithContentDescription("Back").assertExists()
-            compose.onNodeWithText("Test this group").assertDoesNotExist()
+            compose.onNodeWithText("Test this group").assertIsNotEnabled()
         }
         compose.waitUntil(READ_MS) { shows("Test this group") }
     }
