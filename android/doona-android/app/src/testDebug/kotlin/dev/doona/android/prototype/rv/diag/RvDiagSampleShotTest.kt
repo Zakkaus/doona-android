@@ -190,18 +190,18 @@ class RvDiagSampleShotTest {
     fun eventsFs200() = compose.rvShot("diag-events", dark = false, fontScale = RV_FS200, before = { assertWhole() }) { RvEventsSample() }
 
     @Test
-    @Config(qualifiers = "+h2992dp")
+    @Config(qualifiers = "+h3026dp")
     fun overviewLight() = compose.rvShot("diag-overview", dark = false, before = { assertWhole() }) { RvOverviewSample() }
 
     @Test
-    @Config(qualifiers = "+h2992dp")
+    @Config(qualifiers = "+h3026dp")
     fun overviewDark() = compose.rvShot("diag-overview", dark = true, before = { assertWhole() }) { RvOverviewSample() }
 
     @Test
-    @Config(qualifiers = "en-w412dp-h3007dp-notnight-xhdpi")
+    @Config(qualifiers = "en-w412dp-h3041dp-notnight-xhdpi")
     fun overviewEn() = compose.rvShot("diag-overview", dark = false, english = true, before = { assertWhole() }) { RvOverviewSample() }
 
     @Test
-    @Config(qualifiers = "+h3331dp")
+    @Config(qualifiers = "+h3345dp")
     fun overviewFs200() = compose.rvShot("diag-overview", dark = false, fontScale = RV_FS200, before = { assertWhole() }) { RvOverviewSample() }
 }
