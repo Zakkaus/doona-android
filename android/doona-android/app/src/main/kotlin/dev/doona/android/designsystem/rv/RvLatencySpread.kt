@@ -39,7 +39,9 @@ import kotlin.math.log10
  * its picked test. 統計's 延遲分布 draws it; any page that shows its nodes' spread of latency takes the same one.
  * [dotColors], one per value, colour the dots by what each sample was (DNS 統計's by outcome) instead of by quality; on a
  * [RvLatencyScale.Log] axis, as the web's beeswarm, a hairline at each decade from the fastest's to the slowest's, so a
- * five-second timeout and a ten-millisecond answer both stand where they are.
+ * five-second timeout and a ten-millisecond answer both stand where they are; there the median's pill stands at its line's
+ * start, as the web keeps its marks' labels off the axis's, so every decade keeps its label (the dots under the pill
+ * are the fastest, sorted under the median).
  */
 @Composable
 internal fun RvLatencySpread(
@@ -77,11 +79,12 @@ internal fun RvLatencySpread(
             axis = axisScale,
         )
         val medianY = median?.let { plot.y(it) }
+        val pillAtStart = scale == RvLatencyScale.Log
         axis.forEach { (ms, text) ->
-            val covered = pill != null && medianY != null && abs(medianY - plot.y(ms)) <= (rvPillSize(pill).height + text.size.height) / 2
+            val covered = !pillAtStart && pill != null && medianY != null && abs(medianY - plot.y(ms)) <= (rvPillSize(pill).height + text.size.height) / 2
             axisLine(plot, plot.y(ms), text.takeUnless { covered }, colors.grid)
         }
-        if (pill != null && medianY != null) medianLine(plot, medianY, pill, colors.reference, pillInk)
+        if (pill != null && medianY != null) medianLine(plot, medianY, pill, colors.reference, pillInk, pillAtStart)
         if (values.isEmpty()) return@Canvas
         val pitch = plot.right / values.size
         val x = { i: Int -> pitch * (i + 0.5f) }
@@ -142,11 +145,11 @@ private fun DrawScope.axisLine(plot: Plot, y: Float, text: TextLayoutResult?, gr
     text?.let { drawText(it, topLeft = Offset(size.width - it.size.width, y - it.size.height / 2f)) }
 }
 
-/** The dotted median across the plot, its value in the value pill at the strip's end, as node detail draws it. */
-private fun DrawScope.medianLine(plot: Plot, y: Float, text: TextLayoutResult, color: Color, ink: RvPillInk) {
+/** The dotted median across the plot, its value in the value pill at the strip's end, as node detail draws it, or [atStart]. */
+private fun DrawScope.medianLine(plot: Plot, y: Float, text: TextLayoutResult, color: Color, ink: RvPillInk, atStart: Boolean) {
     drawLine(color, Offset(0f, y), Offset(plot.right, y), RvChartSize.dotted.toPx(), StrokeCap.Round, rvDots())
     val pill = rvPillSize(text)
-    rvValuePill(text, Offset(size.width - pill.width, (y - pill.height / 2).coerceIn(0f, plot.bottom - pill.height)), ink)
+    rvValuePill(text, Offset(if (atStart) 0f else size.width - pill.width, (y - pill.height / 2).coerceIn(0f, plot.bottom - pill.height)), ink)
 }
 
 /**
