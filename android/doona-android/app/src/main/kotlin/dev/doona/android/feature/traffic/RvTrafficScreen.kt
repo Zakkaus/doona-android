@@ -80,7 +80,7 @@ internal fun RvTrafficScreen(state: RvTrafficState, onRange: (Int) -> Unit, onBa
                 val at = if (chart != null && shown != null) format.clock(chart.endEpochMs - (values.lastIndex - shown) * chart.stepMs) else null
                 val rate = (shown?.let { values[it] } ?: live.toFloat()).toDouble()
                 // The live rate glides; a scrubbed second shows at once, as the finger moves.
-                val glided = rvGlidingRate(live.toDouble(), key = upload)
+                val glided = rvGlidingRate(live.toDouble().takeIf { state.sampled }, key = upload)
                 Hero(if (at == null) glided else format.rate(rate), at, upload)
             }
             Spacer(Modifier.height(RvSpace.chartGap))

@@ -51,7 +51,7 @@ internal fun rvSampleTraffic(activity: RvActivitySampleState, session: RvSession
         upTotal = session.upTotal,
         seconds = session.seconds,
     )
-    return RvTrafficState(activity.downRate, activity.upRate, chart, figures)
+    return RvTrafficState(activity.downRate, activity.upRate, sampled = true, chart = chart, session = figures)
 }
 
 private const val MS_PER_SECOND = 1000L

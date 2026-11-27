@@ -131,12 +131,12 @@ private fun HeroLines(ticking: State<RvActivityState>, mode: RvRouteMode) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         RvFadeThrough("${stringResource(state.status.label)} · ${stringResource(mode.label)}", "caption", alignment = Alignment.TopCenter) { RvText(it, Rv.type.caption) }
         Spacer(Modifier.height(RvSpace.tight))
-        val down = rvGlidingRate(state.downRate.toDouble())
+        val down = rvGlidingRate(state.liveRate(state.downRate, state.downHistory))
         val spoken = stringResource(R.string.rv_a11y_download, down.toString())
         RvHero(down, Modifier.semantics { contentDescription = spoken })
         Spacer(Modifier.height(RvSpace.subGap))
         // The hero is the download rate, so the line under it carries the other direction only (N-10).
-        val up = rvGlidingRate(state.upRate.toDouble()).toString()
+        val up = rvGlidingRate(state.liveRate(state.upRate, state.upHistory)).toString()
         RvInline(R.drawable.rv_sym_arrow_upward, up, Rv.colors.textSecondary, Rv.type.sub, description = stringResource(R.string.rv_a11y_upload, up))
     }
 }

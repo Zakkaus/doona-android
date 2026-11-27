@@ -50,7 +50,7 @@ class TrafficPageTest {
         stepMs = 1_000,
     )
     private val session = RvTrafficSession(9_100_000.0, 870_000.0, 2_000.0, 200.0, 7_200_000, 720_000, 3_660)
-    private val state = RvTrafficState(downRate = 4_000, upRate = 300, chart = chart, session = session)
+    private val state = RvTrafficState(downRate = 4_000, upRate = 300, sampled = true, chart = chart, session = session)
 
     /** What TalkBack is given for the node [matcher] finds: its node info's spoken text, and that it reads as one stop. */
     private fun talkBack(view: View, matcher: SemanticsMatcher): String? {

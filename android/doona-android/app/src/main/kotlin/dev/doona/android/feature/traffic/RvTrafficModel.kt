@@ -37,8 +37,9 @@ internal data class RvTrafficSession(
 )
 
 /**
- * What 流量詳情 draws: the second's rates each way, the last [chart] read (null before the first), and the running
- * [session] (null while no tunnel runs, so the card shows no figures).
+ * What 流量詳情 draws: the second's rates each way, whether they are a reading ([sampled]: the tunnel runs and this
+ * session's first second is in), the last [chart] read (null before the first), and the running [session] (null while
+ * no tunnel runs, so the card shows no figures).
  */
 @Immutable
-internal data class RvTrafficState(val downRate: Long, val upRate: Long, val chart: RvTrafficChart?, val session: RvTrafficSession?)
+internal data class RvTrafficState(val downRate: Long, val upRate: Long, val sampled: Boolean, val chart: RvTrafficChart?, val session: RvTrafficSession?)

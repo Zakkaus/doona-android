@@ -20,15 +20,18 @@ import kotlin.math.exp
  * exponential moving average of [rate] (time constant [RvMotion.GLIDE_TAU_MS], taken each second until it reaches
  * [rate]), so one busy second does not throw the number; the number itself tweens to each new average
  * in [RvMotion.GLIDE_MS], decelerating, and is written on every frame as one text. Its unit holds near a step
- * ([RvFormat.rateUnit]). A new [key] (another direction) starts again at [rate], without gliding across.
+ * ([RvFormat.rateUnit]). With no reading ([rate] null: the tunnel is down, or its first second is not in yet) it
+ * shows nothing moving at once, and the next reading starts again from that sample, as does a new [key] (another
+ * direction), without gliding across.
  */
 @Composable
-internal fun rvGlidingRate(rate: Double, key: Any? = null): RvAmount {
+internal fun rvGlidingRate(rate: Double?, key: Any? = null): RvAmount {
     val format = rememberRvFormat()
     val motion = Rv.motion
-    val glide = remember(format, key) { RvRateGlide(format, rate) }
-    val latest by rememberUpdatedState(rate)
-    LaunchedEffect(glide, motion) { glide.follow({ latest }, motion) }
+    val live = rate != null
+    val glide = remember(format, key, live) { RvRateGlide(format, rate ?: 0.0) }
+    val latest by rememberUpdatedState(rate ?: 0.0)
+    LaunchedEffect(glide, motion) { if (live) glide.follow({ latest }, motion) }
     return glide.shown
 }
 
