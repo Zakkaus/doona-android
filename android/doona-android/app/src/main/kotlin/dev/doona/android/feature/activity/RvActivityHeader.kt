@@ -39,7 +39,6 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvAction
-import dev.doona.android.designsystem.rv.RvAmount
 import dev.doona.android.designsystem.rv.RvDelta
 import dev.doona.android.designsystem.rv.RvDotMotion
 import dev.doona.android.designsystem.rv.RvDots
@@ -49,7 +48,6 @@ import dev.doona.android.designsystem.rv.RvHero
 import dev.doona.android.designsystem.rv.RvHeroSwipe
 import dev.doona.android.designsystem.rv.RvInline
 import dev.doona.android.designsystem.rv.RvMotion
-import dev.doona.android.designsystem.rv.RvRoll
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSkeletonFade
 import dev.doona.android.designsystem.rv.RvSkeletonHero
@@ -117,7 +115,8 @@ private fun HeroBlock(state: RvActivityState, ticking: State<RvActivityState>, m
 
 /**
  * The state and the mode over the download rate, the upload rate under it; a new state fades through the old (the two
- * captions differ in length, so a cross-fade would lay them over each other), each second's rates cross-fade in. Read
+ * captions differ in length, so a cross-fade would lay them over each other), each second's rates replace the last in
+ * place, with no motion: tabular figures to three significant digits keep the figure's width as it changes. Read
  * from [ticking] here, so that a tick recomposes the figures and not the header around them. While [loading], their
  * skeleton.
  */
@@ -134,15 +133,12 @@ private fun HeroLines(ticking: State<RvActivityState>, mode: RvRouteMode) {
         RvFadeThrough("${stringResource(state.status.label)} · ${stringResource(mode.label)}", "caption", alignment = Alignment.TopCenter) { RvText(it, Rv.type.caption) }
         Spacer(Modifier.height(RvSpace.tight))
         val down = format.rate(state.downRate.toDouble())
-        RvRoll(down.number to down.unit, state.downRate.toDouble()) { (number, unit) ->
-            val spoken = stringResource(R.string.rv_a11y_download, "$number $unit")
-            RvHero(RvAmount(number, unit), Modifier.semantics { contentDescription = spoken })
-        }
+        val spoken = stringResource(R.string.rv_a11y_download, down.toString())
+        RvHero(down, Modifier.semantics { contentDescription = spoken })
         Spacer(Modifier.height(RvSpace.subGap))
         // The hero is the download rate, so the line under it carries the other direction only (N-10).
-        RvRoll(format.rate(state.upRate.toDouble()).toString(), state.upRate.toDouble()) {
-            RvInline(R.drawable.rv_sym_arrow_upward, it, Rv.colors.textSecondary, Rv.type.sub, description = stringResource(R.string.rv_a11y_upload, it))
-        }
+        val up = format.rate(state.upRate.toDouble()).toString()
+        RvInline(R.drawable.rv_sym_arrow_upward, up, Rv.colors.textSecondary, Rv.type.sub, description = stringResource(R.string.rv_a11y_upload, up))
     }
 }
 
