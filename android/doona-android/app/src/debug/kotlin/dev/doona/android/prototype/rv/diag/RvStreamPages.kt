@@ -2,6 +2,10 @@ package dev.doona.android.prototype.rv.diag
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.Rv
@@ -12,6 +16,7 @@ import dev.doona.android.designsystem.rv.RvFilterChip
 import dev.doona.android.designsystem.rv.RvFilterChipRow
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvHeatMap
+import dev.doona.android.designsystem.rv.RvHeatPick
 import dev.doona.android.designsystem.rv.RvHeatRow
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvRow
@@ -26,31 +31,35 @@ import dev.doona.android.prototype.rv.samples.sampleText
 
 /**
  * 日誌檢視 (doona web's 日誌, `GET /logs`): the caption says the level honk records from and the stream's state; the
- * chips pick the lowest level shown and a target prefix. 日誌時間分布 draws the web's level map (a row per level, a column
- * per ten seconds) over the records of each level and the busiest minute. Each record is its level's glyph, its message (with its typed fields), and its
+ * chips pick the lowest level shown and a target prefix. 日誌時間分布 draws the web's level map (a row per level shown, a
+ * column per ten seconds) over the records of each level and the busiest minute; as on the web, a level's row sets the
+ * lowest level shown, and the chip, the map and the list follow it. Each record is its level's glyph, its message (with its typed fields), and its
  * time, level and target under it; a gap in the stream is a row of its own. 暫停 holds the list,
  * 匯出 writes it, 清空 empties it, 記錄設定 opens the recorder's mode and level.
  */
 @Composable
-internal fun RvLogsSample(records: List<RvLogRecord> = RvDiagData.logs) {
+internal fun RvLogsSample(records: List<RvLogRecord> = RvDiagData.logs, initialMinimum: RvLevel = RvLevel.Info) {
     val format = rememberRvFormat()
+    var minimum by remember { mutableStateOf(initialMinimum) }
+    val levels = LOG_LEVELS.filter { it <= minimum }
+    val word = minimum.word.text()
     RvDiagPage(
         sampleText("日誌檢視", "Logs"),
         caption = sampleText("引擎記錄：資訊及以上 · 串流中", "Engine records info and above · Streaming"),
-        control = { RvFilterChipRow(RvChipPick(sampleText("資訊及以上", "Info and above")), RvChipPick(sampleText("全部模組", "All targets"))) },
+        control = { RvFilterChipRow(RvChipPick(sampleText("${word}及以上", "$word and above")), RvChipPick(sampleText("全部模組", "All targets"))) },
     ) {
         RvDiagSection(sampleText("日誌時間分布", "Log activity"))
         RvGutter {
             RvCard {
-                LogHeatMap(records)
-                RvDiagData.logCounts.forEach { (level, n) -> RvStatRow(level.word.text(), sampleText("$n 筆", if (n == 1) "1 record" else "$n records")) }
+                LogHeatMap(records, levels, minimum) { minimum = it }
+                RvDiagData.logCounts.filter { it.first in levels }.forEach { (level, n) -> RvStatRow(level.word.text(), sampleText("$n 筆", if (n == 1) "1 record" else "$n records")) }
                 RvStatRow(sampleText("記錄最多的時段", "Busiest"), RvDiagData.LOG_PEAK)
             }
         }
         RvDiagSection(sampleText("記錄", "Records"))
         RvGutter {
             RvCard {
-                records.forEach { r ->
+                records.filter { it.gap || it.level in levels }.forEach { r ->
                     if (r.gap) {
                         RvRow({ RvIconDisc(R.drawable.rv_sym_wifi_off) }, sampleText("日誌遺失：中斷連線期間的記錄無法取回", "Logs lost: records from the disconnection cannot be recovered"), null)
                     } else {
@@ -76,13 +85,14 @@ internal fun RvLogsSample(records: List<RvLogRecord> = RvDiagData.logs) {
 }
 
 /**
- * The web's level map over [records]: a row per level the caption's minimum keeps (錯誤, 警告, 資訊), a column per ten
- * seconds, in the level's hue; a screen reader hears each row's busy columns with their spans and counts.
+ * The web's level map over [records]: a row per level the chip's [minimum] keeps (錯誤, 警告, 資訊 by default), a column
+ * per ten seconds, in the level's hue; a screen reader hears each row's busy columns with their spans and counts. Each row
+ * sets the minimum to its level ([onMinimum]); the current minimum's row carries the check.
  */
 @Composable
-private fun LogHeatMap(records: List<RvLogRecord>) {
+private fun LogHeatMap(records: List<RvLogRecord>, levels: List<RvLevel>, minimum: RvLevel, onMinimum: (RvLevel) -> Unit) {
     val format = rememberRvFormat()
-    val heat = rvLogHeat(records, LOG_LEVELS)
+    val heat = rvLogHeat(records, levels)
     val hues = mapOf(RvLevel.Error to Rv.colors.error, RvLevel.Warn to Rv.colors.fair, RvLevel.Info to Rv.colors.positive, RvLevel.Debug to Rv.colors.textSecondary)
     val zh = sampleText("zh", "") == "zh"
     val rows = heat.counts.map { (level, counts) ->
@@ -98,7 +108,12 @@ private fun LogHeatMap(records: List<RvLogRecord>) {
                 "$span, $n records"
             }
         }
-        RvHeatRow(word, hues.getValue(level), counts, (if (zh) "$word：" else "$word: ") + busy)
+        val pick = if (level == minimum) {
+            RvHeatPick(true, sampleText("$word：目前的最低等級", "$word: the current minimum")) { onMinimum(level) }
+        } else {
+            RvHeatPick(false, sampleText("顯示${word}及以上", "Show $word and above")) { onMinimum(level) }
+        }
+        RvHeatRow(word, hues.getValue(level), counts, (if (zh) "$word：" else "$word: ") + busy, pick)
     }
     RvHeatMap(rows, heat.starts.map(format::clock), Modifier.padding(start = RvSpace.rowPadding, top = RvSpace.rowPadding, end = RvSpace.rowPadding))
 }
