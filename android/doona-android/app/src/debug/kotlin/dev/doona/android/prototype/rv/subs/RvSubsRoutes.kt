@@ -14,6 +14,7 @@ import dev.doona.android.feature.subscriptions.RvSubDetailState
 import dev.doona.android.feature.subscriptions.RvSubsActions
 import dev.doona.android.feature.subscriptions.RvSubsPage
 import dev.doona.android.feature.subscriptions.rvAgentOf
+import dev.doona.android.prototype.rv.RvSampleRun
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.gallery.RV_SAMPLE_LINK
 import kotlinx.coroutines.delay
@@ -36,7 +37,7 @@ internal object RvSubsRoutes {
  * `user-agent-invalid` with a User-Agent typed). An import runs for [IMPORT_MS] and then lists Harbor Cloud's nodes.
  */
 @Composable
-internal fun RvSubsRoute(route: String, push: (String) -> Unit, pop: () -> Unit) {
+internal fun RvSubsRoute(route: String, run: RvSampleRun, push: (String) -> Unit, pop: () -> Unit) {
     val arg = route.substringAfter(':', "")
     when (route.substringBefore(':')) {
         RvSubsRoutes.LIST -> {
@@ -48,15 +49,20 @@ internal fun RvSubsRoute(route: String, push: (String) -> Unit, pop: () -> Unit)
                 update = { state = state.copy(failed = null) },
                 updateAll = { state = state.copy(failed = null) },
                 delete = { state = state.copy(deletingId = it) },
-                confirmDelete = { id -> state = state.copy(subscriptions = state.subscriptions.filterNot { it.id == id }, deletingId = null) },
+                confirmDelete = { id ->
+                    run.delete(id)
+                    state = state.copy(deletingId = null)
+                },
             )
-            RvSubsPage(state, actions)
+            RvSubsPage(state.copy(subscriptions = run.subscriptions), actions)
         }
 
         RvSubsRoutes.DETAIL -> {
-            var sub by remember { mutableStateOf(RvData.subscriptions.firstOrNull { it.id == arg } ?: RvData.subscriptions.first()) }
+            val sub = run.subscriptions.first { it.id == arg }
             var state by remember { mutableStateOf(RvSubDetailState()) }
-            RvSubDetailSample(sub, state, { state = it }, onBack = pop, onUpdate = {}, onUserAgent = { sub = sub.copy(userAgent = it) })
+            RvSubDetailSample(sub, state, { state = it }, onBack = pop, onUpdate = {}, onUserAgent = { agent ->
+                run.subscriptions = run.subscriptions.map { if (it.id == arg) it.copy(userAgent = agent) else it }
+            })
         }
 
         else -> {
@@ -65,7 +71,12 @@ internal fun RvSubsRoute(route: String, push: (String) -> Unit, pop: () -> Unit)
             LaunchedEffect(state.phase) {
                 if (state.phase is RvAddPhase.Importing) {
                     delay(IMPORT_MS)
-                    state = state.copy(phase = RvAddPhase.Done(RvData.subscriptions.first().copy(userAgent = rvAgentOf(state.userAgent))))
+                    val sample = RvData.subscriptions.first()
+                    val sub = sample.copy(name = state.name.ifBlank { sample.name }, userAgent = rvAgentOf(state.userAgent))
+                    run.subscriptions = run.subscriptions.filterNot { it.id == sub.id } + sub
+                    run.nodes = run.nodes.filterNot { it.subscriptionId == sub.id } + RvData.nodes.filter { it.subscriptionId == sub.id }.map { it.copy(subscription = sub.name) }
+                    if (run.nodes.none { it.id == run.currentId }) run.currentId = run.nodes.first().id
+                    state = state.copy(phase = RvAddPhase.Done(sub))
                 }
             }
             RvSubAddSample(

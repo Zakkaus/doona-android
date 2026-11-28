@@ -55,7 +55,7 @@ internal data class RvActivitySampleState(
  */
 internal fun rvSampleActivity(nodeId: String = RvData.CURRENT_ID, nodes: List<RvNode> = RvData.nodes, second: Int = 0): RvActivitySampleState {
     val session = RvData.session
-    val node = nodes.first { it.id == nodeId }
+    val node = nodes.firstOrNull { it.id == nodeId }
     val down = session.minuteDown.movedOn(second)
     val up = session.minuteUp.movedOn(second)
     return RvActivitySampleState(
@@ -63,7 +63,7 @@ internal fun rvSampleActivity(nodeId: String = RvData.CURRENT_ID, nodes: List<Rv
         mode = Mode.Global,
         outboundGroupId = AUTO_GROUP_ID,
         outbound = RvData.AUTO_GROUP,
-        node = Member(node.id, node.name, node.latencyMs, failed = node.latencyMs == null, subscriptionId = RvData.subscriptions.first { it.name == node.subscription }.id),
+        node = node?.let { Member(it.id, it.name, it.latencyMs, failed = it.latencyMs == null, subscriptionId = it.subscriptionId) },
         downRate = down.last().toLong(),
         upRate = up.last().toLong(),
         downHistory = down,

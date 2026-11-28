@@ -7,6 +7,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.text.font.createFontFamilyResolver
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -20,6 +22,12 @@ import dev.doona.android.designsystem.rv.RvInterDisplay
 import dev.doona.android.designsystem.rv.RvNoto
 import dev.doona.android.designsystem.rv.RvPullMotion
 import dev.doona.android.designsystem.rv.rvWarmDotMap
+import dev.doona.android.feature.activity.RvActivityNotice
+import dev.doona.android.feature.settings.RvLicenses
+import dev.doona.android.prototype.rv.data.RvData
+import dev.doona.android.prototype.rv.policy.RvPolicyData
+import dev.doona.android.prototype.rv.policy.RvPolicyPreviewRoutes
+import dev.doona.android.prototype.rv.subs.RvSubsRoutes
 import kotlinx.coroutines.runBlocking
 import kotlin.concurrent.thread
 
@@ -44,6 +52,7 @@ import kotlin.concurrent.thread
  * test a second after launch). The launcher icon's shortcuts (xml/rv_shortcuts) open it with an action, [RvLaunch]:
  * `-a dev.doona.android.prototype.rv.CONNECT` starts disconnected and connects on screen, `.DISCONNECT` starts connected
  * and disconnects, `.NODES` starts with the node picker open. A recreated activity does not run its action again.
+ * A route whose index or id names nothing opens 活動 instead.
  */
 class RvPreviewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,9 +81,10 @@ class RvPreviewActivity : ComponentActivity() {
         )
         preloadFonts(applicationContext)
         rvWarmDotMap()
-        // Each gesture's frame times go to logcat (`adb logcat -s RvFrames`).
-        RvFrames.attach(window)
-        setContent { RvPreviewApp(options, start) }
+        setContent {
+            DisposableEffect(window) { onDispose(RvFrames.attach(window)) }
+            RvPreviewApp(options, start)
+        }
     }
 
     /** The launch's [key] extra as one of [entries], by its name or its [code], any case; null when absent or unknown. */
@@ -129,3 +139,60 @@ private const val EXTRA_STACK = "rv.route"
 private const val EXTRA_PENDING = "rv.pending"
 private const val EXTRA_FIRST = "rv.first"
 private const val EXTRA_TEST = "test"
+
+/**
+ * How the sample starts: [connected] or not, whether connecting [fails], the [page] on top of its tab home (a route
+ * such as `nodes` or `settings`) or a whole stack of [routes] (such as `policy`, `rules`), whether a latency [test] runs
+ * a second after launch (for recording it), the shortcut it was [launch]ed by, whether 全部規則 holds two [pending]
+ * quick rules, and whether it is the [firstRun], when 連線 explains the VPN and the first connection the notification
+ * before each is asked ([RvPermissionAsks]).
+ */
+@Immutable
+internal data class RvSampleStart(
+    val connected: Boolean = true,
+    val fails: Boolean = false,
+    val page: String? = null,
+    val test: Boolean = false,
+    val launch: RvLaunch = RvLaunch.None,
+    val routes: List<String>? = null,
+    val pending: Boolean = false,
+    val firstRun: Boolean = false,
+) {
+    val stack: List<String>
+        get() {
+            val start = routes?.takeIf { it.isNotEmpty() } ?: when (page) {
+                null, ACTIVITY -> listOf(ACTIVITY)
+                SETTINGS -> listOf(SETTINGS)
+                else -> listOf(ACTIVITY, page)
+            }
+            val policy = RvPolicyPreviewRoutes
+            // A route's index or id must name something; an unknown route draws 活動 already.
+            val valid = start.all { route ->
+                val name = route.substringBefore(':')
+                val arg = route.substringAfter(':', "")
+                val index = arg.toIntOrNull() ?: -1
+                when (name) {
+                    CONNECTION -> index in RvPolicyData.connections.indices
+
+                    LICENSE -> index in 0..RvLicenses.all.size
+
+                    // The brand-marks notice comes last.
+                    policy.EDIT -> index in 0 until RvPolicyData.allRules.lastIndex
+
+                    policy.RULE -> route == name || index in RvPolicyData.connections.indices
+
+                    NODE -> RvData.nodes.any { it.id == arg }
+
+                    RvSubsRoutes.DETAIL -> RvData.subscriptions.any { it.id == arg }
+
+                    policy.GROUP -> RvPolicyData.main.id == arg || RvPolicyData.groups.any { it.id == arg }
+
+                    STATE -> RvActivityNotice.entries.any { it.route == arg }
+
+                    else -> true
+                }
+            }
+            if (!valid) return listOf(ACTIVITY)
+            return if (start.first() in TABS.values) start else listOf(ACTIVITY) + start
+        }
+}

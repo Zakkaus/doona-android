@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.engine.Status
 import dev.doona.android.feature.model.RvSession
 import dev.doona.android.feature.traffic.RV_TRAFFIC_LIVE
 import dev.doona.android.feature.traffic.RV_TRAFFIC_POINTS
@@ -42,6 +43,7 @@ internal fun rvSampleTraffic(activity: RvActivitySampleState, session: RvSession
         endEpochMs = session.nowEpochMs,
         stepMs = RV_TRAFFIC_RANGE_SECONDS[range] / RV_TRAFFIC_POINTS * MS_PER_SECOND,
     )
+    if (activity.status !is Status.Running) return RvTrafficState(0, 0, sampled = false, chart = chart, session = null)
     val figures = RvTrafficSession(
         peakDown = session.peakDown.toDouble(),
         peakUp = session.peakUp.toDouble(),

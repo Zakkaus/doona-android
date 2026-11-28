@@ -55,11 +55,11 @@ internal fun RvSubAddSample(
     onLanDismiss: () -> Unit = {},
 ) {
     val done = state.phase as? RvAddPhase.Done
-    RvSubAdd(state, onChange, onPaste, onImport, onBack, done?.let { rvProtocolCounts(RvData.nodes, it.sub.name) }.orEmpty())
+    RvSubAdd(state, onChange, onPaste, onImport, onBack, done?.let { rvProtocolCounts(RvData.nodes, it.sub.id) }.orEmpty())
     RvLanSheet(lan, onLanConfirm, onLanDismiss)
 }
 
 /** The protocols of [subscription]'s nodes among [nodes], most nodes first. */
 internal fun rvProtocolCounts(nodes: List<RvNode>, subscription: String): List<RvProtocolCount> =
-    nodes.filter { it.subscription == subscription }.groupingBy { it.protocol }.eachCount().entries.sortedByDescending { it.value }
+    nodes.filter { it.subscriptionId == subscription }.groupingBy { it.protocol }.eachCount().entries.sortedByDescending { it.value }
         .map { RvProtocolCount(it.key, it.value) }

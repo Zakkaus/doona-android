@@ -140,3 +140,14 @@ private fun NodeRow(node: RvNode, chosen: Boolean, onPick: () -> Unit) {
 /** The sample's words in the two languages the owner reads it in; the strings of a decided feature come with its port. */
 @Composable
 internal fun sampleText(zh: String, en: String): String = if (LocalConfiguration.current.locales[0].language == "zh") zh else en
+
+/** The sample's words in zh-TW, zh-CN and English; the strings of a decided feature come with its port. */
+@Composable
+internal fun sampleText(zhTw: String, zhCn: String, en: String): String {
+    val locale = LocalConfiguration.current.locales[0]
+    return when {
+        locale.language != "zh" -> en
+        locale.country == "CN" -> zhCn
+        else -> zhTw
+    }
+}

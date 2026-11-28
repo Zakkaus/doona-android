@@ -49,11 +49,11 @@ internal object RvFrames {
     }
 
     private val runs = mutableMapOf<String, Run>()
-    private var listening = false
+    private var listeners = 0
 
     /** Starts keeping frames for [gesture] (again from nothing if it was already under way). */
     fun begin(gesture: String) = synchronized(this) {
-        if (!listening) return@synchronized
+        if (listeners == 0) return@synchronized
         val run = runs.getOrPut(gesture) { Run() }
         run.count = 0
         run.jank = 0
@@ -123,9 +123,15 @@ internal object RvFrames {
     fun missedDeadline(total: Long, deadline: Long): Boolean = deadline > 0 && total > deadline
 
     /** Listens to [window]'s frames for as long as it lives. */
-    fun attach(window: Window) {
+    fun attach(window: Window): () -> Unit {
         val thread = HandlerThread(TAG).apply { start() }
-        synchronized(this) { listening = true }
-        window.addOnFrameMetricsAvailableListener({ _, metrics, _ -> frame(metrics) }, Handler(thread.looper))
+        val listener = Window.OnFrameMetricsAvailableListener { _, metrics, _ -> frame(metrics) }
+        window.addOnFrameMetricsAvailableListener(listener, Handler(thread.looper))
+        synchronized(this) { listeners++ }
+        return {
+            window.removeOnFrameMetricsAvailableListener(listener)
+            synchronized(this) { listeners-- }
+            thread.quitSafely()
+        }
     }
 }

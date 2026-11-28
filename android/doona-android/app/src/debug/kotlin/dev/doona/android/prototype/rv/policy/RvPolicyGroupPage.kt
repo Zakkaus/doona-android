@@ -30,6 +30,7 @@ import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
 import dev.doona.android.designsystem.rv.RvDelta
+import dev.doona.android.designsystem.rv.RvEmptyCaption
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvInline
@@ -99,19 +100,23 @@ internal fun RvPolicyGroupPage(
         onBack = onBack,
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_test_group), onTest) },
     ) { titleBlock ->
-        val node = group.selected!!
+        val node = group.selected
         RvPageHeader(
             name,
             titleBlock,
             insets,
             caption = { Caption(group) },
-            control = if (score != null || networks != null) {
+            control = if (node == null || score != null || networks != null) {
                 null
             } else {
                 { RvStatusChip(R.drawable.rv_nodes_ic_check_circle, stringResource(R.string.rv_policy_selected, node.name, latencyText(node.latencyMs)), Rv.colors.positive) }
             },
         )
         RvGutter {
+            if (group.members.isEmpty()) {
+                RvEmptyCaption(stringResource(R.string.rv_group_empty), stringResource(R.string.rv_group_empty_line))
+                return@RvGutter
+            }
             if (score != null && joint != null) {
                 RvScoreJointCards(score, joint, group.members, onSeparate)
             } else if (score != null) {

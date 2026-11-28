@@ -148,7 +148,7 @@ internal object RvDiagData {
     private const val SINGAPORE = "Singapore 03"
     private const val YOUTUBE = "com.google.android.youtube"
     private const val SECOND = 1_000L
-    private const val MINUTE = 60_000L
+    const val MINUTE = 60_000L
 
     /** The trace of the first flow: input, route, dial mode, outbound and connection, a few microseconds apart. */
     private val youtubeSteps = run {
@@ -246,16 +246,16 @@ internal object RvDiagData {
         ),
         devices = listOf(RvMapTile(RvWord("172.19.0.1"), RvWord("→ 串流、主節點、AI、直連、拒絕", "→ Streaming, Main node, AI, Direct, Reject"), 8)),
         outbounds = listOf(
-            RvMapTile(streaming, RvWord("手動選擇 · → $HK", "Manual · → $HK"), 2),
-            RvMapTile(main, RvWord("手動選擇 · → $SINGAPORE", "Manual · → $SINGAPORE"), 2),
+            RvMapTile(streaming, RvWord("手動選擇 → $HK", "Manual → $HK"), 2),
+            RvMapTile(main, RvWord("手動選擇 → $SINGAPORE", "Manual → $SINGAPORE"), 2),
             RvMapTile(direct, null, 2, glyph = R.drawable.rv_sym_arrow_right_alt),
-            RvMapTile(ai, RvWord("手動選擇 · → $TOKYO", "Manual · → $TOKYO"), 1),
+            RvMapTile(ai, RvWord("手動選擇 → $TOKYO", "Manual → $TOKYO"), 1),
             RvMapTile(block, null, 1, glyph = R.drawable.rv_sym_block),
         ),
         nodes = listOf(
-            RvMapTile(RvWord(HK), RvWord("← 串流 · 48 ms", "← Streaming · 48 ms"), 2, RvPlace.HK),
-            RvMapTile(RvWord(SINGAPORE), RvWord("← 主節點 · 182 ms", "← Main node · 182 ms"), 2, RvPlace.SG),
-            RvMapTile(RvWord(TOKYO), RvWord("← AI · 62 ms"), 1, RvPlace.JP),
+            RvMapTile(RvWord(HK), RvWord("← 串流 / 48 ms", "← Streaming / 48 ms"), 2, RvPlace.HK),
+            RvMapTile(RvWord(SINGAPORE), RvWord("← 主節點 / 182 ms", "← Main node / 182 ms"), 2, RvPlace.SG),
+            RvMapTile(RvWord(TOKYO), RvWord("← AI / 62 ms"), 1, RvPlace.JP),
         ),
     )
 
@@ -331,10 +331,6 @@ internal object RvDiagData {
         RvLogRecord(RV_NOW - 3 * MINUTE, RvLevel.Info, "honk_core", "native API listener ready"),
         RvLogRecord(RV_NOW - 3 * MINUTE, RvLevel.Warn, "honk_core::dns::upstream", WITHHELD),
     )
-
-    /** The level map's figures for [logs]: records per level, the busiest minute, and the level honk records from. */
-    val logCounts = listOf(RvLevel.Error to 1, RvLevel.Warn to 2, RvLevel.Info to 4)
-    const val LOG_PEAK = "10:21–10:22"
 
     /** Events, newest first, runtime updates left out as the page's default kind leaves them out. */
     val events = listOf(

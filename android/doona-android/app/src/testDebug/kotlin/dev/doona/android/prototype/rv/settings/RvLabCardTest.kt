@@ -12,6 +12,7 @@ import dev.doona.android.designsystem.rv.RvSettingsCard
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.feature.settings.RvLabScreen
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.RvRowRead
 import dev.doona.android.prototype.rv.Seed
@@ -20,7 +21,6 @@ import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvRowNodes
 import dev.doona.android.prototype.rv.rvRowsOf
 import dev.doona.android.prototype.rv.rvShot
-import dev.doona.android.prototype.rv.samples.RvLabScreen
 import dev.doona.android.prototype.rv.seedColorScheme
 import dev.doona.android.testing.StatusBar
 import org.junit.Assert.assertEquals
@@ -32,7 +32,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * 實驗室's card on the real sample page ([RvLabScreen], the samples branch's page at 110bcc47), for the owner's 19:06
+ * 實驗室's card on its page ([RvLabScreen]; the samples branch drew it at 110bcc47), for the owner's 19:06
  * note that its text sits tighter in its card than other settings cards'. The page's row is the library's switch row; a
  * padding of the page's own round the row, inside the card or the row, would move its text in the card and fail here
  * (measured to the card's edges). Its padding is the row rule's
@@ -50,13 +50,13 @@ class RvLabCardTest {
     val compose = createComposeRule()
 
     @Test
-    fun labLight() = compose.rvShot("lab", dark = false, before = { assertWholeAndUncut() }) { RvLabScreen(performance = false) }
+    fun labLight() = compose.rvShot("lab", dark = false, before = { assertWholeAndUncut() }) { RvLabScreen(false, {}, {}) }
 
     @Test
-    fun labDark() = compose.rvShot("lab", dark = true, before = { assertWholeAndUncut() }) { RvLabScreen(performance = true) }
+    fun labDark() = compose.rvShot("lab", dark = true, before = { assertWholeAndUncut() }) { RvLabScreen(true, {}, {}) }
 
     @Test
-    fun labFs200() = compose.rvShot("lab", dark = false, before = { assertWholeAndUncut() }, fontScale = RV_FS200) { RvLabScreen(performance = false) }
+    fun labFs200() = compose.rvShot("lab", dark = false, before = { assertWholeAndUncut() }, fontScale = RV_FS200) { RvLabScreen(false, {}, {}) }
 
     /** q-l4-labcut asks for the English and Simplified Chinese copy too: at 200% neither is cut. */
     @Test
@@ -72,7 +72,7 @@ class RvLabCardTest {
         compose.setContent {
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
                 Column(Modifier.fillMaxSize()) {
-                    Box(Modifier.weight(1f)) { RvLabScreen(performance = true) }
+                    Box(Modifier.weight(1f)) { RvLabScreen(true, {}, {}) }
                     Column(Modifier.padding(horizontal = RvSpace.gutter)) {
                         RvSettingsCard { RvSwitchRow(R.drawable.rv_sym_rule, OTHER, true, OTHER_SUB, onChange = {}) }
                         RvSettingsCard { RvSwitchRow(R.drawable.rv_sym_rule, SHORT, true, SHORT_SUB, onChange = {}) }
@@ -94,7 +94,7 @@ class RvLabCardTest {
     }
 
     private fun assertWholeAt200(subtitle: String) {
-        compose.rvContent(dark = false, fontScale = RV_FS200) { RvLabScreen(performance = false) }
+        compose.rvContent(dark = false, fontScale = RV_FS200) { RvLabScreen(false, {}, {}) }
         compose.waitForIdle()
         assertEquals("the subtitle in this locale", 1, compose.rvRowNodes().count { it.text == subtitle })
         compose.assertNothingCut()

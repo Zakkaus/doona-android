@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RvNodeSort
@@ -22,8 +23,11 @@ import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
+import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvScrollBy
 import dev.doona.android.prototype.rv.rvShot
+import dev.doona.android.prototype.rv.rvText
+import dev.doona.android.prototype.rv.settings.rvSampleSettings
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -50,6 +54,15 @@ class RvPolicyShotTest {
 
     @get:Rule
     val utc = Utc()
+
+    @Test
+    fun streamingHasNoMembersAfterRemovingBothSubscriptions() {
+        compose.rvContent(dark = false) {
+            RvPolicyPreview("group:${RvPolicyData.streaming.id}", RvPolicyPreviewState(), rvSampleSettings(), {}, {}, {}, emptyList(), emptyList())
+        }
+        compose.onNodeWithText(rvText(R.string.rv_group_empty)).assertExists()
+        compose.onNodeWithText(RvPolicyData.streaming.selected!!.name).assertDoesNotExist()
+    }
 
     @Test
     @Config(qualifiers = WHOLE_RULE)
