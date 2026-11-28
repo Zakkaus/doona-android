@@ -300,7 +300,7 @@ class RvGeoDataShotTest {
 
     private fun date(day: LocalDate) = RvFormat(RuntimeEnvironment.getApplication().resources.configuration.locales[0]).date(day)
 
-    private fun after(date: String, state: Int) = date + " · " + rvText(state)
+    private fun after(date: String, state: Int) = date + " / " + rvText(state)
 
     /** A text node showing [text], whatever word joiner or no-break space the line breaking put in it. */
     private fun line(text: String) = SemanticsMatcher("shows $text") { node ->
