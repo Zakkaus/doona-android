@@ -71,6 +71,7 @@ import dev.doona.android.feature.subscriptions.SubscriptionsRoute
 import dev.doona.android.feature.subscriptions.rememberSubscriptionImports
 import dev.doona.android.feature.traffic.TrafficRoute
 import dev.doona.android.report.CrashOffer
+import dev.doona.android.vpn.tunCarries
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -170,7 +171,7 @@ internal fun DoonaApp(
             entry<EffectiveConfigKey> { key ->
                 EffectiveConfigRoute(engine, onBack = { backStack.pop(key) }, onRules = { backStack.push(RulesKey) }, onTrace = { backStack.push(RouteTraceKey) })
             }
-            entry<RouteTraceKey> { key -> RouteTraceRoute(onBack = { backStack.pop(key) }, onOpenSource = { backStack.push(ConfigSourceKey(it)) }) }
+            entry<RouteTraceKey> { key -> RouteTraceRoute(carries = ::tunCarries, onBack = { backStack.pop(key) }, onOpenSource = { backStack.push(ConfigSourceKey(it)) }) }
             configEntries(backStack)
             entry<SubscriptionsKey> { key ->
                 SubscriptionsRoute(

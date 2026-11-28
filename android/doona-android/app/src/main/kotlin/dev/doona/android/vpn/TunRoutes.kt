@@ -84,3 +84,10 @@ internal object TunRoutes {
         else -> prefix.halves().flatMap { complement(it, excluded) }
     }
 }
+
+/**
+ * Whether the tun carries [host] when it is an address: IPv4 outside the LAN prefixes it leaves out, and no IPv6 (any
+ * host with a colon). Null when [host] is not an address.
+ */
+internal fun tunCarries(host: String): Boolean? =
+    if (':' in host) false else runCatching { Ipv4Prefix.parseAddress(host) }.getOrNull()?.let { ip -> TunRoutes.IPV4.any { ip in it } }

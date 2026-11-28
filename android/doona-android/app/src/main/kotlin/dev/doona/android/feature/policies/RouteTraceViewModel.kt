@@ -19,8 +19,6 @@ import dev.doona.android.honk.NativeCatalog
 import dev.doona.android.honk.NativeConfig
 import dev.doona.android.honk.NativeRouting
 import dev.doona.android.honk.Transport
-import dev.doona.android.vpn.Ipv4Prefix
-import dev.doona.android.vpn.TunRoutes
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -43,9 +41,13 @@ internal data class RouteTraceUiState(
 /**
  * 路由測試 on honk's native API: 測試 asks `POST /routing/trace` how the running generation routes the destination, then
  * names the deciding rule by its file and line from `GET /rules` and `GET /config` of that same generation, and the node
- * the target group uses from the catalog.
+ * the target group uses from the catalog. [carries] tells whether the tun carries a host, null when it is no address.
  */
-internal class RouteTraceViewModel(private val api: NativeApi, private val io: CoroutineDispatcher = Dispatchers.IO) : ViewModel() {
+internal class RouteTraceViewModel(
+    private val api: NativeApi,
+    private val carries: (String) -> Boolean?,
+    private val io: CoroutineDispatcher = Dispatchers.IO,
+) : ViewModel() {
     private val state = MutableStateFlow(RouteTraceUiState())
     private var running: Job? = null
 
@@ -71,34 +73,33 @@ internal class RouteTraceViewModel(private val api: NativeApi, private val io: C
 
     private fun read(query: RvTraceQuery): RvTraceResult {
         val routing = NativeRouting(api)
-        val input = traceInput(query)
+        val input = traceInput(query, carries)
         val trace = routing.trace(input)
         // Rule ids hold within one generation: a reload between the two reads would name another rule.
         val rules = routing.rules().takeIf { it.generationId == trace.generationId } ?: throw EngineException(ErrorCode.Busy)
         val catalog = NativeCatalog(api)
-        return rvTraceResult(trace, rules, NativeConfig(api).config(), catalog.groups(), catalog.nodes().associate { it.id to it.name }, input)
+        return rvTraceResult(trace, rules, NativeConfig(api).config(), catalog.groups(), catalog.nodes().associate { it.id to it.name }, input, carries)
     }
 
     companion object {
-        fun factory(api: NativeApi): ViewModelProvider.Factory = viewModelFactory {
-            initializer { RouteTraceViewModel(api) }
+        fun factory(api: NativeApi, carries: (String) -> Boolean?): ViewModelProvider.Factory = viewModelFactory {
+            initializer { RouteTraceViewModel(api, carries) }
         }
     }
 }
 
 /** An address typed as the host goes as `dst_ip` (IPv6 with or without brackets), anything else as `domain`. */
-internal fun traceInput(query: RvTraceQuery): HonkTraceInput {
+internal fun traceInput(query: RvTraceQuery, carries: (String) -> Boolean?): HonkTraceInput {
     val host = query.host.trim().removePrefix("[").removeSuffix("]")
     val network = if (query.proto == RvTraceProto.Udp) Transport.Udp else Transport.Tcp
     val port = query.port.toInt()
-    val isAddress = ':' in host || runCatching { Ipv4Prefix.parseAddress(host) }.isSuccess
-    return if (isAddress) HonkTraceInput(network, port, dstIp = host) else HonkTraceInput(network, port, domain = host)
+    return if (carries(host) != null) HonkTraceInput(network, port, dstIp = host) else HonkTraceInput(network, port, domain = host)
 }
 
 /**
  * The page's answer from honk's [trace] of [input]: the first rule that matched, at its source line ([config] holds the
  * text); a rule honk could not decide before it (it needs an input the trace lacks, such as the app) as the skipped
- * warning; the target, and the node a target group uses for [input]'s transport. Only IPv4 destinations the tun routes
+ * warning; the target, and the node a target group uses for [input]'s transport. Only destinations the tun [carries]
  * pass through the VPN; a domain is taken to.
  */
 internal fun rvTraceResult(
@@ -108,6 +109,7 @@ internal fun rvTraceResult(
     groups: List<Group>,
     nodeNames: Map<String, String>,
     input: HonkTraceInput,
+    carries: (String) -> Boolean?,
 ): RvTraceResult {
     val evaluation = trace.evaluations.first()
     val byId = rules.rules.associateBy { it.id }
@@ -128,16 +130,9 @@ internal fun rvTraceResult(
         target = target,
         node = selection?.let { nodeNames[it.resolvedLeafNodeId ?: it.memberId] },
         fallback = winner.isFallback,
-        captured = input.dstIp?.let(::tunCarries) ?: true,
+        captured = input.dstIp?.let(carries) ?: true,
         skipped = skipped?.let { (sources[it.sourceId]?.path ?: it.file) to it.line },
     )
-}
-
-/** Whether the tun routes [address]: IPv4 outside the LAN prefixes it leaves out; it routes no IPv6. */
-private fun tunCarries(address: String): Boolean {
-    if (':' in address) return false
-    val ip = Ipv4Prefix.parseAddress(address)
-    return TunRoutes.IPV4.any { ip in it }
 }
 
 private const val MATCHED = "matched"

@@ -11,10 +11,10 @@ import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.feature.messageRes
 
-/** 路由測試 on the app's [nativeApi]; [onOpenSource] opens a file the answer names. */
+/** 路由測試 on the app's [nativeApi], with [carries] telling whether the tun carries a host; [onOpenSource] opens a file the answer names. */
 @Composable
-internal fun RouteTraceRoute(onBack: () -> Unit, onOpenSource: (String) -> Unit) {
-    RouteTraceRoute(viewModel(factory = RouteTraceViewModel.factory(nativeApi())), onBack, onOpenSource)
+internal fun RouteTraceRoute(carries: (String) -> Boolean?, onBack: () -> Unit, onOpenSource: (String) -> Unit) {
+    RouteTraceRoute(viewModel<RouteTraceViewModel>(factory = RouteTraceViewModel.factory(nativeApi(), carries)), onBack, onOpenSource)
 }
 
 /** 路由測試 on a given [viewModel], for a caller (a test) that makes its own. A failed trace shows its banner with 重試. */

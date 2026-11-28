@@ -8,6 +8,7 @@ import dev.doona.android.honk.HonkTrace
 import dev.doona.android.honk.HonkTraceInput
 import dev.doona.android.honk.Transport
 import dev.doona.android.honk.nativeJson
+import dev.doona.android.vpn.tunCarries
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -36,7 +37,7 @@ class RouteTraceViewModelTest {
     @Test
     fun `the matched rule answers at its line, after a rule the trace cannot decide`() {
         val honk = honk()
-        val vm = RouteTraceViewModel(honk, Dispatchers.Unconfined)
+        val vm = RouteTraceViewModel(honk, ::tunCarries, Dispatchers.Unconfined)
         vm.query(RvTraceQuery("198.51.100.20", "443"))
         vm.trace()
         val expected = RvTraceResult("routing.dae", 13, "dip(198.51.100.0/24) -> proxy", "proxy", "hk-01", skipped = "routing.dae" to 12)
@@ -48,7 +49,7 @@ class RouteTraceViewModelTest {
     @Test
     fun `a reload between the trace and the rules read fails as busy, and a new destination drops the answer`() {
         val honk = honk().apply { on("GET", "/api/v1/rules", 200, HonkFixtures.body("rules/running").replace("generation-42", "generation-43")) }
-        val vm = RouteTraceViewModel(honk, Dispatchers.Unconfined)
+        val vm = RouteTraceViewModel(honk, ::tunCarries, Dispatchers.Unconfined)
         vm.query(RvTraceQuery("198.51.100.20", "443"))
         vm.trace()
         assertEquals(ErrorCode.Busy, vm.uiState.value.failure)
@@ -66,15 +67,16 @@ class RouteTraceViewModelTest {
             groups = emptyList(),
             nodeNames = emptyMap(),
             input = input,
+            carries = ::tunCarries,
         )
         assertEquals(RvTraceResult("", 0, "fallback: block", "block", fallback = true, captured = false), result)
     }
 
     @Test
     fun `an address goes as dst_ip and anything else as domain`() {
-        assertEquals("example.com", traceInput(RvTraceQuery("example.com", "443")).domain)
-        assertEquals("2001:db8::1", traceInput(RvTraceQuery("[2001:db8::1]", "443")).dstIp)
-        val udp = traceInput(RvTraceQuery(" 1.1.1.1 ", "53", RvTraceProto.Udp))
+        assertEquals("example.com", traceInput(RvTraceQuery("example.com", "443"), ::tunCarries).domain)
+        assertEquals("2001:db8::1", traceInput(RvTraceQuery("[2001:db8::1]", "443"), ::tunCarries).dstIp)
+        val udp = traceInput(RvTraceQuery(" 1.1.1.1 ", "53", RvTraceProto.Udp), ::tunCarries)
         assertEquals(Triple(Transport.Udp, 53, "1.1.1.1"), Triple(udp.network, udp.dstPort, udp.dstIp))
     }
 }
