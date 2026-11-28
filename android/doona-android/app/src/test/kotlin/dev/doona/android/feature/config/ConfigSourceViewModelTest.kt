@@ -8,6 +8,7 @@ import dev.doona.android.honk.PolicyHonkFixtures
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -45,7 +46,7 @@ class ConfigSourceViewModelTest {
         val diff = checkNotNull(ui.diff)
         assertEquals(RvSampleConfig.HEAD, diff.baseRev)
         assertFalse(diff.stale)
-        assertEquals(listOf(CN), diff.files.map { it.source })
+        assertEquals(listOf(CN), checkNotNull(diff.files).map { it.source })
         val sent = Json.parseToJsonElement(honk.calls.single { it.path == "/api/v1/config/validate" }.body!!).jsonObject
         assertEquals("full", sent.getValue("mode").jsonPrimitive.content)
         assertEquals(listOf("config.dae", CN), sent.getValue("sources").jsonArray.map { it.jsonObject.getValue("path").jsonPrimitive.content })
@@ -102,6 +103,24 @@ class ConfigSourceViewModelTest {
         vm.apply()
         assertFalse(vm.uiState.value.applied)
         assertEquals(ErrorCode.InvalidArgument, vm.uiState.value.failure)
+        vm.closeDiff()
+        assertNull(vm.uiState.value.failure)
+        assertEquals(RvSampleConfig.cn("media", wiki = true), vm.uiState.value.value.text)
+    }
+
+    @Test
+    fun closingThePreviewBeforeARefusalKeepsTheEditorFreeOfWriteErrors() = runTest {
+        val vm = editor(StandardTestDispatcher(testScheduler))
+        advanceUntilIdle()
+        vm.onValueChange(TextFieldValue(RvSampleConfig.cn("media", wiki = true)))
+        vm.review()
+        advanceUntilIdle()
+        honk.on("PUT", "/api/v1/config/sources/source-f4", 422, HonkFixtures.body("errors/snapshot-unavailable"))
+        vm.apply()
+        vm.closeDiff()
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.failure)
+        assertFalse(vm.uiState.value.applied)
     }
 
     private companion object {

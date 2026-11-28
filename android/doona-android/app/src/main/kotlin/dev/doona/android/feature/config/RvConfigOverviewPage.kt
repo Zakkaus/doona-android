@@ -38,6 +38,8 @@ import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvConfigLine
 import dev.doona.android.designsystem.rv.rvConfigPhrase
+import java.time.Instant
+import java.time.ZoneId
 
 /**
  * 設定檔 (config plan, configuration overview; `configRead`), under 策略 and linked from 設定, in node detail's grammar:
@@ -179,7 +181,7 @@ private fun FilesCard(state: RvConfigState, onFile: (String) -> Unit, editing: R
  * not in the tree yet.
  */
 @Immutable
-internal class RvConfigAddFile(val path: String, val onPath: (String?) -> Unit, val onCreate: (String) -> Unit)
+internal class RvConfigAddFile(val path: String, val onPath: (String?) -> Unit, val onCreate: ((String) -> Unit)?)
 
 @Composable
 private fun AddFileSheet(state: RvConfigState, add: RvConfigAddFile?) {
@@ -193,11 +195,11 @@ private fun AddFileSheet(state: RvConfigState, add: RvConfigAddFile?) {
         confirm = stringResource(R.string.rv_list_create),
         dismiss = stringResource(R.string.rv_cancel),
         onConfirm = {
-            add?.onCreate(path)
+            add?.onCreate?.invoke(path)
             add?.onPath(null)
         },
         onDismiss = { add?.onPath(null) },
-        confirmEnabled = valid,
+        confirmEnabled = valid && add?.onCreate != null,
         bodyKeepWords = false,
     ) {
         add?.let {
@@ -239,7 +241,7 @@ private fun CompatCard(state: RvConfigState, onSkipped: () -> Unit) {
 @Composable
 internal fun rvConfigWhen(epochMs: Long, nowEpochMs: Long): String {
     val format = rememberRvFormat()
-    return if (epochMs / MS_PER_DAY == nowEpochMs / MS_PER_DAY) format.time(epochMs) else format.date(epochMs) + " " + format.time(epochMs)
+    val zone = ZoneId.systemDefault()
+    val today = Instant.ofEpochMilli(epochMs).atZone(zone).toLocalDate() == Instant.ofEpochMilli(nowEpochMs).atZone(zone).toLocalDate()
+    return if (today) format.time(epochMs) else format.date(epochMs) + " " + format.time(epochMs)
 }
-
-private const val MS_PER_DAY = 86_400_000L

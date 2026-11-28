@@ -1,17 +1,34 @@
 package dev.doona.android.feature.config
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.navigation3.runtime.NavKey
+import androidx.test.core.app.ApplicationProvider
+import dev.doona.android.app.ConfigSourceKey
+import dev.doona.android.app.DoonaApplication
+import dev.doona.android.app.RvNavHost
+import dev.doona.android.app.configEntries
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.engine.fake.RvSampleConfig
+import dev.doona.android.honk.FakeHonk
 import dev.doona.android.honk.HonkFixtures
 import dev.doona.android.honk.PolicyHonkFixtures
 import dev.doona.android.prototype.rv.RV_EN
@@ -19,9 +36,11 @@ import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.data.RV_NOW
+import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.seedColorScheme
 import kotlinx.coroutines.Dispatchers
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -66,6 +85,72 @@ class AppRvConfigShotTest {
         compose.onNodeWithText("Global proxy", ignoreCase = true).assertIsNotEnabled()
         compose.onNodeWithContentDescription("Back").performClick()
         compose.onNodeWithText("Template").assertExists()
+    }
+
+    @Test
+    fun restoreReturnsToTheNewActiveRevision() {
+        val honk = PolicyHonkFixtures.configTree()
+        val history = ConfigHistoryViewModel(honk, reads = Dispatchers.Unconfined)
+        val revision = ConfigRevisionViewModel(honk, UNNAMED, reads = Dispatchers.Unconfined)
+        var detail by mutableStateOf(false)
+        compose.rvContent(dark = false) {
+            if (detail) {
+                ConfigRevisionRoute(revision, onBack = {}, onRestored = { detail = false })
+            } else {
+                ConfigHistoryRoute(history, onBack = {}, routes = ConfigRoutes(revision = { detail = true }))
+            }
+        }
+        compose.onNodeWithText("第 8 版").performScrollTo().performClick()
+        val updated = HonkFixtures.body("revisions/rv-config").replace("\"active\": 9", "\"active\": 10").replace("\"revision\": 9", "\"revision\": 10")
+        honk.on("GET", "/api/v1/x-honk/config/revisions", 503, HonkFixtures.body("errors/snapshot-unavailable"))
+        compose.onNodeWithText("復原").performClick()
+        compose.waitUntil(5_000) { history.uiState.value.failure != null }
+        compose.onNodeWithText("無法讀取設定檔").assertExists()
+        honk.on("GET", "/api/v1/x-honk/config/revisions", 200, updated)
+        compose.onNodeWithText("重試").performClick()
+        compose.waitUntil(5_000) { history.uiState.value.value?.headRev == 10 }
+        compose.onNodeWithText("第 10 版").assertExists()
+        compose.onNodeWithText("使用中").assertExists()
+        assertEquals(1, honk.calls.count { it.path.endsWith("/8/activate") })
+    }
+
+    @Test
+    fun removedLineOpensItsReplacementInTheDraft() {
+        val vm = ConfigSourceViewModel(PolicyHonkFixtures.configTree(), RvConfigSourceData.CN, reads = Dispatchers.Unconfined)
+        vm.onValueChange(TextFieldValue(CLEAN))
+        vm.review()
+        compose.rvContent(dark = false) { ConfigSourceRoute(vm, onBack = {}, onApplied = {}, onFile = {}) }
+        compose.onNodeWithContentDescription("移除，第 7 行：  domain(keyword: 影音) -> proxy").performScrollTo().performClick()
+        compose.onNodeWithContentDescription(RvConfigSourceData.CN).assertExists()
+        val value = vm.uiState.value.value
+        assertEquals("  domain(keyword: 影音) -> media", value.text.substring(value.selection.min, value.selection.max))
+    }
+
+    @Test
+    fun switchingFilesKeepsTheSearchableDraft() {
+        val api = ApplicationProvider.getApplicationContext<DoonaApplication>().container.nativeApi as FakeHonk
+        api.on("GET", "/api/v1/config", 200, HonkFixtures.body("config/rv-config"))
+        api.on("POST", "/api/v1/config/validate", 200, HonkFixtures.body("config-validate/valid"))
+        api.on("PUT", "/api/v1/config/sources/source-f4", 202, HonkFixtures.body("config-replace/queued"))
+        api.on("GET", "/api/v1/operations/op-config-01", 200, HonkFixtures.body("operations/reload-complete"))
+        val path = "config.dae"
+        val stack = mutableStateListOf<NavKey>(ConfigSourceKey(path))
+        compose.rvContent(dark = false) { RvNavHost(stack) { configEntries(stack) } }
+        val editor = hasContentDescription(path) and hasSetTextAction()
+        compose.onNode(editor).performTextInput("unique draft text")
+        compose.onNodeWithText(path).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        compose.onNodeWithText(RvConfigSourceData.CN).performClick()
+        compose.onNode(hasContentDescription(RvConfigSourceData.CN) and hasSetTextAction()).performTextInput("# change\n")
+        compose.onNodeWithText("檢視變更").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodes(hasText("套用")).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("套用").performClick()
+        compose.waitUntil(5_000) { stack.last() == ConfigSourceKey(path) }
+        compose.onNodeWithContentDescription("搜尋檔案").performClick()
+        compose.onNode(hasContentDescription("搜尋檔案") and hasSetTextAction()).performTextInput("unique draft text")
+        compose.onNodeWithText("搜尋檔案").performClick()
+        val semantics = compose.onNode(editor).fetchSemanticsNode().config
+        val range = semantics[SemanticsProperties.TextSelectionRange]
+        assertEquals("unique draft text", semantics[SemanticsProperties.EditableText].text.substring(range.min, range.max))
     }
 
     @Test
@@ -165,7 +250,7 @@ class AppRvConfigShotTest {
                 if (review) review()
             }
         }
-        ConfigSourceRoute(vm, onBack = {}, onApplied = {})
+        ConfigSourceRoute(vm, onBack = {}, onApplied = {}, onFile = {})
     }
 
     @Composable

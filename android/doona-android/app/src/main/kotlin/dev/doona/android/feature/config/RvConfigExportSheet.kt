@@ -24,7 +24,7 @@ internal fun RvConfigExportSheet(visible: Boolean, kind: ExportKind, onKind: (Ex
     RvSheet(visible, onDismiss, stringResource(R.string.rv_config_export_title)) { RvConfigExportContent(kind, onKind, { onExport(kind) }, onDismiss) }
 }
 
-/** The export kinds honk can make: the portable one alone, every file merged. */
+// honk-gap:export-archive
 internal val HONK_EXPORT_KINDS = setOf(ExportKind.Portable)
 
 /** What [RvConfigExportSheet] shows in its card. */
@@ -64,6 +64,9 @@ internal data class RvExportNotice(val refused: Boolean, val paths: List<String>
 @Composable
 internal fun rvExportBanner(notice: RvExportNotice?, onArchive: () -> Unit, onSeen: () -> Unit): RvNotice? {
     notice ?: return null
+    if (!notice.refused && notice.paths.isEmpty()) {
+        return RvNotice(RvNoticeKind.Info, stringResource(R.string.rv_config_export_done), null, stringResource(R.string.rv_done), onSeen)
+    }
     val paths = notice.paths.joinToString(stringResource(R.string.rv_effective_list_separator))
     return if (notice.refused) {
         RvNotice(

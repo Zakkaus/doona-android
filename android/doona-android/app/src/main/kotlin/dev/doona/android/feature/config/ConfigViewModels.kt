@@ -39,15 +39,15 @@ internal abstract class ConfigReadViewModel<T>(protected val reads: CoroutineDis
 
     fun retry() = attempt { state.value = ConfigRead(load()) }
 
-    /** Runs [block] on [reads]; a failure lands in the state's [ConfigRead.failure]. */
-    protected fun attempt(block: suspend () -> Unit) {
+    /** Runs [block] on [reads]; read failures keep the previously loaded value. */
+    protected fun attempt(onFailure: (ErrorCode) -> Unit = { code -> state.update { it.copy(failure = code) } }, block: suspend () -> Unit) {
         viewModelScope.launch(reads) {
             try {
                 block()
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                state.update { it.copy(failure = error.errorCode()) }
+                onFailure(error.errorCode())
             }
         }
     }
@@ -64,19 +64,19 @@ internal class ConfigOverviewViewModel(
     /** How the last 匯入 ended, until its banner is read. */
     val imported: StateFlow<RvConfigImport?> = _imported.asStateFlow()
 
-    init {
-        retry()
-    }
-
     override suspend fun load(): RvConfigState =
         rvConfigState(NativeConfig(api).config(), HonkPolicyRead.read(api), NativeRouting(api).dnsRules(), now())
 
     /**
      * 匯入: honk checks [text] as the entry file ([NativeConfig.validate]); a file it accepts replaces the entry file and
      * the page reads again, one it rejects changes nothing and says honk's first error (owner, q-import 2026-11-26).
-     * A write that fails says why.
+     * A null [text] means the chosen file could not be read.
      */
-    fun import(text: String) {
+    fun import(text: String?, readError: ErrorCode? = null) {
+        if (text == null) {
+            _imported.value = RvConfigImport.Failed(readError)
+            return
+        }
         _imported.value = null
         viewModelScope.launch(reads) {
             _imported.value = try {
@@ -85,7 +85,7 @@ internal class ConfigOverviewViewModel(
                 val check = native.validate(listOf(main.path to text))
                 if (check.valid) {
                     native.replace(main, text)
-                    state.value = ConfigRead(load())
+                    retry()
                     RvConfigImport.Done
                 } else {
                     RvConfigImport.Rejected(check.diagnostics.firstOrNull { it.level == "error" }?.message ?: check.diagnostics.firstOrNull()?.message)
@@ -123,7 +123,7 @@ internal class ConfigOverviewViewModel(
                 val lines = source.content.lines()
                 val at = includeLine(lines, path) ?: throw EngineException(ErrorCode.NotFound)
                 native.replace(source, lines.filterIndexed { i, _ -> i != at }.joinToString("\n"))
-                state.value = ConfigRead(load())
+                retry()
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
@@ -153,13 +153,13 @@ internal fun includeLine(lines: List<String>, path: String): Int? {
 
 private val INCLUDE_OPEN = Regex("""include\s*\{""")
 
-/** How 匯入 ended: the file replaced the entry file; honk rejected it ([message], its first error); the write failed. */
+/** How 匯入 ended: the file replaced the entry file, honk rejected it, or the read or write failed. */
 internal sealed interface RvConfigImport {
     data object Done : RvConfigImport
 
     data class Rejected(val message: String?) : RvConfigImport
 
-    data class Failed(val code: ErrorCode) : RvConfigImport
+    data class Failed(val code: ErrorCode?) : RvConfigImport
 }
 
 /** 版本紀錄's content: the revisions newest first and the active one. */
@@ -168,51 +168,43 @@ internal data class RvHistory(val revisions: List<RvRevision>, val headRev: Int,
 
 /**
  * 版本紀錄: honk's configuration db (`GET /x-honk/config/revisions`). 匯出設定檔 hands honk's export of the accepted
- * files ([exported], one inlined document whichever kind the sheet chose) on for the picker to write. honk keeps no
- * revision names, so a rename is not kept (owner question).
+ * files ([exported], one inlined document whichever kind the sheet chose) on for the picker to write.
  */
 internal class ConfigHistoryViewModel(
     private val api: NativeApi,
     private val now: () -> Long = System::currentTimeMillis,
     reads: CoroutineDispatcher = Dispatchers.IO,
 ) : ConfigReadViewModel<RvHistory>(reads) {
-    private val _rename = MutableStateFlow<RvRevisionRename?>(null)
-    val rename: StateFlow<RvRevisionRename?> = _rename.asStateFlow()
     private val _exported = MutableStateFlow<String?>(null)
     val exported: StateFlow<String?> = _exported.asStateFlow()
-    private val _exportNotice = MutableStateFlow<RvExportNotice?>(null)
-    val exportNotice: StateFlow<RvExportNotice?> = _exportNotice.asStateFlow()
-
-    init {
-        retry()
-    }
+    private val _exportNotice = MutableStateFlow(ConfigRead<RvExportNotice>())
+    val exportNotice = _exportNotice.asStateFlow()
 
     override suspend fun load(): RvHistory {
         val history = NativeRevisions(api).revisions()
         return RvHistory(history.revisions.map(::rvRevision), history.active?.toInt() ?: 0, now())
     }
 
-    fun onRename(rename: RvRevisionRename?) {
-        _rename.value = rename
-    }
-
-    @Suppress("UNUSED_PARAMETER")
-    fun saveName(rev: Int, name: String?) {
-        _rename.value = null
-    }
-
     fun export() {
-        attempt { _exported.value = NativeConfig(api).export() }
+        exportNoticeSeen()
+        attempt(onFailure = { _exportNotice.value = ConfigRead(failure = it) }) { _exported.value = NativeConfig(api).export() }
     }
 
     /** The export's banner was read. */
     fun exportNoticeSeen() {
-        _exportNotice.value = null
+        _exportNotice.value = ConfigRead()
     }
 
-    /** The picker took the text. */
-    fun exportHandled() {
+    fun exportHandled(open: (() -> java.io.OutputStream?)?) {
+        val text = _exported.value
         _exported.value = null
+        if (open != null) {
+            attempt(onFailure = { _exportNotice.value = ConfigRead(failure = ErrorCode.WriteFailed) }) {
+                checkNotNull(text)
+                checkNotNull(open()).bufferedWriter().use { it.write(text) }
+                _exportNotice.value = ConfigRead(RvExportNotice(false, emptyList()))
+            }
+        }
     }
 
     companion object {
@@ -222,21 +214,15 @@ internal class ConfigHistoryViewModel(
 
 /** One revision's page: the revision and the files restoring it changes against the active one, line by line. */
 @Immutable
-internal data class RvRevisionView(val revision: RvRevision, val files: List<RvDiffFile>, val nowEpochMs: Long)
+internal data class RvRevisionView(val revision: RvRevision, val files: List<RvDiffFile>?, val nowEpochMs: Long, val headRev: Int?)
 
-/**
- * A revision's page: the revision from honk's db. honk lists a revision's files by hash, without their text, so the
- * page shows no diff and no 還原 until honk serves a revision's text (owner question); 還原 activates the revision,
- * which honk records as a new revision ([restored] true).
- */
+/** honk lists revision files by hash, without their text. Restoring activates the revision as a new head. */
 internal class ConfigRevisionViewModel(
     private val api: NativeApi,
     private val rev: Int,
     private val now: () -> Long = System::currentTimeMillis,
     reads: CoroutineDispatcher = Dispatchers.IO,
 ) : ConfigReadViewModel<RvRevisionView>(reads) {
-    private val _rename = MutableStateFlow<RvRevisionRename?>(null)
-    val rename: StateFlow<RvRevisionRename?> = _rename.asStateFlow()
     private val _restored = MutableStateFlow(false)
     val restored: StateFlow<Boolean> = _restored.asStateFlow()
 
@@ -247,16 +233,9 @@ internal class ConfigRevisionViewModel(
     override suspend fun load(): RvRevisionView {
         val history = NativeRevisions(api).revisions()
         val revision = history.revisions.firstOrNull { it.revision == rev.toLong() } ?: throw EngineException(ErrorCode.NotFound)
-        return RvRevisionView(rvRevision(revision), emptyList(), now())
-    }
-
-    fun onRename(rename: RvRevisionRename?) {
-        _rename.value = rename
-    }
-
-    @Suppress("UNUSED_PARAMETER")
-    fun saveName(rev: Int, name: String?) {
-        _rename.value = null
+        // honk-gap:rev-content
+        val head = history.active?.toInt()
+        return RvRevisionView(rvRevision(revision), if (rev == head) emptyList() else null, now(), head)
     }
 
     fun restore() {

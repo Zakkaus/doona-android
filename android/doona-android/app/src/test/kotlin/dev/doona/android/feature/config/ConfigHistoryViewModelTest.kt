@@ -30,7 +30,9 @@ class ConfigHistoryViewModelTest {
 
     @Test
     fun theHistoryIsHonksRevisionsNewestFirstWithTheirOrigins() {
-        val history = checkNotNull(ConfigHistoryViewModel(honk, now = { RvSampleConfig.NOW }, reads = Dispatchers.Unconfined).uiState.value.value)
+        val vm = ConfigHistoryViewModel(honk, now = { RvSampleConfig.NOW }, reads = Dispatchers.Unconfined)
+        vm.retry()
+        val history = checkNotNull(vm.uiState.value.value)
         assertEquals(RvSampleConfig.HEAD, history.headRev)
         assertEquals((RvSampleConfig.HEAD downTo 1).toList(), history.revisions.map { it.rev })
         assertEquals(RvSampleConfig.history.map { it.appliedAtEpochMs }, history.revisions.map { it.appliedAtEpochMs })
@@ -43,16 +45,40 @@ class ConfigHistoryViewModelTest {
         val vm = ConfigHistoryViewModel(honk, reads = Dispatchers.Unconfined)
         vm.export()
         assertEquals(honk.call("GET", "/api/v1/x-honk/config/export", null, emptyMap()).body, vm.exported.value)
-        assertNull(vm.exportNotice.value)
-        vm.exportHandled()
+        assertNull(vm.exportNotice.value.value)
+        val out = java.io.ByteArrayOutputStream()
+        vm.exportHandled { out }
+        assertEquals(honk.call("GET", "/api/v1/x-honk/config/export", null, emptyMap()).body, out.toString("UTF-8"))
+        assertNull(vm.exported.value)
+        assertEquals(RvExportNotice(false, emptyList()), vm.exportNotice.value.value)
+        vm.export()
+        vm.exportHandled(null)
+        assertEquals(ConfigRead<RvExportNotice>(), vm.exportNotice.value)
+    }
+
+    @Test
+    fun aProviderThatFailsOnCloseDoesNotCompleteTheExport() {
+        val vm = ConfigHistoryViewModel(honk, reads = Dispatchers.Unconfined)
+        vm.retry()
+        vm.export()
+        vm.exportHandled {
+            object : java.io.ByteArrayOutputStream() {
+                override fun close() = throw java.io.IOException()
+            }
+        }
+        assertEquals(ErrorCode.WriteFailed, vm.exportNotice.value.failure)
+        assertNull(vm.uiState.value.failure)
+        assertEquals(RvSampleConfig.HEAD, vm.uiState.value.value?.headRev)
         assertNull(vm.exported.value)
     }
 
     @Test
-    fun aRevisionShowsNoDiffSinceHonkKeepsNoTextAndRestoreActivatesIt() = runTest {
+    fun aRevisionWithoutSourceTextCanStillBeRestored() = runTest {
         val vm = ConfigRevisionViewModel(honk, 8, reads = UnconfinedTestDispatcher(testScheduler))
-        assertEquals(RvRevisionOrigin.Restore, checkNotNull(vm.uiState.value.value).revision.origin)
-        assertEquals(emptyList<String>(), checkNotNull(vm.uiState.value.value).files.map { it.source })
+        val view = checkNotNull(vm.uiState.value.value)
+        assertEquals(RvRevisionOrigin.Restore, view.revision.origin)
+        assertNull(view.files)
+        assertEquals(RvSampleConfig.HEAD, view.headRev)
         vm.restore()
         advanceUntilIdle()
         assertTrue(vm.restored.value)
@@ -66,11 +92,21 @@ class ConfigHistoryViewModelTest {
 
     @Test
     fun theOverviewListsHonksFilesUnderTheEntryAndSkipsNothing() {
-        val state = checkNotNull(ConfigOverviewViewModel(honk, now = { RvSampleConfig.NOW }, reads = Dispatchers.Unconfined).uiState.value.value)
+        val vm = ConfigOverviewViewModel(honk, now = { RvSampleConfig.NOW }, reads = Dispatchers.Unconfined)
+        vm.retry()
+        val state = checkNotNull(vm.uiState.value.value)
         assertEquals(RvSampleConfig.HEAD, state.rev)
         assertEquals(listOf("config.dae", "nodes.dae", "nodes/office.dae", "rules/cn.dae", "rules/lan.dae", "dns.dae"), state.files.map { it.path })
         assertEquals(listOf(null) + List(5) { "config.dae" }, state.files.map { it.parent })
         assertEquals(RvSampleConfig.history.first().appliedAtEpochMs, state.appliedAtEpochMs)
         assertEquals(emptyList<RvSkipped>(), state.skipped)
+    }
+
+    @Test
+    fun anUnreadablePickedFileLeavesTheConfigurationUntouched() {
+        val vm = ConfigOverviewViewModel(honk, reads = Dispatchers.Unconfined)
+        vm.import(null)
+        assertEquals(RvConfigImport.Failed(null), vm.imported.value)
+        assertTrue(honk.calls.none { it.method != "GET" })
     }
 }

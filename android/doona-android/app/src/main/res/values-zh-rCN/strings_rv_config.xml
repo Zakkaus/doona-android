@@ -45,7 +45,7 @@
     <string name="rv_config_reload">重新加载</string>
     <string name="rv_config_revision">第 %1$d 版</string>
     <string name="rv_config_origin_import">导入</string>
-    <string name="rv_config_origin_restore">恢复自第 %1$d 版</string>
+    <string name="rv_config_origin_restore">恢复自第 %1$s 版</string>
     <string name="rv_config_unnamed">未命名</string>
     <string name="rv_config_restore">恢复</string>
     <string name="rv_config_export">导出配置文件</string>
@@ -75,8 +75,12 @@
     <string name="rv_config_create">新建配置文件</string>
     <string name="rv_config_kind_note">%1$s：%2$s</string>
     <string name="rv_config_read_failed">无法读取配置文件</string>
+    <string name="rv_config_diff_limit">改动过多，无法预览。</string>
+    <string name="rv_config_restore_failed">无法恢复版本</string>
     <string name="rv_config_apply_failed">无法应用</string>
     <string name="rv_config_export_title">导出配置文件？</string>
+    <string name="rv_config_export_done">已导出配置文件</string>
+    <string name="rv_config_export_failed">无法导出配置文件</string>
     <string name="rv_config_export_body">文件可能含有密码与密钥。</string>
     <string name="rv_config_export_confirm">导出</string>
     <string name="rv_config_export_archive">完整归档</string>

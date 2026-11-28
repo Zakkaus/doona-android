@@ -41,6 +41,7 @@ internal fun RvConfigSourcePage(
     onPickFile: () -> Unit = {},
     onSearch: () -> Unit = {},
     onReview: () -> Unit = {},
+    failure: RvNotice? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_config_source)
@@ -61,7 +62,7 @@ internal fun RvConfigSourcePage(
             caption = { RvCaption(stringResource(R.string.rv_config_draft_base, draft.baseRev)) },
             control = { RvFilterChip(draft.path, onPickFile) },
         )
-        RvGutter { RvSourceField(value, onValueChange, draft.path, marks = marks) }
+        RvGutter(banner = failure) { RvSourceField(value, onValueChange, draft.path, marks = marks) }
     }
 }
 
@@ -102,7 +103,12 @@ internal fun RvConfigDiffPage(
             null
         }
         RvGutter(banner = stale ?: failure) {
-            diff.files.forEach { file -> RvSourceDiff(file, onOpen = { onOpen(file.source, it) }) }
+            val files = diff.files
+            if (files == null) {
+                RvFootnote(stringResource(R.string.rv_config_diff_limit))
+            } else {
+                files.forEach { file -> RvSourceDiff(file, onOpen = { onOpen(file.source, it) }) }
+            }
         }
         RvFootnote(stringResource(R.string.rv_template_new_flows))
     }

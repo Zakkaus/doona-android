@@ -9,14 +9,27 @@ import dev.doona.android.designsystem.rv.RvDiffLine
  * base and candidate bytes for the diff"). Lines are matched by their longest common run; each run of changes keeps one
  * line round it, and one more where that next line opens the block above the change (it ends in `{`) or closes the
  * block below it (it is `}`), so a group's change shows the group it is in. Runs whose kept lines meet are one hunk.
- * Removed lines come before the lines added in their place. Null when nothing changed.
+ * Removed lines come before the lines added in their place. Empty when unchanged, null beyond the preview budget.
  */
-internal fun rvLineDiff(source: String, base: String, candidate: String): RvDiffFile? {
+internal fun rvLineDiff(source: String, base: String, candidate: String): List<RvDiffFile>? {
+    if (base == candidate) return emptyList()
     val a = base.lines()
     val b = candidate.lines()
-    val edits = edits(a, b)
+    val shared = minOf(a.size, b.size)
+    var prefix = 0
+    while (prefix < shared && a[prefix] == b[prefix]) prefix++
+    var suffix = 0
+    while (suffix < shared - prefix && a[a.lastIndex - suffix] == b[b.lastIndex - suffix]) suffix++
+    // Keep the two context lines reach() can show at either end of the change.
+    val start = (prefix - 2).coerceAtLeast(0)
+    val omit = (suffix - 2).coerceAtLeast(0)
+    val old = a.subList(start, a.size - omit)
+    val new = b.subList(start, b.size - omit)
+    // Bounds both the rendered rows and the LCS matrix (at most 1,000,000 cells).
+    if (old.size + new.size.toLong() > 1_998) return null
+    val edits = edits(old, new, start)
     val changed = edits.indices.filter { edits[it].kind != RvDiffKind.Same }
-    if (changed.isEmpty()) return null
+    if (changed.isEmpty()) return emptyList()
     val shown = BooleanArray(edits.size)
     changed.forEach { i ->
         val from = reach(edits, i, -1) ?: i
@@ -29,7 +42,7 @@ internal fun rvLineDiff(source: String, base: String, candidate: String): RvDiff
         if (i == 0 || !shown[i - 1]) hunks.add(mutableListOf())
         hunks.last().add(line)
     }
-    return RvDiffFile(source, hunks)
+    return listOf(RvDiffFile(source, hunks))
 }
 
 /** The farthest kept line round the change at [i] in [step]'s direction: one line, or two to the block's own brace. */
@@ -42,7 +55,7 @@ private fun reach(edits: List<RvDiffLine>, i: Int, step: Int): Int? {
 }
 
 /** Every line of [a] and [b] in order: kept (numbered in [b]), removed (numbered in [a]) or added (numbered in [b]). */
-private fun edits(a: List<String>, b: List<String>): List<RvDiffLine> {
+private fun edits(a: List<String>, b: List<String>, offset: Int): List<RvDiffLine> {
     // keep[i][j]: the longest common run of a[i..] and b[j..].
     val keep = Array(a.size + 1) { IntArray(b.size + 1) }
     for (i in a.indices.reversed()) {
@@ -60,14 +73,14 @@ private fun edits(a: List<String>, b: List<String>): List<RvDiffLine> {
         when {
             i < a.size && j < b.size && a[i] == b[j] -> {
                 flush()
-                out.add(RvDiffLine(RvDiffKind.Same, j + 1, b[j]))
+                out.add(RvDiffLine(RvDiffKind.Same, offset + j + 1, b[j]))
                 i++
                 j++
             }
 
-            j < b.size && (i == a.size || keep[i][j + 1] >= keep[i + 1][j]) -> added.add(RvDiffLine(RvDiffKind.Added, j + 1, b[j++]))
+            j < b.size && (i == a.size || keep[i][j + 1] >= keep[i + 1][j]) -> added.add(RvDiffLine(RvDiffKind.Added, offset + j + 1, b[j++]))
 
-            else -> out.add(RvDiffLine(RvDiffKind.Removed, i + 1, a[i++]))
+            else -> out.add(RvDiffLine(RvDiffKind.Removed, offset + i + 1, a[i++]))
         }
     }
     flush()

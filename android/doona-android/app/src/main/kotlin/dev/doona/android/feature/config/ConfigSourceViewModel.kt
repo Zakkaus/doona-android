@@ -34,6 +34,7 @@ internal data class ConfigSourceUiState(
     val diff: RvConfigDiff? = null,
     val applied: Boolean = false,
     val failure: ErrorCode? = null,
+    val paths: List<String> = emptyList(),
 )
 
 /**
@@ -65,7 +66,7 @@ internal class ConfigSourceViewModel(
         val config = NativeConfig(api).config()
         val source = config.files.firstOrNull { it.path == path } ?: throw EngineException(ErrorCode.NotFound)
         base = source
-        state.value = ConfigSourceUiState(RvSourceDraft(path, source.content, config.revision), TextFieldValue(source.content))
+        state.value = ConfigSourceUiState(RvSourceDraft(path, source.content, config.revision), TextFieldValue(source.content), paths = config.files.map { it.path })
     }
 
     /** 檢視變更: honk's check of the buffer, then the diff. */
@@ -83,14 +84,14 @@ internal class ConfigSourceViewModel(
             state.update { it.copy(draft = RvSourceDraft(path, text, baseRev, RvConfigDiagnostic(start, end, rvSpanText(text, start, end))), failure = null) }
             return@launchRead
         }
-        val files = listOfNotNull(rvLineDiff(path, source.content, text))
+        val files = rvLineDiff(path, source.content, text)
         val head = native.config()
         val headRev = if (head.files.firstOrNull { it.path == path }?.sha256 == source.sha256) baseRev else head.revision
         state.update { it.copy(draft = RvSourceDraft(path, text, baseRev), diff = RvConfigDiff(files, baseRev, headRev), failure = null) }
     }
 
     /** 套用; a file changed since it was read turns the diff stale against today's revision. */
-    fun apply() = launchRead {
+    fun apply() = launchRead(state.value.diff) {
         val source = base ?: return@launchRead
         val text = state.value.draft?.text ?: return@launchRead
         try {
@@ -106,17 +107,17 @@ internal class ConfigSourceViewModel(
 
     /** Back from the diff to the editor, the text kept. */
     fun closeDiff() {
-        state.update { it.copy(diff = null) }
+        state.update { it.copy(diff = null, failure = null) }
     }
 
-    private fun launchRead(block: suspend () -> Unit) {
+    private fun launchRead(preview: RvConfigDiff? = null, block: suspend () -> Unit) {
         viewModelScope.launch(reads) {
             try {
                 block()
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
-                state.update { it.copy(failure = error.errorCode()) }
+                state.update { if (preview == null || it.diff === preview) it.copy(failure = error.errorCode()) else it }
             }
         }
     }

@@ -1,6 +1,7 @@
 package dev.doona.android.feature.config
 
 import dev.doona.android.designsystem.rv.RvDiffFile
+import dev.doona.android.designsystem.rv.RvDiffKind
 import dev.doona.android.engine.fake.RvSampleConfig
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -28,20 +29,34 @@ class ConfigSampleDataTest {
     fun theCheckedDraftsRuleFileDiffIsTheApprovedOne() {
         val base = RvSampleConfig.texts().getValue(RvSampleConfig.CN)
         val draft = RvSampleConfig.texts(cnTarget = "media", wiki = true).getValue(RvSampleConfig.CN)
-        val approved = RvConfigSourceData.diff.files.single { it.source == RvConfigSourceData.CN }
-        assertEquals(approved.lines(), rvLineDiff(RvConfigSourceData.CN, base, draft).lines())
+        val approved = checkNotNull(RvConfigSourceData.diff.files).single { it.source == RvConfigSourceData.CN }
+        assertEquals(approved.lines(), rvLineDiff(RvConfigSourceData.CN, base, draft)?.single()?.lines())
     }
 
     @Test
     fun restoringAnOlderRevisionDiffsAsTheApprovedRevisionPage() {
         val head = RvSampleConfig.texts().getValue(RvSampleConfig.ENTRY)
         val older = RvSampleConfig.texts(aiKeyword = "US").getValue(RvSampleConfig.ENTRY)
-        assertEquals(RvConfigHistoryData.restoreDiff.lines(), rvLineDiff(RvConfigData.ENTRY, head, older).lines())
+        assertEquals(RvConfigHistoryData.restoreDiff.lines(), rvLineDiff(RvConfigData.ENTRY, head, older)?.single()?.lines())
     }
 
     @Test
     fun anUnchangedFileHasNoDiff() {
         val text = RvSampleConfig.texts().getValue(RvSampleConfig.DNS)
-        assertNull(rvLineDiff("dns.dae", text, text))
+        assertEquals(emptyList<RvDiffFile>(), rvLineDiff("dns.dae", text, text))
+    }
+
+    @Test
+    fun aLocalChangeInALongFileKeepsItsLineNumbers() {
+        val blanks = "\n".repeat(1_200)
+        val diff = checkNotNull(rvLineDiff("config.dae", "$blanks# Old$blanks", "$blanks# New$blanks"))
+        val changed = diff.single().hunks.single().filter { it.kind != RvDiffKind.Same }
+        assertEquals(listOf(Triple(RvDiffKind.Removed, 1_201, "# Old"), Triple(RvDiffKind.Added, 1_201, "# New")), changed.map { Triple(it.kind, it.line, it.text) })
+    }
+
+    @Test
+    fun aLargeReplacementExceedsThePreviewBudget() {
+        assertNull(rvLineDiff("config.dae", "# Old\n".repeat(1_200), "# New\n".repeat(1_200)))
+        assertNull(rvLineDiff("config.dae", "dns {}", "dns {}" + "\n".repeat(16_000)))
     }
 }

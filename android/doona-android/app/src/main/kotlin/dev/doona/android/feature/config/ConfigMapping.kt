@@ -16,6 +16,7 @@ internal fun rvSpanText(text: String, start: Int, end: Int): String = text.encod
  */
 internal fun rvConfigFiles(config: HonkConfig): List<RvConfigFile> {
     val entry = config.main
+    // honk-gap:config-entry
     return config.files.map { RvConfigFile(it.path, if (it === entry) null else entry.path, it.lineCount) }
 }
 
