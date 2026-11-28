@@ -1,5 +1,6 @@
 package dev.doona.android.honk
 
+import dev.doona.android.engine.fake.RvSampleConfig
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -12,15 +13,11 @@ internal object PolicyHonkFixtures {
         on("GET", "/api/v1/config", 200, HonkFixtures.body("config/editable"))
     }
 
-    /**
-     * [HonkFixtures.rvSample] with its config (template `cn-direct`, 封鎖廣告 on) and that config's export, and its
-     * geodata, GeoSite loaded.
-     */
+    /** [HonkFixtures.rvSample] with the editable config (`cn-direct`, ad blocking on) and GeoSite loaded. */
     fun rvSample(long: Boolean = false): FakeHonk = HonkFixtures.rvSample(long).apply {
         on("GET", "/api/v1/config", 200, HonkFixtures.body("config/rv-sample"))
         on("GET", "/api/v1/geodata", 200, HonkFixtures.body("geodata/rv-sample"))
         on("GET", "/api/v1/dns/rules", 200, HonkFixtures.body("dns-rules/rv-sample"))
-        on("GET", "/api/v1/x-honk/config/export", 200, exported("config/rv-sample"))
     }
 
     /** [rvSample] with the routing of its file edited by hand (a rule of the user's own), so it is no template. */
@@ -49,15 +46,11 @@ internal object PolicyHonkFixtures {
      */
     fun configTree(): FakeHonk = rvSample().apply {
         on("GET", "/api/v1/config", 200, HonkFixtures.body("config/rv-config"))
-        on("GET", "/api/v1/x-honk/config/export", 200, exported("config/rv-config"))
+        on("GET", "/api/v1/x-honk/config/export", 200, RvSampleConfig.exported)
         on("GET", "/api/v1/x-honk/config/revisions", 200, HonkFixtures.body("revisions/rv-config"))
         on("POST", "/api/v1/config/validate", 200, HonkFixtures.body("config-validate/valid"))
         on("PUT", "/api/v1/config/sources/source-f4", 202, HonkFixtures.body("config-replace/queued"))
         on("POST", "/api/v1/x-honk/config/revisions/8/activate", 202, HonkFixtures.body("config-replace/queued"))
         on("GET", "/api/v1/operations/op-config-01", 200, HonkFixtures.body("operations/reload-complete"))
     }
-
-    /** `GET /x-honk/config/export` of the config [name]: its files' text, one after another. */
-    private fun exported(name: String) = Json.parseToJsonElement(HonkFixtures.body(name)).jsonObject.getValue("sources").jsonArray
-        .joinToString("\n") { it.jsonObject.getValue("content").jsonPrimitive.content }
 }

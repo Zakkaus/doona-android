@@ -132,7 +132,7 @@ internal fun RvSparkTile(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     ghost: FloatArray = RV_GHOST_DOWN,
-    widest: List<RvFigure> = emptyList(),
+    widest: List<RvFigure>,
 ) {
     val type = Rv.type
     RvCard(modifier.fillMaxHeight().rvPress(RoundedCornerShape(Rv.cardRadius), Role.Button, onClick)) {
