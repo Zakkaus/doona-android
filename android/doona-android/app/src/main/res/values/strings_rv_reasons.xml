@@ -10,7 +10,7 @@
     <string name="rv_add_conflict">Could not add the subscription. Check that the name is available and try again.</string>
     <string name="rv_delete_unknown">honk could not confirm whether the subscription was deleted.</string>
     <string name="rv_recent_fetch_error">Last fetch failed: %1$s</string>
-    <string name="rv_reason_fetch_failed">Its server did not answer.</string>
+    <string name="rv_reason_fetch_failed">The subscription could not be downloaded.</string>
     <string name="rv_reason_too_large">Its content is too large.</string>
     <string name="rv_reason_parse_failed">Its content could not be read.</string>
     <string name="rv_reason_no_nodes">It has no nodes.</string>

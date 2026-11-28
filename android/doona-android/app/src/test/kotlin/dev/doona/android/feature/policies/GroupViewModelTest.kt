@@ -85,7 +85,8 @@ class GroupViewModelTest {
                 if (network != "tcp") group.udp = member
                 group.pinned = group.kind != "selector"
             }
-            return if (result.status != 200) result else ok(HonkFixtures.SELECTED.replace("group-proxy", id).replace("node-hk-01", member).replace("\"both\"", "\"$network\""))
+            val source = if (groups.getValue(id).pinned) "override" else "runtime"
+            return if (result.status != 200) result else ok(HonkFixtures.SELECTED.replace("group-proxy", id).replace("node-hk-01", member).replace("\"both\"", "\"$network\"").replace("runtime", source))
         }
 
         private fun probe(path: String, body: String?): NativeResponse {
@@ -103,12 +104,11 @@ class GroupViewModelTest {
 
         private fun json(g: G): String {
             val members = g.members.joinToString(",") { m -> """{"id":"$m","name":"$m","kind":"${if (m in groups) "group" else "node"}"}""" }
-            fun sel(member: String?) = member?.let { m ->
-                val leaf = groups[m]?.tcp ?: m
-                """{"member_id":"$m","resolved_leaf_node_id":"$leaf","source":"${if (g.pinned) "override" else "runtime"}"}"""
+            fun sel(member: String?, leaf: (G) -> String?) = member?.let { m ->
+                """{"member_id":"$m","resolved_leaf_node_id":"${groups[m]?.let(leaf) ?: m}","source":"${if (g.pinned) "override" else "runtime"}"}"""
             } ?: "null"
             return """{"id":"${g.id}","name":"${g.name}","icon":null,"policy":{"kind":"${g.kind}","native":"${g.kind}"},"members":[$members],""" +
-                """"runtime":{"selection":{"tcp":${sel(g.tcp)},"udp":${sel(g.udp)}},"health":[]},"capabilities":{"can_select":true,"can_override":true}}"""
+                """"runtime":{"selection":{"tcp":${sel(g.tcp) { it.tcp }},"udp":${sel(g.udp) { it.udp }}},"health":[]},"capabilities":{"can_select":true,"can_override":true}}"""
         }
 
         private fun field(body: String?, name: String) = Json.parseToJsonElement(body!!).jsonObject.getValue(name).jsonPrimitive.content
@@ -126,6 +126,13 @@ class GroupViewModelTest {
         assertFalse(state.isScore)
         assertNull("honk reports no Score evidence", state.score)
         assertEquals(NOW, state.nowEpochMs)
+    }
+
+    @Test
+    fun `a subgroup chosen on both networks shows each network's own node`() = runTest {
+        val honk = Honk(groups = listOf(Honk.G(SELECTOR, "Streaming", "selector", listOf("sub"), "sub", "sub", false), Honk.G("sub", "Sub", "selector", NODES, "n1", "n2", false)))
+        val group = collected(honk).uiState.value.group!!
+        assertEquals("n1" to "n2", group.tcpLeaf?.id to group.udpLeaf?.id)
     }
 
     @Test

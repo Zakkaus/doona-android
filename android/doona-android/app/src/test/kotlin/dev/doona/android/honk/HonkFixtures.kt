@@ -14,7 +14,7 @@ import kotlinx.serialization.json.jsonPrimitive
  */
 internal object HonkFixtures {
     val emptyNodes = JsonObject(Json.parseToJsonElement(body("nodes/list")).jsonObject + ("nodes" to JsonArray(emptyList()))).toString()
-    const val SELECTED = """{"group_id":"group-proxy","member_id":"node-hk-01","resolved_leaf_node_id":"node-hk-01","network":"both","source":"runtime","selection_revision":"8","connections_interrupted":false}"""
+    const val SELECTED = """{"group_id":"group-proxy","member_id":"node-hk-01","network":"both","source":"runtime","selection_revision":"8","connections_interrupted":false}"""
 
     fun body(name: String): String = checkNotNull(HonkFixtures::class.java.getResource("/honk/$name.json")) { "no fixture honk/$name.json" }.readText()
 

@@ -25,7 +25,7 @@ internal fun rvSubsStateSample(
     deletingId: String? = null,
 ) = RvSubsState(subscriptions, RvData.nowEpochMs, failed, deletingId)
 
-/** The sample's failed update of [id]: its server did not answer, the approved banner. */
+/** The sample's failed update of [id]: the download failed, the approved banner. */
 internal fun rvFetchFailedSample(id: String) = RvSubFailure(id, ErrorCode.FetchFailed)
 
 /** A subscription's page on the sample: the interval [RvData] refreshes at. The page takes it as a parameter. */

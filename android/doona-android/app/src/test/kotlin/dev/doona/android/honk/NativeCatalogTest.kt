@@ -119,7 +119,7 @@ class NativeCatalogTest {
         val node = catalog.addNode("Mine", "trojan://secret@host:443")
 
         assertEquals("n-mine", node.id)
-        assertNull(node.providerId)
+        assertEquals("inline", node.providerId)
     }
 
     @Test
@@ -140,7 +140,7 @@ class NativeCatalogTest {
         const val OPERATION = "/api/v1/operations/op-1"
         const val ERROR = """{"error":{"code":"state_conflict","message":"The request conflicts with the current state."},"request_id":"request-1"}"""
         const val NODE = """{"id":"n-mine","name":"Mine","protocol":"trojan","stream_transport":"tcp","subscription_tag":null,""" +
-            """"provider_id":null,"group_ids":[],"health":[]}"""
+            """"provider_id":"inline","group_ids":[],"health":[]}"""
 
         fun provider(id: String) = """{"id":"$id","name":"$id","kind":"subscription","url_redacted":"https://sub.example/$id",""" +
             """"node_count":0,"updated_at":null,"expires_at":null,"traffic":null,"status":"stale","last_error":null}"""

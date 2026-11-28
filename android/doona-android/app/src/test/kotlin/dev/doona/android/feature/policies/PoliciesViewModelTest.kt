@@ -21,6 +21,11 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.After
@@ -214,6 +219,20 @@ class PoliciesViewModelTest {
         honk.on("GET", "/api/v1/providers", 200, """{"providers": [], "next_cursor": null}""")
 
         assertFalse(collected().uiState.value.empty)
+    }
+
+    @Test
+    fun `a blank configuration, honk's direct and block alone, offers a subscription`() = runTest {
+        val sample = Json.parseToJsonElement(HonkFixtures.body("nodes/list")).jsonObject.getValue("nodes").jsonArray.first().jsonObject
+        val builtin = listOf("direct", "block").map {
+            JsonObject(sample + mapOf("id" to JsonPrimitive(it), "name" to JsonPrimitive(it), "protocol" to JsonPrimitive(it), "subscription_tag" to JsonNull, "provider_id" to JsonNull, "group_ids" to JsonArray(emptyList())))
+        }
+        honk.on("GET", "/api/v1/providers", 200, """{"providers": [], "next_cursor": null}""")
+        honk.on("GET", "/api/v1/groups", 200, "[]")
+        honk.on("GET", "/api/v1/nodes", 200, """{"nodes": ${JsonArray(builtin)}, "next_cursor": null}""")
+        honk.on("GET", "/api/v1/rules", 200, """{"generation_id": "generation-1", "rules": [], "fallback": {"outbound": "direct", "source": null}}""")
+
+        assertTrue(collected().uiState.value.empty)
     }
 
     private companion object {

@@ -199,7 +199,7 @@ private class PolicyRead(
 private fun policiesUiState(mode: Mode?, read: PolicyRead?, local: RvPolicyState, failure: PolicyFailure?) = PoliciesUiState(
     loading = read == null && failure?.action != PolicyAction.Read,
     empty = read?.policies?.let {
-        it.subscriptions.isEmpty() && it.nodes.isEmpty() && it.groups.isEmpty() &&
+        it.subscriptions.isEmpty() && it.nodes.none { node -> node.providerId != null } && it.groups.isEmpty() &&
             it.rules.fallback.source == null && read.profile.rules.all { rule -> rule.match == RvRuleMatch.Rest }
     } == true,
     state = RvPolicyState(

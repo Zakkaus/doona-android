@@ -10,7 +10,7 @@
     <string name="rv_add_conflict">無法新增訂閱。請確認名稱未被使用後重試。</string>
     <string name="rv_delete_unknown">honk 無法確認訂閱是否已刪除。</string>
     <string name="rv_recent_fetch_error">最近一次取得失敗：%1$s</string>
-    <string name="rv_reason_fetch_failed">伺服器沒有回應。</string>
+    <string name="rv_reason_fetch_failed">無法下載訂閱。</string>
     <string name="rv_reason_too_large">訂閱內容太大。</string>
     <string name="rv_reason_parse_failed">無法解析訂閱內容。</string>
     <string name="rv_reason_no_nodes">訂閱中沒有節點。</string>
