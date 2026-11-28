@@ -34,7 +34,7 @@
     <string name="rv_policy_new_rule">新建规则</string>
     <string name="rv_policy_block_ads">屏蔽广告</string>
     <string name="rv_policy_block_quic">屏蔽 QUIC</string>
-    <string name="rv_policy_selected">已选 %1$s · %2$s</string>
+    <string name="rv_policy_selected">已选 %1$s / %2$s</string>
     <string name="rv_policy_auto">自动</string>
     <string name="rv_policy_auto_note">自动选择延迟最低的节点（容差 50 毫秒）</string>
     <string name="rv_policy_test_group">测试此组</string>
@@ -52,6 +52,7 @@
     <string name="rv_policy_match_keyword">关键字</string>
     <string name="rv_policy_match_full_line">只匹配 %1$s</string>
     <string name="rv_policy_match_suffix_line">%1$s 及其所有子域名</string>
+    <string name="rv_rule_raw_suffix_line">以 %1$s 结尾的域名</string>
     <string name="rv_policy_match_keyword_line">域名包含 %1$s</string>
     <string name="rv_policy_send_to">送往</string>
     <string name="rv_policy_no_proxy">不经代理</string>

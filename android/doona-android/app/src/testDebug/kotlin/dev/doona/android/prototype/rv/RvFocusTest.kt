@@ -33,12 +33,14 @@ import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import dev.doona.android.R
@@ -48,8 +50,10 @@ import dev.doona.android.designsystem.rv.RvChrome
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvRangeRow
 import dev.doona.android.designsystem.rv.RvRowPart
+import dev.doona.android.designsystem.rv.RvSearchField
 import dev.doona.android.designsystem.rv.RvSegmented
 import dev.doona.android.designsystem.rv.RvSheetLayout
+import dev.doona.android.designsystem.rv.RvSourceField
 import dev.doona.android.designsystem.rv.rvPress
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -109,6 +113,32 @@ class RvFocusTest {
         compose.waitForIdle()
         assertEquals(ring, edge("a"))
         assertEquals(2f, RvChrome.focusRing.value, 0f)
+    }
+
+    @Test
+    fun movingKeyboardFocusBetweenFieldsMovesTheOutline() {
+        compose.rvContent(dark = false) {
+            input = LocalInputModeManager.current
+            ring = Rv.colors.positive
+            density = LocalDensity.current.density
+            Column {
+                RvSearchField(null, "", {}, Modifier.testTag("search"))
+                RvSourceField(TextFieldValue("routing {}"), {}, "config.dae", Modifier.testTag("source"))
+            }
+        }
+        val plainSearch = edge("search")
+        val plainSource = edge("source")
+        compose.runOnIdle { input.requestInputMode(InputMode.Keyboard) }
+        val search = compose.onNodeWithContentDescription(rvText(R.string.rv_search_nodes))
+        search.performSemanticsAction(SemanticsActions.RequestFocus).assertIsFocused()
+        compose.waitForIdle()
+        assertEquals(ring, edge("search"))
+        assertEquals(plainSource, edge("source"))
+        val source = compose.onNodeWithContentDescription("config.dae")
+        source.performSemanticsAction(SemanticsActions.RequestFocus).assertIsFocused()
+        compose.waitForIdle()
+        assertEquals(plainSearch, edge("search"))
+        assertEquals(ring, edge("source"))
     }
 
     @Test

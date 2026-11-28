@@ -133,12 +133,15 @@ internal class RvFormat(val locale: Locale) {
         }.format(rounded.setScale(decimals, RoundingMode.HALF_UP))
     }
 
-    /** [value] to one decimal, without grouping (it stays under a thousand). */
-    private fun tenths(value: BigDecimal): String = NumberFormat.getNumberInstance(locale).apply {
-        minimumFractionDigits = 1
-        maximumFractionDigits = 1
-        isGroupingUsed = false
-    }.format(value.setScale(1, RoundingMode.HALF_UP))
+    private val oneDecimal by lazy(LazyThreadSafetyMode.NONE) {
+        NumberFormat.getNumberInstance(locale).apply {
+            minimumFractionDigits = 1
+            maximumFractionDigits = 1
+            isGroupingUsed = false
+        }
+    }
+
+    private fun tenths(value: BigDecimal): String = oneDecimal.format(value.setScale(1, RoundingMode.HALF_UP))
 
     private fun significant(value: BigDecimal): BigDecimal = if (value.signum() == 0) value else value.round(MathContext(DIGITS, RoundingMode.HALF_UP))
 

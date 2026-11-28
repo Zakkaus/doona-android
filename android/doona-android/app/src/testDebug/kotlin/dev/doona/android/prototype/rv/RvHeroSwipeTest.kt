@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvHeroSwipe
 import dev.doona.android.designsystem.rv.RvMotion
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.feature.nodes.RV_PICKER
 import dev.doona.android.prototype.rv.data.RvData
 import org.junit.After
@@ -56,8 +57,8 @@ class RvHeroSwipeTest {
     val utc = Utc()
 
     private val taps = RvTaps()
-    private val traffic = "${rvText(R.string.backend_connected)} · ${rvText(R.string.rv_mode_rule)}"
-    private val mainNode = "${rvText(R.string.rv_main_node)} · ${rvText(RvData.current.place.label)}"
+    private val traffic = rvText(R.string.backend_connected) + SEPARATOR + rvText(R.string.rv_mode_rule)
+    private val mainNode = rvText(R.string.rv_main_node) + SEPARATOR + rvText(RvData.current.place.label)
 
     @After
     fun animatorScaleBack() = rvAnimatorScale(1f)

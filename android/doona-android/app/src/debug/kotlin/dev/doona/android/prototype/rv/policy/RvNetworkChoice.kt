@@ -67,8 +67,8 @@ internal class RvNetworkChoice(val tcpId: String, val udpId: String, val apart: 
 
 /**
  * The group's choice on its page, in 規則's 主節點 card: 目前使用中, then the switch 分開選擇 TCP 與 UDP ([onApart]), then
- * the node in use, flagged as the node in use, its line `協定 · 地區` and its latency over its change. While the switch is
- * on there is a row for each network, its line beginning with the network (`TCP · VLESS · 臺灣`). A row opens the node
+ * the node in use, flagged as the node in use, its line `協定 / 地區` and its latency over its change. While the switch is
+ * on there is a row for each network, its line beginning with the network (`TCP / VLESS / 臺灣`). A row opens the node
  * picker for its network, or for both while the switch is off ([onOpen]).
  */
 @Composable

@@ -5,6 +5,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -17,6 +19,9 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RV_MENU
+import dev.doona.android.designsystem.rv.RvChipPick
+import dev.doona.android.designsystem.rv.RvFilterChipRow
+import dev.doona.android.designsystem.rv.RvMenuItem
 import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.feature.nodes.RV_PICKER
 import dev.doona.android.prototype.rv.data.RvData
@@ -48,6 +53,30 @@ class RvMenuTest {
 
     private val taps = RvTaps()
     private val taipei = RvData.nodes.first { it.id == "tw-04" }
+
+    @Test
+    fun aLongSubscriptionNameLeavesTheRangeChipReachableAtLargeTextSize() {
+        var picked = false
+        compose.rvContent(dark = false, fontScale = RV_FS200) {
+            val ranges = listOf(RvMenuItem("This month", R.drawable.rv_sym_rule) { picked = true })
+            RvFilterChipRow(RvChipPick("Long subscription name ".repeat(12).trim()), RvChipPick("This week", items = ranges))
+        }
+        compose.onNodeWithText("This week").assertIsDisplayed().performTouchInput { click() }
+        compose.onNodeWithText("This month").performTouchInput { click() }
+        compose.runOnIdle { assertTrue(picked) }
+    }
+
+    @Test
+    fun theLastItemOfATallPopupCanBeScrolledIntoViewAndTapped() {
+        var picked = -1
+        compose.rvContent(dark = false) {
+            val subscriptions = List(30) { i -> RvMenuItem("Subscription $i", R.drawable.rv_sym_rule) { picked = i } }
+            RvFilterChipRow(RvChipPick("All subscriptions", items = subscriptions), RvChipPick("This week"))
+        }
+        compose.onNodeWithText("All subscriptions").performTouchInput { click() }
+        compose.onNodeWithText("Subscription 29").performScrollTo().assertIsDisplayed().performTouchInput { click() }
+        compose.runOnIdle { assertEquals(29, picked) }
+    }
 
     @Test
     fun aLongPressOpensTheMenuAtFiveHundredMilliseconds() {

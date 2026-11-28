@@ -46,6 +46,7 @@ import dev.doona.android.designsystem.rv.RvPullLook
 import dev.doona.android.designsystem.rv.RvPullMotion
 import dev.doona.android.designsystem.rv.RvPullState
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rememberRvPullState
 import dev.doona.android.feature.nodes.RV_PICKER
 import dev.doona.android.prototype.rv.data.RvData
@@ -352,7 +353,7 @@ class RvPullTest {
 
     private fun picker() = compose.onNode(hasScrollAction() and hasAnyAncestor(hasTestTag(RV_PICKER)))
 
-    private fun heroTop(): Dp = compose.onNodeWithText("${rvText(R.string.backend_connected)} · ${rvText(R.string.rv_mode_rule)}").getUnclippedBoundsInRoot().top
+    private fun heroTop(): Dp = compose.onNodeWithText(rvText(R.string.backend_connected) + SEPARATOR + rvText(R.string.rv_mode_rule)).getUnclippedBoundsInRoot().top
 
     private fun pickerTop(): Dp = compose.onNodeWithTag(RV_PICKER).getUnclippedBoundsInRoot().top
 

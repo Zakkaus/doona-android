@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvMotion
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.feature.nodes.RV_PICKER
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -91,7 +92,7 @@ class RvShortcutsTest {
     }
 
     /** 活動's caption in a state: the state, then the mode (規則). */
-    private fun caption(@StringRes state: Int) = "${rvText(state)} · ${rvText(R.string.rv_mode_rule)}"
+    private fun caption(@StringRes state: Int) = rvText(state) + SEPARATOR + rvText(R.string.rv_mode_rule)
 
     private companion object {
         const val ANDROID = "http://schemas.android.com/apk/res/android"

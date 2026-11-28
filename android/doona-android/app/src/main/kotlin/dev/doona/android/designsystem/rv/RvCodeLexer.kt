@@ -149,12 +149,15 @@ private class RvCodeLexer(private val text: String) {
 
     private fun atom(from: Int, to: Int): Int {
         var end = from
-        while (end < to && !endsAtom(end)) end++
-        val colon = text.indexOf(':', from).takeIf { it in from + 1 until end }
+        var colon = -1
+        while (end < to && !endsAtom(end)) {
+            if (colon < 0 && text[end] == ':') colon = end
+            end++
+        }
         when {
-            colon == end - 1 && text.lastIndexOf(':', end - 2) < from -> key(from, colon)
+            colon > from && colon == end - 1 -> key(from, colon)
 
-            colon != null && text.substring(from, colon) in PREFIXES -> {
+            colon > from && text.substring(from, colon) in PREFIXES -> {
                 emit(from, colon, RvCodeKind.Key)
                 emit(colon, colon + 1, null)
                 emit(colon + 1, end, null)

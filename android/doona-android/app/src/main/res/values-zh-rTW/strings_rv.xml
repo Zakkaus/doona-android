@@ -14,6 +14,9 @@
     <string name="rv_now">現在</string>
     <string name="rv_no_traffic">目前沒有流量</string>
     <string name="rv_traffic_title">流量</string>
+    <string name="rv_chart_summary">起始值 %1$s，最低值 %2$s，峰值 %3$s</string>
+    <string name="rv_chart_previous">上一筆樣本</string>
+    <string name="rv_chart_next">下一筆樣本</string>
     <string name="rv_this_connection">本次連線</string>
     <string name="rv_downloaded">已下載</string>
     <string name="rv_uploaded">已上傳</string>
@@ -31,7 +34,8 @@
     <string name="rv_less_than_yesterday">比昨天同時段少 %1$s</string>
     <string name="rv_more_than_yesterday">比昨天同時段多 %1$s</string>
     <string name="rv_remaining">剩餘</string>
-    <string name="rv_subscription_usage">%1$s/%2$s · %3$s 到期</string>
+    <string name="rv_subscription_usage">%1$s/%2$s，%3$s 到期</string>
+    <string name="rv_comma">，</string>
     <string name="rv_fastest_nodes">最快節點</string>
     <string name="rv_mode_rule">規則</string>
     <string name="rv_main_node">主節點</string>

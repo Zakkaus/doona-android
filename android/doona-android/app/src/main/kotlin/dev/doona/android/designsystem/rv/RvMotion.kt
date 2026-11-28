@@ -43,6 +43,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.FrameRateCategory
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -291,11 +292,10 @@ internal class RvMotionScale(val instant: Boolean) {
     }
 }
 
-/** The scale as the system has it now. */
+/** The scale as the system has it now: Compose's [MotionDurationScale] follows the setting, so a change recomposes this. */
 @Composable
-internal fun rememberRvMotion(): RvMotionScale {
-    val resolver = LocalContext.current.contentResolver
-    return remember(resolver) { RvMotionScale(Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f) }
+internal fun rememberRvMotion(): RvMotionScale = LocalContext.current.contentResolver.let { resolver ->
+    remember(resolver, rememberCoroutineScope().coroutineContext[MotionDurationScale]?.scaleFactor) { RvMotionScale(Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f) }
 }
 
 /**

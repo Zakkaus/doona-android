@@ -173,7 +173,7 @@ class RvNativeRuleShotTest {
         const val WHOLE_NATIVE_EN = "en-w412dp-h1449dp-notnight-xhdpi"
         const val WHOLE_SOURCE = "+h1495dp"
         const val WHOLE_SOURCE_EN = "en-w412dp-h1491dp-notnight-xhdpi"
-        const val WHOLE_PAUSED = "+h1391dp"
+        const val WHOLE_PAUSED = "+h1395dp"
         const val WHOLE_PAUSED_EN = "en-w412dp-h1391dp-notnight-xhdpi"
     }
 }

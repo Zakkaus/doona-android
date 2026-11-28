@@ -164,7 +164,7 @@ class RvRulesShotTest {
         const val WHOLE_EDIT = "+h1423dp"
         const val WHOLE_PENDING = "+h2021dp"
         const val WHOLE_IMPACT = "+h1455dp"
-        const val WHOLE_EDIT_RULE = "+h1101dp"
+        const val WHOLE_EDIT_RULE = "+h1104dp"
         const val WHOLE_ERROR_RULE = "+h1129dp"
 
         /** github.com, the second of the user's rules. */

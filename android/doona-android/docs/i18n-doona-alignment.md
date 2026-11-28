@@ -49,14 +49,9 @@ Scope: `android/doona-android` English, Traditional Chinese (zh-TW) and Simplifi
 | About | About | 關於 | 关于 | `settings.about` | `rv_settings_group_about` |
 | Advanced | Advanced | 進階 | 高级 | `nodes.manual.advanced` | `rv_settings_group_advanced` |
 | Version | Version | 版本 | 版本 | `ov.config` | `rv_settings_version` |
-| Pinned | Pinned | 已手動固定 | 已手动固定 | `policy.overridden` | `policy_pinned` |
-| Return to automatic | Back to automatic | 恢復自動選擇 | 恢复自动选择 | `policy.releaseOverride` | `policy_unpin` |
 | Includes (filter) | Includes | 選入條件 | 选入条件 | `policy.includes` | `policy_includes` |
-| No groups | No groups | 沒有群組 | 暂无组 | `policy.empty` | `policy_empty_title` |
-| Subgroup | Groups (nested) | 子群組 | 子组 | `group.nestedGroups` | `policy_groups_inside` |
 | First available | First available | 依序備援 | 按顺序备用 | `policy.kind.fallback` | `policy_kind_fallback` |
 | Manual | Manual | 手動選擇 | 手动选择 | `policy.kind.selector` | `policy_kind_selector` |
-| Automatic | Automatic | 自動選擇 | 自动选择 | `policy.kind.auto` | `policy_kind_auto` |
 | Fastest on average | Fastest on average | 平均最快 | 平均最快 | `policy.kind.urltest` | `policy_kind_urltest` |
 | Fixed | Fixed | 固定 | 固定 | `policy.kind.fixed` | `policy_kind_fixed` |
 | Test all | Test all | 測試全部 | 测试全部 | `policy.probeAll` | `policy_test_all` |
@@ -85,26 +80,20 @@ Scope: `android/doona-android` English, Traditional Chinese (zh-TW) and Simplifi
 
 ## Changes applied
 
-zh-TW, 6 changes:
+zh-TW:
 
 | File | Name | Before | After |
 | --- | --- | --- | --- |
-| `values-zh-rTW/strings.xml` | `policy_unpin` | 回到自動 | 恢復自動選擇 |
-| `values-zh-rTW/strings.xml` | `policy_pinned` | 已固定 | 已手動固定 |
-| `values-zh-rTW/strings.xml` | `policy_groups_inside` | 內含群組 | 子群組 |
 | `values-zh-rTW/strings_vpn.xml` | `vpn_status_stopping` | 斷線中… | 中斷連線中… |
 | `values-zh-rTW/strings_vpn.xml` | `vpn_action_disconnect` | 斷線 | 中斷連線 |
 | `values-zh-rTW/strings_vpn.xml` | `vpn_failed_title` | VPN 已斷線 | VPN 已中斷連線 |
 
-zh-CN, 9 changes:
+zh-CN:
 
 | File | Name | Before | After |
 | --- | --- | --- | --- |
 | `values-zh-rCN/strings.xml` | `policy_kind_fallback` | 首个可用 | 按顺序备用 |
-| `values-zh-rCN/strings.xml` | `policy_pinned` | 已固定 | 已手动固定 |
 | `values-zh-rCN/strings.xml` | `policy_includes` | 包含条件 | 选入条件 |
-| `values-zh-rCN/strings.xml` | `policy_empty_title` | 没有组 | 暂无组 |
-| `values-zh-rCN/strings.xml` | `policy_groups_inside` | 内含组 | 子组 |
 | `values-zh-rCN/strings.xml` | `status_stopping` | 断开中 | 断开连接中 |
 | `values-zh-rCN/strings_vpn.xml` | `vpn_status_stopping` | 断开中… | 断开连接中… |
 | `values-zh-rCN/strings_vpn.xml` | `vpn_action_disconnect` | 断开 | 断开连接 |

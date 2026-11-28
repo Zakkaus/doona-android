@@ -1,10 +1,16 @@
 package dev.doona.android.feature.perapp
 
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
@@ -56,6 +62,20 @@ class PerAppAppShotTest {
 
     @After
     fun restoreScale() = rvAnimatorScale(1f)
+
+    @Test
+    @Config(qualifiers = "zh-rTW-w915dp-h412dp-land-notnight-xhdpi")
+    fun lastAppCanBeToggledAboveSaveInLandscapeAtLargeType() {
+        val state = rvPerAppSample("except")
+        val last = state.shown.last()
+        var toggled: Pair<String, Boolean>? = null
+        compose.rvContent(dark = false, fontScale = RV_FS200) {
+            RvPerAppScreen(state, rvPerAppActions(toggle = { pkg, checked -> toggled = pkg to checked }), onBack = {})
+        }
+        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsActions.ScrollBy)).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, Float.MAX_VALUE) }
+        compose.onNodeWithText(last.label).performTouchInput { click() }
+        org.junit.Assert.assertEquals(last.packageName to (last.packageName !in state.edited.packages), toggled)
+    }
 
     @Test fun allLight() = shot("all", "perapp", dark = false)
 

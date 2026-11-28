@@ -56,6 +56,3 @@ internal fun rvGalleryCases(): List<GalleryCase> {
         ) { RvPageGallery() },
     )
 }
-
-/** The same pages as screen cases, for the goldens and the accessibility check of [dev.doona.android.ScreenshotTest]. */
-internal fun rvGalleryScreenCases(): List<ScreenCase> = rvGalleryCases().map { ScreenCase(it.name, null, it.content) }

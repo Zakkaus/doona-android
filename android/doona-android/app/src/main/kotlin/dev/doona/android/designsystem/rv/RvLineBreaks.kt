@@ -77,5 +77,5 @@ private fun joinsAcrossSpace(before: Int, next: Int): Boolean {
     return unit || ordinal
 }
 
-/** The dot between the parts of a row's second line (protocol · place). */
-internal const val SEPARATOR = " · "
+/** Separator between the fields of a summary. */
+internal const val SEPARATOR = " / "

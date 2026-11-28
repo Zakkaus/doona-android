@@ -60,7 +60,7 @@ import kotlin.math.roundToInt
  * [titleEnd] and [subtitleEnd] put a value at the end of the title's line and of the subtitle's line instead of one
  * trailing column beside both: each line then shares its width only with its own end. The start keeps its width up to
  * [RV_ROW_TITLE_SHARE] of the line, the end takes what it needs of the rest, and the start gets what is left, so a long name
- * (`Hong Kong 02 IPLC`) and a long subtitle (`自動測速 · 48 個節點`) both fit where one trailing column would squeeze the
+ * (`Hong Kong 02 IPLC`) and a long subtitle (`自動測速 / 48 個節點`) both fit where one trailing column would squeeze the
  * text column to its widest end. [trailing] (a chevron) still follows after both lines.
  *
  * The text follows the one row rule ([RV_ROW_TITLE_LINES], [RV_ROW_SUBTITLE_LINES], [RvSpace.titleToSubtitle] between the lines, each
@@ -311,7 +311,7 @@ private fun BusyAtEnd(modifier: Modifier, text: @Composable () -> Unit) {
  * A row's title over its subtitle, with the row's [trailing] end beside them, [RvSpace.trailingGap] apart, both centred
  * on the row, at least [minHeight] tall (the row's, so they are centred once). The end never cuts the title nor squeezes
  * the subtitle: when the title or the subtitle does not read well beside the end ([rvReadsWell]; a node's name beside
- * its latency at a large font size, `Trojan ·` over `香港`), both take the whole line and the end goes under them, on the
+ * its latency at a large font size, `Trojan /` over `香港`), both take the whole line and the end goes under them, on the
  * line's end, its top where the text's last line ends ([LocalRvEndSide] tells its parts, which then share its first
  * line). The end is centred on the whole text, so a line that wraps well beside it may (the picker's `Hong Kong 02` over
  * `IPLC`), unless only part of the end shows ([besideShown]).

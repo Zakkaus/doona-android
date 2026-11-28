@@ -22,7 +22,7 @@ import dev.doona.android.feature.model.RvGeoUpdate
  * [RvSettingsRow]). While it runs, the busy bar takes the action's place, as
  * 關於's 檢查更新 row while it checks. A failure stays on the row (M8: the page shows it in place, no dialog or toast):
  * 無法更新 in the error hue, and the action says 重試. Before the VPN is up, the action is the library's disabled pill
- * and the line says 未連線, so the update waits for the connection; after a failure it says both, 無法更新 · 未連線, so
+ * and the line says 未連線, so the update waits for the connection; after a failure it says both, 無法更新，未連線, so
  * a disabled 重試 always shows why.
  */
 @Composable

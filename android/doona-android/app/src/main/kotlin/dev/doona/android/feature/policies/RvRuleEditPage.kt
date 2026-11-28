@@ -142,6 +142,7 @@ internal class RvRuleForm(
     val native: RvNativeRuleAt?,
     val must: Boolean,
     @param:StringRes val privateLine: Int = R.string.rv_rule_edit_private_line,
+    @param:StringRes val suffixLine: Int = R.string.rv_rule_raw_suffix_line,
 )
 
 /**
@@ -180,7 +181,7 @@ internal fun RvRuleFormPage(
         RvBannerSlot(banner, RvSpace.none)
         RvSectionTitle(stringResource(R.string.rv_policy_match_by), Modifier.padding(horizontal = RvSpace.gutter), first = banner == null)
         if (statement == null) {
-            MatchFields(draft, form.onChange, form.privateLine)
+            MatchFields(form)
         } else {
             RvGutter { RvSourceExcerpt(statement.source, statement.hunks.first(), onOpenSource) }
             RvFootnote(stringResource(if (sourceOnly) R.string.rv_rule_edit_multiline else R.string.rv_rule_edit_match_in_source))
@@ -248,7 +249,9 @@ private fun Position(at: RvNativeRuleAt, onMove: (Int) -> Unit) {
  * them; the slider sits [RvSpace.controlStack] over the field, two controls stacked in one.
  */
 @Composable
-private fun MatchFields(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit, @StringRes privateLine: Int) {
+private fun MatchFields(form: RvRuleForm) {
+    val draft = form.draft
+    val onChange = form.onChange
     val kinds = if (draft.kind in DOMAIN_KINDS) DOMAIN_KINDS else ADDRESS_KINDS
     Column(Modifier.padding(horizontal = RvSpace.gutter)) {
         RvSegmented(kinds.map { stringResource(it.label) }, kinds.indexOf(draft.kind), { onChange(draft.copy(kind = kinds[it])) })
@@ -268,11 +271,11 @@ private fun MatchFields(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit, @St
                     },
                 ),
                 placeholder = stringResource(if (draft.kind == RvMatchKind.Cidr) R.string.rv_rule_edit_cidr_hint else R.string.rv_rule_edit_domain_hint),
-                supporting = if (problem == null) draft.covers(privateLine) else null,
+                supporting = if (problem == null) draft.covers(form) else null,
                 error = problem,
             )
         } else {
-            val line = draft.covers(privateLine)
+            val line = draft.covers(form)
             RvChoiceLine(line, Modifier.rvInkStart(line, Rv.type.rowSub))
         }
     }
@@ -280,11 +283,11 @@ private fun MatchFields(draft: RvRuleDraft, onChange: (RvRuleDraft) -> Unit, @St
 
 /** What the rule covers, as the quick rule says it under its choice. */
 @Composable
-private fun RvRuleDraft.covers(@StringRes privateLine: Int): String = when (kind) {
+private fun RvRuleDraft.covers(form: RvRuleForm): String = when (kind) {
     RvMatchKind.Full -> stringResource(R.string.rv_policy_match_full_line, value)
-    RvMatchKind.Suffix -> stringResource(R.string.rv_policy_match_suffix_line, value)
+    RvMatchKind.Suffix -> stringResource(form.suffixLine, value)
     RvMatchKind.Keyword -> stringResource(R.string.rv_policy_match_keyword_line, value)
     RvMatchKind.Cidr -> stringResource(R.string.rv_rule_edit_cidr_line, value)
     RvMatchKind.GeoIpCn -> stringResource(R.string.rv_rule_edit_geoip_line)
-    RvMatchKind.Private -> stringResource(privateLine)
+    RvMatchKind.Private -> stringResource(form.privateLine)
 }

@@ -54,14 +54,14 @@ screen (`values-zh-rTW/strings_rv*.xml`); the change is not applied. See
 | About | About | 關於 | 关于 | `settings.about` | `rv_settings_group_about` |
 | Advanced | Advanced | 進階 | 高级 | `nodes.manual.advanced` | `rv_settings_group_advanced` |
 | Version | Version | 版本 | 版本 | `ov.config` | `rv_settings_version` |
-| Pinned | Pinned | 已手動固定 | 已手动固定 | `policy.overridden` | `policy_pinned` |
-| Return to automatic | Back to automatic | 恢復自動選擇 | 恢复自动选择 | `policy.releaseOverride` | `policy_unpin` |
+| Pinned | Pinned | 已手動固定 | 已手动固定 | `policy.overridden` | — |
+| Return to automatic | Back to automatic | 恢復自動選擇 | 恢复自动选择 | `policy.releaseOverride` | — |
 | Includes (filter) | Includes | 選入條件 | 选入条件 | `policy.includes` | `policy_includes` |
-| No groups | No groups | 沒有群組 | 暂无组 | `policy.empty` | `policy_empty_title` |
-| Subgroup | Groups (nested) | 子群組 | 子组 | `group.nestedGroups` | `policy_groups_inside` |
+| No groups | No groups | 沒有群組 | 暂无组 | `policy.empty` | — |
+| Subgroup | Groups (nested) | 子群組 | 子组 | `group.nestedGroups` | — |
 | First available | First available | 依序備援 | 按顺序备用 | `policy.kind.fallback` | `policy_kind_fallback` |
 | Manual | Manual | 手動選擇 | 手动选择 | `policy.kind.selector` | `policy_kind_selector` |
-| Automatic | Automatic | 自動選擇 | 自动选择 | `policy.kind.auto` | `policy_kind_auto` |
+| Automatic | Automatic | 自動選擇 | 自动选择 | `policy.kind.auto` | — |
 | Fastest on average | Fastest on average | 平均最快 | 平均最快 | `policy.kind.urltest` | `policy_kind_urltest` |
 | Fixed | Fixed | 固定 | 固定 | `policy.kind.fixed` | `policy_kind_fixed` |
 | Test all | Test all | 測試全部 | 测试全部 | `policy.probeAll` | `policy_test_all` |

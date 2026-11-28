@@ -15,7 +15,7 @@
     <string name="rv_group_edit_exit">出口節點</string>
     <string name="rv_group_edit_unset">未設定</string>
     <string name="rv_group_member_node">節點</string>
-    <string name="rv_group_member_group">群組 · %1$s</string>
+    <string name="rv_group_member_group">群組：%1$s</string>
     <string name="rv_group_edit_member_group">群組</string>
     <string name="rv_group_edit_in_source">請用「編輯原始碼」修改群組名稱或成員。</string>
     <string name="rv_group_member_remove_title">移除 %1$s？</string>
@@ -28,12 +28,12 @@
     <plurals name="rv_list_delete_refused_rules">
         <item quantity="other">還有 %1$d 條規則送往它，沒有任何變動。請先修改這些規則。</item>
     </plurals>
-    <string name="rv_list_delete_refused_action">查看規則</string>
+    <string name="rv_list_delete_refused_action">檢視規則</string>
     <string name="rv_config_file_new">新增檔案</string>
     <string name="rv_config_file_new_body">會在 %1$s 加上引入這個檔案的一行，套用前會先顯示變更。</string>
     <string name="rv_list_create">新增</string>
-    <string name="rv_config_file_delete_body">%1$s 中引入它的那一行會一起刪除，套用前會先顯示變更。</string>
-    <string name="rv_config_file_delete_body_nested">%1$s 中引入它的那一行會一起刪除，它引入的 %2$s 也會刪除。套用前會先顯示變更。</string>
+    <string name="rv_config_file_delete_body">確認後會立即從 %1$s 移除這項引用，檔案仍會保留。</string>
+    <string name="rv_config_file_delete_body_nested">確認後會立即從 %1$s 移除這項引用。檔案及其引入的 %2$s 仍會保留。</string>
     <string name="rv_list_create_failed_title">無法新增 %1$s</string>
     <string name="rv_group_name_taken">已有同名的群組。</string>
     <string name="rv_dns_server_new">新增伺服器</string>

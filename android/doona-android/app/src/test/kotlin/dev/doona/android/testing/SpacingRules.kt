@@ -16,11 +16,6 @@ object SpacingRules {
     private val space = DoonaTheme.spacing
     private val sizes = DoonaTheme.size
 
-    /** The rules that hold at any scroll offset: the geometry of the layout, which a scroll only shifts. */
-    internal fun check(root: LayoutBox, page: PageLayout): List<String> =
-        detected(root, page.shows) + scaleGaps(root) + rhythm(root, page.rhythm) + sheet(root) + stacks(root) + cards(root) + controls(root) +
-            alikeControls(root) + contained(root) + rows(root) + hubBar(root) + valueColumns(root) + contentColumn(root)
-
     private fun near(a: Float, b: Float) = abs(a - b) <= TOL
 
     /** The rules read nodes by role: a role the page is meant to show but the probe did not find is a probe that reads nothing. */

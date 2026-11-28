@@ -41,7 +41,7 @@ private fun filledLines(text: String): List<AddNodeLine> =
     text.lines().mapIndexedNotNull { i, raw -> raw.trim().takeIf { it.isNotEmpty() }?.let { AddNodeLine(i + 1, it) } }
 
 /**
- * The lines that will not be added, by why: not a share link, a name already in 組態內, refused by honk for another
+ * The lines that will not be added, by why: not a share link, duplicate name, refused by honk for another
  * reason, and how many past the first [ADD_NODE_LINES] were not read ([unread]; [count] leaves them out, as they have
  * no number).
  */

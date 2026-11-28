@@ -106,7 +106,7 @@ class RvDiagSampleShotTest {
     fun dnsCacheEn() = compose.rvShot("diag-dns-cache", dark = false, english = true, before = { assertWhole() }) { RvDnsCacheSample() }
 
     @Test
-    @Config(qualifiers = "+h1924dp")
+    @Config(qualifiers = "+h1978dp")
     fun dnsCacheFs200() = compose.rvShot("diag-dns-cache", dark = false, fontScale = RV_FS200, before = { assertWhole() }) { RvDnsCacheSample() }
 
     @Test
@@ -170,7 +170,7 @@ class RvDiagSampleShotTest {
     fun logsEn() = compose.rvShot("diag-logs", dark = false, english = true, before = { assertWhole() }) { RvLogsSample() }
 
     @Test
-    @Config(qualifiers = "+h2855dp")
+    @Config(qualifiers = "+h2909dp")
     fun logsFs200() = compose.rvShot("diag-logs", dark = false, fontScale = RV_FS200, before = { assertWhole() }) { RvLogsSample() }
 
     @Test

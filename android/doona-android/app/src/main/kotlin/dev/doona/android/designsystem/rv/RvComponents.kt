@@ -179,7 +179,7 @@ internal fun RvHeader(
         // The marker's pulse, an ambient loop: its own layer, voting the normal rate, so a frame of it redraws the ring
         // alone and not the page it lies on.
         if (focus != null) {
-            Spacer(Modifier.matchParentSize().preferredFrameRate(FrameRateCategory.Normal).graphicsLayer {}.rvDotPulse(focus, dots, focusTop, moving))
+            Spacer(Modifier.matchParentSize().preferredFrameRate(FrameRateCategory.Normal).graphicsLayer {}.rvDotPulse(focus, dots, focusTop, statusBar, moving))
         }
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, content = content)
     }

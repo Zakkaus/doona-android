@@ -152,7 +152,6 @@ private fun error(check: RvAddNodeCheck): String? = when (check) {
     else -> null
 }
 
-/** One sentence per kind of skipped line: not a share link, already in 組態內, refused for another reason, past the cap. */
 @Composable
 private fun skippedLines(skipped: RvSkipped): List<String> = listOfNotNull(
     lines(R.plurals.rv_addnode_skip_link, skipped.notLink),

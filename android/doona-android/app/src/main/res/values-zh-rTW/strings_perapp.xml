@@ -12,6 +12,4 @@
     <string name="perapp_no_apps">沒有可勾選的 App</string>
     <string name="perapp_no_apps_line">裝置上找不到可從主畫面開啟的 App。</string>
     <string name="perapp_no_match">找不到符合的 App</string>
-    <string name="settings_subscriptions">訂閱</string>
-    <string name="settings_version">版本</string>
 </resources>

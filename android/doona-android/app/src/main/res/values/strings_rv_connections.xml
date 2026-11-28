@@ -3,8 +3,8 @@
     <string name="rv_nav_connections">Connections</string>
     <string name="rv_conn_search">Search connections</string>
     <plurals name="rv_conn_summary">
-        <item quantity="one">%1$d connection · %2$s down · %3$s up</item>
-        <item quantity="other">%1$d connections · %2$s down · %3$s up</item>
+        <item quantity="one">%1$d connection, %2$s down, %3$s up</item>
+        <item quantity="other">%1$d connections, %2$s down, %3$s up</item>
     </plurals>
     <string name="rv_conn_all_apps">All apps</string>
     <string name="rv_conn_newest">Newest first</string>
@@ -20,6 +20,8 @@
         <item quantity="one">%1$d connection matches</item>
         <item quantity="other">%1$d connections match</item>
     </plurals>
+    <string name="rv_conn_empty_title">No connections</string>
+    <string name="rv_conn_empty_line">New connections appear here.</string>
     <string name="rv_conn_none_title">No connection matches</string>
     <string name="rv_conn_none_line">Try another keyword, or clear the search.</string>
     <string name="rv_conn_off_title">Not connected</string>

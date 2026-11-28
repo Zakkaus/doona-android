@@ -25,19 +25,12 @@
     <string name="policy_healthy">%1$d 個可用</string>
     <string name="policy_untested">%1$d 個未測試</string>
     <string name="ui_all_count">全部 %1$d</string>
-    <string name="policy_kind_auto">自動選擇 %1$d</string>
     <plurals name="policy_members">
         <item quantity="other">%1$d 個成員</item>
     </plurals>
     <string name="policy_test_all">測試全部</string>
-    <string name="policy_test_group">測試此群組</string>
-    <string name="policy_unpin">恢復自動選擇</string>
-    <string name="policy_pinned">已手動固定</string>
     <string name="policy_failed">測試失敗</string>
     <string name="policy_failed_count">%1$d 個失敗</string>
-    <string name="policy_groups_inside">子群組</string>
-    <string name="policy_empty_title">沒有群組</string>
-    <string name="policy_empty_line">新增訂閱後會建立群組。</string>
     <string name="sub_title">訂閱</string>
     <string name="sub_add">新增訂閱</string>
     <string name="first_no_nodes">沒有可用的節點。</string>

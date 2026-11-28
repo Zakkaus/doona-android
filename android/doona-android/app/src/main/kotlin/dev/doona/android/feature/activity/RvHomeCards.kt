@@ -35,6 +35,7 @@ import dev.doona.android.designsystem.rv.rvMoves
 import dev.doona.android.feature.model.RvDay
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.nodes.ui.NODE_SEPARATOR
 import dev.doona.android.feature.nodes.ui.RvSubscriptionRow
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -127,7 +128,7 @@ internal fun RvFastestCard(nodes: List<RvNode>, currentId: String, onOpen: () ->
         // A new test re-sorts the rows: each moves to its new place, keyed by its node.
         nodes.forEachIndexed { order, node ->
             key(node.id) {
-                RvRow({ RvFlag(node.place.flag, RvSize.rowDisc, current = node.id == currentId) }, node.name, node.protocol + " · " + stringResource(node.place.label), Modifier.rvMoves(), titleKeepWords = false) {
+                RvRow({ RvFlag(node.place.flag, RvSize.rowDisc, current = node.id == currentId) }, node.name, node.protocol + NODE_SEPARATOR + stringResource(node.place.label), Modifier.rvMoves(), titleKeepWords = false) {
                     RvLatencyChange(node.latencyMs, node.changeMs, order = order)
                 }
             }

@@ -15,7 +15,7 @@
     <string name="rv_group_edit_exit">Exit node</string>
     <string name="rv_group_edit_unset">Not set</string>
     <string name="rv_group_member_node">Node</string>
-    <string name="rv_group_member_group">Group · %1$s</string>
+    <string name="rv_group_member_group">Group: %1$s</string>
     <string name="rv_group_edit_member_group">Group</string>
     <string name="rv_group_edit_in_source">Use Edit source to change the group name or members.</string>
     <string name="rv_group_member_remove_title">Remove %1$s?</string>
@@ -34,8 +34,8 @@
     <string name="rv_config_file_new_body">A line that includes it is added to %1$s. You see the change before it applies.</string>
     <string name="rv_config_file_new_placeholder" translatable="false">rules/new.dae</string>
     <string name="rv_list_create">Create</string>
-    <string name="rv_config_file_delete_body">The line in %1$s that includes it goes too. You see the change before it applies.</string>
-    <string name="rv_config_file_delete_body_nested">The line in %1$s that includes it goes too, and so does %2$s, which it includes. You see the change before it applies.</string>
+    <string name="rv_config_file_delete_body">Confirm to remove the include from %1$s immediately. The file stays on disk.</string>
+    <string name="rv_config_file_delete_body_nested">Confirm to remove the include from %1$s immediately. The file and the files it includes (%2$s) stay on disk.</string>
     <string name="rv_list_create_failed_title">Couldn’t create %1$s</string>
     <string name="rv_group_name_taken">A group already has this name.</string>
     <string name="rv_dns_server_new">Add server</string>

@@ -141,9 +141,9 @@ class RvUpdateShotTest {
         for ((state, expected) in listOf(
             RvUpdate.Idle to version,
             RvUpdate.Checking to version,
-            RvUpdate.Latest to "$version · ${rvText(R.string.rv_update_latest)}",
-            NEW to "$version · ${text(R.string.rv_update_new, RV_SAMPLE_RELEASE)}",
-            RvUpdate.Failed to "$version · ${rvText(R.string.rv_update_failed)}",
+            RvUpdate.Latest to "$version，${rvText(R.string.rv_update_latest)}",
+            NEW to "$version，${text(R.string.rv_update_new, RV_SAMPLE_RELEASE)}",
+            RvUpdate.Failed to "$version，${rvText(R.string.rv_update_failed)}",
         )) {
             update = state
             compose.waitForIdle()
@@ -184,7 +184,7 @@ class RvUpdateShotTest {
     fun aFailedCheckIsToldOnItsRowOnlyAndRetried() {
         var checks = 0
         compose.setContent { Themed { Page(RvUpdate.Failed, rvSettingsRoutes(checkUpdate = { checks++ })) } }
-        compose.onNode(line("${rvText(R.string.rv_settings_version_value)} · ${rvText(R.string.rv_update_failed)}"), useUnmergedTree = true).assertExists()
+        compose.onNode(line("${rvText(R.string.rv_settings_version_value)}，${rvText(R.string.rv_update_failed)}"), useUnmergedTree = true).assertExists()
         compose.onNodeWithText(rvText(R.string.rv_update_failed)).assertDoesNotExist()
         compose.onNodeWithText(rvText(R.string.rv_retry)).performScrollTo().performClick()
         assertEquals(1, checks)
@@ -193,7 +193,7 @@ class RvUpdateShotTest {
     @Test
     fun nothingNewerIsTheRowsSecondLineAndTheHerosWordAndShowsNoBanner() {
         compose.setContent { Themed { Page(RvUpdate.Latest) } }
-        compose.onNode(line("${rvText(R.string.rv_settings_version_value)} · ${rvText(R.string.rv_update_latest)}"), useUnmergedTree = true).assertExists()
+        compose.onNode(line("${rvText(R.string.rv_settings_version_value)}，${rvText(R.string.rv_update_latest)}"), useUnmergedTree = true).assertExists()
         compose.onNodeWithText(rvText(R.string.rv_update_latest)).assert(IS_BUTTON)
         compose.onNodeWithText(rvText(R.string.rv_retry)).assertDoesNotExist()
     }

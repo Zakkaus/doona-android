@@ -19,7 +19,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -123,6 +125,7 @@ internal fun RvMenu(expanded: Boolean, onDismiss: () -> Unit, items: List<RvMenu
                 // The menu is a window of its own, outside the sample's vote: it asks the high rate as it scales.
                 .preferredFrameRate(FrameRateCategory.High)
                 .padding(RvMenuSize.shadowRoom)
+                .padding(vertical = RvMenuSize.margin)
                 .graphicsLayer {
                     val scale = lerp(RvMotion.MENU_FROM, 1f, progress)
                     scaleX = scale
@@ -153,7 +156,8 @@ internal fun RvMenuPanel(items: List<RvMenuItem>, onPick: (RvMenuItem) -> Unit, 
             .clip(shape)
             .background(colors.raised)
             .then(rim)
-            .padding(vertical = RvSpace.tight),
+            .padding(vertical = RvSpace.tight)
+            .verticalScroll(rememberScrollState()),
     ) {
         items.forEach { item ->
             if (item.separated) {
@@ -243,7 +247,7 @@ private class MenuPosition(
 ) : PopupPositionProvider {
     override fun calculatePosition(anchorBounds: IntRect, windowSize: IntSize, layoutDirection: LayoutDirection, popupContentSize: IntSize): IntOffset {
         val width = popupContentSize.width - 2 * room
-        val height = popupContentSize.height - 2 * room
+        val height = popupContentSize.height - 2 * (room + margin)
         val ltr = layoutDirection == LayoutDirection.Ltr
         val growX = at?.let { anchorBounds.left + it.x } ?: if (ltr) anchorBounds.right else anchorBounds.left
         val growY = at?.let { anchorBounds.top + it.y } ?: (anchorBounds.bottom + gap)
@@ -253,7 +257,7 @@ private class MenuPosition(
         val top = if (below) growY else (at?.let { growY } ?: (anchorBounds.top - gap)) - height
         val y = top.coerceIn(margin, max(margin, windowSize.height - margin - height))
         onOrigin(TransformOrigin(fraction(growX - x, width), fraction((if (below) growY else top + height) - y, height)))
-        return IntOffset(x - room, y - room)
+        return IntOffset(x - room, y - room - margin)
     }
 
     private fun fraction(part: Int, whole: Int) = if (whole <= 0) 0.5f else (part.toFloat() / whole).coerceIn(0f, 1f)

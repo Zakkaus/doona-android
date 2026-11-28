@@ -3,7 +3,9 @@ package dev.doona.android.prototype.rv
 import android.graphics.Bitmap
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.test.captureToImage
@@ -15,6 +17,8 @@ import androidx.compose.ui.test.performTouchInput
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RV_CHART
 import dev.doona.android.designsystem.rv.RvMotion
+import dev.doona.android.designsystem.rv.RvPart
+import dev.doona.android.designsystem.rv.RvSparkline
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.data.RvData
 import org.junit.Assert.assertEquals
@@ -43,6 +47,16 @@ class RvChartTest {
     val utc = Utc()
 
     private val taps = RvTaps()
+
+    @Test
+    fun missingSparklineSampleLeavesSpaceWithoutHidingTheRest() {
+        compose.rvContent(dark = false) {
+            RvSparkline(listOf(Float.NaN, 10f, 20f), Color.Magenta)
+        }
+        val pixels = compose.onNodeWithTag(RvPart.FRAME).captureToImage().toPixelMap()
+        assertTrue((0 until pixels.height).any { pixels[pixels.width * 3 / 4, it] == Color.Magenta })
+        assertFalse((0 until pixels.height).any { pixels[pixels.width / 4, it] == Color.Magenta })
+    }
 
     @Test
     fun aScrubTicksAtThePeakAndEachEndOnce() {
@@ -77,6 +91,19 @@ class RvChartTest {
         assertFalse("nor yet the hour", half.sameAs(hour))
         assertFalse("the hour is not the minute", hour.sameAs(minute))
         assertTrue("then it rests", chart().sameAs(hour))
+    }
+
+    @Test
+    fun switchingDirectionDiscardsAnUnfinishedRangeFade() {
+        traffic()
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithText(rvText(R.string.rv_range_1h)).performClick()
+        compose.mainClock.advanceTimeBy(RvMotion.FADE_MS / 2L)
+        compose.onNodeWithText(rvText(R.string.ui_upload)).performClick()
+        compose.mainClock.advanceTimeByFrame()
+        val switched = chart()
+        compose.mainClock.advanceTimeBy(RvMotion.MOVE_MS * 2L)
+        assertTrue("no download curve remains after switching to upload", switched.sameAs(chart()))
     }
 
     private fun traffic() = compose.setContent {

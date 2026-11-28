@@ -88,12 +88,12 @@ class RvConfigFilesEditShotTest {
     fun emptyDark() = shot("config-files-edit-empty", true) { Page(state = ENTRY_ONLY) }
 
     @Test
-    fun anIncludesRemoveControlAsksAndTheSheetRemovesTheFileAndItsIncludes() {
+    fun anIncludesRemoveControlAsksAndTheSheetRemovesTheInclude() {
         val removed = mutableListOf<String>()
         compose.setContent { Themed { RvConfigOverviewPage(RvConfigData.overview, onBack = {}, edit = RvListEdit({}, { removed += it })) } }
         compose.onNodeWithContentDescription("刪除 ${RvConfigData.ENTRY}").assertDoesNotExist()
         compose.onNodeWithContentDescription("刪除 ${RvConfigData.NODES}").performScrollTo().performClick()
-        compose.onNodeWithText("${RvConfigData.ENTRY} 中引入它的那一行會一起刪除，它引入的 nodes/office.dae 也會刪除。套用前會先顯示變更。").assertExists()
+        compose.onNodeWithText("確認後會立即從 ${RvConfigData.ENTRY} 移除這項引用。檔案及其引入的 nodes/office.dae 仍會保留。").assertExists()
         compose.onNodeWithText("刪除").performClick()
         assertEquals(listOf(RvConfigData.NODES), removed)
     }

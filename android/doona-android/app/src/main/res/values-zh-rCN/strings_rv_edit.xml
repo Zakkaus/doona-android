@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="rv_list_remove">删除 %1$s</string>
-    <string name="rv_member_remove">从群组移除 %1$s</string>
+    <string name="rv_member_remove">从组移除 %1$s</string>
     <string name="rv_list_delete_failed_title">无法删除 %1$s</string>
     <string name="rv_list_delete_failed_storage">手机存储空间不足，没有任何变动。</string>
-    <string name="rv_group_edit_title">编辑群组</string>
+    <string name="rv_group_edit_title">编辑组</string>
     <string name="rv_group_edit_name">名称</string>
     <string name="rv_group_edit_policy">策略</string>
     <string name="rv_group_edit_members">成员</string>
@@ -15,16 +15,16 @@
     <string name="rv_group_edit_exit">出口节点</string>
     <string name="rv_group_edit_unset">未设置</string>
     <string name="rv_group_member_node">节点</string>
-    <string name="rv_group_member_group">群组 · %1$s</string>
-    <string name="rv_group_edit_member_group">群组</string>
+    <string name="rv_group_member_group">组：%1$s</string>
+    <string name="rv_group_edit_member_group">组</string>
     <string name="rv_group_edit_in_source">请用“编辑源码”修改组名或成员。</string>
     <string name="rv_group_member_remove_title">移除 %1$s？</string>
-    <string name="rv_group_member_remove_body">它的流量改由群组的其他成员处理。</string>
+    <string name="rv_group_member_remove_body">它的流量改由组内其他成员处理。</string>
     <string name="rv_group_member_remove_confirm">移除</string>
-    <string name="rv_group_new">新建群组</string>
+    <string name="rv_group_new">新建组</string>
     <string name="rv_list_delete_title">删除 %1$s？</string>
-    <string name="rv_group_delete_body">这个群组会从配置文件移除。</string>
-    <string name="rv_group_delete_body_member">这个群组会从配置文件移除，也不再是 %1$s 的成员。</string>
+    <string name="rv_group_delete_body">这个组会从配置文件移除。</string>
+    <string name="rv_group_delete_body_member">这个组会从配置文件移除，也不再是 %1$s 的成员。</string>
     <plurals name="rv_list_delete_refused_rules">
         <item quantity="other">还有 %1$d 条规则发往它，没有任何变动。请先修改这些规则。</item>
     </plurals>
@@ -32,10 +32,10 @@
     <string name="rv_config_file_new">新建文件</string>
     <string name="rv_config_file_new_body">会在 %1$s 加上引入这个文件的一行，应用前会先显示变更。</string>
     <string name="rv_list_create">新建</string>
-    <string name="rv_config_file_delete_body">%1$s 中引入它的那一行会一起删除，应用前会先显示变更。</string>
-    <string name="rv_config_file_delete_body_nested">%1$s 中引入它的那一行会一起删除，它引入的 %2$s 也会删除。应用前会先显示变更。</string>
+    <string name="rv_config_file_delete_body">确认后会立即从 %1$s 移除这项引用，文件仍会保留。</string>
+    <string name="rv_config_file_delete_body_nested">确认后会立即从 %1$s 移除这项引用。文件及其引入的 %2$s 仍会保留。</string>
     <string name="rv_list_create_failed_title">无法新建 %1$s</string>
-    <string name="rv_group_name_taken">已有同名的群组。</string>
+    <string name="rv_group_name_taken">已有同名组。</string>
     <string name="rv_dns_server_new">添加服务器</string>
     <string name="rv_dns_server_address">地址</string>
     <string name="rv_dns_server_delete_body">这个服务器会从配置文件移除。</string>

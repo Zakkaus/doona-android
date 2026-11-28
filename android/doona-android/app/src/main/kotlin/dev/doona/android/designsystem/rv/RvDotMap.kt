@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.PointMode
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.util.fastForEach
@@ -105,7 +106,11 @@ internal fun Modifier.rvDotMap(focus: RvSpot?, color: Color, focusTop: Dp, clear
                 drawPoints(band.faint, PointMode.Points, ink.copy(alpha = minOf(alpha, RvDots.CLEAR_ALPHA)), RvDots.dot.toPx(), StrokeCap.Round)
             }
         }
-        if (focus != null) marker(rvMarkerAt(focus, centre, pitch).let { it.copy(y = it.y * (1 + stretch)) }, ink, art)
+        if (focus != null) {
+            clipRect(top = fadeFrom ?: 0f) {
+                marker(rvMarkerAt(focus, centre, pitch, live).let { it.copy(y = it.y * (1 + stretch)) }, ink, art)
+            }
+        }
     }
 }
 
@@ -114,12 +119,12 @@ internal fun Modifier.rvDotMap(focus: RvSpot?, color: Color, focusTop: Dp, clear
  * the map (in a layer of its own), a frame of the loop redraws the ring alone, not the map and what lies on it. It
  * reads nothing else while the pulse is at 0.
  */
-internal fun Modifier.rvDotPulse(focus: RvSpot?, color: Color, focusTop: Dp, live: RvDotMotion): Modifier = drawBehind {
+internal fun Modifier.rvDotPulse(focus: RvSpot?, color: Color, focusTop: Dp, fadeTop: Dp?, live: RvDotMotion): Modifier = drawBehind {
     val phase = live.pulse()
     if (focus == null || phase <= 0f) return@drawBehind
     val stretch = live.stretch() / size.height
-    val at = rvMarkerAt(focus, Offset(size.width / 2f, focusTop.toPx()), RvDots.pitch.toPx())
-    pulse(at.copy(y = at.y * (1 + stretch)), live.tint?.invoke() ?: color, live.art(), phase)
+    val at = rvMarkerAt(focus, Offset(size.width / 2f, focusTop.toPx()), RvDots.pitch.toPx(), live)
+    clipRect(top = fadeTop?.toPx() ?: 0f) { pulse(at.copy(y = at.y * (1 + stretch)), live.tint?.invoke() ?: color, live.art(), phase) }
 }
 
 /** A band of the map: its [y], its dots drawn [full], and those kept [faint] under the hero's text. */
@@ -149,14 +154,14 @@ private fun column(lon: Float): Int = floor((lon + DEGREES_WEST) / RvLandMask.CE
 private fun row(lat: Float): Int = floor((RvLandMask.NORTH - lat) / RvLandMask.CELL).toInt()
 
 /**
- * Where [rvDotMap] marks [spot] when the map is centred on its cell at [centre], dots [pitch] apart: the cell's dot stands
- * for the cell's middle, so the marker sits off it by where [spot] falls inside the cell, less than half a pitch each
- * way. The land lookup stays on the 2-degree grid; only the marker takes the fractional place.
+ * Marker position relative to the current map cell, including the spot's position within its cell.
  */
-internal fun rvMarkerAt(spot: RvSpot, centre: Offset, pitch: Float): Offset {
+internal fun rvMarkerAt(spot: RvSpot, centre: Offset, pitch: Float, live: RvDotMotion = RV_STILL): Offset {
     val col = (spot.lon + DEGREES_WEST) / RvLandMask.CELL
     val row = (RvLandMask.NORTH - spot.lat) / RvLandMask.CELL
-    return Offset(centre.x + (col - floor(col) - HALF) * pitch, centre.y + (row - floor(row) - HALF) * pitch)
+    val columns = RvLandMask.COLUMNS
+    val dx = Math.floorMod(column(spot.lon) - column(live.lon?.invoke() ?: spot.lon) + columns / 2, columns) - columns / 2
+    return Offset(centre.x + (dx + (col - floor(col)) - HALF) * pitch, centre.y + (row - row(live.lat?.invoke() ?: spot.lat) - HALF) * pitch)
 }
 
 /**

@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.text.font.createFontFamilyResolver
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -73,8 +74,10 @@ class RvPreviewActivity : ComponentActivity() {
         preloadFonts(applicationContext)
         rvWarmDotMap()
         // Each gesture's frame times go to logcat (`adb logcat -s RvFrames`).
-        RvFrames.attach(window)
-        setContent { RvPreviewApp(options, start) }
+        setContent {
+            DisposableEffect(window) { onDispose(RvFrames.attach(window)) }
+            RvPreviewApp(options, start)
+        }
     }
 
     /** The launch's [key] extra as one of [entries], by its name or its [code], any case; null when absent or unknown. */

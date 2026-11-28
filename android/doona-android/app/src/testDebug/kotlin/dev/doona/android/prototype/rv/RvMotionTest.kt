@@ -5,6 +5,10 @@ import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.annotation.StringRes
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -25,6 +29,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvMotion
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.feature.nodes.RV_PICKER
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -43,9 +48,11 @@ import org.robolectric.annotation.GraphicsMode
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "zh-rTW-w412dp-h915dp-notnight-xhdpi")
-class RvMotionTest {
+class RvMotionTest : MotionDurationScale {
+    override var scaleFactor by mutableFloatStateOf(1f)
+
     @get:Rule
-    val compose = createComposeRule()
+    val compose = createComposeRule(effectContext = this)
 
     @get:Rule
     val utc = Utc()
@@ -55,6 +62,20 @@ class RvMotionTest {
 
     @After
     fun animatorScaleBack() = rvAnimatorScale(1f)
+
+    @Test
+    fun turningAnimationsBackOnUpdatesTheOpenTheme() {
+        rvAnimatorScale(0f)
+        scaleFactor = 0f
+        var instant = false
+        compose.rvContent(dark = false) { instant = dev.doona.android.designsystem.rv.Rv.motion.instant }
+        compose.runOnIdle {
+            assertEquals(true, instant)
+            rvAnimatorScale(1f)
+            scaleFactor = 1f
+        }
+        compose.runOnIdle { assertEquals(false, instant) }
+    }
 
     @Test
     fun aPushTakesItsTimeAtScaleOne() {
@@ -183,7 +204,7 @@ class RvMotionTest {
     private fun text(@StringRes id: Int) = rvText(id)
 
     /** 活動's caption in a state: the state, then the mode (規則). */
-    private fun caption(@StringRes state: Int) = "${text(state)} · ${text(R.string.rv_mode_rule)}"
+    private fun caption(@StringRes state: Int) = text(state) + SEPARATOR + text(R.string.rv_mode_rule)
 
     private companion object {
         val PULL_LONG = 300.dp

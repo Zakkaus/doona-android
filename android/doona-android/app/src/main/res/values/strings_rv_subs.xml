@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- The Revolut-style sample's subscription pages (prototype/rv/subs), debug builds only. -->
 <resources>
-    <string name="rv_subs_nodes_updated">%1$s · updated %2$s</string>
-    <string name="rv_subs_nodes_not_updated">%1$s · not updated yet</string>
+    <string name="rv_subs_nodes_updated">%1$s / updated %2$s</string>
+    <string name="rv_subs_nodes_not_updated">%1$s / not updated yet</string>
     <string name="rv_subs_used" translatable="false">%1$s/%2$s</string>
-    <string name="rv_subs_no_expiry">No expiry date</string>
+    <string name="rv_subs_no_expiry">Expiry date not provided</string>
     <string name="rv_sub_update_now">Update now</string>
     <string name="rv_sub_node_count">Nodes</string>
     <string name="rv_sub_used">Used</string>
@@ -59,8 +59,8 @@
         <item quantity="other">Lines %2$s are not share links and are skipped.</item>
     </plurals>
     <plurals name="rv_addnode_skip_duplicate">
-        <item quantity="one">Line %2$s is already in the configuration and is skipped.</item>
-        <item quantity="other">Lines %2$s are already in the configuration and are skipped.</item>
+        <item quantity="one">Line %2$s is skipped because the node name is duplicated.</item>
+        <item quantity="other">Lines %2$s are skipped because the node names are duplicated.</item>
     </plurals>
     <plurals name="rv_addnode_skip_other">
         <item quantity="one">Line %2$s cannot be read and is skipped.</item>

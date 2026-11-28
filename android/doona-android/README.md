@@ -41,12 +41,10 @@ Both commands sign the APK with the local debug key. Before publishing, sign wit
 SHA-256 certificate digest from `apksigner verify --print-certs <apk>` with the release certificate's fingerprint.
 Both builds check that every native library in the APK has ELF LOAD segments aligned to at least 16 KiB.
 
-Goldens (`app/src/test/screenshots`, fake data only) cover every screen at 412 × 915 dp in zh-TW in light, dark and at
-font scale 1.15 and 2.0, plus a 840 dp wide window and a 915 × 412 dp landscape one, and the seven component gallery
-pages (`designsystem/components/*Gallery.kt`, `ComponentPreviews.kt` has the previews) in the four phone variants. Each render also goes through
-Google's accessibility checks. Spacing, contrast and reachability are asserted by `SpacingCheckTest` (at every scroll
-offset), `ContrastTest` and `ReachabilityTest`; `SpacingRulesTest`, `ProbeDetectionTest`, `BlankContentTest` and
-`AccessibilityCheckTest` plant a defect in each rule and keep the case, so a check that stops seeing its defect fails.
+Production RV pages have their own screenshot and layout tests. `RvPageEndTest` checks that the last line clears
+navigation bars and pinned controls. `RvLanguageShotTest` taps the last language in landscape at font scale 2.0
+and checks the page for clipped text. `ScreenshotTest` captures the six component galleries and runs Google's
+accessibility checks on each capture; `RvSpacingCheckTest` measures gallery spacing.
 
 `tools/duck.py` and `tools/fonts.py` rebuild the duck mark and the fonts from a doona checkout (fontTools and brotli for
 the fonts); `NOTICE` lists their licences. The font holds only the characters the string resources and Kotlin sources use, so
@@ -165,10 +163,8 @@ variant.
 - **Previews:** in `<Screen>Previews.kt`, light and dark, built from `FakeEngine` fixtures through the same pure
   state function; the screenshot test reuses that fixture. A new component goes on a page of `ComponentPreviews.kt`
   in every state it has.
-- **Tests:** a JVM test of the ViewModel on `FakeEngine` (wrap it with `Engine by FakeEngine()` to make one action
-  fail), and a case in `screenCases()` (`testing/ScreenCases.kt`) that names the layout roles the screen shows and the spacing role of each gap between the blocks of its sheet: it gets the spacing check on a phone, a wide window and
-  a landscape one, the reachability check, and a golden in every variant. Record the goldens and look at them before
-  committing.
+- **Tests:** exercise ViewModels with `FakeEngine` and keep page-specific layout and screenshot cases with the RV
+  page tests. Inspect new goldens before committing.
 
 ## Release notices
 

@@ -8,11 +8,11 @@ import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.prototype.rv.data.RV_NOW
 import dev.doona.android.prototype.rv.samples.sampleText
 
-/** A word of the samples in zh-TW and English; a value honk prints as it is (an address, a code) is the same in both. */
+/** A word of the samples in zh-TW, English and zh-CN; a value honk prints as it is (an address, a code) is the same in all three. */
 @Immutable
-internal class RvWord(val zh: String, val en: String = zh) {
+internal class RvWord(val zh: String, val en: String = zh, private val zhCn: String = zh) {
     @Composable
-    fun text(): String = sampleText(zh, en)
+    fun text(): String = sampleText(zh, zhCn, en)
 }
 
 /** One fact of a card: its label and its value. */
@@ -246,16 +246,16 @@ internal object RvDiagData {
         ),
         devices = listOf(RvMapTile(RvWord("172.19.0.1"), RvWord("→ 串流、主節點、AI、直連、拒絕", "→ Streaming, Main node, AI, Direct, Reject"), 8)),
         outbounds = listOf(
-            RvMapTile(streaming, RvWord("手動選擇 · → $HK", "Manual · → $HK"), 2),
-            RvMapTile(main, RvWord("手動選擇 · → $SINGAPORE", "Manual · → $SINGAPORE"), 2),
+            RvMapTile(streaming, RvWord("手動選擇 → $HK", "Manual → $HK", "手动选择 → $HK"), 2),
+            RvMapTile(main, RvWord("手動選擇 → $SINGAPORE", "Manual → $SINGAPORE", "手动选择 → $SINGAPORE"), 2),
             RvMapTile(direct, null, 2, glyph = R.drawable.rv_sym_arrow_right_alt),
-            RvMapTile(ai, RvWord("手動選擇 · → $TOKYO", "Manual · → $TOKYO"), 1),
+            RvMapTile(ai, RvWord("手動選擇 → $TOKYO", "Manual → $TOKYO", "手动选择 → $TOKYO"), 1),
             RvMapTile(block, null, 1, glyph = R.drawable.rv_sym_block),
         ),
         nodes = listOf(
-            RvMapTile(RvWord(HK), RvWord("← 串流 · 48 ms", "← Streaming · 48 ms"), 2, RvPlace.HK),
-            RvMapTile(RvWord(SINGAPORE), RvWord("← 主節點 · 182 ms", "← Main node · 182 ms"), 2, RvPlace.SG),
-            RvMapTile(RvWord(TOKYO), RvWord("← AI · 62 ms"), 1, RvPlace.JP),
+            RvMapTile(RvWord(HK), RvWord("← 串流 / 48 ms", "← Streaming / 48 ms", "← 流媒体 / 48 ms"), 2, RvPlace.HK),
+            RvMapTile(RvWord(SINGAPORE), RvWord("← 主節點 / 182 ms", "← Main node / 182 ms", "← 主节点 / 182 ms"), 2, RvPlace.SG),
+            RvMapTile(RvWord(TOKYO), RvWord("← AI / 62 ms"), 1, RvPlace.JP),
         ),
     )
 

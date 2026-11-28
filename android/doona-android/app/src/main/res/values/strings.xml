@@ -28,20 +28,13 @@
     <string name="ui_tcp" translatable="false">TCP</string>
     <string name="ui_udp" translatable="false">UDP</string>
     <string name="ui_all_count">All %1$d</string>
-    <string name="policy_kind_auto">Automatic %1$d</string>
     <plurals name="policy_members">
         <item quantity="one">%1$d member</item>
         <item quantity="other">%1$d members</item>
     </plurals>
     <string name="policy_test_all">Test all</string>
-    <string name="policy_test_group">Test this group</string>
-    <string name="policy_unpin">Return to automatic</string>
-    <string name="policy_pinned">Pinned</string>
     <string name="policy_failed">Test failed</string>
     <string name="policy_failed_count">%1$d failed</string>
-    <string name="policy_groups_inside">Groups inside</string>
-    <string name="policy_empty_title">No groups</string>
-    <string name="policy_empty_line">Add a subscription to create groups.</string>
     <string name="sub_title">Subscriptions</string>
     <string name="sub_add">Add subscription</string>
     <string name="first_no_nodes">No node available.</string>

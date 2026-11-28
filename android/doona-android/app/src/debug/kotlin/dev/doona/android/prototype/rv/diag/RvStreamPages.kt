@@ -30,7 +30,7 @@ internal fun RvLogsSample(records: List<RvLogRecord> = RvDiagData.logs) {
     val format = rememberRvFormat()
     RvDiagPage(
         sampleText("日誌檢視", "Logs"),
-        caption = sampleText("引擎記錄：資訊及以上 · 串流中", "Engine records info and above · Streaming"),
+        caption = sampleText("引擎記錄：資訊及以上，串流中", "引擎记录信息及以上级别的日志，正在接收", "Engine records info and above, streaming"),
         control = { RvFilterChipRow(RvChipPick(sampleText("資訊及以上", "Info and above")), RvChipPick(sampleText("全部模組", "All targets"))) },
     ) {
         RvDiagSection(sampleText("日誌時間分布", "Log activity"))
@@ -79,8 +79,9 @@ internal fun RvEventsSample(events: List<RvEvent> = RvDiagData.events) {
     RvDiagPage(
         sampleText("事件", "Events"),
         caption = sampleText(
-            "最近 ${RvDiagData.EVENT_LIMIT} 筆，新事件在前 · 已連線 · 可從上次位置續傳",
-            "Latest ${RvDiagData.EVENT_LIMIT}, newest first · Connected · Resumable",
+            "最近 ${RvDiagData.EVENT_LIMIT} 筆，新事件在前。已連線，可從上次位置續傳",
+            "最近 ${RvDiagData.EVENT_LIMIT} 条，新事件在前。已连接，支持断点续传",
+            "Latest ${RvDiagData.EVENT_LIMIT}, newest first. Connected and resumable",
         ),
         control = { RvFilterChip(sampleText("排除運作狀態更新", "Without runtime updates"), {}) },
     ) {

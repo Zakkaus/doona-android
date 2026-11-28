@@ -156,7 +156,7 @@ internal fun RvFilterChip(label: String, onClick: () -> Unit, modifier: Modifier
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(RvSpace.tight),
     ) {
-        RvText(label, Rv.type.rowTitle)
+        RvText(label, Rv.type.rowTitle, Modifier.weight(1f, fill = false))
         RvGlyph(R.drawable.rv_sym_keyboard_arrow_down, size.chipGlyph, Rv.colors.text)
     }
 }

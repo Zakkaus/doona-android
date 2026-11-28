@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvMotion
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.prototype.rv.RV_CONNECT_MS
@@ -154,7 +155,7 @@ class RvPermissionAskTest {
     private fun text(@StringRes id: Int): SemanticsNodeInteraction = compose.onNodeWithText(rvText(id))
 
     /** 活動's caption in a state: the state, then the mode (規則). */
-    private fun caption(@StringRes state: Int) = "${rvText(state)} · ${rvText(R.string.rv_mode_rule)}"
+    private fun caption(@StringRes state: Int) = rvText(state) + SEPARATOR + rvText(R.string.rv_mode_rule)
 
     private companion object {
         const val FRAMES_MS = 50L

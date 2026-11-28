@@ -44,7 +44,7 @@ internal val RV_SAMPLE_GEO_NEWER: LocalDate = LocalDate.of(2026, 11, 24)
 internal val rvSampleVersions = RvAboutVersions(app = "0.1.0", honk = "8919784")
 
 /** The sample's report: the app of [rvSampleVersions], the sample data's counts, the last 200 events, 2 crashes. */
-internal val rvSampleReport = RvReportPreview("0.1.0", "Pixel 8 · Android 15", nodes = 12, subscriptions = 2, rules = 14, events = 200, crashes = 2)
+internal val rvSampleReport = RvReportPreview("0.1.0", "Pixel 8 / Android 15", nodes = 12, subscriptions = 2, rules = 14, events = 200, crashes = 2)
 
 /** 設定 on the sample: the GeoIP/GeoSite copy the APK ships. The page takes it as a parameter. */
 @Composable
