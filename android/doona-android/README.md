@@ -36,8 +36,10 @@ tools/check-samples.sh                                # src/main names no sample
 ```
 
 To reproduce the pull request APK, run `./gradlew assembleRelease -Pdoona.coreProfile=ci-release`.
-This builds the Rust core with thin LTO and 16 codegen units. For the shipping APK, run `./gradlew assembleRelease`
-without the property to use fat LTO and one codegen unit.
+This builds the Rust core with thin LTO and 16 codegen units. `./gradlew assembleRelease` uses fat LTO and one codegen unit.
+Both commands sign the APK with the local debug key. Before publishing, sign with the release key and compare the
+SHA-256 certificate digest from `apksigner verify --print-certs <apk>` with the release certificate's fingerprint.
+Both builds check that every native library in the APK has ELF LOAD segments aligned to at least 16 KiB.
 
 Goldens (`app/src/test/screenshots`, fake data only) cover every screen at 412 × 915 dp in zh-TW in light, dark and at
 font scale 1.15 and 2.0, plus a 840 dp wide window and a 915 × 412 dp landscape one, and the seven component gallery

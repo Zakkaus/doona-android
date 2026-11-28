@@ -3,8 +3,9 @@ package dev.doona.android.prototype.rv
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
-import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.toSize
 import dev.doona.android.designsystem.rv.RvChartSize
@@ -66,10 +67,11 @@ internal fun rvBarBottom(top: Top): Float = StatusBar.value + rvBarHeight(if (to
  * The library's parts on the page by tag, in dp, unclipped (the scroll's viewport would clip boundsInRoot to the window).
  * A field in a sheet (a pane over the page) is the sheet's, not a block of the page's column.
  */
-internal fun ComposeContentTestRule.rvParts(): Map<String, List<Rect>> =
+internal fun ComposeContentTestRule.rvParts(window: String? = null): Map<String, List<Rect>> =
     // The merged tree: a picture of a page (主題's preview) clears its semantics, so its cards are not the page's.
     RV_PART_TAGS.associateWith { tag ->
-        onAllNodesWithTag(tag).fetchSemanticsNodes().filterNot { tag == RvPart.FIELD && it.inPane() }.map { node ->
+        val matcher = if (window == null) hasTestTag(tag) else hasTestTag(tag) and hasAnyAncestor(hasTestTag(window))
+        onAllNodes(matcher).fetchSemanticsNodes().filterNot { tag == RvPart.FIELD && it.inPane() }.map { node ->
             val d = node.layoutInfo.density.density
             Rect(node.positionInRoot / d, node.size.toSize() / d)
         }

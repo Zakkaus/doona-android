@@ -65,6 +65,11 @@ class RvBoardTest {
         val dir = capture("about") { RvAboutScreen(rvSampleVersions, onBack = {}, routes = rvAboutRoutes()) }
         assertTrue(File(dir, "about-light-1.png").isFile)
         assertFalse("關於 does not scroll", File(dir, "about-light-2.json").exists())
+        File(dir, "about-light-2.png").createNewFile()
+        File(dir, "about-light-2.json").createNewFile()
+        compose.rvBoard("about", "light", dir)
+        assertFalse(File(dir, "about-light-2.png").exists())
+        assertFalse(File(dir, "about-light-2.json").exists())
         val page = json(dir, "about-light-1")
         assertEquals("Title", page.getString("top"))
         assertEquals(412.0, page.getDouble("width"), 0.0)

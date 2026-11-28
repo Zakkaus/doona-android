@@ -14,7 +14,6 @@ class JniDescriptorsTest {
 
     @Test
     fun apiTakesThreeStringsAndAMapAndReturnsANativeResponse() {
-        // "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;)Ldev/doona/android/vpn/NativeResponse;"
         val string = String::class.java
         val api = NativeCore::class.java.getDeclaredMethod("api", string, string, string, Map::class.java)
         assertEquals(NativeResponse::class.java, api.returnType)

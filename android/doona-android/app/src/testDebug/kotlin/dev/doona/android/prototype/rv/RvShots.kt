@@ -61,7 +61,7 @@ internal fun ComposeContentTestRule.rvShot(
         else -> "light"
     }
     // The board's run draws the board, not the goldens: its windows are held to the phone's height.
-    if (rvBoarding) return rvBoard(screen, variant)
+    rvBoardDir?.let { return rvBoard(screen, variant, it.resolve(prefix), windows) }
     // Every golden's rows keep to the layout rules (docs/LAYOUT-RULES.md), or to the allowlist of today's breaks.
     // The row and footnote rules read the page's own window; with [windows] that page is the one its golden without the
     // sheet checks.
@@ -115,7 +115,7 @@ internal fun ComposeContentTestRule.rvScrollBy(dp: Float) {
 /** A full capture holds the whole page: its window is as tall as the page, so nothing is left to scroll. */
 internal fun ComposeContentTestRule.assertWhole() {
     // The board holds every window to the phone's height, so a whole page scrolls there.
-    if (rvBoarding) return
+    if (rvBoardDir != null) return
     val page = onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange)).fetchSemanticsNode()
     val left = page.config[SemanticsProperties.VerticalScrollAxisRange].maxValue() / density.density
     assertEquals("the page outgrew its window by $left dp", 0f, left)

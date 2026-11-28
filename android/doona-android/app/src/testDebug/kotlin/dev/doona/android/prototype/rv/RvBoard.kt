@@ -21,6 +21,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
+import androidx.test.platform.app.InstrumentationRegistry
 import dev.doona.android.designsystem.rv.RvChrome
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvSpace
@@ -31,10 +32,7 @@ import kotlin.math.abs
 import kotlin.math.min
 
 /** Where the design board's captures go: set by `-Ddoona.board=<dir>`; unset, nothing is written. */
-private val BOARD = System.getProperty("doona.board")
-
-/** Whether this run draws the design board: the goldens are then neither recorded nor compared. */
-internal val rvBoarding = BOARD != null
+internal val rvBoardDir = System.getProperty("doona.board")?.let(::File)
 
 /** The board's window: the phone's, [RV_BOARD_HEIGHT] at most, also where a golden records a whole page in a taller one. */
 internal const val RV_BOARD_HEIGHT = 915f
@@ -44,7 +42,7 @@ private const val BOARD_WINDOW = "rv-board-window"
 /** Holds [content] to the board's window while the board is drawn; otherwise [content] as it is. */
 @Composable
 internal fun RvBoardWindow(content: @Composable () -> Unit) {
-    if (!rvBoarding) return content()
+    if (rvBoardDir == null) return content()
     Box(Modifier.heightIn(max = RV_BOARD_HEIGHT.dp).testTag(BOARD_WINDOW)) { content() }
 }
 
@@ -53,14 +51,21 @@ internal fun RvBoardWindow(content: @Composable () -> Unit) {
  * window as `<screen>-<variant>-1.png` and its layout as `-1.json` (the library's parts, the rulers' measurements, the
  * outlined nodes and the text baselines, all in dp from the window's top left); a page that scrolls further is scrolled
  * one screen at a time and written again as `-2`, `-3` and on to its end, then scrolled back. Only the light and dark
- * goldens are captured. [into] is the board's directory, `doona.board` unless a test gives its own.
+ * goldens are captured in [dir].
  */
-internal fun ComposeContentTestRule.rvBoard(screen: String, variant: String, into: File? = BOARD?.let(::File)) {
-    val dir = into ?: return
+internal fun ComposeContentTestRule.rvBoard(screen: String, variant: String, dir: File, windows: Boolean = false) {
     if (variant != "light" && variant != "dark") return
     dir.mkdirs()
-    val top = boardTop(rvParts())
+    val previous = Regex("${Regex.escape("$screen-$variant")}-[0-9]+(?:-screen)?\\.(png|json)")
+    dir.listFiles { file -> previous.matches(file.name) }?.forEach { check(it.delete()) { "Cannot remove $it" } }
+    val top = boardTop(rvParts(if (windows) BOARD_WINDOW else null))
     write(dir, "$screen-$variant-1", top, start = true, scrolled = 0f)
+    // With [windows] (a sheet or dialog over the page) the board keeps the whole screen too, and only the first window.
+    if (windows) {
+        val full = checkNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+        File(dir, "$screen-$variant-1-screen.png").outputStream().use { full.compress(Bitmap.CompressFormat.PNG, PNG_QUALITY, it) }
+        return
+    }
     var scrolled = 0f
     for (window in 2..BOARD_WINDOWS) {
         val scroll = pageScroll() ?: break
@@ -111,7 +116,7 @@ private fun ComposeContentTestRule.write(dir: File, name: String, top: Top, star
     val window = onAllNodesWithTag(BOARD_WINDOW).fetchSemanticsNodes().isNotEmpty()
     val bitmap = (if (window) onNodeWithTag(BOARD_WINDOW) else onRoot()).captureToImage().asAndroidBitmap()
     File(dir, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, PNG_QUALITY, it) }
-    val parts = rvParts()
+    val parts = rvParts(if (window) BOARD_WINDOW else null)
     val measure = RvMeasure(parts, rvBarBottom(top))
     val ran = measure.run(top, start)
     val outlined = nodes()
@@ -205,9 +210,9 @@ private fun ComposeContentTestRule.baselines(): List<JSONObject> = unmerged().fl
 }
 
 private fun ComposeContentTestRule.unmerged(): List<SemanticsNode> {
-    val root = onRoot(useUnmergedTree = true).fetchSemanticsNode()
+    val root = if (onAllNodesWithTag(BOARD_WINDOW).fetchSemanticsNodes().isEmpty()) onRoot(useUnmergedTree = true) else onNodeWithTag(BOARD_WINDOW, useUnmergedTree = true)
     fun walk(node: SemanticsNode): List<SemanticsNode> = listOf(node) + node.children.flatMap(::walk)
-    return walk(root)
+    return walk(root.fetchSemanticsNode())
 }
 
 private const val PNG_QUALITY = 100

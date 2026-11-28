@@ -1,5 +1,5 @@
 import com.android.build.api.artifact.SingleArtifact
-import dev.doona.android.buildlogic.CheckNoFaultHook
+import dev.doona.android.buildlogic.CheckNativeLibraries
 import java.security.MessageDigest
 
 plugins {
@@ -70,7 +70,7 @@ val profileBuildTypes = setOf("profile", "nonMinifiedProfile", "benchmarkProfile
 
 androidComponents {
     onVariants { variant ->
-        if (skipCore) return@onVariants
+        if (skipCore && variant.buildType != "release") return@onVariants
         // The debug variant's core also takes `call("debugFault")`, the fault the core-failure check uses; release has none.
         val features = if (variant.buildType == "debug") listOf("--features", "fault-hook") else emptyList()
         // One target directory per feature set: in a shared one, a build of the other set would overwrite the library
@@ -146,10 +146,11 @@ androidComponents {
         variant.sources.jniLibs?.addGeneratedSourceDirectory(buildCore, CargoNdk::outputDir)
         if (variant.buildType != "debug") {
             val name = variant.name.replaceFirstChar { it.uppercase() }
-            val check = tasks.register<CheckNoFaultHook>("checkNoFaultHook$name") {
-                description = "Checks that the APK's libdoonacore.so has no fault hook."
+            val check = tasks.register<CheckNativeLibraries>("checkNativeLibraries$name") {
+                description = "Checks ELF LOAD alignment and verifies that the APK's libdoonacore.so has no fault hook."
                 apks.set(variant.artifacts.get(SingleArtifact.APK))
-                report.set(layout.buildDirectory.file("intermediates/doona-core/${variant.name}-no-fault-hook.txt"))
+                readelf.set(layout.file(ndkDir.map { it.dir("toolchains/llvm/prebuilt").asFile.listFiles().orEmpty().single().resolve("bin/llvm-readelf") }))
+                report.set(layout.buildDirectory.file("intermediates/doona-core/${variant.name}-native-libraries.txt"))
             }
             tasks.named { it == "assemble$name" }.configureEach { dependsOn(check) }
         }

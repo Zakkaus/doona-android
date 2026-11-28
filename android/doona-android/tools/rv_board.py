@@ -5,7 +5,8 @@
 
 NOW (and each approved DIR) hold what a board run of the shot tests writes (`./gradlew -Ddoona.board=<dir>
 :app:testDebugUnitTest`, see RvBoard.kt): `<screen>-<theme>-<n>.png` and `.json` per window, at 2 px per dp, every
-window of a long page. PAGES is a JSON list of {"page", "state", "screen"} (tools/rv_board_pages.json). MAP
+window of a long page. Both current and approved captures use `app-rv/` and `proto-rv/`; the board uses the
+wired state when both exist. PAGES is a JSON list of {"page", "state", "screen"} (tools/rv_board_pages.json). MAP
 (tools/rv_board_baselines.json) names the revision each page compares with: the version the owner last reviewed, a
 default and the revisions of later reviews with their screens; each revision a page uses needs its captures as
 `--approved REV=DIR`. For every page, theme (light, dark) and window, OUT (default build/design-board) gets
@@ -68,6 +69,7 @@ class Window:
     image: Image.Image
     layout: dict
     marks: list[Mark] = field(default_factory=list)
+    screen: Image.Image | None = None
 
 
 class BaselineError(ValueError):
@@ -148,7 +150,8 @@ def load(directory: Path, name: str) -> Window | None:
     if not png.is_file() or not js.is_file():
         return None
     layout = json.loads(js.read_text())
-    return Window(name, Image.open(png).convert("RGB"), layout, marks(layout))
+    screen = directory / f"{name}-screen.png"
+    return Window(name, Image.open(png).convert("RGB"), layout, marks(layout), Image.open(screen).convert("RGB") if screen.is_file() else None)
 
 
 def box(at, inset: float = 0) -> list[float]:
@@ -234,21 +237,22 @@ class Sheet:
 def sheet(page: dict, theme: str, index: int, now: Window, approved: Window | None, rev: str) -> Sheet:
     """Screen, redlines and, where there is one, the approved window at [rev] and the red diff, over the list of red marks."""
     head, label, small = font(30), font(22), font(24)
-    panels = [("畫面", now.image), ("標線", redlines(now, label))]
+    panels = [("完整畫面", now.screen), ("底頁標線", redlines(now, label))] if now.screen else [("畫面", now.image), ("標線", redlines(now, label))]
     diff_px = None
     if approved is not None:
-        diff, diff_px = changes(now.image, approved.image)
-        panels += [(f"核准 {rev}", approved.image), ("差異", diff)]
+        before = approved.screen or approved.image
+        diff, diff_px = changes(now.screen or now.image, before)
+        panels += [(f"核准 {rev}", before), ("差異", diff)]
     width = MARGIN * 2 + sum(p.width for _, p in panels) + GAP * (len(panels) - 1)
     lines = [m.text for m in now.marks] or ["無紅標"]
     panel_height = max(p.height for _, p in panels)
     height = MARGIN * 2 + HEADER + 40 + panel_height + 24 + 32 * len(lines)
     image = Image.new("RGB", (width, height), WHITE)
     draw = ImageDraw.Draw(image)
-    title = f"{page['page']} · {page['state']} · {theme} · {index}/{page['screens']}"
+    title = f"{page['page']} / {page['state']} / {theme} / {index}/{page['screens']}"
     if approved is None:
-        title += " · new"
-    title += f" · 紅標 {len(now.marks)}"
+        title += " / new"
+    title += f" / 紅標 {len(now.marks)}"
     draw.text((MARGIN, MARGIN), title, fill=INK, font=head)
     x, y = MARGIN, MARGIN + HEADER
     for caption, panel in panels:
@@ -294,14 +298,14 @@ def index_sheet(entries: list[dict], default: str | None = None) -> Image.Image:
     shown = min(rows, len(pages))
     image = Image.new("RGB", (MARGIN * 2 + INDEX_COLUMN * columns, MARGIN * 2 + HEADER + 40 + INDEX_LINE * shown), WHITE)
     draw = ImageDraw.Draw(image)
-    draw.text((MARGIN, MARGIN), f"設計板 · {len(pages)} 個頁面狀態 · {len(entries)} 張 · 紅標 {total}", fill=INK, font=head)
+    draw.text((MARGIN, MARGIN), f"設計板 / {len(pages)} 個頁面狀態 / {len(entries)} 張 / 紅標 {total}", fill=INK, font=head)
     for c in range(columns):
-        draw.text((MARGIN + INDEX_COLUMN * c, MARGIN + HEADER), "頁面 · 狀態        light  dark", fill=MUTED, font=row)
+        draw.text((MARGIN + INDEX_COLUMN * c, MARGIN + HEADER), "頁面 / 狀態        light  dark", fill=MUTED, font=row)
     for i, ((page, state), line) in enumerate(pages.items()):
         x = MARGIN + INDEX_COLUMN * (i // rows)
         y = MARGIN + HEADER + 40 + INDEX_LINE * (i % rows)
         red = line["light"] + line["dark"]
-        draw.text((x, y), f"{page} · {state}", fill=RED if red else INK, font=row)
+        draw.text((x, y), f"{page} / {state}", fill=RED if red else INK, font=row)
         rev = f"  {line['rev']}" if line["rev"] and line["rev"] != default else ""
         draw.text(
             (x + INDEX_COUNTS, y),
@@ -312,12 +316,15 @@ def index_sheet(entries: list[dict], default: str | None = None) -> Image.Image:
     return image
 
 
-def windows(directory: Path, screen: str, theme: str) -> list[Window]:
+def windows(directory: Path, screen: str, theme: str):
     """Every window of one page and theme, `-1` on until the first one missing."""
-    found = []
-    while window := load(directory, f"{screen}-{theme}-{len(found) + 1}"):
-        found.append(window)
-    return found
+    for source in (directory / "app-rv", directory / "proto-rv"):
+        index = 1
+        while window := load(source, f"{screen}-{theme}-{index}"):
+            yield window
+            index += 1
+        if index > 1:
+            return
 
 
 def build(pages: list[dict], now_dir: Path, approved: dict[str, Path], baselines: dict, out: Path) -> list[dict]:
@@ -334,12 +341,13 @@ def build(pages: list[dict], now_dir: Path, approved: dict[str, Path], baselines
     for page in pages:
         base = bases[page["screen"]]
         for theme in THEMES:
-            screens = windows(now_dir, page["screen"], theme)
+            screens = list(windows(now_dir, page["screen"], theme))
             if not screens:
                 missing.append(f"{page['screen']}-{theme}")
                 continue
+            baseline = windows(approved[base.rev], base.screen, theme)
             for n, window in enumerate(screens, start=1):
-                before = load(approved[base.rev], f"{base.screen}-{theme}-{n}")
+                before = next(baseline, None)
                 drawn = sheet({**page, "screens": len(screens)}, theme, n, window, before, base.rev)
                 drawn.image.save(out / drawn.entry["file"], "WEBP", quality=90, method=6)
                 entries.append(drawn.entry)

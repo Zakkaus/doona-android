@@ -7,7 +7,7 @@
 }
 
 # The core builds NativeResponse and calls SocketProtector.protect by name and JNI descriptor.
--keep class dev.doona.android.vpn.NativeResponse {
+-keep class dev.doona.android.honk.NativeResponse {
     <init>(int, java.lang.String);
 }
 -keep interface dev.doona.android.vpn.SocketProtector {

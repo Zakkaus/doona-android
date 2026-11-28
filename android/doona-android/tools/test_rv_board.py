@@ -82,10 +82,12 @@ def test_build_draws_four_columns_against_the_approved_and_two_for_a_new_page(tm
     now, approved, out = tmp_path / "now", tmp_path / "approved", tmp_path / "out"
     red = layout([rule("Gap", "gap a to b", 13.0, None, [16, 300, 396, 313], token=False)])
     for theme in rv_board.THEMES:
-        write(now, f"about-{theme}-1", red)
-        write(approved, f"about-{theme}-1", red, colour=(240, 240, 240))
-        write(now, f"fresh-{theme}-1", layout([]))
-        write(now, f"fresh-{theme}-2", layout([], scrolled=723.0))
+        write(now / "app-rv", f"about-{theme}-1", red)
+        write(now / "proto-rv", f"about-{theme}-1", layout([]))
+        write(approved / "app-rv", f"about-{theme}-1", red, colour=(240, 240, 240))
+        write(approved / "proto-rv", f"about-{theme}-1", layout([]))
+        write(now / "proto-rv", f"fresh-{theme}-1", layout([]))
+        write(now / "proto-rv", f"fresh-{theme}-2", layout([], scrolled=723.0))
     pages = [{"page": "關於", "state": "正常", "screen": "about"}, {"page": "新頁", "state": "正常", "screen": "fresh"}]
     entries = rv_board.build(pages, now, {"3a2940ea": approved}, DEFAULT, out)
     assert [(e["screen"], e["theme"], e["window"]) for e in entries] == [
@@ -148,7 +150,7 @@ def test_a_long_page_gets_a_sheet_for_every_window(tmp_path):
     now, out = tmp_path / "now", tmp_path / "out"
     for theme in rv_board.THEMES:
         for n in (1, 2, 3, 4):
-            write(now, f"long-{theme}-{n}", layout([], scrolled=723.0 * (n - 1)))
+            write(now / "app-rv", f"long-{theme}-{n}", layout([], scrolled=723.0 * (n - 1)))
     entries = rv_board.build([{"page": "長", "state": "正常", "screen": "long"}], now, {"3a2940ea": tmp_path / "a"}, DEFAULT, out)
     assert [e["window"] for e in entries if e["theme"] == "light"] == [1, 2, 3, 4]
     assert (out / "long-dark-4.webp").is_file()
@@ -158,7 +160,7 @@ def test_each_page_compares_with_its_own_baseline_under_its_name_there(tmp_path)
     now, old, later, out = tmp_path / "now", tmp_path / "old", tmp_path / "later", tmp_path / "out"
     for theme in rv_board.THEMES:
         for directory, screen in ((now, "plain"), (old, "plain"), (now, "fixed"), (later, "fixed"), (now, "renamed"), (later, "renamed-b")):
-            write(directory, f"{screen}-{theme}-1", layout([]))
+            write(directory / "proto-rv", f"{screen}-{theme}-1", layout([]))
     baselines = {
         "default": {"rev": "old", "why": "the rest"},
         "revs": [{"rev": "later", "why": "reviewed later", "screens": ["fixed", {"screen": "renamed", "was": "renamed-b"}, "gone"]}],
