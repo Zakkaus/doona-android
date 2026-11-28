@@ -8,8 +8,11 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.BySelector
+import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
+import org.junit.After
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -31,6 +34,25 @@ class BaselineProfileGenerator {
 
     private val app = requireNotNull(InstrumentationRegistry.getArguments().getString("targetAppId")?.ifEmpty { null }) {
         "targetAppId not passed as an instrumentation argument"
+    }
+
+    private val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+    private var savedLocales: String? = null
+
+    @Before
+    fun setAppLocale() {
+        val output = device.executeShellCommand("cmd locale get-app-locales $app").trim()
+        savedLocales = checkNotNull(Regex(""" are \[([A-Za-z0-9,-]*)]$""").find(output)) { output }.groupValues[1]
+        val result = device.executeShellCommand("cmd locale set-app-locales $app --locales zh-Hant-TW")
+        check(result.isBlank()) { result }
+    }
+
+    @After
+    fun restoreAppLocale() {
+        val locales = savedLocales ?: return
+        val args = if (locales.isEmpty()) "" else " --locales $locales"
+        val result = device.executeShellCommand("cmd locale set-app-locales $app$args")
+        check(result.isBlank()) { result }
     }
 
     @Test

@@ -53,7 +53,7 @@ internal fun RvFlowsSample(flows: List<RvFlow> = RvDiagData.flows) {
                 RvDiagNavRow(
                     R.drawable.rv_sym_call_split,
                     sampleText("流量路徑", "Traffic path"),
-                    sampleText("${map.rules.size} 條規則、${map.outbounds.size} 個出站、${map.nodes.size} 個節點", "${map.rules.size} 条规则、${map.outbounds.size} 个出站、${map.nodes.size} 个节点", "${map.rules.size} rules, ${map.outbounds.size} outbounds, ${map.nodes.size} nodes"),
+                    sampleText("${map.rules.size} 條規則 / ${map.outbounds.size} 個出站 / ${map.nodes.size} 個節點", "${map.rules.size} rules / ${map.outbounds.size} outbounds / ${map.nodes.size} nodes"),
                 )
             }
             RvCard { flows.forEach { FlowLine(it) } }

@@ -6,16 +6,17 @@
 NOW (and each approved DIR) hold what a board run of the shot tests writes (`./gradlew -Ddoona.board=<dir>
 :app:testDebugUnitTest`, see RvBoard.kt): `<screen>-<theme>-<n>.png` and `.json` per window, at 2 px per dp, every
 window of a long page. Both current and approved captures use `app-rv/` and `proto-rv/`; the board uses the
-wired state when both exist. PAGES is a JSON list of {"page", "state", "screen"} (tools/rv_board_pages.json). MAP
-(tools/rv_board_baselines.json) names the revision each page compares with: the version the owner last reviewed, a
-default and the revisions of later reviews with their screens; each revision a page uses needs its captures as
-`--approved REV=DIR`. For every page, theme (light, dark) and window, OUT (default build/design-board) gets
+wired state when both exist. PAGES is a JSON list of {"page", "state", "screen"} (tools/rv_board_pages.json). By default
+every page compares with review-base-1126. For a historical board, --baselines MAP selects the revisions by screen
+using the map from that revision. Supply each revision's captures as `--approved REV=DIR`.
+For every page, theme (light, dark) and window, OUT (default build/design-board) gets
 `<screen>-<theme>-<n>.webp`: the screen; the same screen with redlines (the 4 dp grid, the side keylines, every outlined
 node and library part, text baselines, each gap between blocks in dp); then, where the page's approved DIR has the same
 window, the approved version and the changed pixels in red over a faded screen, or "new" in the header. An edge off its keyline by more than 0.5 dp, a gap that is not a spacing token or not the one the rulers
 expect, a row or control off its height and a header off its top are drawn in red and listed under the sheet. OUT also
 gets index.webp (every page state with its red marks in light and dark and its baseline, in columns) and manifest.json,
 which also holds the baseline map.
+The captures for each page and theme must form consecutive PNG/JSON pairs.
 """
 
 from __future__ import annotations
@@ -220,7 +221,8 @@ def changes(now: Image.Image, before: Image.Image) -> tuple[Image.Image, int]:
     a, b = Image.new("RGB", size, WHITE), Image.new("RGB", size, WHITE)
     a.paste(now)
     b.paste(before)
-    mask = ImageChops.difference(a, b).convert("L").point(lambda v: 255 if v else 0)
+    r, g, blue = ImageChops.difference(a, b).split()
+    mask = ImageChops.lighter(ImageChops.lighter(r, g), blue).point(lambda v: 255 if v else 0)
     faded = Image.blend(a, Image.new("RGB", size, WHITE), 0.7)
     faded.paste(Image.new("RGB", size, RED), mask=mask)
     return faded, mask.histogram()[255]
@@ -316,15 +318,29 @@ def index_sheet(entries: list[dict], default: str | None = None) -> Image.Image:
     return image
 
 
-def windows(directory: Path, screen: str, theme: str):
-    """Every window of one page and theme, `-1` on until the first one missing."""
+def windows(directory: Path, screen: str, theme: str) -> list[Window]:
+    """
+    The captures of one page and theme, from `app-rv/` when it has any, else `proto-rv/`; fails if a window is missing
+    before or at the last captured index.
+    """
+    prefix = f"{screen}-{theme}-"
     for source in (directory / "app-rv", directory / "proto-rv"):
-        index = 1
-        while window := load(source, f"{screen}-{theme}-{index}"):
-            yield window
-            index += 1
-        if index > 1:
-            return
+        last = max(
+            (int(path.stem.removeprefix(prefix)) for path in source.glob(f"{prefix}*")
+             if path.suffix in {".png", ".json"} and path.stem.removeprefix(prefix).isdecimal()),
+            default=0,
+        )
+        found = []
+        for n in range(1, last + 1):
+            name = f"{prefix}{n}"
+            window = load(source, name)
+            if window is None:
+                missing = [f"{name}{ext}" for ext in (".png", ".json") if not (source / f"{name}{ext}").is_file()]
+                raise FileNotFoundError(f"{source}: missing {', '.join(missing)}")
+            found.append(window)
+        if found:
+            return found
+    return []
 
 
 def build(pages: list[dict], now_dir: Path, approved: dict[str, Path], baselines: dict, out: Path) -> list[dict]:
@@ -341,11 +357,11 @@ def build(pages: list[dict], now_dir: Path, approved: dict[str, Path], baselines
     for page in pages:
         base = bases[page["screen"]]
         for theme in THEMES:
-            screens = list(windows(now_dir, page["screen"], theme))
+            screens = windows(now_dir, page["screen"], theme)
             if not screens:
                 missing.append(f"{page['screen']}-{theme}")
                 continue
-            baseline = windows(approved[base.rev], base.screen, theme)
+            baseline = iter(windows(approved[base.rev], base.screen, theme))
             for n, window in enumerate(screens, start=1):
                 before = next(baseline, None)
                 drawn = sheet({**page, "screens": len(screens)}, theme, n, window, before, base.rev)
@@ -381,7 +397,7 @@ def main() -> None:
     try:
         baselines = json.loads(args.baselines.read_text())
         entries = build(json.loads(args.pages.read_text()), args.now, approved_dirs(args.approved), baselines, args.out)
-    except BaselineError as error:
+    except (BaselineError, FileNotFoundError) as error:
         parser.error(str(error))
     print(f"{len(entries)} sheets, {sum(e['red'] for e in entries)} red marks, in {args.out}")
 

@@ -21,8 +21,10 @@ cat > "$page/RvCleanPage.kt" <<'KT'
 internal fun RvCleanPage() {
     // Text(" a comment may name Text( and 16.dp")
     val note = """
-        the raw text's own line
+        Text( and Icon( are examples
     """ // and a comment after the closing quotes: Text(" is no call")
+    val sample = "Text( with ${format("Icon(")}"
+    val index = 0 /* Text("comment") */
     RvText("clean", Rv.type.rowTitle, Modifier.padding(RvSpace.gutter).rvRowPress(Role.Button, {}))
 }
 KT
@@ -40,6 +42,7 @@ plant colour 'Box(Modifier.background(Color.White))'
 plant style 'RvText("x", TextStyle(fontSize = 15.sp))'
 plant widget 'Text("a raw Text")'
 plant widget 'Icon(painterResource(R.drawable.x), null)'
+plant widget 'androidx.compose.material3.Text("a qualified raw Text")'
 plant click 'Box(Modifier.clickable { })'
 plant click 'Box(Modifier.selectable(true, onClick = { }))'
 # A page-built add row (the 策略 page's 新增規則 before RvAddRow): the add glyph in the page's own disc or glyph.
@@ -57,6 +60,12 @@ plant tint 'RvIconDisc(R.drawable.rv_sym_delete, Rv.colors.error)'
 plant tint 'RvIconDisc(R.drawable.rv_sym_delete, color = Rv.colors.error)'
 # A `//` inside a string literal starts no comment, so what follows the string is still read.
 plant widget 'val note = "see https://doona.dev // the site"; Text("a raw Text")'
+plant widget 'val note = "example: ${Text("x")}"'
+plant widget 'val note = """example: ${list.map { Text(it) }}"""'
+plant widget 'val n = 1 /* " */
+    Text("x")'
+plant widget 'val index = 0 /* """ /* nested */
+    */ Text("a raw Text")'
 plant dp "val quote = '\"'; Box(Modifier.padding(13.dp))"
 # A `"""` raw string runs over lines: its text may hold a `//`, and what follows its closing quotes is code again.
 # (The gate once read each line alone: the `//` in the raw text hid the call after the closing quotes.)
@@ -70,6 +79,13 @@ out=$(gate "$none") || { echo "FAIL: a class named Icon was read as a call: $out
 echo "ok: a class named after a widget is no call"
 plant widget 'Icon(painterResource(R.drawable.x), null)'
 rm "$page/RvDeclared.kt" "$page/RvPlanted.kt"
+
+(
+    tmp="$tmp/main-only"
+    page="$tmp/app/src/main/kotlin/dev/doona/android/feature/settings"
+    mkdir -p "$page"
+    plant widget 'Text("a feature page without RV imports")'
+)
 
 # An allowlist line: at its measure it passes, below the measure it fails (new hit), above it fails (stale).
 printf '@Composable\ninternal fun RvTwo() {\n    Text("a")\n    Text("b")\n}\n' > "$page/RvTwo.kt"

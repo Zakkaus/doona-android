@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
@@ -123,32 +122,6 @@ internal enum class RvLaunch(val action: String?) {
 }
 
 /**
- * How the sample starts: [connected] or not, whether connecting [fails], the [page] on top of its tab home (a route
- * such as `nodes` or `settings`) or a whole stack of [routes] (such as `policy`, `rules`), whether a latency [test] runs
- * a second after launch (for recording it), the shortcut it was [launch]ed by, whether 全部規則 holds two [pending]
- * quick rules, and whether it is the [firstRun], when 連線 explains the VPN and the first connection the notification
- * before each is asked ([RvPermissionAsks]).
- */
-@Immutable
-internal data class RvSampleStart(
-    val connected: Boolean = true,
-    val fails: Boolean = false,
-    val page: String? = null,
-    val test: Boolean = false,
-    val launch: RvLaunch = RvLaunch.None,
-    val routes: List<String>? = null,
-    val pending: Boolean = false,
-    val firstRun: Boolean = false,
-) {
-    val stack: List<String>
-        get() = routes?.takeIf { it.isNotEmpty() } ?: when (page) {
-            null, ACTIVITY -> listOf(ACTIVITY)
-            SETTINGS -> listOf(SETTINGS)
-            else -> listOf(ACTIVITY, page)
-        }
-}
-
-/**
  * The whole sample as [RvPreviewActivity] shows it, moving as [options] say: the pages on [RvStackHost], 活動 with its
  * pull-down to the node picker, and what the sample runs by itself ([RvSampleRun]). The theme follows 主題's choice and
  * cross-fades when it changes.
@@ -233,7 +206,7 @@ private fun RvSamplePage(
         // The search page: the node picker, its field the search pill's; a picked node becomes the main one.
         SEARCH -> RvNodePickerSample(
             run.nodes,
-            RvData.subscriptions,
+            run.subscriptions,
             run.currentId,
             onPick = {
                 run.currentId = it
@@ -242,6 +215,7 @@ private fun RvSamplePage(
             onDetail = { pages.push("$NODE:$it") },
             onClose = pages.pop,
             searchPage = true,
+            onAdd = { pages.push(RvSubsRoutes.ADD) },
         )
 
         NODES -> RvNodesPage(RvNodesPageState(run.nodes, setOf(run.currentId)), onBack = pages.pop, onOpen = { pages.push("$NODE:$it") }, onAllNodes = {})
@@ -264,7 +238,7 @@ private fun RvSamplePage(
 
         in RvSettingsPreviewRoutes.all -> RvSettingsPreview(route, pages.push, pages.pop)
 
-        in RvPolicyPreviewRoutes.all -> RvPolicyPreview(route, policy, settings, pages.push, pages.pop, pages.tab)
+        in RvPolicyPreviewRoutes.all -> RvPolicyPreview(route, policy, settings, pages.push, pages.pop, pages.tab, run.nodes, run.subscriptions)
 
         else -> OtherPage(route, run, options, pages, picking)
     }
@@ -274,13 +248,13 @@ private fun RvSamplePage(
 @Composable
 private fun OtherPage(route: String, run: RvSampleRun, options: RvMotionOptions, pages: RvSamplePages, picking: Boolean) {
     when (route.substringBefore(':')) {
-        in RvSubsRoutes.all -> RvSubsRoute(route, pages.push, pages.pop)
+        in RvSubsRoutes.all -> RvSubsRoute(route, run, pages.push, pages.pop)
 
         GALLERY -> RvGalleryScreen(onBack = pages.pop)
 
         WELCOME -> RvWelcome(onAdd = { pages.push(RvSubsRoutes.ADD) })
 
-        CONNECTIONS -> ConnectionsPage(route, pages)
+        CONNECTIONS -> ConnectionsPage(route, pages, run.status is Status.Running)
 
         CONNECTION -> {
             val i = route.substringAfter(':').toInt()
@@ -354,10 +328,10 @@ private fun PerAppPage(route: String, settings: RvSettingsState, onSettings: (Rv
 
 /** 連線; `connections:off` shows it with the tunnel off, and 連線 there opens it connected. */
 @Composable
-private fun ConnectionsPage(route: String, pages: RvSamplePages) {
+private fun ConnectionsPage(route: String, pages: RvSamplePages, running: Boolean) {
     var query by rememberSaveable { mutableStateOf<String?>(null) }
     val routes = RvConnectionsRoutes(open = { pages.push("$CONNECTION:$it") }, query = { query = it }, tab = pages.tab)
-    RvConnectionsPage(RvPolicyData.connections, routes, query, connected = !route.endsWith(":off"))
+    RvConnectionsPage(RvPolicyData.connections, routes, query, connected = running && !route.endsWith(":off"))
 }
 
 /**
@@ -370,6 +344,7 @@ private fun ActivityPage(route: String, run: RvSampleRun, options: RvMotionOptio
     val pull = rememberRvPullState(picking)
     // The outbound card's mode row and 查看全部 open 策略; a rule group opens its group's page there.
     val toPolicy = { pages.tab(RV_NAV_POLICY) }
+    val add = { pages.push(RvSubsRoutes.ADD) }
     val routes = RvActivityRoutes(
         traffic = { pages.push(TRAFFIC) },
         stats = { pages.push(STATS) },
@@ -395,14 +370,18 @@ private fun ActivityPage(route: String, run: RvSampleRun, options: RvMotionOptio
         pull,
         activity = { look ->
             val onAction: (ActivityAction) -> Unit = { if (it == ActivityAction.Disconnect) run.disconnect() }
-            RvActivityScreenSample(run.activity(rememberShownSecond({ run.second }, look)), onAction, run.asks::connect, routes, nodes = run.nodes, subscriptions = run.subscriptions, pull = look, hero = options.hero)
+            RvActivityScreenSample(
+                run.activity(rememberShownSecond({ run.second }, look)), onAction, run.asks::connect, routes,
+                nodes = run.nodes, subscriptions = run.subscriptions, pull = look, hero = options.hero,
+                noSubscription = if (run.subscriptions.isEmpty()) add else null,
+            )
         },
         picker = { motion ->
             val pick: (String) -> Unit = {
                 run.currentId = it
                 motion.close()
             }
-            RvNodePickerSample(run.nodes, RvData.subscriptions, run.currentId, pick, onDetail = { pages.push("$NODE:$it") }, onClose = motion.close, section = motion.section, stretch = motion.stretch)
+            RvNodePickerSample(run.nodes, run.subscriptions, run.currentId, pick, onDetail = { pages.push("$NODE:$it") }, onClose = motion.close, section = motion.section, stretch = motion.stretch, onAdd = add)
         },
     )
     if (name == RvSubsRoutes.IMPORT) ImportSheet(pages)
@@ -458,14 +437,12 @@ internal class RvSampleRun(private val scope: CoroutineScope, connected: Boolean
         private set
     var second by mutableIntStateOf(0)
     var nodes by mutableStateOf(RvData.nodes)
-        private set
     var currentId by mutableStateOf(RvData.CURRENT_ID)
     var testing by mutableStateOf(false)
         private set
     var testingNodes by mutableStateOf(emptySet<String>())
         private set
     var subscriptions by mutableStateOf(RvData.subscriptions)
-        private set
     var updating by mutableStateOf(emptySet<String>())
         private set
     private var rounds = 0
@@ -547,9 +524,8 @@ internal class RvSampleRun(private val scope: CoroutineScope, connected: Boolean
 
     /** Removes the subscription and its nodes; when the main node goes with them, the fastest left takes its place. */
     fun delete(id: String) {
-        val gone = subscriptions.firstOrNull { it.id == id } ?: return
-        subscriptions = subscriptions - gone
-        nodes = nodes.filterNot { it.subscription == gone.name }
+        subscriptions = subscriptions.filterNot { it.id == id }
+        nodes = nodes.filterNot { it.subscriptionId == id }
         if (nodes.none { it.id == currentId }) nodes.fastest(1).firstOrNull()?.let { currentId = it.id }
     }
 
@@ -597,4 +573,4 @@ internal const val CONNECTION = "connection"
 internal const val GALLERY = "gallery"
 internal const val WELCOME = "welcome"
 internal const val STATE = "state"
-private val TABS = mapOf(RV_NAV_ACTIVITY to ACTIVITY, RV_NAV_POLICY to RvPolicyPreviewRoutes.POLICY, RV_NAV_SETTINGS to SETTINGS, RV_NAV_CONNECTIONS to CONNECTIONS)
+internal val TABS = mapOf(RV_NAV_ACTIVITY to ACTIVITY, RV_NAV_POLICY to RvPolicyPreviewRoutes.POLICY, RV_NAV_SETTINGS to SETTINGS, RV_NAV_CONNECTIONS to CONNECTIONS)

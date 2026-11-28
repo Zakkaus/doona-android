@@ -13,8 +13,19 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import pytest
 import rv_board
+import rv_sheet
 
 DEFAULT = {"default": {"rev": "3a2940ea", "why": "every page"}, "revs": []}
+
+
+def test_one_step_in_any_channel_is_a_changed_pixel():
+    old = Image.new("RGB", (4, 1))
+    now = old.copy()
+    now.putdata([(1, 0, 0), (0, 1, 0), (0, 0, 1), (0, 0, 0)])
+    board, count = rv_board.changes(now, old)
+    assert count == 3
+    for diff, red in ((board, rv_board.RED), (rv_sheet.changes(old, now), rv_sheet.RED)):
+        assert [diff.getpixel((i, 0)) == red for i in range(4)] == [True, True, True, False]
 
 
 def rule(kind, what, actual, expected, at, token=True):
@@ -156,6 +167,27 @@ def test_a_long_page_gets_a_sheet_for_every_window(tmp_path):
     assert (out / "long-dark-4.webp").is_file()
 
 
+@pytest.mark.parametrize("has_png", [False, True])
+def test_the_cli_rejects_an_incomplete_current_capture(tmp_path, monkeypatch, capsys, has_png):
+    now = tmp_path / "now"
+    for n in (1, 3):
+        write(now / "app-rv", f"long-light-{n}", layout([], height=1))
+    if has_png:
+        Image.new("RGB", (1, 1)).save(now / "app-rv" / "long-light-2.png")
+    pages, baselines = tmp_path / "pages.json", tmp_path / "baselines.json"
+    pages.write_text(json.dumps([{"page": "Long", "state": "Normal", "screen": "long"}]))
+    baselines.write_text(json.dumps(DEFAULT))
+    monkeypatch.setattr(
+        sys, "argv", ["rv_board.py", str(pages), str(now), "--baselines", str(baselines), "--approved", f"3a2940ea={tmp_path / 'a'}", "--out", str(tmp_path / "out")]
+    )
+    with pytest.raises(SystemExit) as failed:
+        rv_board.main()
+    assert failed.value.code == 2
+    error = capsys.readouterr().err
+    assert "long-light-2.json" in error
+    assert ("long-light-2.png" in error) == (not has_png)
+
+
 def test_each_page_compares_with_its_own_baseline_under_its_name_there(tmp_path):
     now, old, later, out = tmp_path / "now", tmp_path / "old", tmp_path / "later", tmp_path / "out"
     for theme in rv_board.THEMES:
@@ -190,11 +222,10 @@ def test_a_baseline_with_no_captures_or_a_screen_named_twice_is_an_error(tmp_pat
     assert rv_board.approved_dirs(["a=x", "b=y"]) == {"a": Path("x"), "b": Path("y")}
 
 
-def test_the_map_in_the_tree_names_each_screen_once_and_every_screen_is_on_the_board():
+def test_every_board_page_compares_with_the_last_review():
     tools = Path(__file__).parent
     baselines = json.loads((tools / "rv_board_baselines.json").read_text())
     screens = {p["screen"] for p in json.loads((tools / "rv_board_pages.json").read_text())}
-    named = rv_board.baseline_of(baselines)
-    # 服務規則 is named as it is after owner-fix3 renames it (rules-service-b at 4dcd0f57).
-    assert named.keys() - screens <= {"rules-service"}
     assert "welcome" in screens
+    assert rv_board.baseline_of(baselines).keys() <= screens
+    assert all(rv_board.baseline_for(baselines, screen) == rv_board.Baseline("f9bf785a", screen) for screen in screens)

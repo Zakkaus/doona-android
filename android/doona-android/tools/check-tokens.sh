@@ -40,3 +40,4 @@ if [ -n "$hits" ]; then
     exit 1
 fi
 echo "check-tokens: no dp, sp, colour or alpha literal outside designsystem/tokens and the RV token files, bar Defaults and Size objects and lines marked // literal"
+"$root/tools/check-scale.sh"

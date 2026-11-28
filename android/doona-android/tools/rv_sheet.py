@@ -47,7 +47,8 @@ def changes(before: Image.Image, after: Image.Image) -> Image.Image:
     width, height = after.size
     base = Image.new("RGB", (width, height), PAD)
     base.paste(before, (0, 0))
-    mask = ImageChops.difference(base, after).convert("L").point(lambda v: 255 if v > 8 else 0)
+    r, g, b = ImageChops.difference(base, after).split()
+    mask = ImageChops.lighter(ImageChops.lighter(r, g), b).point(lambda v: 255 if v else 0)
     if before.size[1] < height:
         mask.paste(255, (0, before.size[1], width, height))
     faded = Image.blend(after, Image.new("RGB", after.size, (255, 255, 255)), 0.7)

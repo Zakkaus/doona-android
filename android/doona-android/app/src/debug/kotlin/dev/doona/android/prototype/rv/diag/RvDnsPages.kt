@@ -105,7 +105,7 @@ internal fun RvDnsCacheSample(entries: List<RvDnsCacheEntry> = RvDiagData.cache)
     val count = NumberFormat.getIntegerInstance(Locale.ROOT).format(RvDiagData.CACHE_ENTRIES)
     RvDiagPage(
         sampleText("DNS 快取", "DNS cache"),
-        caption = sampleText("$count 筆快取項目僅存於記憶體，重新啟動後清空", "$count 条缓存记录仅保存在内存中，重启后清空", "$count entries in memory only, cleared on restart"),
+        caption = sampleText("$count 筆快取項目 / 僅存於記憶體，重新啟動後清空", "$count entries / in memory only, cleared on restart"),
         control = { RvFilterChipRow(RvChipPick(sampleText("全部類型", "All types")), RvChipPick(sampleText("不含已到期", "Without expired"))) },
         field = { glass, modifier -> RvSearchPill({}, modifier, glass, hint = sampleText("比對網域", "Match names")) },
     ) {
@@ -140,7 +140,7 @@ internal fun RvDnsLogSample(records: List<RvDnsLogRecord> = RvDiagData.dnsLog) {
     val format = rememberRvFormat()
     RvDiagPage(
         sampleText("DNS 記錄", "DNS log"),
-        caption = sampleText("已保留 ${RvDiagData.LOG_RETAINED} 筆記錄，已載入 ${RvDiagData.LOG_LOADED} 筆", "已保留 ${RvDiagData.LOG_RETAINED} 条记录，已加载 ${RvDiagData.LOG_LOADED} 条", "${RvDiagData.LOG_RETAINED} retained, ${RvDiagData.LOG_LOADED} loaded"),
+        caption = sampleText("已保留 ${RvDiagData.LOG_RETAINED} 筆記錄 / 已載入 ${RvDiagData.LOG_LOADED} 筆", "${RvDiagData.LOG_RETAINED} retained / ${RvDiagData.LOG_LOADED} loaded"),
         control = { RvFilterChipRow(RvChipPick(sampleText("全部類型", "All types")), RvChipPick(sampleText("全部裝置", "All devices"))) },
         field = { glass, modifier -> RvSearchPill({}, modifier, glass, hint = sampleText("網域包含", "Domain contains")) },
     ) {

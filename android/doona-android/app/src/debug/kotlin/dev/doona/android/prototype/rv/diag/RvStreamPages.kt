@@ -28,16 +28,23 @@ import dev.doona.android.prototype.rv.samples.sampleText
 @Composable
 internal fun RvLogsSample(records: List<RvLogRecord> = RvDiagData.logs) {
     val format = rememberRvFormat()
+    val logged = records.filterNot { it.gap }
+    val counts = logged.groupingBy { it.level }.eachCount()
+    val peak = logged.groupingBy { it.atEpochMs / RvDiagData.MINUTE }.eachCount().entries
+        .maxWithOrNull(compareBy<Map.Entry<Long, Int>> { it.value }.thenByDescending { it.key })?.key
     RvDiagPage(
         sampleText("日誌檢視", "Logs"),
-        caption = sampleText("引擎記錄：資訊及以上，串流中", "引擎记录信息及以上级别的日志，正在接收", "Engine records info and above, streaming"),
+        caption = sampleText("引擎記錄：資訊及以上 / 串流中", "Engine records info and above / Streaming"),
         control = { RvFilterChipRow(RvChipPick(sampleText("資訊及以上", "Info and above")), RvChipPick(sampleText("全部模組", "All targets"))) },
     ) {
         RvDiagSection(sampleText("日誌時間分布", "Log activity"))
         RvGutter {
             RvCard {
-                RvDiagData.logCounts.forEach { (level, n) -> RvStatRow(level.word.text(), sampleText("$n 筆", if (n == 1) "1 record" else "$n records")) }
-                RvStatRow(sampleText("記錄最多的時段", "Busiest"), RvDiagData.LOG_PEAK)
+                RvLevel.entries.filter { it != RvLevel.Debug || it in counts }.forEach { level ->
+                    val n = counts[level] ?: 0
+                    RvStatRow(level.word.text(), sampleText("$n 筆", if (n == 1) "1 record" else "$n records"))
+                }
+                RvStatRow(sampleText("記錄最多的時段", "Busiest"), peak?.let { "${format.time(it * RvDiagData.MINUTE)}–${format.time((it + 1) * RvDiagData.MINUTE)}" } ?: "—")
             }
         }
         RvDiagSection(sampleText("記錄", "Records"))
@@ -79,9 +86,8 @@ internal fun RvEventsSample(events: List<RvEvent> = RvDiagData.events) {
     RvDiagPage(
         sampleText("事件", "Events"),
         caption = sampleText(
-            "最近 ${RvDiagData.EVENT_LIMIT} 筆，新事件在前。已連線，可從上次位置續傳",
-            "最近 ${RvDiagData.EVENT_LIMIT} 条，新事件在前。已连接，支持断点续传",
-            "Latest ${RvDiagData.EVENT_LIMIT}, newest first. Connected and resumable",
+            "最近 ${RvDiagData.EVENT_LIMIT} 筆，新事件在前 / 已連線 / 可從上次位置續傳",
+            "Latest ${RvDiagData.EVENT_LIMIT}, newest first / Connected / Resumable",
         ),
         control = { RvFilterChip(sampleText("排除運作狀態更新", "Without runtime updates"), {}) },
     ) {

@@ -3,6 +3,8 @@ package dev.doona.android.prototype.rv.data
 import dev.doona.android.feature.model.fastest
 import dev.doona.android.feature.traffic.RV_TRAFFIC_POINTS
 import dev.doona.android.feature.traffic.RV_TRAFFIC_RANGE_SECONDS
+import dev.doona.android.prototype.rv.rvIdleActivity
+import dev.doona.android.prototype.rv.rvSampleTraffic
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -16,6 +18,14 @@ import org.junit.Test
 class RvSessionSecondsTest {
     private val session = RvData.session
     private val seconds = RvSessionSeconds(session)
+
+    @Test
+    fun stoppedTrafficKeepsHistoryWithoutLiveFigures() {
+        val state = rvSampleTraffic(rvIdleActivity(), session, seconds, 1)
+        assertEquals(false, state.sampled)
+        assertEquals(null, state.session)
+        assertEquals(seconds.chart(1, upload = false), state.chart?.down)
+    }
 
     @Test
     fun eachHourAddsUpToTheSessionsBytes() {

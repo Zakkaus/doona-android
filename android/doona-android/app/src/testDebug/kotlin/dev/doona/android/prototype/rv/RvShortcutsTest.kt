@@ -69,6 +69,17 @@ class RvShortcutsTest {
         assertEquals(0f, compose.onNodeWithTag(RV_PICKER).getUnclippedBoundsInRoot().top.value, EDGE)
     }
 
+    @Test
+    fun aRouteNamingNothingStartsOnActivityEvenBelowTheTopPage() {
+        val invalid = listOf("connection", "connection:999", "license:-1", "edit:13", "edit:999", "rule:999", "node:missing", "sub:missing", "group:missing")
+        for (route in invalid) {
+            assertEquals(route, listOf(ACTIVITY), RvSampleStart(page = route).stack)
+            assertEquals(route, listOf(ACTIVITY), RvSampleStart(routes = listOf(SETTINGS, route, THEME)).stack)
+        }
+        assertEquals(listOf(ACTIVITY, "connection:0"), RvSampleStart(page = "connection:0").stack)
+        assertEquals(listOf(SETTINGS, THEME), RvSampleStart(routes = listOf(SETTINGS, THEME)).stack)
+    }
+
     private fun app(start: RvSampleStart) {
         compose.setContent { CompositionLocalProvider(LocalHapticFeedback provides taps) { RvPreviewApp(RvMotionOptions(), start) } }
         compose.mainClock.autoAdvance = false

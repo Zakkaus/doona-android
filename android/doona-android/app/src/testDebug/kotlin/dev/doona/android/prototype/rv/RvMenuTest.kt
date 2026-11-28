@@ -109,6 +109,26 @@ class RvMenuTest {
         compose.mainClock.advanceTimeBy(RvMotion.MOVE_MS * 2L)
         compose.onAllNodesWithText(member.name).assertCountIs(0, "its nodes fold away with it")
         compose.onAllNodesWithText(lantern.name).assertCountIs(0, "the subscription is gone")
+        val last = RvData.subscriptions.first()
+        longPress(last.name)
+        compose.onNodeWithText(rvText(R.string.rv_menu_delete)).performClick()
+        compose.mainClock.advanceTimeBy(RvMotion.MENU_MS.toLong())
+        compose.onNodeWithText(rvText(R.string.rv_menu_delete)).performClick()
+        compose.mainClock.advanceTimeBy(RvMotion.MOVE_MS * 2L)
+        compose.onAllNodesWithText(last.name).assertCountIs(0, "the last subscription is gone")
+        inPicker(rvText(R.string.rv_add_subscription)).performClick()
+        compose.mainClock.advanceTimeBy(RvMotion.PUSH_MS * 2L)
+        compose.onNodeWithText(rvText(R.string.rv_add_clipboard)).performClick()
+        compose.onNodeWithText(rvText(R.string.rv_add_import)).performClick()
+        compose.mainClock.advanceTimeBy(2_000)
+        compose.onNodeWithText(rvText(R.string.rv_done)).performClick()
+        compose.mainClock.advanceTimeBy(RvMotion.PUSH_MS * 2L)
+        val imported = RvData.nodes.first { it.subscriptionId == last.id }
+        inPicker(imported.name).assertExists()
+        longPress(imported.name)
+        compose.onNodeWithText(rvText(R.string.rv_menu_details)).performClick()
+        compose.mainClock.advanceTimeBy(RvMotion.PUSH_MS * 2L)
+        compose.onNodeWithText(imported.host, useUnmergedTree = true).assertExists()
     }
 
     @Test

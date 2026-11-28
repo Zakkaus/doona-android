@@ -45,7 +45,8 @@ internal fun RvNodePickerSample(
     title: String = stringResource(R.string.rv_nodes_title),
     banner: RvNotice? = null,
     caption: String = stringResource(R.string.rv_main_node_hint),
-) = RvNodePicker(nodes, subscriptions, currentId, RvData.nowEpochMs, onPick, onDetail, onClose, section, stretch, searchPage, title, banner, caption)
+    onAdd: () -> Unit = {},
+) = RvNodePicker(nodes, subscriptions, currentId, RvData.nowEpochMs, onPick, onDetail, onClose, section, stretch, searchPage, title, banner, caption, onAdd = onAdd)
 
 /** The main node's picker on the sample: the subscriptions' end dates as of [RvData]'s now. The page takes it as a parameter. */
 @Composable

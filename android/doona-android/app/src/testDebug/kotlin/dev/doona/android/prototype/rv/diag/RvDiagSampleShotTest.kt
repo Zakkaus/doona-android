@@ -1,9 +1,11 @@
 package dev.doona.android.prototype.rv.diag
 
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
+import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvShot
 import org.junit.Rule
 import org.junit.Test
@@ -11,6 +13,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.util.TimeZone
 
 /**
  * The samples of the diagnostic pages (q-diag-pages), each a whole page: `proto-rv-diag-<screen>-<light|dark|en|fs200>`
@@ -160,6 +163,13 @@ class RvDiagSampleShotTest {
     @Test
     @Config(qualifiers = "+h1852dp")
     fun logsLight() = compose.rvShot("diag-logs", dark = false, before = { assertWhole() }) { RvLogsSample() }
+
+    @Test
+    fun busiestMinuteUsesLocalTime() {
+        TimeZone.setDefault(TimeZone.getTimeZone("GMT+08:00")) // Utc restores the previous zone after the test.
+        compose.rvContent(dark = false) { RvLogsSample() }
+        compose.onNodeWithText("18:21–18:22", useUnmergedTree = true).assertExists()
+    }
 
     @Test
     @Config(qualifiers = "+h1852dp")

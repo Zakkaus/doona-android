@@ -4,15 +4,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import dev.doona.android.designsystem.rv.RV_NAV_POLICY
+import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRuleState
 import dev.doona.android.feature.model.RvSettingsState
+import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.nodes.RvNodePicker
 import dev.doona.android.feature.nodes.RvNodePickerPage
+import dev.doona.android.feature.policies.RvPolicyProfile
 import dev.doona.android.feature.policies.RvPolicyRoutes
 import dev.doona.android.feature.policies.RvRuleDraft
 import dev.doona.android.feature.policies.RvRuleEditPage
@@ -24,6 +29,7 @@ import dev.doona.android.prototype.rv.SEARCH
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.nodes.RvNodePickerPageSample
 import dev.doona.android.prototype.rv.nodes.RvNodePickerSample
+import dev.doona.android.prototype.rv.subs.RvSubsRoutes
 
 /** The preview's 策略 state across its pages: the tab's own state, the quick rule, the template picked, held rules. */
 @Stable
@@ -96,19 +102,30 @@ internal fun RvPolicyPreview(
     push: (String) -> Unit,
     pop: () -> Unit,
     onTab: (Int) -> Unit,
+    nodes: List<RvNode> = RvData.nodes,
+    subscriptions: List<RvSubscription> = RvData.subscriptions,
 ) {
     val r = RvPolicyPreviewRoutes
+    val groups = remember(nodes) {
+        val current = nodes.associateBy { it.id }
+        rvSampleTargets.map { sample ->
+            val members = sample.members.mapNotNull { current[it.id] }
+            val selected = members.firstOrNull { it.id == sample.selectedId } ?: members.minByOrNull { it.latencyMs ?: Int.MAX_VALUE }
+            RvPolicyGroup(sample.id, sample.name, sample.kind, members, selected?.id.orEmpty())
+        }
+    }
+    val policy = state.policy.copy(choices = state.policy.choices.filter { (id, pick) -> groups.any { it.id == id && it.nodeOf(pick) != null } })
     when (route.substringBefore(':')) {
         r.GROUP -> {
-            val group = state.policy.group(RvPolicyData.group(route.substringAfter(':')))
-            RvPolicyGroupPage(group, onBack = pop, onSelect = { state.policy = state.policy.choose(group.id, it) }, onTest = {})
+            val group = policy.group(groups.first { it.id == route.substringAfter(':') })
+            RvPolicyGroupPage(group, onBack = pop, onSelect = { state.policy = policy.choose(group.id, it) }, onTest = {})
         }
 
         r.PICKER -> {
-            val main = state.policy.group(RvPolicyData.main)
+            val main = policy.group(groups.first())
             RvNodePickerPageSample(
-                RvData.nodes,
-                RvData.subscriptions,
+                nodes,
+                subscriptions,
                 main.selectedId,
                 state.pickerSort,
                 onSort = { state.pickerSort = it },
@@ -116,14 +133,15 @@ internal fun RvPolicyPreview(
                 onBack = pop,
                 onTest = {},
                 onSearch = { push(r.PICKER_SEARCH) },
+                onAdd = { push(RvSubsRoutes.ADD) },
             )
         }
 
         r.PICKER_SEARCH -> {
-            val main = state.policy.group(RvPolicyData.main)
+            val main = policy.group(groups.first())
             RvNodePickerSample(
-                RvData.nodes,
-                RvData.subscriptions,
+                nodes,
+                subscriptions,
                 main.selectedId,
                 onPick = {
                     state.policy = state.policy.choose(main.id, it)
@@ -132,6 +150,7 @@ internal fun RvPolicyPreview(
                 onDetail = { push("$NODE:$it") },
                 onClose = pop,
                 searchPage = true,
+                onAdd = { push(RvSubsRoutes.ADD) },
             )
         }
 
@@ -187,7 +206,9 @@ internal fun RvPolicyPreview(
                 tab = onTab,
                 search = { push(SEARCH) },
             )
-            RvPolicyScreenSample(state.policy, { state.policy = it }, routes)
+            val sample = rvSamplePolicyProfile
+            val profile = RvPolicyProfile(groups.first(), groups.drop(1), sample.rules, sample.ruleCount, nodes, subscriptions, sample.nowEpochMs, sample.source)
+            RvPolicyScreenSample(policy, { state.policy = it }, routes, profile = profile)
         }
     }
 }
