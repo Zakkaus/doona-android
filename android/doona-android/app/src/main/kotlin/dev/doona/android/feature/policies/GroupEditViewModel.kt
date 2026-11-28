@@ -6,7 +6,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.model.CoreNodePlaces
@@ -42,6 +41,7 @@ internal data class RvGroupMember(val id: String, val name: String, val group: B
 internal data class GroupEditUiState(
     val name: String = "",
     val members: List<RvGroupMember> = emptyList(),
+    val outbounds: List<String> = emptyList(),
     val source: String? = null,
     val read: HonkGroupConfig? = null,
     val draft: HonkGroupConfig? = null,
@@ -95,12 +95,13 @@ internal class GroupEditViewModel(
         try {
             val next = withContext(io) {
                 val read = HonkPolicyRead.read(api)
-                val group = read.groups.firstOrNull { it.id == groupId } ?: throw EngineException(ErrorCode.NotFound)
+                val group = read.groups.firstOrNull { it.id == groupId } ?: return@withContext GroupEditUiState(done = true)
                 val nodes = read.nodes(places)
                 val config = NativeGroupConfig(api).read(groupId)
                 GroupEditUiState(
                     name = group.name,
                     members = group.members.map { RvGroupMember(it.id, it.name, it.kind == MemberKind.Group, nodes[it.id]?.place?.flag) },
+                    outbounds = nodes.values.map { it.name } + read.groups.filter { it.id != groupId }.map { it.name },
                     source = groupSource(NativeConfig(api).config(), group.name),
                     read = config,
                     draft = config,

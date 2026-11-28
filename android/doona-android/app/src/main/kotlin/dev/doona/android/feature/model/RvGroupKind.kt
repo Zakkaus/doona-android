@@ -11,6 +11,7 @@ import dev.doona.android.R
 internal enum class RvGroupKind(@StringRes val label: Int, @DrawableRes val glyph: Int) {
     Select(R.string.rv_policy_kind_select, R.drawable.rv_sym_touch_app),
     Auto(R.string.rv_policy_kind_auto, R.drawable.rv_sym_bolt),
+    LoadBalance(R.string.policy_kind_loadbalance, R.drawable.rv_sym_call_split),
     Fallback(R.string.policy_kind_fallback, R.drawable.rv_sym_bolt),
 
     /** honk's Score, doona's `policy: score`: named and drawn as the templates name and draw it. */

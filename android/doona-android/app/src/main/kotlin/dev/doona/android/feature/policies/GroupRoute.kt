@@ -38,14 +38,15 @@ fun GroupRoute(
     onBack: () -> Unit,
     onNodeDetail: (String) -> Unit = {},
     onEdit: (() -> Unit)? = null,
+    onMissing: () -> Unit = onBack,
 ) {
     val viewModel: GroupViewModel = viewModel(factory = GroupViewModel.factory(nativeApi(), groupId))
-    GroupRoute(viewModel, groupId, onBack, onNodeDetail, onEdit)
+    GroupRoute(viewModel, groupId, onBack, onNodeDetail, onEdit, onMissing)
 }
 
 /** A group's page on a given [viewModel]: the page as [GroupRoute] draws it, for a caller (a test) that makes its own. */
 @Composable
-internal fun GroupRoute(viewModel: GroupViewModel, groupId: String, onBack: () -> Unit, onNodeDetail: (String) -> Unit = {}, onEdit: (() -> Unit)? = null) {
+internal fun GroupRoute(viewModel: GroupViewModel, groupId: String, onBack: () -> Unit, onNodeDetail: (String) -> Unit = {}, onEdit: (() -> Unit)? = null, onMissing: () -> Unit = onBack) {
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onResume() }
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     val group = ui.group
@@ -54,7 +55,7 @@ internal fun GroupRoute(viewModel: GroupViewModel, groupId: String, onBack: () -
     when {
         group != null && choice != null -> CompositionLocalProvider(LocalRvTesting provides ui.testing) {
             RvGroupPage(
-                RvGroupContent(group, ui.subscriptions, choice, ui.apply, ui.isScore, ui.nowEpochMs, ui.score),
+                RvGroupContent(group, ui.subscriptions, choice, ui.apply, ui.isScore, ui.nowEpochMs, ui.score, group.tcpLeaf, group.udpLeaf),
                 RvGroupActions(onBack, viewModel::onTap, onNodeDetail, viewModel::onApart, viewModel::onApply, viewModel::onTest, onEdit),
                 banner = failure?.let { groupBanner(it, viewModel::retry) },
             )
@@ -64,7 +65,7 @@ internal fun GroupRoute(viewModel: GroupViewModel, groupId: String, onBack: () -
 
         ui.loading -> RvGroupSkeleton(groupId.removePrefix(GROUP_ID_PREFIX), onBack)
 
-        else -> LaunchedEffect(Unit) { onBack() }
+        else -> LaunchedEffect(Unit) { onMissing() }
     }
 }
 

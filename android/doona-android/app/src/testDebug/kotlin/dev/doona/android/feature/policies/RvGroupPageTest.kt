@@ -152,6 +152,17 @@ class RvGroupPageTest {
     }
 
     @Test
+    fun scoreKeepsTheSelectedSubgroupWhenItsLeafIsUnknown() {
+        val inner = RvMemberGroup("inner", RvLabel.Text("Inner"), RvGroupKind.Select, null)
+        val group = RvPolicyGroup("outer", RvLabel.Text("Outer"), RvGroupKind.Score, emptyList(), inner.id, listOf(inner))
+        compose.rvContent(dark = false) {
+            RvGroupPage(RvGroupContent(group, emptyList(), RvApplyChoice(inner.id, "", true), RvApplyTo.Tcp, true, RvData.nowEpochMs), RvGroupActions())
+        }
+        assertTrue(shown("Inner") >= 2)
+        assertEquals(0, shown("TCP/UDP"))
+    }
+
+    @Test
     fun `nodes added by hand list under 組態內`() {
         val base = RvGroupFullSample.two
         val byHand = base.group.members.last().copy(id = "static-1", name = "Home Relay", subscription = "", subscriptionId = RV_INLINE)

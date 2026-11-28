@@ -91,6 +91,8 @@ internal class RvGroupContent(
     val score: Boolean,
     val nowEpochMs: Long,
     val evidence: ScoreGroup? = null,
+    val tcpLeaf: RvNode? = group.nodeOf(choice.tcpId),
+    val udpLeaf: RvNode? = group.nodeOf(choice.udpId),
 )
 
 /**
@@ -139,9 +141,7 @@ internal fun RvGroupPage(
     val pick = picked?.takeIf { it in sources }
     val scoped = group.members.filter { pick == null || it.subscriptionId == pick }
     val matching = scoped.filter { it.matches(typed.trim(), labels.getValue(it.id)) }.mapTo(mutableSetOf()) { it.id }
-    // The node each network's choice ends on: a chosen node, or the node a chosen member group ends on.
-    val ends = group.members.filter { choice.chosen(it.id) } + group.groups.filter { choice.chosen(it.id) }.mapNotNull { it.node }
-    val holders = ends.map { it.subscriptionId }.toSet()
+    val holders = listOfNotNull(content.tcpLeaf?.subscriptionId, content.udpLeaf?.subscriptionId)
     val open = sources.size <= RV_SECTIONS_OPEN_UP_TO
     // Score chooses the nodes, so a tap on one opens its detail rather than choose it.
     val pickNode = if (content.score) actions.detail else actions.tap
@@ -156,8 +156,8 @@ internal fun RvGroupPage(
     ) { titleBlock ->
         RvPageHeader(name, titleBlock, insets, caption = { Caption(group, content.score) })
         RvGutter(banner = banner) {
-            NetworkCard(group, choice, actions.detail, rows = !content.score) { actions.apart(!it.apart) }
-            if (content.score) ScoreCards(content.evidence, choice, group, actions.detail)
+            NetworkCard(choice, content.tcpLeaf, content.udpLeaf, actions.detail, rows = !content.score) { actions.apart(!it.apart) }
+            if (content.score) ScoreCards(content, actions.detail)
             if (choice.apart && !content.score) RvApplyCard(content.apply, actions.apply)
             if (group.groups.isNotEmpty()) MemberGroupsCard(group, choice, content.score, actions.tap)
         }
@@ -188,6 +188,16 @@ internal fun RvGroupPage(
                         SectionRow(node, label, order, choice, lead(choice, node.id, content.score), pickNode, actions.detail)
                     },
                 )
+            }
+        }
+        val builtins = scoped.filter { it.subscriptionId == null && it.id in matching }
+        if (builtins.isNotEmpty()) {
+            RvGutter {
+                RvCard {
+                    rvSectionOrder(builtins, sorted, titles).forEachIndexed { order, node ->
+                        SectionRow(node, labels.getValue(node.id), order, choice, lead(choice, node.id, content.score), pickNode, actions.detail)
+                    }
+                }
             }
         }
         when {
@@ -285,17 +295,16 @@ private fun lead(choice: RvApplyChoice, id: String, score: Boolean): String? {
  * under it name each network's node.
  */
 @Composable
-internal fun NetworkCard(group: RvPolicyGroup, choice: RvApplyChoice, onDetail: (String) -> Unit, rows: Boolean = true, onApart: (RvApplyChoice) -> Unit) {
-    val node = group::nodeOf
+internal fun NetworkCard(choice: RvApplyChoice, tcp: RvNode?, udp: RvNode?, onDetail: (String) -> Unit, rows: Boolean = true, onApart: (RvApplyChoice) -> Unit) {
     RvCard {
         RvCardHeader(stringResource(R.string.rv_nodes_in_use))
         RvSwitchRow(R.drawable.rv_sym_call_split, stringResource(R.string.rv_group_apart), choice.apart, onChange = { onApart(choice) })
         if (!rows) return@RvCard
-        if (choice.apart) {
-            NetworkRow(node(choice.tcpId), stringResource(R.string.ui_tcp), onDetail)
-            NetworkRow(node(choice.udpId), stringResource(R.string.ui_udp), onDetail)
+        if (choice.apart || tcp?.id != udp?.id) {
+            NetworkRow(tcp, stringResource(R.string.ui_tcp), onDetail)
+            NetworkRow(udp, stringResource(R.string.ui_udp), onDetail)
         } else {
-            NetworkRow(node(choice.tcpId), null, onDetail)
+            NetworkRow(tcp, null, onDetail)
         }
     }
 }
@@ -319,11 +328,12 @@ private fun NetworkRow(node: RvNode?, network: String?, onDetail: (String) -> Un
  * honk has not provided evidence about it.
  */
 @Composable
-private fun ScoreCards(evidence: ScoreGroup?, choice: RvApplyChoice, group: RvPolicyGroup, onDetail: (String) -> Unit) {
-    repeat(if (choice.apart) 2 else 1) { index ->
+private fun ScoreCards(content: RvGroupContent, onDetail: (String) -> Unit) {
+    val choice = content.choice
+    val split = choice.apart || choice.tcpId != choice.udpId || content.tcpLeaf?.id != content.udpLeaf?.id
+    repeat(if (split) 2 else 1) { index ->
         val udp = index == 1
-        val id = if (udp) choice.udpId else choice.tcpId
-        val label = if (!choice.apart) {
+        val label = if (!split) {
             R.string.rv_network_both
         } else if (udp) {
             R.string.ui_udp
@@ -331,18 +341,16 @@ private fun ScoreCards(evidence: ScoreGroup?, choice: RvApplyChoice, group: RvPo
             R.string.ui_tcp
         }
         // honk-gap:score-evidence
-        val network = if (udp) evidence?.udp else evidence?.tcp
+        val network = if (udp) content.evidence?.udp else content.evidence?.tcp
         if (network != null) {
-            RvScoreCard(stringResource(label), rvScorePick(network), group.members)
+            RvScoreCard(stringResource(label), rvScorePick(network), content.group.members)
         } else {
             RvCard {
                 RvCardHeader(stringResource(label), tag = stringResource(R.string.rv_score_coverage, RV_NO_VALUE))
-                val node = group.nodeOf(id)
-                if (node != null) {
-                    NetworkRow(node, null, onDetail)
-                } else {
-                    RvRow(null, group.groups.firstOrNull { it.id == id }?.name?.text() ?: RV_NO_VALUE, null)
-                }
+                val leaf = if (udp) content.udpLeaf else content.tcpLeaf
+                val memberId = if (udp) choice.udpId else choice.tcpId
+                // A chosen member group whose leaf honk has not resolved keeps its name; the leaf shows 「—」.
+                if (leaf != null) NetworkRow(leaf, null, onDetail) else RvStatRow(content.group.groups.firstOrNull { it.id == memberId }?.name?.text() ?: RV_NO_VALUE, RV_NO_VALUE)
             }
         }
     }

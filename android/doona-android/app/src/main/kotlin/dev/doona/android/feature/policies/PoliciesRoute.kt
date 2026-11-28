@@ -62,7 +62,7 @@ internal fun PoliciesRoute(viewModel: PoliciesViewModel, onOpenGroup: (String) -
             return RvGroupOptionPage(option, members, draft, {
                 default = it.config.defaultMemberId
                 final = it.config.finalOutbound
-            }, back)
+            }, back, all.map { it.name })
         }
         return RvGroupEditPage(
             name, members, draft, draft, { kind = it.policy.kind }, back, {}, routes.config, { picking = it },
@@ -70,7 +70,6 @@ internal fun PoliciesRoute(viewModel: PoliciesViewModel, onOpenGroup: (String) -
             available = all, onMembers = { selected ->
                 ids = ArrayList(selected)
                 default = default?.takeIf { it in selected }
-                final = final?.takeIf { value -> value == "direct" || value == "block" || selected.any { byId[it]?.name == value } }
             },
         )
     }

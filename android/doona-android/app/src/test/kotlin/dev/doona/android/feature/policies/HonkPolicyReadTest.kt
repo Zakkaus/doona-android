@@ -33,6 +33,21 @@ class HonkPolicyReadTest {
     }
 
     @Test
+    fun aSelectedSubgroupCanResolveToDifferentLeavesOrNoLeafOnUdp() {
+        val api = PolicyHonkFixtures.honkGroups()
+        val original = HonkFixtures.body("groups/honk-groups-g-出口")
+        val (head, udp) = original.split("\"udp\":", limit = 2)
+        for (leaf in listOf("n-0001938e00000000", null)) {
+            val tail = udp.replaceFirst("\"n-0001938f00000000\"", leaf?.let { "\"$it\"" } ?: "null")
+            api.on("GET", "/api/v1/groups/g-出口", 200, "$head\"udp\":$tail")
+            val read = HonkPolicyRead.read(api)
+            val group = read.policyGroups(read.nodes(CoreNodePlaces)).getValue("g-出口")
+            assertEquals("g-香港", group.selectedId)
+            assertEquals("n-0001938f00000000" to leaf, group.tcpLeaf?.id to group.udpLeaf?.id)
+        }
+    }
+
+    @Test
     fun theMainGroupIsTheOneTheFallbackSendsTo() {
         assertNull("the contract's fallback is block", HonkPolicyRead.read(honk).mainGroupId)
 

@@ -43,7 +43,7 @@ class PolicyMappingTest {
     fun `each kind reads as its own`() {
         assertEquals(RvGroupKind.Select, rvGroupKind(GroupKind.Selector))
         assertEquals(RvGroupKind.Auto, rvGroupKind(GroupKind.UrlTest))
-        assertEquals(RvGroupKind.Auto, rvGroupKind(GroupKind.LoadBalance))
+        assertEquals(RvGroupKind.LoadBalance, rvGroupKind(GroupKind.LoadBalance))
         assertEquals(RvGroupKind.Fallback, rvGroupKind(GroupKind.Fallback))
         assertEquals(RvGroupKind.Score, rvGroupKind(GroupKind.Score))
     }
