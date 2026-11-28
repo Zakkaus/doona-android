@@ -7,6 +7,9 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.prototype.rv.data.RV_NOW
 import dev.doona.android.prototype.rv.samples.sampleText
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 /** A word of the samples in zh-TW, English and zh-CN; a value honk prints as it is (an address, a code) is the same in all three. */
 @Immutable
@@ -21,6 +24,7 @@ internal class RvFact(val label: RvWord, val value: RvWord)
 
 /** A connection state as `GET /flows` reports it (`observed` to `unknown`), in doona web's words. */
 internal enum class RvFlowState(val word: RvWord, val trouble: Boolean = false) {
+    Observed(RvWord("已觀測", "Observed", "已观测")),
     Active(RvWord("進行中", "Active")),
     Closed(RvWord("已關閉", "Closed")),
     Blocked(RvWord("已封鎖", "Blocked")),
@@ -29,13 +33,11 @@ internal enum class RvFlowState(val word: RvWord, val trouble: Boolean = false) 
 
 /** Where a flow went: a group and the node it picked, or honk's `direct` or `block`. */
 @Immutable
-internal class RvFlowOut(val group: RvWord, val node: String? = null) {
-    val builtin: Boolean get() = node == null
-}
+internal class RvFlowOut(val group: RvWord, val node: String? = null)
 
 /** A recorded stage of a flow's trace (`FlowStep`): its stage, when it was observed, its elapsed time and its fields. */
 @Immutable
-internal class RvFlowStep(val stage: RvWord, val atEpochMs: Long, val elapsedUs: Long, val facts: List<RvFact>)
+internal class RvFlowStep(val stage: RvWord, val atEpochMs: Long?, val elapsedUs: Long?, val facts: List<RvFact>)
 
 /**
  * One record of `GET /flows` with the parts of `GET /flows/{id}` the samples show: the routing input (domain or
@@ -51,8 +53,8 @@ internal class RvFlow(
     val app: String,
     val packageName: String,
     val udp: Boolean,
-    val rule: String,
-    val out: RvFlowOut,
+    val rule: String?,
+    val out: RvFlowOut?,
     val state: RvFlowState,
     val startedAtEpochMs: Long,
     val recomputed: Boolean = false,
@@ -109,7 +111,7 @@ internal class RvDnsCacheEntry(val domain: String, val type: String, val status:
 internal class RvDnsLogRecord(
     val name: String,
     val type: String,
-    val src: String,
+    val src: String?,
     val status: String,
     val cached: Boolean,
     val upstream: String?,
@@ -126,11 +128,12 @@ internal enum class RvLevel(val word: RvWord, @DrawableRes val glyph: Int) {
     Warn(RvWord("警告", "Warning"), R.drawable.rv_nodes_ic_warning),
     Info(RvWord("資訊", "Info"), R.drawable.rv_sym_info),
     Debug(RvWord("除錯", "Debug"), R.drawable.rv_settings_ic_description),
+    Trace(RvWord("追蹤", "Trace", "跟踪"), R.drawable.rv_settings_ic_description),
 }
 
 /** One record of the native log stream: its time, level, target, message and typed fields; or the gap marker. */
 @Immutable
-internal class RvLogRecord(val atEpochMs: Long, val level: RvLevel, val target: String, val message: String, val gap: Boolean = false)
+internal class RvLogRecord(val atEpochMs: Long, val level: RvLevel, val target: String?, val message: String, val fields: JsonObject? = null, val gap: Boolean = false)
 
 /** One native event (`GET /events`): its kind, its summary and when honk observed it. */
 @Immutable
@@ -271,17 +274,16 @@ internal object RvDiagData {
 
     private val byRules = RvWord("DNS 路由規則", "DNS routing rules")
     private val byDefault = RvWord("預設", "Default")
-    private const val GOOGLE_RULE = "qname(geosite:google) -> googledns"
 
     /** `www.youtube.com` A through Google's DoH upstream, a miss: the CNAME and the two addresses under it. */
-    val query = RvDnsResult(
+    private val queryA = RvDnsResult(
         "www.youtube.com.",
         "A",
         "NOERROR",
         cached = false,
         "googledns",
         byRules,
-        GOOGLE_RULE,
+        null,
         38,
         listOf(
             RvDnsAnswer(null, "CNAME", 86_400, "youtube-ui.l.google.com."),
@@ -289,9 +291,11 @@ internal object RvDiagData {
             RvDnsAnswer("youtube-ui.l.google.com.", "A", 300, "142.250.196.238"),
         ),
     )
+    val query = listOf(queryA, RvDnsResult(queryA.domain, "AAAA", "TIMEOUT", false, null, byRules, null, 9_962, emptyList()))
 
-    /** The cache holds 1,284 entries; a page of eight, positive and negative, one past its expiry and still served. */
+    /** Total usage is independent of the unexpired entries returned on this page. */
     const val CACHE_ENTRIES = 1_284
+    const val CACHE_CAPACITY = 4_096
     val cache = listOf(
         RvDnsCacheEntry("www.youtube.com.", "A", "NOERROR", RV_NOW + 5 * MINUTE, RV_NOW + 10 * MINUTE),
         RvDnsCacheEntry("www.youtube.com.", "AAAA", "NOERROR", RV_NOW + 5 * MINUTE, RV_NOW + 10 * MINUTE),
@@ -299,36 +303,42 @@ internal object RvDiagData {
         RvDnsCacheEntry("szshort.weixin.qq.com.", "A", "NOERROR", RV_NOW + 9 * MINUTE, RV_NOW + 14 * MINUTE),
         RvDnsCacheEntry("ipv6.msftconnecttest.com.", "AAAA", "NODATA", RV_NOW + 3 * MINUTE, null),
         RvDnsCacheEntry("telemetry.invalid.", "A", "NXDOMAIN", RV_NOW + 1 * MINUTE, null),
-        RvDnsCacheEntry("imap.gmail.com.", "A", "NOERROR", RV_NOW - 1 * MINUTE, RV_NOW + 4 * MINUTE),
         RvDnsCacheEntry("time.android.com.", "A", "NOERROR", RV_NOW + 12 * MINUTE, RV_NOW + 17 * MINUTE),
     )
 
-    /** 512 records retained, the newest 100 loaded; the first eight of them. */
     const val LOG_RETAINED = 512
-    const val LOG_LOADED = 100
     val dnsLog = listOf(
-        RvDnsLogRecord("www.youtube.com.", "A", "172.19.0.1:38211", "NOERROR", false, "googledns", byRules, GOOGLE_RULE, 38, RV_NOW - 9 * SECOND, query.answers),
+        RvDnsLogRecord("www.youtube.com.", "A", "172.19.0.1:38211", "NOERROR", false, "googledns", byRules, null, 38, RV_NOW - 9 * SECOND, queryA.answers),
         RvDnsLogRecord(
-            "www.youtube.com.", "AAAA", "172.19.0.1:38212", "NOERROR", true, null, byRules, GOOGLE_RULE, 0, RV_NOW - 9 * SECOND,
+            "www.youtube.com.", "AAAA", "172.19.0.1:38212", "NOERROR", true, null, byRules, null, 0, RV_NOW - 9 * SECOND,
             listOf(RvDnsAnswer(null, "CNAME", 86_400, "youtube-ui.l.google.com."), RvDnsAnswer("youtube-ui.l.google.com.", "AAAA", 300, "2404:6800:4012:5::200e")),
         ),
         RvDnsLogRecord("chatgpt.com.", "HTTPS", "172.19.0.1:40116", "NOERROR", false, "cloudflare", byDefault, null, 52, RV_NOW - 140 * SECOND, listOf(RvDnsAnswer(null, "HTTPS", 300, "1 . alpn=h3,h2"))),
         RvDnsLogRecord("telemetry.invalid.", "A", "172.19.0.1:40502", "NXDOMAIN", false, "alidns", byDefault, null, 21, RV_NOW - 3 * MINUTE, emptyList()),
-        RvDnsLogRecord("imap.gmail.com.", "A", "172.19.0.1:36004", "SERVFAIL", false, "googledns", byRules, GOOGLE_RULE, 5_000, RV_NOW - 6 * MINUTE, emptyList()),
-        RvDnsLogRecord("szshort.weixin.qq.com.", "A", "172.19.0.1:35870", "NOERROR", false, "alidns", byRules, "qname(geosite:cn) -> alidns", 14, RV_NOW - 7 * MINUTE, listOf(RvDnsAnswer(null, "A", 600, "183.3.226.35"))),
+        RvDnsLogRecord("imap.gmail.com.", "A", "172.19.0.1:36004", "SERVFAIL", false, "googledns", byRules, null, 5_000, RV_NOW - 6 * MINUTE, emptyList()),
+        RvDnsLogRecord("szshort.weixin.qq.com.", "A", "172.19.0.1:35870", "NOERROR", false, "alidns", byRules, null, 14, RV_NOW - 7 * MINUTE, listOf(RvDnsAnswer(null, "A", 600, "183.3.226.35"))),
         RvDnsLogRecord("time.android.com.", "A", "172.19.0.1:33178", "NOERROR", true, null, byDefault, null, 0, RV_NOW - 9 * MINUTE, listOf(RvDnsAnswer(null, "A", 1_800, "216.239.35.4"))),
+        RvDnsLogRecord("dns.google.", "A", null, "NOERROR", false, "alidns", byDefault, null, 12, RV_NOW - 10 * MINUTE, listOf(RvDnsAnswer(null, "A", 300, "8.8.8.8"))),
     )
 
     /** The log: info and above as honk records it, with one gap; most messages are withheld as honk withholds them. */
     private const val WITHHELD = "[message withheld: not audited for native disclosure]"
     val logs = listOf(
-        RvLogRecord(RV_NOW - 12 * SECOND, RvLevel.Info, "honk_core::control::runtime", "Subscription runtime publication applied"),
-        RvLogRecord(RV_NOW - 13 * SECOND, RvLevel.Info, "honk_core::control::runtime", "Publishing accepted subscription body nodes=48"),
         RvLogRecord(RV_NOW - 47 * SECOND, RvLevel.Warn, "honk_core::outbound::health", WITHHELD),
         RvLogRecord(RV_NOW - 2 * MINUTE, RvLevel.Error, "honk_core::outbound::dial", WITHHELD),
-        RvLogRecord(RV_NOW - 2 * MINUTE, RvLevel.Info, "", "", gap = true),
-        RvLogRecord(RV_NOW - 3 * MINUTE, RvLevel.Info, "honk_core::control::runtime", "Standalone DNS listener started tcp=127.0.0.1:1053 udp=127.0.0.1:1053"),
-        RvLogRecord(RV_NOW - 3 * MINUTE, RvLevel.Info, "honk_core", "native API listener ready"),
+        RvLogRecord(RV_NOW - 2 * MINUTE, RvLevel.Info, null, "", gap = true),
+        RvLogRecord(
+            RV_NOW - 3 * MINUTE,
+            RvLevel.Info,
+            "honk_core::control::runtime",
+            "Standalone DNS listener started",
+            buildJsonObject {
+                put("native_withheld_fields", true)
+                put("tcp", false)
+                put("udp", true)
+            },
+        ),
+        RvLogRecord(RV_NOW - 3 * MINUTE, RvLevel.Info, "honk_core", "native API listener ready", buildJsonObject { put("native_withheld_fields", true) }),
         RvLogRecord(RV_NOW - 3 * MINUTE, RvLevel.Warn, "honk_core::dns::upstream", WITHHELD),
     )
 

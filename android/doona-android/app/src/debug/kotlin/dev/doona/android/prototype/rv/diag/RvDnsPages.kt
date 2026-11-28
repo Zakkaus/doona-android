@@ -34,23 +34,29 @@ import java.util.Locale
 
 /**
  * DNS 查詢 (doona web's DNS › 查詢, `POST /dns/query`): the name to ask, then the request's settings as settings rows
- * (類型, 上游 with 自動 leaving the pick to `dns.routing`, 略過快取), and 查詢 at the bottom. A [result] follows under
+ * (類型, 上游 with 自動 leaving the pick to `dns.routing`, 略過快取), and 查詢 at the bottom. Each result follows under
  * its name and type: whether the cache answered, the status, the upstream, the route's source and rule, and the time;
  * then 回答記錄, each answer's data over its owner (when it is not the name asked, as down a CNAME chain), type and TTL.
  * An answer opens the quick rule for its address; 新增規則 starts one from the name; 檢視快取 opens DNS 快取 on it.
  */
 @Composable
-internal fun RvDnsQuerySample(result: RvDnsResult? = RvDiagData.query) {
+internal fun RvDnsQuerySample(results: List<RvDnsResult> = RvDiagData.query) {
     RvDiagPage(sampleText("DNS 查詢", "DNS query"), bottomAction = { RvPrimaryButton(sampleText("查詢", "Query"), {}) }) {
         RvGutter {
             RvFieldStack { RvTextField("www.youtube.com", {}, label = sampleText("網域", "Domain")) }
             RvSettingsCard {
-                RvSettingsNavRow(sampleText("類型", "Type"), R.drawable.rv_sym_dns, {}, "A")
+                RvSettingsNavRow(sampleText("類型", "Type"), R.drawable.rv_sym_dns, {}, results.ifEmpty { RvDiagData.query }.joinToString(SEPARATOR) { it.type })
                 RvSettingsNavRow(sampleText("上游", "Upstream"), R.drawable.rv_sym_link, {}, sampleText("自動", "Automatic"))
                 RvSwitchRow(R.drawable.rv_sym_sync_alt, sampleText("略過快取", "Bypass cache"), false, onChange = {})
             }
         }
-        result?.let { Result(it) }
+        results.forEach { Result(it) }
+        if (results.isNotEmpty()) {
+            RvGutter {
+                RvCard { RvAddRow(sampleText("新增規則", "Add rule"), {}) }
+                RvCard { RvDiagNavRow(R.drawable.rv_sym_memory, sampleText("檢視快取", "View cache")) }
+            }
+        }
     }
 }
 
@@ -67,10 +73,7 @@ private fun Result(result: RvDnsResult) {
             RvStatRow(sampleText("耗時", "Elapsed"), ms(result.elapsedMs))
         }
     }
-    Answers(result.answers, result.domain, result.status) {
-        RvCard { RvAddRow(sampleText("新增規則", "Add rule"), {}) }
-        RvCard { RvDiagNavRow(R.drawable.rv_sym_memory, sampleText("檢視快取", "View cache")) }
-    }
+    Answers(result.answers, result.domain, result.status) {}
 }
 
 /** 回答記錄: each answer as a row, or with none the library's empty caption with the [status] honk answered; then [after]. */
@@ -140,7 +143,7 @@ internal fun RvDnsLogSample(records: List<RvDnsLogRecord> = RvDiagData.dnsLog) {
     val format = rememberRvFormat()
     RvDiagPage(
         sampleText("DNS 記錄", "DNS log"),
-        caption = sampleText("已保留 ${RvDiagData.LOG_RETAINED} 筆記錄 / 已載入 ${RvDiagData.LOG_LOADED} 筆", "${RvDiagData.LOG_RETAINED} retained / ${RvDiagData.LOG_LOADED} loaded"),
+        caption = sampleText("已保留 ${RvDiagData.LOG_RETAINED} 筆記錄 / 已載入 ${records.size} 筆", "${RvDiagData.LOG_RETAINED} retained / ${records.size} loaded"),
         control = { RvFilterChipRow(RvChipPick(sampleText("全部類型", "All types")), RvChipPick(sampleText("全部裝置", "All devices"))) },
         field = { glass, modifier -> RvSearchPill({}, modifier, glass, hint = sampleText("網域包含", "Domain contains")) },
     ) {
@@ -181,7 +184,7 @@ internal fun RvDnsRecordSample(record: RvDnsLogRecord = RvDiagData.dnsLog.first(
         RvGutter {
             RvCard {
                 RvStatRow(sampleText("類型", "Type"), record.type)
-                RvStatRow(sampleText("裝置", "Device"), record.src, valueKeepWords = false)
+                RvStatRow(sampleText("裝置", "Device"), record.src ?: sampleText("解析器自身", "The resolver itself"), valueKeepWords = false)
                 RvStatRow(sampleText("狀態", "State"), record.status)
                 RvStatRow(sampleText("快取", "Cache"), cacheText(record.cached))
                 RvStatRow(sampleText("上游", "Upstream"), record.upstream ?: NONE, valueKeepWords = false)
