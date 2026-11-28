@@ -3,6 +3,7 @@
     <string name="perapp_title">Per-app</string>
     <string name="perapp_policy_all">All apps</string>
     <string name="perapp_policy_only">Only checked</string>
+    <string name="perapp_checked_apps">Checked apps</string>
     <string name="perapp_policy_except">All but checked</string>
     <string name="perapp_save">Save</string>
     <string name="perapp_save_failed_reason">The setting was not saved. Try again.</string>

@@ -64,7 +64,6 @@ internal fun rvSampleEffectiveConfig(settings: RvSettingsState) = RvEffectiveCon
     subscriptions = RvData.subscriptions,
     dns = listOfNotNull(settings.dns?.address),
     dnsVia = RvLabel.Res(R.string.rv_main_node),
-    proxiedApps = settings.proxiedApps,
 )
 
 /**
@@ -81,7 +80,7 @@ internal fun RvEffectiveConfigPageSample(
     onExport: () -> Unit = {},
     truncated: Boolean = false,
     banner: RvNotice? = null,
-) = RvEffectiveConfigPage(policy, onBack, onRules, onCopy, onExport, truncated, banner, rvSampleEffectiveConfig(settings).takeIf { banner == null })
+) = RvEffectiveConfigPage(policy, onBack, onRules, onCopy, onExport, truncated, banner, rvSampleEffectiveConfig(settings).takeIf { banner == null }, settings.perApp)
 
 /** 範本 on the sample: the page with every template [RvTemplateData] has. The page itself takes the list as a parameter. */
 @Composable

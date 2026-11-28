@@ -82,7 +82,4 @@ internal data class RvSettingsState(
     val tileAdded: Boolean = true,
     val tileSheet: Boolean = false,
     val geoInterval: RvGeoInterval = RvGeoInterval.Daily,
-) {
-    /** How many apps 依 App checked. */
-    val proxiedApps: Int get() = perApp.packages.size
-}
+)

@@ -3,6 +3,7 @@
     <string name="perapp_title">依 App</string>
     <string name="perapp_policy_all">全部 App</string>
     <string name="perapp_policy_only">只有勾選的</string>
+    <string name="perapp_checked_apps">已勾選的 App</string>
     <string name="perapp_policy_except">勾選的以外</string>
     <string name="perapp_save">儲存</string>
     <string name="perapp_save_failed_reason">設定沒有寫入，請再試一次。</string>

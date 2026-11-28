@@ -29,8 +29,10 @@ import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rememberRvFormat
+import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvDnsUpstream
 import dev.doona.android.feature.model.RvLabel
+import dev.doona.android.feature.model.RvPerApp
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvPolicyState
@@ -60,6 +62,7 @@ internal fun RvEffectiveConfigPage(
     truncated: Boolean = false,
     banner: RvNotice? = null,
     config: RvEffectiveConfig?,
+    perApp: RvPerApp?,
     onTrace: () -> Unit = {},
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
@@ -89,8 +92,11 @@ internal fun RvEffectiveConfigPage(
             }
             Section(R.string.rv_effective_per_app) {
                 RvCard {
-                    RvStatRow(stringResource(R.string.rv_effective_apps_in), pluralStringResource(R.plurals.rv_effective_apps, config.proxiedApps, config.proxiedApps))
-                    RvStatRow(stringResource(R.string.rv_effective_apps_rest), stringResource(R.string.rv_effective_apps_rest_value))
+                    RvStatRow(stringResource(R.string.rv_group_edit_policy), perApp?.let { stringResource(it.policy.label) } ?: RV_NO_VALUE)
+                    if (perApp != null && perApp.policy != RvAppPolicy.All) {
+                        val count = perApp.packages.size
+                        RvStatRow(stringResource(R.string.perapp_checked_apps), pluralStringResource(R.plurals.rv_effective_apps, count, count))
+                    }
                 }
             }
             Section(R.string.rv_effective_source) {
@@ -132,7 +138,7 @@ private fun ModeCard(policy: RvPolicyState, main: RvPolicyGroup?) {
     }
     RvCard {
         RvStatRow(stringResource(R.string.rv_effective_mode), stringResource(mode))
-        main?.let { RvStatRow(stringResource(R.string.rv_main_node), policy.group(it).selected?.name.orEmpty(), valueKeepWords = false) }
+        main?.let { RvStatRow(stringResource(R.string.rv_main_node), policy.group(it).selected?.name ?: RV_NO_VALUE, valueKeepWords = false) }
     }
 }
 
@@ -148,7 +154,7 @@ private fun GroupsCard(policy: RvPolicyState, groups: List<RvPolicyGroup>) {
                 { RvIconDisc(group.kind.glyph) },
                 group.name.text(),
                 members,
-                titleEnd = group.selected?.let { node -> { RvText(node.name, Rv.type.rowValue, align = TextAlign.End) } },
+                titleEnd = { RvText(group.selected?.name ?: RV_NO_VALUE, Rv.type.rowValue, align = TextAlign.End) },
                 titleKeepWords = false,
                 subtitleKeepWords = false,
             )
@@ -201,7 +207,6 @@ internal data class RvEffectiveConfig private constructor(
     val subscriptions: List<RvSubscription>,
     val dns: List<String>,
     val dnsVia: RvLabel,
-    val proxiedApps: Int,
 ) {
     companion object {
         operator fun invoke(
@@ -212,8 +217,7 @@ internal data class RvEffectiveConfig private constructor(
             subscriptions: List<RvSubscription>,
             dns: List<String>,
             dnsVia: RvLabel,
-            proxiedApps: Int,
-        ) = RvEffectiveConfig(main, groups.toList(), rules.toList(), source, subscriptions.toList(), dns.toList(), dnsVia, proxiedApps)
+        ) = RvEffectiveConfig(main, groups.toList(), rules.toList(), source, subscriptions.toList(), dns.toList(), dnsVia)
     }
 }
 

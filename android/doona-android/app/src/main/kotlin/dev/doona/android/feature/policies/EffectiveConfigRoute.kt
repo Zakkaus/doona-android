@@ -16,7 +16,7 @@ import dev.doona.android.share.rememberEffectiveConfigActions
 
 /**
  * 檢視生效設定 (from 全部規則): builds the ViewModel and draws the page from its state while the screen is started. 複製
- * and 匯出 hand on the core's text; [onRules] opens 全部規則, [onTrace] 路由測試. A read that failed shows its banner with
+ * and 匯出 share the same redacted summary; [onRules] opens 全部規則, [onTrace] 路由測試. A read that failed shows its banner with
  * 重試.
  */
 @Composable
@@ -33,5 +33,5 @@ internal fun EffectiveConfigRoute(viewModel: EffectiveConfigViewModel, onBack: (
     val banner = ui.failure?.let {
         RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_effective_failed), stringResource(it.messageRes()), stringResource(R.string.rv_retry), viewModel::retry)
     }
-    RvEffectiveConfigPage(RvPolicyState(mode = ui.mode), onBack, onRules, actions.copy, actions.export, ui.truncated, banner, ui.config, onTrace)
+    RvEffectiveConfigPage(RvPolicyState(mode = ui.mode), onBack, onRules, actions.copy, actions.export, banner = banner, config = ui.config, perApp = ui.perApp, onTrace = onTrace)
 }
