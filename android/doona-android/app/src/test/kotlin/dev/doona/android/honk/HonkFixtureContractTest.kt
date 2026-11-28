@@ -165,15 +165,18 @@ class HonkFixtureContractTest {
         }
     }
 
-    private fun isType(value: JsonElement, type: String): Boolean = when (type) {
-        "null" -> value is JsonNull
-        "object" -> value is JsonObject
-        "array" -> value is JsonArray
-        "string" -> value is JsonPrimitive && value.isString
-        "boolean" -> value is JsonPrimitive && !value.isString && value.booleanOrNull != null
-        "integer" -> value is JsonPrimitive && !value.isString && value !is JsonNull && value.longOrNull != null
-        "number" -> value is JsonPrimitive && !value.isString && value !is JsonNull && value.doubleOrNull != null
-        else -> error("type $type")
+    private fun isType(value: JsonElement, type: String): Boolean {
+        val bare = (value as? JsonPrimitive)?.takeUnless { it.isString || it is JsonNull }
+        return when (type) {
+            "null" -> value is JsonNull
+            "object" -> value is JsonObject
+            "array" -> value is JsonArray
+            "string" -> value is JsonPrimitive && value.isString
+            "boolean" -> bare?.booleanOrNull != null
+            "integer" -> bare?.longOrNull != null
+            "number" -> bare?.doubleOrNull != null
+            else -> error("type $type")
+        }
     }
 
     private fun kind(value: JsonElement) = when (value) {
