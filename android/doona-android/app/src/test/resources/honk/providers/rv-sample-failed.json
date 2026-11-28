@@ -1,5 +1,6 @@
 {
   "providers": [
+    {"id":"inline","name":"inline","kind":"inline","url_redacted":null,"node_count":0,"updated_at":null,"expires_at":null,"traffic":null,"status":"ok","last_error":null,"download":null},
     {
       "id": "s1",
       "name": "Harbor Cloud",
@@ -18,7 +19,7 @@
         "code": "fetch_failed",
         "message": "The subscription could not be fetched.",
         "details": {
-          "stage": "connect"
+          "stage": "connection_failed", "node": null, "group_id": null
         }
       },
       "download": {

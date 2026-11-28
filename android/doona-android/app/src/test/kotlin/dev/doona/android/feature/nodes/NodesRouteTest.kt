@@ -239,7 +239,7 @@ class NodesRouteTest {
 
     @Test
     fun `a node of no subscription is listed under 組態內 in the picker, and the 訂閱 chip can pick it`() {
-        val vm = viewModel(Honk(SAMPLE + N("n-mine", "Home 01", provider = null, protocol = null)))
+        val vm = viewModel(Honk(SAMPLE + N("n-mine", "Home 01", provider = "inline", protocol = null)))
         compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeSearchRoute(vm, onClose = {}, onDetail = {}, onAdd = {}, onAddNode = {}) } }
         compose.waitForIdle()
         compose.onNodeWithText("In configuration").assertExists()
@@ -404,7 +404,7 @@ class NodesRouteTest {
 
     @Test
     fun `a node of no subscription names 組態內 as its source on its page`() {
-        val vm = viewModel(Honk(SAMPLE + N("n-mine", "Home 01", provider = null, protocol = null)))
+        val vm = viewModel(Honk(SAMPLE + N("n-mine", "Home 01", provider = "inline", protocol = null)))
         compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeRoute(vm, "n-mine", onBack = {}) } }
         compose.waitForIdle()
         compose.onNodeWithText("In configuration", useUnmergedTree = true).assertExists()
@@ -544,7 +544,7 @@ class NodesRouteTest {
             val health = n.latency?.let { """{"transport":"tcp","state":"healthy","latency_ms":$it,"observed_at":"2026-11-22T10:00:00Z","error":null}""" }.orEmpty()
             val sub = n.provider?.let { "\"$it\"" } ?: "null"
             val protocol = n.protocol?.let { "\"$it\"" } ?: "null"
-            return """{"id":"${n.id}","name":"${n.name}","protocol":$protocol,"stream_transport":null,"subscription_tag":$sub,"provider_id":$sub,""" +
+            return """{"id":"${n.id}","name":"${n.name}","protocol":$protocol,"stream_transport":null,"subscription_tag":${if (n.provider == "inline") "null" else sub},"provider_id":$sub,""" +
                 """"group_ids":[],"health":[$health]}"""
         }
 

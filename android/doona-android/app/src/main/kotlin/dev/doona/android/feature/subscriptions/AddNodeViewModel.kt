@@ -184,7 +184,7 @@ internal class AddNodeViewModel(
         reading = viewModelScope.launch {
             val read = attempt {
                 val all = nodes()
-                inlineNodes(all, providers()) to all.mapTo(HashSet()) { it.name }
+                inlineNodes(all) to all.mapTo(HashSet()) { it.name }
             }
             read.onSuccess { snapshot ->
                 val previous = catalogNodes.value

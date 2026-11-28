@@ -3,9 +3,6 @@ package dev.doona.android.feature.subscriptions
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.honk.Node
-import dev.doona.android.honk.Provider
-import dev.doona.android.honk.ProviderKind
-import dev.doona.android.honk.ProviderStatus
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -375,12 +372,10 @@ class AddNodeViewModelTest {
     }
 
     @Test
-    fun inlineNodesAreTheOnesOfNoProviderOrTheInlineOne() {
+    fun inlineNodesExcludeBuiltinsAndOtherSources() {
         fun node(id: String, provider: String?) = Node(id, id, "vless", subscriptionTag = null, providerId = provider, groupIds = emptyList(), health = emptyList())
-        fun provider(id: String, kind: ProviderKind) = Provider(id, id, kind, null, 0, null, null, null, ProviderStatus.Ok, null)
         val nodes = listOf(node("a", null), node("b", "inline"), node("c", "s1"), node("d", "f1"))
-        val providers = listOf(provider("inline", ProviderKind.Inline), provider("s1", ProviderKind.Subscription), provider("f1", ProviderKind.File))
-        assertEquals(listOf("a", "b"), inlineNodes(nodes, providers).map { it.id })
+        assertEquals(listOf("b"), inlineNodes(nodes).map { it.id })
     }
 
     private companion object {

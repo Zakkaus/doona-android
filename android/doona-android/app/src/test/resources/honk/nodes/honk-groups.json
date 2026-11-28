@@ -1233,7 +1233,7 @@
       "protocol": "trojan",
       "stream_transport": "tcp",
       "subscription_tag": null,
-      "provider_id": null,
+      "provider_id": "inline",
       "group_ids": [
         "g-出口"
       ],

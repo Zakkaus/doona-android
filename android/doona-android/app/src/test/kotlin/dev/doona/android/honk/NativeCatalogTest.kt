@@ -17,7 +17,7 @@ class NativeCatalogTest {
 
     @Test
     fun providersDecodeTrafficAndExpiryAsHonkSendsThem() {
-        val (harbor, lantern) = catalog.providers()
+        val (harbor, lantern) = catalog.providers().filter { it.kind == ProviderKind.Subscription }
 
         assertEquals("Harbor Cloud", harbor.name)
         assertEquals(ProviderKind.Subscription, harbor.kind)

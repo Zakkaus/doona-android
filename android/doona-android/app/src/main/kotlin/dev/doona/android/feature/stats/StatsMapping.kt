@@ -14,6 +14,7 @@ import dev.doona.android.honk.HealthState
 import dev.doona.android.honk.OutboundKind
 import dev.doona.android.honk.OutboundTraffic
 import dev.doona.android.honk.PolicyKind
+import dev.doona.android.honk.ProviderKind
 import dev.doona.android.honk.Transport
 import java.time.DayOfWeek
 import java.time.Instant
@@ -41,7 +42,7 @@ internal class StatsInput(
 internal fun rvStatsState(input: StatsInput, places: NodePlaces = CoreNodePlaces): RvStatsState {
     val profile = input.profile
     val nodes = honkActivityNodes(profile, places).nodes
-    val providers = profile?.providers.orEmpty()
+    val providers = profile?.providers.orEmpty().filter { it.kind == ProviderKind.Subscription }
     val now = Instant.ofEpochMilli(input.nowEpochMs).atZone(input.zone)
     val main = profile?.groups?.firstOrNull { it.name == profile.mainGroup }
     return RvStatsState(

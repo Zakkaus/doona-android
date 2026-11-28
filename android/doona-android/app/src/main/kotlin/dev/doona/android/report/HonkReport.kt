@@ -155,7 +155,7 @@ private fun selected(id: String?, group: Group, groups: Map<String, Int>, nodes:
     }
 }
 
-private fun Node.tcp() = health.firstOrNull { it.transport == Transport.Tcp }
+private fun Node.tcp() = latestProbe?.takeIf { it.transport == Transport.Tcp }
 
 private fun JsonObject.obj(key: String) = this[key] as? JsonObject
 

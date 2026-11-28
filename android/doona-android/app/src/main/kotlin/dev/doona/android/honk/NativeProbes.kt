@@ -14,17 +14,39 @@ import kotlinx.serialization.json.putJsonObject
 /** honk's probes through its native API. Blocking: run on `Dispatchers.IO`. */
 internal class NativeProbes(private val api: NativeApi) {
     /**
-     * Tests the direct members of each of [groupIds] by HTTP over TCP, from cold, all groups at once, and waits until
-     * every probe ends, polling them together; honk keeps the results as the members' health. A probe honk could not run fails with its error.
+     * Tests the direct members of each of [groups], then each user node of [nodes] in no group, by HTTP over TCP, from
+     * cold, and waits until every probe ends; honk keeps the results as the members' health. Groups run at once; a group
+     * over honk's 64-member limit is sent in lists of 64 member ids, one after another. A target that fails does not stop
+     * the others: the first failure is thrown once all have ended.
      */
-    suspend fun groups(groupIds: List<String>) {
-        val operations = groupIds.map { id ->
-            nativeJson.decodeFromString(OperationAccepted.serializer(), api.expect("POST", "/api/v1/probes", body(id))).href
+    suspend fun groups(groups: List<Group>, nodes: List<Node> = emptyList()) {
+        val failures = coroutineScope {
+            groups.map { group ->
+                async {
+                    try {
+                        val batches = if (group.members.size <= 64) listOf(null) else group.members.chunked(64)
+                        for (members in batches) {
+                            val reply = api.expect("POST", "/api/v1/probes", body(group.id, members))
+                            val operation = api.finished(nativeJson.decodeFromString(OperationAccepted.serializer(), reply).href)
+                            if (operation.status == OperationStatus.Failed) throw EngineException(operation.error?.errorCode() ?: ErrorCode.Internal)
+                        }
+                        null
+                    } catch (error: EngineException) {
+                        error
+                    }
+                }
+            }.awaitAll()
         }
-        val ended = coroutineScope { operations.map { async { api.finished(it) } }.awaitAll() }
-        ended.firstOrNull { it.status == OperationStatus.Failed }?.let { failed ->
-            throw EngineException(failed.error?.errorCode() ?: ErrorCode.Internal)
+        var failure = failures.firstOrNull { it != null }
+        for (target in nodes) {
+            if (target.providerId == null || target.groupIds.isNotEmpty()) continue
+            try {
+                node(target.id)
+            } catch (error: EngineException) {
+                if (failure == null) failure = error
+            }
         }
+        failure?.let { throw it }
     }
 
     /** Tests node [nodeId] the same way and waits until its probe ends; a probe honk could not run fails with its error. */
@@ -43,7 +65,7 @@ internal class NativeProbes(private val api: NativeApi) {
         operation.error?.let { throw EngineException(it.errorCode()) }
     }
 
-    private fun body(groupId: String) = buildJsonObject {
+    private fun body(groupId: String, members: List<GroupMember>?) = buildJsonObject {
         putJsonObject("target") {
             put("type", "group")
             put("group_id", groupId)
@@ -51,7 +73,7 @@ internal class NativeProbes(private val api: NativeApi) {
         put("kind", "http")
         putJsonArray("transport") { add("tcp") }
         put("ip_version", "any")
-        put("members", "direct")
+        if (members == null) put("members", "direct") else putJsonArray("members") { members.forEach { add(it.id) } }
         put("warmth", "cold")
     }.toString()
 }

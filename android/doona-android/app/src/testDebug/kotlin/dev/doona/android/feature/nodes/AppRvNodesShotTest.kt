@@ -221,11 +221,11 @@ class AppRvNodesShotTest {
         on("GET", "/api/v1/groups/g-Proxy", 200, UDP_SELECTION.replace(proxy, "$1\"$HK1\"$2\"$HK1\""))
     }
 
-    /** The sample with a node of no provider added to Proxy, as a profile lists one inline. */
+    /** The sample with a node written into the configuration (honk's inline provider) added to Proxy. */
     private fun inlineHonk(): FakeHonk = HonkFixtures.rvSample().apply {
         val nodes = Json.parseToJsonElement(HonkFixtures.body("nodes/rv-sample")).jsonObject
         val home = Json.parseToJsonElement(
-            """{"id":"$INLINE_ID","name":"Home 01","protocol":null,"subscription_tag":null,"provider_id":null,"group_ids":["g-Proxy"],"health":[]}""",
+            """{"id":"$INLINE_ID","name":"Home 01","protocol":null,"subscription_tag":null,"provider_id":"inline","group_ids":["g-Proxy"],"health":[]}""",
         )
         on("GET", "/api/v1/nodes", 200, JsonObject(nodes + ("nodes" to JsonArray(nodes.getValue("nodes").jsonArray + home))).toString())
     }
@@ -238,10 +238,10 @@ class AppRvNodesShotTest {
         compose.waitForIdle()
     }
 
-    /** A profile with no node: an empty Proxy and no provider. */
+    /** A profile with no node: an empty Proxy and only honk's inline provider. */
     private fun emptyHonk(): FakeHonk = HonkFixtures.rvSample().apply {
         on("GET", "/api/v1/nodes", 200, """{"nodes":[],"next_cursor":null}""")
-        on("GET", "/api/v1/providers", 200, """{"providers":[],"next_cursor":null}""")
+        on("GET", "/api/v1/providers", 200, HonkFixtures.body("providers/empty"))
         on("GET", "/api/v1/groups", 200, """[{"id":"g-Proxy","name":"Proxy"}]""")
         val proxy = Json.parseToJsonElement(HonkFixtures.body("groups/rv-sample-g-Proxy")).jsonObject
         on("GET", "/api/v1/groups/g-Proxy", 200, JsonObject(proxy + ("members" to JsonArray(emptyList()))).toString())

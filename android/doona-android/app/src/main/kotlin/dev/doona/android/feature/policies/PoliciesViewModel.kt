@@ -107,8 +107,8 @@ internal class PoliciesViewModel(
 
     /** Probes the members of every group. */
     fun testAll() {
-        val ids = read.value?.policies?.groups?.map { it.id } ?: return
-        perform(PolicyAction.TestAll) { NativeProbes(api).groups(ids) }
+        val groups = read.value?.policies?.groups ?: return
+        perform(PolicyAction.TestAll) { NativeProbes(api).groups(groups) }
     }
 
     /** Refreshes every subscription, one after another in honk's order; the first failure is the one shown. */

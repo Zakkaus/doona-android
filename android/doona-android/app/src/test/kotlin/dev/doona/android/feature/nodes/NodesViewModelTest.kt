@@ -91,8 +91,8 @@ class NodesViewModelTest {
     }
 
     @Test
-    fun aNodeOfNoProviderIsListedUnder組態內() = runTest {
-        val state = collected(honk(nodes = listOf(node("n-1", "Home", provider = null)))).ui.value.state
+    fun aNodeOfTheInlineProviderIsListedUnder組態內() = runTest {
+        val state = collected(honk(nodes = listOf(node("n-1", "Home", provider = "inline")))).ui.value.state
         assertTrue(state.node("n-1")!!.inline)
         assertEquals("", state.node("n-1")!!.subscription)
     }

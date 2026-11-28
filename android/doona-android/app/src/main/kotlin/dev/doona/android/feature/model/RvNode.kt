@@ -32,7 +32,7 @@ internal data class RvNode(
     val transport: String,
     val tls: Boolean,
     val subscription: String,
-    val subscriptionId: String,
+    val subscriptionId: String?,
     val history: List<Int?>,
     val shareable: Boolean,
     val trendMs: Int? = null,

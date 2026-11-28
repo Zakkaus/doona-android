@@ -112,8 +112,8 @@ class ActivityPageTest {
         compose.waitForIdle()
         compose.onNodeWithText(rvText(R.string.rv_failed_test_latency)).assertExists()
         compose.onNodeWithText(rvText(R.string.rv_retry)).performClick()
-        // A refused probe ends the test at the first group.
-        assertEquals(2, honk.probes())
+        // A refused group does not stop the others: each test tries all eight of the sample's groups.
+        assertEquals(16, honk.probes())
     }
 
     @Test

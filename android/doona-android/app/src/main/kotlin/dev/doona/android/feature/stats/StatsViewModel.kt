@@ -14,6 +14,7 @@ import dev.doona.android.honk.NativeProbes
 import dev.doona.android.honk.NativeRouting
 import dev.doona.android.honk.NativeRuntime
 import dev.doona.android.honk.OutboundTraffic
+import dev.doona.android.honk.ProviderKind
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -96,8 +97,8 @@ internal class StatsViewModel(
 
     /** 測試所有節點: a probe of every group's members. */
     fun testAll() = attempt(StatsTool.TestAll) {
-        val groups = profile.value?.groups ?: catalog.groups()
-        runCatching { probes.groups(groups.map { it.id }) }.exceptionOrNull()?.let { StatsFailure(StatsTool.TestAll, it.errorCode()) }
+        val snapshot = profile.value
+        runCatching { probes.groups(snapshot?.groups ?: catalog.groups(), snapshot?.nodes ?: catalog.nodes()) }.exceptionOrNull()?.let { StatsFailure(StatsTool.TestAll, it.errorCode()) }
     }
 
     /**
@@ -105,7 +106,7 @@ internal class StatsViewModel(
      * failed names the banner.
      */
     fun updateAll() = attempt(StatsTool.UpdateAll) {
-        val providers = profile.value?.providers ?: catalog.providers()
+        val providers = (profile.value?.providers ?: catalog.providers()).filter { it.kind == ProviderKind.Subscription }
         val results = providers.map { provider -> async { provider to runCatching { catalog.refreshProvider(provider.id) }.exceptionOrNull() } }.awaitAll()
         results.firstNotNullOfOrNull { (provider, error) -> error?.let { StatsFailure(StatsTool.UpdateAll, it.errorCode(), provider.name) } }
     }

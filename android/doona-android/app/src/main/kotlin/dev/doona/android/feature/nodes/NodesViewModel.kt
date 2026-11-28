@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.feature.model.NodePlaces
+import dev.doona.android.honk.Group
 import dev.doona.android.honk.NativeApi
 import dev.doona.android.honk.NativeCatalog
 import dev.doona.android.honk.NativeProbes
@@ -58,7 +59,7 @@ class NodesViewModel internal constructor(
     private class Pick(val nodeId: String, val network: SelectionNetwork, val onPicked: () -> Unit)
 
     /** One read: the pages' state and every group's id, for [test]. */
-    private class Read(val state: NodesState, val groupIds: List<String>, val score: RvScoreMarks? = null)
+    private class Read(val state: NodesState, val groups: List<Group>, val score: RvScoreMarks? = null)
 
     internal val ui: StateFlow<NodesUi> = combine(read, running, failure, updating) { read, testing, failure, updating ->
         NodesUi(
@@ -96,7 +97,7 @@ class NodesViewModel internal constructor(
                 it.mapNotNullTo(mutableSetOf()) { g -> g.runtime.selection.udp?.resolvedLeafNodeId },
             )
         }
-        return Read(state, groups.map { it.id }, marks)
+        return Read(state, groups, marks)
     }
 
     /**
@@ -128,12 +129,12 @@ class NodesViewModel internal constructor(
         if (running.value != null) return
         lastTest = nodeId
         running.value = nodeId?.let(::setOf).orEmpty()
-        val groupIds = read.value?.groupIds.orEmpty()
+        val groups = read.value?.groups.orEmpty()
         viewModelScope.launch {
             try {
                 val done = attempt(NodesAction.Test) {
                     withContext(io) {
-                        if (nodeId != null) probes.node(nodeId) else probes.groups(groupIds)
+                        if (nodeId != null) probes.node(nodeId) else probes.groups(groups)
                     }
                 }
                 if (done) load()

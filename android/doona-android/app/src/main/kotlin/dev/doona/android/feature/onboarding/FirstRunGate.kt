@@ -55,7 +55,7 @@ internal class FirstRunViewModel(
             catalog.subscriptions.isNotEmpty() -> true
 
             else -> try {
-                withContext(io) { NativeCatalog(api).nodes().isNotEmpty() }
+                withContext(io) { NativeCatalog(api).nodes().any { it.providerId != null } }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {

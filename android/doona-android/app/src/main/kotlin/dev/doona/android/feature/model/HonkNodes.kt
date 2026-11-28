@@ -3,8 +3,6 @@ package dev.doona.android.feature.model
 import dev.doona.android.honk.HealthState
 import dev.doona.android.honk.Node
 import dev.doona.android.honk.Provider
-import dev.doona.android.honk.ProviderKind
-import dev.doona.android.honk.Transport
 import kotlin.math.roundToInt
 
 /**
@@ -16,8 +14,8 @@ import kotlin.math.roundToInt
  */
 internal fun rvNode(node: Node, providers: Map<String, Provider>, places: NodePlaces): RvNode {
     val placed = places.of(node.name)
-    val inline = node.isInline(providers)
-    val probe = node.health.firstOrNull { it.transport == Transport.Tcp } ?: node.health.firstOrNull()
+    val inline = node.isInline()
+    val probe = node.latestProbe
     val history = when (probe?.state) {
         HealthState.Healthy -> listOfNotNull(probe.latencyMs?.roundToInt())
         HealthState.Unavailable -> listOf(null)
@@ -37,7 +35,7 @@ internal fun rvNode(node: Node, providers: Map<String, Provider>, places: NodePl
         transport = node.streamTransport?.let(::transportName).orEmpty(),
         tls = false,
         subscription = if (inline) "" else providers[node.providerId]?.name.orEmpty(),
-        subscriptionId = if (inline) RV_INLINE else node.providerId.orEmpty(),
+        subscriptionId = if (inline) RV_INLINE else node.providerId,
         history = history,
         // honk-gap:node-share
         shareable = false,
@@ -45,8 +43,8 @@ internal fun rvNode(node: Node, providers: Map<String, Provider>, places: NodePl
     )
 }
 
-/** Whether [this] was added by its link: honk names its inline provider, or no provider. */
-internal fun Node.isInline(providers: Map<String, Provider>): Boolean = providerId == null || providers[providerId]?.kind == ProviderKind.Inline
+/** Whether [this] was written into the configuration (組態內): honk's inline provider. A built-in has no provider. */
+internal fun Node.isInline(): Boolean = providerId == "inline"
 
 /** A transport as the pages name it (gRPC, WebSocket), from honk's lower-case id; an id not listed is shown as sent. */
 internal fun transportName(id: String): String = TRANSPORTS[id] ?: id

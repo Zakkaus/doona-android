@@ -16,9 +16,16 @@ class HonkNodesTest {
         val harbor = rvNode(node("s1"), providers, NOWHERE)
         val none = rvNode(node(null), providers, NOWHERE)
 
-        assertEquals(RV_INLINE to "", inline.subscriptionId to inline.subscription)
-        assertEquals(RV_INLINE to "", none.subscriptionId to none.subscription)
+        assertEquals(true, inline.inline)
+        assertEquals(false, none.inline)
         assertEquals("s1" to "Harbor Cloud", harbor.subscriptionId to harbor.subscription)
+    }
+
+    @Test
+    fun latestTcpProbeUsesTheInstantRatherThanTheArrayOrderOrLocalTime() {
+        fun sample(time: String, ms: Int, transport: String) = """{"transport":"$transport","state":"healthy","latency_ms":$ms,"observed_at":"$time","error":null}"""
+        val observations = listOf(sample("2026-11-22T08:00:00+03:00", 10, "tcp"), sample("2026-11-22T06:00:00Z", 20, "tcp"), sample("2026-11-22T07:00:00Z", 30, "udp"))
+        assertEquals(20, rvNode(node("inline", observations.joinToString()), emptyMap(), NOWHERE).latencyMs)
     }
 
     @Test

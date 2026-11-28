@@ -50,9 +50,23 @@ class ActivityModelTest {
         fun provider(kind: ProviderKind, traffic: ProviderTraffic?) = Provider(kind.name, kind.name, kind, null, 0, null, null, traffic, ProviderStatus.Ok, null)
         fun subscriptions(vararg providers: Provider) = map(data(HonkProfile(providers.toList(), emptyList(), emptyList(), null, 0))).subscriptions
         val inline = provider(ProviderKind.Inline, null)
+        assertFalse(map(data(HonkProfile(listOf(inline), emptyList(), emptyList(), null, 0))).hasSubscriptions)
         val known = provider(ProviderKind.Subscription, ProviderTraffic("0", "0", "10000000000"))
         assertEquals(10_000_000_000L, subscriptions(inline, known).single().leftBytes)
         assertEquals(listOf(true, false), subscriptions(inline, known, provider(ProviderKind.Subscription, null)).map { it.hasQuota })
+    }
+
+    @Test
+    fun selectedBuiltinHasDetailsButIsNotAUserNode() {
+        val direct = dev.doona.android.honk.Node("direct", "direct", null, subscriptionTag = null, groupIds = listOf("main"), health = emptyList())
+        val source = profile.groups.first()
+        val selection = GroupSelection(direct.id, direct.id, "runtime")
+        val member = dev.doona.android.honk.GroupMember(direct.id, direct.name, dev.doona.android.honk.MemberKind.Node)
+        val group = Group("main", "main", source.icon, source.policy, listOf(member), GroupRuntime(GroupSelections(selection, selection), emptyList()), source.capabilities)
+        val mapped = map(data(HonkProfile(emptyList(), listOf(direct), listOf(group), group.name, 0)))
+        assertEquals(direct.id, mapped.node?.id)
+        assertEquals(direct.name, mapped.cards.node(direct.id)?.name)
+        assertTrue(mapped.nodes.isEmpty())
     }
 
     @Test
@@ -169,8 +183,8 @@ class ActivityModelTest {
     }
 
     @Test
-    fun `nodes are every group's node once, subscriptions keep only the link's host`() {
-        val mapped = map(data())
+    fun `ungrouped user nodes remain visible, subscriptions keep only the link's host`() {
+        val mapped = map(data(profile.with(groups = emptyList())))
         assertEquals(48, mapped.nodes.size)
         assertEquals(mapped.nodes.size, mapped.nodes.distinctBy { it.id }.size)
         assertEquals("Harbor Cloud", mapped.nodes.first { it.id == "n-0001938f00000000" }.subscription)
