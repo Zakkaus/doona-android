@@ -95,8 +95,8 @@ class RvScoreGroupShotTest {
         compose.onNodeWithText(SLOWER).assertExists()
         assertEquals(2, compose.onAllNodesWithText(SIMILAR).fetchSemanticsNodes().size)
         // The nodes card: the fastest chosen on TCP, the second on UDP, each line beginning with its network.
-        compose.onNodeWithText("TCP · ", substring = true).assertExists()
-        compose.onNodeWithText("UDP · ", substring = true).assertExists()
+        compose.onNodeWithText("TCP / ", substring = true).assertExists()
+        compose.onNodeWithText("UDP / ", substring = true).assertExists()
     }
 
     @Test
@@ -108,7 +108,7 @@ class RvScoreGroupShotTest {
         compose.onNodeWithText("已比較 1/6").assertExists()
         compose.onNodeWithText("已比較 0/6").assertExists()
         // One node chosen on both networks.
-        compose.onNodeWithText("TCP/UDP · ", substring = true).assertExists()
+        compose.onNodeWithText("TCP/UDP / ", substring = true).assertExists()
     }
 
     @Test
@@ -119,7 +119,7 @@ class RvScoreGroupShotTest {
         // Nothing is chosen and nothing is under way: no state under it.
         assertEquals(0, compose.onAllNodesWithText("評估中", substring = true).fetchSemanticsNodes().size)
         assertEquals(2, compose.onAllNodesWithText("已比較 0/0").fetchSemanticsNodes().size)
-        assertEquals(0, compose.onAllNodesWithText("TCP · ", substring = true).fetchSemanticsNodes().size)
+        assertEquals(0, compose.onAllNodesWithText("TCP / ", substring = true).fetchSemanticsNodes().size)
     }
 
     private fun shot(name: String, dark: Boolean = false, fontScale: Float = 1f, content: @Composable () -> Unit) =

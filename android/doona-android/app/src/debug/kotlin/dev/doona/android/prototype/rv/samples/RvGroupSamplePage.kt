@@ -49,6 +49,7 @@ import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.text
+import dev.doona.android.feature.nodes.ui.NODE_SEPARATOR
 import dev.doona.android.feature.nodes.ui.RvApplyCard
 import dev.doona.android.feature.nodes.ui.RvApplyTo
 import dev.doona.android.feature.policies.NetworkCard
@@ -127,7 +128,7 @@ private fun NodeRow(node: RvNode, chosen: Boolean, onPick: () -> Unit) {
     RvRow(
         { RvFlag(node.place.flag, RvSize.rowDisc, current = chosen) },
         node.name,
-        listOfNotNull(node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR),
+        listOfNotNull(node.protocol, stringResource(node.place.label)).joinToString(NODE_SEPARATOR),
         Modifier.rvRowSelect(chosen, onPick),
         titleEnd = { RvLatencyText(node.latencyMs, node.timedOut) },
         subtitleEnd = node.changeMs?.let { { RvDelta(it) } },

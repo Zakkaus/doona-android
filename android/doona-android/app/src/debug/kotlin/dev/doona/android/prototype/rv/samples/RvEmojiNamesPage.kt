@@ -24,6 +24,7 @@ import dev.doona.android.designsystem.rv.rvMarkName
 import dev.doona.android.designsystem.rv.rvShownName
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.nodes.ui.NODE_SEPARATOR
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 
 /** The names the emoji1 sample shows, in node rows and in group rows, and the place a node of that name is in. */
@@ -69,7 +70,7 @@ private fun NodeNameRow(node: RvNode, proposed: Boolean) {
     RvRow(
         { RvNameDisc(shown.mark, node.place.flag) },
         shown.text.ifEmpty { rvMarkName(shown.mark, place) },
-        listOf(node.protocol, place).joinToString(SEPARATOR),
+        listOf(node.protocol, place).joinToString(NODE_SEPARATOR),
         titleEnd = { RvLatencyText(node.latencyMs, node.timedOut) },
         titleKeepWords = false,
     )

@@ -39,6 +39,7 @@ import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.feature.model.RvRuleEnd
+import dev.doona.android.feature.nodes.ui.NODE_SEPARATOR
 import dev.doona.android.feature.policies.kind
 import dev.doona.android.feature.policies.title
 
@@ -131,7 +132,7 @@ private fun PathCard(connection: RvConnection) {
         when {
             group != null && node != null -> {
                 RvRow({ RvIconDisc(group.kind.glyph) }, group.name, stringResource(group.kind.label), titleKeepWords = false)
-                RvRow({ RvFlag(node.place.flag, RvSize.rowDisc) }, node.name, listOf(node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR), titleKeepWords = false)
+                RvRow({ RvFlag(node.place.flag, RvSize.rowDisc) }, node.name, listOf(node.protocol, stringResource(node.place.label)).joinToString(NODE_SEPARATOR), titleKeepWords = false)
             }
 
             group != null -> RvRow({ RvIconDisc(group.kind.glyph) }, group.name, stringResource(group.kind.label), titleKeepWords = false)

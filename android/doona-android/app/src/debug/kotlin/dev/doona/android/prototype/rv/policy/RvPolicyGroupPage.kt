@@ -56,6 +56,7 @@ import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.rvScorePick
 import dev.doona.android.feature.model.text
+import dev.doona.android.feature.nodes.ui.NODE_SEPARATOR
 import dev.doona.android.feature.nodes.ui.RvScoreCard
 
 /**
@@ -179,7 +180,7 @@ private fun NodeRow(group: RvPolicyGroup, score: ScoreGroup?, choice: RvNetworkC
     RvRow(
         { RvFlag(node.place.flag, RvSize.rowDisc, current = chosen) },
         node.name,
-        listOfNotNull(networks ?: stringResource(R.string.rv_policy_auto).takeIf { chosen && auto }, node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR),
+        listOfNotNull(networks ?: stringResource(R.string.rv_policy_auto).takeIf { chosen && auto }, node.protocol, stringResource(node.place.label)).joinToString(NODE_SEPARATOR),
         pick,
         titleEnd = { RvLatencyText(node.latencyMs, node.timedOut) },
         subtitleEnd = node.changeMs?.let { { RvDelta(it) } },

@@ -156,8 +156,8 @@ class RvNetworkShotTest {
     fun sharedNamesNoNetwork() {
         compose.rvContent(dark = false) { Group(RvNetworkSample.shared) }
         assertEquals(1, count(rvText(R.string.rv_network_apart)))
-        assertEquals(0, count("TCP · "))
-        assertEquals(0, count("UDP · "))
+        assertEquals(0, count("TCP / "))
+        assertEquals(0, count("UDP / "))
         assertEquals(0, count("已選"))
     }
 
@@ -166,8 +166,8 @@ class RvNetworkShotTest {
     @Config(qualifiers = APART)
     fun apartNamesEachNetwork() {
         compose.rvContent(dark = false) { Group(RvNetworkSample.apart) }
-        assertEquals(2, count("TCP · "))
-        assertEquals(2, count("UDP · "))
+        assertEquals(2, count("TCP / "))
+        assertEquals(2, count("UDP / "))
     }
 
     /** The switch on, both networks on one node: that node's line keeps the prefix `TCP/UDP` that names both. */
@@ -175,8 +175,8 @@ class RvNetworkShotTest {
     @Config(qualifiers = APART)
     fun apartOnOneNodeNamesBoth() {
         compose.rvContent(dark = false) { Group(RvNetworkSample.apartSame) }
-        assertEquals(1, count("TCP/UDP · "))
-        assertEquals(1, count("TCP · "))
+        assertEquals(1, count("TCP/UDP / "))
+        assertEquals(1, count("TCP / "))
     }
 
     /** The switch on: a tap on a node asks first, and the answer picks it for that network alone, or for both. */

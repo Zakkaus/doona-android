@@ -78,6 +78,7 @@ import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.rvNodeGroups
 import dev.doona.android.feature.model.text
+import dev.doona.android.feature.nodes.ui.NODE_SEPARATOR
 import dev.doona.android.feature.nodes.ui.RvNodeGroups
 import dev.doona.android.feature.nodes.ui.RvNodeListControls
 import dev.doona.android.feature.nodes.ui.rememberRvNodeTitles
@@ -315,7 +316,7 @@ private fun MainCard(main: RvPolicyGroup, onOpen: () -> Unit) {
 @Composable
 private fun mainLine(main: RvPolicyGroup): String {
     val node = main.selected ?: return stringResource(main.kind.label)
-    return listOf(stringResource(main.kind.label), node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR)
+    return listOf(stringResource(main.kind.label), node.protocol, stringResource(node.place.label)).joinToString(NODE_SEPARATOR)
 }
 
 /**

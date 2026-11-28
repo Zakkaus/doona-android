@@ -18,6 +18,7 @@ import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.text
 import dev.doona.android.feature.nodes.RvNodePicker
+import dev.doona.android.feature.nodes.ui.NODE_SEPARATOR
 
 /** One of a group's two networks, as the engine's `select(group, member, network)` takes it; null there is both. */
 internal enum class RvNetwork(val label: Int) {
@@ -88,7 +89,7 @@ private fun ChoiceRow(node: RvNode, network: String?, onOpen: () -> Unit) {
     RvRow(
         { RvFlag(node.place.flag, RvSize.rowDisc, current = true) },
         node.name,
-        listOfNotNull(network, node.protocol, stringResource(node.place.label)).joinToString(SEPARATOR),
+        listOfNotNull(network, node.protocol, stringResource(node.place.label)).joinToString(NODE_SEPARATOR),
         onClick = onOpen,
     ) { RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut) }
 }
