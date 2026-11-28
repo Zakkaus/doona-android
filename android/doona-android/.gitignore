@@ -3,6 +3,7 @@
 /icons/build/
 /flags/build/
 /benchmark/build/
+/baselineprofile/build/
 /build-logic/build/
 /build-logic/.gradle/
 /build-logic/.kotlin/
