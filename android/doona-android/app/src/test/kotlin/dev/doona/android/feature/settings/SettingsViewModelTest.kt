@@ -2,10 +2,7 @@ package dev.doona.android.feature.settings
 
 import dev.doona.android.designsystem.rv.RvFormat
 import dev.doona.android.engine.AppPolicy
-import dev.doona.android.engine.EffectiveConfig
 import dev.doona.android.engine.Engine
-import dev.doona.android.engine.EngineException
-import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.PerApp
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.model.RvAppPolicy
@@ -16,6 +13,7 @@ import dev.doona.android.feature.model.RvGeoUpdate
 import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.model.RvPerApp
 import dev.doona.android.feature.model.RvSettingsState
+import dev.doona.android.honk.HonkFixtures
 import dev.doona.android.honk.NativeSettings
 import dev.doona.android.honk.SettingsHonk
 import kotlinx.coroutines.CompletableDeferred
@@ -162,39 +160,45 @@ class SettingsViewModelTest {
 
     @Test
     fun `the DNS row reads the servers the core reports, and again when the page shows again`() = runTest {
-        val engine = FakeEngine()
-        val vm = vm(engine, FakeSettingsStore())
+        val honk = SettingsHonk.running().now("GET", "/api/v1/config", 200, HonkFixtures.body("config/rv-sample"))
+            .now("GET", "/api/v1/dns/rules", 200, HonkFixtures.body("dns-rules/rv-sample"))
+        val vm = vm(honk = honk)
         assertTrue(vm.uiState.value.dnsLoaded)
-        assertEquals("the core's default, 1.1.1.1:53 then 8.8.8.8:53", RvDnsUpstream.Cloudflare, vm.settings.dns)
+        assertEquals(RvDnsUpstream.Cloudflare, vm.settings.dns)
 
-        engine.setDnsUpstreams(listOf("9.9.9.9:53"))
+        honk.now("GET", "/api/v1/dns/rules", 200, HonkFixtures.body("dns-rules/rv-sample").replace("cloudflare", "alidns"))
         assertEquals(RvDnsUpstream.Cloudflare, vm.settings.dns)
         vm.onResume()
-        assertEquals(RvDnsUpstream.Quad9, vm.settings.dns)
+        assertEquals(RvDnsUpstream.Google, vm.settings.dns)
 
-        engine.setDnsUpstreams(listOf("10.0.0.1:53"))
+        honk.now("GET", "/api/v1/config", 200, HonkFixtures.body("config/rv-sample").replace("8.8.8.8", "10.0.0.1"))
         vm.onResume()
         assertNull("servers no preset names are 自訂", vm.settings.dns)
         assertTrue(vm.uiState.value.dnsLoaded)
+
+        val rules = HonkFixtures.body("dns-rules/rv-sample")
+        honk.now("GET", "/api/v1/dns/rules", 200, rules.replace("generation-42", "generation-43"))
+        vm.onResume()
+        assertFalse(vm.uiState.value.dnsLoaded)
+        honk.now("GET", "/api/v1/dns/rules", 200, rules.replace("fallback: cloudflare", "fallback: asis").replace("\"upstream\": \"cloudflare\"", "\"upstream\": null").replace("\"action\": \"upstream\",\n      \"upstream\": null", "\"action\": \"asis\",\n      \"upstream\": null"))
+        vm.onResume()
+        assertFalse(vm.uiState.value.dnsLoaded)
     }
 
     @Test
     fun `the DNS row has no value until the core's servers are read`() = runTest {
-        val engine = object : Engine by FakeEngine() {
-            override suspend fun effectiveConfig(): Result<EffectiveConfig> = Result.failure(EngineException(ErrorCode.Internal))
-        }
-        val vm = vm(engine, FakeSettingsStore())
+        val vm = vm(honk = SettingsHonk())
         assertFalse(vm.uiState.value.dnsLoaded)
     }
 
     @Test
     fun `the DNS row's preset is the first server's, on port 53`() {
-        assertEquals(RvDnsUpstream.Cloudflare, rvDnsUpstream(listOf("1.1.1.1:53", "8.8.8.8:53")))
-        assertEquals(RvDnsUpstream.Google, rvDnsUpstream(listOf("8.8.8.8:53", "1.1.1.1:53")))
-        assertEquals(RvDnsUpstream.AliDns, rvDnsUpstream(listOf("223.5.5.5")))
-        assertNull(rvDnsUpstream(listOf("1.1.1.1:5353")))
-        assertNull(rvDnsUpstream(listOf("[2606:4700:4700::1111]:53")))
-        assertNull(rvDnsUpstream(emptyList()))
+        assertEquals(RvDnsUpstream.Cloudflare, rvDnsUpstream("1.1.1.1:53"))
+        assertEquals(RvDnsUpstream.Google, rvDnsUpstream("8.8.8.8:53"))
+        assertEquals(RvDnsUpstream.AliDns, rvDnsUpstream("223.5.5.5"))
+        assertNull(rvDnsUpstream("1.1.1.1:5353"))
+        assertNull(rvDnsUpstream("[2606:4700:4700::1111]:53"))
+        assertNull(rvDnsUpstream(null))
     }
 
     @Test
@@ -260,10 +264,10 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `without honk the row shows the APK's date and 未連線, and 自動更新 its default`() = runTest {
+    fun `without honk the row shows the APK date and no schedule`() = runTest {
         val vm = vm(honk = SettingsHonk())
         assertEquals(RvGeoData(LocalDate.of(2026, 11, 23), connected = false), vm.uiState.value.geoData)
-        assertEquals("honk's own 24 hours", RvGeoInterval.Daily, vm.settings.geoInterval)
+        assertNull(vm.settings.geoInterval)
     }
 
     @Test
@@ -349,6 +353,9 @@ class SettingsViewModelTest {
     fun `自動更新 shows no choice and 未連線 while honk does not answer`() = runTest {
         val vm = GeoIntervalViewModel(NativeSettings(SettingsHonk()), UnconfinedTestDispatcher(testScheduler))
         assertEquals(GeoIntervalState(null), vm.state.value)
+        val settings = kotlinx.serialization.json.Json.parseToJsonElement(SettingsHonk.RUNTIME_SETTINGS) as kotlinx.serialization.json.JsonObject
+        val unsupported = SettingsHonk().on("GET", "/api/v1/runtime/settings", 200, kotlinx.serialization.json.JsonObject(settings - "geodata").toString())
+        assertEquals(GeoIntervalState(RvGeoInterval.Unavailable), GeoIntervalViewModel(NativeSettings(unsupported), UnconfinedTestDispatcher(testScheduler)).state.value)
     }
 
     @Test

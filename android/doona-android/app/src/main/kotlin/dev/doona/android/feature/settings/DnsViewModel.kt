@@ -11,12 +11,10 @@ import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.model.RvDnsUpstream
 import dev.doona.android.feature.policies.HonkUpstream
 import dev.doona.android.feature.policies.dnsShown
-import dev.doona.android.feature.policies.fallbackUpstream
-import dev.doona.android.feature.policies.honkUpstreams
+import dev.doona.android.feature.policies.readDns
 import dev.doona.android.feature.policies.upstreamReaddressed
 import dev.doona.android.honk.NativeApi
 import dev.doona.android.honk.NativeConfig
-import dev.doona.android.honk.NativeRouting
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -100,7 +98,7 @@ internal class DnsViewModel(private val api: NativeApi, private val io: Coroutin
 
     private suspend fun reload() {
         fallback = try {
-            withContext(io) { fallbackUpstream(honkUpstreams(NativeConfig(api).config()), NativeRouting(api).dnsRules()) }
+            withContext(io) { readDns(api) }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {

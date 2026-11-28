@@ -21,10 +21,11 @@ import dev.doona.android.feature.model.RvGeoInterval
 /**
  * 自動更新 for the GeoIP/GeoSite data, a page of 設定's 更新 group (owner, 2026-11-26 07:13, q-p6a-geointerval), laid out
  * as 日誌等級: the large title, one card of the three intervals as radio rows, 每天 over 預設
- * (honk's own 24 hours; owner, 2026-11-26, q-k4-geodefault), and one footer line: the
- * data updates only while the VPN is up, through the main node. [selected] is honk's interval; a choice goes to
- * [onSelect]. Null, honk is not running (VPN off): the rows are drawn disabled with none chosen, and the footer reads
- * 未連線 (owner, 2026-11-26, q-k4-geooffline).
+ * (honk's own schedule; owner, 2026-11-26, q-k4-geodefault), and one footer line: the
+ * data updates only while the VPN is up, through the main node. [selected] is honk's schedule; a choice goes to
+ * [onSelect]. A custom schedule checks no row and says so above the footer, and a preset replaces it; an unavailable
+ * one says so and draws the rows disabled. Null, honk is not running (VPN off): the rows are drawn disabled with none
+ * chosen, and the footer reads 未連線 (owner, 2026-11-26, q-k4-geooffline).
  */
 @Composable
 internal fun RvGeoIntervalScreen(selected: RvGeoInterval?, onSelect: (RvGeoInterval) -> Unit, onBack: () -> Unit, banner: RvNotice? = null) {
@@ -35,11 +36,12 @@ internal fun RvGeoIntervalScreen(selected: RvGeoInterval?, onSelect: (RvGeoInter
         RvBannerSlot(banner)
         RvSettingsColumn {
             RvSettingsRadioCard {
-                RvGeoInterval.entries.forEach {
+                listOf(RvGeoInterval.Off, RvGeoInterval.Daily, RvGeoInterval.Weekly).forEach {
                     val default = if (it == RvGeoInterval.Daily) stringResource(R.string.rv_geo_interval_default) else null
-                    RvRadioRow(null, stringResource(it.label), it == selected, default, enabled = selected != null, onSelect = { onSelect(it) })
+                    RvRadioRow(null, stringResource(it.label), it == selected, default, enabled = selected != null && selected != RvGeoInterval.Unavailable, onSelect = { onSelect(it) })
                 }
             }
+            if (selected == RvGeoInterval.Custom || selected == RvGeoInterval.Unavailable) RvFootnote(stringResource(selected.label))
             RvFootnote(stringResource(if (selected == null) R.string.status_stopped else R.string.rv_geo_interval_footer))
         }
     }

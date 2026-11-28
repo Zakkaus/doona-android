@@ -43,9 +43,9 @@ class SettingsVersionTest {
     @Test
     fun `a shell that knows no version shows a dash`() {
         settings("")
-        // 檢查更新 and 關於, and 設定檔, whose revision this honk does not report.
-        waitForCount("—", 3)
-        compose.onAllNodesWithText("—").assertCountEquals(3)
+        // 檢查更新 and 關於, 設定檔, whose revision this honk does not report, and 自動更新, whose schedule it does not.
+        waitForCount("—", 4)
+        compose.onAllNodesWithText("—").assertCountEquals(4)
     }
 
     private companion object {

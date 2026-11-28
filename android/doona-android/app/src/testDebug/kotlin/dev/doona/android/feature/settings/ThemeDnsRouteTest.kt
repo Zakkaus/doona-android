@@ -16,6 +16,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.text.TextLayoutResult
+import dev.doona.android.R
 import dev.doona.android.app.rvAppearance
 import dev.doona.android.app.themeAppearance
 import dev.doona.android.engine.fake.FakeEngine
@@ -277,8 +278,8 @@ class ThemeDnsRouteTest {
         const val DAILY = "每天"
         const val WEEKLY = "每週"
         const val DEBUG = "除錯"
-        const val V6_HINT = "最多 4 個 IPv4 或 IPv6 位址，以逗號分隔，例如 1.1.1.1、2606:4700:4700::1111"
-        const val V6_INVALID = "請輸入 1 到 4 個 IP 位址，例如 1.1.1.1 或 [2606:4700:4700::1111]:53"
+        val V6_HINT get() = RuntimeEnvironment.getApplication().getString(R.string.rv_settings_dns_custom_hint)
+        val V6_INVALID get() = RuntimeEnvironment.getApplication().getString(R.string.rv_settings_dns_custom_invalid)
     }
 
     private object NoSystem : SettingsSystem {

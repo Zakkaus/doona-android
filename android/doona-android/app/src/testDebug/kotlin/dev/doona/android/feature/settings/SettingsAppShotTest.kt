@@ -228,7 +228,7 @@ class SettingsAppShotTest {
     @Composable
     private fun DnsCustom(state: DnsUiState) {
         Box(Modifier.fillMaxSize()) {
-            RvDnsScreen(rvDnsUpstream(state.servers), onSelect = {}, onBack = {}, onCustom = {}, onServers = {})
+            RvDnsScreen(rvDnsUpstream(state.servers.firstOrNull()), onSelect = {}, onBack = {}, onCustom = {}, onServers = {})
             RvSheetLayout({ 1f }, {}, stringResource(R.string.rv_settings_dns_custom_title)) { RvDnsCustomContent(state, onText = {}, onSave = {}, onDismiss = {}) }
         }
     }
@@ -430,7 +430,7 @@ private const val THEME_PAGE_FS200 = "+h1062dp"
 
 /** The core's servers in [FakeEngine], and 自訂 as it opens on them. */
 private val SERVERS = listOf("1.1.1.1:53", "8.8.8.8:53")
-private const val TYPED = "1.1.1.1, 8.8.8.8"
+private const val TYPED = "1.1.1.1"
 private const val LONG_PAGE_FS115 = "+h2097dp"
 private const val LONG_PAGE_FS200 = "+h2696dp"
 

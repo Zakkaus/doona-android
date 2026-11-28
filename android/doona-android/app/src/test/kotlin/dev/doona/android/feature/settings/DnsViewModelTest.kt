@@ -48,7 +48,7 @@ class DnsViewModelTest {
     fun `the page shows the fallback's server, and a preset becomes its address`() = runTest {
         val vm = DnsViewModel(honk, io)
         assertEquals(listOf("1.1.1.1:53"), vm.state.servers)
-        assertEquals(RvDnsUpstream.Cloudflare, rvDnsUpstream(vm.state.servers))
+        assertEquals(RvDnsUpstream.Cloudflare, rvDnsUpstream(vm.state.servers.single()))
 
         vm.select(RvDnsUpstream.Quad9)
 

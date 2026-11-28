@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.RvBusy
 import dev.doona.android.designsystem.rv.RvNavEnd
 import dev.doona.android.designsystem.rv.RvNotice
@@ -85,14 +86,14 @@ internal fun RvUpdateGroup(
     geoData: RvGeoData,
     onGeoUpdate: () -> Unit,
     onOpenLab: () -> Unit,
-    geoInterval: RvGeoInterval,
+    geoInterval: RvGeoInterval?,
     onOpenGeoInterval: () -> Unit,
 ) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_updates))
     RvSettingsCard {
         RvUpdateRow(update, version, onCheck)
         RvGeoDataRow(geoData, onGeoUpdate)
-        RvSettingsNavRow(stringResource(R.string.rv_settings_auto_update), R.drawable.rv_sym_schedule, onOpenGeoInterval, stringResource(geoInterval.label))
+        RvSettingsNavRow(stringResource(R.string.rv_settings_auto_update), R.drawable.rv_sym_schedule, onOpenGeoInterval, geoInterval?.let { stringResource(it.label) } ?: RV_NO_VALUE)
         RvSettingsNavRow(stringResource(R.string.rv_settings_lab), R.drawable.rv_sym_memory, onOpenLab)
     }
 }

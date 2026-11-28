@@ -12,6 +12,8 @@ import dev.doona.android.feature.model.RvGeoInterval
 import dev.doona.android.feature.model.RvGeoUpdate
 import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.model.RvSettingsState
+import dev.doona.android.feature.policies.dnsShown
+import dev.doona.android.feature.policies.readDns
 import dev.doona.android.honk.NativeSettings
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -79,14 +81,14 @@ internal class SettingsViewModel(
                     autoUpdate = prefs.autoUpdate,
                     updateHours = prefs.updateHours,
                     appearance = prefs.appearance,
-                    dns = local.dnsServers?.let(::rvDnsUpstream),
+                    dns = rvDnsUpstream(local.dnsServer),
                     language = local.language,
                     tileAdded = prefs.tileAdded,
-                    geoInterval = local.geoInterval ?: RvGeoInterval.Daily,
+                    geoInterval = local.geoInterval,
                     tileSheet = local.tileSheet,
                 ),
                 perAppLoaded = loaded,
-                dnsLoaded = local.dnsServers != null,
+                dnsLoaded = local.dnsServer != null,
                 configRev = local.configRev,
                 geoData = geoData(local),
                 update = local.update,
@@ -149,7 +151,8 @@ internal class SettingsViewModel(
     /** Reads the DNS servers and honk's data and schedule; honk not answering shows as 未連線, with no data of its own. */
     private fun load() {
         viewModelScope.launch {
-            readDns()
+            val dns = withContext(io) { runCatching { readDns(honk.api)?.let { dnsShown(it.address) } }.getOrNull() }
+            local.update { it.copy(dnsServer = dns) }
             val revision = withContext(io) { runCatching { honk.revision() }.getOrNull() }
             local.update { it.copy(configRev = revision) }
         }
@@ -157,13 +160,8 @@ internal class SettingsViewModel(
             val read = runCatching { withContext(io) { honk.geoData() to honk.geoInterval() } }.getOrNull()
             // An update under way keeps its own state until it ends.
             if (geoJob?.isActive == true) return@launch
-            local.update { it.copy(geo = read?.first, geoInterval = read?.second ?: it.geoInterval, geoAsked = null) }
+            local.update { it.copy(geo = read?.first, geoInterval = read?.second, geoAsked = null) }
         }
-    }
-
-    /** The DNS servers the core uses, from its effective config; a failed read leaves the row as it was. */
-    private suspend fun readDns() {
-        engine.effectiveConfig().onSuccess { config -> local.update { it.copy(dnsServers = config.dnsUpstreams) } }
     }
 
     private fun geoData(local: Local): RvGeoData {
@@ -189,7 +187,7 @@ internal class SettingsViewModel(
     )
 
     /**
-     * What the ViewModel itself holds: the language as last read, the tile sheet, the core's DNS servers ([dnsServers],
+     * What the ViewModel itself holds: the language as last read, the tile sheet, the fallback DNS server ([dnsServer],
      * null until read), honk's geo data as last read (null while honk does not answer), its schedule ([geoInterval],
      * null until honk first answers), the update's own outcome while it runs or after it failed ([geoAsked]), and
      * where 檢查更新 stands ([update]).
@@ -197,7 +195,7 @@ internal class SettingsViewModel(
     private data class Local(
         val language: RvLanguage,
         val tileSheet: Boolean = false,
-        val dnsServers: List<String>? = null,
+        val dnsServer: String? = null,
         val configRev: Long? = null,
         val geo: RvGeoData? = null,
         val geoInterval: RvGeoInterval? = null,

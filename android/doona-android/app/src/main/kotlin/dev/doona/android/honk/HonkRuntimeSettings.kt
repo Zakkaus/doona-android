@@ -16,4 +16,4 @@ internal class GeoDataSettings(@SerialName("auto_update") val autoUpdate: GeoDat
 
 /** honk's `GeoDataAutoUpdate`: whether honk updates on a schedule, and every how many hours. */
 @Serializable
-internal class GeoDataAutoUpdate(val enabled: Boolean, @SerialName("interval_hours") val intervalHours: Int)
+internal class GeoDataAutoUpdate(val enabled: Boolean, @SerialName("interval_hours") val intervalHours: Int, val cron: String?)
