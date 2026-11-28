@@ -1,6 +1,5 @@
 package dev.doona.android.feature.settings
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,12 +7,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -23,12 +20,12 @@ import androidx.compose.ui.semantics.contentDescription
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.Rv
-import dev.doona.android.designsystem.rv.RvChrome
 import dev.doona.android.designsystem.rv.RvSchemes
 import dev.doona.android.designsystem.rv.RvSettingsCard
 import dev.doona.android.designsystem.rv.RvSettingsSize
 import dev.doona.android.designsystem.rv.RvSettingsSpace
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.rvPictureFrame
 import dev.doona.android.feature.model.RvAppearance
 import dev.doona.android.feature.model.RvThemeMode
 
@@ -52,7 +49,6 @@ internal fun RvThemePreview(appearance: RvAppearance, schemes: RvSchemes, page: 
     val isDark = appearance.isDark(Rv.colors.dark)
     val label = stringResource(R.string.rv_settings_preview)
     val size = RvSettingsSize
-    val shape = RoundedCornerShape(Rv.highlightRadius)
     RvSettingsCard(modifier) {
         Box(
             Modifier
@@ -60,8 +56,7 @@ internal fun RvThemePreview(appearance: RvAppearance, schemes: RvSchemes, page: 
                 .padding(RvSettingsSpace.previewPad)
                 .wrapContentSize(Alignment.TopCenter)
                 .size(size.previewScreen.width * PREVIEW_SCALE, size.previewHeight * PREVIEW_SCALE)
-                .clip(shape)
-                .border(RvChrome.ring, Rv.colors.flagRing, shape)
+                .rvPictureFrame()
                 .clearAndSetSemantics { contentDescription = label },
         ) {
             Box(

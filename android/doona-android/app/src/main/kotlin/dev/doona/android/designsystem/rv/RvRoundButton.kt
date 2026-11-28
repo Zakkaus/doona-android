@@ -23,11 +23,11 @@ internal fun RvRoundButton(@DrawableRes icon: Int, label: String, onClick: () ->
     val colors = Rv.colors
     Box(
         modifier
-            .size(RvNodesSize.ctaCompanion)
+            .size(RvSize.roundButton)
             .clip(CircleShape)
             .background(colors.roundButton)
             .rvPress(CircleShape, Role.Button, onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
-    ) { RvGlyph(icon, RvNodesSize.ctaGlyph, colors.text) }
+    ) { RvGlyph(icon, RvSize.roundButtonGlyph, colors.text) }
 }

@@ -138,6 +138,13 @@ internal object RvSize {
     /** A round action's disc (measured §6: 48 dp). */
     val actionDisc = 48.dp
 
+    /**
+     * [RvRoundButton]'s disc beside the floating [RvPrimaryButton] (§8, N06: a 56 dp disc 8 dp from the 52 dp pill, on one
+     * centre line), and its glyph.
+     */
+    val roundButton = 56.dp
+    val roundButtonGlyph = 24.dp
+
     /** Material Symbols draw in a 20 dp live area of their 24 dp box, the width of #11's '+'. */
     val actionGlyph = 24.dp
 

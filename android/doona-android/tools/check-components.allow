@@ -2,5 +2,4 @@
 # Measured 2026-11-26 on v1/unify: 6 hits (2 since the q-e4 and q-e8 rulings), all of the rules added by unify-1126 (rowctl, navend, tint); the first six
 # rules have none. Each line goes once its page uses the library or the owner rules; do not add one for new work.
 # rules: dp colour style widget click add rowctl navend tint
-main/kotlin/dev/doona/android/feature/settings/RvThemeScreen.kt|rowctl|1|the radio under each theme picture is a tile's mark, not a row's end
 main/kotlin/dev/doona/android/feature/subscriptions/RvSubAdd.kt|tint|1|done disc in the done role (Rv.colors.done), apart from selection: owner ruling q-item4 2026-11-26

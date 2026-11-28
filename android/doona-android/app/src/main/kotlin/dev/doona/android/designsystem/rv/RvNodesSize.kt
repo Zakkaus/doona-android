@@ -12,11 +12,6 @@ internal object RvNodesSize {
     val topLabelGap = 8.dp
     val topRowGap = 16.dp
 
-    /**
-     * The round companion beside the floating [RvPrimaryButton] (§8, N06: a 56 dp disc
-     * 8 dp from the 52 dp pill, on one centre line).
-     */
-    val ctaCompanion = 56.dp
+    /** From [RvRoundButton] to the floating [RvPrimaryButton] beside it (§8, N06). */
     val ctaGap = 8.dp
-    val ctaGlyph = 24.dp
 }

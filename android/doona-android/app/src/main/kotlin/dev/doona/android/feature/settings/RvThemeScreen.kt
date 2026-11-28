@@ -1,37 +1,17 @@
 package dev.doona.android.feature.settings
 
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -43,26 +23,23 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RV_ACCENTS
 import dev.doona.android.designsystem.rv.Rv
-import dev.doona.android.designsystem.rv.RvChrome
+import dev.doona.android.designsystem.rv.RvColorChoice
 import dev.doona.android.designsystem.rv.RvColors
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvPageEnd
-import dev.doona.android.designsystem.rv.RvRadio
+import dev.doona.android.designsystem.rv.RvPictureChoice
 import dev.doona.android.designsystem.rv.RvSchemes
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSettingsAlpha
 import dev.doona.android.designsystem.rv.RvSettingsCard
 import dev.doona.android.designsystem.rv.RvSettingsColumn
 import dev.doona.android.designsystem.rv.RvSettingsSection
-import dev.doona.android.designsystem.rv.RvSettingsSize
 import dev.doona.android.designsystem.rv.RvSettingsSpace
-import dev.doona.android.designsystem.rv.RvSettingsText
-import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvSwatch
 import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.primary
-import dev.doona.android.designsystem.rv.rvPressSelect
 import dev.doona.android.feature.model.RvAppearance
 import dev.doona.android.feature.model.RvThemeMode
 import kotlinx.coroutines.flow.SharingStarted
@@ -113,18 +90,8 @@ private fun ModeCard(appearance: RvAppearance, schemes: RvSchemes, onChange: (Rv
         Row(Modifier.fillMaxWidth().padding(horizontal = RvSpace.tight)) {
             RvThemeMode.entries.forEach { mode ->
                 val selected = appearance.mode == mode
-                Column(
-                    Modifier
-                        .weight(1f)
-                        .rvPressSelect(RoundedCornerShape(Rv.highlightRadius), selected, { onChange(appearance.copy(mode = mode)) })
-                        .padding(vertical = RvSettingsSpace.modePad),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
+                RvPictureChoice(stringResource(mode.label), selected, { onChange(appearance.copy(mode = mode)) }, Modifier.weight(1f)) {
                     ModeThumb(mode, lightColors, darkColors)
-                    Spacer(Modifier.height(RvSettingsSpace.modeGap))
-                    RvSettingsText(stringResource(mode.label), Rv.type.action, align = TextAlign.Center)
-                    Spacer(Modifier.height(RvSettingsSpace.modeGap))
-                    RvRadio(selected)
                 }
             }
         }
@@ -134,28 +101,10 @@ private fun ModeCard(appearance: RvAppearance, schemes: RvSchemes, onChange: (Rv
 /** A small picture of the page in [mode]: the page's colour, a dot for the hero, two cards; 跟隨系統 is half of each. */
 @Composable
 private fun ModeThumb(mode: RvThemeMode, light: RvColors, dark: RvColors) {
-    val shape = RoundedCornerShape(Rv.highlightRadius)
-    Canvas(Modifier.size(RvSettingsSize.modeThumb).clip(shape).border(RvChrome.ring, Rv.colors.flagRing, shape)) {
-        when (mode) {
-            RvThemeMode.Light -> page(light)
-
-            RvThemeMode.Dark -> page(dark)
-
-            RvThemeMode.System -> {
-                page(light)
-                clipRect(left = size.width / 2) { page(dark) }
-            }
-        }
-    }
-}
-
-private fun DrawScope.page(colors: RvColors) {
-    drawRect(colors.page)
-    drawCircle(colors.positive, size.width * THUMB_DOT, Offset(size.width / 2, size.height * THUMB_DOT_Y))
-    val inset = size.width * THUMB_INSET
-    val radius = CornerRadius(inset)
-    for (top in THUMB_CARDS) {
-        drawRoundRect(colors.card, Offset(inset, size.height * top), Size(size.width - 2 * inset, size.height * THUMB_CARD), radius)
+    when (mode) {
+        RvThemeMode.Light -> RvSwatch(light)
+        RvThemeMode.Dark -> RvSwatch(dark)
+        RvThemeMode.System -> RvSwatch(light, split = dark)
     }
 }
 
@@ -173,35 +122,11 @@ private fun AccentCard(appearance: RvAppearance, own: Color, onChange: (RvAppear
         ) {
             val colours = listOf(R.string.rv_settings_accent_current to own) + RV_ACCENTS.map { it.name to it.primary(Rv.colors.dark) }
             colours.forEachIndexed { i, (name, colour) ->
-                AccentDisc(stringResource(name), colour, i == appearance.shownAccent, enabled) { onChange(appearance.copy(accent = i)) }
+                RvColorChoice(colour, stringResource(name), i == appearance.shownAccent, enabled, { onChange(appearance.copy(accent = i)) })
             }
         }
     }
 }
-
-/** A colour disc, 36 dp in a 48 dp target (S8-11); the selected one has a ring of the text colour round it. */
-@Composable
-private fun AccentDisc(name: String, colour: Color, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .size(RvSize.touch)
-            .rvPressSelect(CircleShape, selected, onClick, enabled)
-            .semantics { contentDescription = name },
-        contentAlignment = Alignment.Center,
-    ) {
-        val ring = if (selected) Modifier.border(RvSettingsSize.accentRingStroke, Rv.colors.text, CircleShape) else Modifier
-        Box(Modifier.size(RvSettingsSize.accentRing).then(ring), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(RvSettingsSize.accentDisc).clip(CircleShape).background(colour))
-        }
-    }
-}
-
-/** The thumbnail's hero dot (radius and centre as shares of its width and height) and its two cards' tops and height. */
-private const val THUMB_DOT = 0.08f
-private const val THUMB_DOT_Y = 0.2f
-private const val THUMB_INSET = 0.12f
-private val THUMB_CARDS = listOf(0.38f, 0.66f)
-private const val THUMB_CARD = 0.22f
 
 /**
  * 主題 in the app: the [store]'s choices, each stored as it is made. The app's theme reads the same store, so the whole

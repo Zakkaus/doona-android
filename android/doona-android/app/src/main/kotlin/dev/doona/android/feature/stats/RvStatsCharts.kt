@@ -1,37 +1,21 @@
 package dev.doona.android.feature.stats
 
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
-import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvChartGrid
 import dev.doona.android.designsystem.rv.RvChartSize
 import dev.doona.android.designsystem.rv.RvEmptyChartLine
 import dev.doona.android.designsystem.rv.RvPillInk
-import dev.doona.android.designsystem.rv.RvStatsAlpha
-import dev.doona.android.designsystem.rv.RvStatsSize
 import dev.doona.android.designsystem.rv.RvUsageSize
 import dev.doona.android.designsystem.rv.latencyColor
 import dev.doona.android.designsystem.rv.pillName
@@ -49,107 +33,11 @@ import kotlin.math.abs
  */
 @Composable
 internal fun RvEmptyChart(line: String, modifier: Modifier = Modifier, slots: Int = HOURS) {
-    val colors = Rv.colors
     Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.matchParentSize()) { slotGrid(colors.grid, slots) }
+        RvChartGrid(slots, gridEvery(slots), Modifier.matchParentSize())
         RvEmptyChartLine(line)
-    }
-}
-
-/**
- * Hairlines in [color]: a column every [gridEvery] of the [slots] (4 hours of a day), both edges included, and
- * [RvStatsSize.GRID_ROWS] rows.
- */
-private fun DrawScope.slotGrid(color: Color, slots: Int) {
-    val hairline = 1f
-    for (slot in ((0..slots step gridEvery(slots)) + slots).distinct()) {
-        val x = (size.width * slot / slots).coerceIn(hairline / 2, size.width - hairline / 2)
-        drawLine(color, Offset(x, 0f), Offset(x, size.height), hairline)
-    }
-    for (j in 0 until RvStatsSize.GRID_ROWS) {
-        val y = size.height * j / RvStatsSize.GRID_ROWS + hairline / 2
-        drawLine(color, Offset(0f, y), Offset(size.width, y), hairline)
-    }
-}
-
-/**
- * The bars of a paged tile, after Revolut's 'Income' card: one per hour of the day, or per day of a week or a month
- * ([slots]), in [color], scaled to the busiest; the hours or days still to come are short stubs on the track.
- */
-@Composable
-internal fun RvHourBars(values: List<Long>, color: Color, modifier: Modifier = Modifier, slots: Int = HOURS) {
-    val stub = Rv.colors.track
-    Canvas(modifier.fillMaxWidth().height(RvStatsSize.bars)) {
-        val pitch = size.width / slots
-        val bar = pitch * RvStatsSize.BAR_SHARE
-        val peak = values.maxOrNull()?.takeIf { it > 0 } ?: 1L
-        val least = RvStatsSize.barStub.toPx()
-        for (h in 0 until slots) {
-            val value = values.getOrNull(h)
-            val height = if (value == null) least else (size.height * value / peak).coerceAtLeast(least)
-            val left = h * pitch + (pitch - bar) / 2
-            drawRoundRect(if (value == null) stub else color, Offset(left, size.height - height), Size(bar, height), CornerRadius(bar / 2))
-        }
-    }
-}
-
-/** One subscription in the quota ring: its colour, the lighter step of it for what is left, what it used and what it has. */
-internal class RvRingSegment(val color: Color, val rest: Color, val used: Long, val total: Long)
-
-/**
- * Revolut's 'Total assets' ring: an 8 dp ring with butt ends and a segment per subscription, each as long as its share of
- * all the quota: the used part in the subscription's colour, then what is left in a lighter step of it, every two parts
- * [RvStatsSize.ringGap] apart in the card's colour (S05). With nothing to show it is a full ring on the track, as Revolut
- * draws a single category.
- */
-@Composable
-internal fun RvQuotaRing(segments: List<RvRingSegment>, modifier: Modifier = Modifier) {
-    val track = Rv.colors.track
-    Canvas(modifier.size(RvStatsSize.ring)) {
-        val stroke = RvStatsSize.ringStroke.toPx()
-        val inset = Offset(stroke / 2, stroke / 2)
-        val box = Size(size.width - stroke, size.height - stroke)
-        val sum = segments.sumOf { it.total }.toFloat()
-        if (sum <= 0f) {
-            drawArc(track, 0f, FULL_TURN, false, inset, box, style = Stroke(stroke))
-            return@Canvas
-        }
-        val gap = Math.toDegrees(RvStatsSize.ringGap.toPx() / (box.width / 2).toDouble()).toFloat()
-        val arc = { color: Color, from: Float, sweep: Float -> if (sweep > 0f) drawArc(color, from, sweep, false, inset, box, style = Stroke(stroke)) }
-        var start = START_ANGLE
-        segments.forEach { s ->
-            val sweep = FULL_TURN * s.total / sum
-            val begin = start + gap / 2
-            val usable = (sweep - gap).coerceAtLeast(0f)
-            val share = (s.used.toFloat() / s.total).coerceIn(0f, 1f)
-            when {
-                share >= 1f -> arc(s.color, begin, usable)
-
-                share <= 0f -> arc(s.rest, begin, usable)
-
-                else -> {
-                    // The used part and the rest each give up half a gap where they meet.
-                    val used = usable * share
-                    arc(s.color, begin, used - gap / 2)
-                    arc(s.rest, begin + used + gap / 2, usable - used - gap / 2)
-                }
-            }
-            start += sweep
-        }
-    }
-}
-
-/** Revolut's analyst bar: an 8 dp pill track with [fraction] of it filled by a gradient of [color], light to full. */
-@Composable
-internal fun RvRatingBar(fraction: Float, color: Color, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxWidth().height(RvStatsSize.ratingBar).clip(CircleShape).background(Rv.colors.track)) {
-        val brush = Brush.horizontalGradient(listOf(color.copy(alpha = color.alpha * RvStatsAlpha.RATING_START), color))
-        Box(Modifier.fillMaxWidth(fraction.coerceIn(0f, 1f)).fillMaxHeight().clip(CircleShape).background(brush))
     }
 }
 
 /** The day's hours on the x axis of the empty grid and the hour bars, as 今天 draws them. */
 internal const val HOURS = 24
-
-private const val FULL_TURN = 360f
-private const val START_ANGLE = -90f

@@ -7,10 +7,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,10 +16,10 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvBarChart
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
 import dev.doona.android.designsystem.rv.RvChevron
@@ -30,7 +27,10 @@ import dev.doona.android.designsystem.rv.RvFigure
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLatencySpread
 import dev.doona.android.designsystem.rv.RvLegendItem
+import dev.doona.android.designsystem.rv.RvMeter
 import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.designsystem.rv.RvRing
+import dev.doona.android.designsystem.rv.RvRingSegment
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatsAlpha
@@ -122,7 +122,7 @@ internal fun RvDayTileCard(tile: RvDayTile, modifier: Modifier = Modifier) {
             when {
                 hours == null -> RvEmptyChart(stringResource(R.string.rv_stats_no_data), Modifier.height(RvStatsSize.bars), tile.slots)
                 hours.all { it == 0L } -> RvEmptyChart(tile.quiet, Modifier.height(RvStatsSize.bars), tile.slots)
-                else -> RvHourBars(hours, tile.color, slots = tile.slots)
+                else -> RvBarChart(hours, tile.color, slots = tile.slots)
             }
         }
     }
@@ -159,7 +159,7 @@ internal fun RvQuotaCard(subscriptions: List<RvSubscription>, nowEpochMs: Long) 
                         RvText(stringResource(R.string.rv_stats_quota_total, total.toString(), count), Rv.type.rowSub, color = Rv.colors.textSecondary)
                     }
                 }
-                RvQuotaRing(segments)
+                RvRing(segments)
             }
             withQuota.forEachIndexed { i, sub ->
                 Spacer(Modifier.height(if (i == 0) RvStatsSpace.chartGap else RvStatsSpace.legendGap))
@@ -245,24 +245,11 @@ internal fun RvSplitCard(split: RvSplit?, scope: List<String> = emptyList()) {
                     RvText(stringResource(if (split != null) R.string.rv_stats_via_proxy else R.string.rv_stats_no_data), Rv.type.rowSub, color = Rv.colors.textSecondary)
                 }
                 Column(Modifier.weight(1f)) {
-                    RvRatingRow(proxy, format.percent(proxy.toDouble()), stringResource(R.string.rv_stats_proxy), Rv.colors.down.line, split != null)
-                    RvRatingRow(1f - proxy, format.percent(1.0 - proxy), stringResource(R.string.rv_stats_direct), Rv.colors.textSecondary, split != null)
+                    RvMeter(proxy, format.percent(proxy.toDouble()), stringResource(R.string.rv_stats_proxy), Rv.colors.down.line, split != null)
+                    RvMeter(1f - proxy, format.percent(1.0 - proxy), stringResource(R.string.rv_stats_direct), Rv.colors.textSecondary, split != null)
                 }
             }
         }
-    }
-}
-
-/**
- * One of 分流比例's bars, its [fraction] filled, with `[percent] [label]` after it (the label alone when not [known]); the
- * row grows past its height when large text needs it, so the label is never cut.
- */
-@Composable
-internal fun RvRatingRow(fraction: Float, percent: String, label: String, color: Color, known: Boolean) {
-    Row(Modifier.heightIn(min = RvStatsSize.ratingRow), verticalAlignment = Alignment.CenterVertically) {
-        RvRatingBar(if (known) fraction else 0f, color, Modifier.weight(1f))
-        Spacer(Modifier.width(RvSpace.trailingGap))
-        RvText(if (known) "$percent $label" else label, Rv.type.rowSub, Modifier.widthIn(min = RvStatsSize.ratingLabel), align = TextAlign.End)
     }
 }
 

@@ -14,6 +14,7 @@ import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
 import dev.doona.android.designsystem.rv.RvFigure
+import dev.doona.android.designsystem.rv.RvMeter
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.feature.model.RvNode
@@ -49,8 +50,8 @@ internal fun RvScoreStatsCard(score: RvStatsScore) {
                     RvText(stringResource(R.string.rv_stats_connections), Rv.type.rowSub, color = Rv.colors.textSecondary)
                 }
                 Column(Modifier.weight(1f)) {
-                    RvRatingRow(share, shown(ok), stringResource(R.string.rv_score_trial_ok), Rv.colors.down.line, known)
-                    RvRatingRow(if (trials == null) 0f else 1f - share, shown(failed), stringResource(R.string.rv_score_trial_failed), Rv.colors.textSecondary, known)
+                    RvMeter(share, shown(ok), stringResource(R.string.rv_score_trial_ok), Rv.colors.down.line, known)
+                    RvMeter(if (trials == null) 0f else 1f - share, shown(failed), stringResource(R.string.rv_score_trial_failed), Rv.colors.textSecondary, known)
                 }
             }
         }

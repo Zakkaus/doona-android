@@ -29,7 +29,6 @@ import dev.doona.android.designsystem.rv.RvFigure
 import dev.doona.android.designsystem.rv.RvFigureText
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvGutter
-import dev.doona.android.designsystem.rv.RvNodesSize
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvPageHeader
@@ -92,7 +91,7 @@ internal fun RvNodeDetail(
         onBack = onBack,
         overlay = { Actions(current, canUse, onUse, onTest, insets, Modifier.align(Alignment.BottomCenter)) },
         // The floating actions' room under the last card (S7-17, N05): the gap, the companion, and its 16 dp over the inset.
-        end = RvPageEnd.Inset(RvSpace.gutter + RvNodesSize.ctaCompanion + RvSpace.gutter),
+        end = RvPageEnd.Inset(RvSpace.gutter + RvSize.roundButton + RvSpace.gutter),
     ) { titleBlock ->
         Header(node, current, titleBlock, insets, score?.detailMark(node.id))
         RvGutter(banner = banner) {
@@ -122,7 +121,7 @@ internal fun RvNodeDetailSkeleton(onBack: () -> Unit) {
         stringResource(R.string.rv_nodes_last_test),
     )
     val time = rememberRvFormat().time(0L)
-    RvScrollPage("", insets, onBack = onBack, end = RvPageEnd.Inset(RvSpace.gutter + RvNodesSize.ctaCompanion + RvSpace.gutter)) {
+    RvScrollPage("", insets, onBack = onBack, end = RvPageEnd.Inset(RvSpace.gutter + RvSize.roundButton + RvSpace.gutter)) {
         RvSkeletonPageHeader(insets, mark = RvSize.headerDisc, title = RvSkeletonText.Figures, caption = RvSkeletonText.Mixed)
         RvGutter {
             RvSkeletonCard {
