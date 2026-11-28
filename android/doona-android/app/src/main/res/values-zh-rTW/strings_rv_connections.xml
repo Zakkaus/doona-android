@@ -7,6 +7,7 @@
     </plurals>
     <string name="rv_conn_all_apps">全部 App</string>
     <string name="rv_conn_newest">最新優先</string>
+    <string name="rv_conn_oldest">最早優先</string>
     <string name="rv_conn_seconds">%1$d 秒</string>
     <string name="rv_conn_minutes">%1$d 分</string>
     <string name="rv_conn_path">路徑</string>

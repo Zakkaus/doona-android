@@ -70,6 +70,7 @@ internal class RuleEditViewModel(
     private var ruleId: String?,
     private val places: NodePlaces = CoreNodePlaces,
     private val io: CoroutineDispatcher = Dispatchers.IO,
+    private val destination: String? = null,
 ) : ViewModel() {
     private val state = MutableStateFlow(RuleEditUiState())
     private var read: HonkPolicyRead? = null
@@ -164,7 +165,15 @@ internal class RuleEditViewModel(
             val rule = ruleId?.let { rule(read) ?: throw EngineException(ErrorCode.NotFound) }
             state.update {
                 it.copy(
-                    draft = rule?.let { r -> ruleDraft(r, read) } ?: RvRuleDraft(RvMatchKind.Suffix, "", main?.id ?: RV_DIRECT),
+                    draft = rule?.let { r -> ruleDraft(r, read) } ?: RvRuleDraft(
+                        when {
+                            destination == null -> RvMatchKind.Suffix
+                            '/' in destination -> RvMatchKind.Cidr
+                            else -> RvMatchKind.Full
+                        },
+                        destination.orEmpty(),
+                        main?.id ?: RV_DIRECT,
+                    ),
                     at = rule?.let { r -> ruleAt(r, read, config) },
                     targets = targets,
                     readFailure = null,
@@ -180,8 +189,8 @@ internal class RuleEditViewModel(
     private fun rule(read: HonkPolicyRead): HonkRule? = read.rules.rules.firstOrNull { it.id == ruleId && !it.isFallback }
 
     companion object {
-        fun factory(api: NativeApi, ruleId: String?): ViewModelProvider.Factory = viewModelFactory {
-            initializer { RuleEditViewModel(api, ruleId) }
+        fun factory(api: NativeApi, ruleId: String?, destination: String?): ViewModelProvider.Factory = viewModelFactory {
+            initializer { RuleEditViewModel(api, ruleId, destination = destination) }
         }
     }
 }
@@ -234,8 +243,8 @@ private fun paused(draft: RvRuleDraft, text: String) = if (draft.enabled) text e
  * a line of a match the form cannot hold opens its file ([onOpenSource] with the file's path).
  */
 @Composable
-internal fun RuleEditRoute(ruleId: String?, onBack: () -> Unit, onOpenSource: (String, Int) -> Unit) {
-    val viewModel: RuleEditViewModel = viewModel(factory = RuleEditViewModel.factory(nativeApi(), ruleId))
+internal fun RuleEditRoute(ruleId: String?, onBack: () -> Unit, onOpenSource: (String, Int) -> Unit, destination: String? = null) {
+    val viewModel: RuleEditViewModel = viewModel(factory = RuleEditViewModel.factory(nativeApi(), ruleId, destination))
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(ui.done) { if (ui.done) onBack() }
     val title = stringResource(R.string.rv_rule_edit_title)

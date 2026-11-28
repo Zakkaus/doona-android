@@ -2,6 +2,7 @@ package dev.doona.android.feature.connections
 
 import androidx.compose.runtime.Immutable
 import dev.doona.android.designsystem.rv.RvPlace
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvRuleEnd
@@ -41,6 +42,7 @@ internal class RvConnection(
 ) {
     /** What the page's title says: the app, or the host when honk saw no process. */
     val title: String get() = app.ifEmpty { host }
+    val endpoint: String get() = if (!hasDomain && ':' in host) "[$host]:$port" else "$host:$port"
 }
 
 /** The group a connection went through: its name as the profile gives it and how it picks. */
@@ -50,17 +52,17 @@ internal data class RvConnectionGroup(val name: String, val kind: RvGroupKind)
 internal data class RvConnectionNode(val name: String, val protocol: String, val place: RvPlace)
 
 /** 連線's state: the connections open when it last read them, newest first, and when that was; [loaded] once a read succeeded. */
-internal data class RvConnectionsUi(val connections: List<RvConnection> = emptyList(), val nowEpochMs: Long = 0, val loaded: Boolean = false)
+internal data class RvConnectionsUi(val connections: List<RvConnection> = emptyList(), val nowEpochMs: Long = 0, val loaded: Boolean = false, val session: Long? = null, val error: ErrorCode? = null)
 
 /**
  * [connections] in 連線's words: each outbound named by its group in [groups] (or 直連 for `direct`, 拒絕 for `block`, and
  * a missing group for a name the profile no longer has), and the node at the end of its chain from [nodes], placed by
  * its name ([places]).
  */
-internal fun rvConnections(connections: List<HonkConnection>, groups: List<Group>, nodes: List<Node>, places: NodePlaces): List<RvConnection> {
+internal fun connectionMapper(groups: List<Group>, nodes: List<Node>, places: NodePlaces): (HonkConnection) -> RvConnection {
     val byName = groups.associate { it.name to RvConnectionGroup(it.name, rvGroupKind(it.policy.kind)) }
     val byId = nodes.associate { it.id to RvConnectionNode(it.name, it.protocol?.let(::protocolName).orEmpty(), places.placeOf(it.name)) }
-    return connections.map { c ->
+    return { c ->
         val group = c.outbound?.let(byName::get)
         RvConnection(
             id = c.id,
@@ -68,6 +70,7 @@ internal fun rvConnections(connections: List<HonkConnection>, groups: List<Group
             port = c.port,
             hasDomain = c.hasDomain,
             app = c.process.orEmpty(),
+            // honk-gap:conn-uid
             packageName = "",
             udp = c.udp,
             downBytes = c.downBytes,

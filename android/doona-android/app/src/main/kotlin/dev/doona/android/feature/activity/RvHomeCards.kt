@@ -16,9 +16,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Constraints
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
+import dev.doona.android.designsystem.rv.RvFigure
 import dev.doona.android.designsystem.rv.RvFigureText
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvLatencyChange
@@ -37,6 +39,7 @@ import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.nodes.ui.NODE_SEPARATOR
 import dev.doona.android.feature.nodes.ui.RvSubscriptionRow
+import dev.doona.android.feature.nodes.ui.rvNodeLine
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -49,12 +52,11 @@ import kotlin.math.roundToInt
  * wraps under the chart.
  */
 @Composable
-internal fun RvUsageCard(day: RvDay, nowHour: Float, yesterdayByNow: Long) {
+internal fun RvUsageCard(day: RvDay?, nowHour: Float, yesterdayByNow: Long?) {
     val format = rememberRvFormat()
     val colors = Rv.colors
     val type = Rv.type
-    val change = day.total - yesterdayByNow
-    val compare = if (change < 0) R.string.rv_less_than_yesterday else R.string.rv_more_than_yesterday
+    val change = day?.total?.let { total -> yesterdayByNow?.let { total - it } }
     val legendLine = with(LocalDensity.current) { type.tileCaption.lineHeight.toDp() }
     RvCard {
         Layout(
@@ -62,8 +64,12 @@ internal fun RvUsageCard(day: RvDay, nowHour: Float, yesterdayByNow: Long) {
                 Column {
                     RvText(stringResource(R.string.rv_today_usage), type.cardTitle, color = colors.textSecondary)
                     Spacer(Modifier.height(RvSpace.tight))
-                    RvFigureText(format.bytes(day.total).figure(), type.cardValue, type.cardUnit)
-                    RvText(stringResource(compare, format.bytes(abs(change)).toString()), type.tileCaption, color = colors.textSecondary, maxLines = Int.MAX_VALUE)
+                    // honk-gap:daily-usage
+                    RvFigureText(day?.let { format.bytes(it.total).figure() } ?: RvFigure(RV_NO_VALUE, ""), type.cardValue, type.cardUnit)
+                    if (change != null) {
+                        val compare = if (change < 0) R.string.rv_less_than_yesterday else R.string.rv_more_than_yesterday
+                        RvText(stringResource(compare, format.bytes(abs(change)).toString()), type.tileCaption, color = colors.textSecondary, maxLines = Int.MAX_VALUE)
+                    }
                 }
                 RvUsageChart(day, nowHour, Modifier.padding(bottom = RvUsageSize.chartAboveLegend + legendLine))
                 RvUsageLegend(day)
@@ -128,7 +134,7 @@ internal fun RvFastestCard(nodes: List<RvNode>, currentId: String, onOpen: () ->
         // A new test re-sorts the rows: each moves to its new place, keyed by its node.
         nodes.forEachIndexed { order, node ->
             key(node.id) {
-                RvRow({ RvFlag(node.place.flag, RvSize.rowDisc, current = node.id == currentId) }, node.name, node.protocol + NODE_SEPARATOR + stringResource(node.place.label), Modifier.rvMoves(), titleKeepWords = false) {
+                RvRow({ RvFlag(node.place.flag, RvSize.rowDisc, current = node.id == currentId) }, node.name, rvNodeLine(node.protocol, stringResource(node.place.label)), Modifier.rvMoves(), titleKeepWords = false) {
                     RvLatencyChange(node.latencyMs, node.changeMs, order = order)
                 }
             }

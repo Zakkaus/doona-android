@@ -36,7 +36,7 @@ import dev.doona.android.feature.model.RvRouteMode
  * node; in 直連 a line that no node is in use.
  */
 @Composable
-internal fun OutboundCard(state: RvActivityState, mode: RvRouteMode, routes: RvActivityRoutes, nodes: List<RvNode>, rules: List<RvActivityRule>, cards: RvActivityCards) {
+internal fun OutboundCard(state: RvActivityState, mode: RvRouteMode, routes: RvActivityRoutes, nodes: List<RvNode>, rules: List<RvActivityRule>?, cards: RvActivityCards) {
     RvCard {
         RvRow({ RvIconDisc(R.drawable.rv_sym_directions) }, stringResource(R.string.act_mode), stringResource(mode.label), onClick = routes.mode) {
             if (routes.mode != null) RvChevron()
@@ -59,7 +59,11 @@ internal fun OutboundCard(state: RvActivityState, mode: RvRouteMode, routes: RvA
             ) { RvLatencyChange(node?.latencyMs?.takeUnless { node.failed }, listed?.changeMs?.takeUnless { node.failed }) }
         }
         if (mode != RvRouteMode.Rule) return@RvCard
-        rules.take(RULE_ROWS).forEach { RuleRow(it, cards, routes) }
+        if (rules == null) {
+            RvRow({ RvIconDisc(groupGlyph(null)) }, RV_NO_VALUE, null)
+        } else {
+            rules.take(RULE_ROWS).forEach { RuleRow(it, cards, routes) }
+        }
         RvSeeAll(pluralStringResource(R.plurals.rv_see_all_rules, cards.ruleCount, cards.ruleCount), onClick = routes.rules)
     }
 }
@@ -81,7 +85,9 @@ private fun RuleRow(rule: RvActivityRule, cards: RvActivityCards, routes: RvActi
     val udp = rule.udpNodeId?.takeIf { it != rule.nodeId }?.let(cards.node)
     val direct = stringResource(R.string.mode_direct)
     val line = when {
-        node == null -> direct
+        rule.groupId == null -> direct
+
+        node == null -> udp?.let { stringResource(R.string.rv_network_node, stringResource(R.string.ui_udp), it.name) } ?: RV_NO_VALUE
 
         udp == null -> node.name
 
@@ -91,10 +97,10 @@ private fun RuleRow(rule: RvActivityRule, cards: RvActivityCards, routes: RvActi
     val text = ruleRowText(rule.label, line, direct)
     RvRow(
         {
-            when (ruleLead(node, udp)) {
+            when (ruleLead(rule.groupId, node, udp)) {
                 RuleLead.Direct -> RvIconDisc(R.drawable.rv_sym_arrow_right_alt)
                 RuleLead.GroupGlyph -> RvIconDisc(groupGlyph(rule.groupId?.let(cards.groupKind)))
-                RuleLead.Flag -> RvFlag(node?.place?.flag, RvSize.rowDisc)
+                RuleLead.Flag -> RvFlag((node ?: udp)?.place?.flag, RvSize.rowDisc)
             }
         },
         text.title,
@@ -102,6 +108,7 @@ private fun RuleRow(rule: RvActivityRule, cards: RvActivityCards, routes: RvActi
         onClick = { rule.groupId?.let(routes.rule) ?: routes.rules() },
         titleKeepWords = false,
         subtitleKeepWords = false,
+        // honk-gap:rule-bytes
     ) { RvText(rule.bytes?.let { format.bytes(it).toString() } ?: RV_NO_VALUE, Rv.type.rowValue, align = TextAlign.End) }
 }
 

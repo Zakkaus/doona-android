@@ -9,10 +9,11 @@ internal class TrafficRead(val traffic: RuntimeTraffic?, val history: TrafficHis
 /**
  * [range]'s chart of [RV_TRAFFIC_POINTS] points from honk's samples: the samples of the range's last seconds, each chart
  * point averaging as many of them as fit (10 over 10 分), which keeps the window's mean. honk keeps 600 s, so a longer
- * range shows those. Null with no sample. A sample honk could not rate counts as 0, as the chart draws no gaps.
+ * range shows those. Null with no samples; a point without any measured rate leaves a gap.
  */
 internal fun trafficChart(range: Int, history: TrafficHistory): RvTrafficChart? {
     val end = history.endEpochMs ?: return null
+    // honk-gap:traffic-1h
     val count = (RV_TRAFFIC_RANGE_SECONDS[range] * MS_PER_SECOND / history.stepMs).toInt().coerceAtLeast(1)
     val down = history.down.takeLast(count)
     val up = history.up.takeLast(count)
@@ -21,7 +22,7 @@ internal fun trafficChart(range: Int, history: TrafficHistory): RvTrafficChart? 
 }
 
 /** The last whole groups of [per] samples, each averaged. */
-private fun List<Long?>.averaged(per: Int): List<Float> = takeLast(size / per * per).chunked(per) { group -> group.map { it ?: 0L }.average().toFloat() }
+private fun List<Long?>.averaged(per: Int): List<Float> = takeLast(size / per * per).chunked(per) { group -> group.asSequence().filterNotNull().average().toFloat() }
 
 /**
  * The session's figures at [nowEpochMs]: each way's fastest sample honk keeps, the bytes since its counters started and
@@ -33,8 +34,9 @@ internal fun trafficSession(traffic: RuntimeTraffic, history: TrafficHistory?, n
     val seconds = ((nowEpochMs - since) / MS_PER_SECOND).coerceAtLeast(0)
     val over = seconds.coerceAtLeast(1).toDouble()
     return RvTrafficSession(
-        peakDown = history?.down?.maxOfOrNull { it ?: 0L }?.toDouble() ?: 0.0,
-        peakUp = history?.up?.maxOfOrNull { it ?: 0L }?.toDouble() ?: 0.0,
+        // honk-gap:traffic-1h
+        peakDown = history?.down?.asSequence()?.filterNotNull()?.maxOrNull()?.toDouble(),
+        peakUp = history?.up?.asSequence()?.filterNotNull()?.maxOrNull()?.toDouble(),
         averageDown = traffic.downTotal / over,
         averageUp = traffic.upTotal / over,
         downTotal = traffic.downTotal,
@@ -50,7 +52,7 @@ internal fun trafficSession(traffic: RuntimeTraffic, history: TrafficHistory?, n
  */
 internal fun trafficState(range: Int, read: TrafficRead, previous: RvTrafficChart?, nowEpochMs: Long): RvTrafficState {
     val traffic = read.traffic
-    val chart = read.history?.let { trafficChart(range, it) } ?: previous
+    val chart = if (read.history != null) trafficChart(range, read.history) else previous
     return RvTrafficState(traffic?.downRate ?: 0, traffic?.upRate ?: 0, traffic?.sinceEpochMs != null, chart, traffic?.let { trafficSession(it, read.history, nowEpochMs) })
 }
 

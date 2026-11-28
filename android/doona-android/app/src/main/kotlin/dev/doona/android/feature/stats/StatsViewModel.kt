@@ -69,6 +69,8 @@ internal class StatsViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), rvStatsState(StatsInput(null, clock(), zone(), firstDay = firstDay())))
 
     private val failed = MutableStateFlow<StatsFailure?>(null)
+    private val running = MutableStateFlow(emptySet<StatsTool>())
+    val runningTools = running.asStateFlow()
 
     /** The last tool that failed, shown as a banner until that tool next succeeds. */
     val failure: StateFlow<StatsFailure?> = failed.asStateFlow()
@@ -119,9 +121,12 @@ internal class StatsViewModel(
 
     /** Runs [tool] on [io], then reads the profile again: a failure replaces the banner, a success clears that tool's own. */
     private fun attempt(tool: StatsTool, call: suspend CoroutineScope.() -> StatsFailure?) {
+        if (tool in running.value) return
+        running.value += tool
         viewModelScope.launch {
             val failure = withContext(io) { runCatching { coroutineScope { call() } }.getOrElse { StatsFailure(tool, it.errorCode()) } }
             failed.update { shown -> failure ?: shown?.takeUnless { it.tool == tool } }
+            running.value -= tool
             load()
         }
     }

@@ -10,7 +10,7 @@
     <string name="rv_expires">Expires %1$s</string>
     <string name="rv_updated">Updated %1$s</string>
     <string name="rv_peak">Peak %1$s</string>
-    <string name="rv_stat_peak">Peak</string>
+    <string name="rv_stat_peak">Peak (last 10 min)</string>
     <string name="rv_stat_average">Average</string>
     <string name="rv_now">Now</string>
     <string name="rv_no_traffic">No traffic right now</string>

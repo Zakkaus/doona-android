@@ -54,7 +54,7 @@ class ActivityModelTest {
         val mapped = map(data(profile.with(mainGroup = null)))
         assertNull(mapped.node)
         assertEquals("", mapped.cards.mainNodeId)
-        assertEquals(listOf("Streaming", null, "Proxy", "AI"), mapped.rules.map { it.label })
+        assertEquals(listOf("Streaming", null, "Proxy", "AI"), mapped.rules!!.map { it.label })
     }
 
     @Test
@@ -71,7 +71,8 @@ class ActivityModelTest {
         assertEquals(RvRouteMode.Global, mapped.mode)
         assertNull(mapped.node)
         assertTrue(mapped.hasSubscriptions)
-        assertTrue(mapped.rules.isEmpty())
+        assertTrue(activityModel(mapped, Status.Stopped, ActivityTraffic(), false, ready = true, failure = null).loading)
+        assertNull(mapped.rules)
     }
 
     @Test
@@ -94,14 +95,14 @@ class ActivityModelTest {
             val udp = GroupSelection("n-0001c55300000000", "n-0001c55300000000", "user")
             Group(group.id, group.name, group.icon, group.policy, group.members, GroupRuntime(GroupSelections(tcp, udp), group.runtime.health), group.capabilities)
         }
-        val rule = map(data(profile.with(groups = split))).rules.single { it.groupId == "g-Streaming" }
+        val rule = map(data(profile.with(groups = split))).rules!!.single { it.groupId == "g-Streaming" }
         assertEquals("n-0001c21100000000", rule.nodeId)
         assertEquals("n-0001c55300000000", rule.udpNodeId)
     }
 
     @Test
     fun `a rule row never repeats its title as its subtitle`() {
-        val direct = map(data()).rules.single { it.label == null }
+        val direct = map(data()).rules!!.single { it.label == null }
         // A rule that sends to 直連 ends on no node: its line would be 直連 again, so it has none.
         assertEquals(RuleRowText("直連", null), ruleRowText(direct.label, "直連", "直連"))
         assertEquals(RuleRowText("Streaming", "Taipei 01"), ruleRowText("Streaming", "Taipei 01", "直連"))
@@ -122,21 +123,21 @@ class ActivityModelTest {
         val nodes = honkActivityNodes(profile, CoreNodePlaces).byId
         val node = nodes.getValue("n-0001c21100000000")
         val udp = nodes.getValue("n-00019bac00000000")
-        assertEquals(RuleLead.GroupGlyph, ruleLead(node, udp))
+        assertEquals(RuleLead.GroupGlyph, ruleLead("group", node, udp))
         // In one place, or with no place for either, the one flag stands for both.
-        assertEquals(RuleLead.Flag, ruleLead(node, udp.copy(place = RvPlace.TW)))
-        assertEquals(RuleLead.Flag, ruleLead(node.copy(place = RvPlace.Other), udp.copy(place = RvPlace.Other)))
-        assertEquals(RuleLead.Flag, ruleLead(node, null))
-        assertEquals(RuleLead.Direct, ruleLead(null, null))
+        assertEquals(RuleLead.Flag, ruleLead("group", node, udp.copy(place = RvPlace.TW)))
+        assertEquals(RuleLead.Flag, ruleLead("group", node.copy(place = RvPlace.Other), udp.copy(place = RvPlace.Other)))
+        assertEquals(RuleLead.Flag, ruleLead("group", node, null))
+        assertEquals(RuleLead.Flag, ruleLead("group", null, udp))
+        assertEquals(RuleLead.GroupGlyph, ruleLead("group", null, null))
+        assertEquals(RuleLead.Direct, ruleLead(null, null, null))
     }
 
     @Test
     fun `the cards read the clock, the rule count and the groups' kinds, and honk has no bytes by the day`() {
         val cards = map(data()).cards
-        // 13.5 falls in hour 13: hours 0 to 13 are drawn, the 10 still to come are not.
-        assertEquals(14, cards.today.down.size)
-        assertEquals(0L, cards.today.total)
-        assertEquals(0L, cards.yesterdayByNow)
+        assertNull(cards.today)
+        assertNull(cards.yesterdayByNow)
         assertEquals(13.5f, cards.nowHour)
         assertEquals(1_000L, cards.nowEpochMs)
         assertEquals(14, cards.ruleCount)
@@ -241,7 +242,7 @@ class ActivityModelTest {
         assertFalse(ui.loading)
         val loading = activityModel(map(data()), Status.Failed(FailureReason.CoreStopped), traffic, false, ready = false, failure = null)
         assertTrue(loading.loading)
-        assertNull(loading.notice)
+        assertEquals(RvActivityNotice.CoreStopped, loading.notice)
         // A failed read shows no traffic.
         assertEquals(0L, activityTraffic(null, null).downRate)
     }

@@ -71,14 +71,14 @@ internal fun RvActivityScreen(
     onConnect: () -> Unit,
     routes: RvActivityRoutes,
     nodes: List<RvNode>,
-    subscriptions: List<RvSubscription>,
+    subscriptions: List<RvSubscription>?,
     pull: RvPullLook = RvPullLook.None,
     hero: RvHeroSwipe = RvHeroSwipe.Off,
     banner: RvNotice? = null,
     noSubscription: (() -> Unit)? = null,
     loading: Boolean = false,
     navFade: Boolean = false,
-    rules: List<RvActivityRule>,
+    rules: List<RvActivityRule>?,
     cards: RvActivityCards,
     cycleMode: (() -> Unit)? = { onAction(ActivityAction.SetMode(state.mode.next())) },
 ) {
@@ -106,7 +106,10 @@ internal fun RvActivityScreen(
             Column(Modifier.fillMaxSize().rvPullBlur(pull.progress).rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll)) {
                 Header(steady, ticking, mode, motion, insets, look, cards.node) { HeroActions(steady, onAction, onConnect, routes, cycleMode) }
                 RvGutter(pushed ?: Modifier, banner) {
-                    if (noSubscription != null) {
+                    if (subscriptions == null) {
+                        TrafficTiles(state, routes.traffic)
+                        RvUsageCard(cards.today, cards.nowHour, cards.yesterdayByNow)
+                    } else if (noSubscription != null) {
                         RvEmptyState(
                             stringResource(R.string.rv_empty_subscription),
                             stringResource(R.string.rv_empty_subscription_line),

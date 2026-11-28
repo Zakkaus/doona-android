@@ -40,7 +40,8 @@ import kotlin.math.max
  * way, then the amount, in one hue: the good hue when it fell, the slow hue when it rose. No change is a dash.
  */
 @Composable
-internal fun RvDelta(changeMs: Int) {
+internal fun RvDelta(changeMs: Int?) {
+    if (changeMs == null) return RvText(RV_NO_VALUE, Rv.type.rowSub, color = Rv.colors.textSecondary) // honk-gap:node-history
     // No change is not a measurement, so it shows a dash and no triangle.
     if (changeMs == 0) {
         val none = stringResource(R.string.rv_a11y_no_change)
@@ -143,7 +144,7 @@ private fun InRoomOf(room: @Composable () -> Unit, busy: @Composable () -> Unit)
 private fun LatencyOverChange(latencyMs: Int?, changeMs: Int?, timedOut: Boolean) {
     Column(horizontalAlignment = Alignment.End) {
         Box(Modifier.rvEndFirstLine()) { RvLatencyText(latencyMs, timedOut) }
-        changeMs?.let { RvDelta(it) }
+        RvDelta(changeMs)
     }
 }
 

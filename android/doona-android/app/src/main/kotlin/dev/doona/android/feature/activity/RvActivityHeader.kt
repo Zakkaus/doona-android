@@ -165,7 +165,7 @@ private fun MainNodeFigure(state: RvActivityState, mode: RvRouteMode, nodes: Lis
             Spacer(Modifier.height(RvSpace.subGap))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(RvSpace.tight)) {
                 RvText(node?.name ?: RV_NO_VALUE, Rv.type.sub, color = Rv.colors.textSecondary)
-                listed?.changeMs?.takeUnless { node.failed }?.let { RvDelta(it) }
+                RvDelta(listed?.changeMs?.takeUnless { node.failed })
             }
         }
     }

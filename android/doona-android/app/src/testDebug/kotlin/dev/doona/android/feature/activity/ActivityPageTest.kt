@@ -67,6 +67,19 @@ class ActivityPageTest {
     }
 
     @Test
+    fun incompatibleCoreStillOffersUpdateWhenTheFirstProfileReadFails() {
+        val engine = rvSampleEngine().apply { status.value = Status.Failed(FailureReason.IncompatibleCore) }
+        val model = model(engine, ActivityHonkFixtures.sample().apply { on("GET", "/api/v1/rules", 503, HonkFixtures.body("errors/temporarily-unavailable-example")) })
+        compose.rvContent(dark = false) { ActivityPage(model, crash = null, onConnect = {}, routes = activityTestRoutes(opened)) }
+        compose.onNodeWithText(rvText(R.string.rv_settings_check_update)).performClick()
+        assertEquals(listOf("checkUpdate"), opened)
+        engine.status.value = Status.Running(1L)
+        compose.onNodeWithText(rvText(R.string.rv_failed_read_profile)).assertExists()
+        compose.onNodeWithText(rvText(R.string.ui_download)).performClick()
+        assertEquals(listOf("checkUpdate", "traffic"), opened)
+    }
+
+    @Test
     fun eachFailedStartLeadsWhereItsCauseIsMendedAndOnlyARetryConnects() {
         val engine = rvSampleEngine()
         show(engine)

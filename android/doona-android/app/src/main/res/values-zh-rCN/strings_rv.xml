@@ -9,7 +9,7 @@
     <string name="rv_expires">%1$s 到期</string>
     <string name="rv_updated">%1$s 更新</string>
     <string name="rv_peak">峰值 %1$s</string>
-    <string name="rv_stat_peak">峰值</string>
+    <string name="rv_stat_peak">最近 10 分钟峰值</string>
     <string name="rv_stat_average">平均</string>
     <string name="rv_now">现在</string>
     <string name="rv_no_traffic">当前没有流量</string>

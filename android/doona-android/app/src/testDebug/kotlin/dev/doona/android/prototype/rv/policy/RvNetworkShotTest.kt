@@ -333,7 +333,7 @@ class RvNetworkShotTest {
         /** The picker whole (measured: 2842, 3083, 5903.5). */
         const val PICKER = "+h2905dp"
         const val PICKER_FS115 = "+h3144dp"
-        const val PICKER_FS200 = "+h5904dp"
+        const val PICKER_FS200 = "+h5939dp"
 
         /** 活動 whole (measured: 1970.5, 2015, 3212). */
         const val ACTIVITY = "+h1971dp"

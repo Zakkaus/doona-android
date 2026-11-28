@@ -62,11 +62,11 @@ class ActivityViewModel internal constructor(
     private val runtime = NativeRuntime(api)
     private val probes = NativeProbes(api)
     private val failure = MutableStateFlow<RvActivityFailure?>(null)
-    private val profile = MutableStateFlow<HonkProfile?>(null)
+    private val profile = MutableStateFlow<Result<HonkProfile>?>(null)
     private var reading: Job? = null
 
     /** Each profile with its nodes, mapped once per read, not on each outbound read. */
-    private val profileNodes = profile.map { it to honkActivityNodes(it, places) }
+    private val profileNodes = profile.map { it to honkActivityNodes(it?.getOrNull(), places) }
 
     /** The bytes per outbound, read now and every [USAGE_MS] while collected; a failed read keeps the last one. */
     private val outbounds: Flow<List<OutboundTraffic>?> = flow {
@@ -89,10 +89,10 @@ class ActivityViewModel internal constructor(
     /** The mode stays the engine's: the profile's once read, the settings' until then. */
     private val mode: Flow<Mode> = combine(engine.catalog.map { it?.mode }.distinctUntilChanged(), engine.settings) { catalog, settings -> catalog ?: settings.mode }
 
-    private val lists: Flow<ActivityCatalog> =
-        combine(profileNodes, mode, outbounds) { (profile, nodes), mode, outbounds ->
+    private val lists =
+        combine(profileNodes, mode, outbounds) { (result, nodes), mode, outbounds ->
             val now = clock()
-            activityCatalog(ActivityData(profile, mode, outbounds, now, hourOf(now, zone())), nodes)
+            activityCatalog(ActivityData(result?.getOrNull(), mode, outbounds, now, hourOf(now, zone())), nodes) to result?.exceptionOrNull()?.errorCode()
         }.flowOn(work)
 
     private val signals = combine(online, refusals.vpn, refusals.notifications, ::ActivitySignals)
@@ -100,14 +100,18 @@ class ActivityViewModel internal constructor(
     private val flags = combine(engine.ready, crashOffered, failure, signals) { ready, crash, failed, signals -> Flags(ready, crash, failed, signals) }
 
     internal val ui: StateFlow<RvActivityUi> =
-        combine(lists, engine.status, traffic, flags) { lists, status, traffic, flags ->
-            activityModel(lists, status, traffic, flags.crash, flags.ready, flags.failure, flags.signals)
+        combine(lists, engine.status, traffic, flags) { (lists, error), status, traffic, flags ->
+            activityModel(lists, status, traffic, flags.crash, flags.ready, flags.failure, flags.signals, error)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initial(crashOffered.value))
 
     /** Reads honk's profile; a failed read keeps the last one. */
     fun load() {
         reading?.cancel()
-        reading = viewModelScope.launch { withContext(io) { runCatching { readHonkProfile(catalog, routing) } }.onSuccess { profile.value = it } }
+        if (profile.value?.isFailure == true) profile.value = null
+        reading = viewModelScope.launch {
+            val result = withContext(io) { runCatching { readHonkProfile(catalog, routing) } }
+            if (result.isSuccess || profile.value?.isSuccess != true) profile.value = result
+        }
     }
 
     fun onAction(action: ActivityAction) {
@@ -121,7 +125,7 @@ class ActivityViewModel internal constructor(
 
     /** Probes every group's direct members, then reads the profile again for their results. */
     private suspend fun testAll(): Result<Unit> = withContext(io) {
-        runCatching { probes.groups((profile.value?.groups ?: catalog.groups()).map { it.id }) }
+        runCatching { probes.groups((profile.value?.getOrNull()?.groups ?: catalog.groups()).map { it.id }) }
     }.also { load() }
 
     /** Runs [call]; its failure is shown until the next attempt, its success clears what was shown. */
@@ -136,9 +140,7 @@ class ActivityViewModel internal constructor(
     private fun initial(crashOffered: Boolean): RvActivityUi {
         val now = clock()
         val data = ActivityData(null, engine.catalog.value?.mode ?: engine.settings.value.mode, null, now, hourOf(now, zone()))
-        val empty = activityCatalog(data, ActivityNodes(emptyList(), allFailed = false)).let {
-            ActivityCatalog(it.mode, null, emptyList(), emptyList(), emptyList(), it.cards, allFailed = false, hasSubscriptions = true, mapped = false)
-        }
+        val empty = activityCatalog(data, ActivityNodes(emptyList(), allFailed = false))
         return activityModel(empty, engine.status.value, ActivityTraffic(), crashOffered, engine.ready.value, null)
     }
 

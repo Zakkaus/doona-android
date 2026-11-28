@@ -8,6 +8,7 @@
     </plurals>
     <string name="rv_conn_all_apps">All apps</string>
     <string name="rv_conn_newest">Newest first</string>
+    <string name="rv_conn_oldest">Oldest first</string>
     <string name="rv_conn_seconds">%1$d s</string>
     <string name="rv_conn_minutes">%1$d min</string>
     <string name="rv_conn_path">Path</string>

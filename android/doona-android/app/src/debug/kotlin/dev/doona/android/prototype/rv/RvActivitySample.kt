@@ -132,7 +132,7 @@ internal fun RvActivityScreenSample(
     navFade: Boolean = false,
     rules: List<RvRuleOutbound> = RvData.ruleOutbounds,
 ) {
-    val rows = rules.map { RvActivityRule(stringResource(it.group), rvSampleRuleGroupId(it.group), it.nodeId, it.bytes, it.udpNodeId) }
+    val rows = rules.map { RvActivityRule(stringResource(it.group), it.nodeId?.let { _ -> rvSampleRuleGroupId(it.group) }, it.nodeId, it.bytes, it.udpNodeId) }
     RvActivityScreen(pageState(state, mode), onAction, onConnect, routes, nodes, subscriptions, pull, hero, banner, noSubscription, loading, navFade, rows, rvSampleActivityCards)
 }
 

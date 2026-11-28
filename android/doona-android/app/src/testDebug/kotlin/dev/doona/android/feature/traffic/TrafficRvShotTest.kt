@@ -10,6 +10,7 @@ import androidx.compose.ui.test.performClick
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.R
+import dev.doona.android.engine.Status
 import dev.doona.android.honk.NativeRuntime
 import dev.doona.android.honk.sampleHonk
 import dev.doona.android.prototype.rv.RV_EN
@@ -26,6 +27,7 @@ import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.rvText
 import dev.doona.android.testing.drawFully
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOf
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -70,7 +72,7 @@ class TrafficRvShotTest {
     @Test
     fun hourLight() = shot("traffic-1h") { compose.onNodeWithText(rvText(R.string.rv_range_1h)).performClick() }
 
-    /** Stopped: the minute the core kept, no history of the app's own, and no session in the card. */
+    /** Stopped: no live chart or session in the card. */
     @Test
     fun stoppedLight() = shot("traffic-stopped", running = false)
 
@@ -124,7 +126,8 @@ class TrafficRvShotTest {
         failing: Boolean = false,
         then: () -> Unit = {},
     ) {
-        val model = TrafficViewModel(NativeRuntime(sampleHonk(running, failing)), { RvData.nowEpochMs }, io = Dispatchers.Unconfined)
+        val status = flowOf(if (running) Status.Running(RvData.nowEpochMs) else Status.Stopped)
+        val model = TrafficViewModel(NativeRuntime(sampleHonk(running, failing)), { RvData.nowEpochMs }, status, io = Dispatchers.Unconfined)
         compose.rvContent(dark, fontScale) {
             val state by model.ui.collectAsStateWithLifecycle()
             RvTrafficScreen(state, onRange = model::onRange, onBack = {}, initialScrub = scrub)
@@ -150,7 +153,7 @@ class TrafficRvShotTest {
 
         /** Screens as tall as the whole page: 56 dp past the phone's 915 at 1.0, 120.5 at 2.0, 56.5 in English. */
         const val FULL_PAGE = "+h971dp"
-        const val FULL_PAGE_FS200 = "+h1036dp"
+        const val FULL_PAGE_FS200 = "+h1088dp"
         const val FULL_PAGE_EN = "en-w412dp-h972dp-notnight-xhdpi"
         val SHOTS: String = System.getProperty("doona.shots") ?: "src/test/screenshots"
     }

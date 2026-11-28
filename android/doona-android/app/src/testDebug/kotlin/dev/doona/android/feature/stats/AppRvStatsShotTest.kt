@@ -11,6 +11,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
@@ -142,9 +143,8 @@ class AppRvStatsShotTest {
     fun subscriptionEnLight() = shot("stats-sub-en", dark = false) { Page(::scoring, subscription = PICKED) }
 
     /**
-     * 本週 with the tiles paged on: 連線次數 in view with its 今天 tag (past days keep no flows). The drag runs across the
-     * whole window at the tiles' height (a caption is too narrow to move the pager), and the test fails unless 連線次數's
-     * tile then sits wholly in the window and 下載's has left it.
+     * 本週 with 連線次數 paged into view. The drag runs across the window at the tiles' height, since a caption is too
+     * narrow to move the pager.
      */
     @Test
     @Config(qualifiers = WINDOW)
@@ -156,9 +156,10 @@ class AppRvStatsShotTest {
         val connections = bounds(R.string.rv_stats_connections)
         assertTrue("連線次數 in view: $connections", connections.left >= 0f && connections.right <= window.right)
         assertTrue("下載 paged out: ${bounds(R.string.ui_download)}", bounds(R.string.ui_download).right <= 0f)
-        val tags = laidOut(R.string.rv_stats_today)
-        val tag = tags.any { it.left >= connections.right && it.right <= window.right && it.top < connections.bottom && it.bottom > connections.top }
-        assertTrue("連線次數's 今天 tag in view beside it: $tags", tag)
+        val inCard = hasAnyAncestor(hasTestTag(text(R.string.rv_stats_connections)))
+        compose.onNode(inCard and hasText(text(R.string.rv_stats_today)), useUnmergedTree = true).assertExists()
+        compose.onNode(inCard and hasText("—"), useUnmergedTree = true).assertExists()
+        compose.onNode(inCard and hasText("0"), useUnmergedTree = true).assertDoesNotExist()
     }) { Page(::scoring, RvStatsRange.Week) }
 
     /** Where each text [id] is laid out, unclipped: boundsInRoot stops at the window, so a caption half out of view would read as in it. */
@@ -168,8 +169,8 @@ class AppRvStatsShotTest {
     private fun bounds(id: Int) = laidOut(id).minBy { it.top }
 
     /**
-     * 本週 and 本月 say what 連線次數 counts (今天); 分流比例 counts since honk started in every range and says 本次啟動
-     * (q-direct-proxy), and a picked subscription tags the traffic cards 全部訂閱.
+     * 分流比例 counts since honk started in every range and says 本次啟動 (q-direct-proxy). Picking a subscription
+     * tags the traffic cards 全部訂閱. The connection count always covers today.
      */
     @Test
     @Config(qualifiers = WINDOW)
@@ -181,10 +182,11 @@ class AppRvStatsShotTest {
         assertEquals("the range chip", 1, count(R.string.rv_stats_today))
         range = RvStatsRange.Week
         compose.waitForIdle()
-        assertEquals("連線次數's tag", 1, count(R.string.rv_stats_today))
+        assertEquals("connection count period", 1, count(R.string.rv_stats_today))
         assertEquals("分流比例's tag", 1, count(R.string.rv_stats_since_start))
         range = RvStatsRange.Month
         compose.waitForIdle()
+        assertEquals("connection count period", 1, count(R.string.rv_stats_today))
         assertEquals("a month compares with nothing", 0, count(R.string.rv_stats_vs_last_week, true) + count(R.string.rv_stats_vs_yesterday, true))
         subscription = PICKED
         compose.waitForIdle()
@@ -199,9 +201,9 @@ class AppRvStatsShotTest {
     fun emptySaysSo() {
         compose.rvContent(dark = false) { Page(::quiet) }
         compose.onAllNodes(hasTestTag(RV_SPENT_CHART), useUnmergedTree = true).fetchSemanticsNodes().let { assertEquals(1, it.size) }
-        val nothing = compose.onAllNodes(hasText(text(R.string.rv_stats_nothing_today)), useUnmergedTree = true).fetchSemanticsNodes().size
-        // 已用流量's line under its figure, then the tiles' lines on their empty grids: 下載, 上傳 and, peeking, 連線次數.
-        assertEquals(CARD_AND_TILES, nothing)
+        val tiles = bounds(R.string.ui_download)
+        assertTrue("the usage card says there is no data", laidOut(R.string.rv_stats_no_data).any { it.bottom < tiles.top })
+        assertEquals("no tile claims there was no traffic", 0, laidOut(R.string.rv_stats_nothing_today).size)
     }
 
     /** A subscription without quota draws no legend (no `0/0 B`) and no date it runs out (none at the epoch, 1970). */
@@ -272,7 +274,6 @@ class AppRvStatsShotTest {
     private companion object {
         val SHOTS: String = System.getProperty("doona.shots") ?: "src/test/screenshots"
         const val PERCENT = 100
-        const val CARD_AND_TILES = 4
         const val PICKED = "s2"
 
         const val SWIPE_FROM = 0.9f

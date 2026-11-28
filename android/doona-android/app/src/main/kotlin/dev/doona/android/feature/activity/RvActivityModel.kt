@@ -65,9 +65,9 @@ internal data class RvActivityRule(val label: String?, val groupId: String?, val
  */
 @Immutable
 internal class RvActivityCards(
-    val today: RvDay,
+    val today: RvDay?,
     val nowHour: Float,
-    val yesterdayByNow: Long,
+    val yesterdayByNow: Long?,
     val nowEpochMs: Long,
     val ruleCount: Int,
     val mainNodeId: String,
@@ -132,10 +132,11 @@ internal data class RvActivityUi(
     val state: RvActivityState,
     val nodes: List<RvNode>,
     val subscriptions: List<RvSubscription>,
-    val rules: List<RvActivityRule>,
+    val rules: List<RvActivityRule>?,
     val cards: RvActivityCards,
     val notice: RvActivityNotice?,
     val failure: RvActivityFailure?,
     val loading: Boolean,
     val hasSubscriptions: Boolean,
+    val readError: ErrorCode? = null,
 )

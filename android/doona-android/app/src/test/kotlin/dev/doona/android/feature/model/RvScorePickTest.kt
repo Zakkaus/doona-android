@@ -29,7 +29,7 @@ class RvScorePickTest {
         )
         assertEquals("n-hk", pick.selectedId)
         assertEquals("hk", pick.selectedName)
-        assertTrue(pick.settled)
+        assertEquals(true, pick.settled)
         assertEquals(RvScoreWait.Traffic, pick.wait)
         assertEquals(3, pick.compared)
         assertEquals(5, pick.candidates)
@@ -44,7 +44,7 @@ class RvScorePickTest {
     fun anUnknownWaitIsLeftOutAndNoCandidateIsIdle() {
         val pick = rvScorePick(network(null, "evaluating", "somethingNew", ScoreCoverage(0, 0, 0)))
         assertEquals(null, pick.wait)
-        assertFalse(pick.settled)
+        assertEquals(false, pick.settled)
         assertTrue(pick.idle)
         assertEquals(listOf(RvScoreWait.Budget, RvScoreWait.Testing, RvScoreWait.Backoff), listOf("budget", "inFlight", "backoff").map { rvScorePick(network("a", "", it, ScoreCoverage(1, 1, 0))).wait })
     }

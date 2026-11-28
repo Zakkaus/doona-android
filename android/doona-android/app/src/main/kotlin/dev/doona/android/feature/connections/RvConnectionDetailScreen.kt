@@ -17,6 +17,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvAddRow
 import dev.doona.android.designsystem.rv.RvAppDisc
@@ -39,7 +40,7 @@ import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.feature.model.RvRuleEnd
-import dev.doona.android.feature.nodes.ui.NODE_SEPARATOR
+import dev.doona.android.feature.nodes.ui.rvNodeLine
 import dev.doona.android.feature.policies.kind
 import dev.doona.android.feature.policies.title
 
@@ -85,7 +86,7 @@ private fun Header(connection: RvConnection, titleBlock: Modifier, insets: Windo
     val format = rememberRvFormat()
     val secondary = Rv.colors.textSecondary
     // A break may follow each dot of a domain, so a long one wraps between its labels, not inside one.
-    val host = if (connection.hasDomain) connection.host.replace(DOT, DOT + BREAK) else connection.host
+    val endpoint = if (connection.hasDomain) connection.endpoint.replace(DOT, DOT + BREAK) else connection.endpoint
     RvBarSpacer(insets)
     Spacer(Modifier.height(RvChrome.largeTitleTop))
     // One block of the page's column, which RvLayoutTest measures from where a large title starts.
@@ -94,7 +95,7 @@ private fun Header(connection: RvConnection, titleBlock: Modifier, insets: Windo
         Spacer(Modifier.height(RvSpace.discToLabel))
         RvText(connection.title, Rv.type.rowTitle, titleBlock.semantics { heading() }, align = TextAlign.Center)
         RvHero(format.bytes(connection.downBytes + connection.upBytes))
-        RvText(host + PORT + connection.port, Rv.type.rowSub, color = secondary, align = TextAlign.Center, maxLines = Int.MAX_VALUE, keepWords = false)
+        RvText(endpoint, Rv.type.rowSub, color = secondary, align = TextAlign.Center, maxLines = Int.MAX_VALUE, keepWords = false)
         if (!connection.hasDomain) RvText(stringResource(R.string.rv_conn_no_domain), Rv.type.rowSub, color = secondary, align = TextAlign.Center)
     }
     Spacer(Modifier.height(RvSpace.headerGap))
@@ -115,24 +116,23 @@ private fun StatsCard(connection: RvConnection, nowEpochMs: Long) {
 
 /**
  * App, rule, group, node: the chain FlClash draws on a connection card, here one row a step. The rule says where it
- * stands in the list. A step honk did not record (no process, no rule, no outbound) has no row.
+ * stands in the list. Missing app and rule fields keep their place.
  */
 @Composable
 private fun PathCard(connection: RvConnection) {
     RvCard {
-        if (connection.app.isNotEmpty()) {
-            RvRow({ RvAppDisc(connection.packageName) }, connection.app, connection.packageName.ifEmpty { null }, titleKeepWords = false, subtitleKeepWords = false)
-        }
-        connection.rule?.let { rule ->
-            val line = listOfNotNull(connection.ruleIndex?.let { stringResource(R.string.rv_conn_rule_index, it) }, rule.kind()).joinToString(SEPARATOR)
-            RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, rule.title(), line, titleKeepWords = false)
-        }
+        // honk-gap:conn-uid
+        RvRow({ RvAppDisc(connection.packageName) }, connection.app.ifEmpty { RV_NO_VALUE }, connection.packageName.ifEmpty { RV_NO_VALUE }, titleKeepWords = false, subtitleKeepWords = false)
+        val rule = connection.rule
+        val index = connection.ruleIndex?.let { stringResource(R.string.rv_conn_rule_index, it) } ?: RV_NO_VALUE // honk-gap:conn-rule
+        val line = listOfNotNull(index, rule?.kind()).joinToString(SEPARATOR)
+        RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, rule?.title() ?: RV_NO_VALUE, line, titleKeepWords = false)
         val group = connection.group
         val node = connection.node
         when {
             group != null && node != null -> {
                 RvRow({ RvIconDisc(group.kind.glyph) }, group.name, stringResource(group.kind.label), titleKeepWords = false)
-                RvRow({ RvFlag(node.place.flag, RvSize.rowDisc) }, node.name, listOf(node.protocol, stringResource(node.place.label)).joinToString(NODE_SEPARATOR), titleKeepWords = false)
+                RvRow({ RvFlag(node.place.flag, RvSize.rowDisc) }, node.name, rvNodeLine(node.protocol, stringResource(node.place.label)), titleKeepWords = false)
             }
 
             group != null -> RvRow({ RvIconDisc(group.kind.glyph) }, group.name, stringResource(group.kind.label), titleKeepWords = false)

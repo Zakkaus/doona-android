@@ -76,6 +76,17 @@ class RuleEditViewModelTest {
     }
 
     @Test
+    fun connectionDestinationPrefillsTheNewRule() {
+        for ((destination, kind) in listOf("example.org" to RvMatchKind.Full, "192.0.2.1/32" to RvMatchKind.Cidr, "2001:db8::1/128" to RvMatchKind.Cidr)) {
+            val draft = RuleEditViewModel(honk, null, io = io, destination = destination).uiState.value.draft
+            assertEquals(kind, draft?.kind)
+            assertEquals(destination, draft?.value)
+            assertNull(checkNotNull(draft).problem)
+            assertEquals(kind to destination, formMatch(matchText(kind, destination)))
+        }
+    }
+
+    @Test
     fun `a rule the form holds opens as its match, target and place, and 套用 rewrites its line`() = runTest {
         val vm = RuleEditViewModel(honk, "traffic:4", io = io)
         val ui = vm.uiState.value

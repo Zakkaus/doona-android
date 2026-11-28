@@ -4,7 +4,6 @@ import dev.doona.android.feature.activity.HonkProfile
 import dev.doona.android.feature.activity.honkActivityNodes
 import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.feature.model.NodePlaces
-import dev.doona.android.feature.model.RvDay
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvScorePick
 import dev.doona.android.feature.model.RvSplit
@@ -44,11 +43,10 @@ internal fun rvStatsState(input: StatsInput, places: NodePlaces = CoreNodePlaces
     val nodes = honkActivityNodes(profile, places).nodes
     val providers = profile?.providers.orEmpty()
     val now = Instant.ofEpochMilli(input.nowEpochMs).atZone(input.zone)
-    val today = zeros(now.hour + 1)
     val main = profile?.groups?.firstOrNull { it.name == profile.mainGroup }
     return RvStatsState(
         range = input.range,
-        today = today,
+        today = null, // honk-gap:daily-usage
         yesterdaySoFar = null,
         subscriptions = providers.map { rvSubscription(it, userAgent = null) },
         nodes = nodes,
@@ -57,7 +55,7 @@ internal fun rvStatsState(input: StatsInput, places: NodePlaces = CoreNodePlaces
         nowEpochMs = input.nowEpochMs,
         nowHour = now.toLocalTime().toSecondOfDay().toFloat() / SECONDS_PER_HOUR,
         score = rvStatsScore(profile?.groups.orEmpty(), nodes),
-        period = rvPeriod(input, today),
+        period = rvPeriod(input),
         // A subscription deleted since it was picked leaves the chip at all of them.
         subscriptionId = input.subscriptionId?.takeIf { id -> providers.any { it.id == id } },
     )
@@ -76,10 +74,9 @@ private fun rvSplit(outbounds: List<OutboundTraffic>): RvSplit? {
 }
 
 /**
- * 本週 (from the locale's first day) or 本月 (from the 1st) by the day, each day with no bytes, since honk keeps none by
- * the day; nothing to compare with.
+ * The local calendar bounds of 本週 or 本月, even without daily usage.
  */
-private fun rvPeriod(input: StatsInput, today: RvDay): RvStatsPeriod? {
+private fun rvPeriod(input: StatsInput): RvStatsPeriod? {
     val now = Instant.ofEpochMilli(input.nowEpochMs).atZone(input.zone)
     val date = now.toLocalDate()
     val (first, slots) = when (input.range) {
@@ -88,12 +85,9 @@ private fun rvPeriod(input: StatsInput, today: RvDay): RvStatsPeriod? {
         RvStatsRange.Month -> date.withDayOfMonth(1) to date.lengthOfMonth()
     }
     val past = generateSequence(first) { it.plusDays(1) }.takeWhile { it < date }.count()
-    val days = RvDay(List(past) { 0L } + today.downTotal, List(past) { 0L } + today.upTotal, null)
-    return RvStatsPeriod(days, slots, past + now.toLocalTime().toSecondOfDay().toFloat() / SECONDS_PER_DAY, before = null)
+    // honk-gap:daily-usage
+    return RvStatsPeriod(null, slots, past + now.toLocalTime().toSecondOfDay().toFloat() / SECONDS_PER_DAY, before = null)
 }
-
-/** [hours] of the local day so far, the current one included, with no bytes and no connections. */
-private fun zeros(hours: Int): RvDay = List(hours) { 0L }.let { RvDay(it, it, List(hours) { 0 }) }
 
 /**
  * The Score card: each of honk's Score groups with what it chose per network, its nodes among [nodes]; null when no
@@ -102,6 +96,7 @@ private fun zeros(hours: Int): RvDay = List(hours) { 0L }.let { RvDay(it, it, Li
 private fun rvStatsScore(groups: List<Group>, nodes: List<RvNode>): RvStatsScore? {
     val score = groups.filter { it.policy.kind == PolicyKind.Score }.takeIf { it.isNotEmpty() } ?: return null
     return RvStatsScore(
+        // honk-gap:score-evidence
         starts = null,
         trialsOk = null,
         trialsFailed = null,
@@ -120,7 +115,7 @@ private fun scorePick(group: Group, transport: Transport): RvScorePick {
     return RvScorePick(
         selectedId = selection?.resolvedLeafNodeId,
         selectedName = selection?.let { s -> group.members.firstOrNull { it.id == s.memberId }?.name },
-        settled = selection != null,
+        settled = null, // honk-gap:score-evidence
         wait = null,
         compared = group.members.count { it.id in probed },
         candidates = group.members.size,

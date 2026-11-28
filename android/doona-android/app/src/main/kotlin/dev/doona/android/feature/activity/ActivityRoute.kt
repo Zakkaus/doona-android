@@ -4,13 +4,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.doona.android.R
 import dev.doona.android.app.nativeApi
+import dev.doona.android.designsystem.rv.RvNotice
+import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvPullLook
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.NetworkState
+import dev.doona.android.feature.messageRes
 import dev.doona.android.report.CrashOffer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -97,10 +102,13 @@ internal fun ActivityPage(viewModel: ActivityViewModel, crash: ActivityCrashOffe
         // A failed action's banner takes the notice's place, so the offer is not shown while one stands.
         LaunchedEffect(crash) { withContext(crash.disk) { crash.shown() } }
     }
+    val readError = ui.readError
     val failure = ui.failure
     val banner = when {
         failure != null -> rvActivityFailureBanner(failure) { onAction(ActivityAction.Retry) }
-        else -> ui.notice?.let { notice -> rvActivityBanner(notice, remedy(notice.remedy, routes, onConnect, onAction, crash)) }
+        ui.notice != null -> rvActivityBanner(ui.notice, remedy(ui.notice.remedy, routes, onConnect, onAction, crash))
+        readError != null -> RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_failed_read_profile), stringResource(readError.messageRes()), stringResource(R.string.rv_retry), viewModel::load)
+        else -> null
     }
     RvActivityScreen(
         state = ui.state,
@@ -108,7 +116,7 @@ internal fun ActivityPage(viewModel: ActivityViewModel, crash: ActivityCrashOffe
         onConnect = onConnect,
         routes = page,
         nodes = ui.nodes,
-        subscriptions = ui.subscriptions,
+        subscriptions = ui.subscriptions.takeIf { readError == null },
         pull = pull,
         banner = banner,
         noSubscription = if (ui.hasSubscriptions) null else routes.addSubscription,

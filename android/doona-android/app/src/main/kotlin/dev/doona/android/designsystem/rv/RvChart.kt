@@ -277,7 +277,8 @@ internal fun RvDetailChart(
             return indices.firstOrNull { !values[it].isNaN() }?.also(follow) != null
         }
         Modifier.semantics {
-            contentDescription = summary
+            // A selected point is described by the caller's [modifier] on this node; the summary is for no selection.
+            if (scrub == null) contentDescription = summary
             customActions = buildList {
                 add(CustomAccessibilityAction(back) { move(false) })
                 add(CustomAccessibilityAction(next) { move(true) })
@@ -294,12 +295,12 @@ internal fun RvDetailChart(
             event.type == KeyEventType.KeyDown && (event.key == Key.DirectionLeft || event.key == Key.DirectionRight) && move(event.key == Key.DirectionRight)
         }.indication(source, rvFocusIndication(RoundedCornerShape(Rv.cardRadius))).focusable(interactionSource = source)
     }
-    Box(modifier.fillMaxWidth().height(RvChartSize.detail + RvChartSize.pill + RvChartSize.pillClear)) {
-        Canvas(Modifier.matchParentSize().testTag(RV_CHART).then(browse).scrubbing(values.size, follow)) {
+    Box(Modifier.fillMaxWidth().height(RvChartSize.detail + RvChartSize.pill + RvChartSize.pillClear)) {
+        Canvas(modifier.matchParentSize().testTag(RV_CHART).then(browse).scrubbing(values.size, follow)) {
             hairlineGrid(colors.grid, RvChartSize.detail.toPx())
             val top = if (change.moving) change.top.value else (stats?.third ?: 0f) * RvChartSize.DETAIL_HEADROOM
             val fade = change.fade.value
-            change.before?.takeIf { fade < 1f }?.let { detailSeries(it, previous, ink, top, AT_REST, 1f - fade, null) }
+            change.before?.takeIf { scrub == null && values.isNotEmpty() && fade < 1f }?.let { detailSeries(it, previous, ink, top, AT_REST, 1f - fade, null) }
             detailSeries(values, stats, ink, top, glide, fade, scrub)
         }
         if (empty != null && stats == null) RvEmptyChartLine(empty, Modifier.fillMaxWidth().height(RvChartSize.detail))
@@ -344,8 +345,10 @@ private fun DrawScope.detailSeries(values: List<Float>, stats: Triple<Float, Flo
         drawCircle(line.copy(alpha = RvAlpha.HALO), RvChartSize.liveHalo.toPx() / 2, it, alpha)
         drawCircle(line, RvChartSize.liveDot.toPx() / 2, it, alpha)
     }
-    val i = scrub?.takeIf { it in values.indices && !values[it].isNaN() }
-    if (i != null) return scrubMarker(Offset(right * i / (values.size - 1), scale.y(values[i])), line, ink.ring, plot)
+    if (scrub != null && scrub in values.indices) {
+        if (!values[scrub].isNaN()) scrubMarker(Offset(right * scrub / (values.size - 1), scale.y(values[scrub])), line, ink.ring, plot)
+        return
+    }
     val pills = PillPlacer(this, values, scale, right, live)
     pills.place(ink.measurer.measure(ink.label(peak), ink.pillStyle), scale.y(peak), end = true, ink.pill, alpha)
     pills.place(ink.measurer.measure(ink.label(low), ink.pillStyle), scale.y(low), end = true, ink.pill, alpha)

@@ -52,9 +52,9 @@ class TrafficModelTest {
     }
 
     @Test
-    fun aSampleHonkCouldNotRateIsDrawnAsZero() {
+    fun aSampleHonkCouldNotRateLeavesAGap() {
         val chart = trafficChart(RV_TRAFFIC_LIVE, TrafficHistory(END, 1_000, listOf(2, null, 4), listOf(16, null, 32)))!!
-        assertEquals(listOf(16f, 0f, 32f), chart.down)
+        assertEquals(listOf(16f, Float.NaN, 32f), chart.down)
     }
 
     @Test
@@ -67,14 +67,15 @@ class TrafficModelTest {
         val session = trafficSession(traffic, history(600), END)!!
         assertEquals(100L, session.seconds)
         assertEquals(50.0, session.averageDown, 0.0)
-        assertEquals(599.0, session.peakDown, 0.0)
-        assertEquals(5_990.0, session.peakUp, 0.0)
+        assertEquals(599.0, session.peakDown)
+        assertEquals(5_990.0, session.peakUp)
         assertEquals(5_000L, session.downTotal)
     }
 
     @Test
     fun aSessionThatHasJustStartedHasNoInfiniteAverage() {
         val session = trafficSession(traffic.copy(sinceEpochMs = END), null, END)!!
+        assertNull(session.peakDown)
         assertEquals(0L, session.seconds)
         assertEquals(5_000.0, session.averageDown, 0.0)
     }
@@ -92,6 +93,13 @@ class TrafficModelTest {
         assertSame(previous, state.chart)
         assertEquals(42L, state.downRate)
         assertEquals(7L, state.upRate)
+    }
+
+    @Test
+    fun aSuccessfulEmptyHistoryClearsTheLastChart() {
+        val previous = trafficChart(RV_TRAFFIC_LIVE, history(60))
+        val empty = TrafficHistory(null, 1_000, emptyList(), emptyList())
+        assertNull(trafficState(RV_TRAFFIC_LIVE, TrafficRead(traffic, empty), previous, END).chart)
     }
 
     private companion object {

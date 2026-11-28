@@ -2,8 +2,11 @@ package dev.doona.android.feature.connections
 
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import dev.doona.android.R
 import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.honk.HonkFixtures
@@ -16,6 +19,7 @@ import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.rvText
 import kotlinx.coroutines.Dispatchers
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -48,15 +52,32 @@ class AppRvConnectionsShotTest {
     )
 
     @Test
-    fun emptyListDoesNotSuggestClearingSearch() {
+    fun aConnectedEmptyListDoesNotSuggestClearingSearch() {
         compose.rvContent(dark = false) { RvConnectionsPage(emptyList(), nowEpochMs = RV_NOW) }
-        compose.onNodeWithText(rvText(R.string.rv_conn_empty_title)).assertExists()
+        compose.onNodeWithText(rvText(R.string.rv_conn_empty_title)).assertIsDisplayed()
         compose.onNodeWithText(rvText(R.string.rv_conn_none_line)).assertDoesNotExist()
     }
 
     @Test
     @Config(qualifiers = WHOLE_LIST)
-    fun listLight() = list("connections", dark = false, whole = true)
+    fun listLight() = compose.rvShot("connections", dark = false, prefix = APP, before = {
+        onNodeWithText("gemini.google.com", substring = true).assertIsDisplayed()
+        assertWhole()
+    }) {
+        ConnectionsRoute(model, session = 1L, onOpen = {}, onTab = {})
+    }
+
+    @Test
+    @Config(qualifiers = WHOLE_LIST)
+    fun sortsOldestFirstWithoutAppIdentity() {
+        compose.rvContent(dark = false) { ConnectionsRoute(model, session = 1L, onOpen = {}, onTab = {}) }
+        compose.onNodeWithText(rvText(R.string.rv_conn_all_apps)).assertIsNotEnabled()
+        compose.onNodeWithText(rvText(R.string.rv_conn_newest)).performClick()
+        compose.onNodeWithText(rvText(R.string.rv_conn_oldest)).performClick()
+        val oldest = compose.onNodeWithText("imap.gmail.com", substring = true).fetchSemanticsNode().boundsInRoot.top
+        val newest = compose.onNodeWithText("gemini.google.com", substring = true).fetchSemanticsNode().boundsInRoot.top
+        assertTrue("the oldest connection is above the newest", oldest < newest)
+    }
 
     @Test
     @Config(qualifiers = WHOLE_LIST)
@@ -92,17 +113,19 @@ class AppRvConnectionsShotTest {
     fun ipLight() = detail("connection-ip", TELEGRAM)
 
     private fun list(screen: String, dark: Boolean = false, fontScale: Float = 1f, query: String? = null, connected: Boolean = true, whole: Boolean = false) {
-        if (connected) model.load()
         compose.rvShot(screen, dark, before = { if (whole) assertWhole() }, fontScale = fontScale, prefix = APP) {
+            androidx.compose.runtime.DisposableEffect(connected) {
+                val reading = model.load(if (connected) 1L else null)
+                onDispose { reading.cancel() }
+            }
             val ui by model.ui.collectAsState()
             RvConnectionsPage(ui.connections, query = query, connected = connected, nowEpochMs = ui.nowEpochMs, loaded = ui.loaded)
         }
     }
 
     private fun detail(screen: String, id: String, dark: Boolean = false, fontScale: Float = 1f) {
-        model.load()
         compose.rvShot(screen, dark, before = { assertWhole() }, fontScale = fontScale, prefix = APP) {
-            ConnectionRoute(model, id, onBack = {}, onNewRule = {})
+            ConnectionRoute(model, id, session = 1L, onBack = {}, onNewRule = {})
         }
     }
 

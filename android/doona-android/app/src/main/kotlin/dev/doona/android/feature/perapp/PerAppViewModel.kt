@@ -109,8 +109,7 @@ internal class PerAppViewModel(private val engine: Engine, private val installed
         val saved = engine.settings.value.perApp
         local.update {
             val draft = change(it.draft ?: saved)
-            // Back to what is saved, there is nothing left to write, so the failed write's notice goes with the draft.
-            if (draft == saved) it.copy(draft = null, saveFailed = false) else it.copy(draft = draft)
+            if (!it.busy && draft == saved) it.copy(draft = null, saveFailed = false) else it.copy(draft = draft)
         }
     }
 
@@ -121,14 +120,14 @@ internal class PerAppViewModel(private val engine: Engine, private val installed
         viewModelScope.launch {
             val failure = engine.setPerApp(saving).exceptionOrNull()
             val rebuild = failure as? RebuildFailedException
+            val saved = engine.settings.value.perApp
             local.update {
+                val draft = it.draft.takeUnless { draft -> draft == saved }
                 it.copy(
                     busy = false,
-                    saveFailed = failure != null && rebuild == null,
+                    saveFailed = draft != null && failure != null && rebuild == null,
                     rebuildFailure = rebuild?.let { Status.Failed(it.reason, it.code) },
-                    // Stored, though the tunnel may not have come up with it. An edit made while the save ran stays; only
-                    // an unchanged draft is dropped, so the page follows the engine again.
-                    draft = if ((failure == null || rebuild != null) && it.draft == saving) null else it.draft,
+                    draft = draft,
                 )
             }
         }

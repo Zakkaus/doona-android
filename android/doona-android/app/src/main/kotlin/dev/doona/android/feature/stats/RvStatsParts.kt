@@ -53,4 +53,4 @@ internal fun RvStatsDelta(up: Boolean, change: String, against: RvStatsAgainst, 
 }
 
 /** A row of the tools card: its glyph, title and subtitle, and what a tap does. */
-internal class RvStatsTool(@DrawableRes val icon: Int, val title: String, val subtitle: String, val onClick: () -> Unit)
+internal class RvStatsTool(@DrawableRes val icon: Int, val title: String, val subtitle: String, val onClick: (() -> Unit)?)

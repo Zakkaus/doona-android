@@ -20,6 +20,7 @@
     <string name="rv_failed_switch_mode">无法切换模式</string>
     <string name="rv_failed_switch_node">无法切换节点</string>
     <string name="rv_failed_test_latency">无法测试延迟</string>
+    <string name="rv_failed_read_profile">无法读取配置文件</string>
     <string name="rv_failed_read_nodes">无法读取节点</string>
     <string name="rv_failed_copy_link">无法复制分享链接</string>
     <string name="rv_failed_remove_subscription">无法删除订阅</string>

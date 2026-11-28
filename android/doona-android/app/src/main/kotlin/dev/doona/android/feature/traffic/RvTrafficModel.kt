@@ -3,6 +3,7 @@ package dev.doona.android.feature.traffic
 import androidx.compose.runtime.Immutable
 
 /** The ranges under 流量詳情's chart, 1 分, 5 分, 15 分 and 1 小時, by the seconds each spans back from now. */
+// honk-gap:traffic-1h
 internal val RV_TRAFFIC_RANGE_SECONDS = listOf(60, 300, 900, 3_600)
 
 /** Every range's chart has this many points, a second each over 1 分 and a minute each over 1 小時, so its line keeps one density. */
@@ -27,8 +28,8 @@ internal data class RvTrafficChart(val range: Int, val down: List<Float>, val up
  */
 @Immutable
 internal data class RvTrafficSession(
-    val peakDown: Double,
-    val peakUp: Double,
+    val peakDown: Double?,
+    val peakUp: Double?,
     val averageDown: Double,
     val averageUp: Double,
     val downTotal: Long,
