@@ -28,6 +28,14 @@ Android client source: https://github.com/Zakkaus/doona-android
 
 ## Components
 
+### Bootstrap Icons brand marks 1.13.2
+
+artwork · [MIT](android/doona-android/app/src/main/assets/licenses/notices.txt#L1264) · [Source](https://icons.getbootstrap.com)
+
+    Copyright (c) 2019-2024 The Bootstrap Authors
+
+The brand marks are trademarks of their owners, shown only to name a service or group; their use implies no affiliation with or endorsement by those owners, and doona's licence does not cover them. Marks: rv_brand_microsoft, rv_brand_openai, rv_brand_xbox. Provenance: app/src/main/BRAND_ICONS.md.
+
 ### GitHub brand marks github.com/logos
 
 artwork · LicenseRef-GitHub-logos · [Source](https://github.com/logos)
@@ -68,7 +76,14 @@ Subset and fixed-weight instances. Copyright 2014-2021 Adobe (http://www.adobe.c
 artwork · [CC0-1.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L532) · [Source](https://simpleicons.org)
 
 
-The brand marks are trademarks of their owners, shown only to name a service or group; their use implies no affiliation with or endorsement by those owners, and doona's licence does not cover them. Marks: rv_brand_apple, rv_brand_youtube. Provenance: app/src/main/BRAND_ICONS.md.
+The brand marks are trademarks of their owners, shown only to name a service or group; their use implies no affiliation with or endorsement by those owners, and doona's licence does not cover them. Marks: rv_brand_anthropic, rv_brand_apple, rv_brand_battledotnet, rv_brand_bilibili, rv_brand_discord, rv_brand_docker, rv_brand_ea, rv_brand_epicgames, rv_brand_facebook, rv_brand_google, rv_brand_googlegemini, rv_brand_hbo, rv_brand_instagram, rv_brand_line, rv_brand_netflix, rv_brand_playstation, rv_brand_riotgames, rv_brand_spotify, rv_brand_steam, rv_brand_telegram, rv_brand_tiktok, rv_brand_twitch, rv_brand_ubisoft, rv_brand_whatsapp, rv_brand_x, rv_brand_youtube. Provenance: app/src/main/BRAND_ICONS.md.
+
+### Wikimedia Commons brand marks PD-textlogo
+
+artwork · LicenseRef-Public-domain · [Source](https://commons.wikimedia.org)
+
+
+The brand marks are trademarks of their owners, shown only to name a service or group; their use implies no affiliation with or endorsement by those owners, and doona's licence does not cover them. Marks: rv_brand_disneyplus, rv_brand_nintendo, rv_brand_primevideo. Provenance: app/src/main/BRAND_ICONS.md.
 
 ### circle-flags 379588b5da95482d6bbf10bd45644a35b0609ea6
 
@@ -1900,9 +1915,9 @@ maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices
 
 - [META-INF/androidx/navigationevent/navigationevent-compose/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.
 
-### androidx.profileinstaller:profileinstaller 1.4.0
+### androidx.profileinstaller:profileinstaller 1.4.1
 
-maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/profileinstaller#1.4.0)
+maven · [Apache-2.0](android/doona-android/app/src/main/assets/licenses/notices.txt#L242) · [Source](https://developer.android.com/jetpack/androidx/releases/profileinstaller#1.4.1)
 
 
 - [META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt](android/doona-android/app/src/main/assets/licenses/notices.txt#L1721) Upstream omits the end of the SPDX Apache-2.0 text.

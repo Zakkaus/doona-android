@@ -3,6 +3,21 @@
   "components": [
     {
       "kind": "artwork",
+      "name": "Bootstrap Icons brand marks",
+      "version": "1.13.2",
+      "license": "MIT",
+      "bodies": [
+        "MIT"
+      ],
+      "source": "https://icons.getbootstrap.com",
+      "attribution": [
+        "Copyright (c) 2019-2024 The Bootstrap Authors"
+      ],
+      "notice": "The brand marks are trademarks of their owners, shown only to name a service or group; their use implies no affiliation with or endorsement by those owners, and doona's licence does not cover them. Marks: rv_brand_microsoft, rv_brand_openai, rv_brand_xbox. Provenance: app/src/main/BRAND_ICONS.md.",
+      "extras": []
+    },
+    {
+      "kind": "artwork",
       "name": "GitHub brand marks",
       "version": "github.com/logos",
       "license": "LicenseRef-GitHub-logos",
@@ -85,7 +100,18 @@
       ],
       "source": "https://simpleicons.org",
       "attribution": [],
-      "notice": "The brand marks are trademarks of their owners, shown only to name a service or group; their use implies no affiliation with or endorsement by those owners, and doona's licence does not cover them. Marks: rv_brand_apple, rv_brand_youtube. Provenance: app/src/main/BRAND_ICONS.md.",
+      "notice": "The brand marks are trademarks of their owners, shown only to name a service or group; their use implies no affiliation with or endorsement by those owners, and doona's licence does not cover them. Marks: rv_brand_anthropic, rv_brand_apple, rv_brand_battledotnet, rv_brand_bilibili, rv_brand_discord, rv_brand_docker, rv_brand_ea, rv_brand_epicgames, rv_brand_facebook, rv_brand_google, rv_brand_googlegemini, rv_brand_hbo, rv_brand_instagram, rv_brand_line, rv_brand_netflix, rv_brand_playstation, rv_brand_riotgames, rv_brand_spotify, rv_brand_steam, rv_brand_telegram, rv_brand_tiktok, rv_brand_twitch, rv_brand_ubisoft, rv_brand_whatsapp, rv_brand_x, rv_brand_youtube. Provenance: app/src/main/BRAND_ICONS.md.",
+      "extras": []
+    },
+    {
+      "kind": "artwork",
+      "name": "Wikimedia Commons brand marks",
+      "version": "PD-textlogo",
+      "license": "LicenseRef-Public-domain",
+      "bodies": [],
+      "source": "https://commons.wikimedia.org",
+      "attribution": [],
+      "notice": "The brand marks are trademarks of their owners, shown only to name a service or group; their use implies no affiliation with or endorsement by those owners, and doona's licence does not cover them. Marks: rv_brand_disneyplus, rv_brand_nintendo, rv_brand_primevideo. Provenance: app/src/main/BRAND_ICONS.md.",
       "extras": []
     },
     {
@@ -4831,12 +4857,12 @@
     {
       "kind": "maven",
       "name": "androidx.profileinstaller:profileinstaller",
-      "version": "1.4.0",
+      "version": "1.4.1",
       "license": "Apache-2.0",
       "bodies": [
         "Apache-2.0"
       ],
-      "source": "https://developer.android.com/jetpack/androidx/releases/profileinstaller#1.4.0",
+      "source": "https://developer.android.com/jetpack/androidx/releases/profileinstaller#1.4.1",
       "attribution": [],
       "notice": "",
       "extras": [
