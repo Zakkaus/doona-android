@@ -24,7 +24,8 @@ prototype/rv/config/RvConfigTemplatePage.kt	RvCaption(stringResource(R.string.rv
 prototype/rv/connections/RvConnectionsPage.kt	RvCaption(pluralStringResource(R.plurals.rv_conn_matches, shown.size, shown.size))	a page header's caption (RvCaption under the large title), not under a card
 feature/connections/RvConnectionsScreen.kt	RvCaption(pluralStringResource(R.plurals.rv_conn_matches, shown.size, shown.size))	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/connections/RvConnectionsPage.kt	RvCaption(pluralStringResource(R.plurals.rv_conn_summary, connections.size, connections.size, down, up))	a page header's caption (RvCaption under the large title), not under a card
-feature/connections/RvConnectionsScreen.kt	RvCaption(pluralStringResource(R.plurals.rv_conn_summary, connections.size, connections.size, down, up))	a page header's caption (RvCaption under the large title), not under a card
+feature/connections/RvConnectionsScreen.kt	RvCaption(pluralStringResource(R.plurals.rv_conn_summary, connections.size, truncatedTotal ?: connections.size.toLong(),	a page header's caption (RvCaption under the large title), not under a card
+feature/connections/RvConnectionsScreen.kt	RvCaption(stringResource(R.string.rv_conn_loaded_scope, connections.size, truncatedTotal), lines = Int.MAX_VALUE)	the header's note on a truncated list, under the caption and above the first card
 feature/nodes/RvNodeDetail.kt	RvCaption(rvNodeLine(node.protocol, stringResource(node.place.label)))	a page header's caption (RvCaption under the large title), not under a card
 feature/nodes/RvNodePickerPage.kt	RvCaption(line)	a page header's caption (RvCaption under the large title), not under a card
 feature/nodes/RvNodesPage.kt	RvCaption(line)	a page header's caption (RvCaption under the large title), not under a card

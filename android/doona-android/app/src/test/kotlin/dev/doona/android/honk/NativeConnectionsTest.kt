@@ -16,7 +16,7 @@ class NativeConnectionsTest {
     fun listJoinsTcpAndUdpNewestFirst() {
         honk.get(LIST_PATH, HonkExamples.fixture("connections/connections-example.json"))
 
-        val (udp, tcp) = connections.list()
+        val (udp, tcp) = connections.list().rows
 
         assertEquals(
             HonkConnection(
@@ -48,7 +48,7 @@ class NativeConnectionsTest {
         val body = HonkExamples.fixture("connections/connections-example.json").replace("\"8.8.8.8:53\"", "\"[2001:db8::1]:53\"")
         honk.get(LIST_PATH, body)
 
-        assertEquals("2001:db8::1" to 53, connections.list().first().let { it.host to it.port })
+        assertEquals("2001:db8::1" to 53, connections.list().rows.first().let { it.host to it.port })
     }
 
     @Test

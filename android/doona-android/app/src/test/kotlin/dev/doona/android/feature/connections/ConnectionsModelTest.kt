@@ -24,7 +24,7 @@ class ConnectionsModelTest {
 
     @Test
     fun aProxiedConnectionNamesItsGroupNodeAndRule() {
-        val chrome = map(NativeConnections(honk).list()).first { it.id == "tcp-sample-01" }
+        val chrome = map(NativeConnections(honk).list().rows).first { it.id == "tcp-sample-01" }
 
         assertEquals("Chrome", chrome.title)
         assertEquals("gemini.google.com", chrome.host)
@@ -41,7 +41,7 @@ class ConnectionsModelTest {
 
     @Test
     fun aDirectConnectionEndsInDirectWithNoNode() {
-        val wechat = map(NativeConnections(honk).list()).first { it.id == "tcp-sample-03" }
+        val wechat = map(NativeConnections(honk).list().rows).first { it.id == "tcp-sample-03" }
 
         assertEquals(RvRuleEnd.Direct, wechat.end)
         assertNull(wechat.group)

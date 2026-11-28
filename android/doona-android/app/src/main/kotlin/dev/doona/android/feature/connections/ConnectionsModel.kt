@@ -52,7 +52,7 @@ internal data class RvConnectionGroup(val name: String, val kind: RvGroupKind)
 internal data class RvConnectionNode(val name: String, val protocol: String, val place: RvPlace)
 
 /** 連線's state: the connections open when it last read them, newest first, and when that was; [loaded] once a read succeeded. */
-internal data class RvConnectionsUi(val connections: List<RvConnection> = emptyList(), val nowEpochMs: Long = 0, val loaded: Boolean = false, val session: Long? = null, val error: ErrorCode? = null)
+internal data class RvConnectionsUi(val connections: List<RvConnection> = emptyList(), val nowEpochMs: Long = 0, val loaded: Boolean = false, val session: Long? = null, val error: ErrorCode? = null, val truncatedTotal: Long? = null)
 
 /**
  * [connections] in 連線's words: each outbound named by its group in [groups] (or 直連 for `direct`, 拒絕 for `block`, and

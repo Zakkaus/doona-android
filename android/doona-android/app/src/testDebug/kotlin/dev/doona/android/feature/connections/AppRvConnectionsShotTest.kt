@@ -4,9 +4,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import dev.doona.android.R
 import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.honk.HonkFixtures
@@ -19,6 +21,12 @@ import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.rvText
 import kotlinx.coroutines.Dispatchers
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -44,8 +52,9 @@ class AppRvConnectionsShotTest {
     @get:Rule
     val utc = Utc()
 
+    private val honk = HonkFixtures.rvSample().apply { on("GET", LIST_PATH, 200, HonkFixtures.body("connections/connections-sample")) }
     private val model = ConnectionsViewModel(
-        HonkFixtures.rvSample().apply { on("GET", LIST_PATH, 200, HonkFixtures.body("connections/connections-sample")) },
+        honk,
         CoreNodePlaces,
         { RV_NOW },
         io = Dispatchers.Unconfined,
@@ -56,6 +65,21 @@ class AppRvConnectionsShotTest {
         compose.rvContent(dark = false) { RvConnectionsPage(emptyList(), nowEpochMs = RV_NOW) }
         compose.onNodeWithText(rvText(R.string.rv_conn_empty_title)).assertIsDisplayed()
         compose.onNodeWithText(rvText(R.string.rv_conn_none_line)).assertDoesNotExist()
+    }
+
+    @Test
+    fun noSearchMatchesStillShowsWhichConnectionsWereSearched() {
+        val sample = Json.parseToJsonElement(HonkFixtures.body("connections/connections-sample")).jsonObject
+        val tcp = sample.getValue("tcp").jsonArray.first().jsonObject
+        val rows = JsonArray(List(999) { JsonObject(tcp + ("id" to JsonPrimitive("tcp-$it"))) })
+        val page = JsonObject(sample + mapOf("tcp" to rows, "total_tcp" to JsonPrimitive(1000), "truncated" to JsonPrimitive(true)))
+        honk.on("GET", LIST_PATH, 200, page.toString())
+        compose.rvContent(dark = false) { ConnectionsRoute(model, session = 1L, onOpen = {}, onTab = {}) }
+        compose.onNodeWithText("1001 條連線，下載", substring = true).assertIsDisplayed()
+        compose.onNodeWithText(rvText(R.string.rv_conn_search)).performClick()
+        compose.onNode(hasSetTextAction()).performTextInput("absent")
+        compose.onNodeWithText(rvText(R.string.rv_conn_loaded_scope).format(1000, 1001)).assertIsDisplayed()
+        compose.onNodeWithText(rvText(R.string.rv_conn_none_title)).assertIsDisplayed()
     }
 
     @Test
