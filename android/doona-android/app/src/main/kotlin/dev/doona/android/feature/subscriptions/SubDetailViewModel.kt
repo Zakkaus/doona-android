@@ -40,10 +40,11 @@ internal data class SubDetailUiState(
     val sheet: RvSubDetailState = RvSubDetailState(),
     val autoUpdate: RvAutoUpdate,
     val gone: Boolean = false,
+    val readError: ErrorCode? = null,
 )
 
 /** honk's provider as last read, with the User-Agent its configuration entry sets; [gone] once a read finds none. */
-private data class SubRead(val sub: RvSubscription? = null, val gone: Boolean = false)
+private data class SubRead(val sub: RvSubscription? = null, val gone: Boolean = false, val error: ErrorCode? = null, val retryName: String? = null)
 
 /**
  * Subscription [id]'s page state holder (plan §2.2): honk's provider and the User-Agent of its entry in honk's
@@ -69,25 +70,33 @@ internal class SubDetailViewModel(
 
     val uiState: StateFlow<SubDetailUiState> =
         combine(read, sheet, updateHours.map(::rvAutoUpdate).onStart { emit(RvAutoUpdate.Unread) }) { read, sheet, autoUpdate ->
-            SubDetailUiState(read.sub, sheet, autoUpdate, read.gone)
+            SubDetailUiState(read.sub, sheet, autoUpdate, read.gone, read.error)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), SubDetailUiState(null, autoUpdate = RvAutoUpdate.Unread))
 
     init {
         load()
     }
 
+    fun retryRead() = load(read.value.retryName)
+
     /** Reads the provider again, by [name] after a change to its entry, else by its id; a failed read keeps the last. */
     private fun load(name: String? = null) {
         reading?.cancel()
         reading = viewModelScope.launch {
-            val provider = attempt { providers().firstOrNull { if (name != null) it.name == name else it.id == id } }.getOrElse { return@launch }
+            val provider = attempt { providers().firstOrNull { if (name != null) it.name == name else it.id == id } }.getOrElse { e ->
+                read.update { it.copy(error = e.errorCode(), retryName = name) }
+                return@launch
+            }
             if (provider == null) {
                 read.update { it.copy(gone = true) }
                 return@launch
             }
+            val agent = attempt { entry(provider.name)?.second?.userAgent }.getOrElse { error ->
+                read.update { it.copy(error = error.errorCode(), retryName = name) }
+                return@launch
+            }
             id = provider.id
-            val userAgent = attempt { entry(provider.name)?.second?.userAgent }.getOrElse { read.value.sub?.userAgent }
-            read.value = SubRead(rvSubscription(provider, userAgent))
+            read.value = SubRead(rvSubscription(provider, agent))
         }
     }
 

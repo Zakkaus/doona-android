@@ -95,7 +95,10 @@
     <string name="rv_nodes_sort_name">名称</string>
     <string name="rv_nodes_sort_region">地区</string>
     <string name="rv_nodes_stability">稳定 %1$d/%2$d</string>
-    <string name="rv_nodes_timed_out">超时</string>
+    <string name="rv_node_chain">链式节点</string>
+    <string name="rv_node_hops">各跳节点</string>
+    <string name="rv_nodes_probe_failed">测试失败</string>
+    <string name="rv_membership_unknown">无法确认哪些群组包含新增的节点。</string>
     <!-- The 排序 chip's labels and 套用到, as the group page's sample s1125d and nbtap have them; 組態內 names the nodes of no
          subscription (decision 2026-11-25 23:52, the text of the add-node sample). -->
     <string name="rv_nodes_by_stability">按稳定</string>

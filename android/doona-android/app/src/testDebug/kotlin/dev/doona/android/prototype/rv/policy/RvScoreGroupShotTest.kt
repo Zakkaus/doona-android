@@ -151,7 +151,7 @@ class RvScoreGroupShotTest {
         const val EVALUATING_FS200 = "+h2137dp"
         const val EMPTY = "+h1100dp"
         const val EMPTY_FS115 = "+h1102dp"
-        const val EMPTY_FS200 = "+h1509dp"
+        const val EMPTY_FS200 = "+h1624dp"
 
         const val SELECTED = "已選定"
         const val FASTER = "較快"

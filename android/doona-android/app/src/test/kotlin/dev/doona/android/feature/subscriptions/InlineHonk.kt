@@ -27,12 +27,12 @@ import kotlinx.serialization.json.putJsonArray
  * add, delete or replace with that error status.
  */
 internal class InlineHonk(private val regionOf: (String) -> String? = { null }) : NativeApi {
-    private val sample = HonkFixtures.rvSample()
+    val sample = HonkFixtures.rvSample()
     private val added = mutableListOf<JsonObject>()
     private var next = 1
     var addStatus: Int? = null
     var deleteStatus: Int? = null
-    var writeStatus: Int? = null
+    var writeStatus: (() -> Int)? = null
     val sources = linkedMapOf("source-main" to MAIN, "source-regions" to REGIONS_FILE, "source-us" to US_FILE)
     val writes = mutableListOf<Pair<String, String>>()
     val refused = mutableSetOf<String>()
@@ -108,7 +108,7 @@ internal class InlineHonk(private val regionOf: (String) -> String? = { null }) 
     }.toString()
 
     private fun write(id: String, request: JsonObject): NativeResponse {
-        writeStatus?.let { return error(it, "temporarily_unavailable") }
+        writeStatus?.let { return error(it(), "temporarily_unavailable") }
         val content = request.getValue("content").jsonPrimitive.content
         sources[id] = content
         writes += id to content

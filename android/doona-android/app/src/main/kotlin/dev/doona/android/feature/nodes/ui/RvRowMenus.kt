@@ -56,6 +56,7 @@ internal fun rvNodeMenu(node: RvNode, current: Boolean, use: ((String) -> Unit)?
         add(RvMenuItem(detailsLabel, R.drawable.rv_sym_info) { details(node.id) })
         val copyLink = actions.copyLink
         if (actions.noShareLinks) {
+            // honk-gap:node-share
             add(RvMenuItem(copy, R.drawable.rv_sym_ios_share, enabled = false) {})
         } else if (copyLink != null && node.shareable && node.described) {
             add(RvMenuItem(copy, R.drawable.rv_sym_ios_share) { copyLink(node) })

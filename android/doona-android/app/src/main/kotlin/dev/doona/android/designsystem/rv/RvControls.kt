@@ -179,13 +179,13 @@ internal fun RvFilterChip(label: String, onClick: (() -> Unit)?, modifier: Modif
  * the new one by that room.
  */
 @Composable
-internal fun RvRangeRow(labels: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+internal fun RvRangeRow(labels: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier, disabledIndex: Int = -1) {
     var width by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
     val fit = rvRangeFit(labels, with(density) { width.toDp() })
     val height = maxOf(RvChartSize.range, with(density) { fit.style.lineHeight.toDp() } + RvChartSize.rangeInset * 2)
     Row(modifier.fillMaxWidth().onSizeChanged { width = it.width }.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(RvChartSize.rangeGap)) {
-        labels.forEachIndexed { i, label -> RvRangePill(label, i == selected, fit, height) { onSelect(i) } }
+        labels.forEachIndexed { i, label -> RvRangePill(label, i == selected, fit, height, i != disabledIndex) { onSelect(i) } }
     }
 }
 
@@ -195,7 +195,7 @@ internal fun RvRangeRow(labels: List<String>, selected: Int, onSelect: (Int) -> 
  * target reaches 48 dp through Compose's touch target expansion, which does not move the layout.
  */
 @Composable
-private fun RvRangePill(label: String, selected: Boolean, fit: RvRangeFit, height: Dp, onClick: () -> Unit) {
+private fun RvRangePill(label: String, selected: Boolean, fit: RvRangeFit, height: Dp, enabled: Boolean, onClick: () -> Unit) {
     val colors = Rv.colors
     val bold = rvBoldWidth(label, fit.style)
     Box(
@@ -203,11 +203,12 @@ private fun RvRangePill(label: String, selected: Boolean, fit: RvRangeFit, heigh
             .height(height)
             .testTag(RvPart.FRAME)
             .then(if (selected) Modifier.rvRaised(CircleShape) else Modifier.clip(CircleShape))
-            .selectable(selected, interactionSource = null, indication = rvPressIndication(CircleShape), role = Role.Tab, onClick = onClick)
+            .selectable(selected, enabled = enabled, interactionSource = null, indication = rvPressIndication(CircleShape), role = Role.Tab, onClick = onClick)
             .padding(horizontal = RvChartSize.rangePad),
         contentAlignment = Alignment.Center,
     ) {
-        RvChoiceLabel(label, selected, fit.style, Rv.type.action, if (selected) colors.text else colors.textSecondary, Modifier.widthIn(min = bold + fit.room(selected)), check = fit.check)
+        val ink = (if (selected) colors.text else colors.textSecondary).let { if (enabled) it else it.copy(alpha = RvAlpha.DISABLED) }
+        RvChoiceLabel(label, selected, fit.style, Rv.type.action, ink, Modifier.widthIn(min = bold + fit.room(selected)), check = fit.check)
     }
 }
 
@@ -237,7 +238,7 @@ internal fun Modifier.rvRaised(shape: Shape): Modifier {
  * the layout. The press lights only its pill.
  */
 @Composable
-internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier, glyphs: List<Int> = emptyList()) {
+internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier, glyphs: List<Int> = emptyList(), disabledIndex: Int = -1) {
     val colors = Rv.colors
     val motion = Rv.motion
     // Each segment's pill as the row lays it out; one raised pill rests there and slides to the next selection.
@@ -253,12 +254,13 @@ internal fun RvSegmented(options: List<String>, selected: Int, onSelect: (Int) -
         Row(Modifier.fillMaxSize()) {
             options.forEachIndexed { i, label ->
                 val source = remember { MutableInteractionSource() }
-                val ink by animateColorAsState(if (i == selected) colors.text else colors.textSecondary, motion.tween(RvMotion.SLIDE_MS), label = "ink")
+                val shade = (if (i == selected) colors.text else colors.textSecondary).let { if (i == disabledIndex) it.copy(alpha = RvAlpha.DISABLED) else it }
+                val ink by animateColorAsState(shade, motion.tween(RvMotion.SLIDE_MS), label = "ink")
                 Box(
                     Modifier
                         .weight(weights[i])
                         .fillMaxHeight()
-                        .selectable(i == selected, interactionSource = source, indication = null, role = Role.Tab) { onSelect(i) }
+                        .selectable(i == selected, enabled = i != disabledIndex, interactionSource = source, indication = null, role = Role.Tab) { onSelect(i) }
                         .padding(RvChartSize.segmentInset)
                         .onPlaced { placed -> placed.boundsInParent().roundToIntRect().let { if (slots[i] != it) slots[i] = it } }
                         .clip(CircleShape)

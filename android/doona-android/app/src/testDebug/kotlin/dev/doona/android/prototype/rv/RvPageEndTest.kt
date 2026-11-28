@@ -121,7 +121,7 @@ class RvPageEndTest {
     @Test
     fun pushedPagesEndAboveTheNavigationBar() = endsClear(
         listOf(
-            Page("節點") { RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {}) },
+            Page("節點") { RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {}, onAddNode = {}) },
             Page("統計") { RvStatsScreenSample(rvStatsSample()) },
             Page("流量") { RvTrafficSample(rvSampleActivity(), RvData.session, onBack = {}) },
             Page("關於") { RvAboutScreen(rvSampleVersions, onBack = {}, routes = rvAboutRoutes()) },

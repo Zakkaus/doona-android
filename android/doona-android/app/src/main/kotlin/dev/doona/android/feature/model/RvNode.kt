@@ -61,11 +61,8 @@ internal data class RvNode(
     /** How many of the kept tests answered. */
     val answered: Int get() = history.count { it != null }
 
-    /**
-     * The last test timed out (every failed test in the sample is a timeout). A node none of whose kept tests answered
-     * reads as never tested, as [untested] makes it: the sample keeps no other trace of a test that ran.
-     */
-    val timedOut: Boolean get() = latencyMs == null && answered > 0
+    /** An observed failure, unlike an empty history before the first test. */
+    val timedOut: Boolean get() = history.isNotEmpty() && latencyMs == null
 
     /**
      * How far the answered tests stray from their mean: their standard deviation in ms. Null with fewer than two answered
@@ -82,7 +79,7 @@ internal data class RvNode(
     val jitterMs: Double get() = if (answered < history.size) Double.MAX_VALUE else spreadMs ?: Double.MAX_VALUE
 
     /** The same node before any test ran. */
-    fun untested(): RvNode = copy(history = List(history.size) { null })
+    fun untested(): RvNode = copy(history = emptyList(), trendMs = null)
 
     /** This node after one more test, [ms] being null when it timed out: the history keeps the newest [RV_TESTS] tests. */
     fun withTest(ms: Int?): RvNode = copy(history = (history + ms).takeLast(RV_TESTS), trendMs = null)
@@ -92,7 +89,7 @@ internal data class RvNode(
 internal fun List<RvNode>.fastest(count: Int): List<RvNode> = filter { it.latencyMs != null }.sortedBy { it.latencyMs }.take(count)
 
 /** The [count] steadiest nodes over all tests. */
-internal fun List<RvNode>.steadiest(count: Int): List<RvNode> = sortedBy { it.jitterMs }.take(count)
+internal fun List<RvNode>.steadiest(count: Int): List<RvNode> = filter { it.answered >= 2 }.sortedBy { it.jitterMs }.take(count)
 
 /** The middle of [values], the mean of the two middle ones when there are an even number; null when there are none. */
 internal fun rvMedian(values: List<Int>): Int? = values.sorted().takeIf { it.isNotEmpty() }?.let { (it[(it.size - 1) / 2] + it[it.size / 2]) / 2 }

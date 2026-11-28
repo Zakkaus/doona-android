@@ -25,6 +25,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.util.Base64
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AddNodeViewModelTest {
@@ -36,6 +37,7 @@ class AddNodeViewModelTest {
 
     private fun TestScope.model(honk: InlineHonk = honk(), clipboard: ClipboardLinks = HeldClipboard(), io: CoroutineDispatcher = UnconfinedTestDispatcher(testScheduler)) =
         AddNodeViewModel(honk, clipboard, io).also { vm ->
+            vm.load()
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
         }
 
@@ -150,7 +152,14 @@ class AddNodeViewModelTest {
 
     @Test
     fun aRefusedGroupWriteSaysWhyOnTheBannerWithTheNodesIn() = runTest {
-        val honk = honk().apply { writeStatus = 503 }
+        val honk = honk()
+        val groups = honk.sample.call("GET", "/api/v1/groups", null).body
+        var attempts = 0
+        honk.writeStatus = {
+            attempts++
+            honk.sample.on("GET", "/api/v1/groups", 503, "{}")
+            503
+        }
         val vm = model(honk)
         vm.open()
         vm.edit(TOKYO)
@@ -161,6 +170,14 @@ class AddNodeViewModelTest {
         assertNull(state.sheet)
         assertEquals(ErrorCode.Busy, state.added?.failed)
         assertEquals(listOf("東京 03"), state.nodes.map { it.name })
+        assertEquals(setOf(state.nodes.single().id), state.added?.unconfirmed)
+        honk.sample.on("GET", "/api/v1/groups", 200, groups)
+        vm.confirmGroups()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.added!!.unconfirmed.isEmpty())
+        assertEquals(ErrorCode.Busy, vm.uiState.value.added?.failed)
+        assertEquals(listOf(TOKYO), honk.links)
+        assertEquals(1, attempts)
     }
 
     @Test
@@ -201,6 +218,9 @@ class AddNodeViewModelTest {
         vm.add()
         assertEquals(RvAddNodeCheck.Failed(ErrorCode.Internal), vm.sheet.check)
         assertTrue(vm.uiState.value.nodes.isEmpty())
+        honk.addStatus = null
+        vm.add()
+        assertEquals(1, vm.uiState.value.added?.count)
     }
 
     @Test
@@ -258,13 +278,35 @@ class AddNodeViewModelTest {
     }
 
     @Test
-    fun aLineIsNamedByItsFragmentElseItsHostElseItself() {
+    fun aNamedLinkUsesItsFragmentOrHost() {
         assertEquals("東京 03", AddNodeLine(1, TOKYO).name)
         assertEquals("203.0.113.40", AddNodeLine(1, "trojan://pass@203.0.113.40:443?sni=a.example").name)
         assertEquals("203.0.113.40", AddNodeLine(1, "trojan://pass@203.0.113.40:443#%20").name)
-        assertEquals("eyJ2IjoiMiJ9", AddNodeLine(1, "vmess://eyJ2IjoiMiJ9").name)
-        assertEquals("ss:/", AddNodeLine(1, "ss:/").name)
-        assertEquals(64, AddNodeLine(1, "ss://a@h:1#" + "x".repeat(80)).name.length)
+        assertEquals("edge.example", AddNodeLine(1, "socks5://edge.example").name)
+        assertEquals("A", AddNodeLine(1, "trojan://a@one.example#A->trojan://secret@two.example").name)
+        assertNull(AddNodeLine(1, "ssr://encodedCredentials").name)
+        assertEquals("x".repeat(64), AddNodeLine(1, "ss://a@h:1#" + "x".repeat(80)).name)
+    }
+
+    @Test
+    fun encodedCredentialsNeverBecomeThePreviewOrStoredNodeName() = runTest {
+        val honk = honk()
+        honk.add("node-1", TOKYO)
+        val vm = model(honk, io = StandardTestDispatcher(testScheduler))
+        val payload = """{"id":"00000000-0000-4000-8000-000000000001","add":"edge.example","port":443}"""
+        val vmess = "vmess://" + Base64.getEncoder().encodeToString(payload.toByteArray())
+        vm.open()
+        vm.edit(vmess)
+        assertFalse(vm.sheet.check.addable)
+        vm.add()
+        advanceUntilIdle()
+        assertEquals(RvAddNodeCheck.One("node-2"), vm.sheet.check)
+        vm.edit("$vmess\n$vmess\n${SINGAPORE.substringBefore('#')}#node-2")
+        assertEquals(RvAddNodeCheck.Many(2, RvSkipped(duplicate = listOf(2))), vm.sheet.check)
+        vm.add()
+        advanceUntilIdle()
+        assertEquals(1, honk.links.count { it == vmess })
+        assertEquals(listOf("node-1", "node-3", "node-2"), vm.uiState.value.nodes.map { it.name })
     }
 
     @Test

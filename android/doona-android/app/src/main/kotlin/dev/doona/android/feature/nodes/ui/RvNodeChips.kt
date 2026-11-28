@@ -1,6 +1,7 @@
 package dev.doona.android.feature.nodes.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvChipPick
@@ -26,6 +27,8 @@ internal fun rvNodeChips(
     order: RvNodeSort,
     onSubscription: (String?) -> Unit,
     onOrder: (RvNodeSort) -> Unit,
+    // honk-gap:node-history
+    comparable: Boolean = nodes.count { inPicked(it, subscription) && it.answered >= 2 } >= 2,
 ): Pair<RvChipPick, RvChipPick> {
     val all = stringResource(R.string.rv_nodes_all_subscriptions)
     val ours = stringResource(R.string.rv_nodes_inline)
@@ -33,7 +36,8 @@ internal fun rvNodeChips(
     val subs = listOf(RvMenuItem(all, R.drawable.rv_sym_rss_feed) { onSubscription(null) }) +
         subscriptions.filter { it.id in given }.map { sub -> RvMenuItem(sub.name, R.drawable.rv_sym_rss_feed) { onSubscription(sub.id) } } +
         listOfNotNull(RvMenuItem(ours, R.drawable.rv_sym_link) { onSubscription(RV_INLINE) }.takeIf { RV_INLINE in given })
-    val orders = RvNodeSort.entries.map { sort -> RvMenuItem(stringResource(sort.label), sort.glyph()) { onOrder(sort) } }
+    if (!comparable && order == RvNodeSort.Stability) LaunchedEffect(Unit) { onOrder(RvNodeSort.Latency) }
+    val orders = RvNodeSort.entries.map { sort -> RvMenuItem(stringResource(sort.label), sort.glyph(), enabled = comparable || sort != RvNodeSort.Stability) { onOrder(sort) } }
     val picked = when (subscription) {
         null -> all
         RV_INLINE -> ours

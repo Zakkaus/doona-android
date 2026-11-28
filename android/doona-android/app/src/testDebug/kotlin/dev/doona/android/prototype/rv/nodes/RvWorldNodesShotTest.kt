@@ -49,7 +49,7 @@ class RvWorldNodesShotTest {
     fun fs200() = compose.rvShot("nodes-world", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { Page() }
 
     @Composable
-    private fun Page() = RvNodesPage(RvNodesPageState(RvData.worldNodes, setOf("ae-01")), onBack = {}, onOpen = {}, onAllNodes = {})
+    private fun Page() = RvNodesPage(RvNodesPageState(RvData.worldNodes, setOf("ae-01")), onBack = {}, onOpen = {}, onAllNodes = {}, onAddNode = {})
 
     private companion object {
         /** Windows as tall as the whole page at each font scale, so one capture holds every card. */

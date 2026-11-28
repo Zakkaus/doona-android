@@ -150,7 +150,7 @@ class NodesRouteTest {
     private val tested = CopyOnWriteArrayList<String>()
     private val updated = CopyOnWriteArrayList<String>()
 
-    private fun viewModel(api: NativeApi, io: CoroutineDispatcher = Dispatchers.Unconfined) = NodesViewModel(api, io, CoreNodePlaces, clock = { NOW })
+    private fun viewModel(api: NativeApi, io: CoroutineDispatcher = Dispatchers.Unconfined) = NodesViewModel(api, io, CoreNodePlaces, clock = { NOW }).also { it.load() }
 
     @Test
     fun `the picker draws a recognised emoji as our disc and keeps an unknown one, and a pick switches and closes`() {
@@ -160,7 +160,7 @@ class NodesRouteTest {
         compose.setContent {
             RvTheme(rvSystemScheme(false), false) {
                 val state = rememberRvPullState(open = true).also { pull = it }
-                NodesPull(vm, RvPullMotion.Sheet, state, onDetail = {}, onAdd = {}) {
+                NodesPull(vm, RvPullMotion.Sheet, state, onDetail = {}, onAdd = {}, onAddNode = {}) {
                     // 活動's own state, which must outlive the picker covering it.
                     val kept = remember { ++drawn }
                     BasicText("activity $kept")
@@ -189,7 +189,7 @@ class NodesRouteTest {
     fun `search filters by the raw name and a pick makes the node the main one and closes`() {
         val vm = viewModel(Honk())
         var closed = false
-        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeSearchRoute(vm, onClose = { closed = true }, onDetail = {}, onAdd = {}) } }
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeSearchRoute(vm, onClose = { closed = true }, onDetail = {}, onAdd = {}, onAddNode = {}) } }
         compose.onNode(hasSetTextAction()).performTextInput("osaka")
         compose.waitForIdle()
         compose.onNodeWithText("Tokyo 01").assertDoesNotExist()
@@ -205,7 +205,7 @@ class NodesRouteTest {
         var pull: RvPullState? = null
         compose.setContent {
             RvTheme(rvSystemScheme(false), false) {
-                NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true).also { pull = it }, onDetail = {}, onAdd = {}) {}
+                NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true).also { pull = it }, onDetail = {}, onAdd = {}, onAddNode = {}) {}
             }
         }
         compose.waitForIdle()
@@ -227,7 +227,7 @@ class NodesRouteTest {
         testsFail = true
         busyPicks.set(1)
         val vm = viewModel(Honk())
-        compose.setContent { RvTheme(rvSystemScheme(false), false) { MainNodeRoute(vm, onBack = {}, onSearch = {}, onAdd = {}) } }
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { MainNodeRoute(vm, onBack = {}, onSearch = {}, onAdd = {}, onAddNode = {}) } }
         compose.waitForIdle()
         compose.onNodeWithContentDescription("Test latency").performClick()
         compose.waitUntil(5_000) { vm.ui.value.failure != null }
@@ -240,13 +240,13 @@ class NodesRouteTest {
     @Test
     fun `a node of no subscription is listed under 組態內 in the picker, and the 訂閱 chip can pick it`() {
         val vm = viewModel(Honk(SAMPLE + N("n-mine", "Home 01", provider = null, protocol = null)))
-        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeSearchRoute(vm, onClose = {}, onDetail = {}, onAdd = {}) } }
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeSearchRoute(vm, onClose = {}, onDetail = {}, onAdd = {}, onAddNode = {}) } }
         compose.waitForIdle()
         compose.onNodeWithText("In configuration").assertExists()
         compose.onNodeWithText("Home 01").assertExists()
-        // Its details are not read yet (no protocol): its line is the place alone, not 「 · Other」.
+        // Its details are not read yet (no protocol): its line is the place alone, not 「 / Other」.
         compose.onAllNodesWithText("Other", useUnmergedTree = true).onFirst().assertExists()
-        compose.onAllNodesWithText(" · Other", useUnmergedTree = true).assertCountEquals(0)
+        compose.onAllNodesWithText(" / Other", useUnmergedTree = true).assertCountEquals(0)
         compose.onNodeWithText("All subscriptions").performClick()
         compose.waitForIdle()
         compose.onAllNodesWithText("In configuration").onLast().performClick()
@@ -259,7 +259,7 @@ class NodesRouteTest {
     fun `節點's 訂閱 chip shows one subscription's nodes and its 排序 chip orders them`() {
         val nodes = listOf(N("n-jp", "Tokyo 01", "s-1", 20), N("n-os", "Osaka 01", "s-1", 30), N("n-sg", "Singapore 01", "s-2", 10))
         val vm = viewModel(Honk(nodes, listOf(P("s-1", "Harbor", 2), P("s-2", "Bay", 1))))
-        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {}) } }
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {}, onAddNode = {}) } }
         compose.waitForIdle()
         compose.onAllNodesWithText("Singapore 01").onFirst().assertExists()
         compose.onNodeWithText("All subscriptions").performClick()
@@ -280,7 +280,7 @@ class NodesRouteTest {
     @Test
     fun `the picker's 依名稱 sorts a name of a mark alone by what the row draws`() {
         val vm = viewModel(Honk())
-        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true), onDetail = {}, onAdd = {}) {} } }
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true), onDetail = {}, onAdd = {}, onAddNode = {}) {} } }
         compose.waitForIdle()
         compose.onNodeWithText("By latency").performClick()
         compose.waitForIdle()
@@ -311,7 +311,7 @@ class NodesRouteTest {
     @Test
     fun `with the networks apart the picker checks both nodes and 套用到 sends a pick to one network`() {
         val vm = viewModel(Honk(udp = "n-odd"))
-        compose.setContent { RvTheme(rvSystemScheme(false), false) { MainNodeRoute(vm, onBack = {}, onSearch = {}, onAdd = {}) } }
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { MainNodeRoute(vm, onBack = {}, onSearch = {}, onAdd = {}, onAddNode = {}) } }
         compose.waitForIdle()
         assertEquals(setOf("n-jp", "n-odd"), vm.ui.value.state.current)
         compose.onNodeWithText("Apply to").assertExists()
@@ -339,7 +339,7 @@ class NodesRouteTest {
         var node by mutableStateOf(false)
         compose.setContent {
             RvTheme(rvSystemScheme(false), false) {
-                if (node) NodeRoute(vm, "n-jp", onBack = {}) else NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {})
+                if (node) NodeRoute(vm, "n-jp", onBack = {}) else NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {}, onAddNode = {})
             }
         }
         compose.waitForIdle()
@@ -354,7 +354,7 @@ class NodesRouteTest {
     @Test
     fun `節點 checks both the TCP and the UDP node while the main group's networks are apart`() {
         val vm = viewModel(Honk(udp = "n-odd"))
-        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {}) } }
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {}, onAddNode = {}) } }
         compose.waitForIdle()
         val inUse = SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "In use")
         val checked = compose.onAllNodes(inUse).fetchSemanticsNodes().map { it.config[SemanticsProperties.Text].joinToString("") { t -> t.text } }
@@ -368,7 +368,7 @@ class NodesRouteTest {
         var node by mutableStateOf(false)
         compose.setContent {
             RvTheme(rvSystemScheme(false), false) {
-                if (node) NodeRoute(vm, "n-jp", onBack = {}) else NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {})
+                if (node) NodeRoute(vm, "n-jp", onBack = {}) else NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {}, onAddNode = {})
             }
         }
         compose.waitForIdle()
@@ -391,7 +391,7 @@ class NodesRouteTest {
     fun `two subscriptions of one name stay apart in the 訂閱 menu, and one that gave no node is not offered`() {
         val nodes = listOf(N("n-jp", "Tokyo 01", "s-1", 20), N("n-os", "Osaka 01", "s-2", 30))
         val vm = viewModel(Honk(nodes, listOf(P("s-1", "Harbor", 1), P("s-2", "Harbor", 1), P("s-3", "Lantern", 0))))
-        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {}) } }
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {}, onAddNode = {}) } }
         compose.waitForIdle()
         compose.onNodeWithText("All subscriptions").performClick()
         compose.waitForIdle()
@@ -421,9 +421,9 @@ class NodesRouteTest {
         compose.setContent {
             RvTheme(rvSystemScheme(false), false) {
                 if (pull) {
-                    NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true), onDetail = {}, onAdd = {}) {}
+                    NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true), onDetail = {}, onAdd = {}, onAddNode = {}) {}
                 } else {
-                    NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {})
+                    NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {}, onAddNode = {})
                 }
             }
         }
@@ -456,7 +456,7 @@ class NodesRouteTest {
     @Test
     fun `the picker says when a search matches nothing and lists no subscription that gave no node`() {
         val vm = viewModel(Honk(providers = listOf(P("s-1", "Harbor", 3), P("s-2", "Lantern", 0))))
-        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeSearchRoute(vm, onClose = {}, onDetail = {}, onAdd = {}) } }
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeSearchRoute(vm, onClose = {}, onDetail = {}, onAdd = {}, onAddNode = {}) } }
         compose.waitForIdle()
         compose.onNodeWithText("Harbor").assertExists()
         compose.onNodeWithText("Lantern").assertDoesNotExist()
@@ -470,13 +470,17 @@ class NodesRouteTest {
     fun `with no node the pull-down picker offers 新增訂閱 instead of chips over nothing`() {
         val vm = viewModel(Honk(nodes = emptyList()))
         var added = false
+        var nodeAdded = false
         compose.setContent {
             RvTheme(rvSystemScheme(false), false) {
-                NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true), onDetail = {}, onAdd = { added = true }) {}
+                NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true), onDetail = {}, onAdd = { added = true }, onAddNode = { nodeAdded = true }) {}
             }
         }
         compose.waitForIdle()
         compose.onNodeWithText("All subscriptions").assertDoesNotExist()
+        compose.onNodeWithText("Add node").performClick()
+        assertTrue(nodeAdded)
+        assertFalse(added)
         compose.onNodeWithText("Add subscription").performClick()
         assertTrue(added)
     }
@@ -493,9 +497,9 @@ class NodesRouteTest {
         compose.setContent {
             RvTheme(rvSystemScheme(false), false) {
                 when (page) {
-                    0 -> NodeSearchRoute(vm, onClose = {}, onDetail = {}, onAdd = {})
-                    1 -> MainNodeRoute(vm, onBack = {}, onSearch = {}, onAdd = {})
-                    else -> NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true), onDetail = {}, onAdd = {}) {}
+                    0 -> NodeSearchRoute(vm, onClose = {}, onDetail = {}, onAdd = {}, onAddNode = {})
+                    1 -> MainNodeRoute(vm, onBack = {}, onSearch = {}, onAdd = {}, onAddNode = {})
+                    else -> NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true), onDetail = {}, onAdd = {}, onAddNode = {}) {}
                 }
             }
         }
@@ -514,7 +518,7 @@ class NodesRouteTest {
     fun `the main node's page filters by subscription with the pickers' chips`() {
         val nodes = listOf(N("n-jp", "Tokyo 01", "s-1", 20), N("n-sg", "Singapore 01", "s-2", 10))
         val vm = viewModel(Honk(nodes, listOf(P("s-1", "Harbor", 1), P("s-2", "Bay", 1))))
-        compose.setContent { RvTheme(rvSystemScheme(false), false) { MainNodeRoute(vm, onBack = {}, onSearch = {}, onAdd = {}) } }
+        compose.setContent { RvTheme(rvSystemScheme(false), false) { MainNodeRoute(vm, onBack = {}, onSearch = {}, onAdd = {}, onAddNode = {}) } }
         compose.waitForIdle()
         compose.onNodeWithText("Stability").assertDoesNotExist()
         compose.onNodeWithText("Tokyo 01").assertExists()

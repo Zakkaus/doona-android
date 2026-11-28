@@ -39,7 +39,7 @@ internal fun rememberRvNodeTitles(): (RvNode) -> String {
     return remember(resources, locale) {
         { node ->
             val shown = rvShownName(node.name)
-            shown.text.ifEmpty { resources.getString(rvMarkLabel(shown.mark) ?: node.place.label) }
+            shown.text.ifEmpty { rvMarkLabel(shown.mark)?.let { resources.getString(it) } ?: (shown.mark as? RvNameMark.Flag)?.code ?: resources.getString(node.place.label) }
         }
     }
 }

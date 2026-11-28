@@ -34,7 +34,7 @@
     <string name="rv_less_than_yesterday">比昨天同时段少 %1$s</string>
     <string name="rv_more_than_yesterday">比昨天同时段多 %1$s</string>
     <string name="rv_remaining">剩余</string>
-    <string name="rv_subscription_usage">%1$s/%2$s，%3$s 到期</string>
+    <string name="rv_subscription_usage">%1$s，%2$s 到期</string>
     <string name="rv_comma">，</string>
     <string name="rv_fastest_nodes">最快节点</string>
     <string name="rv_mode_rule">规则</string>

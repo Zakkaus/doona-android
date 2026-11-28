@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.RvAddEntry
 import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvEmptyState
@@ -64,9 +65,11 @@ internal fun RvNodePickerPage(
     caption: String? = stringResource(R.string.rv_main_node_hint),
     banner: RvNotice? = null,
     alsoCurrent: Set<String> = emptySet(),
+    score: RvScoreMarks? = null,
     apply: RvApplyTo? = null,
     onApply: (RvApplyTo) -> Unit = {},
     loading: Boolean = false,
+    onAddNode: () -> Unit,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_main_node)
@@ -78,7 +81,7 @@ internal fun RvNodePickerPage(
     RvScrollPage(title, insets, onBack = onBack, actions = { glass -> RvGlassButton(glass, R.drawable.rv_sym_speed, test, onTest) }) { titleBlock ->
         // Before the catalog is read the controls stand (their labels are known) over the list's skeleton.
         val empty = !loading && nodes.isEmpty()
-        val controls: (@Composable () -> Unit)? = if (empty) {
+        val controls: (@Composable () -> Unit)? = if (empty || (loading && banner != null)) {
             null
         } else {
             {
@@ -88,25 +91,27 @@ internal fun RvNodePickerPage(
         }
         RvPageHeader(title, titleBlock, insets, caption = caption?.let { line -> { RvCaption(line) } }, control = controls)
         RvBannerSlot(banner)
+        if (loading && banner != null) return@RvScrollPage
         if (loading) {
             RvNodeSectionSkeleton()
         } else if (empty) {
-            RvGutter { RvNoSubscription(onAdd) }
+            RvGutter { RvNoSubscription(onAdd, onAddNode) }
         } else {
             if (apply != null) {
                 RvGutter { RvApplyCard(apply, onApply) }
                 Spacer(Modifier.height(RvSpace.cardGap))
             }
-            RvNodeGroups(groups, currentId, sort, nowEpochMs, alsoCurrent, onPick)
+            RvNodeGroups(groups, currentId, sort, nowEpochMs, alsoCurrent, score, onPick)
         }
     }
 }
 
 /** The node lists' empty state: no subscription yet, and 新增訂閱 ([onAdd]). One for the main node's page and the pickers. */
 @Composable
-internal fun RvNoSubscription(onAdd: () -> Unit) = RvEmptyState(
+internal fun RvNoSubscription(onAdd: () -> Unit, onAddNode: () -> Unit) = RvEmptyState(
     stringResource(R.string.rv_empty_subscription),
     stringResource(R.string.rv_empty_subscription_line),
     stringResource(R.string.rv_add_subscription),
     onAdd,
+    RvAddEntry(stringResource(R.string.rv_addnode), onAddNode),
 )

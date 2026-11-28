@@ -31,6 +31,7 @@ private data class InlineLocal(
     val added: RvAddedNodes? = null,
     val deletingId: String? = null,
     val deleteFailed: RvNodeDeleteFailed? = null,
+    val readError: ErrorCode? = null,
 )
 
 /**
@@ -49,31 +50,36 @@ internal class AddNodeViewModel(
 ) : ViewModel() {
     private val catalog = NativeCatalog(api)
     private val config = NativeConfig(api)
-    private val inline = MutableStateFlow<List<Node>>(emptyList())
+    private val catalogNodes = MutableStateFlow<Pair<List<Node>, Set<String>>?>(null)
     private val local = MutableStateFlow(InlineLocal())
     private var reading: Job? = null
 
-    val uiState: StateFlow<RvInlineState> = combine(inline, local) { nodes, local ->
-        RvInlineState(nodes.map { rvNode(it, emptyMap(), places) }, local.sheet, local.added, local.deletingId, local.deleteFailed)
+    val uiState: StateFlow<RvInlineState> = combine(catalogNodes, local) { catalog, local ->
+        RvInlineState(catalog?.first.orEmpty().map { rvNode(it, emptyMap(), places) }, local.sheet, local.added, local.deletingId, local.deleteFailed, catalog == null && local.readError == null, local.readError)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), RvInlineState())
-
-    init {
-        load()
-    }
 
     /** Which sheet is open: each [open] starts a new one, so an answer meant for a sheet since closed finds it gone. */
     private var opened = 0
 
     /**
-     * Opens the sheet empty, asking only whether the clipboard may hold a link, then reads honk's groups for 加入群組 (a
-     * failed read lists none). A new add clears the last one's banner.
+     * Opens a fresh form, checks the clipboard without reading it and loads the group choices.
      */
     fun open() {
-        val mine = ++opened
+        opened++
         local.update { it.copy(sheet = RvAddNodeSheet(clipboard = clipboard.mayHoldText()), added = null, deleteFailed = null) }
+        loadGroups()
+    }
+
+    fun loadGroups() {
+        val mine = opened
         viewModelScope.launch {
-            val picks = attempt { groupPicks(groups(), config.config().sources) }.getOrNull() ?: return@launch
-            local.update { if (opened == mine) it.copy(sheet = it.sheet?.copy(groups = picks)) else it }
+            val picks = attempt { groupPicks(groups(), config.config().sources) }
+            local.update { state ->
+                val sheet = state.sheet ?: return@update state
+                if (opened != mine) return@update state
+                val groups = picks.getOrNull()?.map { group -> group.copy(chosen = group.enabled && sheet.groups.any { it.name == group.name && it.chosen }) } ?: sheet.groups
+                state.copy(sheet = sheet.copy(groups = groups, groupsError = picks.exceptionOrNull()?.errorCode()))
+            }
         }
     }
 
@@ -108,7 +114,7 @@ internal class AddNodeViewModel(
      */
     fun add() {
         val sheet = local.value.sheet?.takeIf { it.check.addable && !it.adding } ?: return
-        val (sent, skipped) = addNodeRows(addNodeLines(sheet.text), names())
+        val (sent, skipped) = addNodeRows(addNodeLines(sheet.text), catalogNodes.value?.second ?: return)
         val unread = addNodeUnread(sheet.text)
         val mine = opened
 
@@ -119,8 +125,8 @@ internal class AddNodeViewModel(
             val added = mutableListOf<Node>()
             val refused = mutableListOf<Int>()
             var stopped: ErrorCode? = null
-            sent.forEach { line ->
-                attempt { addNode(line.name, line.link) }.fold({ added += it }) { error ->
+            sent.forEach { (line, name) ->
+                attempt { addNode(name, line.link) }.fold({ added += it }) { error ->
                     // A link honk cannot read, or a name it holds already, is that line's; any other error is honk's.
                     refused += line.line
                     error.errorCode().takeIf { it != ErrorCode.InvalidArgument }?.let { stopped = stopped ?: it }
@@ -135,9 +141,9 @@ internal class AddNodeViewModel(
             val chosen = sheet.groups.filter { it.chosen }.map { it.name }
             val failed = if (chosen.isEmpty()) null else attempt { join(chosen, added) }.exceptionOrNull()?.errorCode()
             val ids = added.mapTo(HashSet()) { it.id }
-            val groups = attempt { groups() }.getOrNull()?.let { joinedGroups(it, ids) }.orEmpty()
+            val groups = attempt { joinedGroups(groups(), ids) }.getOrNull()
             // The nodes are in either way: the banner says so, but only this add's own sheet closes.
-            val result = RvAddedNodes(added.size, groups, RvSkipped(other = refused, unread = unread), failed)
+            val result = RvAddedNodes(added.size, groups.orEmpty(), RvSkipped(other = refused, unread = unread), failed, if (groups == null) ids else emptySet())
             local.update { it.copy(sheet = if (opened == mine) null else it.sheet, added = result) }
             load()
         }
@@ -151,7 +157,7 @@ internal class AddNodeViewModel(
      * and why; `not_found` means it is gone already, so the next read drops it with no banner.
      */
     fun confirmDelete(id: String) {
-        val name = inline.value.firstOrNull { it.id == id }?.name ?: local.value.deleteFailed?.name.orEmpty()
+        val name = catalogNodes.value?.first?.firstOrNull { it.id == id }?.name ?: local.value.deleteFailed?.name.orEmpty()
         local.update { it.copy(deletingId = null, deleteFailed = null, added = null) }
         viewModelScope.launch {
             val code = attempt { removeNode(id) }.exceptionOrNull()?.errorCode()
@@ -163,11 +169,29 @@ internal class AddNodeViewModel(
     /** Clears the last add's banner, when the user starts something else on the page. */
     fun dismissAdded() = local.update { it.copy(added = null) }
 
+    fun confirmGroups() {
+        val result = local.value.added ?: return
+        viewModelScope.launch {
+            attempt { joinedGroups(groups(), result.unconfirmed) }.onSuccess { groups ->
+                local.update { if (it.added === result) it.copy(added = result.copy(groups = groups, unconfirmed = emptySet())) else it }
+            }
+        }
+    }
+
     /** Reads 組態內's nodes again; a failed read keeps the list last read. */
-    private fun load() {
+    fun load() {
         reading?.cancel()
         reading = viewModelScope.launch {
-            attempt { inlineNodes(nodes(), providers()) }.getOrNull()?.let { inline.value = it }
+            val read = attempt {
+                val all = nodes()
+                inlineNodes(all, providers()) to all.mapTo(HashSet()) { it.name }
+            }
+            read.onSuccess { snapshot ->
+                val previous = catalogNodes.value
+                catalogNodes.value = snapshot
+                if (previous?.second != snapshot.second) local.value.sheet?.let { edit(it.text) }
+            }
+            local.update { it.copy(readError = read.exceptionOrNull()?.errorCode()) }
         }
     }
 
@@ -185,9 +209,7 @@ internal class AddNodeViewModel(
         }
     }
 
-    private fun names(): Set<String> = inline.value.mapTo(HashSet()) { it.name }
-
-    private fun check(text: String) = addNodeCheck(addNodeLines(text), names(), addNodeUnread(text))
+    private fun check(text: String) = catalogNodes.value?.second?.let { addNodeCheck(addNodeLines(text), it, addNodeUnread(text)) } ?: RvAddNodeCheck.None
 
     /** [action] on [io]; its failure, a cancellation apart, is the result's. */
     private suspend fun <T> attempt(action: suspend NativeCatalog.() -> T): Result<T> = try {

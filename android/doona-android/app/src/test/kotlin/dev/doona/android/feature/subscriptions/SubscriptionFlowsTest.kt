@@ -45,6 +45,7 @@ import dev.doona.android.feature.localnetwork.LocalNetworkAccess
 import dev.doona.android.feature.onboarding.FirstRunGate
 import dev.doona.android.feature.onboarding.FirstRunViewModel
 import dev.doona.android.honk.FakeHonk
+import dev.doona.android.honk.HonkFixtures
 import dev.doona.android.honk.NativeApi
 import dev.doona.android.honk.NativeResponse
 import kotlinx.coroutines.CoroutineDispatcher
@@ -76,7 +77,7 @@ class SubscriptionFlowsTest {
     private fun string(id: Int, vararg args: Any): String = ApplicationProvider.getApplicationContext<Context>().getString(id, *args)
 
     /** The routes on [engine] and [honk], whose adds run on [io]. */
-    private fun show(engine: Engine, vararg start: NavKey, honk: ProvidersHonk = ProvidersHonk(), io: CoroutineDispatcher = Dispatchers.Unconfined) {
+    private fun show(engine: Engine, vararg start: NavKey, honk: NativeApi = ProvidersHonk(), io: CoroutineDispatcher = Dispatchers.Unconfined) {
         compose.setContent { RvTheme(rvSystemScheme(false), false) { Host(engine, honk, io, start.toList().ifEmpty { listOf(ActivityKey) }) } }
     }
 
@@ -92,6 +93,19 @@ class SubscriptionFlowsTest {
     }
 
     private fun shows(text: String) = compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+
+    @Test
+    fun catalogReadRetryPrecedesProviderRefresh() {
+        val honk = HonkFixtures.rvSample().apply {
+            on("GET", "/api/v1/providers", 200, HonkFixtures.body("providers/rv-sample-failed"))
+            on("GET", "/api/v1/nodes", 503, HonkFixtures.body("errors/snapshot-unavailable"))
+        }
+        show(FakeEngine(), ActivityKey, SubscriptionsKey, honk = honk)
+        compose.onNodeWithText(string(R.string.rv_failed_read_nodes)).assertExists()
+        honk.on("GET", "/api/v1/nodes", 200, HonkFixtures.body("nodes/rv-sample"))
+        compose.onNodeWithText(string(R.string.rv_retry)).performClick()
+        compose.onNodeWithText(string(R.string.rv_sub_failed_title, "Harbor Cloud")).assertExists()
+    }
 
     @Test
     fun `a subscription is added from 訂閱 and removed from its menu`() {

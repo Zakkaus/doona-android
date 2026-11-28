@@ -328,9 +328,12 @@ private fun mainLine(main: RvPolicyGroup): String {
 private fun GlobalPicker(state: RvPolicyState, profile: RvPolicyProfile, onChange: (RvPolicyState) -> Unit) {
     val main = profile.main?.let(state::group)
     val titles = rememberRvNodeTitles()
-    val groups = remember(state.nodeSort, profile.nodes, profile.subscriptions, titles) { rvNodeGroups(profile.nodes, profile.subscriptions, state.nodeSort, titles) }
-    RvControlRow({ RvNodeListControls(state.nodeSort, { onChange(state.copy(nodeSort = it)) }, onSearch = null) })
-    RvNodeGroups(groups, main?.selected?.id.orEmpty(), state.nodeSort, profile.nowEpochMs) { id -> main?.let { onChange(state.choose(it.id, id)) } }
+    // honk-gap:node-history
+    val comparable = profile.nodes.count { it.answered >= 2 } >= 2
+    val sort = if (!comparable && state.nodeSort == RvNodeSort.Stability) RvNodeSort.Latency else state.nodeSort
+    val groups = remember(sort, profile.nodes, profile.subscriptions, titles) { rvNodeGroups(profile.nodes, profile.subscriptions, sort, titles) }
+    RvControlRow({ RvNodeListControls(sort, { onChange(state.copy(nodeSort = it)) }, onSearch = null, comparable = comparable) })
+    RvNodeGroups(groups, main?.selected?.id.orEmpty(), sort, profile.nowEpochMs) { id -> main?.let { onChange(state.choose(it.id, id)) } }
 }
 
 /**

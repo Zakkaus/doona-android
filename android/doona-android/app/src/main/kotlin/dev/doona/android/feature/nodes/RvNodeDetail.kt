@@ -47,7 +47,6 @@ import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvStatusChip
 import dev.doona.android.designsystem.rv.RvText
-import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.Tone
 import dev.doona.android.designsystem.rv.latencyColor
 import dev.doona.android.designsystem.rv.latencyText
@@ -109,19 +108,26 @@ internal fun RvNodeDetail(
  * node.
  */
 @Composable
-internal fun RvNodeDetailSkeleton(onBack: () -> Unit) {
+internal fun RvNodeDetailSkeleton(onBack: () -> Unit, failure: RvNotice? = null) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val labels = listOf(
         stringResource(R.string.rv_nodes_protocol),
         stringResource(R.string.rv_nodes_server),
         stringResource(R.string.rv_nodes_port),
         stringResource(R.string.rv_nodes_transport),
+        stringResource(R.string.rv_node_hops),
         TLS,
         stringResource(R.string.rv_nodes_subscription),
         stringResource(R.string.rv_nodes_last_test),
     )
     val time = rememberRvFormat().time(0L)
-    RvScrollPage("", insets, onBack = onBack, end = RvPageEnd.Inset(RvSpace.gutter + RvSize.roundButton + RvSpace.gutter)) {
+    val title = if (failure == null) "" else stringResource(R.string.rv_nodes_details)
+    RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSpace.gutter + RvSize.roundButton + RvSpace.gutter)) { titleBlock ->
+        if (failure != null) {
+            RvPageHeader(title, titleBlock, insets)
+            RvGutter(banner = failure) {}
+            return@RvScrollPage
+        }
         RvSkeletonPageHeader(insets, mark = RvSize.headerDisc, title = RvSkeletonText.Figures, caption = RvSkeletonText.Mixed)
         RvGutter {
             RvSkeletonCard {
@@ -176,14 +182,10 @@ private fun HistoryCard(node: RvNode, times: List<String>, picked: Int, onPick: 
     RvCard {
         RvCardHeader(stringResource(R.string.rv_nodes_history))
         Column(Modifier.padding(horizontal = RvSpace.rowPadding)) {
-            if (node.history.isEmpty()) {
-                // No test yet: a dash for the figure, and the chart's plot with its labels and the empty line in it.
-                Figure(RV_NO_VALUE)
-            } else {
-                Figure(latencyText(node.history[picked]))
-                val median = node.medianMs?.let { SEPARATOR + stringResource(R.string.rv_nodes_median, latencyText(it)) }.orEmpty()
-                RvText(times[picked] + median, Rv.type.tileCaption, color = Rv.colors.textSecondary)
-            }
+            Figure(latencyText(node.history.getOrNull(picked)))
+            // honk-gap:node-history
+            val median = stringResource(R.string.rv_nodes_median, latencyText(node.medianMs))
+            RvText(rvNodeLine(times.getOrNull(picked), median), Rv.type.tileCaption, color = Rv.colors.textSecondary)
             Spacer(Modifier.height(RvSpace.barGap))
             RvLatencyDots(node.history, node.medianMs, times, picked, onPick)
         }
@@ -205,12 +207,15 @@ private fun Figure(text: String) {
  */
 @Composable
 private fun StatsCard(node: RvNode, lastTest: String) {
+    // honk-gap:node-host
     val told = node.described
     RvCard {
         RvStatRow(stringResource(R.string.rv_nodes_protocol), node.protocol.ifEmpty { RV_NO_VALUE }, valueKeepWords = false)
         RvStatRow(stringResource(R.string.rv_nodes_server), node.host.ifEmpty { RV_NO_VALUE }, valueKeepWords = false)
         RvStatRow(stringResource(R.string.rv_nodes_port), if (told) node.port.toString() else RV_NO_VALUE)
         RvStatRow(stringResource(R.string.rv_nodes_transport), node.transport.ifEmpty { RV_NO_VALUE }, valueKeepWords = false)
+        // honk-gap:hops-exit
+        RvStatRow(stringResource(R.string.rv_node_hops), RV_NO_VALUE)
         RvStatRow(TLS, if (told) stringResource(if (node.tls) R.string.ui_on else R.string.ui_off) else RV_NO_VALUE)
         val source = if (node.inline) stringResource(R.string.rv_nodes_inline) else node.subscription
         RvStatRow(stringResource(R.string.rv_nodes_subscription), source, valueKeepWords = false)

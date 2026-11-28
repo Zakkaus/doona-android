@@ -61,7 +61,6 @@ import dev.doona.android.designsystem.rv.RvSkeletonWorldMap
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.RvWorldMap
-import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.latencyColor
 import dev.doona.android.designsystem.rv.latencyText
 import dev.doona.android.designsystem.rv.rvMoves
@@ -105,6 +104,7 @@ internal fun RvNodesPage(
     caption: String? = stringResource(R.string.rv_main_node_hint),
     banner: RvNotice? = null,
     loading: Boolean = false,
+    onAddNode: () -> Unit,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     var steadiest by rememberSaveable { mutableStateOf(false) }
@@ -113,27 +113,31 @@ internal fun RvNodesPage(
     var order by rememberSaveable { mutableStateOf(RvNodeSort.Latency) }
     val title = stringResource(R.string.rv_nodes_title)
     val shown = remember(state, picked) { state.scoped(picked) }
+    // honk-gap:node-history
+    val comparable = shown.nodes.count { it.answered >= 2 } >= 2
+    val showSteadiest = comparable && steadiest
     val titles = rememberRvNodeTitles()
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         // The pull-down from 活動 picks the main node; groups with their own choice open from 活動's rule rows (item 24).
         val empty = !loading && state.nodes.isEmpty()
-        val chips: (@Composable () -> Unit)? = if (empty) {
+        val chips: (@Composable () -> Unit)? = if (empty || (loading && banner != null)) {
             null
         } else {
             {
-                val (subChip, orderChip) = rvNodeChips(state.subscriptions, state.nodes, picked, order, { chosen = it }, { order = it })
+                val (subChip, orderChip) = rvNodeChips(state.subscriptions, state.nodes, picked, order, { chosen = it }, { order = it }, comparable)
                 RvFilterChipRow(subChip, orderChip)
             }
         }
         RvPageHeader(title, titleBlock, insets, caption = caption?.let { line -> { RvCaption(line) } }, control = chips)
         RvBannerSlot(banner)
+        if (loading && banner != null) return@RvScrollPage
         if (empty) {
-            RvGutter { RvNoSubscription(onAdd) }
+            RvGutter { RvNoSubscription(onAdd, onAddNode) }
         } else {
             RvSkeletonFade(loading, { Column { NodesSkeleton(onAllNodes) } }) {
                 Column {
                     RvGutter {
-                        TopCard(shown.top(steadiest), shown.current, steadiest, { steadiest = it }, onOpen, onAllNodes)
+                        TopCard(shown.top(showSteadiest), shown.current, showSteadiest, comparable, { steadiest = it }, onOpen, onAllNodes)
                         MapCard(shown)
                     }
                     RvSectionTitle(stringResource(R.string.rv_nodes_all), Modifier.padding(horizontal = RvSpace.gutter), onAllNodes)
@@ -197,13 +201,14 @@ private fun TopNodeSkeleton(modifier: Modifier) {
 
 /** 'Top movers': the card's header (it opens the list, as on 活動), 最快 | 最穩, then the eight nodes in two rows of four. */
 @Composable
-private fun TopCard(top: List<RvNode>, current: Set<String>, steadiest: Boolean, onSteadiest: (Boolean) -> Unit, onOpen: (String) -> Unit, onAll: () -> Unit) {
+private fun TopCard(top: List<RvNode>, current: Set<String>, steadiest: Boolean, comparable: Boolean, onSteadiest: (Boolean) -> Unit, onOpen: (String) -> Unit, onAll: () -> Unit) {
     RvCard {
         RvCardHeader(stringResource(R.string.rv_nodes_fastest_card), onAll)
         RvSegmented(
             listOf(stringResource(R.string.rv_nodes_fastest), stringResource(R.string.rv_nodes_steadiest)),
             selected = if (steadiest) 1 else 0,
             onSelect = { onSteadiest(it == 1) },
+            disabledIndex = if (comparable) -1 else 1,
             modifier = Modifier.padding(horizontal = RvSpace.rowPadding),
         )
         Spacer(Modifier.height(RvNodesSize.topRowGap))
@@ -244,7 +249,7 @@ private fun MapCard(state: RvNodesPageState) {
         Spacer(Modifier.height(RvSpace.barGap))
         val countries = state.places.size
         val nodes = state.nodes.size
-        val text = pluralStringResource(R.plurals.rv_nodes_countries, countries, countries) + SEPARATOR + pluralStringResource(R.plurals.rv_nodes_nodes, nodes, nodes)
+        val text = rvNodeLine(pluralStringResource(R.plurals.rv_nodes_countries, countries, countries), pluralStringResource(R.plurals.rv_nodes_nodes, nodes, nodes))
         RvText(text, Rv.type.rowTitle, Modifier.padding(horizontal = RvSpace.rowPadding))
         Spacer(Modifier.height(RvSpace.rowPadding))
     }

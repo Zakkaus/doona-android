@@ -105,7 +105,7 @@ class RvNodeScoreShotTest {
     fun detailBothFs115() = shot("node-detail-score-both", fontScale = RV_FS115) { Detail(chosen, both) }
 
     @Test
-    @Config(qualifiers = DETAIL_A_FS200)
+    @Config(qualifiers = DETAIL_BOTH_FS200)
     fun detailBothFs200() = shot("node-detail-score-both", fontScale = RV_FS200) { Detail(chosen, both) }
 
     /** A node both networks chose reads 「Score」 with no network on 節點; no other node is marked. */
@@ -182,7 +182,7 @@ class RvNodeScoreShotTest {
         compose.rvShot(name, dark, before = { assertWhole() }, fontScale = fontScale, content = content)
 
     @Composable
-    private fun Page(score: RvScoreMarks) = RvNodesPage(page, onBack = {}, onOpen = {}, onAllNodes = {}, score = score)
+    private fun Page(score: RvScoreMarks) = RvNodesPage(page, onBack = {}, onOpen = {}, onAllNodes = {}, score = score, onAddNode = {})
 
     @Composable
     private fun Detail(node: RvNode, score: RvScoreMarks) =
@@ -202,9 +202,10 @@ class RvNodeScoreShotTest {
         const val PAGE_A = "+h2881dp"
         const val PAGE_A_FS115 = "+h2953dp"
         const val PAGE_A_FS200 = "+h4945dp"
-        const val DETAIL_A = "+h1208dp"
-        const val DETAIL_A_FS115 = "+h1216dp"
-        const val DETAIL_A_FS200 = "+h1389dp"
+        const val DETAIL_A = "+h1266dp"
+        const val DETAIL_A_FS115 = "+h1274dp"
+        const val DETAIL_A_FS200 = "+h1396dp"
+        const val DETAIL_BOTH_FS200 = "+h1447dp"
         const val PAGE_BOTH = "+h2881dp"
         const val PAGE_BOTH_FS115 = "+h2899dp"
         const val PAGE_BOTH_FS200 = "+h4863dp"

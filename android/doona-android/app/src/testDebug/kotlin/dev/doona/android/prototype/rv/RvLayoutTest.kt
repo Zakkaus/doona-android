@@ -168,7 +168,7 @@ class RvLayoutTest {
     fun nodePicker() = measure("node-picker", Top.Title) { RvNodePickerSample(RvData.nodes, RvData.subscriptions, RvData.CURRENT_ID, onPick = {}, onDetail = {}, onClose = {}) }
 
     @Test
-    fun nodesPage() = measure("nodes-page", Top.Title) { RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {}) }
+    fun nodesPage() = measure("nodes-page", Top.Title) { RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {}, onAddNode = {}) }
 
     @Test
     fun nodeDetail() = measure("node-detail", Top.Title) {

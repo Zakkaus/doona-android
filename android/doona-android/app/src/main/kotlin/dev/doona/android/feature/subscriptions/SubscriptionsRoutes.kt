@@ -7,15 +7,18 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import dev.doona.android.R
 import dev.doona.android.app.nativeApi
 import dev.doona.android.designsystem.rv.LocalRvUpdating
 import dev.doona.android.feature.nodes.ui.LocalRvRowActions
 import dev.doona.android.feature.nodes.ui.RvRowActions
+import dev.doona.android.feature.settings.changeBanner
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -38,9 +41,22 @@ internal fun SubscriptionsRoute(
         val clipboard = LocalContext.current.applicationContext.getSystemService(ClipboardManager::class.java)
         viewModel(factory = viewModelFactory { initializer { AddNodeViewModel(api, AndroidClipboardLinks(clipboard)) } })
     },
+    openNodeSheet: Boolean = false,
+    onSheetOpened: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val inline by nodes.uiState.collectAsStateWithLifecycle()
+    if (openNodeSheet) {
+        LaunchedEffect(nodes) {
+            nodes.open()
+            onSheetOpened()
+        }
+    }
+    LifecycleResumeEffect(viewModel, nodes) {
+        viewModel.load()
+        nodes.load()
+        onPauseOrDispose {}
+    }
     val actions = remember(viewModel, nodes, onBack, onOpen, onAdd) {
         // Anything else asked of the page puts the last add's banner away.
         RvSubsActions(
@@ -63,12 +79,14 @@ internal fun SubscriptionsRoute(
         )
     }
     val inlineActions = remember(nodes, onOpenNode, onViewGroups) {
-        RvInlineActions(nodes::open, nodes::close, nodes::edit, nodes::paste, nodes::add, onOpenNode, nodes::delete, nodes::confirmDelete, onViewGroups, nodes::pick)
+        RvInlineActions(nodes::open, nodes::close, nodes::edit, nodes::paste, nodes::add, onOpenNode, nodes::delete, nodes::confirmDelete, onViewGroups, nodes::pick, nodes::loadGroups)
     }
-    val banner = inline.deleteFailed?.let { rvNodeDeleteFailedBanner(it) { nodes.confirmDelete(it.id) } } ?: inline.added?.let { rvAddedBanner(it, onViewGroups) }
-    // No 複製分享連結: honk gives no node's share link.
-    CompositionLocalProvider(LocalRvUpdating provides state.updating, LocalRvRowActions provides remember(nodes) { RvRowActions(deleteNode = nodes::delete) }) {
-        RvSubsPage(state.page, actions, loading = state.loading, extra = { RvInlineCard(inline.nodes, inlineActions) }, extraKeepsPage = inline.nodes.isNotEmpty(), banner = banner, addNode = inlineActions.add, removable = true)
+    val readError = state.readError ?: inline.readError
+    val banner = readError?.let { changeBanner(stringResource(if (state.readError != null) R.string.rv_subscriptions else R.string.rv_failed_read_nodes), it, if (state.readError != null) viewModel::load else nodes::load) }
+        ?: inline.deleteFailed?.let { rvNodeDeleteFailedBanner(it) { nodes.confirmDelete(it.id) } } ?: inline.added?.let { rvAddedBanner(it, if (it.unconfirmed.isEmpty()) onViewGroups else nodes::confirmGroups) }
+    // honk-gap:node-share
+    CompositionLocalProvider(LocalRvUpdating provides state.updating, LocalRvRowActions provides remember(nodes) { RvRowActions(deleteNode = nodes::delete, noShareLinks = true) }) {
+        RvSubsPage(state.page, actions, loading = readError == null && (state.loading || inline.loading), extra = { RvInlineCard(inline.nodes, inlineActions) }, extraKeepsPage = readError != null || inline.nodes.isNotEmpty(), banner = banner, addNode = inlineActions.add, removable = true)
         RvAddNodeSheet(inline.sheet, inlineActions)
         RvNodeDeleteSheet(inline.nodes.firstOrNull { it.id == inline.deletingId }, inlineActions)
     }
@@ -115,6 +133,6 @@ internal fun SubDetailRoute(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     if (state.gone) LaunchedEffect(Unit) { onBack() }
-    val sub = state.sub ?: return
-    RvSubDetail(sub, state.sheet, viewModel::change, onBack, viewModel::update, viewModel::setUserAgent, state.autoUpdate, onAutoUpdate, viewModel::rename, viewModel::delete)
+    val failure = state.readError?.let { changeBanner(stringResource(R.string.rv_sub_section), it, viewModel::retryRead) }
+    RvSubDetail(state.sub, state.sheet, viewModel::change, onBack, viewModel::update, viewModel::setUserAgent, state.autoUpdate, onAutoUpdate, viewModel::rename, viewModel::delete, failure)
 }

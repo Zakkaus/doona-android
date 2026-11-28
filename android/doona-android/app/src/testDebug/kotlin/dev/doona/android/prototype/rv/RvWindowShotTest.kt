@@ -169,7 +169,7 @@ class RvWindowShotTest {
     private fun Settings() = RvSettingsScreenSample(rvSampleSettings(), onChange = {}, onOpenTheme = {})
 
     @Composable
-    private fun Nodes() = RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {})
+    private fun Nodes() = RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {}, onAddNode = {})
 
     /** A notch phone: the status bar is as tall as the notch, which the page reads as its top inset. */
     @Composable

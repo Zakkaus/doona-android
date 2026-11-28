@@ -56,7 +56,7 @@ internal fun OutboundCard(state: RvActivityState, mode: RvRouteMode, routes: RvA
                 onClick = node?.let { at -> { routes.node(at.id) } },
                 titleKeepWords = false,
                 // Its latency over the change since the test before, as 節點 and the 最快節點 rows show it (L-12).
-            ) { RvLatencyChange(node?.latencyMs?.takeUnless { node.failed }, listed?.changeMs?.takeUnless { node.failed }) }
+            ) { RvLatencyChange(node?.latencyMs?.takeUnless { node.failed }, listed?.changeMs?.takeUnless { node.failed }, node?.failed == true) }
         }
         if (mode != RvRouteMode.Rule) return@RvCard
         if (rules == null) {

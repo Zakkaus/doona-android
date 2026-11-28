@@ -160,6 +160,7 @@ private fun Form(state: RvAddState, onChange: (RvAddState) -> Unit, onPaste: () 
 @Composable
 private fun Progress(phase: RvAddPhase.Importing) {
     val format = rememberRvFormat()
+    // honk-gap:sub-import-progress
     val bar = Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding)
     val busy: (@Composable () -> Unit)? = if (phase.fraction == null) ({ RvBusy(Modifier.width(RvSize.busy)) }) else null
     RvCard {

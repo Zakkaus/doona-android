@@ -13,6 +13,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalRvTesting
+import dev.doona.android.designsystem.rv.LocalRvTestingNodes
 import dev.doona.android.designsystem.rv.LocalRvUpdating
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
@@ -35,7 +36,7 @@ import dev.doona.android.honk.SelectionNetwork
 
 /** 節點: the map, the fastest nodes and every node by part of the world. Before the catalog is read, the page's skeleton. */
 @Composable
-internal fun NodesRoute(viewModel: NodesViewModel, onBack: () -> Unit, onOpen: (String) -> Unit, onAllNodes: () -> Unit, onAdd: () -> Unit) {
+internal fun NodesRoute(viewModel: NodesViewModel, onBack: () -> Unit, onOpen: (String) -> Unit, onAllNodes: () -> Unit, onAdd: () -> Unit, onAddNode: () -> Unit) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val page = remember(ui.state) { RvNodesPageState(ui.state.nodes, ui.state.current, ui.state.subscriptions) }
     NodesLocals(viewModel, ui) {
@@ -45,6 +46,7 @@ internal fun NodesRoute(viewModel: NodesViewModel, onBack: () -> Unit, onOpen: (
             onOpen = onOpen,
             onAllNodes = onAllNodes,
             onAdd = onAdd,
+            onAddNode = onAddNode,
             score = ui.score,
             caption = mainCaption(ui),
             banner = ui.failure?.let { nodesBanner(it, viewModel::retry) },
@@ -57,8 +59,12 @@ internal fun NodesRoute(viewModel: NodesViewModel, onBack: () -> Unit, onOpen: (
 @Composable
 internal fun NodeRoute(viewModel: NodesViewModel, nodeId: String, onBack: () -> Unit) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
-    if (!ui.loaded) return RvNodeDetailSkeleton(onBack)
-    val node = ui.state.node(nodeId) ?: return LaunchedEffect(Unit) { onBack() }
+    val node = ui.state.node(nodeId)
+    if (node == null) {
+        val failure = ui.failure?.takeIf { it.action == NodesAction.Read }
+        if (failure == null) LaunchedEffect(nodeId) { viewModel.catalogState()?.let { if (it.node(nodeId) == null) onBack() } }
+        return RvNodeDetailSkeleton(onBack, failure?.let { nodesBanner(it, viewModel::retry) })
+    }
     NodesLocals(viewModel, ui) {
         RvNodeDetail(
             node,
@@ -79,7 +85,7 @@ internal fun NodeRoute(viewModel: NodesViewModel, nodeId: String, onBack: () -> 
  * once the core has switched, closes. A failed pick leaves the page open under its banner.
  */
 @Composable
-internal fun NodeSearchRoute(viewModel: NodesViewModel, onClose: () -> Unit, onDetail: (String) -> Unit, onAdd: () -> Unit) {
+internal fun NodeSearchRoute(viewModel: NodesViewModel, onClose: () -> Unit, onDetail: (String) -> Unit, onAdd: () -> Unit, onAddNode: () -> Unit) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     var applyTo by rememberSaveable { mutableStateOf(RvApplyTo.Both) }
     val apply = applyTo.takeIf { ui.state.split }
@@ -96,9 +102,11 @@ internal fun NodeSearchRoute(viewModel: NodesViewModel, onClose: () -> Unit, onD
             banner = ui.failure?.let { nodesBanner(it, viewModel::retry) },
             caption = mainCaption(ui),
             alsoCurrent = ui.state.current,
+            score = ui.score,
             apply = apply,
             onApply = { applyTo = it },
             onAdd = onAdd,
+            onAddNode = onAddNode,
             loading = !ui.loaded,
         )
     }
@@ -109,7 +117,7 @@ internal fun NodeSearchRoute(viewModel: NodesViewModel, onClose: () -> Unit, onD
  * are kept for the page's life on the back stack; a failed pick or test shows its banner.
  */
 @Composable
-internal fun MainNodeRoute(viewModel: NodesViewModel, onBack: () -> Unit, onSearch: () -> Unit, onAdd: () -> Unit) {
+internal fun MainNodeRoute(viewModel: NodesViewModel, onBack: () -> Unit, onSearch: () -> Unit, onAdd: () -> Unit, onAddNode: () -> Unit) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     var sort by rememberSaveable { mutableStateOf(RvNodeSort.Latency) }
     var applyTo by rememberSaveable { mutableStateOf(RvApplyTo.Both) }
@@ -127,9 +135,11 @@ internal fun MainNodeRoute(viewModel: NodesViewModel, onBack: () -> Unit, onSear
             onSearch = onSearch,
             nowEpochMs = ui.nowEpochMs,
             onAdd = onAdd,
+            onAddNode = onAddNode,
             caption = mainCaption(ui),
             banner = ui.failure?.let { nodesBanner(it, viewModel::retry) },
             alsoCurrent = ui.state.current,
+            score = ui.score,
             apply = apply,
             onApply = { applyTo = it },
             loading = !ui.loaded,
@@ -150,6 +160,7 @@ internal fun NodesPull(
     state: RvPullState,
     onDetail: (String) -> Unit,
     onAdd: () -> Unit,
+    onAddNode: () -> Unit,
     activity: @Composable (RvPullLook) -> Unit,
 ) {
     RvPullDown(variant, state, activity) { motion ->
@@ -170,9 +181,11 @@ internal fun NodesPull(
                 banner = ui.failure?.let { nodesBanner(it, viewModel::retry) },
                 caption = mainCaption(ui),
                 alsoCurrent = ui.state.current,
+                score = ui.score,
                 apply = apply,
                 onApply = { applyTo = it },
                 onAdd = onAdd,
+                onAddNode = onAddNode,
                 loading = !ui.loaded,
             )
         }
@@ -193,11 +206,13 @@ private fun NodesLocals(viewModel: NodesViewModel, ui: NodesUi, shown: Boolean =
             testNode = viewModel::testNode,
             updateSubscription = viewModel::update,
             deleteSubscription = viewModel::remove,
+            // honk-gap:node-share
             noShareLinks = true,
         )
     }
     CompositionLocalProvider(
-        LocalRvTesting provides (shown && ui.testing),
+        LocalRvTesting provides (shown && ui.testing?.isEmpty() == true),
+        LocalRvTestingNodes provides if (shown) ui.testing.orEmpty() else emptySet(),
         LocalRvUpdating provides if (shown) ui.updating else emptySet(),
         LocalRvRowActions provides actions,
         content = content,

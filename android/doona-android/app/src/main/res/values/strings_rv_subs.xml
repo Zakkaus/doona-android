@@ -44,7 +44,11 @@
     <string name="rv_import_add">Add</string>
     <!-- 新增節點 on 訂閱 (p5d; approved s1125f-addnode-*, except the lines marked new) -->
     <string name="rv_addnode">Add node</string>
-    <string name="rv_addnode_help">Paste a node\'s share link. The node is named after the link\'s #fragment, else its host.</string>
+    <string name="rv_addnode_help">Paste a node\'s share link. The name comes from its #fragment or host. Links without a visible host get a numbered name.</string>
+    <string name="rv_addnode_preview_name">Core preview: node name</string>
+    <string name="rv_addnode_preview_count">Importable nodes</string>
+    <string name="rv_addnode_preview_skipped">Skipped lines</string>
+    <string name="rv_addnode_preview_error">Validation error</string>
     <string name="rv_addnode_link">Node link</string>
     <string name="rv_addnode_as">Will be added as “%1$s”</string>
     <string name="rv_addnode_invalid">The node link must be a protocol://… link, such as ss://, vmess://, vless://, trojan:// or hysteria2://</string>
@@ -80,7 +84,7 @@
     </plurals>
     <string name="rv_list_sep">,\u0020</string>
     <string name="rv_list_last">%1$s and %2$s</string>
-    <string name="rv_addnode_joined">Added to the %1$s groups.</string>
+    <string name="rv_addnode_joined">Added to: %1$s</string>
     <string name="rv_addnode_view_groups">View groups</string>
     <string name="rv_addnode_groups">Add to groups</string>
     <string name="rv_addnode_group_every">Takes every node</string>

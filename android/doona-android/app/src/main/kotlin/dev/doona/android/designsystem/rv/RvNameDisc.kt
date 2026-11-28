@@ -20,7 +20,7 @@ internal fun RvNameDisc(mark: RvNameMark?, flag: String?, current: Boolean = fal
 
 /** What a name with nothing left but its emoji reads: the flag's country ([place]), or the brand or group. */
 @Composable
-internal fun rvMarkName(mark: RvNameMark?, place: String): String = rvMarkLabel(mark)?.let { stringResource(it) } ?: place
+internal fun rvMarkName(mark: RvNameMark?, place: String): String = rvMarkLabel(mark)?.let { stringResource(it) } ?: (mark as? RvNameMark.Flag)?.code ?: place
 
 /** The string [rvMarkName] reads for [mark]: the flag's country, or the brand or group; null for no mark or an unknown flag. */
 @StringRes

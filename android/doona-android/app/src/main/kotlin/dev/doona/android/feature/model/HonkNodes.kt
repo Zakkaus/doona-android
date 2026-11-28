@@ -19,7 +19,7 @@ internal fun rvNode(node: Node, providers: Map<String, Provider>, places: NodePl
     val inline = node.isInline(providers)
     val probe = node.health.firstOrNull { it.transport == Transport.Tcp } ?: node.health.firstOrNull()
     val history = when (probe?.state) {
-        HealthState.Healthy -> listOf(probe.latencyMs?.roundToInt())
+        HealthState.Healthy -> listOfNotNull(probe.latencyMs?.roundToInt())
         HealthState.Unavailable -> listOf(null)
         HealthState.Unknown, null -> emptyList()
     }
@@ -31,6 +31,7 @@ internal fun rvNode(node: Node, providers: Map<String, Provider>, places: NodePl
         place = placed.place,
         city = placed.city,
         protocol = node.protocol?.let(::protocolName).orEmpty(),
+        // honk-gap:node-host
         host = "",
         port = 0,
         transport = node.streamTransport?.let(::transportName).orEmpty(),
@@ -38,6 +39,7 @@ internal fun rvNode(node: Node, providers: Map<String, Provider>, places: NodePl
         subscription = if (inline) "" else providers[node.providerId]?.name.orEmpty(),
         subscriptionId = if (inline) RV_INLINE else node.providerId.orEmpty(),
         history = history,
+        // honk-gap:node-share
         shareable = false,
         trendMs = trend,
     )

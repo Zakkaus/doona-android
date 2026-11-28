@@ -128,5 +128,6 @@ internal fun RvNetworkPicker(
         onClose = {},
         title = group.name.text(),
         caption = network?.let { stringResource(it.label) + SEPARATOR + caption } ?: caption,
+        onAddNode = {},
     )
 }

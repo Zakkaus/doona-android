@@ -43,6 +43,7 @@ class SubscriptionsViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     private fun TestScope.list() = SubscriptionsViewModel(honk, clock = { NOW }, io = UnconfinedTestDispatcher(testScheduler)).also { vm ->
+        vm.load()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
     }
 
@@ -51,6 +52,7 @@ class SubscriptionsViewModelTest {
         val vm = SubscriptionsViewModel(honk, clock = { NOW }, io = StandardTestDispatcher(testScheduler))
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
         assertTrue(vm.uiState.value.loading)
+        vm.load()
         advanceUntilIdle()
         assertFalse(vm.uiState.value.loading)
         assertEquals(listOf("s1", "s2"), vm.uiState.value.page.subscriptions.map { it.id })
@@ -62,6 +64,7 @@ class SubscriptionsViewModelTest {
         honk.on("GET", "/api/v1/providers", 503, HonkFixtures.body("errors/snapshot-unavailable"))
         val state = list().uiState.value
         assertFalse(state.loading)
+        assertEquals(ErrorCode.Busy, state.readError)
         assertEquals(emptyList<Any>(), state.page.subscriptions)
     }
 

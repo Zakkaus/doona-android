@@ -21,12 +21,13 @@ import dev.doona.android.feature.model.RvSubscription
 internal fun RvSubscriptionRow(sub: RvSubscription, nowEpochMs: Long) {
     val format = rememberRvFormat()
     val total = format.bytes(sub.totalBytes)
+    val used = if (sub.hasQuota) stringResource(R.string.rv_subs_used, format.usedOf(sub.usedBytes, total), total.unbroken()) else RV_NO_VALUE
     RvRow(
         { RvIconDisc(R.drawable.rv_sym_rss_feed) },
         sub.name,
-        stringResource(R.string.rv_subscription_usage, format.usedOf(sub.usedBytes, total), total.unbroken(), sub.expiresAtEpochMs?.let { format.expiry(it, nowEpochMs) } ?: RV_NO_VALUE),
+        stringResource(R.string.rv_subscription_usage, used, sub.expiresAtEpochMs?.let { format.expiry(it, nowEpochMs) } ?: RV_NO_VALUE),
         titleKeepWords = false,
-    ) { RvText(format.bytes(sub.leftBytes).toString(), Rv.type.rowValue, align = TextAlign.End) }
+    ) { RvText(if (sub.hasQuota) format.bytes(sub.leftBytes).toString() else RV_NO_VALUE, Rv.type.rowValue, align = TextAlign.End) }
 }
 
 /** The 組態內 card's head row, laid out as a subscription's: the link disc, 組態內, and how many nodes were added by hand. */

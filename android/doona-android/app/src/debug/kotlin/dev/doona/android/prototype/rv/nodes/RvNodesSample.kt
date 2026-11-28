@@ -61,7 +61,7 @@ internal fun RvNodePickerPageSample(
     onTest: () -> Unit,
     onSearch: () -> Unit,
     onAdd: () -> Unit = {},
-) = RvNodePickerPage(nodes, subscriptions, currentId, sort, onSort, onPick, onBack, onTest, onSearch, RvData.nowEpochMs, onAdd)
+) = RvNodePickerPage(nodes, subscriptions, currentId, sort, onSort, onPick, onBack, onTest, onSearch, RvData.nowEpochMs, onAdd, onAddNode = {})
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
@@ -99,5 +99,5 @@ private fun RvNodePickerPagePreview() {
 @Composable
 private fun RvNodesPagePreview() {
     val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {}) }
+    RvTheme(rvSystemScheme(dark), dark) { RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {}, onAddNode = {}) }
 }

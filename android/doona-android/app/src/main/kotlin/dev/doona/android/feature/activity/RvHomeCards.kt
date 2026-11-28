@@ -114,7 +114,8 @@ internal fun RvSubscriptionsCard(subscriptions: List<RvSubscription>, nowEpochMs
     RvCard {
         RvCardHeader(stringResource(R.string.rv_subscriptions), onOpen)
         Row(Modifier.padding(horizontal = RvSpace.rowPadding), verticalAlignment = Alignment.Bottom) {
-            RvFigureText(format.bytes(subscriptions.sumOf { it.leftBytes }).figure(), Rv.type.cardValue, Rv.type.cardUnit, Modifier.alignByBaseline())
+            val left = if (subscriptions.all { it.hasQuota }) format.bytes(subscriptions.sumOf { it.leftBytes }).figure() else RvFigure(RV_NO_VALUE, "")
+            RvFigureText(left, Rv.type.cardValue, Rv.type.cardUnit, Modifier.alignByBaseline())
             Spacer(Modifier.width(RvSpace.tight * 2))
             RvText(stringResource(R.string.rv_remaining), Rv.type.cardUnit, Modifier.alignByBaseline(), color = Rv.colors.textSecondary)
         }

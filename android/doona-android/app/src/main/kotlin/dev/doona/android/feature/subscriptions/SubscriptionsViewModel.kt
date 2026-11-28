@@ -25,7 +25,7 @@ import kotlinx.coroutines.withContext
 
 /** 訂閱 as the page draws it: the page's state, the subscriptions updating now, and whether the first read is running. */
 @Immutable
-internal data class SubsUiState(val page: RvSubsState, val updating: Set<String> = emptySet(), val loading: Boolean = false)
+internal data class SubsUiState(val page: RvSubsState, val updating: Set<String> = emptySet(), val loading: Boolean = false, val readError: ErrorCode? = null)
 
 /**
  * What the view model keeps besides honk's providers: updates running, the last one that failed, the delete asked and
@@ -36,6 +36,7 @@ internal data class SubsLocal(
     val failed: RvSubFailure? = null,
     val deletingId: String? = null,
     val deleteFailed: RvSubFailure? = null,
+    val readError: ErrorCode? = null,
 )
 
 /**
@@ -57,7 +58,8 @@ internal fun subsUiState(listed: List<Provider>?, local: SubsLocal, nowEpochMs: 
             local.deleteFailed?.takeIf { it.id in ids },
         ),
         updating = local.updating intersect ids,
-        loading = listed == null,
+        loading = listed == null && local.readError == null,
+        readError = local.readError,
     )
 }
 
@@ -79,16 +81,13 @@ internal class SubscriptionsViewModel(
         combine(providers, local) { providers, local -> subsUiState(providers, local, clock()) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), subsUiState(providers.value, local.value, clock()))
 
-    init {
-        load()
-    }
-
     /** Reads the providers again; a failed read keeps the list last read (none before the first). */
-    private fun load() {
+    fun load() {
         reading?.cancel()
         reading = viewModelScope.launch {
             val read = attempt { providers() }
-            providers.value = read.getOrNull() ?: providers.value.orEmpty()
+            read.onSuccess { providers.value = it }
+            local.update { it.copy(readError = read.exceptionOrNull()?.errorCode()) }
         }
     }
 
