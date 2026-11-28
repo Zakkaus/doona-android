@@ -9,7 +9,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.localnetwork.LocalNetworkPrompt
 import dev.doona.android.feature.subscriptions.ImportRequest
-import dev.doona.android.honk.FakeHonk
+import dev.doona.android.honk.SettingsHonk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -33,7 +33,8 @@ class LocalNetworkRetryTest {
     private val access get() = container.localNetwork
 
     /** The adds honk was asked for: POST /providers. */
-    private val adds get() = (container.nativeApi as FakeHonk).let { honk -> synchronized(honk) { honk.calls.count { it.method == "POST" && it.path == "/api/v1/providers" } } }
+    // FakeEngineApplication answers through SettingsHonk, which records every call, those it hands on as well.
+    private val adds get() = (container.nativeApi as SettingsHonk).calls.count { it.method == "POST" && it.path == "/api/v1/providers" }
 
     private fun idle() = shadowOf(Looper.getMainLooper()).idle()
 

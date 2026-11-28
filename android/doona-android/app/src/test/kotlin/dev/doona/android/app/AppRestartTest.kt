@@ -2,6 +2,7 @@ package dev.doona.android.app
 
 import android.Manifest
 import android.content.Intent
+import android.provider.Settings
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -26,6 +27,9 @@ class AppRestartTest {
 
     @Before
     fun setUp() {
+        // ActivityScenario waits for the main looper to idle, and the connected marker's pulse asks for a frame for as
+        // long as it shows: these tests run with animations off, as a user with them off sees no pulse.
+        Settings.Global.putFloat(app.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
         shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         ShadowVpnService.setPrepareResult(null)
     }
