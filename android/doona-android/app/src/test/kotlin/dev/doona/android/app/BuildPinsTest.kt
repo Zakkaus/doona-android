@@ -4,7 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
-import java.time.LocalDate
 
 /** The app's copies of what the core is built from agree with the files that pin it. */
 class BuildPinsTest {
@@ -18,13 +17,5 @@ class BuildPinsTest {
         assertEquals("honk-config and honk-outbound share one revision", 1, revs.size)
         assertTrue(revs.single().startsWith(HONK_REVISION))
         assertEquals(7, HONK_REVISION.length)
-    }
-
-    @Test
-    fun `the shipped GeoIP and GeoSite date is geo-pins_json's release_date`() {
-        val pins = core.resolve("tools/geo-pins.json").readText()
-        val date = Regex(""""release_date"\s*:\s*"([^"]+)"""").find(pins)!!.groupValues[1]
-        assertEquals(date, AppSettingsStore.SHIPPED_GEO_DATE)
-        LocalDate.parse(AppSettingsStore.SHIPPED_GEO_DATE)
     }
 }

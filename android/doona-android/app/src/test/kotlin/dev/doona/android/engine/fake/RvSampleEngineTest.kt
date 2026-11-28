@@ -1,6 +1,8 @@
 package dev.doona.android.engine.fake
 
 import dev.doona.android.engine.AppPolicy
+import dev.doona.android.engine.EngineException
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Group
 import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.LogLevel
@@ -122,6 +124,7 @@ class RvSampleEngineTest {
         assertEquals("Sample/1", changed.userAgent)
         engine.removeSubscription(added.id).getOrThrow()
         assertFalse(engine.subscriptions.value.any { it.id == added.id })
+        assertEquals(ErrorCode.NotFound, (engine.updateSubscription(added.id).exceptionOrNull() as EngineException).code)
 
         engine.setLogLevel(LogLevel.Warn).getOrThrow()
         val diagnostics = engine.diagnostics(LogLevel.Warn).getOrThrow()

@@ -35,11 +35,9 @@ import dev.doona.android.report.reportDir
 import dev.doona.android.vpn.QuickTile
 import dev.doona.android.vpn.VpnLog
 import dev.doona.android.work.ForegroundRefresh
-import dev.doona.android.work.GeoRefresh
 import dev.doona.android.work.SubscriptionRefresh
-import dev.doona.android.work.scheduleGeoRefresh
-import dev.doona.android.work.scheduleGeoRefreshOnConnect
 import dev.doona.android.work.scheduleSubscriptionRefresh
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -60,6 +58,7 @@ class AppContainer(
     createEngine: () -> Engine,
     createInstalledApps: () -> InstalledApps,
     createNativeApi: () -> NativeApi,
+    private val io: CoroutineDispatcher,
 ) {
     /** Created on first use, so a process started for the tile or the service builds it once. */
     val engine: Engine by lazy(createEngine)
@@ -88,7 +87,7 @@ class AppContainer(
     internal val nativeSettings by lazy { NativeSettings(nativeApi) }
 
     internal val logLevels: LogLevelController by lazy {
-        LogLevelController({ level -> runCatching { withContext(Dispatchers.IO) { nativeSettings.setLogLevel(level) } } }, uiScope, SystemClock::elapsedRealtime)
+        LogLevelController({ level -> runCatching { withContext(io) { nativeSettings.setLogLevel(level) } } }, uiScope, SystemClock::elapsedRealtime)
     }
 
     /** What the user refused on the way to connecting; [MainActivity] sets it, 活動 shows it. */
@@ -115,31 +114,6 @@ class AppContainer(
         }
     }
 
-    internal val geoRefresh by lazy { GeoRefresh(AppSettings.get(application)) { engine } }
-
-    internal fun startGeoRefresh() {
-        uiScope.launch {
-            geoRefresh.watchConnections { scheduleGeo { scheduleGeoRefreshOnConnect(it) } }
-        }
-        uiScope.launch {
-            AppSettings.get(application).geoUpdateInterval
-                .catch {
-                    if (it !is IOException) throw it
-                    VpnLog.warn("geo-refresh: settings read failed (${it.javaClass.simpleName})")
-                }.collect { setting ->
-                    scheduleGeo { scheduleGeoRefresh(it, setting) }
-                }
-        }
-    }
-
-    private suspend fun scheduleGeo(schedule: suspend (WorkManager) -> Unit) {
-        try {
-            schedule(WorkManager.getInstance(application))
-        } catch (e: SQLiteException) {
-            VpnLog.warn("geo-refresh: schedule write failed (${e.javaClass.simpleName})")
-        }
-    }
-
     /** The local network permission, asked for only when something on the local network failed (ARCH D26). */
     val localNetwork: LocalNetworkAccess by lazy { LocalNetworkAccess(::localNetworkGranted) }
 
@@ -150,7 +124,7 @@ class AppContainer(
     val uiEngine: Engine by lazy { LocalNetworkEngine(engine, localNetwork, uiScope).also { it.watch() } }
 
     /** The subscription import in flight, above every screen that can start one: a slow fetch survives leaving the page. */
-    internal val imports: SubscriptionImports by lazy { SubscriptionImports(nativeApi, localNetwork, uiScope) }
+    internal val imports: SubscriptionImports by lazy { SubscriptionImports(nativeApi, localNetwork, uiScope, io) }
 
     /**
      * The crash files of the core and the app: the core's `crash/` directory under the data directory it is given. The
@@ -191,7 +165,7 @@ class AppContainer(
             tokens,
             { AppInfo.of(application) },
             uiScope,
-            Dispatchers.IO,
+            io,
             logLevels,
             ownAddresses = { ownAddresses(application) },
             flowEvents = flowEvents,

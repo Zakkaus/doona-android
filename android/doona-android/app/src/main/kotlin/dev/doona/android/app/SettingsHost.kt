@@ -20,6 +20,7 @@ import dev.doona.android.data.settings.UpdateCheck
 import dev.doona.android.data.settings.UpdateInterval
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.rvSystemSchemes
+import dev.doona.android.engine.BuildInfo
 import dev.doona.android.engine.Engine
 import dev.doona.android.feature.activity.RvActivityRoutes
 import dev.doona.android.feature.activity.RvActivityScreen
@@ -74,7 +75,7 @@ internal class AppSettingsStore(
     private val tile: QuickTile,
     private val writes: CoroutineScope,
 ) : SettingsStore {
-    override val shippedGeoDate: String = SHIPPED_GEO_DATE
+    override val shippedGeoDate: String = BuildInfo.GEO_SHIPPED_DATE
     override val notifyOnDrop: Flow<Boolean> = settings.notifyOnDrop
     override val autoUpdate: Flow<Boolean> = settings.subscriptionUpdate.map { it.enabled }
     override val updateHours: Flow<Int> = settings.subscriptionUpdate.map { it.interval.hours }
@@ -112,9 +113,6 @@ internal class AppSettingsStore(
     }
 
     companion object {
-        /** `release_date` of `crates/doona-core/tools/geo-pins.json`: the GeoIP/GeoSite release the APK ships. */
-        const val SHIPPED_GEO_DATE = "2026-11-23"
-
         /**
          * 效能模式 as first read in this process. The core reads the stored value when it starts, at the app's start and
          * before 實驗室 can open, and a turn of the switch is stored only after 實驗室 has read this, so the two agree.

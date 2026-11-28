@@ -11,24 +11,27 @@ import dev.doona.android.report.AppInfo
 import dev.doona.android.report.CrashCapture
 import dev.doona.android.vpn.NativeCore
 import dev.doona.android.vpn.ServiceEngine
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import java.io.File
 
 open class DoonaApplication : Application(), Configuration.Provider {
     // WorkManager starts on first use from onCreate, also where no content provider runs (Robolectric).
     override val workManagerConfiguration: Configuration get() = Configuration.Builder().build()
 
+    internal open val io: CoroutineDispatcher get() = Dispatchers.IO
+
     lateinit var container: AppContainer
         private set
 
     override fun onCreate() {
         super.onCreate()
-        container = AppContainer(this, ::createEngine, ::createInstalledApps, ::createNativeApi)
+        container = AppContainer(this, ::createEngine, ::createInstalledApps, ::createNativeApi, io)
         // First, so a crash anywhere later in the process leaves its file for the report.
         CrashCapture.install(container.crashFiles, AppInfo.of(this).crashVersion)
         AppEvents.install { File(noBackupFilesDir, "app-events.tsv") }
         container.startFlowCapture()
         container.startSubscriptionRefresh()
-        container.startGeoRefresh()
         container.startQuickTile()
     }
 

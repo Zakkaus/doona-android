@@ -1,7 +1,6 @@
 package dev.doona.android.engine.fake
 
 import dev.doona.android.engine.Catalog
-import dev.doona.android.engine.ConfigAssets
 import dev.doona.android.engine.ConfigEngine
 import dev.doona.android.engine.CoreDiagnostics
 import dev.doona.android.engine.CrashFile
@@ -80,7 +79,6 @@ class FakeEngine internal constructor(
     private val settingsFlow = MutableStateFlow(Settings(mode = mode))
     private val ruleSource = MutableStateFlow(data.source)
     private var adBlock = true
-    private var assets = ConfigAssets("builtin", null, "idle", null, false)
     private var dnsUpstreams = FakeRuleMode.DNS_UPSTREAMS
 
     /** The number in the next subscription id: as in the core, an id is never given twice, also after a removal. */
@@ -106,9 +104,6 @@ class FakeEngine internal constructor(
 
     override fun connect() {
         if (status.value is Status.Running) return
-        if (assets.updateWaitingForNextStart) {
-            assets = ConfigAssets("download", GEO_RELEASE, "activated", null, false)
-        }
         status.value = Status.Running(sinceEpochMs = 0)
     }
 
@@ -152,7 +147,8 @@ class FakeEngine internal constructor(
     }
 
     override suspend fun updateSubscription(id: String): Result<Subscription> =
-        Result.success(subscriptions.value.first { it.id == id })
+        subscriptions.value.firstOrNull { it.id == id }?.let { Result.success(it) }
+            ?: Result.failure(EngineException(ErrorCode.NotFound))
 
     override suspend fun renameSubscription(id: String, name: String): Result<Subscription> {
         val trimmed = displayName(name) ?: return Result.failure(EngineException(ErrorCode.InvalidArgument))
@@ -249,23 +245,6 @@ class FakeEngine internal constructor(
 
     override suspend fun scoreState(): Result<ScoreState> = Result.success(data.scoreState)
 
-    override suspend fun configAssets(): Result<ConfigAssets> = Result.success(assets)
-
-    override suspend fun updateConfigAssets(): Result<ConfigAssets> {
-        if (assets.updateWaitingForNextStart) return Result.failure(EngineException(ErrorCode.Busy))
-        if (status.value !is Status.Running) {
-            assets = assets.copy(lastResult = "failed", reason = "not_connected")
-            return Result.failure(EngineException(ErrorCode.FetchFailed))
-        }
-        val checking = assets.copy(lastResult = "checking", reason = null)
-        assets = if (checking.release == GEO_RELEASE) {
-            checking.copy(lastResult = "up_to_date")
-        } else {
-            checking.copy(lastResult = "ready_on_next_start", updateWaitingForNextStart = true)
-        }
-        return Result.success(checking)
-    }
-
     override suspend fun setPerApp(perApp: PerApp): Result<Unit> {
         settingsFlow.update { it.copy(perApp = perApp) }
         return Result.success(Unit)
@@ -304,7 +283,6 @@ class FakeEngine internal constructor(
 
     companion object {
         private const val MAX_RULES_PAGE = 500
-        private const val GEO_RELEASE = "2026-11-23"
         private val RECENT_FLOWS = listOf(
             RecentFlow("tcp", "172.19.0.1:41002", "192.0.2.2:443", "example.test", "g-Proxy", 371, true),
             RecentFlow("udp", "172.19.0.1:41001", "192.0.2.1:443", null, "direct", 12, false),

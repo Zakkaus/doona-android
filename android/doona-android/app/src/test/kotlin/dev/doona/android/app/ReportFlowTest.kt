@@ -47,16 +47,6 @@ class ReportFlowTest {
         synchronized(cache) { cache.clear() }
     }
 
-    /** Runs the main looper until [done], while a clear is sent from another thread. */
-    private fun idleUntil(done: () -> Boolean) {
-        val deadline = System.nanoTime() + 10_000_000_000
-        while (!done() && System.nanoTime() < deadline) {
-            shadowOf(Looper.getMainLooper()).idle()
-            Thread.sleep(5)
-        }
-        assertTrue("timed out", done())
-    }
-
     /** The share sheet sends the zip and grants read access to it only. */
     private fun assertWellFormed(chooser: Intent) {
         assertEquals(Intent.ACTION_CHOOSER, chooser.action)
@@ -107,7 +97,7 @@ class ReportFlowTest {
         pick(sender, app = null)
         assertTrue(engine.crashes.isNotEmpty())
         pick(sender, mail)
-        idleUntil { engine.crashes.isEmpty() }
+        assertTrue(engine.crashes.isEmpty())
     }
 
     /** Exports a report, closes its sheet without a pick, and answers the sheet's callback. */
@@ -139,7 +129,7 @@ class ReportFlowTest {
         chooserResult(sender, ChooserResult.CHOOSER_RESULT_COPY, null)
         assertTrue(engine.crashes.isNotEmpty())
         chooserResult(sender, ChooserResult.CHOOSER_RESULT_SELECTED_COMPONENT, mail)
-        idleUntil { engine.crashes.isEmpty() }
+        assertTrue(engine.crashes.isEmpty())
     }
 
     @Test
@@ -154,10 +144,9 @@ class ReportFlowTest {
         engine.crashes = engine.crashes + CrashFile("1795300160000.txt", 12)
         val second = share()
         pick(first, mail)
-        idleUntil { engine.crashes.size < 2 }
         assertEquals(listOf("1795300160000.txt"), engine.crashes.map { it.name })
         pick(second, mail)
-        idleUntil { engine.crashes.isEmpty() }
+        assertTrue(engine.crashes.isEmpty())
     }
 
     @Test

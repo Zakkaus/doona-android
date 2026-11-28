@@ -6,7 +6,6 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.data.settings.PerAppSettings
 import dev.doona.android.engine.AppPolicy
-import dev.doona.android.engine.ConfigAssets
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
@@ -118,19 +117,6 @@ class ServiceEngineTest {
         assertEquals("diagnostics" to """{"level":"warn"}""", core.calls.single())
         assertEquals(LogLevel.Info, diagnostics.level)
         assertEquals(listOf("1795300150000.txt"), diagnostics.crashes.map { it.name })
-    }
-
-    @Test
-    fun geoStatusAndUpdateUseTheCoreContract() = runBlocking {
-        core.reply = ContractFixtures.read("call-ok-config-assets.json")
-        assertEquals(ConfigAssets("builtin", null, "idle", null, false), engine.configAssets().getOrThrow())
-
-        core.reply = """{"ok":{"source":"apk","release":"2026-11-23","lastResult":"checking","reason":null,"updateWaitingForNextStart":false}}"""
-        assertEquals(ConfigAssets("apk", "2026-11-23", "checking", null, false), engine.updateConfigAssets().getOrThrow())
-        assertEquals(listOf("configAssets" to """{"action":"status"}""", "configAssets" to """{"action":"update"}"""), core.calls)
-
-        core.reply = """{"error":{"code":"busy"}}"""
-        assertEquals(ErrorCode.Busy, (engine.updateConfigAssets().exceptionOrNull() as EngineException).code)
     }
 
     @Test

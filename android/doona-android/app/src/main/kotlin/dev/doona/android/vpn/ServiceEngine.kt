@@ -10,7 +10,6 @@ import dev.doona.android.data.network.networkState
 import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.data.settings.PerAppSettings
 import dev.doona.android.engine.Catalog
-import dev.doona.android.engine.ConfigAssets
 import dev.doona.android.engine.ConfigEngine
 import dev.doona.android.engine.CoreDiagnostics
 import dev.doona.android.engine.EffectiveConfig
@@ -309,14 +308,6 @@ class ServiceEngine internal constructor(
     override suspend fun scoreState(): Result<ScoreState> =
         read("scoreState", Unit.serializer(), Unit, ScoreStateDto.serializer()).map(ScoreStateDto::toScoreState)
 
-    override suspend fun configAssets(): Result<ConfigAssets> =
-        read("configAssets", ConfigAssetsArgs.serializer(), ConfigAssetsArgs("status"), ConfigAssetsDto.serializer()).map(::toConfigAssets)
-
-    override suspend fun updateConfigAssets(): Result<ConfigAssets> {
-        expireDebugCapture()?.join()
-        return callCore("configAssets", ConfigAssetsArgs.serializer(), ConfigAssetsArgs("update"), ConfigAssetsDto.serializer()).map(::toConfigAssets)
-    }
-
     override suspend fun setPerApp(perApp: PerApp): Result<Unit> =
         // Stored, shown and rebuilt as one unit in the engine's scope: a caller that leaves the page cannot split them.
         scope.async { savePerApp(perApp) }.await()
@@ -584,9 +575,6 @@ class ServiceEngine internal constructor(
         }
     }
 }
-
-private fun toConfigAssets(dto: ConfigAssetsDto) =
-    ConfigAssets(dto.source, dto.release, dto.lastResult, dto.reason, dto.updateWaitingForNextStart)
 
 /** `nodes`: every node when [ids] is null. */
 @Serializable

@@ -38,15 +38,6 @@ class LocalNetworkRetryTest {
 
     private fun idle() = shadowOf(Looper.getMainLooper()).idle()
 
-    /** Runs the main looper until the import ends: honk's add runs on another thread. */
-    private fun settled() {
-        val end = System.currentTimeMillis() + READ_MS
-        while (container.imports.state.value.busy && System.currentTimeMillis() < end) {
-            Thread.sleep(5)
-            idle()
-        }
-    }
-
     /** An import of a LAN subscription asks; the user refuses in the system's dialog, and the refusal is shown. */
     private fun refusedImport() {
         assertNotNull(container.imports.start(ImportRequest("http://192.168.8.161/sub", null, null)))
@@ -77,7 +68,6 @@ class LocalNetworkRetryTest {
             // The refusal's button: what it does before it opens the settings page.
             access.toSettings()
             scenario.leaveAndReturn(::allow)
-            settled()
             assertEquals(1, adds)
             val state = container.imports.state.value
             assertFalse(state.busy)
@@ -99,7 +89,6 @@ class LocalNetworkRetryTest {
             assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
             // Next time they allow access on the app's info page before they come back.
             scenario.leaveAndReturn(::allow)
-            settled()
             assertEquals(1, adds)
             assertNull("allowed now: the refusal is gone", access.prompt.value)
             val state = container.imports.state.value
@@ -138,5 +127,3 @@ class LocalNetworkRetryTest {
         }
     }
 }
-
-private const val READ_MS = 5_000L
