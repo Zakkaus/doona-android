@@ -2,6 +2,9 @@ package dev.doona.android.honk
 
 import dev.doona.android.engine.fake.RvSampleConfig
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -23,6 +26,16 @@ internal object PolicyHonkFixtures {
     /** [rvSample] with the routing of its file edited by hand (a rule of the user's own), so it is no template. */
     fun handWritten(): FakeHonk = rvSample().apply {
         on("GET", "/api/v1/config", 200, HonkFixtures.body("config/rv-sample-hand"))
+    }
+
+    /**
+     * `GET /groups` as honk lists the groups of `config/rv-sample-hand`, by their names in that file, then [extra];
+     * [handWritten] keeps the sample's list, whose details the rule pages read.
+     */
+    fun handGroups(vararg extra: String): String {
+        val group = Json.parseToJsonElement(HonkFixtures.body("groups/rv-sample")).jsonArray.first().jsonObject
+        val names = listOf("proxy", "auto", "media", "ai", "hk", "tw", "jp", "sg", "us", "kr") + extra
+        return JsonArray(names.map { JsonObject(group + ("id" to JsonPrimitive("g-$it")) + ("name" to JsonPrimitive(it))) }).toString()
     }
 
     /**

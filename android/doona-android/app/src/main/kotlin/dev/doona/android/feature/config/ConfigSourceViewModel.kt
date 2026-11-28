@@ -41,8 +41,8 @@ internal data class ConfigSourceUiState(
 /**
  * 原始碼 of the file at [path] and 檢視變更, over honk's native API: the file's accepted text in the editor; 檢視變更
  * has honk check the buffer laid over the file (`POST /config/validate`, the entry first): a group honk does not know
- * in this file marks its span; otherwise the diff of the file and today's revision, which makes the diff stale when
- * the file changed since it was read. 套用 replaces the file (`PUT /config/sources/{id}` with the hash read) and waits
+ * in this file, or else its first error, marks its span; a check that failed elsewhere is a failure; otherwise the
+ * diff of the file and today's revision, which makes the diff stale when the file changed since it was read. 套用 replaces the file (`PUT /config/sources/{id}` with the hash read) and waits
  * for honk's reload; a file changed meanwhile turns the diff stale, and 重新載入 starts over from honk's text.
  */
 internal class ConfigSourceViewModel(
@@ -81,12 +81,16 @@ internal class ConfigSourceViewModel(
         val entry = native.config().main
         val candidates = if (entry.path == path) listOf(path to text) else listOf(entry.path to entry.content, path to text)
         val candidate = "candidate-${candidates.lastIndex}"
-        val mark = native.validate(candidates).diagnostics.firstOrNull { it.code == UNKNOWN_TARGET && it.sourceId == candidate }?.span
+        val check = native.validate(candidates)
+        val located = check.diagnostics.filter { it.sourceId == candidate && it.span != null }
+        val mark = located.firstOrNull { it.code == UNKNOWN_TARGET } ?: located.firstOrNull { it.level == "error" }
         if (mark != null) {
-            val (start, end) = mark.bytes(text)
-            state.update { it.copy(draft = RvSourceDraft(path, text, baseRev, RvConfigDiagnostic(start, end, rvSpanText(text, start, end))), failure = null) }
+            val (start, end) = checkNotNull(mark.span).bytes(text)
+            val name = rvSpanText(text, start, end).takeIf { mark.code == UNKNOWN_TARGET }
+            state.update { it.copy(draft = RvSourceDraft(path, text, baseRev, RvConfigDiagnostic(start, end, name)), failure = null) }
             return@launchRead
         }
+        if (!check.valid) throw EngineException(ErrorCode.InvalidArgument)
         val files = rvLineDiff(path, source.content, text)
         val head = native.config()
         val stale = head.files.firstOrNull { it.path == path }?.sha256 != source.sha256
@@ -103,8 +107,9 @@ internal class ConfigSourceViewModel(
             state.update { it.copy(applied = true, failure = null) }
         } catch (error: EngineException) {
             if (error.code != ErrorCode.Busy) throw error
-            val head = NativeConfig(api).config().revision
-            state.update { it.copy(diff = it.diff?.copy(headRev = head, stale = true), failure = null) }
+            val head = NativeConfig(api).config()
+            if (head.files.firstOrNull { it.path == path }?.sha256 == source.sha256) throw error
+            state.update { it.copy(diff = it.diff?.copy(headRev = head.revision, stale = true), failure = null) }
         }
     }
 

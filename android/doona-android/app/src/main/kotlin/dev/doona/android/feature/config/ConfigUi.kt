@@ -64,10 +64,10 @@ internal data class RvConfigState(
 
 /**
  * A diagnostic from honk's check in one file: its UTF-8 byte span in that file and the group name its message quotes
- * (the text of that span).
+ * (the text of that span), null for any other error.
  */
 @Immutable
-internal data class RvConfigDiagnostic(val start: Int, val end: Int, val name: String)
+internal data class RvConfigDiagnostic(val start: Int, val end: Int, val name: String?)
 
 /** A draft of one file in the source editor: the file, its text, the revision the draft is based on, any diagnostic. */
 @Immutable

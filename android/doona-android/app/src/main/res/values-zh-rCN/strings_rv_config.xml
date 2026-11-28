@@ -7,6 +7,7 @@
     <string name="rv_gallery_source">源码字段</string>
     <string name="rv_gallery_diff">差异</string>
     <string name="rv_config_unknown_group">找不到策略组 %1$s</string>
+    <string name="rv_config_invalid_here">这段配置无效</string>
     <string name="rv_config_title">配置文件</string>
     <string name="rv_config_applied">第 %1$s 版 / %2$s 生效</string>
     <string name="rv_config_files">文件</string>

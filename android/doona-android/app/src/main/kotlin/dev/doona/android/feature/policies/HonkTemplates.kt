@@ -45,7 +45,7 @@ internal class HonkRouting(val source: HonkSource, val template: String?, val bl
 
     /**
      * The file with the template [id] in it, as doona web writes one: the template's routing in place of the file's,
-     * 阻擋 QUIC kept as it was, and each of the template's groups that no file of the configuration names ([existing])
+     * 阻擋 QUIC kept as it was, and each of the template's groups honk does not have yet ([existing], its group names)
      * added to its groups. The file's own groups and DNS stay as they are.
      */
     fun withTemplate(id: String, existing: Set<String>): String {

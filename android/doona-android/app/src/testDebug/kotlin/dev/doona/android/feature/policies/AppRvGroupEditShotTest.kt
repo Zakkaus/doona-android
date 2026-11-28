@@ -81,7 +81,7 @@ class AppRvGroupEditShotTest {
     private fun Page(onOpenSource: (String) -> Unit = {}) {
         val vm = remember {
             val honk = PolicyHonkFixtures.rvSample().apply {
-                on("GET", "/api/v1/groups/g-Streaming/config", 200, HonkFixtures.body("group-config/current").replace("\"urltest\"", "\"selector\""))
+                on("GET", "/api/v1/groups/g-Streaming", 200, HonkFixtures.body("groups/rv-sample-g-Streaming").replace("\"final_outbound\": null", "\"final_outbound\": \"direct\""))
             }
             GroupEditViewModel(honk, "g-Streaming", io = Dispatchers.Unconfined)
         }

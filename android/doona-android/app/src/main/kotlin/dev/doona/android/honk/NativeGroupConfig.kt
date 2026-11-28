@@ -20,13 +20,14 @@ import kotlinx.serialization.json.put
  * into the group's source and reloads. Members and the name are the source's filters, which this API does not edit.
  */
 internal class NativeGroupConfig(private val api: NativeApi) {
-    fun read(id: String): HonkGroupConfig = api.read("GET", "/api/v1/groups/$id/config", HonkGroupConfig.serializer())
+    /** From `GET /groups/{id}`, which embeds the same document with the revision `/config` sends as its ETag. */
+    fun read(id: String): HonkGroupConfig = api.read("GET", "/api/v1/groups/$id", HonkGroupConfig.serializer())
 
     /**
      * Writes what [after] changes from [before], the config read. Each changed field is first tested for its value in
-     * [before], so a change made elsewhere since the read fails as [ErrorCode.Busy] (honk's 409) and is not overwritten;
-     * honk's own revision check is `*`, as the app reads no response headers. A reload that fails is
-     * [ErrorCode.InvalidArgument]. Nothing changed sends nothing.
+     * [before], and `If-Match` carries the revision [before] was read at, so a change made elsewhere since the read fails
+     * as [ErrorCode.Busy] (honk's 409 or 412) and is not overwritten. A reload that fails is [ErrorCode.InvalidArgument].
+     * Nothing changed sends nothing.
      */
     suspend fun write(id: String, before: HonkGroupConfig, after: HonkGroupConfig) {
         val patch = buildJsonArray {
@@ -40,7 +41,8 @@ internal class NativeGroupConfig(private val api: NativeApi) {
             change("/config/final_outbound", text(before.config.finalOutbound), text(after.config.finalOutbound))
         }
         if (patch.isEmpty()) return
-        val reply = api.expect("PATCH", "/api/v1/groups/$id/config", patch.toString(), ErrorCode.Busy, PATCH_HEADERS)
+        val headers = mapOf("Content-Type" to "application/json-patch+json", "If-Match" to "\"${before.revision}\"")
+        val reply = api.expect("PATCH", "/api/v1/groups/$id/config", patch.toString(), ErrorCode.Busy, headers)
         val href = nativeJson.parseToJsonElement(reply).jsonObject["href"]?.jsonPrimitive?.content ?: return
         if (api.finished(href).status == OperationStatus.Failed) throw EngineException(ErrorCode.InvalidArgument)
     }
@@ -54,9 +56,16 @@ internal class NativeGroupConfig(private val api: NativeApi) {
     private fun text(value: String?): JsonElement = value?.let(::JsonPrimitive) ?: JsonNull
 }
 
-/** The body of `GET /groups/{id}/config`, as far as the app edits it. */
+/**
+ * A group's `policy` and `config` as `GET /groups/{id}` embeds them, the document `/config`'s PATCH targets, as far as
+ * the app edits it; [revision] is honk's `config_revision`, null for a group not yet written.
+ */
 @Serializable
-internal data class HonkGroupConfig(val policy: HonkGroupPolicy, val config: HonkGroupOptions)
+internal data class HonkGroupConfig(
+    val policy: HonkGroupPolicy,
+    val config: HonkGroupOptions,
+    @SerialName("config_revision") val revision: String? = null,
+)
 
 /** [kind] is honk's policy (`selector`, `urltest`, …); [native] the name the source writes, the same word for dae. */
 @Serializable
@@ -68,5 +77,3 @@ internal data class HonkGroupOptions(
     @SerialName("default_member_id") val defaultMemberId: String?,
     @SerialName("final_outbound") val finalOutbound: String?,
 )
-
-private val PATCH_HEADERS = mapOf("Content-Type" to "application/json-patch+json", "If-Match" to "*")

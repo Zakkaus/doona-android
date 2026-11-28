@@ -245,7 +245,6 @@ class HonkFixtureContractTest {
             "revisions/.*" to "GET /api/v1/x-honk/config/revisions 200",
             "config-validate/.*" to "POST /api/v1/config/validate 200",
             "routing-trace/.*" to "POST /api/v1/routing/trace 200",
-            "group-config/current" to "GET /api/v1/groups/{group_id}/config 200",
             "group-config/patch-queued" to "PATCH /api/v1/groups/{group_id}/config 202",
             "flows/.*" to "GET /api/v1/flows 200",
             "runtime-settings/.*" to "GET /api/v1/runtime/settings 200",

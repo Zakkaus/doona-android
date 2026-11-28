@@ -15,8 +15,8 @@ import dev.doona.android.feature.model.RvTemplate
 import dev.doona.android.feature.model.rvTemplate
 import dev.doona.android.honk.HonkSource
 import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeCatalog
 import dev.doona.android.honk.NativeConfig
-import dev.doona.android.honk.daeChildren
 import dev.doona.android.honk.geoData
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -116,7 +116,7 @@ internal class TemplateImpactViewModel(
                     TemplateImpactUiState(
                         rvTemplateImpact(honkRuleSource(routing), templateId),
                         edit = routing?.let {
-                            it.source to it.withTemplate(templateId, config.sources.flatMap { source -> daeChildren(source.content, "group") }.mapTo(mutableSetOf()) { group -> group.first })
+                            it.source to it.withTemplate(templateId, NativeCatalog(api).summaries().mapTo(mutableSetOf()) { group -> group.name })
                         },
                     )
                 }

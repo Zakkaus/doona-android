@@ -67,10 +67,11 @@ class TemplateViewModelTest {
             val main = profile.getValue("sources").jsonArray.single().jsonObject
             val content = main.getValue("content").jsonPrimitive.content + "\ninclude { apple.dae }\n"
             val include = Json.parseToJsonElement(
-                """{"id":"source-apple","path":"apple.dae","kind":"include","content_sha256":"962e34f9477c7cbca6c8c164dcebc5c5902061c8c2a52f5b1c9cfab8876105a9","writable":true,"loaded_at":"2026-08-15T09:30:00Z","content":"group {\n    apple {\n        policy: fixed(0)\n    }\n}\n","line_count":5}""",
+                """{"id":"source-apple","path":"apple.dae","kind":"include","content_sha256":"962e34f9477c7cbca6c8c164dcebc5c5902061c8c2a52f5b1c9cfab8876105a9","writable":true,"loaded_at":"2026-08-15T09:30:00Z","content":"group { apple { policy: fixed(0) } }\n","line_count":1}""",
             )
             val sources = JsonArray(listOf(JsonObject(main + ("content" to JsonPrimitive(content))), include))
             on("GET", "/api/v1/config", 200, JsonObject(profile + ("sources" to sources)).toString())
+            on("GET", "/api/v1/groups", 200, PolicyHonkFixtures.handGroups("apple"))
             on("PUT", "/api/v1/config/sources/source-main", 412, HonkFixtures.body("errors/stale-revision"))
             on("GET", "/api/v1/operations/op-config-01", 200, HonkFixtures.body("operations/reload-complete"))
         }

@@ -18,12 +18,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-/** The group editor on honk's contract examples: group-proxy, its `/config`, and the editable config. */
+/** The group editor on honk's contract examples: group-proxy, its `/config` PATCH, and the editable config. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupEditViewModelTest {
     private val io = UnconfinedTestDispatcher()
     private val honk = PolicyHonkFixtures.running().apply {
-        on("GET", "/api/v1/groups/group-proxy/config", 200, HonkFixtures.body("group-config/current"))
         on("PATCH", "/api/v1/groups/group-proxy/config", 202, HonkFixtures.body("group-config/patch-queued"))
         on("GET", "/api/v1/operations/op-01HZX4K8WA", 200, HonkFixtures.body("operations/reload-complete"))
     }

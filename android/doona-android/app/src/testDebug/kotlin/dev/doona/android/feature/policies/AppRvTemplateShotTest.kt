@@ -215,12 +215,15 @@ class AppRvTemplateShotTest {
 
     /** The review of cn-direct over the hand-written sample, reading on [io]. */
     @Composable
-    private fun Impact(honk: FakeHonk = PolicyHonkFixtures.handWritten(), io: CoroutineDispatcher = Dispatchers.Unconfined, onApplied: () -> Unit = {}) {
+    private fun Impact(honk: FakeHonk = hand(), io: CoroutineDispatcher = Dispatchers.Unconfined, onApplied: () -> Unit = {}) {
         TemplateImpactRoute(remember { TemplateImpactViewModel(honk, "cn-direct", io) }, onBack = {}, onApplied = onApplied)
     }
 
+    /** The hand-written sample with honk's list of its groups. */
+    private fun hand(): FakeHonk = PolicyHonkFixtures.handWritten().apply { on("GET", "/api/v1/groups", 200, PolicyHonkFixtures.handGroups()) }
+
     /** The hand-written sample, honk accepting a new file and reloading it. */
-    private fun applying(): FakeHonk = PolicyHonkFixtures.handWritten().apply {
+    private fun applying(): FakeHonk = hand().apply {
         on("PUT", "/api/v1/config/sources/source-main", 202, HonkFixtures.body("config-replace/queued"))
         on("GET", "/api/v1/operations/op-config-01", 200, HonkFixtures.body("operations/reload-complete"))
     }

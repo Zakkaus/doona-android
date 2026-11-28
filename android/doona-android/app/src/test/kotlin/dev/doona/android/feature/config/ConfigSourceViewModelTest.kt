@@ -70,6 +70,19 @@ class ConfigSourceViewModelTest {
     }
 
     @Test
+    fun anyOtherErrorMarksItsSpanAndAnUnlocatedOneBlocksTheDiff() {
+        val unclosed = HonkFixtures.body("config-validate/unknown-target").replace("unknown-routing-target", "unclosed_block")
+        honk.on("POST", "/api/v1/config/validate", 200, unclosed)
+        val vm = editor().apply { review() }
+        assertNull(vm.uiState.value.diff)
+        assertNull(checkNotNull(vm.uiState.value.draft?.diagnostic).name)
+        honk.on("POST", "/api/v1/config/validate", 200, unclosed.replace("candidate-1", "candidate-0"))
+        vm.review()
+        assertNull(vm.uiState.value.diff)
+        assertEquals(ErrorCode.InvalidArgument, vm.uiState.value.failure)
+    }
+
+    @Test
     fun applyReplacesTheFileWithTheHashItWasReadAt() = runTest {
         val vm = editor(UnconfinedTestDispatcher(testScheduler)).apply { review() }
         vm.apply()
@@ -100,6 +113,15 @@ class ConfigSourceViewModelTest {
         assertFalse(vm.uiState.value.applied)
         assertTrue(checkNotNull(vm.uiState.value.diff).stale)
         assertNull(vm.uiState.value.failure)
+    }
+
+    @Test
+    fun aConflictOverAnUnchangedFileKeepsTheDiffForARetry() {
+        val vm = editor().apply { review() }
+        honk.on("PUT", "/api/v1/config/sources/source-f4", 409, HonkFixtures.body("errors/stale-revision").replace("stale_revision", "state_conflict"))
+        vm.apply()
+        assertFalse(checkNotNull(vm.uiState.value.diff).stale)
+        assertEquals(ErrorCode.Busy, vm.uiState.value.failure)
     }
 
     @Test

@@ -8,6 +8,7 @@
     <string name="rv_gallery_source">Source field</string>
     <string name="rv_gallery_diff">Diff</string>
     <string name="rv_config_unknown_group">No group named %1$s</string>
+    <string name="rv_config_invalid_here">This part is not valid</string>
     <string name="rv_config_title">Configuration</string>
     <string name="rv_config_applied">Revision %1$s / applied %2$s</string>
     <string name="rv_config_files">Files</string>

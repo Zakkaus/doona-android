@@ -47,7 +47,7 @@ internal fun RvConfigSourcePage(
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_config_source)
     val diagnostic = draft.diagnostic?.takeIf { value.text == draft.text }
-    val marks = diagnostic?.let { listOf(RvSourceMark(it.start, it.end, stringResource(R.string.rv_config_unknown_group, it.name))) }.orEmpty()
+    val marks = diagnostic?.let { listOf(RvSourceMark(it.start, it.end, it.name?.let { name -> stringResource(R.string.rv_config_unknown_group, name) } ?: stringResource(R.string.rv_config_invalid_here))) }.orEmpty()
     RvScrollPage(
         title,
         insets,
