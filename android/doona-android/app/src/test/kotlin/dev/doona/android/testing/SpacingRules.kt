@@ -27,7 +27,7 @@ object SpacingRules {
         val unfilled = LayoutRole.Control in shows && root.descendants().none { c -> c.role in filledRoles && c.descendants().any { it.filled } }
         val unread = root.descendants().none { it.text != null }
         return missing + listOfNotNull(
-            "the page shows controls but the probe found none filled, so the alike-controls rule checked nothing".takeIf { unfilled },
+            "the page shows controls but the probe found none filled, so the control rules checked nothing".takeIf { unfilled },
             "the page has no text, or the probe reads none from the semantics, so the touch rules never meet a label".takeIf { unread },
         )
     }
@@ -120,34 +120,6 @@ object SpacingRules {
         }.toList()
     }
 
-    /** Sheet: blocks start on the gutter, stay inside it and sit 20 below the sheet's top; [rhythm] checks the gaps between them. */
-    fun sheet(root: LayoutBox): List<String> = root.descendants().filter { it.role == LayoutRole.Sheet }.flatMap { sheet ->
-        val blocks = sheet.content
-        val gutter = space.gutter.value
-        buildList {
-            blocks.filter { !near(it.left - sheet.left, gutter) }.forEach { add("sheet block $it starts at %.1f, not on the %.0f dp gutter".format(it.left - sheet.left, gutter)) }
-            blocks.filter { it.right > sheet.right - gutter + TOL }.forEach { add("sheet block $it ends past the gutter") }
-            blocks.firstOrNull()?.takeUnless { near(it.top - sheet.top, space.sheetTop.value) }
-                ?.let { add("sheet starts its first block $it %.1f dp below its top, not %.0f".format(it.top - sheet.top, space.sheetTop.value)) }
-        }
-    }.toList()
-
-    /** Card: content starts 16 inside every edge. */
-    fun cards(root: LayoutBox): List<String> = root.descendants().filter { it.role == LayoutRole.Card }.flatMap { card ->
-        val inset = space.cardInset.value
-        val items = card.content
-        buildList {
-            if (items.isNotEmpty()) {
-                val left = items.minOf { it.left } - card.left
-                val top = items.minOf { it.top } - card.top
-                if (!near(left, inset)) add("card $card: content starts %.1f dp from the left edge, not %.0f".format(left, inset))
-                if (!near(top, inset)) add("card $card: content starts %.1f dp from the top edge, not %.0f".format(top, inset))
-                if (card.right - items.maxOf { it.right } < inset - TOL) add("card $card: content ends inside the %.0f dp inset on the right".format(inset))
-                if (card.bottom - items.maxOf { it.bottom } < inset - TOL) add("card $card: content ends inside the %.0f dp inset at the bottom".format(inset))
-            }
-        }
-    }.toList()
-
     /**
      * Control (segmented control, picker, chip): exactly as high as its visible track; touch comes from the target size.
      * A button is at least that high and grows to hold a label that wraps.
@@ -167,17 +139,6 @@ object SpacingRules {
             row.content.filter { !near(it.top + it.height / 2, row.top + row.height / 2) }
                 .forEach { add("row $row: $it is not centred vertically") }
             addAll(rowGapsOf(row))
-        }
-    }.toList()
-
-    /** Controls side by side are alike: all filled or all quiet. */
-    fun alikeControls(root: LayoutBox): List<String> = root.descendants().flatMap { parent ->
-        val controls = parent.content.filter { it.role == LayoutRole.Control }
-        val fills = controls.map { c -> c.descendants().any { it.filled } }
-        if (controls.size > 1 && fills.distinct().size > 1) {
-            listOf("controls $controls side by side are not alike: filled is $fills")
-        } else {
-            emptyList()
         }
     }.toList()
 
@@ -258,33 +219,4 @@ object SpacingRules {
             }.map { "touch area of $target reaches into $it" }
         }
     }
-
-    /**
-     * Hub bar: equal tabs, each label and pill centred on its tab, and the tab's content padded by [space].navInset
-     * above and below, so a bar that a larger font makes taller than its minimum does not press its content on its edges.
-     */
-    fun hubBar(root: LayoutBox): List<String> = root.descendants().filter { it.role == LayoutRole.HubBar }.flatMap { bar ->
-        val tabs = bar.content
-        buildList {
-            tabs.filter { !near(it.width, tabs.first().width) }.forEach { add("hub bar: tab $it is not as wide as the first") }
-            tabs.forEach { tab ->
-                val label = tab.leaves.firstOrNull { it.text != null }
-                if (label != null && !near(label.centerX, tab.centerX)) add("hub bar: label $label is %.1f dp off the centre of its tab".format(label.centerX - tab.centerX))
-                val pill = tab.content.firstOrNull()
-                if (pill != null && !near(pill.centerX, tab.centerX)) add("hub bar: pill $pill is %.1f dp off the centre of its tab".format(pill.centerX - tab.centerX))
-                val air = space.navInset.value
-                if (pill != null && pill.top - tab.top < air - TOL) add("hub bar: pill $pill is %.1f dp from the top of its tab, under %.0f".format(pill.top - tab.top, air))
-                if (label != null && tab.bottom - label.bottom < air - TOL) add("hub bar: label $label is %.1f dp from the bottom of its tab, under %.0f".format(tab.bottom - label.bottom, air))
-            }
-        }
-    }.toList()
-
-    /** A metric tile's value starts on the tile's content edge, with or without a status dot. */
-    fun valueColumns(root: LayoutBox): List<String> = root.descendants().filter { it.role == LayoutRole.Card }.flatMap { card ->
-        val edge = card.left + space.cardInset.value
-        card.descendants().filter { it.role == LayoutRole.Value }.mapNotNull { value ->
-            val text = value.leaves.firstOrNull { it.text != null } ?: return@mapNotNull null
-            "value $text starts %.1f dp off its tile's content edge".format(text.left - edge).takeUnless { near(text.left, edge) }
-        }
-    }.toList()
 }

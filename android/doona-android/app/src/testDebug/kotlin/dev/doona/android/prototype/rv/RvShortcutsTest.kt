@@ -71,13 +71,17 @@ class RvShortcutsTest {
 
     @Test
     fun aRouteNamingNothingStartsOnActivityEvenBelowTheTopPage() {
-        val invalid = listOf("connection", "connection:999", "license:-1", "edit:13", "edit:999", "rule:999", "node:missing", "sub:missing", "group:missing")
+        val context = RuntimeEnvironment.getApplication()
+        val invalid = listOf("connection", "connection:999", "license:-1", "license:999", "edit:13", "edit:999", "rule:999", "node:missing", "sub:missing", "group:missing")
         for (route in invalid) {
-            assertEquals(route, listOf(ACTIVITY), RvSampleStart(page = route).stack)
-            assertEquals(route, listOf(ACTIVITY), RvSampleStart(routes = listOf(SETTINGS, route, THEME)).stack)
+            assertEquals(route, listOf(ACTIVITY), RvSampleStart(page = route).stack(context))
+            assertEquals(route, listOf(ACTIVITY), RvSampleStart(routes = listOf(SETTINGS, route, THEME)).stack(context))
         }
-        assertEquals(listOf(ACTIVITY, "connection:0"), RvSampleStart(page = "connection:0").stack)
-        assertEquals(listOf(SETTINGS, THEME), RvSampleStart(routes = listOf(SETTINGS, THEME)).stack)
+        assertEquals(listOf(ACTIVITY, "connection:0"), RvSampleStart(page = "connection:0").stack(context))
+        assertEquals(listOf(SETTINGS, THEME), RvSampleStart(routes = listOf(SETTINGS, THEME)).stack(context))
+        app(RvSampleStart(page = "license:999"))
+        compose.mainClock.advanceTimeBy(FRAMES_MS)
+        compose.onNodeWithText(caption(R.string.backend_connected)).assertExists()
     }
 
     private fun app(start: RvSampleStart) {

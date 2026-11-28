@@ -63,7 +63,13 @@ internal object RvPolicyData {
     /** The 策略組 card's groups in the profile's order; the main group has its own card. */
     val groups: List<RvPolicyGroup> = listOf(auto, streaming, ai) + regions
 
-    fun group(id: String): RvPolicyGroup = (listOf(main) + groups).first { it.id == id }
+    fun group(id: String, current: Map<String, RvNode>? = null, choice: String? = null): RvPolicyGroup {
+        val sample = if (id == main.id) main else groups.first { it.id == id }
+        if (current == null) return sample
+        val members = sample.members.mapNotNull { current[it.id] }
+        val selected = members.firstOrNull { it.id == choice } ?: members.firstOrNull { it.id == sample.selectedId } ?: members.minByOrNull { it.latencyMs ?: Int.MAX_VALUE }
+        return RvPolicyGroup(id, sample.name, sample.kind, members, selected?.id.orEmpty())
+    }
 
     /** The five rules the card lists, in the profile's order: the first four, then the last one. */
     val rules: List<RvPolicyRule> = listOf(

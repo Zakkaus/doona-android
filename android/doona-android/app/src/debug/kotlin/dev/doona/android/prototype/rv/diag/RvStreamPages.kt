@@ -28,7 +28,8 @@ import dev.doona.android.prototype.rv.samples.sampleText
 @Composable
 internal fun RvLogsSample(records: List<RvLogRecord> = RvDiagData.logs) {
     val format = rememberRvFormat()
-    val logged = records.filterNot { it.gap }
+    val visible = records.filter { it.gap || it.level <= RvLevel.Info }
+    val logged = visible.filterNot { it.gap }
     val counts = logged.groupingBy { it.level }.eachCount()
     val peak = logged.groupingBy { it.atEpochMs / RvDiagData.MINUTE }.eachCount().entries
         .maxWithOrNull(compareBy<Map.Entry<Long, Int>> { it.value }.thenByDescending { it.key })?.key
@@ -40,7 +41,7 @@ internal fun RvLogsSample(records: List<RvLogRecord> = RvDiagData.logs) {
         RvDiagSection(sampleText("日誌時間分布", "Log activity"))
         RvGutter {
             RvCard {
-                RvLevel.entries.filter { it <= RvLevel.Info || it in counts }.forEach { level ->
+                RvLevel.entries.filter { it <= RvLevel.Info }.forEach { level ->
                     val n = counts[level] ?: 0
                     RvStatRow(level.word.text(), sampleText("$n 筆", if (n == 1) "1 record" else "$n records"))
                 }
@@ -50,7 +51,7 @@ internal fun RvLogsSample(records: List<RvLogRecord> = RvDiagData.logs) {
         RvDiagSection(sampleText("記錄", "Records"))
         RvGutter {
             RvCard {
-                records.forEach { r ->
+                visible.forEach { r ->
                     if (r.gap) {
                         RvRow({ RvIconDisc(R.drawable.rv_sym_wifi_off) }, sampleText("日誌遺失：中斷連線期間的記錄無法取回", "Logs lost: records from the disconnection cannot be recovered"), null)
                     } else {

@@ -12,11 +12,13 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import dev.doona.android.R
+import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvText
 import dev.doona.android.prototype.rv.settings.rvSampleSettings
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -44,6 +46,8 @@ class RvEffectiveConfigActionsTest {
     @get:Rule
     val utc = Utc()
 
+    private val expectedText by lazy { runBlocking { rvSampleEngine().effectiveConfig().getOrThrow().text } }
+
     @Test
     fun theRowsCallTheirActionsAndNothingElse() {
         var copied = 0
@@ -64,7 +68,7 @@ class RvEffectiveConfigActionsTest {
         compose.waitForIdle()
         val clip = RuntimeEnvironment.getApplication().getSystemService(ClipboardManager::class.java).primaryClip
         assertNotNull(clip)
-        assertTrue(clip!!.getItemAt(0).text.toString().contains(SAMPLE_RULE))
+        assertEquals(expectedText, clip!!.getItemAt(0).text.toString())
         assertEquals(1, clip.itemCount)
         assertTrue(clip.description.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN))
         assertEquals(true, clip.description.extras?.getBoolean(SENSITIVE))
@@ -81,7 +85,7 @@ class RvEffectiveConfigActionsTest {
         val send = sheet.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)!!
         assertEquals(Intent.ACTION_SEND, send.action)
         assertEquals("text/plain", send.type)
-        assertTrue(send.getStringExtra(Intent.EXTRA_TEXT).orEmpty().contains(SAMPLE_RULE))
+        assertEquals(expectedText, send.getStringExtra(Intent.EXTRA_TEXT))
         assertEquals(rvText(R.string.rv_effective_title), send.getStringExtra(Intent.EXTRA_SUBJECT))
         assertNull(send.getParcelableExtra(Intent.EXTRA_STREAM, android.net.Uri::class.java))
     }

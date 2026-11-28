@@ -148,7 +148,8 @@ internal fun RvPreviewApp(options: RvMotionOptions = RvMotionOptions(), start: R
 private fun RvSample(options: RvMotionOptions, start: RvSampleStart, settings: RvSettingsState, onSettings: (RvSettingsState) -> Unit) {
     val scope = rememberCoroutineScope()
     val run = remember { RvSampleRun(scope, start.connected, start.fails, explained = !start.firstRun) }
-    var stack by rememberSaveable { mutableStateOf(start.stack) }
+    val context = LocalContext.current
+    var stack by rememberSaveable { mutableStateOf(start.stack(context)) }
     val policy = remember { RvPolicyPreviewState(if (start.pending) RvPolicyData.pending else emptyList()) }
     // While connected the minute moves on each second.
     val running = run.status is Status.Running
@@ -169,7 +170,13 @@ private fun RvSample(options: RvMotionOptions, start: RvSampleStart, settings: R
             useNode = { run.currentId = it },
             testNode = run::testNode,
             updateSubscription = run::update,
-            deleteSubscription = run::delete,
+            deleteSubscription = { id ->
+                stack = stack.filterNot { route ->
+                    route == "${RvSubsRoutes.DETAIL}:$id" ||
+                        (route.startsWith("$NODE:") && run.nodes.any { it.id == route.substringAfter(':') && it.subscriptionId == id })
+                }
+                run.delete(id)
+            },
             copyLink = { node -> scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(node.name, node.shareLink()))) } },
         )
     }
@@ -218,7 +225,7 @@ private fun RvSamplePage(
             onAdd = { pages.push(RvSubsRoutes.ADD) },
         )
 
-        NODES -> RvNodesPage(RvNodesPageState(run.nodes, setOf(run.currentId)), onBack = pages.pop, onOpen = { pages.push("$NODE:$it") }, onAllNodes = {}, onAddNode = {})
+        NODES -> RvNodesPage(RvNodesPageState(run.nodes, setOf(run.currentId)), onBack = pages.pop, onOpen = { pages.push("$NODE:$it") }, onAllNodes = { pages.push(SEARCH) }, onAdd = { pages.push(RvSubsRoutes.ADD) }, onAddNode = null)
 
         NODE -> {
             val node = run.nodes.first { it.id == route.substringAfter(':') }
@@ -240,13 +247,13 @@ private fun RvSamplePage(
 
         in RvPolicyPreviewRoutes.all -> RvPolicyPreview(route, policy, settings, pages.push, pages.pop, pages.tab, run.nodes, run.subscriptions)
 
-        else -> OtherPage(route, run, options, pages, picking)
+        else -> OtherPage(route, run, options, pages, picking, policy)
     }
 }
 
 /** 訂閱's pages, the library's gallery, the first run, 連線 and a connection's page, 回報問題, or else 活動. */
 @Composable
-private fun OtherPage(route: String, run: RvSampleRun, options: RvMotionOptions, pages: RvSamplePages, picking: Boolean) {
+private fun OtherPage(route: String, run: RvSampleRun, options: RvMotionOptions, pages: RvSamplePages, picking: Boolean, policy: RvPolicyPreviewState) {
     when (route.substringBefore(':')) {
         in RvSubsRoutes.all -> RvSubsRoute(route, run, pages.push, pages.pop)
 
@@ -263,7 +270,7 @@ private fun OtherPage(route: String, run: RvSampleRun, options: RvMotionOptions,
 
         REPORT -> RvReportSample(failed = route.substringAfter(':', "") == REPORT_FAILED, pages.pop)
 
-        else -> ActivityPage(route, run, options, pages, picking)
+        else -> ActivityPage(route, run, options, pages, picking, policy)
     }
 }
 
@@ -340,7 +347,7 @@ private fun ConnectionsPage(route: String, pages: RvSamplePages, running: Boolea
  * deep link's sheet over it.
  */
 @Composable
-private fun ActivityPage(route: String, run: RvSampleRun, options: RvMotionOptions, pages: RvSamplePages, picking: Boolean) {
+private fun ActivityPage(route: String, run: RvSampleRun, options: RvMotionOptions, pages: RvSamplePages, picking: Boolean, policy: RvPolicyPreviewState) {
     val pull = rememberRvPullState(picking)
     // The outbound card's mode row and 查看全部 open 策略; a rule group opens its group's page there.
     val toPolicy = { pages.tab(RV_NAV_POLICY) }
@@ -374,6 +381,7 @@ private fun ActivityPage(route: String, run: RvSampleRun, options: RvMotionOptio
                 run.activity(rememberShownSecond({ run.second }, look)), onAction, run.asks::connect, routes,
                 nodes = run.nodes, subscriptions = run.subscriptions, pull = look, hero = options.hero,
                 noSubscription = if (run.subscriptions.isEmpty()) add else null,
+                choices = policy.policy.choices,
             )
         },
         picker = { motion ->

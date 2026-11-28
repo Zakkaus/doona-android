@@ -69,7 +69,7 @@ internal fun RvNodePickerPage(
     apply: RvApplyTo? = null,
     onApply: (RvApplyTo) -> Unit = {},
     loading: Boolean = false,
-    onAddNode: () -> Unit,
+    onAddNode: (() -> Unit)?,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_main_node)
@@ -108,7 +108,7 @@ internal fun RvNodePickerPage(
 
 /** The node lists' empty state: no subscription yet, and 新增訂閱 ([onAdd]). One for the main node's page and the pickers. */
 @Composable
-internal fun RvNoSubscription(onAdd: () -> Unit, onAddNode: () -> Unit) = RvEmptyState(
+internal fun RvNoSubscription(onAdd: () -> Unit, onAddNode: (() -> Unit)?) = RvEmptyState(
     stringResource(R.string.rv_empty_subscription),
     stringResource(R.string.rv_empty_subscription_line),
     stringResource(R.string.rv_add_subscription),

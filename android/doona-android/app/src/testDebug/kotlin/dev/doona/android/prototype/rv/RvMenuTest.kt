@@ -6,13 +6,17 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -116,6 +120,7 @@ class RvMenuTest {
         compose.onNodeWithText(rvText(R.string.rv_menu_delete)).performClick()
         compose.mainClock.advanceTimeBy(RvMotion.MOVE_MS * 2L)
         compose.onAllNodesWithText(last.name).assertCountIs(0, "the last subscription is gone")
+        compose.onNode(hasTestTag(dev.doona.android.designsystem.rv.RvEditPart.ADD) and hasAnyDescendant(hasText(rvText(R.string.rv_addnode))) and hasAnyAncestor(hasTestTag(RV_PICKER))).assertIsNotEnabled()
         inPicker(rvText(R.string.rv_add_subscription)).performClick()
         compose.mainClock.advanceTimeBy(RvMotion.PUSH_MS * 2L)
         compose.onNodeWithText(rvText(R.string.rv_add_clipboard)).performClick()
@@ -129,6 +134,20 @@ class RvMenuTest {
         compose.onNodeWithText(rvText(R.string.rv_menu_details)).performClick()
         compose.mainClock.advanceTimeBy(RvMotion.PUSH_MS * 2L)
         compose.onNodeWithText(imported.host, useUnmergedTree = true).assertExists()
+    }
+
+    @Test
+    fun deletingASubscriptionSkipsItsDetailsOnBack() {
+        val start = RvSampleStart(routes = listOf(ACTIVITY, "node:hk-02", "sub:s1", "subs"))
+        compose.setContent { RvPreviewApp(start = start) }
+        compose.onNodeWithText(RvData.subscriptions.first().name).performTouchInput { longClick() }
+        compose.onNodeWithText(rvText(R.string.rv_menu_delete)).performClick()
+        compose.onNodeWithText(rvText(R.string.rv_menu_delete)).performClick()
+        compose.onNodeWithContentDescription(rvText(R.string.ui_back)).performClick()
+        val group = dev.doona.android.prototype.rv.policy.RvPolicyData.streaming
+        val selected = group.members.filterNot { it.subscriptionId == "s1" }.minByOrNull { it.latencyMs ?: Int.MAX_VALUE }
+        val line = selected?.name ?: dev.doona.android.designsystem.rv.RV_NO_VALUE
+        compose.onNode(hasText(rvText(R.string.rv_rule_streaming)) and hasText(line)).assertExists()
     }
 
     @Test

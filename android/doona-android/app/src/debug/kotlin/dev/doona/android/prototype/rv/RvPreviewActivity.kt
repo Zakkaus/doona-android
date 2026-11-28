@@ -23,6 +23,7 @@ import dev.doona.android.designsystem.rv.RvNoto
 import dev.doona.android.designsystem.rv.RvPullMotion
 import dev.doona.android.designsystem.rv.rvWarmDotMap
 import dev.doona.android.feature.activity.RvActivityNotice
+import dev.doona.android.feature.settings.RvLicenses
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewRoutes
@@ -158,41 +159,40 @@ internal data class RvSampleStart(
     val pending: Boolean = false,
     val firstRun: Boolean = false,
 ) {
-    val stack: List<String>
-        get() {
-            val start = routes?.takeIf { it.isNotEmpty() } ?: when (page) {
-                null, ACTIVITY -> listOf(ACTIVITY)
-                SETTINGS -> listOf(SETTINGS)
-                else -> listOf(ACTIVITY, page)
-            }
-            val policy = RvPolicyPreviewRoutes
-            // A route's index or id must name something; an unknown route draws 活動 already.
-            val valid = start.all { route ->
-                val name = route.substringBefore(':')
-                val arg = route.substringAfter(':', "")
-                val index = arg.toIntOrNull() ?: -1
-                when (name) {
-                    CONNECTION -> index in RvPolicyData.connections.indices
-
-                    // The count is read from assets on the page, which shows nothing for an index past the end.
-                    LICENSE -> index >= 0
-
-                    policy.EDIT -> index in 0 until RvPolicyData.allRules.lastIndex
-
-                    policy.RULE -> route == name || index in RvPolicyData.connections.indices
-
-                    NODE -> RvData.nodes.any { it.id == arg }
-
-                    RvSubsRoutes.DETAIL -> RvData.subscriptions.any { it.id == arg }
-
-                    policy.GROUP -> RvPolicyData.main.id == arg || RvPolicyData.groups.any { it.id == arg }
-
-                    STATE -> RvActivityNotice.entries.any { it.route == arg }
-
-                    else -> true
-                }
-            }
-            if (!valid) return listOf(ACTIVITY)
-            return if (start.first() in TABS.values) start else listOf(ACTIVITY) + start
+    fun stack(context: Context): List<String> {
+        val start = routes?.takeIf { it.isNotEmpty() } ?: when (page) {
+            null, ACTIVITY -> listOf(ACTIVITY)
+            SETTINGS -> listOf(SETTINGS)
+            else -> listOf(ACTIVITY, page)
         }
+        val policy = RvPolicyPreviewRoutes
+        // A route's index or id must name something; an unknown route draws 活動 already.
+        val valid = start.all { route ->
+            val name = route.substringBefore(':')
+            val arg = route.substringAfter(':', "")
+            val index = arg.toIntOrNull() ?: -1
+            when (name) {
+                CONNECTION -> index in RvPolicyData.connections.indices
+
+                LICENSE -> index in 0..RvLicenses.all(context.assets).size
+
+                // Brand marks follow the components.
+                policy.EDIT -> index in 0 until RvPolicyData.allRules.lastIndex
+
+                policy.RULE -> route == name || index in RvPolicyData.connections.indices
+
+                NODE -> RvData.nodes.any { it.id == arg }
+
+                RvSubsRoutes.DETAIL -> RvData.subscriptions.any { it.id == arg }
+
+                policy.GROUP -> RvPolicyData.main.id == arg || RvPolicyData.groups.any { it.id == arg }
+
+                STATE -> RvActivityNotice.entries.any { it.route == arg }
+
+                else -> true
+            }
+        }
+        if (!valid) return listOf(ACTIVITY)
+        return if (start.first() in TABS.values) start else listOf(ACTIVITY) + start
+    }
 }

@@ -46,7 +46,7 @@ internal fun RvNodePickerSample(
     banner: RvNotice? = null,
     caption: String = stringResource(R.string.rv_main_node_hint),
     onAdd: () -> Unit = {},
-) = RvNodePicker(nodes, subscriptions, currentId, RvData.nowEpochMs, onPick, onDetail, onClose, section, stretch, searchPage, title, banner, caption, onAdd = onAdd, onAddNode = {})
+) = RvNodePicker(nodes, subscriptions, currentId, RvData.nowEpochMs, onPick, onDetail, onClose, section, stretch, searchPage, title, banner, caption, onAdd = onAdd, onAddNode = null)
 
 /** The main node's picker on the sample: the subscriptions' end dates as of [RvData]'s now. The page takes it as a parameter. */
 @Composable
@@ -61,7 +61,7 @@ internal fun RvNodePickerPageSample(
     onTest: () -> Unit,
     onSearch: () -> Unit,
     onAdd: () -> Unit = {},
-) = RvNodePickerPage(nodes, subscriptions, currentId, sort, onSort, onPick, onBack, onTest, onSearch, RvData.nowEpochMs, onAdd, onAddNode = {})
+) = RvNodePickerPage(nodes, subscriptions, currentId, sort, onSort, onPick, onBack, onTest, onSearch, RvData.nowEpochMs, onAdd, onAddNode = null)
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)

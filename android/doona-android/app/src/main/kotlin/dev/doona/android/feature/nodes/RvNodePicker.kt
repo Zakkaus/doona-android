@@ -122,7 +122,7 @@ internal fun RvNodePicker(
     onApply: (RvApplyTo) -> Unit = {},
     onAdd: () -> Unit = {},
     loading: Boolean = false,
-    onAddNode: () -> Unit,
+    onAddNode: (() -> Unit)?,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val focus = remember { FocusRequester() }
@@ -201,7 +201,7 @@ internal fun RvNodePicker(
  * A search that matches no node ([noMatch]) says so under the chips, where the list would start.
  */
 @Composable
-private fun ListStart(loading: Boolean, empty: Boolean, apply: RvApplyTo?, onApply: (RvApplyTo) -> Unit, onAdd: () -> Unit, onAddNode: () -> Unit, noMatch: Boolean) {
+private fun ListStart(loading: Boolean, empty: Boolean, apply: RvApplyTo?, onApply: (RvApplyTo) -> Unit, onAdd: () -> Unit, onAddNode: (() -> Unit)?, noMatch: Boolean) {
     when {
         loading -> return RvNodeSectionSkeleton()
 

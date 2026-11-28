@@ -184,8 +184,10 @@ class RvDiagSampleShotTest {
 
     @Test
     fun logRowsRenderTypedFields() {
-        val debug = RvLogRecord(RV_NOW, RvLevel.Debug, "honk_core::control::runtime", "Publishing accepted subscription body", buildJsonObject { put("nodes", 48) })
-        compose.rvContent(dark = false) { RvLogsSample(RvDiagData.logs + debug) }
+        val info = RvLogRecord(RV_NOW, RvLevel.Info, "honk_core::control::runtime", "Publishing accepted subscription body", buildJsonObject { put("nodes", 48) })
+        val debug = RvLogRecord(RV_NOW, RvLevel.Debug, null, "Debug-only record")
+        compose.rvContent(dark = false) { RvLogsSample(RvDiagData.logs + info + debug) }
+        compose.onNodeWithText(debug.message, useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithText("Publishing accepted subscription body nodes=48", useUnmergedTree = true).assertExists()
         compose.onNodeWithText("Standalone DNS listener started native_withheld_fields=true tcp=false udp=true", useUnmergedTree = true).assertExists()
     }

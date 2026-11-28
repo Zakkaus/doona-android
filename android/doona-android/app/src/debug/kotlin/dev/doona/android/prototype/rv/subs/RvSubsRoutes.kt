@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import dev.doona.android.feature.localnetwork.LocalNetworkPrompt
+import dev.doona.android.feature.nodes.ui.LocalRvRowActions
 import dev.doona.android.feature.subscriptions.RvAddFailure
 import dev.doona.android.feature.subscriptions.RvAddPhase
 import dev.doona.android.feature.subscriptions.RvAddState
@@ -42,6 +43,7 @@ internal fun RvSubsRoute(route: String, run: RvSampleRun, push: (String) -> Unit
     when (route.substringBefore(':')) {
         RvSubsRoutes.LIST -> {
             var state by remember { mutableStateOf(rvSubsStateSample(failed = if (arg == FAILED) rvFetchFailedSample(RvData.subscriptions.first().id) else null)) }
+            val delete = requireNotNull(LocalRvRowActions.current.deleteSubscription)
             val actions = RvSubsActions(
                 back = pop,
                 open = { push("${RvSubsRoutes.DETAIL}:$it") },
@@ -50,7 +52,7 @@ internal fun RvSubsRoute(route: String, run: RvSampleRun, push: (String) -> Unit
                 updateAll = { state = state.copy(failed = null) },
                 delete = { state = state.copy(deletingId = it) },
                 confirmDelete = { id ->
-                    run.delete(id)
+                    delete(id)
                     state = state.copy(deletingId = null)
                 },
             )
@@ -73,9 +75,11 @@ internal fun RvSubsRoute(route: String, run: RvSampleRun, push: (String) -> Unit
                     delay(IMPORT_MS)
                     val sample = RvData.subscriptions.first()
                     val sub = sample.copy(name = state.name.ifBlank { sample.name }, userAgent = rvAgentOf(state.userAgent))
-                    run.subscriptions = run.subscriptions.filterNot { it.id == sub.id } + sub
-                    run.nodes = run.nodes.filterNot { it.subscriptionId == sub.id } + RvData.nodes.filter { it.subscriptionId == sub.id }.map { it.copy(subscription = sub.name) }
-                    if (run.nodes.none { it.id == run.currentId }) run.currentId = run.nodes.first().id
+                    if (run.subscriptions.none { it.id == sub.id }) {
+                        run.subscriptions += sub
+                        run.nodes += RvData.nodes.filter { it.subscriptionId == sub.id }.map { it.copy(subscription = sub.name) }
+                        if (run.nodes.none { it.id == run.currentId }) run.currentId = run.nodes.first().id
+                    }
                     state = state.copy(phase = RvAddPhase.Done(sub))
                 }
             }

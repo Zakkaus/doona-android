@@ -104,7 +104,7 @@ internal fun RvNodesPage(
     caption: String? = stringResource(R.string.rv_main_node_hint),
     banner: RvNotice? = null,
     loading: Boolean = false,
-    onAddNode: () -> Unit,
+    onAddNode: (() -> Unit)?,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     var steadiest by rememberSaveable { mutableStateOf(false) }

@@ -9,7 +9,6 @@ import androidx.compose.runtime.setValue
 import dev.doona.android.designsystem.rv.RV_NAV_POLICY
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvNodeSort
-import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRuleState
@@ -108,11 +107,7 @@ internal fun RvPolicyPreview(
     val r = RvPolicyPreviewRoutes
     val groups = remember(nodes) {
         val current = nodes.associateBy { it.id }
-        rvSampleTargets.map { sample ->
-            val members = sample.members.mapNotNull { current[it.id] }
-            val selected = members.firstOrNull { it.id == sample.selectedId } ?: members.minByOrNull { it.latencyMs ?: Int.MAX_VALUE }
-            RvPolicyGroup(sample.id, sample.name, sample.kind, members, selected?.id.orEmpty())
-        }
+        rvSampleTargets.map { RvPolicyData.group(it.id, current) }
     }
     val policy = state.policy.copy(choices = state.policy.choices.filter { (id, pick) -> groups.any { it.id == id && it.nodeOf(pick) != null } })
     when (route.substringBefore(':')) {

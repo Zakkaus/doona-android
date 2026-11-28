@@ -4,6 +4,7 @@ import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.designsystem.rv.RvHeroSwipe
@@ -84,18 +85,6 @@ internal fun rvIdleActivity(): RvActivitySampleState =
 /** A group's id is `g-` plus its name. */
 private const val AUTO_GROUP_ID = "g-" + RvData.AUTO_GROUP
 
-/** 活動's cards as [RvData] has them at 10:24, the rule groups' glyphs as [RvPolicyData] draws them, by group id. */
-internal val rvSampleActivityCards = RvActivityCards(
-    today = RvData.today,
-    nowHour = RvData.nowHour,
-    yesterdayByNow = RvData.YESTERDAY_BY_NOW,
-    nowEpochMs = RvData.nowEpochMs,
-    ruleCount = RvData.RULES,
-    mainNodeId = RvData.CURRENT_ID,
-    node = RvData::node,
-    groupKind = { id -> RvPolicyData.groups.firstOrNull { it.id == id }?.kind },
-)
-
 /** The id of the sample's rule group named [name]: [RvPolicyData]'s group of that name, or one made from the name. */
 internal fun rvSampleRuleGroupId(name: Int): String = RvPolicyData.groups.firstOrNull { it.name == RvLabel.Res(name) }?.id ?: "rule-$name"
 
@@ -111,9 +100,8 @@ private fun pageState(state: RvActivitySampleState, mode: RvRouteMode) = RvActiv
 )
 
 /**
- * 活動 on the sample: the page with [RvData]'s nodes, subscriptions and rule groups and [rvSampleActivityCards] unless the
- * caller gives its own. The page itself takes them all as parameters, in main's model: the sample's state and its rule
- * groups (named by string resources) are turned into it here. The sandbox, its previews and tests call this.
+ * 活動 on the sample. In the running sandbox ([choices] given) its rows and cards find nodes among its current [nodes] and
+ * group choices, so a deleted subscription's nodes are gone; previews and tests without it use [RvData]'s nodes.
  */
 @Composable
 internal fun RvActivityScreenSample(
@@ -131,9 +119,27 @@ internal fun RvActivityScreenSample(
     loading: Boolean = false,
     navFade: Boolean = false,
     rules: List<RvRuleOutbound> = RvData.ruleOutbounds,
+    choices: Map<String, String>? = null,
 ) {
-    val rows = rules.map { RvActivityRule(stringResource(it.group), it.nodeId?.let { _ -> rvSampleRuleGroupId(it.group) }, it.nodeId, it.bytes, it.udpNodeId) }
-    RvActivityScreen(pageState(state, mode), onAction, onConnect, routes, nodes, subscriptions, pull, hero, banner, noSubscription, loading, navFade, rows, rvSampleActivityCards)
+    val current = remember(nodes) { nodes.associateBy { it.id } }
+    val rows = rules.map {
+        val groupId = it.nodeId?.let { _ -> rvSampleRuleGroupId(it.group) }
+        val nodeId = if (choices != null && groupId != null) RvPolicyData.group(groupId, current, choices[groupId]).selected?.id else it.nodeId
+        RvActivityRule(stringResource(it.group), groupId, nodeId, it.bytes, it.udpNodeId)
+    }
+    val cards = remember(current, choices == null) {
+        RvActivityCards(
+            today = RvData.today,
+            nowHour = RvData.nowHour,
+            yesterdayByNow = RvData.YESTERDAY_BY_NOW,
+            nowEpochMs = RvData.nowEpochMs,
+            ruleCount = RvData.RULES,
+            mainNodeId = RvData.CURRENT_ID,
+            node = if (choices == null) RvData::node else current::get,
+            groupKind = { id -> RvPolicyData.groups.firstOrNull { it.id == id }?.kind },
+        )
+    }
+    RvActivityScreen(pageState(state, mode), onAction, onConnect, routes, nodes, subscriptions, pull, hero, banner, noSubscription, loading, navFade, rows, cards)
 }
 
 /** The sample's routes: none leads anywhere, and the latency test and 更多 are not wired. */

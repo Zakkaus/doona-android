@@ -128,7 +128,7 @@ internal fun RvEmptyState(
 }
 
 /** A second 新增 X row of [RvEmptyState]'s card: its [label], and what a tap opens. */
-internal class RvAddEntry(val label: String, val onClick: () -> Unit)
+internal class RvAddEntry(val label: String, val onClick: (() -> Unit)?)
 
 /**
  * An empty state inside a card (連線 with the tunnel off, a search that matches nothing), as Revolut's tile with no data

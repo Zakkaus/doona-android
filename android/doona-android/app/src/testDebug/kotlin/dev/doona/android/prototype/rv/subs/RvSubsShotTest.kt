@@ -33,12 +33,14 @@ import dev.doona.android.feature.subscriptions.rvAgentOf
 import dev.doona.android.feature.subscriptions.rvAgentValid
 import dev.doona.android.feature.subscriptions.rvSubscriptionMenu
 import dev.doona.android.prototype.rv.RvActivityScreenSample
+import dev.doona.android.prototype.rv.RvSampleRun
 import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.rvSampleActivity
 import dev.doona.android.prototype.rv.rvShot
+import dev.doona.android.prototype.rv.rvText
 import dev.doona.android.prototype.rv.seedColorScheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -150,6 +152,22 @@ class RvSubsShotTest {
         assertEquals(0, imports)
         compose.onNodeWithText(CLIPBOARD).performClick()
         assertEquals("https://x.example/s", state.link)
+    }
+
+    @Test
+    fun sampleImportLeavesAnExistingSubscriptionAndItsTestResultsAlone() = kotlinx.coroutines.test.runTest {
+        val run = RvSampleRun(this, false, false)
+        val existing = RvData.subscriptions.first().copy(name = "Existing subscription")
+        val tested = RvData.nodes.first { it.subscriptionId == existing.id }.copy(history = listOf(123))
+        run.subscriptions = listOf(existing)
+        run.nodes = listOf(tested)
+        compose.setContent {
+            RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { RvSubsRoute("sub-add:importing", run, {}, {}) }
+        }
+        compose.mainClock.advanceTimeBy(2_000)
+        compose.onNodeWithText(rvText(R.string.rv_done)).assertExists()
+        assertEquals(listOf(existing), run.subscriptions)
+        assertEquals(listOf(tested), run.nodes)
     }
 
     @Test
