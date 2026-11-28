@@ -36,7 +36,7 @@ class PoliciesViewModelTest {
     private val honk = PolicyHonkFixtures.rvSample().apply {
         on("PUT", "/api/v1/config/sources/source-main", 202, HonkFixtures.body("config-replace/queued"))
         on("GET", "/api/v1/operations/op-config-01", 200, HonkFixtures.body("operations/reload-complete"))
-        on("PUT", "/api/v1/groups/g-Proxy/selection", 200, "{}")
+        on("PUT", "/api/v1/groups/g-Proxy/selection", 200, HonkFixtures.SELECTED)
         on("POST", "/api/v1/probes", 202, HonkFixtures.body("probes/queued"))
         on("GET", "/api/v1/operations/op-01HZX4K8W9", 200, HonkFixtures.body("operations/probe-complete"))
     }

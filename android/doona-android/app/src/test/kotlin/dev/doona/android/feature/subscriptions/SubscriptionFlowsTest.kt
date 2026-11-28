@@ -237,7 +237,7 @@ class SubscriptionFlowsTest {
         const val ACTIVITY = "活動"
 
         /** honk with no node, so a profile of no subscription has none: the first run's welcome page shows. */
-        val NO_NODES = FakeHonk().apply { on("GET", "/api/v1/nodes", 200, """{"nodes":[],"next_cursor":null}""") }
+        val NO_NODES = FakeHonk().apply { on("GET", "/api/v1/nodes", 200, HonkFixtures.emptyNodes) }
 
         /** How long an add on another thread may take to show. */
         const val READ_MS = 5_000L
@@ -266,7 +266,7 @@ internal class ProvidersHonk(vararg providers: String, val gate: CountDownLatch?
     private fun answer(method: String, path: String, body: String?): NativeResponse = when {
         method == "GET" && path == "/api/v1/providers" -> NativeResponse(200, """{"providers":[${providers.joinToString(",")}],"next_cursor":null}""")
 
-        method == "GET" && path == "/api/v1/nodes" -> NativeResponse(200, """{"nodes":[],"next_cursor":null}""")
+        method == "GET" && path == "/api/v1/nodes" -> NativeResponse(200, HonkFixtures.emptyNodes)
 
         method == "POST" && path == "/api/v1/providers" -> {
             val request = Json.parseToJsonElement(body!!).jsonObject

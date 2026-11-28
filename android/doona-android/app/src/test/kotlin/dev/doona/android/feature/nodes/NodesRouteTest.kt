@@ -30,6 +30,7 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rememberRvPullState
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.CoreNodePlaces
+import dev.doona.android.honk.HonkFixtures
 import dev.doona.android.honk.NativeApi
 import dev.doona.android.honk.NativeResponse
 import kotlinx.coroutines.CoroutineDispatcher
@@ -81,7 +82,7 @@ class NodesRouteTest {
         }
 
         private fun read(path: String): NativeResponse = when (path) {
-            "/api/v1/nodes" -> if (readsFail) NativeResponse(500, ERROR) else ok("""{"nodes":[${nodes.joinToString(",") { node(it) }}],"next_cursor":null}""")
+            "/api/v1/nodes" -> if (readsFail) NativeResponse(500, ERROR) else ok(HonkFixtures.emptyNodes.replace("\"nodes\":[]", nodes.joinToString(",", "\"nodes\":[", "]", transform = ::node)))
             "/api/v1/providers" -> ok("""{"providers":[${providers.joinToString(",") { provider(it) }}],"next_cursor":null}""")
             "/api/v1/groups" -> ok("""[{"id":"$group","name":"$name"}]""")
             "/api/v1/groups/$group" -> ok(groupBody())
@@ -112,7 +113,7 @@ class NodesRouteTest {
             if (busyPicks.getAndUpdate { (it - 1).coerceAtLeast(0) } > 0) return NativeResponse(409, ERROR)
             if (network != "udp") tcp = member
             if (network != "tcp") udp = member
-            return ok("{}")
+            return ok(HonkFixtures.SELECTED.replace("group-proxy", group).replace("node-hk-01", member).replace("\"both\"", "\"$network\""))
         }
 
         private fun groupBody(): String {

@@ -135,7 +135,7 @@ class NodesViewModelTest {
 
     @Test
     fun aPickSelectsInTheMainGroupOnBothNetworksOrTheOneChosenThenReadsAgain() = runTest {
-        val api = HonkFixtures.rvSample().apply { on("PUT", "/api/v1/groups/g-Proxy/selection", 200, "{}") }
+        val api = HonkFixtures.rvSample().apply { on("PUT", "/api/v1/groups/g-Proxy/selection", 200, HonkFixtures.SELECTED) }
         val vm = collected(api)
         var picked = 0
         vm.pick(TOKYO, onPicked = { picked++ })
@@ -155,7 +155,7 @@ class NodesViewModelTest {
         vm.pick(TOKYO, onPicked = { picked++ })
         assertEquals(NodesFailure(NodesAction.Select, ErrorCode.Busy), vm.ui.value.failure)
         assertEquals(0, picked)
-        api.on("PUT", "/api/v1/groups/g-Proxy/selection", 200, "{}")
+        api.on("PUT", "/api/v1/groups/g-Proxy/selection", 200, HonkFixtures.SELECTED)
         vm.retry()
         assertNull(vm.ui.value.failure)
         assertEquals(1, picked)
@@ -168,7 +168,7 @@ class NodesViewModelTest {
         val vm = collected(api)
         var first = 0
         vm.pick(TOKYO, onPicked = { first++ })
-        api.on("PUT", "/api/v1/groups/g-Proxy/selection", 200, "{}")
+        api.on("PUT", "/api/v1/groups/g-Proxy/selection", 200, HonkFixtures.SELECTED)
         var second = 0
         vm.pick(HK2, onPicked = { second++ })
         assertEquals(0, first)
@@ -210,7 +210,7 @@ class NodesViewModelTest {
         val api = HonkFixtures.rvSample()
         val vm = collected(api)
         api.on("GET", "/api/v1/nodes", 500, ERROR)
-        api.on("PUT", "/api/v1/groups/g-Proxy/selection", 200, "{}")
+        api.on("PUT", "/api/v1/groups/g-Proxy/selection", 200, HonkFixtures.SELECTED)
         vm.pick(TOKYO)
         assertEquals(NodesFailure(NodesAction.Read, ErrorCode.Internal), vm.ui.value.failure)
         assertEquals(48, vm.ui.value.state.nodes.size)

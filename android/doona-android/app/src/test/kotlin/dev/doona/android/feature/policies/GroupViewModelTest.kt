@@ -2,6 +2,7 @@ package dev.doona.android.feature.policies
 
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.nodes.ui.RvApplyTo
+import dev.doona.android.honk.HonkFixtures
 import dev.doona.android.honk.NativeApi
 import dev.doona.android.honk.NativeResponse
 import kotlinx.coroutines.Dispatchers
@@ -75,12 +76,16 @@ class GroupViewModelTest {
             else -> NativeResponse(404, ERROR)
         }
 
-        private fun select(id: String, body: String?): NativeResponse = change("select $id ${field(body, "member_id")} ${field(body, "network")}") {
-            val group = groups.getValue(id)
+        private fun select(id: String, body: String?): NativeResponse {
             val member = field(body, "member_id")
-            if (field(body, "network") != "udp") group.tcp = member
-            if (field(body, "network") != "tcp") group.udp = member
-            group.pinned = group.kind != "selector"
+            val network = field(body, "network")
+            val result = change("select $id $member $network") {
+                val group = groups.getValue(id)
+                if (network != "udp") group.tcp = member
+                if (network != "tcp") group.udp = member
+                group.pinned = group.kind != "selector"
+            }
+            return if (result.status != 200) result else ok(HonkFixtures.SELECTED.replace("group-proxy", id).replace("node-hk-01", member).replace("\"both\"", "\"$network\""))
         }
 
         private fun probe(path: String, body: String?): NativeResponse {
@@ -376,10 +381,13 @@ class GroupViewModelTest {
         const val ACCEPTED = """{"operation_id":"op-1","kind":"probe","status":"queued","href":"/api/v1/operations/op-1"}"""
         const val PROVIDERS = """{"providers":[{"id":"s1","name":"Harbor","kind":"subscription","url_redacted":"https://sub.example/s1",""" +
             """"node_count":3,"updated_at":null,"expires_at":null,"traffic":null,"status":"ok","last_error":null}],"next_cursor":null}"""
-        val NODE_LIST = NODES.joinToString(",", """{"nodes":[""", """],"next_cursor":null}""") {
-            """{"id":"$it","name":"Node $it","protocol":"vless","subscription_tag":"s1","provider_id":"s1","group_ids":[],""" +
-                """"health":[{"transport":"tcp","state":"healthy","latency_ms":40,"observed_at":"2026-11-22T10:00:00Z","error":null}]}"""
-        }
+        val NODE_LIST = HonkFixtures.emptyNodes.replace(
+            "\"nodes\":[]",
+            NODES.joinToString(",", "\"nodes\":[", "]") {
+                """{"id":"$it","name":"Node $it","protocol":"vless","subscription_tag":"s1","provider_id":"s1","group_ids":[],""" +
+                    """"health":[{"transport":"tcp","state":"healthy","latency_ms":40,"observed_at":"2026-11-22T10:00:00Z","error":null}]}"""
+            },
+        )
 
         fun ok(body: String) = NativeResponse(200, body)
     }

@@ -33,7 +33,7 @@ import org.junit.Test
 class SubAddViewModelTest {
     private val honk = FakeHonk().apply {
         on("POST", "/api/v1/providers", 201, provider("s9", "Harbor"))
-        on("GET", "/api/v1/nodes", 200, """{"nodes":[],"next_cursor":null}""")
+        on("GET", "/api/v1/nodes", 200, HonkFixtures.emptyNodes)
     }
 
     @Before

@@ -173,7 +173,7 @@ class AppRvPolicyShotTest {
     private fun noSubscription(): FakeHonk = PolicyHonkFixtures.rvSample().apply {
         on("GET", "/api/v1/config", 200, """{"sources":[]}""")
         on("GET", "/api/v1/groups", 200, "[]")
-        on("GET", "/api/v1/nodes", 200, """{"nodes":[],"next_cursor":null}""")
+        on("GET", "/api/v1/nodes", 200, HonkFixtures.emptyNodes)
         on("GET", "/api/v1/rules", 200, """{"generation_id":"g","rules":[{"rule_id":"traffic:0","index":0,"expression":"fallback: direct","outbound":"direct","must":false,"source":null,"kind":"fallback"}],"fallback":{"outbound":"direct","source":null}}""")
         on("GET", "/api/v1/providers", 200, """{"providers": [], "next_cursor": null}""")
     }

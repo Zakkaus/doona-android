@@ -154,7 +154,7 @@ class AppRvGroupShotTest {
         compose.waitForIdle()
         assertEquals(1, shown(text(R.string.rv_failed_switch_node)))
         assertEquals(1, shown(text(R.string.error_busy)))
-        honk.on("PUT", "/api/v1/groups/$STREAMING/selection", 200, "{}")
+        honk.on("PUT", "/api/v1/groups/$STREAMING/selection", 200, HonkFixtures.SELECTED)
         compose.onNode(hasText(text(R.string.rv_retry)), useUnmergedTree = true).performClick()
         compose.waitForIdle()
         assertEquals(2, honk.calls.count { it.method == "PUT" })
