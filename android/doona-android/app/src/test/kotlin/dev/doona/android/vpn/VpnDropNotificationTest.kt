@@ -8,6 +8,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.R
 import dev.doona.android.data.settings.AppSettings
+import dev.doona.android.data.settings.LanguageSettings
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import kotlinx.coroutines.CoroutineScope
@@ -25,6 +26,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
 
 @RunWith(AndroidJUnit4::class)
 class VpnDropNotificationTest {
@@ -45,6 +47,15 @@ class VpnDropNotificationTest {
 
     @After
     fun closeSettings() = scope.cancel()
+
+    @Test
+    @Config(sdk = [31], qualifiers = "en")
+    fun notificationTitleUsesTheAppLanguageUntilCleared() {
+        LanguageSettings.setLanguageTags(context, "zh-TW")
+        assertEquals("連線中…", VpnNotifications(context).ongoing(Status.Starting).extras.getString(Notification.EXTRA_TITLE))
+        LanguageSettings.setLanguageTags(context, "")
+        assertEquals("Connecting…", VpnNotifications(context).ongoing(Status.Starting).extras.getString(Notification.EXTRA_TITLE))
+    }
 
     @Test
     fun unexpectedFailureIsDismissibleAndKeepsTheFailureReason() = runBlocking {

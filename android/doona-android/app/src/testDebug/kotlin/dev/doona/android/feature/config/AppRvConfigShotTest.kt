@@ -1,17 +1,26 @@
 package dev.doona.android.feature.config
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.text.input.TextFieldValue
+import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.engine.fake.RvSampleConfig
 import dev.doona.android.honk.HonkFixtures
 import dev.doona.android.honk.PolicyHonkFixtures
 import dev.doona.android.prototype.rv.RV_EN
+import dev.doona.android.prototype.rv.Seed
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.data.RV_NOW
 import dev.doona.android.prototype.rv.rvShot
+import dev.doona.android.prototype.rv.seedColorScheme
 import kotlinx.coroutines.Dispatchers
 import org.junit.Rule
 import org.junit.Test
@@ -37,6 +46,27 @@ class AppRvConfigShotTest {
 
     @get:Rule
     val utc = Utc()
+
+    @Test
+    @Config(qualifiers = WHOLE_OVERVIEW_EN)
+    fun overviewOpensTheTemplateFormAndReturns() {
+        val template = mutableStateOf(false)
+        val api = PolicyHonkFixtures.configTree()
+        compose.setContent {
+            RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
+                if (template.value) {
+                    ConfigTemplateRoute(api) { template.value = false }
+                } else {
+                    val vm = remember { ConfigOverviewViewModel(api, now = { RV_NOW }, reads = Dispatchers.Unconfined) }
+                    ConfigOverviewRoute(vm, onBack = {}, ConfigRoutes(template = { template.value = true }))
+                }
+            }
+        }
+        compose.onNodeWithText("Template").performScrollTo().performClick()
+        compose.onNodeWithText("Global proxy", ignoreCase = true).assertIsNotEnabled()
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.onNodeWithText("Template").assertExists()
+    }
 
     @Test
     @Config(qualifiers = WHOLE_OVERVIEW)
@@ -168,7 +198,7 @@ class AppRvConfigShotTest {
         val BROKEN = RvSampleConfig.cn("stream", wiki = true)
 
         /** The windows of the approved goldens, as tall as each page whole. */
-        const val WHOLE_OVERVIEW = "+h1748dp"
+        const val WHOLE_OVERVIEW = "+h1806dp"
         const val WHOLE_OVERVIEW_EN = "en-w412dp-h1900dp-notnight-xhdpi"
         const val WHOLE_SOURCE = "+h1122dp"
         const val WHOLE_STALE = "+h1030dp"

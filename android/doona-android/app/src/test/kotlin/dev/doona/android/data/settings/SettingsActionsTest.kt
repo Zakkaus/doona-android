@@ -8,7 +8,6 @@ import android.os.LocaleList
 import android.provider.Settings
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -37,7 +36,7 @@ class SettingsActionsTest {
         val manager = activity.getSystemService(LocaleManager::class.java)
         manager.applicationLocales = LocaleList.forLanguageTags("zh-TW")
         assertEquals("zh-TW", LanguageSettings.languageTags(activity))
-        assertTrue(LanguageSettings.setLanguageTags(activity, ""))
+        LanguageSettings.setLanguageTags(activity, "")
         assertTrue(manager.applicationLocales.isEmpty)
 
         LanguageSettings.openSettings(activity)
@@ -48,9 +47,8 @@ class SettingsActionsTest {
 
     @Test
     @Config(sdk = [31])
-    fun android12OnlyOffersSystemLanguageSettings() {
+    fun android12OpensTheSystemLanguageSettings() {
         val activity = Robolectric.buildActivity(Activity::class.java).get()
-        assertFalse(LanguageSettings.setLanguageTags(activity, "zh-TW"))
         LanguageSettings.openSettings(activity)
         val intent = shadowOf(activity).nextStartedActivity
         assertEquals(Settings.ACTION_LOCALE_SETTINGS, intent.action)

@@ -34,9 +34,8 @@ import dev.doona.android.designsystem.rv.RvShared
  * The app's pages: [backStack] (活動 first, the page on top last) shown by Navigation 3's [NavDisplay] with RV's
  * transitions ([rvSceneMove]). Each entry gets its own saved state and ViewModels, which Navigation 3 clears only once
  * the entry is off the stack and its exit has finished; the stack itself is the caller's, saved with the activity
- * (`rememberNavBackStack`), so it survives process death. A stack restored with a page [entries] has no entry for,
- * such as one another version of the app saved, falls back to its tab's root ([keepRouted]) before anything shows:
- * the host composes nothing until an effect, outside composition, has cut the stack back once.
+ * (`rememberNavBackStack`), so it survives process death. If a restored key has no entry, the host resets the stack
+ * to 活動 before showing any page.
  *
  * Back pops the top page; while a predictive back gesture runs the page shrinks and moves with the finger
  * ([rvSceneBack]), and a cancelled gesture runs the
@@ -60,7 +59,8 @@ internal fun RvNavHost(backStack: MutableList<NavKey>, modifier: Modifier = Modi
     var unrouted by remember(backStack) { mutableStateOf(!backStack.all(routed)) }
     if (unrouted) {
         SideEffect {
-            backStack.keepRouted(routed)
+            backStack.clear()
+            backStack.add(ActivityKey)
             unrouted = false
         }
         return

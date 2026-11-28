@@ -225,7 +225,7 @@ class RvNavHostTest {
     }
 
     @Test
-    fun aRestoredPageTheAppHasNoEntryForFallsBackToItsTabsRoot() {
+    fun aRestoredPageTheAppHasNoEntryForResetsToActivity() {
         val restoration = StateRestorationTester(compose)
         restoration.setContent { Host(listOf(ActivityKey)) }
         onUi { stack.selectTab(Tab.Policies) }
@@ -237,22 +237,8 @@ class RvNavHostTest {
         restoration.emulateSavedInstanceStateRestore()
         compose.waitForIdle()
 
-        assertEquals(listOf(ActivityKey, PoliciesKey), stack.toList())
-        assertEquals(1, shown("policies"))
-    }
-
-    @Test
-    fun aStackWithAKeyWithoutAPageFallsBackToItsTabsRoot() {
-        val routed = setOf<NavKey>(ActivityKey, PoliciesKey, GroupKey("g"))
-        val onActivity = mutableListOf<NavKey>(ActivityKey, GroupKey("g"), RulesKey)
-        onActivity.keepRouted { it in routed }
-        assertEquals(listOf<NavKey>(ActivityKey), onActivity)
-        val onSettings = mutableListOf<NavKey>(ActivityKey, SettingsKey, GroupKey("g"))
-        onSettings.keepRouted { it in routed }
-        assertEquals("a tab root without a page falls back to 活動", listOf<NavKey>(ActivityKey), onSettings)
-        val whole = mutableListOf<NavKey>(ActivityKey, PoliciesKey, GroupKey("g"))
-        whole.keepRouted { it in routed }
-        assertEquals("a stack of pages the app has is kept", listOf(ActivityKey, PoliciesKey, GroupKey("g")), whole)
+        assertEquals(listOf(ActivityKey), stack.toList())
+        assertEquals(1, shown("activity"))
     }
 
     @Test

@@ -78,13 +78,13 @@ internal fun RvTemplatePage(
  * which keeps words and the end of each text together ([kept]: [rvConfigPhrase]) as its other pages do.
  */
 @Composable
-internal fun RvTemplateRow(template: RvTemplate, selected: Boolean, inUse: Boolean, kept: Boolean = false, onSelect: () -> Unit) {
+internal fun RvTemplateRow(template: RvTemplate, selected: Boolean, inUse: Boolean, kept: Boolean = false, onSelect: (() -> Unit)?) {
     val reason = template.unsupported
     val state = reason?.let { stringResource(it) } ?: stringResource(R.string.rv_template_in_use).takeIf { inUse }
     val parts = listOfNotNull(template.line?.let { stringResource(it) }, state)
     val line = if (kept) rvConfigPhrase(parts) else parts.joinToString(SEPARATOR)
     val title = template.name.text().let { if (kept) rvConfigPhrase(listOf(it)) else it }
-    RvRadioRow(template.glyph, title, selected, line, enabled = reason == null, onSelect = onSelect)
+    RvRadioRow(template.glyph, title, selected, line, enabled = reason == null && onSelect != null, onSelect = { onSelect?.invoke() })
 }
 
 /**

@@ -6,9 +6,13 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
+import android.os.Build
+import android.os.LocaleList
 import android.text.format.Formatter
 import dev.doona.android.R
 import dev.doona.android.data.settings.DropNoticeSettings
+import dev.doona.android.data.settings.LanguageSettings
 import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.Traffic
@@ -26,7 +30,13 @@ internal fun launchIntent(context: Context): Intent =
     checkNotNull(context.packageManager.getLaunchIntentForPackage(context.packageName))
 
 /** The VPN notification: status and live rates while a session lasts, and the reason when one fails. */
-internal class VpnNotifications(private val context: Context) {
+internal class VpnNotifications(base: Context) {
+    private val context = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+        val tags = LanguageSettings.languageTags(base)
+        if (tags.isEmpty()) base else base.createConfigurationContext(Configuration().apply { setLocales(LocaleList.forLanguageTags(tags)) })
+    } else {
+        base
+    }
     private val manager = context.getSystemService(NotificationManager::class.java)
 
     /** What the ongoing notification says; an update that would not change it is skipped. */

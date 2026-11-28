@@ -1,5 +1,6 @@
 package dev.doona.android.feature.settings
 
+import android.content.res.AssetManager
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,44 +26,79 @@ import dev.doona.android.designsystem.rv.RvSettingsNavRow
 import dev.doona.android.designsystem.rv.RvSettingsSpace
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvText
+import org.json.JSONObject
+import java.io.DataInputStream
 
-/**
- * An entry of the licences page: its [name], its licence (a component's SPDX expression), and its text, the asset
- * [file] of a component doona ships or, for an entry doona words itself in each language ([rvBrandMarks]), the string
- * [notice].
- */
+/** A component or family in the release index, or the localized brand notice. */
 @Immutable
-internal data class RvLicense(val name: String, val license: String, val file: String? = null, @StringRes val notice: Int? = null) {
-    init {
-        require((file == null) != (notice == null)) { "$name: a file or a notice" }
+internal data class RvLicense(
+    val name: String,
+    val license: String,
+    private val entries: List<JSONObject> = emptyList(),
+    private val ranges: JSONObject? = null,
+    @StringRes val notice: Int? = null,
+) {
+    fun text(assets: AssetManager): String {
+        val paragraphs = mutableListOf<String>()
+        val texts = mutableMapOf<String, String>()
+        for (entry in entries) {
+            val id = entry.getString("name")
+            paragraphs.add("$id: ${entry.getString("license")}")
+            val attribution = entry.getJSONArray("attribution")
+            for (j in 0 until attribution.length()) paragraphs.add(attribution.getString(j))
+            entry.getString("notice").takeIf(String::isNotBlank)?.let(paragraphs::add)
+            val bodies = entry.getJSONArray("bodies")
+            for (j in 0 until bodies.length()) texts[bodies.getString(j)] = bodies.getString(j)
+            val extras = entry.getJSONArray("extras")
+            for (j in 0 until extras.length()) {
+                val extra = extras.getJSONObject(j)
+                val label = texts.getOrPut(extra.getString("text")) { "$id: ${extra.getString("file")}" }
+                paragraphs.add(label)
+            }
+        }
+        val spans = texts.map { (key, label) -> label to checkNotNull(ranges).getJSONArray(key) }.sortedBy { it.second.getInt(0) }
+        DataInputStream(assets.open("licenses/notices.txt")).use { input ->
+            var position = 0
+            for ((label, span) in spans) {
+                val skip = span.getInt(0) - position
+                check(input.skipBytes(skip) == skip)
+                paragraphs.add(label)
+                paragraphs.add(ByteArray(span.getInt(1)).also(input::readFully).toString(Charsets.UTF_8))
+                position = span.getInt(0) + span.getInt(1)
+            }
+        }
+        return paragraphs.joinToString("\n\n")
     }
 }
 
-/**
- * The sample's components, by name: the app's and the core's dependencies from the build files and the fonts and
- * glyphs it carries, each with its licence as `cargo metadata` or the vendored file states it. The texts are the files
- * themselves: the app's `assets/licenses`, and the debug assets for tokio, honk and BoringSSL. Apache-2.0 is the one
- * text the app already carries for Material Symbols; serde, under MIT or Apache-2.0, opens it.
- */
 internal object RvLicenses {
-    private const val APACHE = "licenses/material-symbols-Apache-2.0.txt"
-
-    val all = listOf(
-        RvLicense("AndroidX", "Apache-2.0", APACHE),
-        RvLicense("BoringSSL", "Apache-2.0", "licenses/boringssl-LICENSE.txt"),
-        RvLicense("Bootstrap Icons", "MIT", "licenses/bootstrap-icons-MIT.txt"),
-        RvLicense("circle-flags", "MIT", "licenses/circle-flags-MIT.txt"),
-        RvLicense("honk", "GPL-3.0-only", "licenses/honk-GPL-3.0.txt"),
-        RvLicense("Inter", "OFL-1.1", "licenses/inter-OFL.txt"),
-        RvLicense("Jetpack Compose", "Apache-2.0", APACHE),
-        RvLicense("Kotlin", "Apache-2.0", APACHE),
-        RvLicense("kotlinx.coroutines", "Apache-2.0", APACHE),
-        RvLicense("kotlinx.serialization", "Apache-2.0", APACHE),
-        RvLicense("Material Symbols", "Apache-2.0", APACHE),
-        RvLicense("Noto Sans TC", "OFL-1.1", "licenses/noto-sans-tc-OFL.txt"),
-        RvLicense("serde", "MIT OR Apache-2.0", APACHE),
-        RvLicense("tokio", "MIT", "licenses/tokio-MIT.txt"),
-    )
+    fun all(assets: AssetManager): List<RvLicense> {
+        val index = JSONObject(assets.open("licenses/index.json").bufferedReader().use { it.readText() })
+        val components = index.getJSONArray("components")
+        val entries = List(components.length(), components::getJSONObject)
+        return mapOf(
+            "AndroidX" to "androidx.*",
+            "BoringSSL" to "BoringSSL",
+            "Bootstrap Icons" to "Bootstrap Icons brand marks",
+            "circle-flags" to "circle-flags",
+            "honk" to "honk-*",
+            "Inter" to "Inter",
+            "Jetpack Compose" to "androidx.compose.*",
+            "Kotlin" to "org.jetbrains.kotlin:kotlin-stdlib",
+            "kotlinx.coroutines" to "org.jetbrains.kotlinx:kotlinx-coroutines-*",
+            "kotlinx.serialization" to "org.jetbrains.kotlinx:kotlinx-serialization-*",
+            "Material Symbols" to "Material Symbols Rounded",
+            "Noto Sans TC" to "Noto Sans TC",
+            "serde" to "serde",
+            "tokio" to "tokio",
+        ).map { (name, pattern) ->
+            val matches = entries.filter {
+                val id = it.getString("name")
+                if (pattern.endsWith('*')) id.startsWith(pattern.dropLast(1)) else id == pattern
+            }
+            RvLicense(name, matches.map { it.getString("license") }.distinct().joinToString(" / "), matches, index.getJSONObject("ranges"))
+        }
+    }
 }
 
 /**
@@ -79,7 +115,10 @@ internal fun rvBrandMarks(): RvLicense = RvLicense(
 
 /** The page's entries in its order: the components, then the brand marks. [RvLicensesScreen]'s `onOpen` indexes it. */
 @Composable
-internal fun rvLicenseEntries(): List<RvLicense> = RvLicenses.all + rvBrandMarks()
+internal fun rvLicenseEntries(): List<RvLicense> {
+    val assets = LocalContext.current.assets
+    return remember(assets) { RvLicenses.all(assets) } + rvBrandMarks()
+}
 
 /**
  * 開放原始碼授權, a page of 設定's 關於, in DNS's language: one card of the components, each its name over its licence with no
@@ -104,7 +143,7 @@ internal fun RvLicenseText(license: RvLicense, onBack: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val assets = LocalContext.current.assets
     val notice = license.notice?.let { stringResource(it) }
-    val paragraphs = remember(license.file, notice) { rvParagraphs(notice ?: assets.open(requireNotNull(license.file)).bufferedReader().use { it.readText() }) }
+    val paragraphs = remember(license, notice) { rvParagraphs(notice ?: license.text(assets)) }
     RvScrollPage(license.name, insets, onBack = onBack) { titleBlock ->
         RvLargeTitle(license.name, titleBlock, insets)
         Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter), verticalArrangement = Arrangement.spacedBy(RvSpace.controlStack)) {

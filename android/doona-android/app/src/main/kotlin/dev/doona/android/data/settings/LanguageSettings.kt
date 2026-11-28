@@ -10,18 +10,18 @@ import android.os.LocaleList
 import android.provider.Settings
 
 object LanguageSettings {
-    /** Empty when the app follows the system language, including on Android 12. */
     fun languageTags(context: Context): String = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         context.getSystemService(LocaleManager::class.java).applicationLocales.toLanguageTags()
     } else {
-        ""
+        context.getSharedPreferences("locale", Context.MODE_PRIVATE).getString("tags", null).orEmpty()
     }
 
-    /** Empty [tags] restores the system language. Returns false before Android 13. */
-    fun setLanguageTags(context: Context, tags: String): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return false
-        context.getSystemService(LocaleManager::class.java).applicationLocales = LocaleList.forLanguageTags(tags)
-        return true
+    fun setLanguageTags(context: Context, tags: String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.getSystemService(LocaleManager::class.java).applicationLocales = LocaleList.forLanguageTags(tags)
+        } else {
+            context.getSharedPreferences("locale", Context.MODE_PRIVATE).edit().putString("tags", tags.ifEmpty { null }).apply()
+        }
     }
 
     fun openSettings(activity: Activity) {

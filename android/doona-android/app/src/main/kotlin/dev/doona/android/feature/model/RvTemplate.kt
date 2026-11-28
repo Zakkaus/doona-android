@@ -34,6 +34,8 @@ private class TemplateText(@StringRes val name: Int, @StringRes val line: Int, @
 /** The words and glyph of each template doona web offers, by the id the core gives it. */
 private val TEMPLATE_TEXTS = mapOf(
     "cn-direct" to TemplateText(R.string.rv_policy_template_value, R.string.rv_template_cn_direct_line, R.drawable.rv_sym_arrow_right_alt),
+    "global" to TemplateText(R.string.rv_template_global, R.string.rv_template_global_line, R.drawable.rv_settings_ic_language),
+    "single" to TemplateText(R.string.rv_template_single, R.string.rv_template_single_line, R.drawable.rv_sym_vpn_lock),
     "services" to TemplateText(R.string.rv_template_services, R.string.rv_template_services_line, R.drawable.rv_sym_apps),
     "regions" to TemplateText(R.string.rv_template_regions, R.string.rv_template_regions_line, R.drawable.rv_sym_account_tree),
     "homebound" to TemplateText(R.string.rv_template_homebound, R.string.rv_template_homebound_line, R.drawable.rv_sym_directions),

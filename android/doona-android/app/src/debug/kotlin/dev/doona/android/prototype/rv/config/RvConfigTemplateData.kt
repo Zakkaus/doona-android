@@ -8,10 +8,13 @@ import dev.doona.android.designsystem.rv.RvDiffFile
 import dev.doona.android.designsystem.rv.RvDiffKind.Added
 import dev.doona.android.designsystem.rv.RvDiffKind.Same
 import dev.doona.android.designsystem.rv.RvDiffLine
+import dev.doona.android.feature.config.MORE_TEMPLATE_IDS
+import dev.doona.android.feature.config.PRIMARY_TEMPLATE_IDS
 import dev.doona.android.feature.config.RvConfigData
 import dev.doona.android.feature.model.RvChange
 import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvTemplate
+import dev.doona.android.feature.model.rvTemplate
 
 /** How a template's group picks: doona's templates write `policy: score` or `policy: select`, named as doona names them. */
 internal enum class RvTemplatePolicy(@StringRes val label: Int, @DrawableRes val glyph: Int) {
@@ -84,16 +87,16 @@ internal object RvConfigTemplateData {
     private val media = service("media", R.string.rv_template_group_media)
     private val apple = service("apple", R.string.rv_template_group_apple)
 
-    val bypass = RvConfigTemplate(RvTemplate("bypass", RvLabel.Res(R.string.rv_policy_template_value), R.string.rv_template_cn_direct_line, R.drawable.rv_sym_arrow_right_alt), emptyList())
-    private val gfw = RvConfigTemplate(RvTemplate("gfw", RvLabel.Res(R.string.rv_template_gfw), R.string.rv_template_gfw_line, R.drawable.rv_sym_block), emptyList())
-    private val global = RvConfigTemplate(RvTemplate("global", RvLabel.Res(R.string.rv_template_global), R.string.rv_template_global_line, R.drawable.rv_settings_ic_language), emptyList())
-    private val single = RvConfigTemplate(RvTemplate("single", RvLabel.Res(R.string.rv_template_single), R.string.rv_template_single_line, R.drawable.rv_sym_vpn_lock), listOf(proxy, auto))
+    val bypass = RvConfigTemplate(rvTemplate("cn-direct"), emptyList())
+    private val gfw = RvConfigTemplate(rvTemplate("gfw"), emptyList())
+    private val global = RvConfigTemplate(rvTemplate("global"), emptyList())
+    private val single = RvConfigTemplate(rvTemplate("single"), listOf(proxy, auto))
     val services = RvConfigTemplate(
         RvTemplate("services", RvLabel.Res(R.string.rv_template_services), R.string.rv_template_by_service_line, R.drawable.rv_sym_apps),
         listOf(proxy, auto, telegram, media, apple),
     )
     val regions = RvConfigTemplate(
-        RvTemplate("regions", RvLabel.Res(R.string.rv_template_regions), R.string.rv_template_regions_line, R.drawable.rv_sym_account_tree),
+        rvTemplate("regions"),
         listOf(proxy, auto) + regionGroups + listOf(
             telegram,
             service("ai", R.string.rv_template_group_openai),
@@ -104,15 +107,17 @@ internal object RvConfigTemplateData {
         ),
     )
     private val homebound = RvConfigTemplate(
-        RvTemplate("homebound", RvLabel.Res(R.string.rv_template_homebound), R.string.rv_template_homebound_line, R.drawable.rv_sym_directions),
+        rvTemplate("homebound"),
         listOf(RvTemplateGroup("cn", R.string.rv_template_group_cn, RvTemplatePolicy.Score, "cn")),
     )
 
+    private val templates = listOf(bypass, gfw, global, single, services, regions, homebound).associateBy { it.row.id }
+
     /** doona `primaryTemplates`: the ones that create no group. */
-    val primary = listOf(bypass, gfw, global)
+    val primary = PRIMARY_TEMPLATE_IDS.map(templates::getValue)
 
     /** doona `moreTemplates`: the ones that create groups. */
-    val more = listOf(single, services, regions, homebound)
+    val more = MORE_TEMPLATE_IDS.map(templates::getValue)
 
     /** 依服務分流 over 繞過中國大陸 with the default options: four groups and six rules in, the `proxy` group kept. */
     val apply = RvTemplateApply(

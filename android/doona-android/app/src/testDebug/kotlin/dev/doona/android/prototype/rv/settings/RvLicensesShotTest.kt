@@ -86,14 +86,18 @@ class RvLicensesShotTest {
         var opened: Int? = null
         compose.setContent { RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { RvLicensesScreen(onOpen = { opened = it }, onBack = {}) } }
         compose.onNodeWithText("tokio").performClick()
-        assertEquals(RvLicenses.all.indexOfFirst { it.name == "tokio" }, opened)
+        assertEquals(RvLicenses.all(RuntimeEnvironment.getApplication().assets).indexOfFirst { it.name == "tokio" }, opened)
     }
 
     @Test
     fun everyComponentHasItsText() {
         val assets = RuntimeEnvironment.getApplication().assets
-        for (license in RvLicenses.all) {
-            val text = assets.open(requireNotNull(license.file)).bufferedReader().use { it.readText() }
+        for (license in RvLicenses.all(assets)) {
+            val text = license.text(assets)
+            if (license.name == "tokio") assertTrue(text.contains("Copyright (c) Tokio Contributors"))
+            if (license.name == "BoringSSL") assertTrue(text.contains("Neither the name of Google Inc."))
+            if (license.name == "Kotlin") assertTrue(text.contains("org.jetbrains.kotlin:kotlin-stdlib: Apache-2.0 AND BSD-3-Clause AND BSL-1.0"))
+            if (license.name == "AndroidX") assertTrue(text.contains("androidx.datastore:datastore-preferences-external-protobuf: BSD-3-Clause"))
             assertTrue("${license.name}'s text is empty", text.isNotBlank())
         }
     }
@@ -105,7 +109,7 @@ class RvLicensesShotTest {
         var opened: Int? = null
         compose.setContent { RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) { RvLicensesScreen(onOpen = { opened = it }, onBack = {}) } }
         compose.onNodeWithText("品牌標誌").performClick()
-        assertEquals(RvLicenses.all.size, opened)
+        assertEquals(RvLicenses.all(RuntimeEnvironment.getApplication().assets).size, opened)
         val text = RuntimeEnvironment.getApplication().getString(R.string.rv_license_brand_marks_text)
         assertEquals(
             listOf(
@@ -128,15 +132,15 @@ class RvLicensesShotTest {
     private fun Licenses() = RvLicensesScreen(onOpen = {}, onBack = {})
 
     @Composable
-    private fun Tokio() = RvLicenseText(RvLicenses.all.first { it.name == "tokio" }, onBack = {})
+    private fun Tokio() = RvLicenseText(dev.doona.android.feature.settings.rvLicenseEntries().first { it.name == "tokio" }, onBack = {})
 
     @Composable
     private fun BrandMarks() = RvLicenseText(rvBrandMarks(), onBack = {})
 
     private companion object {
         /** As tall as the whole 授權條款 page at each font size, so its last row shows as the phone shows it. */
-        const val LONG_PAGE = "+h1448dp"
-        const val LONG_PAGE_FS115 = "+h1453dp"
-        const val LONG_PAGE_FS200 = "+h1878dp"
+        const val LONG_PAGE = "+h1464dp"
+        const val LONG_PAGE_FS115 = "+h1472dp"
+        const val LONG_PAGE_FS200 = "+h2042dp"
     }
 }

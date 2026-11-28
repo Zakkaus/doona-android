@@ -90,6 +90,9 @@ data object RouteTraceKey : AppKey
 data object ConfigKey : AppKey
 
 @Serializable
+data object ConfigTemplateKey : AppKey
+
+@Serializable
 data object ConfigSkippedKey : AppKey
 
 /** The source editor of the file at [path], relative to the entry. */
@@ -211,17 +214,6 @@ fun MutableList<NavKey>.reselectTab(): Boolean {
     if (size <= root) return false
     while (size > root) removeAt(lastIndex)
     return true
-}
-
-/**
- * Keeps the stack to pages the app has: if any key has no page ([routed] false), such as one another version of the
- * app saved, the stack falls back to its tab's root (to 活動 if that root has no page either).
- */
-fun MutableList<NavKey>.keepRouted(routed: (NavKey) -> Boolean) {
-    if (all(routed)) return
-    val tab = currentTab(this)
-    val root = if (tab != Tab.Activity && routed(tab.key)) 2 else 1
-    while (size > root) removeAt(lastIndex)
 }
 
 /** [selectTab] by the RV bar's id ([RvNavItem.id]); an id the app does not ship changes nothing. */

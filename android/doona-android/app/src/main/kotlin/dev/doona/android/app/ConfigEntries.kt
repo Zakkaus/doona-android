@@ -8,6 +8,7 @@ import dev.doona.android.feature.config.ConfigRevisionRoute
 import dev.doona.android.feature.config.ConfigRoutes
 import dev.doona.android.feature.config.ConfigSkippedRoute
 import dev.doona.android.feature.config.ConfigSourceRoute
+import dev.doona.android.feature.config.ConfigTemplateRoute
 
 /**
  * The configuration pages: 設定檔, 已略過, 原始碼 with its diff, 版本紀錄 and a revision. The export's stream waits
@@ -20,8 +21,10 @@ internal fun EntryProviderScope<NavKey>.configEntries(backStack: MutableList<Nav
         effective = { backStack.push(EffectiveConfigKey) },
         history = { backStack.push(ConfigHistoryKey) },
         revision = { backStack.push(ConfigRevisionKey(it)) },
+        template = { backStack.push(ConfigTemplateKey) },
     )
     entry<ConfigKey> { key -> ConfigOverviewRoute(nativeApi(), onBack = { backStack.pop(key) }, routes) }
+    entry<ConfigTemplateKey> { key -> ConfigTemplateRoute(nativeApi(), onBack = { backStack.pop(key) }) }
     entry<ConfigSkippedKey> { key -> ConfigSkippedRoute(nativeApi(), onBack = { backStack.pop(key) }, onOpen = routes.file) }
     entry<ConfigSourceKey> { key -> ConfigSourceRoute(nativeApi(), key.path, onBack = { backStack.pop(key) }, onApplied = { backStack.pop(key) }) }
     entry<ConfigHistoryKey> { key -> ConfigHistoryRoute(nativeApi(), onBack = { backStack.pop(key) }, routes) }

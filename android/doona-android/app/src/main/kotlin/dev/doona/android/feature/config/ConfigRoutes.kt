@@ -19,20 +19,31 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.RvBannerSlot
+import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvListEdit
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSettingsNavRow
+import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.ExportKind
 import dev.doona.android.feature.messageRes
+import dev.doona.android.feature.model.RvRuleSource
+import dev.doona.android.feature.model.rvTemplate
+import dev.doona.android.feature.policies.RvTemplateRow
+import dev.doona.android.feature.policies.TemplateViewModel
 import dev.doona.android.feature.settings.changeBanner
 import dev.doona.android.honk.NativeApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+internal val PRIMARY_TEMPLATE_IDS = listOf("cn-direct", "gfw", "global")
+internal val MORE_TEMPLATE_IDS = listOf("single", "services", "regions", "homebound")
 
 /** Where the configuration pages lead; each is a push of the app's back stack. */
 internal class ConfigRoutes(
@@ -43,7 +54,43 @@ internal class ConfigRoutes(
     val revision: (Int) -> Unit = {},
     /** honk's export of the accepted files, for the picker to write (slice 13). */
     val export: (String) -> Unit = {},
+    val template: () -> Unit = {},
 )
+
+@Composable
+internal fun ConfigTemplateRoute(api: NativeApi, onBack: () -> Unit) {
+    val vm: TemplateViewModel = viewModel(factory = TemplateViewModel.factory(api))
+    val state by vm.uiState.collectAsStateWithLifecycle()
+    val current = (state.source as? RvRuleSource.Template)?.template?.id
+    var selected by rememberSaveable { mutableStateOf<String?>(null) }
+    var ads by rememberSaveable { mutableStateOf(false) }
+    var quic by rememberSaveable { mutableStateOf(true) }
+    val rows: @Composable (List<String>) -> Unit = { ids ->
+        RvCard {
+            ids.forEach { id ->
+                val available = state.templates?.find { it.id == id }
+                RvTemplateRow(available ?: rvTemplate(id), id == (selected ?: current), id == current, kept = true, onSelect = available?.let { { selected = id } })
+            }
+        }
+    }
+    // honk-gap:config-template-create — no validated group preview or creation contract.
+    RvConfigTemplateForm(
+        onBack,
+        R.string.rv_config_create,
+        onNext = null,
+        primary = {
+            RvBannerSlot(readFailed(state.failure, vm::retry))
+            rows(PRIMARY_TEMPLATE_IDS)
+        },
+        more = { rows(MORE_TEMPLATE_IDS) },
+        ads = ads,
+        quic = quic,
+        onAds = { ads = it },
+        onQuic = { quic = it },
+    ) {
+        RvCard { RvStatRow(stringResource(R.string.rv_policy_groups), RV_NO_VALUE) }
+    }
+}
 
 /** A read that failed, with 重試. */
 @Composable
@@ -53,12 +100,13 @@ private fun readFailed(failure: ErrorCode?, retry: () -> Unit): RvNotice? = fail
 
 /** A configuration page before its first read: its title, and the failure of that read. */
 @Composable
-private fun ConfigWaitPage(title: Int, onBack: () -> Unit, banner: RvNotice?) {
+private fun ConfigWaitPage(title: Int, onBack: () -> Unit, banner: RvNotice?, content: @Composable () -> Unit = {}) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val text = stringResource(title)
     RvScrollPage(text, insets, onBack = onBack) { titleBlock ->
         RvLargeTitle(text, titleBlock, insets)
         RvBannerSlot(banner)
+        content()
     }
 }
 
@@ -84,7 +132,9 @@ internal fun ConfigOverviewRoute(viewModel: ConfigOverviewViewModel, onBack: () 
             if (text != null) viewModel.import(text)
         }
     }
-    val config = ui.value ?: return ConfigWaitPage(R.string.rv_config_title, onBack, readFailed(ui.failure, viewModel::retry))
+    val config = ui.value ?: return ConfigWaitPage(R.string.rv_config_title, onBack, readFailed(ui.failure, viewModel::retry)) {
+        RvSettingsNavRow(stringResource(R.string.rv_policy_template), R.drawable.rv_sym_rule, routes.template)
+    }
     RvConfigOverviewPage(
         config,
         onBack,
@@ -93,6 +143,7 @@ internal fun ConfigOverviewRoute(viewModel: ConfigOverviewViewModel, onBack: () 
         routes.effective,
         routes.history,
         onImport = { picker.launch(arrayOf("*/*")) },
+        onTemplate = routes.template,
         // The files list is always editable (owner, q-edit-wire 2026-11-26): 新增檔案 opens the entry file, where an
         // include is written.
         edit = RvListEdit(onAdd = { config.files.firstOrNull { it.parent == null }?.path?.let(routes.file) }, onRemove = viewModel::removeFile),

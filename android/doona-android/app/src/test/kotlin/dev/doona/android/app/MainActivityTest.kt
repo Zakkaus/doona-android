@@ -13,6 +13,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.data.settings.AppSettings
+import dev.doona.android.data.settings.LanguageSettings
 import dev.doona.android.data.settings.MemoryPreferences
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.permissions.Permission
@@ -45,6 +46,16 @@ class MainActivityTest {
     private val connect = MainActivity.connectIntent(app)
     private val refusals get() = app.container.connectRefusals
 
+    @Test
+    @Config(sdk = [31])
+    fun activityResourcesFollowTheAppLanguageUntilCleared() {
+        val system = app.resources.configuration.locales
+        LanguageSettings.setLanguageTags(app, "zh-TW")
+        Robolectric.buildActivity(MainActivity::class.java).use { assertEquals("zh-TW", it.get().resources.configuration.locales[0].toLanguageTag()) }
+        LanguageSettings.setLanguageTags(app, "")
+        Robolectric.buildActivity(MainActivity::class.java).use { assertEquals(system, it.get().resources.configuration.locales) }
+    }
+
     // The settings in memory: the activity reads and writes them on the main thread, so a looper idle settles each step.
     private val prefs = MemoryPreferences()
     private val settings = AppSettings(prefs)
@@ -59,9 +70,10 @@ class MainActivityTest {
     fun `resuming after deep sleep ends an expired capture`() {
         Robolectric.buildActivity(MainActivity::class.java).setup().use { activity ->
             val levels = app.container.logLevels
-            // The level goes to honk off the main thread and lands on it, so the main looper runs while the test waits.
+            // The fake runs the native call inline; only activity callbacks need the main looper.
             val set = CoroutineScope(Dispatchers.Unconfined).async { levels.set(RvLogLevel.Debug) }
-            settle { set.isCompleted }
+            shadowOf(Looper.getMainLooper()).idle()
+            assertTrue(set.isCompleted)
             runBlocking { set.await().getOrThrow() }
             activity.pause()
             ShadowSystemClock.simulateDeepSleep(Duration.ofHours(1))
@@ -69,18 +81,9 @@ class MainActivityTest {
             assertEquals(0L, levels.remainingMs())
 
             activity.resume()
-            settle { levels.level.value == RvLogLevel.Info }
-        }
-    }
-
-    /** Runs the main looper until [done], for at most 5 s of real time: work that hops to `Dispatchers.IO` and back. */
-    private fun settle(done: () -> Boolean) {
-        val until = System.nanoTime() + 5_000_000_000L
-        while (!done() && System.nanoTime() < until) {
             shadowOf(Looper.getMainLooper()).idle()
-            Thread.sleep(1)
+            assertEquals(RvLogLevel.Info, levels.level.value)
         }
-        assertTrue(done())
     }
 
     @Test

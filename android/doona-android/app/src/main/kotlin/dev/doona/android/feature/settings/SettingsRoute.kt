@@ -1,5 +1,7 @@
 package dev.doona.android.feature.settings
 
+import android.os.Build
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -108,10 +110,12 @@ internal fun IntervalRoute(store: SettingsStore, onBack: () -> Unit) {
  */
 @Composable
 internal fun LanguageRoute(store: SettingsStore, onBack: () -> Unit, system: RvLanguage = rvSystemLanguage()) {
+    val activity = LocalActivity.current
     var selected by remember(store) { mutableStateOf(RvLanguage.of(store.languageTags())) }
     RvLanguageScreen(selected, system, { language ->
-        selected = language
         store.setLanguageTags(language.tag)
+        selected = RvLanguage.of(store.languageTags())
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) activity?.recreate()
     }, onBack)
 }
 

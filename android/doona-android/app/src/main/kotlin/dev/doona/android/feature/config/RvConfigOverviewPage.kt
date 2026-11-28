@@ -18,10 +18,13 @@ import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvConfirmSheet
+import dev.doona.android.designsystem.rv.RvFootnote
 import dev.doona.android.designsystem.rv.RvGutter
+import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvListEdit
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPageHeader
+import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvRowRemove
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSectionTitle
@@ -30,9 +33,11 @@ import dev.doona.android.designsystem.rv.RvSettingsAddRow
 import dev.doona.android.designsystem.rv.RvSettingsNavRow
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
+import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvConfigLine
+import dev.doona.android.designsystem.rv.rvConfigPhrase
 
 /**
  * 設定檔 (config plan, configuration overview; `configRead`), under 策略 and linked from 設定, in node detail's grammar:
@@ -56,6 +61,7 @@ internal fun RvConfigOverviewPage(
     edit: RvListEdit? = null,
     addFile: RvConfigAddFile? = null,
     banner: RvNotice? = null,
+    onTemplate: () -> Unit = {},
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_config_title)
@@ -72,10 +78,43 @@ internal fun RvConfigOverviewPage(
             RvCard {
                 RvSettingsNavRow(stringResource(R.string.rv_config_history), R.drawable.rv_sym_schedule, onHistory)
                 RvSettingsNavRow(stringResource(R.string.rv_config_import), R.drawable.rv_sym_download, onImport)
+                RvSettingsNavRow(stringResource(R.string.rv_policy_template), R.drawable.rv_sym_rule, onTemplate)
             }
         }
     }
     AddFileSheet(state, addFile)
+}
+
+@Composable
+internal fun RvConfigTemplateForm(
+    onBack: () -> Unit,
+    next: Int,
+    onNext: (() -> Unit)?,
+    primary: @Composable () -> Unit,
+    more: @Composable () -> Unit,
+    ads: Boolean,
+    quic: Boolean,
+    onAds: (Boolean) -> Unit,
+    onQuic: (Boolean) -> Unit,
+    groups: @Composable () -> Unit,
+) {
+    val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
+    val title = stringResource(R.string.rv_policy_template)
+    RvScrollPage(title, insets, onBack = onBack, bottomAction = {
+        RvPrimaryButton(stringResource(next), { onNext?.invoke() }, enabled = onNext != null)
+    }, actionScrim = true) { titleBlock ->
+        RvLargeTitle(title, titleBlock, insets)
+        RvGutter { primary() }
+        RvConfigSection(R.string.rv_template_more, more)
+        RvConfigSection(R.string.rv_template_options) {
+            RvCard {
+                RvSwitchRow(R.drawable.rv_sym_ad_off, stringResource(R.string.rv_policy_block_ads), ads, onChange = onAds)
+                RvSwitchRow(R.drawable.rv_sym_block, stringResource(R.string.rv_policy_block_quic), quic, onChange = onQuic)
+            }
+        }
+        RvConfigSection(R.string.rv_policy_groups, groups)
+        RvFootnote(rvConfigPhrase(listOf(stringResource(R.string.rv_config_kind_note, stringResource(R.string.policy_kind_score), stringResource(R.string.group_policy_score_hint)))))
+    }
 }
 
 /** A section of the configuration pages: the outside title over its cards on the gutter. */

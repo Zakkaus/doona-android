@@ -108,7 +108,7 @@ class RvConfigOverviewShotTest {
     private fun Skipped() = RvConfigSkippedPage(RvConfigData.skippedInclude, onBack = {})
 
     private companion object {
-        const val WHOLE_OVERVIEW = "+h1695dp"
+        const val WHOLE_OVERVIEW = "+h1753dp"
         const val WHOLE_UNSUPPORTED_FS200 = "+h1092dp"
     }
 }

@@ -6,10 +6,12 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.net.Uri
 import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
+import android.os.LocaleList
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -21,6 +23,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import dev.doona.android.data.settings.AppSettings
+import dev.doona.android.data.settings.LanguageSettings
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.localnetwork.LocalNetworkHost
 import dev.doona.android.feature.permissions.NotifyState
@@ -60,6 +63,14 @@ class MainActivity : ComponentActivity() {
     /** The local network permission's only launcher, a field like the two above, so the answer reaches a recreated activity. */
     private val localNetworkPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { container.localNetwork.answered(it) }
+
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(base)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            val tags = LanguageSettings.languageTags(base)
+            if (tags.isNotEmpty()) applyOverrideConfiguration(Configuration().apply { setLocales(LocaleList.forLanguageTags(tags)) })
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()

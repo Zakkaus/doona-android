@@ -24,7 +24,6 @@ import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvFootnote
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvIconDisc
-import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvPageHeader
 import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvRow
@@ -34,11 +33,10 @@ import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSourceDiff
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
-import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvConfigLine
-import dev.doona.android.designsystem.rv.rvConfigPhrase
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.config.RvConfigTemplateForm
 import dev.doona.android.feature.model.text
 import dev.doona.android.feature.policies.RvTemplateRow
 
@@ -60,27 +58,19 @@ internal fun RvConfigTemplatePage(
     onNext: () -> Unit = {},
     held: RvTemplateOptions = RvTemplateOptions(),
 ) {
-    val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    val title = stringResource(R.string.rv_policy_template)
     val next = if (current == null) R.string.rv_config_create else R.string.rv_template_review
     val changed = current == null || selected.row.id != current.row.id || options != held
-    RvScrollPage(
-        title,
-        insets,
-        onBack = onBack,
-        bottomAction = { RvPrimaryButton(stringResource(next), onNext, enabled = changed) },
-        actionScrim = true,
-    ) { titleBlock ->
-        RvLargeTitle(title, titleBlock, insets)
-        RvGutter { TemplatesCard(RvConfigTemplateData.primary, current, selected, onSelect) }
-        Section(R.string.rv_template_more)
-        RvGutter { TemplatesCard(RvConfigTemplateData.more, current, selected, onSelect) }
-        Section(R.string.rv_template_options)
-        RvGutter { OptionsCard(options, onOptions) }
-        Section(R.string.rv_policy_groups)
-        RvGutter { RvCard { selected.written.forEach { GroupRow(it, null) } } }
-        ScoreNote()
-    }
+    RvConfigTemplateForm(
+        onBack,
+        next,
+        onNext.takeIf { changed },
+        primary = { TemplatesCard(RvConfigTemplateData.primary, current, selected, onSelect) },
+        more = { TemplatesCard(RvConfigTemplateData.more, current, selected, onSelect) },
+        ads = options.blockAds,
+        quic = options.blockQuic,
+        onAds = { onOptions(options.copy(blockAds = it)) },
+        onQuic = { onOptions(options.copy(blockQuic = it)) },
+    ) { RvCard { selected.written.forEach { GroupRow(it, null) } } }
 }
 
 /**
@@ -127,15 +117,6 @@ private fun TemplatesCard(templates: List<RvConfigTemplate>, current: RvConfigTe
 @Composable
 private fun Section(@StringRes title: Int) = RvSectionTitle(stringResource(title), Modifier.padding(horizontal = RvSpace.gutter))
 
-/** doona's options, in 策略's switch rows: 封鎖廣告 and 封鎖 QUIC as 策略 names them. */
-@Composable
-private fun OptionsCard(options: RvTemplateOptions, onChange: (RvTemplateOptions) -> Unit) {
-    RvCard {
-        RvSwitchRow(R.drawable.rv_sym_ad_off, stringResource(R.string.rv_policy_block_ads), options.blockAds) { onChange(options.copy(blockAds = it)) }
-        RvSwitchRow(R.drawable.rv_sym_block, stringResource(R.string.rv_policy_block_quic), options.blockQuic) { onChange(options.copy(blockQuic = it)) }
-    }
-}
-
 /**
  * A template's group: a region's flag or the glyph of how it picks, titled by its label over how it picks. On the diff
  * page the line starts with [change] and the group's name in the file, which doona's apply dialog alone shows.
@@ -145,12 +126,6 @@ private fun GroupRow(group: RvTemplateGroup, change: String?) {
     val named = change?.let { listOf(it, group.name) }.orEmpty()
     val line = rvConfigLine(named + stringResource(group.policy.label))
     RvRow({ group.flag?.let { RvFlag(it, RvSize.rowDisc) } ?: RvIconDisc(group.policy.glyph) }, stringResource(group.label), line)
-}
-
-/** What 綜合評分 does, in doona's words, under the groups; its words, and its last one with them, stay whole. */
-@Composable
-private fun ScoreNote() {
-    RvFootnote(rvConfigPhrase(listOf(stringResource(R.string.rv_config_kind_note, stringResource(R.string.policy_kind_score), stringResource(R.string.group_policy_score_hint)))))
 }
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)

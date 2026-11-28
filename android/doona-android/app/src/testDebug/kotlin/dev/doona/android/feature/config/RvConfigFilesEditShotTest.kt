@@ -60,7 +60,7 @@ class RvConfigFilesEditShotTest {
     fun editFs200() = compose.rvShot("config-files-edit", false, before = { assertWhole() }, fontScale = RV_FS200) { Page() }
 
     @Test
-    @Config(qualifiers = "en-w412dp-h1817dp-notnight-xhdpi")
+    @Config(qualifiers = "en-w412dp-h1875dp-notnight-xhdpi")
     fun editEnLight() = compose.rvShot("config-files-edit", false, before = { assertWhole() }, english = true) { Page() }
 
     @Test fun confirmLight() = confirm(false)
@@ -152,10 +152,10 @@ class RvConfigFilesEditShotTest {
             summary = RvConfigSummary(subscriptions = 0, nodes = 0, groups = 4, trafficRules = 0, dnsUpstreams = 0, dnsRequestRules = 0, dnsResponseRules = 0),
         )
 
-        /** Windows as tall as each whole page (the approved overview is +h1695dp). */
-        const val WHOLE_EDIT = "+h1816dp"
-        const val WHOLE_EDIT_FS200 = "+h2345dp"
-        const val WHOLE_FAILED = "+h1973dp"
-        const val WHOLE_EMPTY = "+h1406dp"
+        /** Windows as tall as each whole page. */
+        const val WHOLE_EDIT = "+h1874dp"
+        const val WHOLE_EDIT_FS200 = "+h2403dp"
+        const val WHOLE_FAILED = "+h2031dp"
+        const val WHOLE_EMPTY = "+h1464dp"
     }
 }
