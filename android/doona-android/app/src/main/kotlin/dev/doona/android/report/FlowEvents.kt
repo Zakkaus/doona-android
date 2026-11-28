@@ -5,6 +5,7 @@ import android.os.Process
 import android.system.OsConstants
 import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.epochMs
 import dev.doona.android.honk.read
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.delay
@@ -63,6 +64,7 @@ class FlowEvents internal constructor(
             val present = HashSet<String>(list.flows.size)
             for (flow in list.flows.sortedBy { it.startedAt }) {
                 if (!present.add(flow.id) || flow.id in seen) continue
+                val started = flow.startedAt?.let(::epochMs) ?: continue
                 val text = when (flow.network) {
                     "tcp" -> TCP_FLOW_EVENT
                     "udp" -> UDP_FLOW_EVENT
@@ -70,7 +72,7 @@ class FlowEvents internal constructor(
                 }
                 val owner = if (flow.state == "active") ownerPackage(flow) else null
                 if (events.size == CAPACITY) events.removeFirst()
-                events.addLast(AppEvent(System.currentTimeMillis(), AppEventLevel.Info, text, flow.input?.domain, owner))
+                events.addLast(AppEvent(started, AppEventLevel.Info, text, flow.input?.domain, owner))
                 seen.add(flow.id)
             }
             // Keep dedupe bounded to the flows honk still holds.

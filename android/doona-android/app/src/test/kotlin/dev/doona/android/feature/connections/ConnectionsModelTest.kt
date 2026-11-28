@@ -9,6 +9,7 @@ import dev.doona.android.honk.HonkConnection
 import dev.doona.android.honk.HonkFixtures
 import dev.doona.android.honk.NativeCatalog
 import dev.doona.android.honk.NativeConnections
+import dev.doona.android.honk.Node
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -65,6 +66,24 @@ class ConnectionsModelTest {
         assertNull(shown.rule)
         assertNull(shown.ruleIndex)
         assertEquals("[2001:db8::1]:443", map(listOf(connection("direct").copy(host = "2001:db8::1"))).single().endpoint)
+    }
+
+    @Test
+    fun standaloneNodeAndFallbackNeedNoChain() {
+        val shown = map(listOf(connection("Tokyo 02").copy(ruleExpression = "fallback"))).single()
+        assertEquals("Tokyo 02", shown.node?.name)
+        assertNull(shown.group)
+        assertNull(shown.end)
+        assertEquals(RvRuleMatch.Rest, shown.rule)
+    }
+
+    @Test
+    fun standaloneNodeWithDuplicateNameNeedsTheObservedId() {
+        val first = nodes.first { it.name == "Tokyo 02" }
+        val duplicate = Node("other", first.name, "vmess", subscriptionTag = null, groupIds = emptyList(), health = emptyList())
+        val show = connectionMapper(groups, nodes + duplicate, CoreNodePlaces)
+        assertEquals("Trojan", show(connection(first.name).copy(chain = listOf(first.id))).node?.protocol)
+        assertEquals("—", show(connection(first.name)).node?.protocol)
     }
 
     private fun connection(outbound: String?) = HonkConnection(

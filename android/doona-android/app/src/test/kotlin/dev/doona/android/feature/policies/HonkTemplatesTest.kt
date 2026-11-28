@@ -31,7 +31,7 @@ class HonkTemplatesTest {
     fun routingEditedByHandOrSplitOverFilesIsNoTemplate() {
         val edited = HonkTemplates.text("gfw").replace("fallback:", "domain(example.com) -> direct\n    fallback:")
         assertNull(checkNotNull(HonkRouting.of(config(edited))).template)
-        val split = HonkConfig(listOf(source("a", HonkTemplates.text("gfw")), source("b", "routing {\n    fallback: direct\n}\n", "include")))
+        val split = HonkConfig(listOf(source("a", HonkTemplates.text("gfw")), source("b", "routing {\n    fallback: direct\n}\n", "include")), "g")
         assertNull(HonkRouting.of(split))
         assertNull(HonkRouting.of(config("global {\n    log_level: info\n}\n")))
     }
@@ -60,7 +60,7 @@ class HonkTemplatesTest {
         val hand = HonkTemplates.text("cn-direct").replace("    fallback: proxy\n", "    domain(suffix: corp.example) -> direct\n    fallback: proxy\n")
         val routing = checkNotNull(HonkRouting.of(config(checkNotNull(HonkRouting.of(config(hand))).withBlockQuic(true))))
         assertNull(routing.template)
-        val written = routing.withTemplate("services")
+        val written = routing.withTemplate("services", daeChildren(hand, "group").map { it.first }.toSet())
         val after = checkNotNull(HonkRouting.of(config(written)))
         assertEquals("services", after.template)
         assertTrue(after.blockQuic)
@@ -74,12 +74,12 @@ class HonkTemplatesTest {
     @Test
     fun aFileWithNoGroupsGetsTheTemplatesGroupBlock() {
         val bare = "routing {\n    fallback: direct\n}\n"
-        val written = checkNotNull(HonkRouting.of(config(bare))).withTemplate("gfw")
+        val written = checkNotNull(HonkRouting.of(config(bare))).withTemplate("gfw", setOf("proxy"))
         assertEquals("gfw", checkNotNull(HonkRouting.of(config(written))).template)
-        assertEquals(daeChildren(HonkTemplates.text("gfw"), "group").map { it.first }, daeChildren(written, "group").map { it.first })
+        assertEquals(daeChildren(HonkTemplates.text("gfw"), "group").map { it.first } - "proxy", daeChildren(written, "group").map { it.first })
     }
 
-    private fun config(text: String) = HonkConfig(listOf(source("main", text)))
+    private fun config(text: String) = HonkConfig(listOf(source("main", text)), "g")
 
     private fun source(id: String, text: String, kind: String = "main") = HonkSource(id, "$id.dae", kind, "0".repeat(64), text, true, text.lines().size, "2026-08-15T09:30:00Z")
 

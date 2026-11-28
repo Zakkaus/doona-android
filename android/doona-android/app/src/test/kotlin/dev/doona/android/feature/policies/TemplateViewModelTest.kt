@@ -15,6 +15,10 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.After
@@ -59,6 +63,14 @@ class TemplateViewModelTest {
     @Test
     fun `套用 writes the template into the routing's file, waits for honk, then leaves, and a stale file stays failed until 套用 succeeds`() = runTest {
         val honk = PolicyHonkFixtures.handWritten().apply {
+            val profile = Json.parseToJsonElement(HonkFixtures.body("config/rv-sample-hand")).jsonObject
+            val main = profile.getValue("sources").jsonArray.single().jsonObject
+            val content = main.getValue("content").jsonPrimitive.content + "\ninclude { apple.dae }\n"
+            val include = Json.parseToJsonElement(
+                """{"id":"source-apple","path":"apple.dae","kind":"include","content_sha256":"962e34f9477c7cbca6c8c164dcebc5c5902061c8c2a52f5b1c9cfab8876105a9","writable":true,"loaded_at":"2026-08-15T09:30:00Z","content":"group {\n    apple {\n        policy: fixed(0)\n    }\n}\n","line_count":5}""",
+            )
+            val sources = JsonArray(listOf(JsonObject(main + ("content" to JsonPrimitive(content))), include))
+            on("GET", "/api/v1/config", 200, JsonObject(profile + ("sources" to sources)).toString())
             on("PUT", "/api/v1/config/sources/source-main", 412, HonkFixtures.body("errors/stale-revision"))
             on("GET", "/api/v1/operations/op-config-01", 200, HonkFixtures.body("operations/reload-complete"))
         }
@@ -80,9 +92,10 @@ class TemplateViewModelTest {
         assertNull(vm.uiState.value.failure)
         assertEquals(1, left)
         val put = honk.calls.last { it.method == "PUT" }
-        assertEquals("\"${config(honk).sources.single().sha256}\"", put.headers["If-Match"])
+        assertEquals("\"${config(honk).main.sha256}\"", put.headers["If-Match"])
         val written = Json.parseToJsonElement(put.body!!).jsonObject.getValue("content").jsonPrimitive.content
-        assertEquals(checkNotNull(HonkRouting.of(config(honk))).withTemplate("services"), written)
+        assertEquals(false, written.lines().any { it.trim() == "apple {" })
+        assertEquals(true, written.lines().any { it.trim() == "telegram {" })
     }
 
     @Test

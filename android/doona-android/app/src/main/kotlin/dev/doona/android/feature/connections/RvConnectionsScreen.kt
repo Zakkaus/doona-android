@@ -194,9 +194,9 @@ internal const val MS_PER_SECOND = 1_000L
 private const val SECONDS_PER_MINUTE = 60L
 private const val SECONDS_PER_HOUR = 3_600L
 
-/** Where a connection went: its group's name, 直連, 拒絕 or a missing group; null when honk recorded no outbound. */
+/** Where a connection went: its group's or standalone node's name, 直連, 拒絕 or a missing group; null when honk recorded no outbound. */
 @Composable
-internal fun RvConnection.targetName(): String? = group?.name ?: end?.let {
+internal fun RvConnection.targetName(): String? = group?.name ?: node?.name ?: end?.let {
     stringResource(
         when (it) {
             RvRuleEnd.Direct -> R.string.mode_direct
