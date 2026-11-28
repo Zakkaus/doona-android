@@ -2,7 +2,6 @@ package dev.doona.android.designsystem.rv
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -30,7 +29,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -126,11 +124,9 @@ private fun Modifier.rvClick(indication: Indication, role: Role, onClick: () -> 
  */
 @Composable
 internal fun Modifier.rvDiscPress(fill: Modifier, onClick: () -> Unit, enabled: Boolean = true): Modifier {
-    val motion = Rv.motion
     val lit = Rv.colors.discLit
     val source = remember { MutableInteractionSource() }
-    val press = remember { Animatable(0f) }
-    LaunchedEffect(source, motion) { source.rvFollowPress { press.animateTo(it, motion.tween(RvMotion.PRESS_MS, LinearEasing)) } }
+    val press = rvPressLevel(source)
     return graphicsLayer {
         val grow = 1f + RvMotion.DISC_GROW * press.value
         scaleX = grow
@@ -340,7 +336,7 @@ internal object RvPart {
     /** What a skeleton's block stands for: a chart's frame, a progress track, a range chip, the world map. */
     const val FRAME = "rv-frame"
 
-    /** A line of text set with a glyph before it ([RvInline]), measured as one line. */
+    /** A line of text set with a glyph before it ([RvInline]), or a live figure in its slots ([RvSteadyFigure]), measured as one line. */
     const val TEXT_LINE = "rv-text-line"
 }
 
@@ -433,18 +429,24 @@ private const val CHECK_DISC = 816f / 960f
 /**
  * Revolut's 'See all' row at a list card's foot (measured §7): [text] centred, 19 sp bold in ink, in 56 dp. Ink, as
  * Revolut sets its 'see all' (revolut-ux3 §1): no action in a card is a coloured text link (the owner, 2026-11-23).
+ * Not [shown], it shrinks and fades out over [RvMotion.ITEM_MS].
  */
 @Composable
-internal fun RvSeeAll(text: String, onClick: () -> Unit) {
+internal fun RvSeeAll(text: String, shown: Boolean = true, onClick: () -> Unit) {
     val radius = Rv.cardRadius
     val shape = remember(radius) { RoundedCornerShape(bottomStart = radius, bottomEnd = radius) }
-    Box(
-        Modifier.fillMaxWidth().height(RvSize.seeAll).rvPress(shape, Role.Button, onClick).padding(horizontal = RvSpace.rowPadding),
-        contentAlignment = Alignment.Center,
-    ) {
-        RvText(text, Rv.type.seeAll, color = Rv.colors.text, align = TextAlign.Center)
+    // Tapped, it gives way as the rows it opens come in ([RvItems]), so the card's height moves as one.
+    RvItems(if (shown) SEE_ALL else emptyList(), { it }) {
+        Box(
+            Modifier.fillMaxWidth().height(RvSize.seeAll).rvPress(shape, Role.Button, onClick).padding(horizontal = RvSpace.rowPadding),
+            contentAlignment = Alignment.Center,
+        ) {
+            RvText(text, Rv.type.seeAll, color = Rv.colors.text, align = TextAlign.Center)
+        }
     }
 }
+
+private val SEE_ALL = listOf(Unit)
 
 /**
  * A row of Revolut's Key stats card (measured §11): [label] 19 sp medium in secondary ink, [value] 19 sp at the end, in a

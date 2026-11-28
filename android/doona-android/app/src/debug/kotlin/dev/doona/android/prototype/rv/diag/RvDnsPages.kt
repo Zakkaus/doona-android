@@ -161,7 +161,7 @@ internal fun RvDnsLogSample(records: List<RvDnsLogRecord> = RvDiagData.dnsLog) {
                         subtitleError = failed,
                     )
                 }
-                RvSeeAll(sampleText("載入較舊記錄", "Load older records"), {})
+                RvSeeAll(sampleText("載入較舊記錄", "Load older records")) {}
             }
             RvCard { RvDiagNavRow(R.drawable.rv_sym_download, sampleText("匯出 CSV", "Export CSV")) }
         }

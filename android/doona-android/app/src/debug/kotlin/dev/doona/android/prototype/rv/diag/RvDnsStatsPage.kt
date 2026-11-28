@@ -85,7 +85,7 @@ internal fun RvDnsStatsSample(byDomain: Boolean = true) {
                     val m = median(values.map { it.ms })
                     RvStatRow(name, sampleText("${values.size} 筆，中位數：${ms(m)}", "${values.size} lookups, median: ${ms(m)}"))
                 }
-                RvSeeAll(sampleText("開啟 DNS 組態", "Open DNS configuration"), {})
+                RvSeeAll(sampleText("開啟 DNS 組態", "Open DNS configuration")) {}
             }
         }
         Outcomes(s)
@@ -199,7 +199,7 @@ private fun Cache(s: RvDnsStats) {
                     maxLines = Int.MAX_VALUE,
                 )
             }
-            RvSeeAll(sampleText("檢視快取", "View cache"), {})
+            RvSeeAll(sampleText("檢視快取", "View cache")) {}
         }
     }
 }

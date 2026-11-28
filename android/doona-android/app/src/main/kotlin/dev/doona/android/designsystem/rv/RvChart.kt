@@ -1,7 +1,6 @@
 package dev.doona.android.designsystem.rv
 
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.Canvas
@@ -106,7 +105,8 @@ internal fun RvTileRow(modifier: Modifier = Modifier, content: @Composable RowSc
  * connection, or no traffic) the tile takes Revolut's empty chart card instead: a larger figure over ghost bars, and
  * [note] says why there is no line. The whole tile is one button.
  *
- * At a large font size the figure keeps one line, smaller where it must ([RvFigureText], fitting [widest] too), the note
+ * The [figure] is a live rate whose places never move ([RvSteadyTileFigure], slots as wide as [widest]). At a large
+ * font size it keeps one line, smaller where it must (fitting [widest]), the note
  * wraps, and the tile grows past square to hold them over the whole sparkline; in a [RvTileRow] its neighbour grows
  * with it.
  */
@@ -135,10 +135,7 @@ internal fun RvSparkTile(
                 }
             }
             Spacer(Modifier.height(RvSpace.tight))
-            // Each second's rate cross-fades in instead of jumping.
-            Crossfade(figure.whole to figure.unit, animationSpec = Rv.motion.tween(RvMotion.FADE_MS), label = "tile") { (whole, unit) ->
-                RvFigureText(RvFigure(whole, unit), type.tileValue, type.tileUnit, widest = widest)
-            }
+            RvSteadyTileFigure(figure, widest)
             RvText(note, type.tileCaption, color = Rv.colors.textSecondary, maxLines = Int.MAX_VALUE)
             Spacer(Modifier.weight(1f))
             if (quiet) RvGhostBars(ghost) else RvSparkline(values, series.line)
@@ -159,11 +156,10 @@ private fun Modifier.rvSquareAtLeast() = layout { measurable, constraints ->
 
 /**
  * A figure in [style], its unit in [unitStyle] on the same baseline; the unit may be CJK (毫秒). It keeps one
- * line: where it, or one of the [widest] figures the place may show, does not fit the width, number and unit shrink
- * together to the largest size at which all of them fit ([rvFigureFit]), never cut.
+ * line: where it does not fit the width, number and unit shrink together ([rvShrinkToFit]), never cut.
  */
 @Composable
-internal fun RvFigureText(figure: RvFigure, style: TextStyle, unitStyle: TextStyle, modifier: Modifier = Modifier, widest: List<RvFigure> = emptyList()) {
+internal fun RvFigureText(figure: RvFigure, style: TextStyle, unitStyle: TextStyle, modifier: Modifier = Modifier) {
     // The unit as a share of the figure's size, so the two shrink together. The share is taken at this font scale, whose
     // sizes do not grow in proportion, and of the unit's size in whole px, as a span in sp is set: unshrunk, the unit
     // is the size it was.
@@ -172,8 +168,7 @@ internal fun RvFigureText(figure: RvFigure, style: TextStyle, unitStyle: TextSty
         val share = with(density) { unitStyle.fontSize.toPx().roundToInt() / style.fontSize.toPx() }
         unitStyle.toSpanStyle().copy(fontSize = share.em)
     }
-    val all = remember(widest, unit) { widest.map { it.text(unit) } }
-    BasicText(figure.text(unit), modifier, style = style.copy(color = Rv.colors.text), maxLines = 1, autoSize = rvFigureFit(style, all))
+    BasicText(figure.text(unit), modifier, style = style.copy(color = Rv.colors.text), maxLines = 1, autoSize = rvShrinkToFit(style))
 }
 
 /** The figure as one text, its unit in [unit]; a CJK unit (毫秒) in the CJK face, as every RV text sets one ([scripted]). */

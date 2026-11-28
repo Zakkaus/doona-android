@@ -64,7 +64,7 @@ internal fun trafficSession(status: Status, traffic: Traffic, nowEpochMs: Long):
  */
 internal fun trafficState(read: SeriesRead, status: Status, traffic: Traffic, previous: RvTrafficChart?, nowEpochMs: Long): RvTrafficState {
     val chart = if (read.range == RV_TRAFFIC_LIVE) liveMinute(read.chart, read.historyAtRead, traffic, nowEpochMs) else read.chart
-    return RvTrafficState(traffic.downRate, traffic.upRate, chart ?: previous, trafficSession(status, traffic, nowEpochMs))
+    return RvTrafficState(traffic.downRate, traffic.upRate, status is Status.Running && traffic.downHistory.isNotEmpty(), chart ?: previous, trafficSession(status, traffic, nowEpochMs))
 }
 
 private const val MS_PER_SECOND = 1_000L

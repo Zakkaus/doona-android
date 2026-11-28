@@ -58,7 +58,7 @@ internal fun OutboundCard(state: RvActivityState, mode: RvRouteMode, routes: RvA
         }
         if (mode != RvRouteMode.Rule) return@RvCard
         rules.take(RULE_ROWS).forEach { RuleRow(it, cards, routes) }
-        RvSeeAll(pluralStringResource(R.plurals.rv_see_all_rules, cards.ruleCount, cards.ruleCount), routes.rules)
+        RvSeeAll(pluralStringResource(R.plurals.rv_see_all_rules, cards.ruleCount, cards.ruleCount), onClick = routes.rules)
     }
 }
 

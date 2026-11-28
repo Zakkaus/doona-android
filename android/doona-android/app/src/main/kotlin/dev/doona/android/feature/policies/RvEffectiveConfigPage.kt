@@ -157,7 +157,7 @@ private fun RulesCard(rules: List<RvPolicyRule>, onRules: () -> Unit) {
         RvStatRow(stringResource(R.string.rv_rules_in_use), rulesCount(rules.count { it.state == RvRuleState.On }))
         RvStatRow(stringResource(R.string.rv_rules_off), rulesCount(rules.count { it.state == RvRuleState.Off }))
         RvStatRow(stringResource(R.string.rv_rules_skipped), rulesCount(rules.count { it.state == RvRuleState.Skipped }))
-        RvSeeAll(pluralStringResource(R.plurals.rv_policy_see_all_rules, rules.size, rules.size), onRules)
+        RvSeeAll(pluralStringResource(R.plurals.rv_policy_see_all_rules, rules.size, rules.size), onClick = onRules)
     }
 }
 

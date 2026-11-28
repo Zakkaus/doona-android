@@ -1,6 +1,5 @@
 package dev.doona.android.feature.nodes
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,7 +12,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -35,9 +33,9 @@ import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
 import dev.doona.android.designsystem.rv.RvFilterChipRow
 import dev.doona.android.designsystem.rv.RvGutter
+import dev.doona.android.designsystem.rv.RvItems
 import dev.doona.android.designsystem.rv.RvLatencyChange
 import dev.doona.android.designsystem.rv.RvMenuAnchor
-import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.designsystem.rv.RvNodesSize
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPageHeader
@@ -259,16 +257,12 @@ private fun MapCard(state: RvNodesPageState) {
 @Composable
 private fun RegionCard(region: RvRegion, nodes: List<RvNode>, current: Set<String>, onOpen: (String) -> Unit, score: RvScoreMarks?) {
     var all by rememberSaveable(region) { mutableStateOf(false) }
-    // 查看全部 opens the card in place, its height growing over the move's time; a new test re-sorts the rows, each
-    // moving to its new place.
-    RvCard(Modifier.animateContentSize(Rv.motion.tween(RvMotion.MOVE_MS))) {
+    // 查看全部 opens the rest in place, each row growing in; a new test re-sorts the rows, each moving to its new place.
+    RvCard {
         RvCardHeader(stringResource(region.label))
-        (if (all) nodes else nodes.take(REGION_ROWS)).forEachIndexed { order, node ->
-            key(node.id) {
-                RegionRow(node, node.id in current, order, onOpen, score)
-            }
-        }
-        if (!all && nodes.size > REGION_ROWS) RvSeeAll(pluralStringResource(R.plurals.rv_nodes_see_all, nodes.size, nodes.size)) { all = true }
+        val shown = if (all) nodes else nodes.take(REGION_ROWS)
+        RvItems(shown, { it.id }) { node -> RegionRow(node, node.id in current, shown.indexOf(node), onOpen, score) }
+        RvSeeAll(pluralStringResource(R.plurals.rv_nodes_see_all, nodes.size, nodes.size), shown = !all && nodes.size > REGION_ROWS) { all = true }
     }
 }
 

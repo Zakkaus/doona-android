@@ -20,7 +20,7 @@ import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
-import dev.doona.android.designsystem.theme.DoonaMotion
+import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.designsystem.theme.DoonaTheme
 
 private const val FULL_TURN = 360f

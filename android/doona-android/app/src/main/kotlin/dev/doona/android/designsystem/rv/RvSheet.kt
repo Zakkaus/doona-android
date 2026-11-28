@@ -70,16 +70,13 @@ internal object RvSheetSize {
 
     /** From the sheet's side to the page's edge line: the gutter less the sheet's own inset. */
     val edge = RvSpace.gutter - inset
-
-    /** A drag dismisses the sheet past this share of its height, or when it lets go faster than [fling] a second. */
-    const val DISMISS_SHARE = 0.33f
-    val fling = 1_000.dp
 }
 
 /**
  * A modal sheet while [visible]: its own window, so a screen reader stays inside it, with the scrim drawn here (the
  * platform's dim is off). It rises in [RvMotion.MENU_MS] and falls in [RvMotion.MENU_OUT_MS] (the menu's measured
- * timings; Revolut's sheet was not timed). Back, a tap on the scrim, or a drag down past a third calls [onDismiss].
+ * timings; Revolut's sheet was not timed). Back, a tap on the scrim, or a drag down past [RvMotion.SHEET_DISMISS_SHARE]
+ * or let go faster than [RvMotion.sheetFling] calls [onDismiss].
  * [label] names the pane for a screen reader.
  */
 @Composable
@@ -101,15 +98,17 @@ internal fun RvSheet(visible: Boolean, onDismiss: () -> Unit, label: String, con
 
 /**
  * The sheet's scrim and its card at the bottom, [progress] of the way in (0 under the screen's edge, 1 in place); a tap
- * on the scrim calls [onDismiss], and the card follows a drag down. [RvSheet] draws it in its window; a golden draws it
- * over the page at 1.
+ * on the scrim calls [onDismiss]. The card follows a drag down and the scrim lightens with it, as far as the card has
+ * gone of its height; let go, it is dismissed or springs back ([RvSpring.Default]) from the finger's speed. [RvSheet]
+ * draws it in its window; a golden draws it over the page at 1.
  */
 @Composable
 internal fun RvSheetLayout(progress: () -> Float, onDismiss: () -> Unit, label: String, content: @Composable ColumnScope.() -> Unit) {
     val density = LocalDensity.current
     var drag by remember { mutableFloatStateOf(0f) }
     var height by remember { mutableFloatStateOf(0f) }
-    val fling = with(density) { RvSheetSize.fling.toPx() }
+    val motion = Rv.motion
+    val fling = with(density) { RvMotion.sheetFling.toPx() }
     val bottom = with(density) { RvSheetSize.bottom.toPx() }
     val drags = rememberDraggableState { drag = (drag + it).coerceAtLeast(0f) }
     // What the scrim does is close the sheet, whatever the sheet is about: it must not read as its title (S2).
@@ -118,7 +117,7 @@ internal fun RvSheetLayout(progress: () -> Float, onDismiss: () -> Unit, label: 
         Box(
             Modifier
                 .fillMaxSize()
-                .graphicsLayer { alpha = progress() }
+                .graphicsLayer { alpha = progress() * (1f - if (height > 0f) (drag / height).coerceAtMost(1f) else 0f) }
                 .background(Rv.colors.sheetScrim)
                 // A tap outside the card, or a screen reader's click on the scrim, dismisses the sheet; a keyboard or a
                 // D-pad never stops here, so Tab starts on the sheet's own controls and back closes it. The
@@ -138,7 +137,12 @@ internal fun RvSheetLayout(progress: () -> Float, onDismiss: () -> Unit, label: 
                     drags,
                     Orientation.Vertical,
                     onDragStopped = { velocity ->
-                        if (drag > height * RvSheetSize.DISMISS_SHARE || velocity > fling) onDismiss() else animate(drag, 0f) { value, _ -> drag = value }
+                        if (rvSheetAway(drag, height, velocity, fling)) {
+                            onDismiss()
+                        } else {
+                            // The card goes no higher than its place: a flick up lands it there, never past.
+                            animate(drag, 0f, rvSheetReturn(drag, velocity), motion.spatial(RvSpring.Default, RvMotion.REST_PX)) { value, _ -> drag = value.coerceAtLeast(0f) }
+                        }
                     },
                 )
                 .semantics { paneTitle = label },
@@ -146,6 +150,16 @@ internal fun RvSheetLayout(progress: () -> Float, onDismiss: () -> Unit, label: 
         )
     }
 }
+
+/**
+ * Whether a sheet let go [drag] px below its place, [height] px tall, at [velocity] px a second (down positive), is
+ * dismissed: flung down faster than [fling], or past [RvMotion.SHEET_DISMISS_SHARE] of its height unless flung back up.
+ */
+internal fun rvSheetAway(drag: Float, height: Float, velocity: Float, fling: Float): Boolean =
+    velocity > fling || (drag > height * RvMotion.SHEET_DISMISS_SHARE && velocity > -fling)
+
+/** The speed a sheet let go [drag] px below its place springs back with: the finger's, unless it is at its place already. */
+internal fun rvSheetReturn(drag: Float, velocity: Float): Float = if (drag > 0f) velocity else 0f
 
 /** The sheet's card: the card's fill, its rim in dark, the handle, and [content] on the page's edge line. */
 @Composable
@@ -171,7 +185,8 @@ internal fun RvSheetPanel(modifier: Modifier = Modifier, content: @Composable Co
  * pill under it, as a card's notice sets its action: no action of the sheet is a coloured text link (the owner,
  * 2026-11-23). [titleKeepWords] and [bodyKeepWords] false for a title or body that quotes a name or an address
  * ([RvText]'s `keepWords`: 刪除「香港 01」?). Back and a tap above the sheet run [onDismissRequest], by default
- * [onDismiss]; a question whose secondary pill means no, while closing it means not yet, passes its own.
+ * [onDismiss]; a question whose secondary pill means no, while closing it means not yet, passes its own. While it
+ * closes it keeps the words it last showed open: what it asked about may already be gone (a deleted subscription).
  */
 @Composable
 internal fun RvConfirmSheet(
@@ -188,10 +203,18 @@ internal fun RvConfirmSheet(
     onDismissRequest: () -> Unit = onDismiss,
     extra: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    RvSheet(visible, onDismissRequest, title) {
-        RvConfirmContent(title, body, confirm, dismiss, onConfirm, onDismiss, confirmEnabled, titleKeepWords, bodyKeepWords, extra)
+    val words = remember { ShownWords(title, body) }
+    if (visible) {
+        words.title = title
+        words.body = body
+    }
+    RvSheet(visible, onDismissRequest, words.title) {
+        RvConfirmContent(words.title, words.body, confirm, dismiss, onConfirm, onDismiss, confirmEnabled, titleKeepWords, bodyKeepWords, extra)
     }
 }
+
+/** The [title] and [body] an [RvConfirmSheet] last showed open; plain fields, as the sheet's own composition sets them. */
+private class ShownWords(var title: String, var body: String?)
 
 /** What [RvConfirmSheet] shows in its card. */
 @Composable

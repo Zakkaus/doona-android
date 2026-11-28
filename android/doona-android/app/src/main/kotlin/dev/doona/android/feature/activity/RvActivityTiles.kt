@@ -23,6 +23,7 @@ import dev.doona.android.designsystem.rv.RvSparkTile
 import dev.doona.android.designsystem.rv.RvTileRow
 import dev.doona.android.designsystem.rv.figure
 import dev.doona.android.designsystem.rv.rememberRvFormat
+import dev.doona.android.designsystem.rv.rvGlidingRate
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.fastest
@@ -55,8 +56,8 @@ internal fun ActivitySkeleton(mode: RvRouteMode, node: String) {
 internal fun TrafficTiles(state: RvActivityState, onOpenTraffic: () -> Unit) {
     val quiet = state.status !is Status.Running || (state.downHistory.all { it == 0f } && state.upHistory.all { it == 0f })
     RvTileRow {
-        TrafficTile(R.string.ui_download, R.drawable.rv_sym_arrow_downward, state.downRate, minutePeak(state.downHistory), state.downHistory, Rv.colors.down, quiet, onOpenTraffic, Modifier.weight(1f))
-        TrafficTile(R.string.ui_upload, R.drawable.rv_sym_arrow_upward, state.upRate, minutePeak(state.upHistory), state.upHistory, Rv.colors.up, quiet, onOpenTraffic, Modifier.weight(1f), RV_GHOST_UP)
+        TrafficTile(R.string.ui_download, R.drawable.rv_sym_arrow_downward, state.liveRate(state.downRate, state.downHistory), minutePeak(state.downHistory), state.downHistory, Rv.colors.down, quiet, onOpenTraffic, Modifier.weight(1f))
+        TrafficTile(R.string.ui_upload, R.drawable.rv_sym_arrow_upward, state.liveRate(state.upRate, state.upHistory), minutePeak(state.upHistory), state.upHistory, Rv.colors.up, quiet, onOpenTraffic, Modifier.weight(1f), RV_GHOST_UP)
     }
 }
 
@@ -64,7 +65,7 @@ internal fun TrafficTiles(state: RvActivityState, onOpenTraffic: () -> Unit) {
 private fun TrafficTile(
     @StringRes caption: Int,
     @DrawableRes icon: Int,
-    rate: Long,
+    rate: Double?,
     peak: Float,
     history: List<Float>,
     series: RvSeries,
@@ -76,7 +77,7 @@ private fun TrafficTile(
     val format = rememberRvFormat()
     val note = if (quiet) stringResource(R.string.rv_no_traffic) else stringResource(R.string.rv_peak, format.rate(peak.toDouble()).unbroken())
     val widest = remember(format) { format.widestRates().map { it.figure() } }
-    RvSparkTile(stringResource(caption), icon, format.rate(rate.toDouble()).figure(), note, history, series, quiet, onClick, modifier, ghost, widest)
+    RvSparkTile(stringResource(caption), icon, rvGlidingRate(rate).figure(), note, history, series, quiet, onClick, modifier, ghost, widest)
 }
 
 /** The fastest second of a minute's samples; a missing sample (NaN, a gap in the line) is not a rate. */

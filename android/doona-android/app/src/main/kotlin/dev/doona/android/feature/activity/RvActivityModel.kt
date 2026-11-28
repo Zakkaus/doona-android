@@ -27,6 +27,9 @@ internal data class RvActivityState(
 ) {
     /** This state without what a second's tick changes: the rates and the minute's samples. */
     fun steady(): RvActivityState = copy(downRate = 0, upRate = 0, downHistory = emptyList(), upHistory = emptyList())
+
+    /** [rate] as a reading while the tunnel runs and this session has a second in [history]; null before and after. */
+    fun liveRate(rate: Long, history: List<Float>): Double? = rate.toDouble().takeIf { status is Status.Running && history.isNotEmpty() }
 }
 
 /** The node the main group's TCP selection ends on, as 活動 shows it: its name and its last test. */

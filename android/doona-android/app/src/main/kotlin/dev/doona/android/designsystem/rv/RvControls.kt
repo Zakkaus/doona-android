@@ -11,7 +11,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,6 +54,7 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onPlaced
@@ -310,7 +310,7 @@ private fun Modifier.exactSize(width: Int, height: Int): Modifier = layout { mea
 /**
  * The page's one main action, Revolut's full-width pill (§8): node detail's approved 'Get started' pill, moved here. One
  * style, the ink's fill (white in dark, Addendum A) with the page's colour as its label, the soft shadow under it in
- * light. Pressed, the label's colour lies over the fill as the state layer;
+ * light. Pressed, the label's colour lies over the fill as the state layer, coming up in [RvMotion.PRESS_MS] as a row's does;
  * disabled, the button stays flat at [RvAlpha.DISABLED] and takes no press. At least [RvControlSize.primary] tall, so the
  * whole pill is the target. [interactionSource] lets a caller (or a test) observe or drive the press.
  */
@@ -326,14 +326,10 @@ internal fun RvPrimaryButton(
     val size = RvControlSize
     val fill = if (colors.dark) Color.White else colors.text
     val source = interactionSource ?: remember { MutableInteractionSource() }
-    val pressed by source.collectIsPressedAsState()
+    val press = rvPressLevel(source)
     // Disabled, the pill is opaque in the colour its faded fill gives over the page, so a list scrolling under a floating
     // action never shows through it; its label in the page's colour looks as it did faded.
-    val shown = when {
-        !enabled -> fill.copy(alpha = RvAlpha.DISABLED).compositeOver(colors.page)
-        pressed -> colors.page.copy(alpha = RvAlpha.PRESSED).compositeOver(fill)
-        else -> fill
-    }
+    val shown = if (enabled) lerp(fill, colors.page.copy(alpha = RvAlpha.PRESSED).compositeOver(fill), press.value) else fill.copy(alpha = RvAlpha.DISABLED).compositeOver(colors.page)
     val lift = if (enabled) Modifier.rvSoftShadow(CircleShape, size.primaryShadow, size.primaryShadowDrop, RvAlpha.CTA_SHADOW) else Modifier
     Box(
         modifier
@@ -540,8 +536,9 @@ internal fun DrawScope.rvValuePill(text: TextLayoutResult, topLeft: Offset, ink:
 
 /**
  * Revolut's switch (§13.4, Addendum A): a 34 dp track, a 19 dp thumb, in its 50 × 27 dp node less the room left of the
- * track, so the text stands 12 dp from the track that shows (owner, q-s1125c-switchgap; that room made it 20). On, the
- * accent thumb over its tint (outlined where needed); off, a light thumb on [RvColors.control]. The row owns the toggle.
+ * track, so the text stands 12 dp from the track that shows (owner, q-s1125c-switchgap; that room made it 20). On, the accent thumb
+ * over its tint (outlined where needed); off, a light thumb on [RvColors.control]. A change slides the thumb ([RvSpring.Fast], spatial)
+ * while the track, its rim (fading, never at once) and the thumb turn colour ([RvSpring.Fast], effects). The row owns the toggle.
  */
 @Composable
 internal fun RvSwitch(checked: Boolean, modifier: Modifier = Modifier) {
@@ -549,15 +546,18 @@ internal fun RvSwitch(checked: Boolean, modifier: Modifier = Modifier) {
     val size = RvControlSize
     val room = (size.switchWidth - size.switchTrackWidth) / 2
     val off = -(size.switchThumb - size.switchTrackHeight) / 2
-    val x by animateDpAsState(if (checked) off + size.switchTrackWidth - size.switchTrackHeight else off, Rv.motion.tween(RvMotion.SWITCH_MS), label = "thumb")
+    val x by animateDpAsState(if (checked) off + size.switchTrackWidth - size.switchTrackHeight else off, Rv.motion.spatial(RvSpring.Fast), label = "thumb")
+    val track by animateColorAsState(if (checked) colors.switchOnTrack else colors.control, Rv.motion.effects(RvSpring.Fast), label = "track")
+    val thumb by animateColorAsState(if (checked) colors.switchOnThumb else colors.switchOffThumb, Rv.motion.effects(RvSpring.Fast), label = "thumb colour")
+    val rim = colors.switchOnRim?.let { on -> animateColorAsState(if (checked) on else on.copy(alpha = 0f), Rv.motion.effects(RvSpring.Fast), label = "rim").value }
     Box(modifier.size(size.switchWidth - room, size.switchHeight).clearAndSetSemantics { testTag = RvRowPart.SWITCH }) {
         Box(
             Modifier
                 .align(Alignment.CenterStart)
                 .size(size.switchTrackWidth, size.switchTrackHeight)
                 .clip(CircleShape)
-                .background(if (checked) colors.switchOnTrack else colors.control)
-                .then(colors.switchOnRim?.takeIf { checked }?.let { Modifier.border(size.switchTrackRim, it, CircleShape) } ?: Modifier),
+                .background(track)
+                .then(rim?.let { Modifier.border(size.switchTrackRim, it, CircleShape) } ?: Modifier),
         )
         Box(
             Modifier
@@ -565,7 +565,7 @@ internal fun RvSwitch(checked: Boolean, modifier: Modifier = Modifier) {
                 .offset(x = x)
                 .size(size.switchThumb)
                 .shadow(size.switchThumbShadow, CircleShape)
-                .background(if (checked) colors.switchOnThumb else colors.switchOffThumb, CircleShape)
+                .background(thumb, CircleShape)
                 // Off, the light thumb keeps an edge of the track's grey, so it does not melt into the card (L-10).
                 .then(if (checked) Modifier else Modifier.border(size.switchThumbRing, colors.control, CircleShape)),
         )

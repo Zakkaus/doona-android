@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -28,6 +27,7 @@ import dev.doona.android.designsystem.rv.RvFilterChipRow
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvIconDisc
+import dev.doona.android.designsystem.rv.RvItems
 import dev.doona.android.designsystem.rv.RvLatencyChange
 import dev.doona.android.designsystem.rv.RvLatencyText
 import dev.doona.android.designsystem.rv.RvNodesSize
@@ -102,7 +102,7 @@ internal fun RvNodeGroups(
 ) {
     val current = setOf(currentId) + alsoCurrent
     RvGutter {
-        groups.forEach { key(it.key) { GroupCard(it, current, sort, nowEpochMs, onPick) } }
+        RvItems(groups, { it.key }, RvSpace.cardGap) { GroupCard(it, current, sort, nowEpochMs, onPick) }
     }
 }
 
@@ -118,8 +118,8 @@ private fun GroupCard(group: RvNodeGroup, current: Set<String>, sort: RvNodeSort
             is RvNodeGroup.Place -> PlaceRow(group.place, count)
             is RvNodeGroup.Inline -> InlineRow(count)
         }
-        shown.forEach { key(it.id) { NodeRow(it, it.id in current, sort, onPick) } }
-        if (shown.size < count) RvSeeAll(pluralStringResource(R.plurals.rv_nodes_see_all, count, count)) { all = true }
+        RvItems(shown, { it.id }) { NodeRow(it, it.id in current, sort, onPick) }
+        RvSeeAll(pluralStringResource(R.plurals.rv_nodes_see_all, count, count), shown = shown.size < count) { all = true }
     }
 }
 

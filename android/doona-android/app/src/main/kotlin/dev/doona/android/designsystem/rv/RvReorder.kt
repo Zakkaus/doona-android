@@ -209,7 +209,7 @@ internal class RvReorderState(
         phase = Phase.Landing
         val slot = slot()
         landJob = scope.launch {
-            animate(at, slot, speed, motion.settle(RvMotion.MOVE_MS, PIXEL)) { v, _ -> landing = v }
+            animate(at, slot, speed, motion.settle(RvMotion.MOVE_MS, RvMotion.REST_PX)) { v, _ -> landing = v }
             commit()
         }
     }
@@ -259,7 +259,7 @@ internal class RvReorderState(
             shiftTo[i] = target
             shiftJobs[i]?.cancel()
             val shift = shifts[i]
-            shiftJobs[i] = scope.launch { animate(shift.floatValue, target, 0f, motion.settle(RvMotion.MOVE_MS, PIXEL)) { v, _ -> shift.floatValue = v } }
+            shiftJobs[i] = scope.launch { animate(shift.floatValue, target, 0f, motion.settle(RvMotion.MOVE_MS, RvMotion.REST_PX)) { v, _ -> shift.floatValue = v } }
         }
     }
 
@@ -308,7 +308,6 @@ internal class RvReorderState(
     private companion object {
         const val NONE = -1
         const val GESTURE = "reorder"
-        const val PIXEL = 0.5f
         const val NS_PER_SECOND = 1_000_000_000f
     }
 }

@@ -4,6 +4,7 @@ import java.security.MessageDigest
 
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.baselineprofile)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.roborazzi)
@@ -63,6 +64,9 @@ val coreCheckout = MessageDigest.getInstance("SHA-256")
     .joinToString("") { "%02x".format(it.toInt() and 0xff) }
 val skipCore = providers.gradleProperty("doona.skipCore").orNull.toBoolean()
 val coreProfile = providers.gradleProperty("doona.coreProfile").getOrElse("release")
+
+// The profile build type and the twins the baselineprofile plugin makes of it, which carry the RV sample.
+val profileBuildTypes = setOf("profile", "nonMinifiedProfile", "benchmarkProfile")
 
 androidComponents {
     onVariants { variant ->
@@ -150,21 +154,19 @@ androidComponents {
             tasks.named { it == "assemble$name" }.configureEach { dependsOn(check) }
         }
     }
-    // The profile build carries the debug source set: the RV prototype, its assets and its launcher entry, and a
-    // baseline profile. Without it the prototype ran interpreted on the phone (composables called a few dozen times a
-    // gesture never got hot enough for the JIT) and the JIT compiled for about 1.1 s of each 5 s trace (rv-perf3). It
-    // compiles every method of the app and of Compose, androidx.collection and coroutines ahead: a stand-in for a
-    // profile recorded on the phone with the Macrobenchmark generator, which this build does not have yet.
-    onVariants(selector().withBuildType("profile")) { variant ->
+    // The profile build carries the debug source set: the RV prototype, its assets and its launcher entry. So do the
+    // two twins the baselineprofile plugin makes of it (not minified, for recording the profile; benchmark), since the
+    // generator drives the prototype's demo data. The baseline profile itself is main's, shipped by release too.
+    onVariants { variant ->
+        if (variant.buildType !in profileBuildTypes) return@onVariants
         variant.sources.kotlin?.addStaticSourceDirectory("src/debug/kotlin")
         variant.sources.kotlin?.addStaticSourceDirectory("src/fake/kotlin") // the samples' fake engine
         variant.sources.assets?.addStaticSourceDirectory("src/debug/assets")
         variant.sources.manifests.addStaticManifestFile("src/debug/AndroidManifest.xml")
-        variant.sources.baselineProfiles?.addStaticSourceDirectory("src/debug/baselineProfiles")
     }
     // The debug source set's launcher shortcuts, written for each variant that carries the RV sample (RvShortcuts).
     onVariants { variant ->
-        if (variant.buildType != "debug" && variant.buildType != "profile") return@onVariants
+        if (variant.buildType != "debug" && variant.buildType !in profileBuildTypes) return@onVariants
         val shortcuts = tasks.register<RvShortcuts>("rvShortcuts" + variant.name.replaceFirstChar { it.uppercase() }) {
             template.set(layout.projectDirectory.file("src/debug/shortcuts/rv_shortcuts.xml"))
             applicationId.set(variant.applicationId)
@@ -264,6 +266,17 @@ android {
     }
 }
 
+// The baseline profile is recorded from the profile build only (:baselineprofile drives its demo data) and kept in
+// src/main/generated/baselineProfiles, so release and profile ship the same file. A build never records it on its own:
+// see baselineprofile/README.md.
+baselineProfile {
+    mergeIntoMain = true
+    automaticGenerationDuringBuild = false
+    variants {
+        create("profile") { from(project(":baselineprofile")) }
+    }
+}
+
 dependencies {
     implementation(project(":icons"))
     implementation(project(":flags"))
@@ -279,6 +292,8 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.datastore.preferences)
     implementation(libs.work.runtime)
+    // Installs the shipped baseline profile on a sideload or an adb install too, where no store applies it.
+    implementation(libs.profileinstaller)
 
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.junit4)

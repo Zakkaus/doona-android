@@ -1,9 +1,11 @@
 package dev.doona.android.app
 
+import androidx.activity.BackEventCompat
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -29,7 +31,7 @@ internal enum class RvTabMotion(val code: String) { Cut("T1"), Fade("T2") }
 /** How a page is pushed and popped: S1 a cross-fade with a slight zoom (the default), S2 Material's shared axis X. */
 internal enum class RvPushMotion(val code: String) { Zoom("S1"), Axis("S2") }
 
-/** How long a pop under [push] takes: what a cancelled predictive back runs back over. */
+/** How long a push or a pop under [push] takes: the shared elements move as long. */
 internal fun rvPopMs(push: RvPushMotion) = if (push == RvPushMotion.Zoom) RvMotion.PUSH_MS else RvMotion.AXIS_MS
 
 /** A tab switch: [RvTabMotion.Cut] shows the new tab at once, [RvTabMotion.Fade] cross-fades the pages. */
@@ -71,6 +73,22 @@ internal fun rvAxisMove(motion: RvMotionScale, shift: Int, forward: Boolean): Co
     return enter togetherWith exit
 }
 
+/**
+ * A predictive back's preview ([RvMotion.BACK_MS]): the page on top shrinks to [RvMotion.BACK_SCALE] and moves away from
+ * the swipe's [edge] by 1/[RvMotion.BACK_SHIFT_PARTS] of its width less [margin] px, fading out only at the end, over the page under it,
+ * which stands in place. The gesture's progress seeks the move: the shrink and the shift decelerate ([RvMotion.Decelerate]),
+ * so most of them show within the first part of a swipe, as the system's own preview does, and the fade runs linearly.
+ */
+internal fun rvBackPreview(motion: RvMotionScale, margin: Int, edge: Int): ContentTransform {
+    val ms = RvMotion.BACK_MS
+    val fade = (ms * RvMotion.BACK_FADE).roundToInt()
+    val away = if (edge == BackEventCompat.EDGE_RIGHT) -1 else 1
+    val exit = scaleOut(motion.tween(ms, RvMotion.Decelerate), targetScale = RvMotion.BACK_SCALE) +
+        slideOutHorizontally(motion.tween(ms, RvMotion.Decelerate)) { away * (it / RvMotion.BACK_SHIFT_PARTS - margin) } +
+        fadeOut(motion.tween(fade, LinearEasing, delay = ms - fade))
+    return ContentTransform(EnterTransition.None, exit, targetContentZIndex = -1f)
+}
+
 /** The metadata entry [RvNavHost] puts on every entry: its back stack key, which [Scene]s otherwise do not show. */
 internal const val RV_NAV_KEY = "dev.doona.android.app.key"
 
@@ -93,4 +111,13 @@ internal fun AnimatedContentTransitionScope<Scene<NavKey>>.rvSceneMove(motion: R
     initialState.rvTab() != targetState.rvTab() -> rvTabSwitch(RvTabMotion.Cut, motion)
     initialState.rvTop() == NodeSearchKey || targetState.rvTop() == NodeSearchKey -> rvSearchMove(motion, shift, forward)
     else -> rvZoomMove(motion, forward)
+}
+
+/**
+ * The app's predictive back from the swipe's [edge]: [rvBackPreview] for every pop the finger can follow, the search
+ * page's sinking as on a plain back. At animator scale 0 nothing moves.
+ */
+internal fun AnimatedContentTransitionScope<Scene<NavKey>>.rvSceneBack(motion: RvMotionScale, shift: Int, margin: Int, edge: Int): ContentTransform = when {
+    motion.instant || initialState.rvTop() == NodeSearchKey -> rvSceneMove(motion, shift, forward = false)
+    else -> rvBackPreview(motion, margin, edge)
 }

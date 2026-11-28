@@ -112,7 +112,7 @@ internal class RvStretch(
         val slope = bandSlope(travel)
         travel = 0f
         if (pulled <= 0f) return
-        back = scope.launch { animate(pulled, 0f, velocity * slope, motion.settle(ms, PIXEL)) { v, _ -> pulled = v } }
+        back = scope.launch { animate(pulled, 0f, velocity * slope, motion.settle(ms, RvMotion.REST_PX)) { v, _ -> pulled = v } }
     }
 
     /**
@@ -152,7 +152,6 @@ internal class RvStretch(
     }
 
     private companion object {
-        const val PIXEL = 0.5f
         const val MAX_SHARE = 0.99f
     }
 }

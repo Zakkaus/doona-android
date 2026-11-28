@@ -50,7 +50,7 @@ class TrafficPageTest {
         stepMs = 1_000,
     )
     private val session = RvTrafficSession(9_100_000.0, 870_000.0, 2_000.0, 200.0, 7_200_000, 720_000, 3_660)
-    private val state = RvTrafficState(downRate = 4_000, upRate = 300, chart = chart, session = session)
+    private val state = RvTrafficState(downRate = 4_000, upRate = 300, sampled = true, chart = chart, session = session)
 
     /** What TalkBack is given for the node [matcher] finds: its node info's spoken text, and that it reads as one stop. */
     private fun talkBack(view: View, matcher: SemanticsMatcher): String? {
@@ -69,7 +69,7 @@ class TrafficPageTest {
         compose.rvContent(dark = false) { RvTrafficScreen(state, onRange = {}, onBack = {}, initialScrub = 49) }
         // Point 49 of 60 ends ten seconds before the last: 10:23:50 UTC.
         assertTrue("its time", shows(format.clock(END - 10_000)))
-        assertTrue("its rate", shows(format.rate(50_000.0).number))
+        assertTrue("its rate", shows(format.liveRate(50_000.0).number))
         compose.onAllNodesWithText(rvText(R.string.rv_now), useUnmergedTree = true).assertCountIs(0, "not now")
     }
 
@@ -77,7 +77,7 @@ class TrafficPageTest {
     fun atRestTheHeroIsTheSecondsRateNow() {
         compose.rvContent(dark = false) { RvTrafficScreen(state, onRange = {}, onBack = {}) }
         assertTrue(shows(rvText(R.string.rv_now)))
-        assertTrue(shows(format.rate(4_000.0).number))
+        assertTrue(shows(format.liveRate(4_000.0).number))
     }
 
     @Test
@@ -87,7 +87,7 @@ class TrafficPageTest {
         compose.onNodeWithText(rvText(R.string.ui_upload)).performClick()
         assertTrue("upload's peak", reads(format.rate(870_000.0).toString()))
         assertTrue("upload's average", reads(format.rate(200.0).toString()))
-        assertTrue("upload's rate now", shows(format.rate(300.0).number))
+        assertTrue("upload's rate now", shows(format.liveRate(300.0).number))
     }
 
     @Test
@@ -97,8 +97,8 @@ class TrafficPageTest {
             view = LocalView.current
             RvTrafficScreen(state, onRange = {}, onBack = {})
         }
-        val now = format.rate(4_000.0)
-        assertEquals("the hero", "下載 ${now.number} ${now.unit}", talkBack(view, hasContentDescription("下載 ${now.number}", substring = true)))
+        val now = format.liveRate(4_000.0)
+        assertEquals("the hero", "下載 $now", talkBack(view, hasContentDescription("下載 ${now.number}", substring = true)))
         assertEquals("the peak row, its name kept", "峰值，下載 ${format.rate(9_100_000.0)}", talkBack(view, hasContentDescription(rvText(R.string.rv_stat_peak), substring = true)))
         compose.onNodeWithText(rvText(R.string.ui_upload)).performClick()
         assertEquals("the average row", "平均，上傳 ${format.rate(200.0)}", talkBack(view, hasContentDescription(rvText(R.string.rv_stat_average), substring = true)))

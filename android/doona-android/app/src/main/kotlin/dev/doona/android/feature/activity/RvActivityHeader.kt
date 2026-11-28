@@ -39,7 +39,6 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvAction
-import dev.doona.android.designsystem.rv.RvAmount
 import dev.doona.android.designsystem.rv.RvDelta
 import dev.doona.android.designsystem.rv.RvDotMotion
 import dev.doona.android.designsystem.rv.RvDots
@@ -47,17 +46,19 @@ import dev.doona.android.designsystem.rv.RvFadeThrough
 import dev.doona.android.designsystem.rv.RvHeader
 import dev.doona.android.designsystem.rv.RvHero
 import dev.doona.android.designsystem.rv.RvHeroSwipe
-import dev.doona.android.designsystem.rv.RvInline
 import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSkeletonFade
 import dev.doona.android.designsystem.rv.RvSkeletonHero
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatsDots
+import dev.doona.android.designsystem.rv.RvSteadyHero
+import dev.doona.android.designsystem.rv.RvSteadyInline
 import dev.doona.android.designsystem.rv.RvText
 import dev.doona.android.designsystem.rv.figure
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvActionRowFit
+import dev.doona.android.designsystem.rv.rvGlidingRate
 import dev.doona.android.designsystem.rv.rvHeroArt
 import dev.doona.android.designsystem.rv.rvMapPan
 import dev.doona.android.engine.FailureReason
@@ -116,7 +117,8 @@ private fun HeroBlock(state: RvActivityState, ticking: State<RvActivityState>, m
 
 /**
  * The state and the mode over the download rate, the upload rate under it; a new state fades through the old (the two
- * captions differ in length, so a cross-fade would lay them over each other), each second's rates cross-fade in. Read
+ * captions differ in length, so a cross-fade would lay them over each other), the rates glide to each second's value
+ * ([rvGlidingRate]). Read
  * from [ticking] here, so that a tick recomposes the figures and not the header around them. While [loading], their
  * skeleton.
  */
@@ -128,21 +130,18 @@ private fun HeroFigure(ticking: State<RvActivityState>, mode: RvRouteMode, modif
 @Composable
 private fun HeroLines(ticking: State<RvActivityState>, mode: RvRouteMode) {
     val state = ticking.value
-    val format = rememberRvFormat()
-    val fade = Rv.motion.tween<Float>(RvMotion.FADE_MS)
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         RvFadeThrough("${stringResource(state.status.label)} · ${stringResource(mode.label)}", "caption", alignment = Alignment.TopCenter) { RvText(it, Rv.type.caption) }
         Spacer(Modifier.height(RvSpace.tight))
-        val down = format.rate(state.downRate.toDouble())
-        Crossfade(down.number to down.unit, animationSpec = fade, label = "rate") { (number, unit) ->
-            val spoken = stringResource(R.string.rv_a11y_download, "$number $unit")
-            RvHero(RvAmount(number, unit), Modifier.semantics { contentDescription = spoken })
-        }
+        val down = rvGlidingRate(state.liveRate(state.downRate, state.downHistory))
+        val spoken = stringResource(R.string.rv_a11y_download, down.toString())
+        val format = rememberRvFormat()
+        val widest = remember(format) { format.widestRates() }
+        RvSteadyHero(down, widest, spoken)
         Spacer(Modifier.height(RvSpace.subGap))
         // The hero is the download rate, so the line under it carries the other direction only (N-10).
-        Crossfade(format.rate(state.upRate.toDouble()).toString(), animationSpec = fade, label = "up") {
-            RvInline(R.drawable.rv_sym_arrow_upward, it, Rv.colors.textSecondary, Rv.type.sub, description = stringResource(R.string.rv_a11y_upload, it))
-        }
+        val up = rvGlidingRate(state.liveRate(state.upRate, state.upHistory))
+        RvSteadyInline(R.drawable.rv_sym_arrow_upward, up, widest, Rv.colors.textSecondary, Rv.type.sub, stringResource(R.string.rv_a11y_upload, up.toString()))
     }
 }
 
