@@ -19,16 +19,16 @@ import dev.doona.android.feature.model.rvLeafMembers
 import dev.doona.android.feature.model.rvNode
 import dev.doona.android.feature.policies.rvGroupKind
 import dev.doona.android.feature.subscriptions.rvSubscription
-import dev.doona.android.vpn.honk.Group
-import dev.doona.android.vpn.honk.HealthState
-import dev.doona.android.vpn.honk.MemberKind
-import dev.doona.android.vpn.honk.Node
-import dev.doona.android.vpn.honk.OutboundKind
-import dev.doona.android.vpn.honk.OutboundTraffic
-import dev.doona.android.vpn.honk.Provider
-import dev.doona.android.vpn.honk.RuntimeTraffic
-import dev.doona.android.vpn.honk.TrafficHistory
-import dev.doona.android.vpn.honk.Transport
+import dev.doona.android.honk.Group
+import dev.doona.android.honk.HealthState
+import dev.doona.android.honk.MemberKind
+import dev.doona.android.honk.Node
+import dev.doona.android.honk.OutboundKind
+import dev.doona.android.honk.OutboundTraffic
+import dev.doona.android.honk.Provider
+import dev.doona.android.honk.RuntimeTraffic
+import dev.doona.android.honk.TrafficHistory
+import dev.doona.android.honk.Transport
 
 /**
  * What 活動's lists are mapped from, read far less often than the second's traffic: honk's [profile] (null until read),

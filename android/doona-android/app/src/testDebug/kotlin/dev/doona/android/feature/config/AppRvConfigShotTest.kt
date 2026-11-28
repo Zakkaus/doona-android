@@ -5,13 +5,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.text.input.TextFieldValue
 import dev.doona.android.engine.fake.RvSampleConfig
+import dev.doona.android.honk.HonkFixtures
+import dev.doona.android.honk.PolicyHonkFixtures
 import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.data.RV_NOW
 import dev.doona.android.prototype.rv.rvShot
-import dev.doona.android.vpn.HonkFixtures
-import dev.doona.android.vpn.PolicyHonkFixtures
 import kotlinx.coroutines.Dispatchers
 import org.junit.Rule
 import org.junit.Test

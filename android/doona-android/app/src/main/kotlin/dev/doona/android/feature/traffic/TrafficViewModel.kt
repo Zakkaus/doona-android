@@ -5,8 +5,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.honk.NativeRuntime
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeRuntime
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay

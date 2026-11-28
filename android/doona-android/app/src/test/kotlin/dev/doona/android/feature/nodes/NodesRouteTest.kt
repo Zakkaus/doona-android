@@ -30,8 +30,8 @@ import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rememberRvPullState
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.CoreNodePlaces
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.NativeResponse
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeResponse
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.Json

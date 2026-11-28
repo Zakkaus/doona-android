@@ -1,10 +1,10 @@
 package dev.doona.android.feature.model
 
-import dev.doona.android.vpn.honk.HealthState
-import dev.doona.android.vpn.honk.Node
-import dev.doona.android.vpn.honk.Provider
-import dev.doona.android.vpn.honk.ProviderKind
-import dev.doona.android.vpn.honk.Transport
+import dev.doona.android.honk.HealthState
+import dev.doona.android.honk.Node
+import dev.doona.android.honk.Provider
+import dev.doona.android.honk.ProviderKind
+import dev.doona.android.honk.Transport
 import kotlin.math.roundToInt
 
 /**

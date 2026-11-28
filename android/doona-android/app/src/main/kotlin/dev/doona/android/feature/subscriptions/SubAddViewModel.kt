@@ -2,8 +2,8 @@ package dev.doona.android.feature.subscriptions
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.honk.NativeCatalog
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeCatalog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers

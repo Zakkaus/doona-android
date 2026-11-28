@@ -14,8 +14,8 @@ import dev.doona.android.engine.Status
 import dev.doona.android.feature.subscriptions.ImportState
 import dev.doona.android.feature.subscriptions.STOP_MS
 import dev.doona.android.feature.subscriptions.SubscriptionImports
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.honk.NativeCatalog
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeCatalog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers

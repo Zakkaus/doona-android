@@ -5,9 +5,9 @@ import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvMemberGroup
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvPolicyGroup
-import dev.doona.android.vpn.honk.Group
-import dev.doona.android.vpn.honk.MemberKind
-import dev.doona.android.vpn.honk.PolicyKind
+import dev.doona.android.honk.Group
+import dev.doona.android.honk.MemberKind
+import dev.doona.android.honk.PolicyKind
 
 internal fun rvGroupKind(kind: PolicyKind): RvGroupKind = when (kind) {
     PolicyKind.Selector, PolicyKind.Fixed -> RvGroupKind.Select

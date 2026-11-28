@@ -5,10 +5,10 @@ import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvMatchKind
 import dev.doona.android.feature.model.RvRuleEnd
 import dev.doona.android.feature.model.RvRuleMatch
-import dev.doona.android.vpn.HonkFixtures
-import dev.doona.android.vpn.honk.HonkConnection
-import dev.doona.android.vpn.honk.NativeCatalog
-import dev.doona.android.vpn.honk.NativeConnections
+import dev.doona.android.honk.HonkConnection
+import dev.doona.android.honk.HonkFixtures
+import dev.doona.android.honk.NativeCatalog
+import dev.doona.android.honk.NativeConnections
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

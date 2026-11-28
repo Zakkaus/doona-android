@@ -16,13 +16,13 @@ import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.rvSampleEngine
+import dev.doona.android.honk.ActivityHonkFixtures
+import dev.doona.android.honk.ActivityHonkFixtures.refusingProbes
+import dev.doona.android.honk.FakeHonk
+import dev.doona.android.honk.HonkFixtures
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvText
-import dev.doona.android.vpn.ActivityHonkFixtures
-import dev.doona.android.vpn.ActivityHonkFixtures.refusingProbes
-import dev.doona.android.vpn.FakeHonk
-import dev.doona.android.vpn.HonkFixtures
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals

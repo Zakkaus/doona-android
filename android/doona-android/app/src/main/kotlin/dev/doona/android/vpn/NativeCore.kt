@@ -1,5 +1,7 @@
 package dev.doona.android.vpn
 
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeResponse
 /**
  * `libdoonacore.so`, loaded when this object is first used. The symbols are `Java_dev_doona_android_vpn_NativeCore_<name>`.
  * Kotlin forbids `@JvmStatic` on an override, so these are instance methods: the second JNI argument is this object,

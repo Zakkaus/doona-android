@@ -2,10 +2,10 @@ package dev.doona.android.feature.subscriptions
 
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.vpn.honk.Node
-import dev.doona.android.vpn.honk.Provider
-import dev.doona.android.vpn.honk.ProviderKind
-import dev.doona.android.vpn.honk.ProviderStatus
+import dev.doona.android.honk.Node
+import dev.doona.android.honk.Provider
+import dev.doona.android.honk.ProviderKind
+import dev.doona.android.honk.ProviderStatus
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

@@ -11,11 +11,11 @@ import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.policies.HonkPolicyRead
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.honk.NativeConfig
-import dev.doona.android.vpn.honk.NativeRevisions
-import dev.doona.android.vpn.honk.NativeRouting
-import dev.doona.android.vpn.honk.daeCode
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeConfig
+import dev.doona.android.honk.NativeRevisions
+import dev.doona.android.honk.NativeRouting
+import dev.doona.android.honk.daeCode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers

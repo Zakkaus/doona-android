@@ -25,7 +25,7 @@ import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.nodes.ui.LocalRvRowActions
 import dev.doona.android.feature.nodes.ui.RvApplyTo
 import dev.doona.android.feature.nodes.ui.RvRowActions
-import dev.doona.android.vpn.honk.SelectionNetwork
+import dev.doona.android.honk.SelectionNetwork
 
 /*
  * The 節點 pages on the one [NodesViewModel] that 活動's entry holds (plan 2.2): the routing builds it there with

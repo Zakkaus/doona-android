@@ -16,7 +16,7 @@ import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.SubscriptionFetch
 import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.engine.fake.FakeEngine
-import dev.doona.android.vpn.NativeApi
+import dev.doona.android.honk.NativeApi
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi

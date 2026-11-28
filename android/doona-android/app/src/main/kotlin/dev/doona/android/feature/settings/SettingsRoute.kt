@@ -17,7 +17,7 @@ import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.engine.Engine
 import dev.doona.android.feature.model.RvLanguage
-import dev.doona.android.vpn.NativeSettings
+import dev.doona.android.honk.NativeSettings
 
 /**
  * The 設定 tab: builds the ViewModel over the [engine], [honk], the app's [store], [releases] (檢查更新) and the core's log

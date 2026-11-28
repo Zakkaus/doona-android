@@ -27,8 +27,8 @@ import dev.doona.android.designsystem.rv.RvSectionTitle
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.rvRowSelect
-import dev.doona.android.vpn.honk.HonkGroupConfig
-import dev.doona.android.vpn.honk.HonkGroupPolicy
+import dev.doona.android.honk.HonkGroupConfig
+import dev.doona.android.honk.HonkGroupPolicy
 
 /** The policies the editor offers, honk's `kind` each with the label the templates use and a glyph. */
 internal enum class RvGroupPolicyKind(val kind: String, @param:StringRes val label: Int, @param:DrawableRes val glyph: Int) {

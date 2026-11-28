@@ -3,8 +3,8 @@ package dev.doona.android.report
 import android.os.Process
 import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.feature.settings.RvLogLevel
-import dev.doona.android.vpn.FakeHonk
-import dev.doona.android.vpn.HonkFixtures
+import dev.doona.android.honk.FakeHonk
+import dev.doona.android.honk.HonkFixtures
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher

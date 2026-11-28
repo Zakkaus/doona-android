@@ -6,13 +6,13 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.engine.Engine
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeCatalog
+import dev.doona.android.honk.ProviderKind
+import dev.doona.android.honk.read
 import dev.doona.android.report.RedactionOptions
 import dev.doona.android.report.ReportExporter
 import dev.doona.android.report.ReportShare
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.honk.NativeCatalog
-import dev.doona.android.vpn.honk.ProviderKind
-import dev.doona.android.vpn.read
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers

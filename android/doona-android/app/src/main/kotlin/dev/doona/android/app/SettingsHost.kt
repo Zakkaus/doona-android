@@ -52,7 +52,7 @@ import dev.doona.android.feature.settings.SettingsSystem
 import dev.doona.android.feature.settings.ThemeRoute
 import dev.doona.android.feature.settings.TileAnswer
 import dev.doona.android.feature.settings.rvLicenseEntries
-import dev.doona.android.vpn.NativeSettings
+import dev.doona.android.honk.NativeSettings
 import dev.doona.android.vpn.QuickTile
 import dev.doona.android.vpn.QuickTileResult
 import kotlinx.coroutines.CoroutineScope

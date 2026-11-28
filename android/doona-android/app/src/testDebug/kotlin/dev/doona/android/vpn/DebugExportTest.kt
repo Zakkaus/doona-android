@@ -11,6 +11,7 @@ import dev.doona.android.app.FakeEngineApplication
 import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.engine.fake.FakeEngine
+import dev.doona.android.honk.FakeHonk
 import dev.doona.android.report.AppInfo
 import dev.doona.android.report.AppReportExporter
 import dev.doona.android.report.CrashFiles

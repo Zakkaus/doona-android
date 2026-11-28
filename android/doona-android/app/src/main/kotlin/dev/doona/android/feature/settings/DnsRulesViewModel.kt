@@ -16,11 +16,11 @@ import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.policies.RvReadOnReturn
 import dev.doona.android.feature.policies.ruleCondition
 import dev.doona.android.feature.policies.statementAt
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.honk.HonkDnsRule
-import dev.doona.android.vpn.honk.HonkDnsRules
-import dev.doona.android.vpn.honk.NativeConfig
-import dev.doona.android.vpn.honk.NativeRouting
+import dev.doona.android.honk.HonkDnsRule
+import dev.doona.android.honk.HonkDnsRules
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeConfig
+import dev.doona.android.honk.NativeRouting
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers

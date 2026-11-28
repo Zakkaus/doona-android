@@ -2,9 +2,9 @@ package dev.doona.android.feature.config
 
 import dev.doona.android.feature.policies.HonkPolicyRead
 import dev.doona.android.feature.policies.honkUpstreams
-import dev.doona.android.vpn.honk.HonkConfig
-import dev.doona.android.vpn.honk.HonkDnsRules
-import dev.doona.android.vpn.honk.HonkRevision
+import dev.doona.android.honk.HonkConfig
+import dev.doona.android.honk.HonkDnsRules
+import dev.doona.android.honk.HonkRevision
 import java.time.Instant
 
 /** The text of the UTF-8 bytes `[start, end)` of [text]. */

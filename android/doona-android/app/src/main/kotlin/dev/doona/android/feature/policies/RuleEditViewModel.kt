@@ -30,11 +30,11 @@ import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.settings.RvSettingsLoading
 import dev.doona.android.feature.settings.changeBanner
 import dev.doona.android.feature.settings.readBanner
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.honk.HonkConfig
-import dev.doona.android.vpn.honk.HonkRule
-import dev.doona.android.vpn.honk.HonkSource
-import dev.doona.android.vpn.honk.NativeConfig
+import dev.doona.android.honk.HonkConfig
+import dev.doona.android.honk.HonkRule
+import dev.doona.android.honk.HonkSource
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers

@@ -12,7 +12,7 @@ import dev.doona.android.feature.model.RvGeoInterval
 import dev.doona.android.feature.model.RvGeoUpdate
 import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.model.RvSettingsState
-import dev.doona.android.vpn.NativeSettings
+import dev.doona.android.honk.NativeSettings
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

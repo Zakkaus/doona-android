@@ -2,9 +2,9 @@ package dev.doona.android.feature.settings
 
 import dev.doona.android.feature.model.RvMatchKind
 import dev.doona.android.feature.policies.RvRuleDraft
-import dev.doona.android.vpn.FakeHonk
-import dev.doona.android.vpn.HonkFixtures
-import dev.doona.android.vpn.PolicyHonkFixtures
+import dev.doona.android.honk.FakeHonk
+import dev.doona.android.honk.HonkFixtures
+import dev.doona.android.honk.PolicyHonkFixtures
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher

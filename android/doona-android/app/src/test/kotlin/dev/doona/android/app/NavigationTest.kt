@@ -26,13 +26,13 @@ import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeInstalledApps
 import dev.doona.android.engine.fake.FakeRuleMode
 import dev.doona.android.engine.fake.rvSampleEngine
+import dev.doona.android.honk.ActivityHonkFixtures.servingSample
+import dev.doona.android.honk.FakeHonk
+import dev.doona.android.honk.HonkFixtures
 import dev.doona.android.report.CrashFiles
 import dev.doona.android.report.CrashHandler
 import dev.doona.android.report.CrashOffer
 import dev.doona.android.testing.SeedTheme
-import dev.doona.android.vpn.ActivityHonkFixtures.servingSample
-import dev.doona.android.vpn.FakeHonk
-import dev.doona.android.vpn.HonkFixtures
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject

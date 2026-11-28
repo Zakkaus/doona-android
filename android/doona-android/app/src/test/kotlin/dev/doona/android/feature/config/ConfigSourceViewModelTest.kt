@@ -3,8 +3,8 @@ package dev.doona.android.feature.config
 import androidx.compose.ui.text.input.TextFieldValue
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.fake.RvSampleConfig
-import dev.doona.android.vpn.HonkFixtures
-import dev.doona.android.vpn.PolicyHonkFixtures
+import dev.doona.android.honk.HonkFixtures
+import dev.doona.android.honk.PolicyHonkFixtures
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

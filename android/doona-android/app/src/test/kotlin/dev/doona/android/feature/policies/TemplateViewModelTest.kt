@@ -3,10 +3,10 @@ package dev.doona.android.feature.policies
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.feature.model.rvTemplate
-import dev.doona.android.vpn.FakeHonk
-import dev.doona.android.vpn.HonkFixtures
-import dev.doona.android.vpn.PolicyHonkFixtures
-import dev.doona.android.vpn.honk.NativeConfig
+import dev.doona.android.honk.FakeHonk
+import dev.doona.android.honk.HonkFixtures
+import dev.doona.android.honk.NativeConfig
+import dev.doona.android.honk.PolicyHonkFixtures
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher

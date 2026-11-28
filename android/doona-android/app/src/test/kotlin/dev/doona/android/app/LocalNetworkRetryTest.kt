@@ -9,7 +9,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.localnetwork.LocalNetworkPrompt
 import dev.doona.android.feature.subscriptions.ImportRequest
-import dev.doona.android.vpn.FakeHonk
+import dev.doona.android.honk.FakeHonk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull

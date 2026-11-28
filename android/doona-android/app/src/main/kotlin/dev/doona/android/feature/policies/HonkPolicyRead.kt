@@ -8,14 +8,14 @@ import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.feature.model.rvNode
 import dev.doona.android.feature.model.rvTemplate
 import dev.doona.android.feature.subscriptions.rvSubscription
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.honk.Group
-import dev.doona.android.vpn.honk.HonkRules
-import dev.doona.android.vpn.honk.NativeCatalog
-import dev.doona.android.vpn.honk.NativeRouting
-import dev.doona.android.vpn.honk.Node
-import dev.doona.android.vpn.honk.Provider
-import dev.doona.android.vpn.honk.ProviderKind
+import dev.doona.android.honk.Group
+import dev.doona.android.honk.HonkRules
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeCatalog
+import dev.doona.android.honk.NativeRouting
+import dev.doona.android.honk.Node
+import dev.doona.android.honk.Provider
+import dev.doona.android.honk.ProviderKind
 
 /**
  * honk's groups (in configuration order), nodes, providers and running rules, as 策略, 全部規則 and 生效設定 draw them.

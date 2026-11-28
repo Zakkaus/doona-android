@@ -1,7 +1,7 @@
 package dev.doona.android.feature.connections
 
 import dev.doona.android.feature.model.CoreNodePlaces
-import dev.doona.android.vpn.HonkFixtures
+import dev.doona.android.honk.HonkFixtures
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher

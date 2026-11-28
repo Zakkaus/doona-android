@@ -13,9 +13,9 @@ import dev.doona.android.feature.model.RvImpact
 import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.feature.model.RvTemplate
 import dev.doona.android.feature.model.rvTemplate
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.honk.NativeConfig
-import dev.doona.android.vpn.honk.geoData
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeConfig
+import dev.doona.android.honk.geoData
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers

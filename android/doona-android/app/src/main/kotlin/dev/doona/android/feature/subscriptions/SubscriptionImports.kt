@@ -9,9 +9,9 @@ import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.localnetwork.LocalNetworkAccess
 import dev.doona.android.feature.model.RvSubscription
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.honk.NativeCatalog
-import dev.doona.android.vpn.honk.Provider
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeCatalog
+import dev.doona.android.honk.Provider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope

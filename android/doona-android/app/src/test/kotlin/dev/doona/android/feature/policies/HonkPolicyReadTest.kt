@@ -6,8 +6,8 @@ import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvRuleEnd
 import dev.doona.android.feature.model.RvRuleMatch
-import dev.doona.android.vpn.HonkFixtures
-import dev.doona.android.vpn.PolicyHonkFixtures
+import dev.doona.android.honk.HonkFixtures
+import dev.doona.android.honk.PolicyHonkFixtures
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows

@@ -39,6 +39,12 @@ import dev.doona.android.feature.report.ReportViewModel
 import dev.doona.android.feature.report.RvRedaction
 import dev.doona.android.feature.report.RvReportBuild
 import dev.doona.android.feature.report.RvReportScreen
+import dev.doona.android.honk.FakeHonk
+import dev.doona.android.honk.HonkFixtures
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeSettings
+import dev.doona.android.honk.PolicyHonkFixtures
+import dev.doona.android.honk.SettingsHonk
 import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
@@ -67,12 +73,6 @@ import dev.doona.android.report.ReportZip
 import dev.doona.android.report.testFlowEvents
 import dev.doona.android.testing.drawFully
 import dev.doona.android.testing.savePanel
-import dev.doona.android.vpn.FakeHonk
-import dev.doona.android.vpn.HonkFixtures
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.NativeSettings
-import dev.doona.android.vpn.PolicyHonkFixtures
-import dev.doona.android.vpn.SettingsHonk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation

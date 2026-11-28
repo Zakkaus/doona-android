@@ -13,12 +13,12 @@ import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.protocolName
 import dev.doona.android.feature.model.rvNode
 import dev.doona.android.feature.subscriptions.rvSubscription
-import dev.doona.android.vpn.honk.Group
-import dev.doona.android.vpn.honk.GroupSelection
-import dev.doona.android.vpn.honk.HonkRules
-import dev.doona.android.vpn.honk.Node
-import dev.doona.android.vpn.honk.Provider
-import dev.doona.android.vpn.honk.Transport
+import dev.doona.android.honk.Group
+import dev.doona.android.honk.GroupSelection
+import dev.doona.android.honk.HonkRules
+import dev.doona.android.honk.Node
+import dev.doona.android.honk.Provider
+import dev.doona.android.honk.Transport
 import java.time.OffsetDateTime
 
 /**

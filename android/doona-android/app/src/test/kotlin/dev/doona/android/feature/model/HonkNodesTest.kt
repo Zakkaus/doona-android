@@ -1,9 +1,9 @@
 package dev.doona.android.feature.model
 
 import dev.doona.android.designsystem.rv.RvPlace
-import dev.doona.android.vpn.honk.Node
-import dev.doona.android.vpn.honk.Provider
-import dev.doona.android.vpn.nativeJson
+import dev.doona.android.honk.Node
+import dev.doona.android.honk.Provider
+import dev.doona.android.honk.nativeJson
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

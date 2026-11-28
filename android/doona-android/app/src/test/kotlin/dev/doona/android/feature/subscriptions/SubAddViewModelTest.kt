@@ -3,8 +3,8 @@ package dev.doona.android.feature.subscriptions
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.localnetwork.LocalNetworkAccess
 import dev.doona.android.feature.localnetwork.LocalNetworkPrompt
-import dev.doona.android.vpn.FakeHonk
-import dev.doona.android.vpn.HonkFixtures
+import dev.doona.android.honk.FakeHonk
+import dev.doona.android.honk.HonkFixtures
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

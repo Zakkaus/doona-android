@@ -2,7 +2,7 @@ package dev.doona.android.feature.config
 
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.fake.RvSampleConfig
-import dev.doona.android.vpn.PolicyHonkFixtures
+import dev.doona.android.honk.PolicyHonkFixtures
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher

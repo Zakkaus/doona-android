@@ -43,7 +43,7 @@ import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.messageRes
 import dev.doona.android.feature.model.RvDnsUpstream
-import dev.doona.android.vpn.NativeApi
+import dev.doona.android.honk.NativeApi
 
 /**
  * The page 進階 → DNS opens, in 主題's language: the large title, then one titled card of servers, each its name over

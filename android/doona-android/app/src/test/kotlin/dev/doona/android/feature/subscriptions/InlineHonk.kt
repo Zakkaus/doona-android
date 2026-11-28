@@ -1,8 +1,8 @@
 package dev.doona.android.feature.subscriptions
 
-import dev.doona.android.vpn.HonkFixtures
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.NativeResponse
+import dev.doona.android.honk.HonkFixtures
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeResponse
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull

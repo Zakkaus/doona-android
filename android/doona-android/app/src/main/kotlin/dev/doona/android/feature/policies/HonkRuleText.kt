@@ -6,7 +6,7 @@ import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvRuleEnd
 import dev.doona.android.feature.model.RvRuleMatch
 import dev.doona.android.feature.model.RvRuleState
-import dev.doona.android.vpn.honk.HonkRule
+import dev.doona.android.honk.HonkRule
 
 /**
  * A rule of honk's `GET /rules` as the pages list it. [groups] holds the profile's groups by name, which is how a rule

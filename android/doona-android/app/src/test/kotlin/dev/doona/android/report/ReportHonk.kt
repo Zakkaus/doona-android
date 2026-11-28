@@ -1,7 +1,7 @@
 package dev.doona.android.report
 
-import dev.doona.android.vpn.FakeHonk
-import dev.doona.android.vpn.HonkFixtures
+import dev.doona.android.honk.FakeHonk
+import dev.doona.android.honk.HonkFixtures
 
 /** honk's reads for the report's tests, from the fixtures under `test/resources/honk/` (contract examples and samples in honk's shape). */
 internal object ReportHonk {

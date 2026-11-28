@@ -1,12 +1,12 @@
 package dev.doona.android.feature.stats
 
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.vpn.ActivityHonkFixtures
-import dev.doona.android.vpn.ActivityHonkFixtures.empty
-import dev.doona.android.vpn.ActivityHonkFixtures.refusingProbes
-import dev.doona.android.vpn.FakeHonk
-import dev.doona.android.vpn.HonkExamples
-import dev.doona.android.vpn.HonkFixtures
+import dev.doona.android.honk.ActivityHonkFixtures
+import dev.doona.android.honk.ActivityHonkFixtures.empty
+import dev.doona.android.honk.ActivityHonkFixtures.refusingProbes
+import dev.doona.android.honk.FakeHonk
+import dev.doona.android.honk.HonkExamples
+import dev.doona.android.honk.HonkFixtures
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch

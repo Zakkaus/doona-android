@@ -4,8 +4,8 @@ import android.net.InetAddresses
 import android.os.Process
 import android.system.OsConstants
 import dev.doona.android.data.settings.LogLevelController
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.read
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.read
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest

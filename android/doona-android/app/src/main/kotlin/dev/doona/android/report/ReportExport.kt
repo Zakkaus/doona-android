@@ -4,7 +4,7 @@ import dev.doona.android.data.settings.LogLevelController
 import dev.doona.android.engine.CoreDiagnostics
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
-import dev.doona.android.vpn.NativeApi
+import dev.doona.android.honk.NativeApi
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay

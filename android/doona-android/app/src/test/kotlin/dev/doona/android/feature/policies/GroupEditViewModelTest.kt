@@ -1,9 +1,9 @@
 package dev.doona.android.feature.policies
 
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.vpn.HonkFixtures
-import dev.doona.android.vpn.PolicyHonkFixtures
-import dev.doona.android.vpn.honk.HonkGroupPolicy
+import dev.doona.android.honk.HonkFixtures
+import dev.doona.android.honk.HonkGroupPolicy
+import dev.doona.android.honk.PolicyHonkFixtures
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher

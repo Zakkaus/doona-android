@@ -5,8 +5,8 @@ import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvMatchKind
 import dev.doona.android.feature.model.RvRuleEnd
 import dev.doona.android.feature.model.RvRuleMatch
-import dev.doona.android.vpn.HonkFixtures
-import dev.doona.android.vpn.PolicyHonkFixtures
+import dev.doona.android.honk.HonkFixtures
+import dev.doona.android.honk.PolicyHonkFixtures
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher

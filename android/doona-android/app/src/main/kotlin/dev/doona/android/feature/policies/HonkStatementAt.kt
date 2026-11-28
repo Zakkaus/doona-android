@@ -2,10 +2,10 @@ package dev.doona.android.feature.policies
 
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.vpn.honk.HonkConfig
-import dev.doona.android.vpn.honk.HonkSource
-import dev.doona.android.vpn.honk.HonkSourceAt
-import dev.doona.android.vpn.honk.daeCode
+import dev.doona.android.honk.HonkConfig
+import dev.doona.android.honk.HonkSource
+import dev.doona.android.honk.HonkSourceAt
+import dev.doona.android.honk.daeCode
 
 /**
  * A statement honk reports (a routing or DNS rule) on its line of its file: the edits the rule pages write, each the

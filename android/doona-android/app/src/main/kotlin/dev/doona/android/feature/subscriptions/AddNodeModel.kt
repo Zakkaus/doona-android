@@ -4,11 +4,11 @@ import androidx.compose.runtime.Immutable
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.isInline
-import dev.doona.android.vpn.honk.Group
-import dev.doona.android.vpn.honk.HonkSource
-import dev.doona.android.vpn.honk.Node
-import dev.doona.android.vpn.honk.Provider
-import dev.doona.android.vpn.honk.daeGroup
+import dev.doona.android.honk.Group
+import dev.doona.android.honk.HonkSource
+import dev.doona.android.honk.Node
+import dev.doona.android.honk.Provider
+import dev.doona.android.honk.daeGroup
 import java.net.URLDecoder
 
 /**

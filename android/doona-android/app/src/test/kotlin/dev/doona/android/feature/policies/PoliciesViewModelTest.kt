@@ -9,9 +9,9 @@ import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvRuleSource
-import dev.doona.android.vpn.FakeHonk
-import dev.doona.android.vpn.HonkFixtures
-import dev.doona.android.vpn.PolicyHonkFixtures
+import dev.doona.android.honk.FakeHonk
+import dev.doona.android.honk.HonkFixtures
+import dev.doona.android.honk.PolicyHonkFixtures
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope

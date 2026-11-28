@@ -20,6 +20,8 @@ import dev.doona.android.feature.localnetwork.LocalNetworkAccess
 import dev.doona.android.feature.localnetwork.LocalNetworkEngine
 import dev.doona.android.feature.settings.SettingsStore
 import dev.doona.android.feature.subscriptions.SubscriptionImports
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeSettings
 import dev.doona.android.report.AppInfo
 import dev.doona.android.report.AppReportExporter
 import dev.doona.android.report.CrashFiles
@@ -30,8 +32,6 @@ import dev.doona.android.report.ReportExport
 import dev.doona.android.report.ReportExporter
 import dev.doona.android.report.connectionOwnerUid
 import dev.doona.android.report.reportDir
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.NativeSettings
 import dev.doona.android.vpn.QuickTile
 import dev.doona.android.vpn.VpnLog
 import dev.doona.android.work.ForegroundRefresh

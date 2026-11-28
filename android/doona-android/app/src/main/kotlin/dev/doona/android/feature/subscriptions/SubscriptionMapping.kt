@@ -5,7 +5,7 @@ import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.feature.model.RvSubFormat
 import dev.doona.android.feature.model.RvSubscription
-import dev.doona.android.vpn.honk.Provider
+import dev.doona.android.honk.Provider
 import java.net.URI
 import java.time.OffsetDateTime
 

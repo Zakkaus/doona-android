@@ -7,9 +7,9 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.feature.model.NodePlaces
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.honk.NativeCatalog
-import dev.doona.android.vpn.honk.NativeConnections
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeCatalog
+import dev.doona.android.honk.NativeConnections
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

@@ -44,9 +44,9 @@ import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.localnetwork.LocalNetworkAccess
 import dev.doona.android.feature.onboarding.FirstRunGate
 import dev.doona.android.feature.onboarding.FirstRunViewModel
-import dev.doona.android.vpn.FakeHonk
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.NativeResponse
+import dev.doona.android.honk.FakeHonk
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeResponse
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -14,9 +14,9 @@ import dev.doona.android.feature.policies.dnsShown
 import dev.doona.android.feature.policies.fallbackUpstream
 import dev.doona.android.feature.policies.honkUpstreams
 import dev.doona.android.feature.policies.upstreamReaddressed
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.honk.NativeConfig
-import dev.doona.android.vpn.honk.NativeRouting
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeConfig
+import dev.doona.android.honk.NativeRouting
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers

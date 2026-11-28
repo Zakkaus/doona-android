@@ -5,9 +5,9 @@ import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.SubscriptionFetch
 import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.feature.model.RvSubFormat
-import dev.doona.android.vpn.HonkFixtures
-import dev.doona.android.vpn.honk.ProviderList
-import dev.doona.android.vpn.nativeJson
+import dev.doona.android.honk.HonkFixtures
+import dev.doona.android.honk.ProviderList
+import dev.doona.android.honk.nativeJson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch

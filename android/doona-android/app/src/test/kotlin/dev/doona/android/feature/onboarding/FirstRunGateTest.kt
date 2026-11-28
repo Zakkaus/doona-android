@@ -4,7 +4,7 @@ import dev.doona.android.engine.FailureReason
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.subscriptions.ImportState
-import dev.doona.android.vpn.FakeHonk
+import dev.doona.android.honk.FakeHonk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow

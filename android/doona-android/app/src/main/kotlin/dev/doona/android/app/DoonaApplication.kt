@@ -5,10 +5,10 @@ import androidx.work.Configuration
 import dev.doona.android.data.apps.PackageInstalledApps
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.InstalledApps
+import dev.doona.android.honk.NativeApi
 import dev.doona.android.report.AppEvents
 import dev.doona.android.report.AppInfo
 import dev.doona.android.report.CrashCapture
-import dev.doona.android.vpn.NativeApi
 import dev.doona.android.vpn.NativeCore
 import dev.doona.android.vpn.ServiceEngine
 import java.io.File

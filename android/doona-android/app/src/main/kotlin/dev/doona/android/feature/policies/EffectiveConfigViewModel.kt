@@ -17,11 +17,11 @@ import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.feature.model.rvTemplate
 import dev.doona.android.feature.subscriptions.rvSubscription
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.honk.HonkConfig
-import dev.doona.android.vpn.honk.HonkDnsRules
-import dev.doona.android.vpn.honk.NativeConfig
-import dev.doona.android.vpn.honk.NativeRouting
+import dev.doona.android.honk.HonkConfig
+import dev.doona.android.honk.HonkDnsRules
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeConfig
+import dev.doona.android.honk.NativeRouting
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers

@@ -5,11 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.errorCode
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.honk.NativeCatalog
-import dev.doona.android.vpn.honk.Provider
-import dev.doona.android.vpn.honk.ProviderKind
-import dev.doona.android.vpn.honk.errorCode
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeCatalog
+import dev.doona.android.honk.Provider
+import dev.doona.android.honk.ProviderKind
+import dev.doona.android.honk.errorCode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers

@@ -1,7 +1,7 @@
 package dev.doona.android.feature.traffic
 
-import dev.doona.android.vpn.honk.RuntimeTraffic
-import dev.doona.android.vpn.honk.TrafficHistory
+import dev.doona.android.honk.RuntimeTraffic
+import dev.doona.android.honk.TrafficHistory
 
 /** One load of honk's traffic now and of the samples it keeps; each null when its read failed. */
 internal class TrafficRead(val traffic: RuntimeTraffic?, val history: TrafficHistory?)

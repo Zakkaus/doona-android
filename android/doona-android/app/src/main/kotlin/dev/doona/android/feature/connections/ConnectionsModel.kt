@@ -10,9 +10,9 @@ import dev.doona.android.feature.model.protocolName
 import dev.doona.android.feature.policies.ruleCondition
 import dev.doona.android.feature.policies.rvGroupKind
 import dev.doona.android.feature.policies.rvRuleMatch
-import dev.doona.android.vpn.honk.Group
-import dev.doona.android.vpn.honk.HonkConnection
-import dev.doona.android.vpn.honk.Node
+import dev.doona.android.honk.Group
+import dev.doona.android.honk.HonkConnection
+import dev.doona.android.honk.Node
 
 /**
  * A connection as 連線 shows it: where it went ([host], the domain, or the address when honk had none: [hasDomain]

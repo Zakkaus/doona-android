@@ -1,10 +1,10 @@
 package dev.doona.android.feature.policies
 
-import dev.doona.android.vpn.honk.HonkConfig
-import dev.doona.android.vpn.honk.HonkDnsRules
-import dev.doona.android.vpn.honk.HonkSource
-import dev.doona.android.vpn.honk.daeBlock
-import dev.doona.android.vpn.honk.daeCode
+import dev.doona.android.honk.HonkConfig
+import dev.doona.android.honk.HonkDnsRules
+import dev.doona.android.honk.HonkSource
+import dev.doona.android.honk.daeBlock
+import dev.doona.android.honk.daeCode
 import java.net.URI
 
 /**

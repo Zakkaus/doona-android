@@ -1,5 +1,6 @@
 package dev.doona.android.vpn
 
+import dev.doona.android.honk.NativeResponse
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

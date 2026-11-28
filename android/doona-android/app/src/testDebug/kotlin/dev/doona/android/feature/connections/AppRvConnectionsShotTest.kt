@@ -4,13 +4,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import dev.doona.android.feature.model.CoreNodePlaces
+import dev.doona.android.honk.HonkFixtures
 import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.data.RV_NOW
 import dev.doona.android.prototype.rv.rvShot
-import dev.doona.android.vpn.HonkFixtures
 import kotlinx.coroutines.Dispatchers
 import org.junit.Rule
 import org.junit.Test

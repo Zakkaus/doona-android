@@ -5,13 +5,13 @@ import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.feature.model.RvTemplate
 import dev.doona.android.feature.model.rvTemplate
-import dev.doona.android.vpn.honk.HonkConfig
-import dev.doona.android.vpn.honk.HonkDnsRules
-import dev.doona.android.vpn.honk.HonkSource
-import dev.doona.android.vpn.honk.daeBlock
-import dev.doona.android.vpn.honk.daeChildren
-import dev.doona.android.vpn.honk.daeCode
-import dev.doona.android.vpn.honk.daeEntries
+import dev.doona.android.honk.HonkConfig
+import dev.doona.android.honk.HonkDnsRules
+import dev.doona.android.honk.HonkSource
+import dev.doona.android.honk.daeBlock
+import dev.doona.android.honk.daeChildren
+import dev.doona.android.honk.daeCode
+import dev.doona.android.honk.daeEntries
 
 /**
  * doona's starting configurations: ordinary honk files, whose routing and groups 套用 writes

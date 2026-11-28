@@ -11,6 +11,8 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.designsystem.rv.RvPullMotion
 import dev.doona.android.designsystem.rv.rememberRvPullState
 import dev.doona.android.feature.model.CoreNodePlaces
+import dev.doona.android.honk.FakeHonk
+import dev.doona.android.honk.HonkFixtures
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
@@ -20,8 +22,6 @@ import dev.doona.android.prototype.rv.rvAnimatorScale
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvRowRules
 import dev.doona.android.testing.drawFully
-import dev.doona.android.vpn.FakeHonk
-import dev.doona.android.vpn.HonkFixtures
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.Json

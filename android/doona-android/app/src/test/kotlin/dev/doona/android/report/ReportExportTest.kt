@@ -6,7 +6,7 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.LogLevel
 import dev.doona.android.feature.settings.RvLogLevel
-import dev.doona.android.vpn.HonkFixtures
+import dev.doona.android.honk.HonkFixtures
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi

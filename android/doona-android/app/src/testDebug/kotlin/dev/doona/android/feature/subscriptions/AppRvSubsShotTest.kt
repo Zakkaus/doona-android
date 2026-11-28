@@ -33,6 +33,8 @@ import dev.doona.android.feature.localnetwork.LocalNetworkPrompts
 import dev.doona.android.feature.onboarding.FirstRunGate
 import dev.doona.android.feature.onboarding.FirstRunViewModel
 import dev.doona.android.feature.reasonRes
+import dev.doona.android.honk.FakeHonk
+import dev.doona.android.honk.HonkFixtures
 import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
@@ -41,8 +43,6 @@ import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.gallery.RV_SAMPLE_LINK
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.subs.RV_LAN_LINK
-import dev.doona.android.vpn.FakeHonk
-import dev.doona.android.vpn.HonkFixtures
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow

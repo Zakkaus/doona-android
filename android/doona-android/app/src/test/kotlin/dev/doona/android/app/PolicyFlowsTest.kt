@@ -23,10 +23,10 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeInstalledApps
+import dev.doona.android.honk.ActivityHonkFixtures.empty
+import dev.doona.android.honk.FakeHonk
+import dev.doona.android.honk.HonkFixtures
 import dev.doona.android.testing.SeedTheme
-import dev.doona.android.vpn.ActivityHonkFixtures.empty
-import dev.doona.android.vpn.FakeHonk
-import dev.doona.android.vpn.HonkFixtures
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Rule

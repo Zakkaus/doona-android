@@ -16,8 +16,8 @@ import dev.doona.android.feature.model.RvGeoUpdate
 import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.model.RvPerApp
 import dev.doona.android.feature.model.RvSettingsState
-import dev.doona.android.vpn.NativeSettings
-import dev.doona.android.vpn.SettingsHonk
+import dev.doona.android.honk.NativeSettings
+import dev.doona.android.honk.SettingsHonk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

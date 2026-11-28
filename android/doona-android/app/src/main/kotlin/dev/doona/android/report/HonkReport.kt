@@ -1,14 +1,14 @@
 package dev.doona.android.report
 
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.expect
-import dev.doona.android.vpn.honk.Group
-import dev.doona.android.vpn.honk.HealthState
-import dev.doona.android.vpn.honk.MemberKind
-import dev.doona.android.vpn.honk.NativeCatalog
-import dev.doona.android.vpn.honk.Node
-import dev.doona.android.vpn.honk.Provider
-import dev.doona.android.vpn.honk.Transport
+import dev.doona.android.honk.Group
+import dev.doona.android.honk.HealthState
+import dev.doona.android.honk.MemberKind
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeCatalog
+import dev.doona.android.honk.Node
+import dev.doona.android.honk.Provider
+import dev.doona.android.honk.Transport
+import dev.doona.android.honk.expect
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull

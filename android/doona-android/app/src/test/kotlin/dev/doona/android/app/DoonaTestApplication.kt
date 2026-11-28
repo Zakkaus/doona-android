@@ -1,9 +1,9 @@
 package dev.doona.android.app
 
 import androidx.work.Configuration
-import dev.doona.android.vpn.HonkFixtures
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.PolicyHonkFixtures
+import dev.doona.android.honk.HonkFixtures
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.PolicyHonkFixtures
 
 /**
  * The app as JVM tests run it (robolectric.properties makes it the default). WorkManager keeps one instance per sandbox,

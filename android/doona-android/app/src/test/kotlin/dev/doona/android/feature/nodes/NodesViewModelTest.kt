@@ -5,9 +5,9 @@ import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.feature.model.NodePlace
 import dev.doona.android.feature.model.NodePlaces
-import dev.doona.android.vpn.FakeHonk
-import dev.doona.android.vpn.HonkFixtures
-import dev.doona.android.vpn.honk.SelectionNetwork
+import dev.doona.android.honk.FakeHonk
+import dev.doona.android.honk.HonkFixtures
+import dev.doona.android.honk.SelectionNetwork
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch

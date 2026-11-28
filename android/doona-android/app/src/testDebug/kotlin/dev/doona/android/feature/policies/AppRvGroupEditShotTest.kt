@@ -12,12 +12,12 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.R
+import dev.doona.android.honk.HonkFixtures
+import dev.doona.android.honk.PolicyHonkFixtures
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvRowRules
 import dev.doona.android.testing.drawFully
-import dev.doona.android.vpn.HonkFixtures
-import dev.doona.android.vpn.PolicyHonkFixtures
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
 import org.junit.Rule

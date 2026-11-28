@@ -1,13 +1,13 @@
 package dev.doona.android.feature.policies
 
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.vpn.HonkFixtures
-import dev.doona.android.vpn.honk.HonkConfig
-import dev.doona.android.vpn.honk.HonkRules
-import dev.doona.android.vpn.honk.HonkTrace
-import dev.doona.android.vpn.honk.HonkTraceInput
-import dev.doona.android.vpn.honk.Transport
-import dev.doona.android.vpn.nativeJson
+import dev.doona.android.honk.HonkConfig
+import dev.doona.android.honk.HonkFixtures
+import dev.doona.android.honk.HonkRules
+import dev.doona.android.honk.HonkTrace
+import dev.doona.android.honk.HonkTraceInput
+import dev.doona.android.honk.Transport
+import dev.doona.android.honk.nativeJson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher

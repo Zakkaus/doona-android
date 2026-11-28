@@ -10,6 +10,8 @@ import androidx.compose.ui.test.performClick
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.R
+import dev.doona.android.honk.NativeRuntime
+import dev.doona.android.honk.sampleHonk
 import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS115
 import dev.doona.android.prototype.rv.RV_FS200
@@ -23,8 +25,6 @@ import dev.doona.android.prototype.rv.rvSampleActivity
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.rvText
 import dev.doona.android.testing.drawFully
-import dev.doona.android.vpn.honk.NativeRuntime
-import dev.doona.android.vpn.sampleHonk
 import kotlinx.coroutines.Dispatchers
 import org.junit.Rule
 import org.junit.Test

@@ -9,9 +9,9 @@ import dev.doona.android.feature.model.RvDay
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.rvNode
 import dev.doona.android.feature.subscriptions.rvSubscription
-import dev.doona.android.vpn.honk.NodeList
-import dev.doona.android.vpn.honk.ProviderList
-import dev.doona.android.vpn.nativeJson
+import dev.doona.android.honk.NodeList
+import dev.doona.android.honk.ProviderList
+import dev.doona.android.honk.nativeJson
 import kotlin.math.sin
 
 /**

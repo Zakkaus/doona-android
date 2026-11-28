@@ -29,7 +29,7 @@ import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.ExportKind
 import dev.doona.android.feature.messageRes
 import dev.doona.android.feature.settings.changeBanner
-import dev.doona.android.vpn.NativeApi
+import dev.doona.android.honk.NativeApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

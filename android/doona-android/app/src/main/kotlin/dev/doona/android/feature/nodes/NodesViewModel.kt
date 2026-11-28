@@ -8,11 +8,11 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.feature.model.NodePlaces
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.honk.NativeCatalog
-import dev.doona.android.vpn.honk.NativeProbes
-import dev.doona.android.vpn.honk.NativeRouting
-import dev.doona.android.vpn.honk.SelectionNetwork
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeCatalog
+import dev.doona.android.honk.NativeProbes
+import dev.doona.android.honk.NativeRouting
+import dev.doona.android.honk.SelectionNetwork
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers

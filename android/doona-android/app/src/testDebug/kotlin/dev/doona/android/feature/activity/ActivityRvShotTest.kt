@@ -11,6 +11,12 @@ import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.rvSampleEngine
+import dev.doona.android.honk.ActivityHonkFixtures
+import dev.doona.android.honk.ActivityHonkFixtures.allUnavailable
+import dev.doona.android.honk.ActivityHonkFixtures.empty
+import dev.doona.android.honk.ActivityHonkFixtures.idle
+import dev.doona.android.honk.ActivityHonkFixtures.refusingProbes
+import dev.doona.android.honk.FakeHonk
 import dev.doona.android.prototype.rv.RV_EN
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.RvActivityScreenSample
@@ -23,12 +29,6 @@ import dev.doona.android.prototype.rv.rvRowRules
 import dev.doona.android.prototype.rv.rvSampleActivity
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.testing.drawFully
-import dev.doona.android.vpn.ActivityHonkFixtures
-import dev.doona.android.vpn.ActivityHonkFixtures.allUnavailable
-import dev.doona.android.vpn.ActivityHonkFixtures.empty
-import dev.doona.android.vpn.ActivityHonkFixtures.idle
-import dev.doona.android.vpn.ActivityHonkFixtures.refusingProbes
-import dev.doona.android.vpn.FakeHonk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf

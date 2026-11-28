@@ -1,8 +1,8 @@
 package dev.doona.android.feature.traffic
 
-import dev.doona.android.vpn.HonkExamples
-import dev.doona.android.vpn.HonkFake
-import dev.doona.android.vpn.honk.NativeRuntime
+import dev.doona.android.honk.HonkExamples
+import dev.doona.android.honk.HonkFake
+import dev.doona.android.honk.NativeRuntime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch

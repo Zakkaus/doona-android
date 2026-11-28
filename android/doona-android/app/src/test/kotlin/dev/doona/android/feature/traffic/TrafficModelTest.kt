@@ -1,7 +1,7 @@
 package dev.doona.android.feature.traffic
 
-import dev.doona.android.vpn.honk.RuntimeTraffic
-import dev.doona.android.vpn.honk.TrafficHistory
+import dev.doona.android.honk.RuntimeTraffic
+import dev.doona.android.honk.TrafficHistory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame

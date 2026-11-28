@@ -2,8 +2,8 @@ package dev.doona.android.feature.policies
 
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.nodes.ui.RvApplyTo
-import dev.doona.android.vpn.NativeApi
-import dev.doona.android.vpn.NativeResponse
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
