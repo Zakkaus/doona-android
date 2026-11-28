@@ -507,9 +507,10 @@ class PerAppViewModelTest {
     }
 
     @Test
-    fun `a save in progress takes no second save and keeps an edit made meanwhile`() = runTest {
+    fun `a save in progress takes no second save and keeps a return to the old selection`() = runTest {
         val release = CompletableDeferred<Unit>()
         val fake = FakeEngine()
+        fake.setPerApp(PerApp(AppPolicy.OnlyListed, setOf(chrome)))
         var calls = 0
         val engine = object : Engine by fake {
             override suspend fun setPerApp(perApp: PerApp): Result<Unit> {
@@ -519,21 +520,20 @@ class PerAppViewModelTest {
             }
         }
         val vm = collected(engine)
-        vm.onAction(PerAppAction.SetPolicy(RvAppPolicy.Only))
-        vm.onAction(PerAppAction.Toggle(chrome, true))
+        vm.onAction(PerAppAction.Toggle(telegram, true))
         vm.onAction(PerAppAction.Save)
         assertEquals(RvSave.Saving, vm.state.save)
         assertFalse(vm.state.canSave)
 
         vm.onAction(PerAppAction.Save)
-        vm.onAction(PerAppAction.Toggle(telegram, true))
+        vm.onAction(PerAppAction.Toggle(telegram, false))
         release.complete(Unit)
 
         assertEquals("the second save did not reach the engine", 1, calls)
-        assertEquals(PerApp(AppPolicy.OnlyListed, setOf(chrome)), engine.settings.value.perApp)
+        assertEquals(PerApp(AppPolicy.OnlyListed, setOf(chrome, telegram)), engine.settings.value.perApp)
         val state = vm.state
         assertEquals(RvSave.Idle, state.save)
-        assertEquals("the edit made during the save stays", setOf(chrome, telegram), state.checked)
+        assertEquals("the edit made during the save stays", setOf(chrome), state.checked)
         assertTrue(state.canSave)
     }
 

@@ -74,6 +74,7 @@ class StatsViewModelTest {
         honk.on("GET", "/api/v1/operations/op-01HZX4K8W9", OK, HonkFixtures.body("operations/probe-complete"))
         val probes = honk.posts(ActivityHonkFixtures.PROBES_PATH)
         vm.retry()
+        vm.testAll()
         // honk's operations are polled a second apart, one group after another.
         advanceTimeBy(8 * 1_000L + 1)
         assertNull(vm.failure.value)
@@ -88,6 +89,7 @@ class StatsViewModelTest {
         honk.on("GET", "/api/v1/operations/op-refresh", OK, HonkFixtures.body("operations/provider-refresh-s1"))
         honk.on("POST", "/api/v1/providers/s2/refresh", CONFLICT, HonkExamples.UNAVAILABLE)
         val vm = shown(honk)
+        vm.updateAll()
         vm.updateAll()
         advanceTimeBy(1_001)
         assertEquals(StatsFailure(StatsTool.UpdateAll, ErrorCode.Busy, "Lantern Net"), vm.failure.value)

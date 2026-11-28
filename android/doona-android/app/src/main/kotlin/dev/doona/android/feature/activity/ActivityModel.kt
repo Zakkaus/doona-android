@@ -10,7 +10,6 @@ import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RV_TESTS
-import dev.doona.android.feature.model.RvDay
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvSubscription
@@ -56,19 +55,18 @@ internal class HonkProfile(
 
 /**
  * The part of 活動 one catalog, usage read or clock step decides: the mode, the main node, the lists and the cards,
- * whether every node failed its test ([allFailed]) and whether a subscription exists. [mapped] is false only for the
- * stand-in before the first mapping, which the page shows as loading.
+ * whether every node failed its test ([allFailed]) and whether a subscription exists. [mapped] requires a profile.
  */
 internal class ActivityCatalog(
     val mode: RvRouteMode,
     val node: RvMainNode?,
     val nodes: List<RvNode>,
     val subscriptions: List<RvSubscription>,
-    val rules: List<RvActivityRule>,
+    val rules: List<RvActivityRule>?,
     val cards: RvActivityCards,
     val allFailed: Boolean,
     val hasSubscriptions: Boolean,
-    val mapped: Boolean = true,
+    val mapped: Boolean,
 )
 
 /**
@@ -113,9 +111,9 @@ internal fun activityCatalog(data: ActivityData, profileNodes: ActivityNodes): A
     val byId = profileNodes.byId
     val mainLeaf = main?.runtime?.selection?.tcp?.resolvedLeafNodeId?.let(byId::get)
     val cards = RvActivityCards(
-        today = rvDay(data.nowHour),
+        today = null, // honk-gap:daily-usage
         nowHour = data.nowHour,
-        yesterdayByNow = 0L,
+        yesterdayByNow = null,
         nowEpochMs = data.nowEpochMs,
         ruleCount = profile?.ruleCount ?: 0,
         mainNodeId = mainLeaf?.id.orEmpty(),
@@ -128,11 +126,12 @@ internal fun activityCatalog(data: ActivityData, profileNodes: ActivityNodes): A
         node = mainLeaf?.takeIf { mode != RvRouteMode.Direct }?.let { RvMainNode(it.id, it.name, probe, failed = it.history.isNotEmpty() && probe == null) },
         nodes = profileNodes.nodes,
         subscriptions = profile?.providers.orEmpty().map { rvSubscription(it, userAgent = null) },
-        rules = profile?.let { ruleRows(it, data.outbounds.orEmpty()) }.orEmpty(),
+        rules = profile?.let { data.outbounds?.let { usage -> ruleRows(it, usage) } },
         cards = cards,
         allFailed = profileNodes.allFailed,
         // Until the profile is read nothing says there is none: the page waits rather than showing the empty state.
         hasSubscriptions = profile?.let { it.providers.isNotEmpty() || it.nodes.isNotEmpty() } ?: true,
+        mapped = profile != null,
     )
 }
 
@@ -167,6 +166,7 @@ internal fun activityModel(
     ready: Boolean,
     failure: RvActivityFailure?,
     signals: ActivitySignals = ActivitySignals(),
+    readError: ErrorCode? = null,
 ): RvActivityUi {
     val loading = !ready || !catalog.mapped
     val state = RvActivityState(
@@ -184,9 +184,10 @@ internal fun activityModel(
         subscriptions = catalog.subscriptions,
         rules = catalog.rules,
         cards = catalog.cards,
-        notice = if (loading) null else activityNotice(catalog.hasSubscriptions, status, crashOffered, catalog.allFailed, signals),
+        notice = if (loading && status !is Status.Failed) null else activityNotice(catalog.hasSubscriptions, status, crashOffered, catalog.allFailed, signals),
         failure = failure,
-        loading = loading,
+        readError = readError,
+        loading = loading && readError == null,
         hasSubscriptions = catalog.hasSubscriptions,
     )
 }
@@ -236,8 +237,12 @@ private fun ruleRows(profile: HonkProfile, outbounds: List<OutboundTraffic>): Li
     return outbounds.sortedByDescending { it.up + it.down }.mapNotNull { outbound ->
         when {
             outbound.up + outbound.down == 0L || outbound.name == profile.mainGroup -> null
+
+            // honk-gap:rule-bytes
             outbound.kind == OutboundKind.Builtin -> if (outbound.name == DIRECT) RvActivityRule(null, null, null, null, null) else null
+
             outbound.kind == OutboundKind.Group -> groups[outbound.name]?.let(::groupRule)
+
             else -> null
         }
     }
@@ -259,18 +264,18 @@ internal data class RuleRowText(val title: String, val subtitle: String?)
 internal enum class RuleLead { Direct, GroupGlyph, Flag }
 
 /**
- * What leads a rule row that ends on [node] (TCP) and [udp] (its UDP node, when that is another one): 直連's arrow when
- * it ends on no node; the group's glyph when the two nodes are in different places, since no one flag stands for both;
- * else the node's flag.
+ * A group's glyph stands for unknown nodes or two different places; a single known leaf supplies the flag.
  */
-internal fun ruleLead(node: RvNode?, udp: RvNode?): RuleLead = when {
-    node == null -> RuleLead.Direct
-    udp != null && udp.place != node.place -> RuleLead.GroupGlyph
+internal fun ruleLead(groupId: String?, node: RvNode?, udp: RvNode?): RuleLead = when {
+    groupId == null -> RuleLead.Direct
+    node == null && udp == null -> RuleLead.GroupGlyph
+    node != null && udp != null && udp.place != node.place -> RuleLead.GroupGlyph
     else -> RuleLead.Flag
 }
 
 /** A group's row: its TCP node, and its UDP node when that is another one, as honk resolves each selection. */
 private fun groupRule(group: Group): RvActivityRule {
+    // honk-gap:rule-bytes
     val tcp = group.runtime.selection.tcp?.resolvedLeafNodeId
     val udp = group.runtime.selection.udp?.resolvedLeafNodeId
     return RvActivityRule(group.name, group.id, tcp, null, udp?.takeIf { it != tcp })
@@ -296,6 +301,7 @@ private fun rvNode(member: Member, info: NodeInfo?, subscriptions: Map<String, S
         subscription = member.subscriptionId?.let(subscriptions::get).orEmpty(),
         subscriptionId = member.subscriptionId.orEmpty(),
         history = history,
+        // honk-gap:node-share
         shareable = false,
     )
 }
@@ -310,12 +316,4 @@ private fun memberHistory(member: Member): List<Int?> = when {
     else -> emptyList()
 }
 
-/** Today by the hour up to the current one, [nowHour]'s: honk keeps no usage by the day, so every hour has no bytes. */
-private fun rvDay(nowHour: Float): RvDay {
-    val hours = (nowHour.toInt() + 1).coerceIn(1, HOURS)
-    return RvDay(List(hours) { 0L }, List(hours) { 0L }, null)
-}
-
 private const val DIRECT = "direct"
-
-private const val HOURS = 24

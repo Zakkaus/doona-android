@@ -55,8 +55,8 @@ internal fun RvStatsScreen(
     onBack: () -> Unit,
     onSubscription: (String?) -> Unit,
     onRange: (RvStatsRange) -> Unit,
-    onTestAll: () -> Unit,
-    onUpdateAll: () -> Unit,
+    onTestAll: (() -> Unit)?,
+    onUpdateAll: (() -> Unit)?,
     onExport: () -> Unit,
     banner: RvNotice? = null,
 ) {
@@ -104,21 +104,22 @@ private fun DayTiles(state: RvStatsState) {
     val locale = LocalConfiguration.current.locales[0]
     val format = rememberRvFormat()
     val period = state.period
-    val bytes = period?.days ?: state.today
+    val bytes = if (period != null) period.days else state.today
     val slots = period?.slots ?: HOURS
     val quiet = stringResource(state.range.quiet)
-    val flows = state.today.connections
+    val flows = state.today?.connections
     val count = flows?.sum()?.let { NumberFormat.getIntegerInstance(locale).format(it) }
     val tiles = listOf(
-        RvDayTile(stringResource(R.string.ui_download), format.bytes(bytes.downTotal).figure(), bytes.down, Rv.colors.down.line, slots = slots, quiet = quiet),
-        RvDayTile(stringResource(R.string.ui_upload), format.bytes(bytes.upTotal).figure(), bytes.up, Rv.colors.up.line, slots = slots, quiet = quiet),
+        // honk-gap:daily-usage
+        RvDayTile(stringResource(R.string.ui_download), bytes?.let { format.bytes(it.downTotal).figure() } ?: RvFigure(RV_NO_VALUE, ""), bytes?.down, Rv.colors.down.line, slots = slots, quiet = quiet),
+        RvDayTile(stringResource(R.string.ui_upload), bytes?.let { format.bytes(it.upTotal).figure() } ?: RvFigure(RV_NO_VALUE, ""), bytes?.up, Rv.colors.up.line, slots = slots, quiet = quiet),
         RvDayTile(
             stringResource(R.string.rv_stats_connections),
             RvFigure(count ?: RV_NO_VALUE, ""),
             flows?.map { it.toLong() },
             Rv.colors.textSecondary,
             quiet = stringResource(R.string.rv_stats_nothing_today),
-            tag = stringResource(R.string.rv_stats_today).takeIf { period != null && flows != null },
+            tag = stringResource(R.string.rv_stats_today).takeIf { period != null },
         ),
     )
     val pager = rememberPagerState { tiles.size }
@@ -153,7 +154,7 @@ private fun splitScope(state: RvStatsState): List<String> = listOfNotNull(
 
 /** The tools card's rows: test every node, refresh every subscription, export what a bug report needs. */
 @Composable
-private fun tools(state: RvStatsState, onTestAll: () -> Unit, onUpdateAll: () -> Unit, onExport: () -> Unit): List<RvStatsTool> {
+private fun tools(state: RvStatsState, onTestAll: (() -> Unit)?, onUpdateAll: (() -> Unit)?, onExport: () -> Unit): List<RvStatsTool> {
     val format = rememberRvFormat()
     val nodes = pluralStringResource(R.plurals.rv_stats_node_count, state.nodes.size, state.nodes.size)
     val subscriptions = pluralStringResource(R.plurals.rv_stats_subscriptions, state.subscriptions.size, state.subscriptions.size)

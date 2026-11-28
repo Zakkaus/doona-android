@@ -31,12 +31,13 @@ import dev.doona.android.feature.model.RvDay
  * second under the first where they do not fit on one line.
  */
 @Composable
-internal fun RvUsageLegend(day: RvDay, modifier: Modifier = Modifier) {
+internal fun RvUsageLegend(day: RvDay?, modifier: Modifier = Modifier) {
     val format = rememberRvFormat()
     val colors = Rv.colors
     FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(RvUsageSize.legendItemGap)) {
-        RvLegendItem(colors.down.line, "${stringResource(R.string.ui_download)} · ${format.bytes(day.downTotal)}")
-        RvLegendItem(colors.up.line, "${stringResource(R.string.ui_upload)} · ${format.bytes(day.upTotal)}")
+        // honk-gap:daily-usage
+        RvLegendItem(colors.down.line, "${stringResource(R.string.ui_download)} · ${day?.let { format.bytes(it.downTotal) } ?: RV_NO_VALUE}")
+        RvLegendItem(colors.up.line, "${stringResource(R.string.ui_upload)} · ${day?.let { format.bytes(it.upTotal) } ?: RV_NO_VALUE}")
     }
 }
 
@@ -63,13 +64,14 @@ internal fun RvLegendItem(color: Color, text: String, modifier: Modifier = Modif
  * [gridEvery], and [nowHour] is in days.
  */
 @Composable
-internal fun RvUsageChart(day: RvDay, nowHour: Float, modifier: Modifier, slots: Int = RvUsageSize.HOURS, gridEvery: Int = RvUsageSize.GRID_HOURS) {
+internal fun RvUsageChart(day: RvDay?, nowHour: Float, modifier: Modifier, slots: Int = RvUsageSize.HOURS, gridEvery: Int = RvUsageSize.GRID_HOURS) {
     val colors = Rv.colors
     Canvas(modifier) {
         // A day with no bytes yet keeps a top of one byte, so every step lies on the bottom rather than at 0 / 0.
-        val high = (day.total * RvUsageSize.HEADROOM).coerceAtLeast(1f)
+        val high = ((day?.total ?: 0L) * RvUsageSize.HEADROOM).coerceAtLeast(1f)
         val chart = StepChart(size.width, size.height, high, nowHour, slots)
         hourGrid(colors.grid, chart, gridEvery)
+        if (day == null) return@Canvas
         val downTop = chart.steps(day.down.runningSum())
         val totalTop = chart.steps(day.down.zip(day.up) { down, up -> down + up }.runningSum())
         drawPath(chart.band(totalTop, downTop), colors.up.band)

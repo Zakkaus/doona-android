@@ -20,7 +20,7 @@ class ConnectionsModelTest {
     private val groups = catalog.groups()
     private val nodes = catalog.nodes()
 
-    private fun map(connections: List<HonkConnection>) = rvConnections(connections, groups, nodes, CoreNodePlaces)
+    private fun map(connections: List<HonkConnection>) = connections.map(connectionMapper(groups, nodes, CoreNodePlaces))
 
     @Test
     fun aProxiedConnectionNamesItsGroupNodeAndRule() {
@@ -29,6 +29,7 @@ class ConnectionsModelTest {
         assertEquals("Chrome", chrome.title)
         assertEquals("gemini.google.com", chrome.host)
         assertEquals(443, chrome.port)
+        assertEquals("gemini.google.com:443", chrome.endpoint)
         assertEquals(RvConnectionGroup("AI", RvGroupKind.Select), chrome.group)
         assertEquals("Tokyo 02", chrome.node!!.name)
         assertEquals("Trojan", chrome.node!!.protocol)
@@ -63,6 +64,7 @@ class ConnectionsModelTest {
         assertEquals("91.108.56.130", shown.title)
         assertNull(shown.rule)
         assertNull(shown.ruleIndex)
+        assertEquals("[2001:db8::1]:443", map(listOf(connection("direct").copy(host = "2001:db8::1"))).single().endpoint)
     }
 
     private fun connection(outbound: String?) = HonkConnection(

@@ -73,22 +73,23 @@ internal fun RvTrafficScreen(state: RvTrafficState, onRange: (Int) -> Unit, onBa
         RvPageHeader(title, titleBlock, insets, control = { RvSegmented(options, if (upload) 1 else 0, onSelect = { upload = it == 1 }) })
         // The rate, its chart and the ranges are one block of the page's column, as 活動's pager is.
         Column(Modifier.testTag(RvPart.BLOCK)) {
+            val shown = scrub?.takeIf { it in values.indices }
+            val at = if (chart != null && shown != null) format.clock(chart.endEpochMs - (values.lastIndex - shown) * chart.stepMs) else null
+            val sample = shown?.let { values[it].toDouble() }?.takeIf { it.isFinite() }
+            val spoken = at?.let { stringResource(R.string.rv_a11y_stat_row, it, stringResource(direction(upload), sample?.let { v -> format.rate(v).toString() } ?: stringResource(R.string.rv_stats_no_data))) }
             Column(Modifier.padding(horizontal = RvSpace.gutter)) {
-                val shown = scrub?.takeIf { it in values.indices }
-                // A scrubbed point shows its rate and when it ended; lifting the finger brings back the live rate.
-                val at = if (chart != null && shown != null) format.clock(chart.endEpochMs - (values.lastIndex - shown) * chart.stepMs) else null
-                val rate = (shown?.let { values[it] } ?: live.toFloat()).toDouble()
                 // The live rate glides; a scrubbed second shows at once, as the finger moves.
                 val glided = rvGlidingRate(live.toDouble().takeIf { state.sampled }, key = upload)
-                Hero(if (at == null) glided else format.liveRate(rate), at, upload, format)
+                Hero(if (at == null) glided else sample?.let { format.liveRate(it) } ?: RvAmount(RV_NO_VALUE, ""), at, upload, format)
             }
             Spacer(Modifier.height(RvSpace.chartGap))
             RvDetailChart(
                 values,
                 if (upload) Rv.colors.up else Rv.colors.down,
                 rate,
-                scrub,
+                shown,
                 onScrub = { scrub = it },
+                modifier = if (spoken == null) Modifier else Modifier.semantics { contentDescription = spoken },
                 range = chart?.range ?: range,
                 empty = stringResource(R.string.rv_stats_no_data),
             )
@@ -129,7 +130,9 @@ private fun Ranges(selected: Int, onSelect: (Int) -> Unit) {
 private fun ConnectionCard(session: RvTrafficSession?, upload: Boolean, format: RvFormat) {
     RvCard {
         // The shown direction is picked in the header; a screen reader hears it with each of its figures (q-a11y-wording).
-        DirectedRow(R.string.rv_stat_peak, session?.let { format.rate(if (upload) it.peakUp else it.peakDown).toString() }, upload)
+        // honk-gap:traffic-1h
+        val peak = if (upload) session?.peakUp else session?.peakDown
+        DirectedRow(R.string.rv_stat_peak, peak?.let { format.rate(it).toString() }, upload)
         DirectedRow(R.string.rv_stat_average, session?.let { format.rate(if (upload) it.averageUp else it.averageDown).toString() }, upload)
         RvStatRow(stringResource(R.string.rv_downloaded), session?.let { format.bytes(it.downTotal).toString() } ?: RV_NO_VALUE)
         RvStatRow(stringResource(R.string.rv_uploaded), session?.let { format.bytes(it.upTotal).toString() } ?: RV_NO_VALUE)

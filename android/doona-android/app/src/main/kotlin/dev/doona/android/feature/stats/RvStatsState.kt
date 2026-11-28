@@ -11,8 +11,7 @@ import dev.doona.android.feature.model.RvSubscription
 
 /**
  * What the 統計 page shows, and where it comes from ([rvStatsState] maps honk's reads):
- * - [today]: by the hour up to the current one, with [RvDay.connections] the flows opened each hour. honk keeps no usage
- *   by the day (its traffic history spans ten minutes and its counters restart with it), so every hour is zero (q-usage).
+ * - [today]: hourly bytes and connections so far, or null when daily usage is unavailable.
  * - [yesterdaySoFar]: yesterday's bytes by the same time of day; null, since honk keeps none.
  * - [subscriptions]: the quota and expiry of honk's providers.
  * - [nodes] and [selectedId]: honk's nodes with their last probe, and the node the main group's TCP selection ends on.
@@ -30,7 +29,7 @@ import dev.doona.android.feature.model.RvSubscription
 @Immutable
 internal class RvStatsState(
     val range: RvStatsRange,
-    val today: RvDay,
+    val today: RvDay?,
     val yesterdaySoFar: Long?,
     val subscriptions: List<RvSubscription>,
     val nodes: List<RvNode>,
@@ -57,7 +56,7 @@ internal class RvStatsState(
  * do not reach back over the month before.
  */
 @Immutable
-internal class RvStatsPeriod(val days: RvDay, val slots: Int, val now: Float, val before: Long?)
+internal class RvStatsPeriod(val days: RvDay?, val slots: Int, val now: Float, val before: Long?)
 
 /**
  * The range chip's choices, with the line a range with no bytes shows and what its change compares with (none for a

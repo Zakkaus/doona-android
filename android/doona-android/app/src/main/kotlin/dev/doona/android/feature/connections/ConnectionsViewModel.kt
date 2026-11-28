@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.honk.NativeApi
@@ -12,7 +13,7 @@ import dev.doona.android.honk.NativeCatalog
 import dev.doona.android.honk.NativeConnections
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,29 +33,31 @@ class ConnectionsViewModel internal constructor(
     private val connections = NativeConnections(api)
     private val catalog = NativeCatalog(api)
     private val state = MutableStateFlow(RvConnectionsUi())
-    private var reading: Job? = null
 
     internal val ui: StateFlow<RvConnectionsUi> = state.asStateFlow()
 
-    fun load() {
-        reading?.cancel()
-        reading = viewModelScope.launch {
-            withContext(io) { runCatching { read() } }.onSuccess { state.value = it }
+    fun load(session: Long?, id: String? = null) = viewModelScope.launch {
+        if (state.value.session != session) state.value = RvConnectionsUi(session = session)
+        if (session == null) return@launch
+        val map by lazy(LazyThreadSafetyMode.NONE) { connectionMapper(catalog.groups(), catalog.nodes(), places) }
+        while (true) {
+            withContext(io) { runCatching { connections.list().map(map) } }
+                .onSuccess { rows ->
+                    if (id == null || rows.size < NativeConnections.LIMIT || rows.any { it.id == id } || !state.value.loaded) {
+                        state.value = RvConnectionsUi(rows, clock(), loaded = true, session = session)
+                    }
+                }
+                .onFailure { state.value = state.value.copy(error = it.errorCode()) }
+            if (id == null) return@launch
+            delay(MS_PER_SECOND)
         }
     }
 
-    /** Closes [id]; one already gone is gone all the same, so the list is read again either way. */
-    fun close(id: String) {
+    /** Leave the detail only after honk confirms the close. */
+    fun close(id: String, onClosed: () -> Unit) {
         viewModelScope.launch {
-            withContext(io) { runCatching { connections.close(id) } }
-            load()
+            withContext(io) { runCatching { connections.close(id) } }.onSuccess { onClosed() }
         }
-    }
-
-    /** Blocks. */
-    private fun read(): RvConnectionsUi {
-        val open = connections.list()
-        return RvConnectionsUi(rvConnections(open, catalog.groups(), catalog.nodes(), places), clock(), loaded = true)
     }
 
     companion object {

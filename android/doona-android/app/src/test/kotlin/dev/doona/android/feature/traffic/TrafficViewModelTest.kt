@@ -1,10 +1,12 @@
 package dev.doona.android.feature.traffic
 
+import dev.doona.android.engine.Status
 import dev.doona.android.honk.HonkExamples
 import dev.doona.android.honk.HonkFake
 import dev.doona.android.honk.NativeRuntime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -25,6 +27,7 @@ import java.time.Instant
 @OptIn(ExperimentalCoroutinesApi::class)
 class TrafficViewModelTest {
     private val honk = HonkFake()
+    private val status = MutableStateFlow<Status>(Status.Running(NOW - 5_000))
 
     @Before
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -33,7 +36,7 @@ class TrafficViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     private fun TestScope.shown(): TrafficViewModel {
-        val model = TrafficViewModel(NativeRuntime(honk), { NOW }, io = StandardTestDispatcher(testScheduler))
+        val model = TrafficViewModel(NativeRuntime(honk), { NOW }, status, io = StandardTestDispatcher(testScheduler))
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { model.ui.collect {} }
         runCurrent()
         return model
@@ -46,12 +49,12 @@ class TrafficViewModelTest {
         val state = shown().ui.value
         assertEquals(32_768L, state.downRate)
         assertEquals(4_096L, state.upRate)
-        assertEquals(listOf(16_384f, 0f, 32_768f), state.chart!!.down)
-        assertEquals(Instant.parse("2026-08-15T10:00:00Z").toEpochMilli(), state.chart!!.endEpochMs)
+        assertEquals(listOf(16_384f, Float.NaN, 32_768f), state.chart!!.down)
+        assertEquals(Instant.parse("2026-08-15T10:00:00Z").toEpochMilli(), state.chart.endEpochMs)
         val session = state.session!!
         assertEquals(987_654_321L, session.downTotal)
         assertEquals("since counter_since", (NOW - Instant.parse("2026-08-15T08:00:00Z").toEpochMilli()) / 1_000, session.seconds)
-        assertEquals(32_768.0, session.peakDown, 0.0)
+        assertEquals(32_768.0, session.peakDown)
     }
 
     @Test
@@ -86,6 +89,38 @@ class TrafficViewModelTest {
         advanceTimeBy(TrafficViewModel.TICK_MS)
         runCurrent()
         assertEquals(chart, model.ui.value.chart)
+    }
+
+    @Test
+    fun returningToTheSameTunnelKeepsItsChartWhenHistoryFails() = runTest {
+        honk.get(HonkExamples.HISTORY_PATH, HonkExamples.HISTORY)
+        val model = TrafficViewModel(NativeRuntime(honk), { NOW }, status, io = StandardTestDispatcher(testScheduler))
+        val collector = backgroundScope.launch { model.ui.collect {} }
+        runCurrent()
+        val chart = checkNotNull(model.ui.value.chart)
+        honk.on("GET", HonkExamples.HISTORY_PATH, 503, HonkExamples.UNAVAILABLE)
+        collector.cancel()
+        advanceTimeBy(6_000)
+        backgroundScope.launch { model.ui.collect {} }
+        runCurrent()
+        assertEquals(chart, model.ui.value.chart)
+    }
+
+    @Test
+    fun disconnectAndReconnectDoNotKeepThePreviousChart() = runTest {
+        honk.get(HonkExamples.RUNTIME_PATH, HonkExamples.RUNTIME)
+        honk.get(HonkExamples.HISTORY_PATH, HonkExamples.HISTORY)
+        honk.on("GET", HonkExamples.HISTORY_PATH, 503, HonkExamples.UNAVAILABLE)
+        val model = shown()
+        assertEquals(listOf(16_384f, Float.NaN, 32_768f), model.ui.value.chart?.down)
+
+        status.value = Status.Stopped
+        runCurrent()
+        assertNull(model.ui.value.chart)
+
+        status.value = Status.Running(NOW)
+        runCurrent()
+        assertNull(model.ui.value.chart)
     }
 
     @Test

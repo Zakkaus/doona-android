@@ -8,12 +8,9 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
-/**
- * One chip of [RvFilterChipRow]: its [label], and what a tap does. With [items] a tap opens that menu under the chip and
- * [onClick] is not used; with none it runs [onClick].
- */
+/** One chip of [RvFilterChipRow]. With no menu items, the chip is disabled. */
 @Immutable
-internal class RvChipPick(val label: String, val onClick: () -> Unit = {}, val items: List<RvMenuItem> = emptyList())
+internal class RvChipPick(val label: String, val items: List<RvMenuItem> = emptyList())
 
 /**
  * Analytics' two chips under a title or a search: the subscription at the start, the order at the end. The 節點 page and
@@ -30,5 +27,5 @@ internal fun RvFilterChipRow(start: RvChipPick, end: RvChipPick, modifier: Modif
 
 @Composable
 private fun Chip(pick: RvChipPick) {
-    RvMenuAnchor(pick.items) { open, actions -> RvFilterChip(pick.label, open ?: pick.onClick, actions) }
+    RvMenuAnchor(pick.items) { open, actions -> RvFilterChip(pick.label, open, actions) }
 }

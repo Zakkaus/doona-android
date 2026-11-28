@@ -144,14 +144,22 @@ internal object RvControlSize {
  * target expansion, which does not move the layout.
  */
 @Composable
-internal fun RvFilterChip(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun RvFilterChip(label: String, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
     val size = RvControlSize
+    val press = if (onClick != null) {
+        Modifier.rvPress(CircleShape, Role.Button, onClick)
+    } else {
+        Modifier.graphicsLayer { alpha = RvAlpha.DISABLED }.semantics(mergeDescendants = true) {
+            role = Role.Button
+            disabled()
+        }
+    }
     Row(
         modifier
             .heightIn(min = size.chip)
             .clip(CircleShape)
             .background(Rv.colors.segmentTrack)
-            .rvPress(CircleShape, Role.Button, onClick)
+            .then(press)
             .padding(start = size.chipStart, end = size.chipEnd, top = RvSpace.tight, bottom = RvSpace.tight),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(RvSpace.tight),

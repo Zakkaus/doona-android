@@ -26,14 +26,15 @@ fun StatsRoute(onBack: () -> Unit, onOpenReport: () -> Unit) {
 internal fun StatsRoute(viewModel: StatsViewModel, onBack: () -> Unit, onOpenReport: () -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val failure by viewModel.failure.collectAsStateWithLifecycle()
+    val running by viewModel.runningTools.collectAsStateWithLifecycle()
     RvStatsScreen(
         state,
         onBack = onBack,
         onSubscription = viewModel::pickSubscription,
         onRange = viewModel::pickRange,
-        onTestAll = viewModel::testAll,
-        onUpdateAll = viewModel::updateAll,
+        onTestAll = if (StatsTool.TestAll in running) null else viewModel::testAll,
+        onUpdateAll = if (StatsTool.UpdateAll in running) null else viewModel::updateAll,
         onExport = onOpenReport,
-        banner = failure?.let { rvStatsFailureBanner(it, viewModel::retry) },
+        banner = failure?.takeUnless { it.tool in running }?.let { rvStatsFailureBanner(it, viewModel::retry) },
     )
 }

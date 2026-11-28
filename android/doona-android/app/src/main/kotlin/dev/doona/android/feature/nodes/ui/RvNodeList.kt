@@ -148,7 +148,7 @@ private fun NodeRow(node: RvNode, current: Boolean, sort: RvNodeSort, onPick: (S
     val second: (@Composable () -> Unit)? = if (sort == RvNodeSort.Stability) {
         { RvText(steady, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End) }
     } else {
-        node.changeMs?.let { change -> { RvDelta(change) } }
+        { RvDelta(node.changeMs) }
     }
     RvRow(
         { RvNodeDisc(node, RvNodesSize.rowFlag, current = current) },

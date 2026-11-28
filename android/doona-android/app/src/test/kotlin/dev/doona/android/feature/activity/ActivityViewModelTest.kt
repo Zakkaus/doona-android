@@ -80,7 +80,7 @@ class ActivityViewModelTest {
         assertEquals(RvRouteMode.Rule, ui.state.mode)
         assertEquals("Hong Kong 02 IPLC", ui.state.node?.name)
         assertEquals(ui.state.node?.id, ui.cards.mainNodeId)
-        assertEquals(listOf("Streaming", null, "AI"), ui.rules.map { it.label })
+        assertEquals(listOf("Streaming", null, "AI"), ui.rules!!.map { it.label })
         assertEquals(2, ui.subscriptions.size)
         assertEquals(48, ui.nodes.size)
         assertEquals(12f, ui.cards.nowHour)
@@ -151,7 +151,7 @@ class ActivityViewModelTest {
         vm.load()
         advanceTimeBy(ActivityViewModel.USAGE_MS + 1)
         assertEquals(nodes, vm.ui.value.nodes)
-        assertEquals(listOf("Streaming", null, "AI"), vm.ui.value.rules.map { it.label })
+        assertEquals(listOf("Streaming", null, "AI"), vm.ui.value.rules!!.map { it.label })
     }
 
     @Test

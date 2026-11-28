@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,6 +21,7 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvBarChart
+import dev.doona.android.designsystem.rv.RvBusy
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
 import dev.doona.android.designsystem.rv.RvChevron
@@ -32,6 +34,7 @@ import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.designsystem.rv.RvRing
 import dev.doona.android.designsystem.rv.RvRingSegment
 import dev.doona.android.designsystem.rv.RvRow
+import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatsAlpha
 import dev.doona.android.designsystem.rv.RvStatsSize
@@ -59,18 +62,21 @@ import kotlin.math.abs
 internal fun RvSpentCard(state: RvStatsState) {
     val format = rememberRvFormat()
     val period = state.period
-    val day = period?.days ?: state.today
+    val day = if (period != null) period.days else state.today
     val scope = stringResource(R.string.rv_stats_all_subscriptions).takeIf { state.subscriptionId != null }
     RvCard(Modifier.height(RvStatsSize.spent)) {
         Row(Modifier.weight(1f)) {
             Column(Modifier.weight(1f - RvStatsSize.SPENT_CHART_SHARE)) {
                 RvCardHeader(stringResource(R.string.rv_stats_used), tag = scope)
                 Column(Modifier.padding(horizontal = RvSpace.rowPadding)) {
-                    RvStatsFigure(format.bytes(day.total).figure())
+                    // honk-gap:daily-usage
+                    RvStatsFigure(day?.let { format.bytes(it.total).figure() } ?: RvFigure(RV_NO_VALUE, ""))
                     Spacer(Modifier.height(RvSpace.tight))
                     val before = if (period != null) period.before else state.yesterdaySoFar
                     val against = state.range.against
                     when {
+                        day == null -> RvText(stringResource(R.string.rv_stats_no_data), Rv.type.tileCaption, color = Rv.colors.textSecondary)
+
                         day.quiet -> RvText(stringResource(state.range.quiet), Rv.type.tileCaption, color = Rv.colors.textSecondary)
 
                         before != null && before > 0 && against != null -> {
@@ -113,7 +119,7 @@ internal class RvDayTile(
  */
 @Composable
 internal fun RvDayTileCard(tile: RvDayTile, modifier: Modifier = Modifier) {
-    RvCard(modifier.aspectRatio(1f)) {
+    RvCard(modifier.aspectRatio(1f).testTag(tile.label)) {
         RvCardHeader(tile.label, tag = tile.tag)
         Column(Modifier.weight(1f).then(cardBody)) {
             RvStatsFigure(tile.figure, Rv.type.tileValue, Rv.type.tileUnit)
@@ -264,7 +270,7 @@ internal fun RvToolsCard(tools: List<RvStatsTool>) {
                 title = tool.title,
                 subtitle = tool.subtitle,
                 onClick = tool.onClick,
-                trailing = { RvChevron() },
+                trailing = { if (tool.onClick == null) RvBusy(Modifier.width(RvSize.busy)) else RvChevron() },
             )
         }
     }

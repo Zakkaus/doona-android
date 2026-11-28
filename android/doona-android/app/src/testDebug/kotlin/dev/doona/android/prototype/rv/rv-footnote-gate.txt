@@ -2,7 +2,7 @@
 # step that is not a footnote, one per line: path, the call's words (first 120 characters), why, tab-separated.
 # A footnote under a card is drawn only by RvFootnote; any other call found fails, and so does a line here that is gone.
 prototype/rv/connections/RvConnectionDetail.kt	RvText(host + PORT + connection.port, Rv.type.rowSub, color = secondary, align = TextAlign.Center, maxLines = Int.MAX_VA	the centred header's host and port, above the first card
-feature/connections/RvConnectionDetailScreen.kt	RvText(host + PORT + connection.port, Rv.type.rowSub, color = secondary, align = TextAlign.Center, maxLines = Int.MAX_VA	the centred header's host and port, above the first card
+feature/connections/RvConnectionDetailScreen.kt	RvText(endpoint, Rv.type.rowSub, color = secondary, align = TextAlign.Center, maxLines = Int.MAX_VALUE, keepWords = fals	the centred header's host and port, above the first card
 prototype/rv/connections/RvConnectionDetail.kt	RvText(stringResource(R.string.rv_conn_no_domain), Rv.type.rowSub, color = secondary, align = TextAlign.Center)	the centred header's no-domain line, above the first card
 feature/connections/RvConnectionDetailScreen.kt	RvText(stringResource(R.string.rv_conn_no_domain), Rv.type.rowSub, color = secondary, align = TextAlign.Center)	the centred header's no-domain line, above the first card
 prototype/rv/connections/RvConnectionsPage.kt	RvText(age, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a connection row's age at the row's end, inside the card

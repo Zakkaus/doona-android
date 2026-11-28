@@ -64,7 +64,7 @@ class RvDataTest {
         val day = RvData.today
         assertSumShown(listOf(day.downTotal, day.upTotal), day.total)
         // 活動's 今日用量 and 統計's 已用流量 read the same day.
-        assertEquals(day.total, rvStatsSample().today.total)
+        assertEquals(day.total, rvStatsSample().today?.total)
     }
 
     @Test

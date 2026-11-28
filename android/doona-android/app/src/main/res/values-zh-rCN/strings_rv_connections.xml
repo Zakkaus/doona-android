@@ -7,6 +7,7 @@
     </plurals>
     <string name="rv_conn_all_apps">全部应用</string>
     <string name="rv_conn_newest">最新优先</string>
+    <string name="rv_conn_oldest">最早优先</string>
     <string name="rv_conn_seconds">%1$d 秒</string>
     <string name="rv_conn_minutes">%1$d 分</string>
     <string name="rv_conn_path">路径</string>
@@ -18,6 +19,8 @@
     <plurals name="rv_conn_matches">
         <item quantity="other">%1$d 条连接匹配</item>
     </plurals>
+    <string name="rv_conn_empty_title">当前没有连接</string>
+    <string name="rv_conn_empty_line">新的连接会显示在这里。</string>
     <string name="rv_conn_none_title">没有匹配的连接</string>
     <string name="rv_conn_none_line">改用其他关键词，或清除搜索。</string>
     <string name="rv_conn_off_title">未连接</string>

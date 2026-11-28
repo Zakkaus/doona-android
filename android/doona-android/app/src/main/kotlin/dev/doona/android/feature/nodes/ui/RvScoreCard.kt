@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
@@ -63,6 +64,7 @@ internal fun RvScoreChoiceRow(pick: RvScorePick, members: List<RvNode>, line: St
 /** The state in words, then what it waits for when it waits. Null when nothing is chosen or under way ([RvScorePick.idle]). */
 @Composable
 internal fun RvScorePick.stateText(): String? {
+    if (settled == null) return RV_NO_VALUE // honk-gap:score-evidence
     if (idle) return null
     val word = stringResource(if (settled) R.string.rv_score_selected else R.string.rv_score_evaluating)
     val waiting = when (wait) {

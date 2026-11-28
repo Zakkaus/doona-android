@@ -34,15 +34,13 @@ class StatsMappingTest {
     ) = StatsInput(profile, SAMPLE_NOW, zone, range, subscriptionId, firstDay, outbounds)
 
     @Test
-    fun `the sample's providers, nodes and main node, over a day with no bytes`() {
+    fun `the sample's providers, nodes and main node, without daily data`() {
         val state = rvStatsState(input())
         assertEquals(listOf("Harbor Cloud", "Lantern Net"), state.subscriptions.map { it.name })
         assertTrue(state.subscriptions.all { it.totalBytes > 0 })
         assertEquals(48, state.nodes.size)
         assertEquals("n-0001938f00000000", state.selectedId)
-        // honk keeps no usage by the day: hours 0 to 10 so far, all zero, and nothing from yesterday; no outbounds read.
-        assertEquals(11, state.today.hours.size)
-        assertTrue(state.today.quiet)
+        assertNull(state.today)
         assertNull(state.yesterdaySoFar)
         assertNull(state.split)
         assertNull(state.score)
@@ -66,7 +64,6 @@ class StatsMappingTest {
     fun `the time of day is local, so a half-hour zone moves the running total's end`() {
         val state = rvStatsState(input(zone = ZoneId.of("Asia/Kolkata")))
         // 10:24 UTC is 15:54 in Kolkata (UTC+05:30): hour 15, 54 minutes in, not 24.
-        assertEquals(16, state.today.hours.size)
         assertEquals(15.9f, state.nowHour, 1e-4f)
     }
 
@@ -93,7 +90,7 @@ class StatsMappingTest {
         assertEquals("HK", group.name)
         assertEquals("n-0001938f00000000", group.tcp.selectedId)
         assertEquals("n-0001938e00000000", group.udp.selectedId)
-        assertTrue(group.tcp.settled)
+        assertNull(group.tcp.settled)
         assertEquals(6, group.tcp.candidates)
         assertEquals(48, group.members.size)
     }
@@ -102,7 +99,7 @@ class StatsMappingTest {
     fun `a week from Monday is a day each up to today, with nothing to compare`() {
         val period = rvStatsState(input(range = RvStatsRange.Week)).period!!
         assertEquals(DAYS_PER_WEEK, period.slots)
-        assertEquals(DAYS_PER_WEEK, period.days.hours.size)
+        assertNull(period.days)
         assertEquals(6 + DAY_GONE, period.now, 1e-4f)
         assertNull(period.before)
     }
@@ -110,7 +107,6 @@ class StatsMappingTest {
     @Test
     fun `a week from Sunday on a Sunday is today alone`() {
         val period = rvStatsState(input(range = RvStatsRange.Week, firstDay = DayOfWeek.SUNDAY)).period!!
-        assertEquals(1, period.days.hours.size)
         assertEquals(DAY_GONE, period.now, 1e-4f)
     }
 
@@ -118,7 +114,7 @@ class StatsMappingTest {
     fun `a month runs from the 1st over the month's days`() {
         val period = rvStatsState(input(range = RvStatsRange.Month)).period!!
         assertEquals(30, period.slots)
-        assertEquals(22, period.days.hours.size)
+        assertNull(period.days)
         assertNull(period.before)
     }
 

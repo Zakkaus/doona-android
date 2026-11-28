@@ -56,7 +56,7 @@ internal data class RvRuleDraft(val kind: RvMatchKind, val value: String, val ta
         get() = when {
             !needsValue -> null
             value.isBlank() -> if (kind == RvMatchKind.Cidr) R.string.rv_rule_edit_need_cidr else R.string.rv_rule_edit_need_domain
-            kind == RvMatchKind.Cidr && !CIDR.matches(value) -> R.string.rv_rule_edit_bad_cidr
+            kind == RvMatchKind.Cidr && !CIDR.matches(value) && !CIDR6.matches(value) -> R.string.rv_rule_edit_bad_cidr
             kind != RvMatchKind.Cidr && !DOMAIN.matches(value) -> R.string.rv_rule_edit_bad_domain
             else -> null
         }
@@ -95,6 +95,7 @@ private val NO_VALUE = setOf(RvMatchKind.GeoIpCn, RvMatchKind.Private)
 private val DOMAIN_KINDS = listOf(RvMatchKind.Full, RvMatchKind.Suffix, RvMatchKind.Keyword)
 private val ADDRESS_KINDS = listOf(RvMatchKind.Cidr, RvMatchKind.GeoIpCn, RvMatchKind.Private)
 private val CIDR = Regex("""(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d|[12]\d|3[0-2])""")
+private val CIDR6 = Regex("""[0-9A-Fa-f.]*:[0-9A-Fa-f:.]*/(\d|[1-9]\d|1[01]\d|12[0-8])""")
 private val DOMAIN = Regex("""[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*""")
 
 /**

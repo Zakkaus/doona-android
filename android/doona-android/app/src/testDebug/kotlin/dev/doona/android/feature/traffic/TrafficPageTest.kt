@@ -7,12 +7,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RV_CHART
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.RvFormat
 import dev.doona.android.designsystem.rv.RvTheme
@@ -70,6 +72,9 @@ class TrafficPageTest {
         // Point 49 of 60 ends ten seconds before the last: 10:23:50 UTC.
         assertTrue("its time", shows(format.clock(END - 10_000)))
         assertTrue("its rate", shows(format.liveRate(50_000.0).number))
+        val download = rvText(R.string.rv_a11y_download).format(format.rate(50_000.0).toString())
+        val selected = rvText(R.string.rv_a11y_stat_row).format(format.clock(END - 10_000), download)
+        compose.onNode(hasTestTag(RV_CHART) and hasContentDescription(selected), useUnmergedTree = true).assertExists()
         compose.onAllNodesWithText(rvText(R.string.rv_now), useUnmergedTree = true).assertCountIs(0, "not now")
     }
 
@@ -99,7 +104,7 @@ class TrafficPageTest {
         }
         val now = format.liveRate(4_000.0)
         assertEquals("the hero", "下載 $now", talkBack(view, hasContentDescription("下載 ${now.number}", substring = true)))
-        assertEquals("the peak row, its name kept", "峰值，下載 ${format.rate(9_100_000.0)}", talkBack(view, hasContentDescription(rvText(R.string.rv_stat_peak), substring = true)))
+        assertEquals("the peak row, its name kept", "${rvText(R.string.rv_stat_peak)}，下載 ${format.rate(9_100_000.0)}", talkBack(view, hasContentDescription(rvText(R.string.rv_stat_peak), substring = true)))
         compose.onNodeWithText(rvText(R.string.ui_upload)).performClick()
         assertEquals("the average row", "平均，上傳 ${format.rate(200.0)}", talkBack(view, hasContentDescription(rvText(R.string.rv_stat_average), substring = true)))
     }

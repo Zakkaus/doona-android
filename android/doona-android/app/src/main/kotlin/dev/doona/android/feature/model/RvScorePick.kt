@@ -14,7 +14,7 @@ import dev.doona.android.engine.ScoreNetwork
 internal data class RvScorePick(
     val selectedId: String?,
     val selectedName: String?,
-    val settled: Boolean,
+    val settled: Boolean?,
     val wait: RvScoreWait?,
     val compared: Int,
     val candidates: Int,

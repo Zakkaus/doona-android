@@ -2,16 +2,17 @@ package dev.doona.android.feature.connections
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -26,12 +27,14 @@ import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvAppDisc
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
+import dev.doona.android.designsystem.rv.RvChipPick
 import dev.doona.android.designsystem.rv.RvEmptyCaption
-import dev.doona.android.designsystem.rv.RvFilterChip
+import dev.doona.android.designsystem.rv.RvFilterChipRow
 import dev.doona.android.designsystem.rv.RvFloatingNav
 import dev.doona.android.designsystem.rv.RvGlass
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvLongPressTiming
+import dev.doona.android.designsystem.rv.RvMenuItem
 import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
@@ -43,10 +46,9 @@ import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.feature.model.RvRuleEnd
 
-/** Where the 連線 tab leads: a connection's page, the two filters, the search ([query] null ends it), and the other tabs. */
+/** Where the 連線 tab leads: a connection's page, the search ([query] null ends it), and the other tabs. */
 internal class RvConnectionsRoutes(
     val open: (String) -> Unit = {},
-    val filter: () -> Unit = {},
     val query: (String?) -> Unit = {},
     val tab: (Int) -> Unit = {},
 )
@@ -73,6 +75,7 @@ internal fun RvConnectionsPage(
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
     val hint = stringResource(R.string.rv_conn_search)
+    var order by rememberSaveable { mutableIntStateOf(R.string.rv_conn_newest) }
     val shown = if (query.isNullOrBlank()) connections else connections.filter { it.host.contains(query, ignoreCase = true) || it.app.contains(query, ignoreCase = true) }
     // The bar has no close: back ends a search.
     BackHandler(enabled = query != null) { routes.query(null) }
@@ -90,12 +93,17 @@ internal fun RvConnectionsPage(
     ) {
         when {
             !connected || !loaded -> RvTabHeader(insets)
-            query == null -> RvTabHeader(insets, caption = { Summary(connections) }, control = { Filters(routes.filter) })
+            query == null -> RvTabHeader(insets, caption = { Summary(connections) }, control = { Filters(order) { order = it } })
             else -> RvTabHeader(insets, caption = { RvCaption(pluralStringResource(R.plurals.rv_conn_matches, shown.size, shown.size)) })
         }
         when {
             !connected -> Disconnected()
-            loaded -> Connections(shown, routes, nowEpochMs)
+
+            loaded && connections.isEmpty() && query.isNullOrBlank() -> RvGutter {
+                RvEmptyCaption(stringResource(R.string.rv_conn_empty_title), stringResource(R.string.rv_conn_empty_line))
+            }
+
+            loaded -> Connections(if (order == R.string.rv_conn_oldest) shown.asReversed() else shown, routes, nowEpochMs)
         }
     }
 }
@@ -138,12 +146,12 @@ private fun Summary(connections: List<RvConnection>) {
 
 /** The app and order chips, the header's control row: one at each end of the gutter. */
 @Composable
-private fun Filters(onFilter: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        RvFilterChip(stringResource(R.string.rv_conn_all_apps), onFilter)
-        Spacer(Modifier.weight(1f))
-        RvFilterChip(stringResource(R.string.rv_conn_newest), onFilter)
+private fun Filters(order: Int, onOrder: (Int) -> Unit) {
+    val choices = listOf(R.string.rv_conn_newest, R.string.rv_conn_oldest).map { label ->
+        RvMenuItem(stringResource(label), R.drawable.rv_sym_schedule) { onOrder(label) }
     }
+    // honk-gap:conn-uid
+    RvFilterChipRow(RvChipPick(stringResource(R.string.rv_conn_all_apps)), RvChipPick(stringResource(order), items = choices))
 }
 
 /**
@@ -159,7 +167,7 @@ internal fun RvConnectionRow(connection: RvConnection, nowEpochMs: Long, onClick
     val age = rvAge((nowEpochMs - connection.startedAtEpochMs) / MS_PER_SECOND)
     RvRow(
         { RvAppDisc(connection.packageName) },
-        connection.host + PORT + connection.port,
+        connection.endpoint,
         listOfNotNull(connection.app.ifEmpty { null }, connection.targetName()).joinToString(SEPARATOR),
         onClick = onClick,
         onLongClick = onClick,
@@ -182,7 +190,6 @@ internal fun rvAge(seconds: Long): String = when {
     else -> stringResource(R.string.rv_duration, (seconds / SECONDS_PER_HOUR).toInt(), (seconds % SECONDS_PER_HOUR / SECONDS_PER_MINUTE).toInt())
 }
 
-internal const val PORT = ":"
 internal const val MS_PER_SECOND = 1_000L
 private const val SECONDS_PER_MINUTE = 60L
 private const val SECONDS_PER_HOUR = 3_600L

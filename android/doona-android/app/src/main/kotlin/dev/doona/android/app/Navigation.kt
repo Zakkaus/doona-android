@@ -65,9 +65,12 @@ data object MainNodeChoiceKey : AppKey
 @Serializable
 data object RulesKey : AppKey
 
-/** A rule's page, from 全部規則: honk's rule [ruleId], or a new rule (新增規則) when it is null. */
+/**
+ * A rule's page, from 全部規則: honk's rule [ruleId], or a new rule (新增規則) when it is null, its match filled with a
+ * connection's [destination] when it comes from that connection's page.
+ */
 @Serializable
-data class RuleEditKey(val ruleId: String?) : AppKey
+data class RuleEditKey(val ruleId: String?, val destination: String? = null) : AppKey
 
 @Serializable
 data object TemplateKey : AppKey

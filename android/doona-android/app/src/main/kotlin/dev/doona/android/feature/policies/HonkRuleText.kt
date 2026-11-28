@@ -69,7 +69,7 @@ internal fun formMatch(condition: String, domain: String = "domain", address: St
         address -> when {
             single.key == "geoip" && single.value.equals("cn", ignoreCase = true) -> RvMatchKind.GeoIpCn to ""
             single.key == "geoip" && single.value.equals(PRIVATE, ignoreCase = true) -> RvMatchKind.Private to ""
-            single.key == null && FORM_CIDR.matches(single.value) -> RvMatchKind.Cidr to single.value
+            single.key == null && RvRuleDraft(RvMatchKind.Cidr, single.value, DIRECT).problem == null -> RvMatchKind.Cidr to single.value
             else -> null
         }
 
@@ -142,7 +142,6 @@ private const val PRIVATE = "private"
 private const val QUOTES = "'\""
 private val MATCHER = Regex("""([a-z0-9_]+)\((.*)\)""", RegexOption.DOT_MATCHES_ALL)
 private val KEY = Regex("""^([a-z]+)\s*:""")
-private val FORM_CIDR = Regex("""\d{1,3}(\.\d{1,3}){3}/\d{1,2}""")
 private val KEYS = setOf("suffix", "keyword", "full", "regex", "geosite", "geoip")
 
 /** A bare `domain(...)` value is a suffix, as honk reads it. */

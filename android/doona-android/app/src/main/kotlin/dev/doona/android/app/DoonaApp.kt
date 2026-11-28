@@ -128,7 +128,8 @@ internal fun DoonaApp(
         RvNavHost(backStack, Modifier.fillMaxSize()) {
             entry<ActivityKey> {
                 // The RV page draws its own floating nav; the gate's welcome page takes the old tab frame.
-                val routes = remember(backStack, onSystemSettings) { activityRoutes(backStack, onSystemSettings) }
+                val releases = rememberOpenReleases()
+                val routes = remember(backStack, onSystemSettings, releases) { activityRoutes(backStack, onSystemSettings, releases) }
                 FirstRunGate(engine, imports, onAdd = { backStack.push(SubAddKey) }, frame = { OldTabFrame(Tab.Activity, onTab, onReselect, it) }) {
                     NodesPull(nodes, RvPullMotion.Sheet, rememberRvPullState(), onDetail = { backStack.push(NodeKey(it)) }, onAdd = { backStack.push(SubAddKey) }) { look ->
                         ActivityRoute(engine, crashOffer, network, refusals, onConnect, routes, look)
@@ -162,7 +163,7 @@ internal fun DoonaApp(
                     routes = RvRulesRoutes(effective = { backStack.push(EffectiveConfigKey) }),
                 )
             }
-            entry<RuleEditKey> { key -> RuleEditRoute(key.ruleId, onBack = { backStack.pop(key) }, onOpenSource = { backStack.push(ConfigSourceKey(it)) }) }
+            entry<RuleEditKey> { key -> RuleEditRoute(key.ruleId, onBack = { backStack.pop(key) }, onOpenSource = { backStack.push(ConfigSourceKey(it)) }, destination = key.destination) }
             entry<TemplateKey> { key -> TemplateRoute(onBack = { backStack.pop(key) }, onReview = { backStack.push(TemplateImpactKey(it)) }) }
             entry<ServiceRulesKey> { key -> ServiceRulesRoute(onBack = { backStack.pop(key) }) }
             entry<TemplateImpactKey> { key ->
@@ -203,7 +204,7 @@ internal fun DoonaApp(
                     onBack = { backStack.pop(key) },
                 )
             }
-            entry<TrafficKey> { key -> TrafficRoute(onBack = { backStack.pop(key) }) }
+            entry<TrafficKey> { key -> TrafficRoute(engine.status, onBack = { backStack.pop(key) }) }
             entry<NodesKey> { key ->
                 NodesRoute(
                     nodes,
@@ -218,10 +219,10 @@ internal fun DoonaApp(
                 NodeSearchRoute(nodes, onClose = { backStack.pop(key) }, onDetail = { backStack.push(NodeKey(it)) }, onAdd = { backStack.push(SubAddKey) })
             }
             entry<ConnectionsKey> {
-                ConnectionsRoute(connections(), connected = status is Status.Running, onOpen = { backStack.push(ConnectionKey(it)) }, onTab = onTab)
+                ConnectionsRoute(connections(), (status as? Status.Running)?.sinceEpochMs, onOpen = { backStack.push(ConnectionKey(it)) }, onTab = onTab)
             }
             entry<ConnectionKey> { key ->
-                ConnectionRoute(connections(), key.connectionId, onBack = { backStack.pop(key) }, onNewRule = { backStack.push(RulesKey) })
+                ConnectionRoute(connections(), key.connectionId, (status as? Status.Running)?.sinceEpochMs, onBack = { backStack.pop(key) }, onNewRule = { backStack.push(RuleEditKey(null, it)) })
             }
             entry<MainNodeChoiceKey> { key ->
                 MainNodeRoute(nodes, onBack = { backStack.pop(key) }, onSearch = { backStack.push(NodeSearchKey) }, onAdd = { backStack.push(SubAddKey) })
@@ -237,7 +238,7 @@ enum class SystemSettings { Vpn, Network, Notifications }
  * Where 活動 leads: the pages with an entry here, the 策略 tab for the mode, 設定 for 更多 and 檢查更新 (q-actmore), 回報問題
  * for the crash notice's 匯出報告, and the system's settings for the notices that need them.
  */
-private fun activityRoutes(backStack: MutableList<NavKey>, onSystemSettings: (SystemSettings) -> Unit) = ActivityRoutes(
+private fun activityRoutes(backStack: MutableList<NavKey>, onSystemSettings: (SystemSettings) -> Unit, openReleases: () -> Unit) = ActivityRoutes(
     traffic = { backStack.push(TrafficKey) },
     stats = { backStack.push(StatsKey) },
     search = { backStack.push(NodeSearchKey) },
@@ -251,7 +252,7 @@ private fun activityRoutes(backStack: MutableList<NavKey>, onSystemSettings: (Sy
     more = { backStack.selectTab(Tab.Settings) },
     addSubscription = { backStack.push(SubAddKey) },
     perApp = { backStack.push(PerAppKey) },
-    checkUpdate = { backStack.selectTab(Tab.Settings) },
+    checkUpdate = openReleases,
     exportReport = { received ->
         backStack.push(ReportKey)
         received()

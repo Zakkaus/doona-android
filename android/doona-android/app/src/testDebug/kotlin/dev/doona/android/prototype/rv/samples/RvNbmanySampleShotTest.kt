@@ -86,7 +86,7 @@ class RvNbmanySampleShotTest {
     fun fiveSampleDark() = compose.rvShot("samples-nbmany-five-sample", dark = true, before = { assertWhole() }) { RvGroupSectionsPage(RvGroupSectionsSample.five.group, RvGroupSectionsSample.five.subscriptions) }
 
     @Test
-    @Config(qualifiers = "zh-rTW-w412dp-h3007dp-notnight-xhdpi")
+    @Config(qualifiers = "zh-rTW-w412dp-h3042dp-notnight-xhdpi")
     fun fiveSampleFs200() = compose.rvShot("samples-nbmany-five-sample", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { RvGroupSectionsPage(RvGroupSectionsSample.five.group, RvGroupSectionsSample.five.subscriptions) }
 
     @Test

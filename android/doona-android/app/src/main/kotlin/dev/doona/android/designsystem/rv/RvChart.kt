@@ -262,12 +262,12 @@ internal fun RvDetailChart(
         ticks.follow(i, values)
         onScrub(i)
     }
-    Box(modifier.fillMaxWidth().height(RvChartSize.detail + RvChartSize.pill + RvChartSize.pillClear)) {
-        Canvas(Modifier.matchParentSize().testTag(RV_CHART).scrubbing(values.size, follow)) {
+    Box(Modifier.fillMaxWidth().height(RvChartSize.detail + RvChartSize.pill + RvChartSize.pillClear)) {
+        Canvas(modifier.matchParentSize().testTag(RV_CHART).scrubbing(values.size, follow)) {
             hairlineGrid(colors.grid, RvChartSize.detail.toPx())
             val top = if (change.moving) change.top.value else axisTop(values)
             val fade = change.fade.value
-            change.before?.takeIf { fade < 1f }?.let { detailSeries(it, ink, top, AT_REST, 1f - fade, null) }
+            change.before?.takeIf { scrub == null && values.isNotEmpty() && fade < 1f }?.let { detailSeries(it, ink, top, AT_REST, 1f - fade, null) }
             detailSeries(values, ink, top, glide, fade, scrub)
         }
         if (empty != null && values.count { !it.isNaN() } < 2) RvEmptyChartLine(empty, Modifier.fillMaxWidth().height(RvChartSize.detail))
@@ -314,8 +314,10 @@ private fun DrawScope.detailSeries(values: List<Float>, ink: DetailInk, top: Flo
         drawCircle(line.copy(alpha = RvAlpha.HALO), RvChartSize.liveHalo.toPx() / 2, it, alpha)
         drawCircle(line, RvChartSize.liveDot.toPx() / 2, it, alpha)
     }
-    val i = scrub?.takeIf { it in values.indices && !values[it].isNaN() }
-    if (i != null) return scrubMarker(Offset(right * i / (values.size - 1), scale.y(values[i])), line, ink.ring, plot)
+    if (scrub != null && scrub in values.indices) {
+        if (!values[scrub].isNaN()) scrubMarker(Offset(right * scrub / (values.size - 1), scale.y(values[scrub])), line, ink.ring, plot)
+        return
+    }
     val pills = PillPlacer(this, values, scale, right, live)
     pills.place(ink.measurer.measure(ink.label(peak), ink.pillStyle), scale.y(peak), end = true, ink.pill, alpha)
     pills.place(ink.measurer.measure(ink.label(known.min()), ink.pillStyle), scale.y(known.min()), end = true, ink.pill, alpha)
