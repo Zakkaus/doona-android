@@ -36,7 +36,7 @@ import kotlin.math.roundToInt
  * rest, so a page opens and renders as it always did; at animator scale 0 every change is immediate.
  */
 @Composable
-internal fun <T> RvItems(items: List<T>, key: (T) -> Any, gap: Dp = 0.dp, empty: (@Composable () -> Unit)? = null, content: @Composable (T) -> Unit) {
+internal fun <T> RvItems(items: List<T>, key: (T) -> Any, gap: Dp = 0.dp, empty: (@Composable () -> Unit)? = null, content: @Composable (T) -> Unit) { // literal: no gap unless asked
     val motion = Rv.motion
     val list = remember { RvItemList(items, key, empty != null) }
     // Rows come and go after the frame that saw the change, never while composing; a row's own data is the latest.

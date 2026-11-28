@@ -55,7 +55,7 @@ private const val SAMPLES = 60
 private const val HOURS = 14
 
 private const val PROVIDERS = """
-{"providers":[{"id":"s1","name":"Sample","kind":"subscription","url_redacted":null,"node_count":3,
+{"providers":[{"id":"s1","name":"Preview","kind":"subscription","url_redacted":null,"node_count":3,
 "updated_at":"2026-11-22T09:00:00Z","expires_at":null,"traffic":null,"status":"ok","last_error":null}],"next_cursor":null}
 """
 

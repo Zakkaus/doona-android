@@ -20,7 +20,7 @@ import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPrimaryButton
-import dev.doona.android.designsystem.rv.RvRadio
+import dev.doona.android.designsystem.rv.RvRadioRow
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSectionTitle
@@ -125,7 +125,7 @@ internal fun RvGroupOptionPage(
                         )
                         onBack()
                     }
-                    RvRow({ ChoiceMark(value, members) }, label, null, Modifier.rvRowSelect(value == chosen, pick), titleKeepWords = false) { RvRadio(value == chosen) }
+                    RvRadioRow({ ChoiceMark(value, members) }, label, value == chosen, titleKeepWords = false, onSelect = pick)
                 }
             }
         }
@@ -137,7 +137,7 @@ internal fun RvGroupOptionPage(
 private fun PolicyCard(kind: String, onPolicy: (RvGroupPolicyKind) -> Unit) {
     RvCard {
         RvGroupPolicyKind.entries.forEach { p ->
-            RvRow({ RvIconDisc(p.glyph) }, stringResource(p.label), null, Modifier.rvRowSelect(p.kind == kind, { onPolicy(p) })) { RvRadio(p.kind == kind) }
+            RvRadioRow(p.glyph, stringResource(p.label), p.kind == kind) { onPolicy(p) }
         }
     }
 }

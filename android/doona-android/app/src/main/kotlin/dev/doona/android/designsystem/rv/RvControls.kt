@@ -549,7 +549,7 @@ internal fun RvSwitch(checked: Boolean, modifier: Modifier = Modifier) {
     val x by animateDpAsState(if (checked) off + size.switchTrackWidth - size.switchTrackHeight else off, Rv.motion.spatial(RvSpring.Fast), label = "thumb")
     val track by animateColorAsState(if (checked) colors.switchOnTrack else colors.control, Rv.motion.effects(RvSpring.Fast), label = "track")
     val thumb by animateColorAsState(if (checked) colors.switchOnThumb else colors.switchOffThumb, Rv.motion.effects(RvSpring.Fast), label = "thumb colour")
-    val rim = colors.switchOnRim?.let { on -> animateColorAsState(if (checked) on else on.copy(alpha = 0f), Rv.motion.effects(RvSpring.Fast), label = "rim").value }
+    val rim = colors.switchOnRim?.let { on -> animateColorAsState(if (checked) on else on.copy(alpha = 0f), Rv.motion.effects(RvSpring.Fast), label = "rim").value } // literal: the rim fades out to transparent
     Box(modifier.size(size.switchWidth - room, size.switchHeight).clearAndSetSemantics { testTag = RvRowPart.SWITCH }) {
         Box(
             Modifier
