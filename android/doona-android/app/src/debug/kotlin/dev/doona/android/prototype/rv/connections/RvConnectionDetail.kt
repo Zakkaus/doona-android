@@ -21,10 +21,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvAddRow
 import dev.doona.android.designsystem.rv.RvAppDisc
 import dev.doona.android.designsystem.rv.RvBarSpacer
 import dev.doona.android.designsystem.rv.RvCard
-import dev.doona.android.designsystem.rv.RvChevron
 import dev.doona.android.designsystem.rv.RvChrome
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvGutter
@@ -74,7 +74,7 @@ internal fun RvConnectionDetail(
         RvSectionTitle(stringResource(R.string.rv_conn_path), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {
             PathCard(connection)
-            RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_add) }, stringResource(R.string.rv_policy_new_rule), null, onClick = onNewRule) { RvChevron() } }
+            RvCard { RvAddRow(stringResource(R.string.rv_policy_new_rule), onNewRule) }
             RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_close, Rv.colors.error) }, stringResource(R.string.rv_conn_close), null, onClick = onClose) }
         }
     }

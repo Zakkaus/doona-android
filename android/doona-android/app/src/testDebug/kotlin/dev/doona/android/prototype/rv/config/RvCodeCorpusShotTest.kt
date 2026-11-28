@@ -7,6 +7,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.text.input.TextFieldValue
+import dev.doona.android.feature.config.RvConfigData
+import dev.doona.android.feature.config.RvConfigSourcePage
+import dev.doona.android.feature.config.RvSourceDraft
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.rvShot

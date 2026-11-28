@@ -17,6 +17,7 @@ internal data class FakeData(
     val configLines: List<String> = FakeRuleMode.LINES,
     val series: SampleSeries? = null,
     val scoreState: ScoreState,
+    val config: FakeConfig = FakeConfig(),
 )
 
 internal class SampleSeries(private val endEpochMs: Long, private val up: List<Long>, private val down: List<Long>) {

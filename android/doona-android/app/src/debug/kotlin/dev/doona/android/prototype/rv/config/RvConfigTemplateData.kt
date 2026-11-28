@@ -4,13 +4,14 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RvDiffFile
+import dev.doona.android.designsystem.rv.RvDiffKind.Added
+import dev.doona.android.designsystem.rv.RvDiffKind.Same
+import dev.doona.android.designsystem.rv.RvDiffLine
+import dev.doona.android.feature.config.RvConfigData
 import dev.doona.android.feature.model.RvChange
 import dev.doona.android.feature.model.RvLabel
 import dev.doona.android.feature.model.RvTemplate
-import dev.doona.android.prototype.rv.RvDiffFile
-import dev.doona.android.prototype.rv.RvDiffKind.Added
-import dev.doona.android.prototype.rv.RvDiffKind.Same
-import dev.doona.android.prototype.rv.RvDiffLine
 
 /** How a template's group picks: doona's templates write `policy: score` or `policy: select`, named as doona names them. */
 internal enum class RvTemplatePolicy(@StringRes val label: Int, @DrawableRes val glyph: Int) {

@@ -46,7 +46,8 @@ internal fun rvAddFailure(code: ErrorCode): RvAddFailure = when (code) {
     ErrorCode.StorageFull, ErrorCode.WriteFailed -> RvAddFailure.NotSaved(code)
 
     ErrorCode.InvalidArgument, ErrorCode.NotFound, ErrorCode.FetchFailed, ErrorCode.Busy, ErrorCode.Internal,
-    ErrorCode.LocalNetwork, ErrorCode.DnsFailed,
+    ErrorCode.LocalNetwork, ErrorCode.DnsFailed, ErrorCode.Conflict, ErrorCode.SourceLimit, ErrorCode.NonNativeSource,
+    ErrorCode.ActivationFailed,
     -> RvAddFailure.Unreachable
 }
 

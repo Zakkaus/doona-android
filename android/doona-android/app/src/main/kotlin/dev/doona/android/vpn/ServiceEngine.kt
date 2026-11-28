@@ -11,6 +11,7 @@ import dev.doona.android.data.settings.AppSettings
 import dev.doona.android.data.settings.PerAppSettings
 import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.ConfigAssets
+import dev.doona.android.engine.ConfigEngine
 import dev.doona.android.engine.CoreDiagnostics
 import dev.doona.android.engine.EffectiveConfig
 import dev.doona.android.engine.Engine
@@ -94,7 +95,8 @@ class ServiceEngine internal constructor(
     private val expireDebugCapture: () -> Job?,
     /** The pause before the settings read a per-app policy again after a read failed. */
     private val perAppRetryMs: Long = PER_APP_RETRY_MS,
-) : Engine {
+) : Engine,
+    ConfigEngine by UnwiredConfig {
     private val _ready = MutableStateFlow(false)
     override val ready: StateFlow<Boolean> = _ready.asStateFlow()
     override val status: StateFlow<Status> get() = controller.status

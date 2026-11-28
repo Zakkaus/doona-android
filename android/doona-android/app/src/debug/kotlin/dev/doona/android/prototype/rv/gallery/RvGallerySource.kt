@@ -13,17 +13,17 @@ import androidx.compose.ui.text.input.TextFieldValue
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCodeText
+import dev.doona.android.designsystem.rv.RvDiffAt
+import dev.doona.android.designsystem.rv.RvDiffFile
+import dev.doona.android.designsystem.rv.RvDiffKind.Added
+import dev.doona.android.designsystem.rv.RvDiffKind.Removed
+import dev.doona.android.designsystem.rv.RvDiffKind.Same
+import dev.doona.android.designsystem.rv.RvDiffLine
+import dev.doona.android.designsystem.rv.RvSourceDiff
 import dev.doona.android.designsystem.rv.RvSourceField
 import dev.doona.android.designsystem.rv.RvSourceMark
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.rvSourceStyle
-import dev.doona.android.prototype.rv.RvDiffAt
-import dev.doona.android.prototype.rv.RvDiffFile
-import dev.doona.android.prototype.rv.RvDiffKind.Added
-import dev.doona.android.prototype.rv.RvDiffKind.Removed
-import dev.doona.android.prototype.rv.RvDiffKind.Same
-import dev.doona.android.prototype.rv.RvDiffLine
-import dev.doona.android.prototype.rv.RvSourceDiff
 
 /**
  * Code text ([RvCodeText]) on a card: a short file with every role doona colours, a comment, keywords (a section, where

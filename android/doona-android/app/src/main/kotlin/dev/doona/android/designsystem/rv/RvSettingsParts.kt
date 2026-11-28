@@ -109,6 +109,8 @@ internal fun RvSettingsRow(
     subtitleLines: Int = RV_ROW_SUBTITLE_LINES,
     titleWhole: RvWhole? = null,
     subtitleWhole: RvWhole? = null,
+    remove: RvRowRemove? = null,
+    removeLabel: String = title,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     rvRequireWhole(titleWhole, titleLines)
@@ -121,7 +123,7 @@ internal fun RvSettingsRow(
             .padding(horizontal = RvSettingsSpace.rowInset),
         contentAlignment = Alignment.CenterStart,
     ) {
-        val text = rowText(SettingsRowWords(title, subtitle, titleKeepWords, subtitleKeepWords, subtitleLines, titleWhole, subtitleWhole), code, titleLines, error, SettingsRowEnds(icon, action, trailing))
+        val text = rowText(SettingsRowWords(title, subtitle, titleKeepWords, subtitleKeepWords, subtitleLines, titleWhole, subtitleWhole), code, titleLines, error, SettingsRowEnds(icon, action, trailing, remove, removeLabel))
         Row(Modifier.fillMaxWidth().testTag(RvRowPart.SETTINGS_ROW).padding(vertical = RvSpace.rowTextInset), verticalAlignment = Alignment.Top, content = text)
     }
 }
@@ -129,8 +131,14 @@ internal fun RvSettingsRow(
 /** A settings row's title and subtitle, whether each holds its words ([RvSettingsRow]'s keepWords), and its exception to R14. */
 private class SettingsRowWords(val title: String, val subtitle: String?, val titleKeepWords: Boolean, val subtitleKeepWords: Boolean, val subtitleLines: Int, val titleWhole: RvWhole?, val subtitleWhole: RvWhole?)
 
-/** A settings row's leading disc, and its trailing [action] or [trailing] control ([RvSettingsRow]). */
-private class SettingsRowEnds(@DrawableRes val icon: Int?, val action: (@Composable () -> Unit)?, val trailing: (@Composable () -> Unit)?)
+/** A settings row's leading disc, its trailing [action], and its remove control or else its [trailing] control ([RvSettingsRow]). */
+private class SettingsRowEnds(
+    @DrawableRes val icon: Int?,
+    val action: (@Composable () -> Unit)?,
+    val trailing: (@Composable () -> Unit)?,
+    val remove: RvRowRemove?,
+    val removeLabel: String,
+)
 
 /**
  * [RvSettingsRow]'s disc, title over subtitle, and trailing control: the control on the title's first line; the disc
@@ -165,7 +173,7 @@ private fun rowText(words: SettingsRowWords, code: Boolean, titleLines: Int, err
             Spacer(Modifier.width(RvSettingsSpace.trailingGap))
             Tall(line, top, content = it)
         }
-        ends.trailing?.let {
+        (rvRemoveTrailing(ends.remove, ends.removeLabel) ?: ends.trailing)?.let {
             Spacer(Modifier.width(RvSettingsSpace.trailingGap))
             FirstLine(line, it)
         }
@@ -212,9 +220,11 @@ internal fun RvSettingsNavRow(
     mark: (@Composable () -> Unit)? = null,
     titleKeepWords: Boolean = true,
     subtitleKeepWords: Boolean = true,
+    remove: RvRowRemove? = null,
+    removeLabel: String = title,
 ) {
     val press = Modifier.rvRowPress(Role.Button, onClick)
-    RvSettingsRow(title, press, icon, subtitle, code, titleLines, titleKeepWords = titleKeepWords, subtitleKeepWords = subtitleKeepWords) {
+    RvSettingsRow(title, press, icon, subtitle, code, titleLines, titleKeepWords = titleKeepWords, subtitleKeepWords = subtitleKeepWords, remove = remove, removeLabel = removeLabel) {
         RvNavEnd(mark)
     }
 }
