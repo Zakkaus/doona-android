@@ -14,6 +14,7 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.honk.FakeHonk
 import dev.doona.android.honk.HonkFixtures
 import dev.doona.android.prototype.rv.RV_FS200
@@ -132,6 +133,8 @@ class AppRvGroupShotTest {
             val vm = remember { GroupViewModel(honk, SCORE, clock = { SAMPLE_NOW }, io = Dispatchers.Unconfined) }
             GroupRoute(vm, SCORE, onBack = {}, onNodeDetail = { details += it })
         }
+        val coverage = ApplicationProvider.getApplicationContext<Context>().getString(R.string.rv_score_coverage, RV_NO_VALUE)
+        assertEquals(2, shown(coverage))
         val node = members("HK").last().jsonObject
         compose.onAllNodes(hasText(node.text("name")))[0].performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()

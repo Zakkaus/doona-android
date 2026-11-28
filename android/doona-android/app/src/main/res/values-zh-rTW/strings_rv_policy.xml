@@ -107,12 +107,9 @@
     <string name="rv_effective_list_separator">、</string>
     <string name="rv_effective_dns_via">DNS 經由</string>
     <string name="rv_effective_lan_value">通道外</string>
-    <string name="rv_effective_apps_in">通道內的 App</string>
     <plurals name="rv_effective_apps">
         <item quantity="other">%1$d 個</item>
     </plurals>
-    <string name="rv_effective_apps_rest">其餘 App</string>
-    <string name="rv_effective_apps_rest_value">直連</string>
     <string name="rv_effective_per_app">依 App</string>
     <string name="rv_effective_source">來源</string>
     <string name="rv_effective_copy">複製</string>
@@ -162,7 +159,7 @@
     <string name="rv_score_wait_budget">測試流量已達上限</string>
     <string name="rv_score_wait_testing">測試中</string>
     <string name="rv_score_wait_backoff">稍後重試</string>
-    <string name="rv_score_coverage">已比較 %1$d/%2$d</string>
+    <string name="rv_score_coverage">已比較 %1$s</string>
     <string name="rv_score_faster">較快</string>
     <string name="rv_score_similar">相當</string>
     <string name="rv_score_slower">較慢</string>

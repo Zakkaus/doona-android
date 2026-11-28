@@ -84,6 +84,7 @@ internal class SubscriptionImports(
 
     private suspend fun add(request: ImportRequest): Provider {
         if (onLocalNetwork(request.url) && !localNetwork.allowed()) throw EngineException(ErrorCode.LocalNetwork)
+        // honk-gap:local-network
         return withContext(io) { NativeCatalog(api).addProvider(request.name ?: subscriptionHost(request.url), request.url, request.userAgent) }
     }
 

@@ -11,11 +11,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvDiffAt
 import dev.doona.android.designsystem.rv.RvDiffKind
 import dev.doona.android.designsystem.rv.RvDiffLine
 import dev.doona.android.designsystem.rv.RvFieldStack
+import dev.doona.android.designsystem.rv.RvFootnote
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvNotice
@@ -55,7 +57,7 @@ internal data class RvTraceResult(
     val target: String,
     val node: String? = null,
     val fallback: Boolean = false,
-    val captured: Boolean = true,
+    val captured: Boolean? = true,
     val skipped: Pair<String, Int>? = null,
 )
 
@@ -118,14 +120,18 @@ private fun Answer(result: RvTraceResult, onOpenSource: (String, Int) -> Unit) {
         )
     }
     RvGutter(banner = banner) {
-        RvSourceExcerpt(result.source, listOf(RvDiffLine(RvDiffKind.Same, result.line, result.text)), { at: RvDiffAt -> onOpenSource(result.source, at.line) })
+        if (result.source.isEmpty()) {
+            RvFootnote(result.text)
+        } else {
+            RvSourceExcerpt(result.source, listOf(RvDiffLine(RvDiffKind.Same, result.line, result.text)), { at: RvDiffAt -> onOpenSource(result.source, at.line) })
+        }
     }
     RvSectionTitle(stringResource(R.string.rv_trace_result), Modifier.padding(horizontal = RvSpace.gutter))
     RvGutter {
         RvCard {
             RvStatRow(stringResource(R.string.rv_policy_send_to), sendTo(result), valueKeepWords = false)
             RvStatRow(stringResource(R.string.rv_effective_mode), stringResource(R.string.rv_mode_rule))
-            RvStatRow(stringResource(R.string.rv_trace_captured), stringResource(if (result.captured) R.string.rv_trace_yes else R.string.rv_trace_no))
+            RvStatRow(stringResource(R.string.rv_trace_captured), result.captured?.let { stringResource(if (it) R.string.rv_trace_yes else R.string.rv_trace_no) } ?: RV_NO_VALUE)
         }
     }
 }

@@ -55,12 +55,12 @@ class AppRvGroupEditShotTest {
         compose.onNode(hasText(text(R.string.rv_group_edit_final)), useUnmergedTree = true).performClick()
     }) { Page() }
 
-    /** 名稱 opens the file that writes the group. */
+    /** Source editing stays available when the group name cannot be changed inline. */
     @Test
-    fun theNameOpensTheSource() {
+    fun editSourceOpensTheGroupsFile() {
         val opened = mutableListOf<String>()
         compose.rvContent(dark = false) { Page(onOpenSource = { opened += it }) }
-        compose.onNode(hasText("Streaming"), useUnmergedTree = true).performClick()
+        compose.onNode(hasText(text(R.string.rv_config_edit_source))).performClick()
         compose.waitForIdle()
         assertEquals(listOf("config.dae"), opened)
     }

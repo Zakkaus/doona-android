@@ -106,7 +106,7 @@ internal fun rvRuleMatch(row: RuleRow): RvRuleMatch {
         RuleKind.DomainSuffix -> if (row.count > 1) RvRuleMatch.Domains(sample, row.count) else RvRuleMatch.Value(RvMatchKind.Suffix, sample)
         RuleKind.DomainKeyword -> RvRuleMatch.Value(RvMatchKind.Keyword, sample)
         RuleKind.IpCidr -> RvRuleMatch.Value(RvMatchKind.Cidr, sample)
-        RuleKind.DstPort, RuleKind.Network, null -> RvRuleMatch.Value(RvMatchKind.Full, row.sample ?: row.kindName)
+        RuleKind.DstPort, RuleKind.Network, null -> RvRuleMatch.Value(null, row.sample ?: row.kindName)
     }
 }
 

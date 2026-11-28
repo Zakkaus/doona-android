@@ -12,10 +12,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.RvAlpha
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCheckRow
-import dev.doona.android.designsystem.rv.RvChevron
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLargeTitle
@@ -123,7 +123,6 @@ internal fun RvServiceRulesPage(
     selected: Set<String>,
     onBack: () -> Unit,
     onToggle: (String) -> Unit = {},
-    onOutbound: () -> Unit = {},
     onApply: (() -> Unit)? = null,
     banner: RvNotice? = null,
 ) {
@@ -138,7 +137,7 @@ internal fun RvServiceRulesPage(
         bottomAction = onApply?.let { apply -> { RvPrimaryButton(stringResource(R.string.rv_service_apply), apply, enabled = ticked && main != null) } },
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
-        RvGutter(banner = banner) { OutboundCard(main, onOutbound) }
+        RvGutter(banner = banner) { OutboundCard(main) }
         RvServiceSection.entries.forEach { section ->
             RvSectionTitle(stringResource(section.title), Modifier.padding(horizontal = RvSpace.gutter))
             RvGutter { RvCard { RvServiceData.all.filter { it.section == section }.forEach { row(it) } } }
@@ -148,9 +147,9 @@ internal fun RvServiceRulesPage(
 
 /** Where the new rules send: the main node, drawn as a rule's target is. */
 @Composable
-private fun OutboundCard(main: RvPolicyGroup?, onOutbound: () -> Unit) {
+private fun OutboundCard(main: RvPolicyGroup?) {
     RvCard {
-        RvRow({ RvPolicyTarget(main) }, stringResource(R.string.rv_service_outbound), main?.name?.text().orEmpty(), onClick = onOutbound, subtitleKeepWords = false) { RvChevron() }
+        RvRow({ RvPolicyTarget(main) }, stringResource(R.string.rv_service_outbound), main?.name?.text() ?: RV_NO_VALUE, subtitleKeepWords = false)
     }
 }
 

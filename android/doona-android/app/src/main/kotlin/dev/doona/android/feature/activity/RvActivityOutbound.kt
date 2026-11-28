@@ -31,14 +31,16 @@ import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvRouteMode
 
 /**
- * The outbound card (item 24), in the 最快節點 card's rows, four at most: the mode, which opens the mode picker; then in
+ * The outbound card (item 24), in the 最快節點 card's rows, four at most: the mode, then in
  * 規則 the main node and the two rule groups that sent the most traffic today, and 查看全部 for the rest; in 全域 the one
  * node; in 直連 a line that no node is in use.
  */
 @Composable
 internal fun OutboundCard(state: RvActivityState, mode: RvRouteMode, routes: RvActivityRoutes, nodes: List<RvNode>, rules: List<RvActivityRule>, cards: RvActivityCards) {
     RvCard {
-        RvRow({ RvIconDisc(R.drawable.rv_sym_directions) }, stringResource(R.string.act_mode), stringResource(mode.label), onClick = routes.mode) { RvChevron() }
+        RvRow({ RvIconDisc(R.drawable.rv_sym_directions) }, stringResource(R.string.act_mode), stringResource(mode.label), onClick = routes.mode) {
+            if (routes.mode != null) RvChevron()
+        }
         if (mode == RvRouteMode.Direct) {
             RvChoiceLine(stringResource(R.string.rv_direct_note), Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding))
             return@RvCard

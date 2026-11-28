@@ -31,7 +31,7 @@ import dev.doona.android.feature.model.RvScoreWait
 @Composable
 internal fun RvScoreCard(label: String, pick: RvScorePick, members: List<RvNode>) {
     RvCard {
-        RvCardHeader(label, tag = stringResource(R.string.rv_score_coverage, pick.compared, pick.candidates))
+        RvCardHeader(label, tag = stringResource(R.string.rv_score_coverage, "${pick.compared}/${pick.candidates}"))
         RvScoreChoiceRow(pick, members, pick.stateText(), latency = true)
         for (rival in pick.challengers) Challenger(rival, members)
     }

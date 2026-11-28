@@ -73,6 +73,14 @@ class RouteTraceViewModelTest {
     }
 
     @Test
+    fun `a domain with no resolved address has no tunnel coverage verdict`() {
+        val vm = RouteTraceViewModel(honk(), ::tunCarries, Dispatchers.Unconfined)
+        vm.query(RvTraceQuery("nas.example", "443"))
+        vm.trace()
+        assertNull(requireNotNull(vm.uiState.value.result).captured)
+    }
+
+    @Test
     fun `an address goes as dst_ip and anything else as domain`() {
         assertEquals("example.com", traceInput(RvTraceQuery("example.com", "443"), ::tunCarries).domain)
         assertEquals("2001:db8::1", traceInput(RvTraceQuery("[2001:db8::1]", "443"), ::tunCarries).dstIp)

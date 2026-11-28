@@ -73,6 +73,7 @@ internal class RuleEditViewModel(
 ) : ViewModel() {
     private val state = MutableStateFlow(RuleEditUiState())
     private var read: HonkPolicyRead? = null
+    private var failedWrite: (() -> Unit)? = null
 
     val uiState: StateFlow<RuleEditUiState> = state.asStateFlow()
 
@@ -84,6 +85,10 @@ internal class RuleEditViewModel(
         viewModelScope.launch { load() }
     }
 
+    fun retryWrite() {
+        failedWrite?.invoke()
+    }
+
     fun change(draft: RvRuleDraft) = state.update { it.copy(draft = draft) }
 
     fun apply() {
@@ -92,10 +97,10 @@ internal class RuleEditViewModel(
             val rule = rule(read)
             if (rule == null) {
                 val fallback = read.rules.rules.lastOrNull { it.isFallback }
-                statementAt(config, fallback?.source ?: read.rules.fallback.source, null).before(paused(draft, ruleText(draft, null, read)))
+                statementAt(config, fallback?.source ?: read.rules.fallback.source, fallback?.expression ?: "fallback: ${read.rules.fallback.outbound}").before(paused(draft, ruleText(draft, null, read)))
             } else {
                 val line = statementAt(config, rule.source, rule.expression)
-                if (!draft.enabled) line.paused() else line.replaced(ruleText(draft, state.value.at?.statement?.let { ruleCondition(line.code) }, read))
+                line.replaced(paused(draft, ruleText(draft, state.value.at?.statement?.let { ruleCondition(line.code) }, read)))
             }
         }
     }
@@ -121,14 +126,18 @@ internal class RuleEditViewModel(
     }
 
     /** Writes [edit]'s file; once honk took it the page leaves, or with [landed] (a move) it reads the rule again. */
-    private fun write(landed: (() -> Unit)? = null, edit: (HonkConfig, HonkPolicyRead) -> Pair<HonkSource, String>) {
-        val read = read ?: return
+    private fun write(landed: (() -> Unit)? = null, snapshot: HonkPolicyRead? = read, prepared: Pair<HonkSource, String>? = null, edit: (HonkConfig, HonkPolicyRead) -> Pair<HonkSource, String>) {
+        snapshot ?: return
+        failedWrite = null
         state.update { it.copy(writeFailure = null) }
         viewModelScope.launch {
+            var candidate = prepared
             try {
                 withContext(io) {
-                    val (source, text) = edit(NativeConfig(api).config(), read)
-                    NativeConfig(api).replace(source, text)
+                    val native = NativeConfig(api)
+                    val config = native.config()
+                    val (source, text) = candidate ?: edit(config, snapshot).also { candidate = it }
+                    if (prepared == null || config.sources.firstOrNull { it.id == source.id }?.content != text) native.replace(source, text)
                 }
                 if (landed == null) {
                     state.update { it.copy(done = true) }
@@ -139,6 +148,7 @@ internal class RuleEditViewModel(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
+                failedWrite = { write(landed, snapshot, candidate, edit) }
                 state.update { it.copy(writeFailure = error.errorCode()) }
             }
         }
@@ -224,23 +234,23 @@ private fun paused(draft: RvRuleDraft, text: String) = if (draft.enabled) text e
  * a line of a match the form cannot hold opens its file ([onOpenSource] with the file's path).
  */
 @Composable
-internal fun RuleEditRoute(ruleId: String?, onBack: () -> Unit, onOpenSource: (String) -> Unit) {
+internal fun RuleEditRoute(ruleId: String?, onBack: () -> Unit, onOpenSource: (String, Int) -> Unit) {
     val viewModel: RuleEditViewModel = viewModel(factory = RuleEditViewModel.factory(nativeApi(), ruleId))
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(ui.done) { if (ui.done) onBack() }
     val title = stringResource(R.string.rv_rule_edit_title)
     val draft = ui.draft ?: return ui.readFailure?.let { RvRuleFormFailed(title, readBanner(it, viewModel::retry), onBack) } ?: RvSettingsLoading()
-    val failed = ui.writeFailure?.let { changeBanner(stringResource(R.string.rv_config_apply_failed), it, viewModel::apply) }
+    val failed = ui.writeFailure?.let { changeBanner(stringResource(R.string.rv_config_apply_failed), it, viewModel::retryWrite) }
     RvRuleEditPage(
         draft,
         viewModel::change,
         onBack = onBack,
-        onApply = viewModel::apply,
+        onApply = { viewModel.apply() },
         onDelete = viewModel::delete,
         targets = ui.targets,
         native = ui.at,
         onMove = viewModel::move,
-        onOpenSource = { _: RvDiffAt -> ui.at?.statement?.source?.let(onOpenSource) },
+        onOpenSource = { at: RvDiffAt -> ui.at?.statement?.source?.let { onOpenSource(it, at.line) } },
         banner = failed ?: ui.readFailure?.let { readBanner(it, viewModel::retry) },
     )
 }

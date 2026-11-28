@@ -72,8 +72,9 @@ internal class GroupViewModel(
     val uiState: StateFlow<GroupUiState> = combine(read, local, failure, testing, ::groupUiState)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), groupUiState(null, local.value, null, false))
 
-    init {
-        load()
+    fun onResume() {
+        reading?.cancel()
+        reading = viewModelScope.launch { changes.withLock { load() } }
     }
 
     /**
@@ -81,6 +82,7 @@ internal class GroupViewModel(
      * for both. A Score group picks each network's node itself, so a tap there chooses nothing.
      */
     fun onTap(memberId: String) {
+        if (reading?.isActive == true || failure.value?.action == GroupAction.Read) return
         val shown = read.value ?: return
         val group = shown.source?.takeIf { it.policy.kind != PolicyKind.Score } ?: return
         val network = when {
@@ -90,7 +92,7 @@ internal class GroupViewModel(
             else -> SelectionNetwork.Both
         }
         val member = memberFor(group, memberId, shown.groups)
-        perform(GroupAction.Select) { catalog.select(groupId, member, network) }
+        perform(GroupAction.Select) { withContext(io) { catalog.select(groupId, member, network) } }
     }
 
     /**
@@ -100,20 +102,23 @@ internal class GroupViewModel(
      * choosing each network's node itself; a tap there chooses nothing, so the switch is the only way back.
      */
     fun onApart(on: Boolean) {
-        local.update { it.copy(apart = on) }
-        val group = read.value?.source ?: return
-        val selection = group.runtime.selection
-        val score = group.policy.kind == PolicyKind.Score
-        val tcp = selection.tcp?.memberId
-        when {
-            on && score && (selection.tcp?.source == OVERRIDE || selection.udp?.source == OVERRIDE) ->
-                perform(GroupAction.Apart) { catalog.clearSelection(groupId, SelectionNetwork.Both) }
-
-            on || !group.networksDiffer || tcp == null -> Unit
-
-            score -> perform(GroupAction.Apart) { catalog.select(groupId, tcp, SelectionNetwork.Both) }
-
-            else -> perform(GroupAction.Apart) { catalog.select(groupId, tcp, SelectionNetwork.Udp) }
+        perform(GroupAction.Apart) {
+            val group = withContext(io) { catalog.group(groupId) }
+            val selection = group.runtime.selection
+            val score = group.policy.kind == PolicyKind.Score
+            val tcp = selection.tcp?.memberId
+            val clear = on && score && (selection.tcp?.source == OVERRIDE || selection.udp?.source == OVERRIDE)
+            val next = withContext(io) {
+                if (clear) {
+                    catalog.clearSelection(groupId, SelectionNetwork.Both)
+                } else if (!on && group.networksDiffer) {
+                    catalog.select(groupId, tcp ?: throw EngineException(ErrorCode.Busy), if (score) SelectionNetwork.Both else SelectionNetwork.Udp)
+                }
+                readGroup()
+            }
+            if (!on && next.source?.networksDiffer == true) throw EngineException(ErrorCode.Busy)
+            shown(next)
+            local.update { it.copy(apart = on) }
         }
     }
 
@@ -124,7 +129,7 @@ internal class GroupViewModel(
         testing.value = true
         perform(GroupAction.Test) {
             try {
-                probes.groups(listOf(groupId))
+                withContext(io) { probes.groups(listOf(groupId)) }
             } finally {
                 testing.value = false
             }
@@ -136,26 +141,23 @@ internal class GroupViewModel(
         retry?.invoke()
     }
 
-    /** Runs a change on [io] after those before it, then shows its failure, or clears the banner and reads again. */
+    /** Runs a change after those before it, then shows its failure or reads again if it did not already read back. */
     private fun perform(action: GroupAction, call: suspend () -> Unit) {
         viewModelScope.launch {
-            val error = attempt { changes.withLock { withContext(io) { call() } } }
-            retry = error?.let { { perform(action, call) } }
-            failure.value = error?.let { GroupFailure(action, it.errorCode()) }
-            if (error == null) load()
+            changes.withLock {
+                val error = attempt { call() }
+                retry = error?.let { { perform(action, call) } }
+                failure.value = error?.let { GroupFailure(action, it.errorCode()) }
+                if (error == null && action != GroupAction.Apart) load()
+            }
         }
     }
 
-    private fun load() {
-        reading?.cancel()
-        reading = viewModelScope.launch {
-            var fresh: Read? = null
-            val error = attempt { fresh = withContext(io) { readGroup() } }
-            fresh?.let(::shown)
-            if (error != null) {
-                retry = ::load
-                failure.value = GroupFailure(GroupAction.Read, error.errorCode())
-            }
+    private suspend fun load() {
+        val error = attempt { shown(withContext(io) { readGroup() }) }
+        if (error != null) {
+            retry = ::onResume
+            failure.value = GroupFailure(GroupAction.Read, error.errorCode())
         }
     }
 
@@ -179,7 +181,7 @@ internal class GroupViewModel(
             group = mapped,
             subscriptions = providers.filter { it.id in held }.map { rvSubscription(it, null) },
             tcpId = mapped.selectedId,
-            udpId = group.runtime.selection.udp?.memberId?.takeIf { it in members } ?: mapped.selectedId,
+            udpId = group.runtime.selection.udp?.memberId?.takeIf { it in members }.orEmpty(),
             isScore = group.policy.kind == PolicyKind.Score,
             nowEpochMs = clock(),
         )

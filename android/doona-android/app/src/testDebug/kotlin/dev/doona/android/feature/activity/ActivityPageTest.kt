@@ -3,7 +3,11 @@ package dev.doona.android.feature.activity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
@@ -12,7 +16,6 @@ import dev.doona.android.R
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
-import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.rvSampleEngine
@@ -152,19 +155,14 @@ class ActivityPageTest {
         assertEquals(listOf("open", "dismiss"), order)
     }
 
-    /** The 出站模式 action, tapped three times, goes 規則, 全域, 直連 and back to 規則. */
     @Test
-    fun theModeActionCyclesThroughAllThreeModes() {
-        val engine = rvSampleEngine()
-        show(engine)
+    fun theActivityModeIsReadOnly() {
+        show(rvSampleEngine())
         val action = hasText(rvText(R.string.rv_action_mode)) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)
-        val modes = mutableListOf(engine.settings.value.mode)
-        repeat(3) {
-            compose.onAllNodes(action).onFirst().performClick()
-            compose.waitForIdle()
-            modes += engine.settings.value.mode
-        }
-        assertEquals(listOf(Mode.Rule, Mode.Global, Mode.Direct, Mode.Rule), modes)
+        compose.onAllNodes(action).onFirst().assertIsNotEnabled()
+        val mode = hasText(rvText(R.string.act_mode))
+        compose.onAllNodes(mode).assertCountEquals(2)
+        compose.onAllNodes(mode and hasClickAction() and isEnabled()).assertCountEquals(0)
     }
 
     private companion object {
@@ -189,7 +187,6 @@ internal fun activityTestRoutes(
         nodes = to("nodes"),
         node = { opened += "node:$it" },
         tab = { opened += "tab" },
-        mode = to("mode"),
         rule = { opened += "rule:$it" },
         rules = to("rules"),
         subscriptions = to("subscriptions"),

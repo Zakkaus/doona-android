@@ -35,6 +35,12 @@ class ConfigSourceViewModelTest {
 
     private val honk = PolicyHonkFixtures.configTree()
 
+    @Test
+    fun aLocatedIncludeOpensAtItsRequestedLine() {
+        val value = ConfigSourceViewModel(honk, CN, Dispatchers.Unconfined, line = 3).uiState.value.value
+        assertEquals(value.text.lineSequence().take(2).sumOf { it.length + 1 }, value.selection.start)
+    }
+
     private fun editor(reads: CoroutineDispatcher = Dispatchers.Unconfined) = ConfigSourceViewModel(honk, CN, reads).apply {
         onValueChange(TextFieldValue(RvSampleConfig.cn("media", wiki = true)))
     }

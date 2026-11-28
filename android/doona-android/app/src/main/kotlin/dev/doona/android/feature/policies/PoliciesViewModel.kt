@@ -13,6 +13,7 @@ import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RvPolicyState
+import dev.doona.android.feature.model.RvRuleMatch
 import dev.doona.android.honk.HonkConfig
 import dev.doona.android.honk.HonkDnsRules
 import dev.doona.android.honk.NativeApi
@@ -25,6 +26,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -59,10 +62,6 @@ internal class PoliciesViewModel(
     val uiState: StateFlow<PoliciesUiState> =
         combine(engine.catalog, read, local, failure) { catalog, read, local, failure -> policiesUiState(catalog?.mode, read, local, failure) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), current())
-
-    init {
-        load()
-    }
 
     /** Reads honk again; a read still running gives way to it. */
     fun load() {
@@ -117,7 +116,18 @@ internal class PoliciesViewModel(
         val ids = read.value?.policies?.subscriptions?.map { it.id } ?: return
         perform(PolicyAction.Update) {
             val catalog = NativeCatalog(api)
-            ids.map { id -> runCatching { catalog.refreshProvider(id) } }.firstOrNull { it.isFailure }?.getOrThrow()
+            var first: Exception? = null
+            for (id in ids) {
+                currentCoroutineContext().ensureActive()
+                try {
+                    catalog.refreshProvider(id)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    if (first == null) first = error
+                }
+            }
+            first?.let { throw it }
         }
     }
 
@@ -164,7 +174,7 @@ internal class PoliciesViewModel(
         val config = NativeConfig(api).config()
         val dns = NativeRouting(api).dnsRules()
         val routing = HonkRouting.of(config)
-        return PolicyRead(policies, config, dns, routing, policies.profile(places, clock(), routing))
+        return PolicyRead(policies, config, dns, routing, policies.profile(places, clock(), routing, pausedRules(config)))
     }
 
     private fun current() = policiesUiState(engine.catalog.value?.mode, read.value, local.value, failure.value)
@@ -188,7 +198,10 @@ private class PolicyRead(
 /** The page's state: the mode as the engine has it, the two switches as honk runs them, the order from [local]. */
 private fun policiesUiState(mode: Mode?, read: PolicyRead?, local: RvPolicyState, failure: PolicyFailure?) = PoliciesUiState(
     loading = read == null && failure?.action != PolicyAction.Read,
-    noSubscription = read?.policies?.subscriptions?.isEmpty() == true,
+    empty = read?.policies?.let {
+        it.subscriptions.isEmpty() && it.nodes.isEmpty() && it.groups.isEmpty() &&
+            it.rules.fallback.source == null && read.profile.rules.all { rule -> rule.match == RvRuleMatch.Rest }
+    } == true,
     state = RvPolicyState(
         mode = mode?.let(::rvRouteMode) ?: local.mode,
         blockAds = read?.dns?.let(::blocksAds) ?: false,
@@ -196,5 +209,6 @@ private fun policiesUiState(mode: Mode?, read: PolicyRead?, local: RvPolicyState
         nodeSort = local.nodeSort,
     ),
     profile = read?.profile,
+    configRev = read?.config?.honk?.store?.revision,
     failure = failure,
 )

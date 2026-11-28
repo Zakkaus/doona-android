@@ -67,6 +67,7 @@ internal class RulesViewModel(
     val uiState: StateFlow<RulesUiState> = state.asStateFlow()
     private var reading: Job? = null
     private var entries: List<HonkRuleEntry> = emptyList()
+    private var failedWrite: (() -> Unit)? = null
 
     init {
         load()
@@ -74,6 +75,10 @@ internal class RulesViewModel(
 
     /** The banner's 重試: reads again. */
     fun retry() = load()
+
+    fun retryWrite() {
+        failedWrite?.invoke()
+    }
 
     fun load() {
         reading?.cancel()
@@ -91,22 +96,32 @@ internal class RulesViewModel(
 
     private fun write(index: Int, edit: (Statement) -> Pair<HonkSource, String>) {
         val entry = entries.getOrNull(index)?.takeUnless { it is HonkRuleEntry.Loaded && it.rule.isFallback } ?: return
+        write {
+            val config = NativeConfig(api).config()
+            edit(
+                when (entry) {
+                    is HonkRuleEntry.Loaded -> Statement(statementAt(config, entry.rule.source, entry.rule.expression), null)
+                    is HonkRuleEntry.Paused -> Statement(pausedAt(config, entry.rule), entry.rule.expression)
+                },
+            )
+        }
+    }
+
+    private fun write(prepared: Pair<HonkSource, String>? = null, candidate: suspend () -> Pair<HonkSource, String>) {
+        failedWrite = null
         state.update { it.copy(writeFailure = null) }
         viewModelScope.launch {
+            var edit = prepared
             try {
                 withContext(io) {
-                    val config = NativeConfig(api).config()
-                    val (source, text) = edit(
-                        when (entry) {
-                            is HonkRuleEntry.Loaded -> Statement(statementAt(config, entry.rule.source, entry.rule.expression), null)
-                            is HonkRuleEntry.Paused -> Statement(pausedAt(config, entry.rule), entry.rule.expression)
-                        },
-                    )
-                    NativeConfig(api).replace(source, text)
+                    val (source, text) = edit ?: candidate().also { edit = it }
+                    val config = NativeConfig(api)
+                    if (prepared == null || config.config().sources.firstOrNull { it.id == source.id }?.content != text) config.replace(source, text)
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
+                failedWrite = { write(edit, candidate) }
                 state.update { it.copy(writeFailure = error.errorCode()) }
             }
             load()
@@ -119,8 +134,10 @@ internal class RulesViewModel(
                 RulesUiState(loading = false, failure = RulesFailure.Parse)
             } else {
                 val read = HonkPolicyRead.read(api)
-                val entries = withPaused(read.rules.rules, pausedRules(NativeConfig(api).config())).also { this@RulesViewModel.entries = it }
-                val rules = read.policyRules(read.policyGroups(read.nodes(places)), entries)
+                val config = NativeConfig(api).config()
+                val entries = withPaused(read.rules.rules, pausedRules(config)).also { this@RulesViewModel.entries = it }
+                val groups = read.policyGroups(read.nodes(places))
+                val rules = read.policyRules(groups, entries)
                 RulesUiState(loading = false, rules = rules, ids = entries.map { (it as? HonkRuleEntry.Loaded)?.rule?.id })
             }
         }

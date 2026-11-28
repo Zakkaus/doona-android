@@ -5,15 +5,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import dev.doona.android.designsystem.rv.RvDiffAt
 import dev.doona.android.designsystem.rv.RvTheme
@@ -25,6 +29,7 @@ import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.rvShot
 import dev.doona.android.prototype.rv.seedColorScheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -103,6 +108,21 @@ class RvConfigSourceShotTest {
 
     @Test
     fun staleFs200() = compose.rvShot("config-diff-stale", dark = false, fontScale = RV_FS200) { Diff(RvConfigSourceData.stale) }
+
+    @Test
+    fun aLinkedLineInALongFileIsVisibleAboveReview() {
+        val text = "alpha\n".repeat(100)
+        val value = TextFieldValue(text, TextRange(6 * 74))
+        compose.setContent { Themed { RvConfigSourcePage(RvSourceDraft("test.dae", text, 1), value, {}, {}) } }
+        val field = compose.onNode(hasSetTextAction()).fetchSemanticsNode()
+        val layouts = mutableListOf<TextLayoutResult>()
+        field.config[SemanticsActions.GetTextLayoutResult].action!!.invoke(layouts)
+        val layout = layouts.single()
+        val y = field.positionInRoot.y
+        val button = compose.onNodeWithText(REVIEW).fetchSemanticsNode().boundsInRoot
+        assertTrue("linked line is above the floating action", y + layout.getLineBottom(74) <= button.top)
+        assertTrue("linked line is on screen", y + layout.getLineTop(74) >= 0f)
+    }
 
     @Test
     fun reviewWaitsWhileADiagnosticStands() {

@@ -2,7 +2,6 @@ package dev.doona.android.feature.policies
 
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.model.RvLabel
-import dev.doona.android.feature.model.RvMatchKind
 import dev.doona.android.feature.model.RvRuleEnd
 import dev.doona.android.feature.model.RvRuleMatch
 import dev.doona.android.honk.HonkFixtures
@@ -39,7 +38,7 @@ class RulesViewModelTest {
         assertFalse(state.loading)
         assertNull(state.failure)
         val (curl, range, rest) = state.rules
-        assertEquals(RvMatchKind.Full, (curl.match as RvRuleMatch.Value).kind)
+        assertEquals(null, (curl.match as RvRuleMatch.Value).kind)
         assertEquals("pname(curl)", (curl.match as RvRuleMatch.Value).value)
         assertEquals(RvRuleEnd.Direct, curl.end)
         assertEquals("198.51.100.0/24", (range.match as RvRuleMatch.Value).value)

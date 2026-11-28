@@ -95,19 +95,19 @@ class RvGroupFullShotTest {
     fun dSampleEnLight() = compose.rvShot("samples-gfull-d-sample-en", dark = false, before = { assertWhole() }) { RvGroupFullPage(RvGroupFullSample.two, apart = false) }
 
     @Test
-    @Config(qualifiers = "zh-rTW-w412dp-h1759dp-notnight-xhdpi")
+    @Config(qualifiers = "zh-rTW-w412dp-h1895dp-notnight-xhdpi")
     fun eSampleLight() = compose.rvShot("samples-gfull-e-sample", dark = false, before = { assertWhole() }) { RvGroupFullPage(RvGroupFullSample.two, apart = true, score = true) }
 
     @Test
-    @Config(qualifiers = "zh-rTW-w412dp-h1759dp-notnight-xhdpi")
+    @Config(qualifiers = "zh-rTW-w412dp-h1895dp-notnight-xhdpi")
     fun eSampleDark() = compose.rvShot("samples-gfull-e-sample", dark = true, before = { assertWhole() }) { RvGroupFullPage(RvGroupFullSample.two, apart = true, score = true) }
 
     @Test
-    @Config(qualifiers = "zh-rTW-w412dp-h3227dp-notnight-xhdpi")
+    @Config(qualifiers = "zh-rTW-w412dp-h3363dp-notnight-xhdpi")
     fun eSampleFs200() = compose.rvShot("samples-gfull-e-sample", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { RvGroupFullPage(RvGroupFullSample.two, apart = true, score = true) }
 
     @Test
-    @Config(qualifiers = "en-w412dp-h1797dp-notnight-xhdpi")
+    @Config(qualifiers = "en-w412dp-h1889dp-notnight-xhdpi")
     fun eSampleEnLight() = compose.rvShot("samples-gfull-e-sample-en", dark = false, before = { assertWhole() }) { RvGroupFullPage(RvGroupFullSample.two, apart = true, score = true) }
 
     @Test

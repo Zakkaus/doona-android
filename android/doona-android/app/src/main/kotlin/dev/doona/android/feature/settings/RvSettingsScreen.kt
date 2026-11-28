@@ -26,6 +26,7 @@ import androidx.compose.ui.semantics.semantics
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RV_NAV_SETTINGS
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvAction
 import dev.doona.android.designsystem.rv.RvBannerSlot
@@ -77,7 +78,7 @@ internal fun RvSettingsScreen(
     onOpenTheme: () -> Unit,
     onTab: (Int) -> Unit = {},
     routes: RvSettingsRoutes,
-    configRev: Int? = null,
+    configRev: Long? = null,
     geoData: RvGeoData,
     update: RvUpdate = RvUpdate.Idle,
     perAppLoaded: Boolean = true,
@@ -236,15 +237,14 @@ private fun AppearanceGroup(state: RvSettingsState, onOpenTheme: () -> Unit, onO
  * page's 除錯 glyph; the effective config, read-only.
  */
 @Composable
-private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes, configRev: Int?, dnsLoaded: Boolean, logLevel: RvLogLevel) {
+private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes, configRev: Long?, dnsLoaded: Boolean, logLevel: RvLogLevel) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_advanced))
     RvSettingsCard {
         RvSettingsNavRow(stringResource(R.string.rv_settings_dns), R.drawable.rv_sym_dns, routes.dns, dnsValue(state.dns).takeIf { dnsLoaded })
         RvSettingsNavRow(stringResource(R.string.rv_report_title), R.drawable.rv_sym_ios_share, routes.report)
         RvSettingsNavRow(stringResource(R.string.rv_settings_log_level), R.drawable.rv_settings_ic_description, routes.logLevel, stringResource(logLevel.label))
-        if (configRev != null) {
-            RvSettingsNavRow(stringResource(R.string.rv_config_title), R.drawable.rv_sym_edit, routes.config, stringResource(R.string.rv_config_revision, configRev))
-        }
+        // honk-gap:settings-revision
+        RvSettingsNavRow(stringResource(R.string.rv_config_title), R.drawable.rv_sym_edit, routes.config, configRev?.let { stringResource(R.string.rv_config_revision, it) } ?: RV_NO_VALUE)
         RvSettingsNavRow(stringResource(R.string.rv_effective_open), R.drawable.rv_sym_rule, routes.effectiveConfig)
     }
 }

@@ -33,12 +33,12 @@ class HonkRuleTextTest {
 
     @Test
     fun anythingElseShowsItsText() {
-        for (condition in listOf("l4proto(udp) && dport(443)", "!domain(geosite:cn)", "pname(curl)", "dip(224.0.0.0/3, 'ff00::/8')")) {
-            assertValue(RvMatchKind.Full, condition, rvRuleMatch(condition))
+        for (condition in listOf("l4proto(udp) && dport(443)", "!domain(geosite:cn)", "pname(curl)", "domain(regex: '^api[0-9]+')", "dip(224.0.0.0/3, 'ff00::/8')")) {
+            assertValue(null, condition, rvRuleMatch(condition))
         }
     }
 
-    private fun assertValue(kind: RvMatchKind, value: String, match: RvRuleMatch) {
+    private fun assertValue(kind: RvMatchKind?, value: String, match: RvRuleMatch) {
         val read = match as RvRuleMatch.Value
         assertEquals(kind to value, read.kind to read.value)
     }

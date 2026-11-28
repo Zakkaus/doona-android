@@ -11,8 +11,10 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvCard
+import dev.doona.android.designsystem.rv.RvCardHeader
 import dev.doona.android.designsystem.rv.RvFootnote
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvIconDisc
@@ -89,27 +91,31 @@ internal fun RvTemplateRow(template: RvTemplate, selected: Boolean, inUse: Boole
 
 /**
  * The review before a template replaces the rules (doona web's impact dialog), in node detail's grammar: what changes
- * as key stats (the source and the template, rules added, changed and removed, the user's own rules kept in place; a
- * count the core does not tell is left out); the groups it adds and keeps and the rules it adds or changes, each drawn as
- * the rules card draws a rule, where the core tells them; a line saying only new connections follow it; and 套用
+ * as key stats (the source and the template, rules added, changed and removed, the user's own rules kept in place);
+ * the groups and rules it changes, with a dash where the preview has no data; and 套用
  * floating at the bottom. A failed 套用 shows as [banner] above the stats. Before the rules are read ([impact] null: a
  * back stack restored after the process died) the page's skeleton stands in ([ImpactSkeleton]), 套用 is off and the line
  * under the rules waits for them; the page fades in over the skeleton.
  */
 @Composable
-internal fun RvTemplateImpactPage(impact: RvImpact?, onBack: () -> Unit, onApply: () -> Unit, banner: RvNotice? = null) {
+internal fun RvTemplateImpactPage(impact: RvImpact?, onBack: () -> Unit, onApply: (() -> Unit)?, banner: RvNotice? = null, source: @Composable () -> Unit = {}) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_template_review)
     RvScrollPage(
         title,
         insets,
         onBack = onBack,
-        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply, enabled = impact != null) },
+        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply ?: {}, enabled = impact != null && onApply != null) },
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         RvBannerSlot(banner)
         RvSkeletonFade(impact == null, { Column(Modifier.fillMaxWidth()) { ImpactSkeleton() } }) {
-            Column(Modifier.fillMaxWidth()) { impact?.let { ImpactBody(it) } }
+            Column(Modifier.fillMaxWidth()) {
+                impact?.let {
+                    ImpactBody(it)
+                    source()
+                }
+            }
         }
     }
 }
@@ -118,13 +124,14 @@ internal fun RvTemplateImpactPage(impact: RvImpact?, onBack: () -> Unit, onApply
 @Composable
 private fun ImpactBody(impact: RvImpact) {
     RvGutter { SummaryCard(impact) }
-    if (impact.groups.isNotEmpty()) {
-        RvSectionTitle(stringResource(R.string.rv_policy_groups), Modifier.padding(horizontal = RvSpace.gutter))
-        RvGutter { RvCard { impact.groups.forEach { ImpactGroupRow(it) } } }
+    // honk-gap:template-impact
+    RvSectionTitle(stringResource(R.string.rv_policy_groups), Modifier.padding(horizontal = RvSpace.gutter))
+    RvGutter {
+        RvCard { if (impact.groups.isEmpty()) RvCardHeader(RV_NO_VALUE) else impact.groups.forEach { ImpactGroupRow(it) } }
     }
-    if (impact.rules.isNotEmpty()) {
-        RvSectionTitle(stringResource(R.string.rv_policy_rules), Modifier.padding(horizontal = RvSpace.gutter))
-        RvGutter { RvCard { impact.rules.forEach { ImpactRuleRow(it) } } }
+    RvSectionTitle(stringResource(R.string.rv_policy_rules), Modifier.padding(horizontal = RvSpace.gutter))
+    RvGutter {
+        RvCard { if (impact.rules.isEmpty()) RvCardHeader(RV_NO_VALUE) else impact.rules.forEach { ImpactRuleRow(it) } }
     }
     RvFootnote(stringResource(R.string.rv_template_new_flows))
 }
@@ -160,15 +167,15 @@ private const val SKELETON_GROUPS = 4
 private fun SummaryCard(impact: RvImpact) {
     RvCard {
         RvStatRow(stringResource(R.string.rv_policy_template), stringResource(R.string.rv_template_from_to, impact.from.text(), impact.to.name.text()))
-        impact.added?.let { RvStatRow(stringResource(R.string.rv_template_added), rules(it)) }
-        impact.changed?.let { RvStatRow(stringResource(R.string.rv_template_changed), rules(it)) }
-        impact.removed?.let { RvStatRow(stringResource(R.string.rv_template_removed), rules(it)) }
-        impact.kept?.let { RvStatRow(stringResource(R.string.rv_template_kept), rules(it)) }
+        RvStatRow(stringResource(R.string.rv_template_added), rules(impact.added))
+        RvStatRow(stringResource(R.string.rv_template_changed), rules(impact.changed))
+        RvStatRow(stringResource(R.string.rv_template_removed), rules(impact.removed))
+        RvStatRow(stringResource(R.string.rv_template_kept), rules(impact.kept))
     }
 }
 
 @Composable
-private fun rules(n: Int) = pluralStringResource(R.plurals.rv_rules_count, n, n)
+private fun rules(n: Int?) = if (n == null) RV_NO_VALUE else pluralStringResource(R.plurals.rv_rules_count, n, n)
 
 /** A group the template brings or keeps: its kind's glyph, its name over what happens, how it picks and its size. */
 @Composable

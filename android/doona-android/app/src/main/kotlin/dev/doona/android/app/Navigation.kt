@@ -92,9 +92,9 @@ data object ConfigKey : AppKey
 @Serializable
 data object ConfigSkippedKey : AppKey
 
-/** The source editor of the file at [path], relative to the entry. */
+/** The source editor of the file at [path], relative to the entry, open at [line] (0: the top). */
 @Serializable
-data class ConfigSourceKey(val path: String) : AppKey
+data class ConfigSourceKey(val path: String, val line: Int = 0) : AppKey
 
 @Serializable
 data object ConfigHistoryKey : AppKey

@@ -21,6 +21,8 @@ import kotlin.time.Duration
  * `Dispatchers.IO`.
  */
 internal class NativeSettings(private val api: NativeApi, private val zone: () -> ZoneId = ZoneId::systemDefault) {
+    fun revision(): Long? = NativeRevisions(api).revisions().active
+
     /** The loaded data's date, null when honk reports none, and [RvGeoUpdate.Failed] while honk's last attempt failed. */
     fun geoData(): RvGeoData = api.geoData().let { it.toRv(if (it.lastError != null) RvGeoUpdate.Failed else RvGeoUpdate.Idle) }
 

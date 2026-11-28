@@ -47,7 +47,7 @@ import dev.doona.android.feature.model.RvRuleState
  * apply what is held, drop it, and open the effective config.
  */
 internal class RvRulesRoutes(
-    val open: (Int) -> Unit = {},
+    val open: (Int) -> (() -> Unit)? = { null },
     val toggle: (Int) -> Unit = {},
     val delete: (Int) -> Unit = {},
     val edit: (Boolean) -> Unit = {},
@@ -159,10 +159,15 @@ private fun RulesCard(rules: List<RvPolicyRule>, editing: Boolean, routes: RvRul
         rules.forEachIndexed { i, rule ->
             val last = i == rules.lastIndex
             val remove = if (removable) RvRowRemove(if (last) null else ({ deleting = i })) else null
+            val open = routes.open(i)
             when {
                 editing -> RvRuleRow(rule, remove = remove)
-                last -> RvRuleRow(rule, Modifier.rvRowPress(Role.Button, { routes.open(i) }), remove = remove)
-                else -> RvLongPressMenu(ruleMenu(rule, { routes.open(i) }, { routes.toggle(i) }, { deleting = i }), { routes.open(i) }) { RvRuleRow(rule, it, remove = remove) }
+
+                last -> RvRuleRow(rule, if (open == null) Modifier else Modifier.rvRowPress(Role.Button, open), remove = remove)
+
+                else -> {
+                    RvLongPressMenu(ruleMenu(rule, open, { routes.toggle(i) }, { deleting = i }), open) { RvRuleRow(rule, it, remove = remove) }
+                }
             }
         }
     }
@@ -184,10 +189,10 @@ private fun RulesCard(rules: List<RvPolicyRule>, editing: Boolean, routes: RvRul
 
 /** A rule's long-press menu: 編輯, 停用 or 啟用, then 刪除 set apart and marked destructive. */
 @Composable
-private fun ruleMenu(rule: RvPolicyRule, onEdit: () -> Unit, onToggle: () -> Unit, onDelete: () -> Unit): List<RvMenuItem> {
+private fun ruleMenu(rule: RvPolicyRule, onEdit: (() -> Unit)?, onToggle: () -> Unit, onDelete: () -> Unit): List<RvMenuItem> {
     val off = rule.state == RvRuleState.Off
     return listOf(
-        RvMenuItem(stringResource(R.string.rv_rule_menu_edit), R.drawable.rv_sym_edit, onClick = onEdit),
+        RvMenuItem(stringResource(R.string.rv_rule_menu_edit), R.drawable.rv_sym_edit, enabled = onEdit != null, onClick = onEdit ?: {}),
         RvMenuItem(stringResource(if (off) R.string.rv_rule_menu_on else R.string.rv_rule_menu_off), R.drawable.rv_sym_block, onClick = onToggle),
         RvMenuItem(stringResource(R.string.rv_rule_menu_delete), R.drawable.rv_sym_delete, destructive = true, separated = true, onClick = onDelete),
     )

@@ -8,6 +8,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.R
@@ -44,6 +46,7 @@ fun GroupRoute(
 /** A group's page on a given [viewModel]: the page as [GroupRoute] draws it, for a caller (a test) that makes its own. */
 @Composable
 internal fun GroupRoute(viewModel: GroupViewModel, groupId: String, onBack: () -> Unit, onNodeDetail: (String) -> Unit = {}, onEdit: (() -> Unit)? = null) {
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onResume() }
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     val group = ui.group
     val choice = ui.choice

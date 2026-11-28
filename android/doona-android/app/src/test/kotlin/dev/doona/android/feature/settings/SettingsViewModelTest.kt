@@ -57,6 +57,7 @@ class SettingsViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     private fun TestScope.collected(vm: SettingsViewModel): SettingsViewModel {
+        vm.onResume()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
         return vm
     }

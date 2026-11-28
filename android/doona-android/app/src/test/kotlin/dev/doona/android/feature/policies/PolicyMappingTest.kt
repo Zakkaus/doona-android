@@ -144,9 +144,9 @@ class PolicyMappingTest {
         assertEquals(RvMatchKind.Suffix to "github.com", value(RuleKind.DomainSuffix, "github.com"))
         assertEquals(RvMatchKind.Keyword to "gamer", value(RuleKind.DomainKeyword, "gamer"))
         assertEquals(RvMatchKind.Cidr to "10.0.0.0/8", value(RuleKind.IpCidr, "10.0.0.0/8"))
-        assertEquals(RvMatchKind.Full to "443", value(RuleKind.DstPort, "443"))
-        assertEquals(RvMatchKind.Full to "udp", value(RuleKind.Network, "udp"))
-        assertEquals(RvMatchKind.Full to "PROCESS-NAME", value(null, null, "PROCESS-NAME"))
+        assertEquals(null to "443", value(RuleKind.DstPort, "443"))
+        assertEquals(null to "udp", value(RuleKind.Network, "udp"))
+        assertEquals(null to "PROCESS-NAME", value(null, null, "PROCESS-NAME"))
     }
 
     @Test

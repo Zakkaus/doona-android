@@ -80,6 +80,7 @@ internal fun RvActivityScreen(
     navFade: Boolean = false,
     rules: List<RvActivityRule>,
     cards: RvActivityCards,
+    cycleMode: (() -> Unit)? = { onAction(ActivityAction.SetMode(state.mode.next())) },
 ) {
     val mode = state.mode
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
@@ -103,7 +104,7 @@ internal fun RvActivityScreen(
         Box(Modifier.fillMaxSize()) {
             // The pull blurs and fades the page; the bars stay sharp, so the search pill, the picker's anchor, can grow.
             Column(Modifier.fillMaxSize().rvPullBlur(pull.progress).rvGlassSource(glass).background(Rv.colors.page).verticalScroll(scroll)) {
-                Header(steady, ticking, mode, motion, insets, look, cards.node) { HeroActions(steady, onAction, onConnect, routes) }
+                Header(steady, ticking, mode, motion, insets, look, cards.node) { HeroActions(steady, onAction, onConnect, routes, cycleMode) }
                 RvGutter(pushed ?: Modifier, banner) {
                     if (noSubscription != null) {
                         RvEmptyState(
@@ -143,7 +144,7 @@ internal class RvActivityRoutes(
     val nodes: () -> Unit,
     val node: (String) -> Unit,
     val tab: (Int) -> Unit,
-    val mode: () -> Unit,
+    val mode: (() -> Unit)?,
     val rule: (String) -> Unit,
     val rules: () -> Unit,
     val test: () -> Unit,

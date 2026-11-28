@@ -287,7 +287,10 @@ class RvSkeletonBoundsTest {
         // Under the first such row the content stands lower than its skeleton: there only the rows' heights are compared.
         val cut = min(wraps.minOrNull()?.let { rows[it].second.top } ?: Float.MAX_VALUE, STACKS[page to fontScale]?.let { loaded.of(RvPart.CARD)[it].top } ?: Float.MAX_VALUE)
         val drift = mutableListOf<String>()
-        if (wraps.isEmpty()) {
+        if (page == RvSkeletonPages.GROUP) {
+            assertTrue("a cold group draws no speculative cards or nodes", skeleton.of(RvPart.CARD).isEmpty() && skeleton.rows().isEmpty())
+            assertTrue("the caption reserves its line", skeleton.of(RvPart.SKELETON_LINE).isNotEmpty())
+        } else if (wraps.isEmpty()) {
             same(drift, "cards in the window", skeleton.of(RvPart.CARD).size.toFloat(), loaded.of(RvPart.CARD).size.toFloat())
             same(drift, "rows in the window", skeleton.rows().size.toFloat(), loaded.rows().size.toFloat())
         }
@@ -393,8 +396,6 @@ class RvSkeletonBoundsTest {
          * its nodes, which their latency orders; at 2.0 訂閱's subscriptions over their nodes and last update, and 依 App's
          * apps over their packages, which the phone's list gives. 檢視變更's rows (5 stats, 4 groups, then the rules): at
          * 1.15 the first rule's domains beside its group; at 2.0 範本's source → template, and the first two groups' lines.
-         * A group's page: its subscription's use and end date, and a long node name, in two lines; at 2.0 also 分開選擇
-         * TCP/UDP beside the switch (the skeleton row has no switch's room) and the chosen node's name.
          * A node's 詳細資料 at 2.0: its server, set under its label ([STACKS]).
          */
         val WRAPS = mapOf(
@@ -404,9 +405,6 @@ class RvSkeletonBoundsTest {
             (RvSkeletonPages.PER_APP_V1 to RV_FS200) to setOf(3, 4, 5),
             (RvSkeletonPages.TEMPLATE_IMPACT to RV_FS115) to setOf(9),
             (RvSkeletonPages.TEMPLATE_IMPACT to RV_FS200) to setOf(0, 5, 6),
-            (RvSkeletonPages.GROUP to 1f) to setOf(2, 5),
-            (RvSkeletonPages.GROUP to RV_FS115) to setOf(2, 5),
-            (RvSkeletonPages.GROUP to RV_FS200) to setOf(0, 1, 2),
             (RvSkeletonPages.NODE to RV_FS200) to setOf(1),
         )
 

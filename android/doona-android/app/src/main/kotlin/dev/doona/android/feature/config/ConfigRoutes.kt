@@ -143,8 +143,8 @@ internal fun ConfigSkippedRoute(viewModel: ConfigOverviewViewModel, onBack: () -
 }
 
 @Composable
-internal fun ConfigSourceRoute(api: NativeApi, path: String, onBack: () -> Unit, onApplied: () -> Unit) =
-    ConfigSourceRoute(viewModel<ConfigSourceViewModel>(key = path, factory = ConfigSourceViewModel.factory(api, path)), onBack, onApplied)
+internal fun ConfigSourceRoute(api: NativeApi, path: String, line: Int, onBack: () -> Unit, onApplied: () -> Unit) =
+    ConfigSourceRoute(viewModel<ConfigSourceViewModel>(key = path, factory = ConfigSourceViewModel.factory(api, path, line)), onBack, onApplied)
 
 /**
  * 原始碼 and, once 檢視變更 passed, its diff over it; Back from the diff returns to the editor with the draft kept, Back

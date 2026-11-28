@@ -21,8 +21,7 @@ internal fun RvServiceRulesPage(
     onBack: () -> Unit,
     selected: Set<String> = RV_SERVICE_SAMPLE,
     onToggle: (String) -> Unit = {},
-    onOutbound: () -> Unit = {},
-) = dev.doona.android.feature.policies.RvServiceRulesPage(RvPolicyData.main, rvServiceRules(RvPolicyData.allRules), selected, onBack, onToggle, onOutbound)
+) = dev.doona.android.feature.policies.RvServiceRulesPage(RvPolicyData.main, rvServiceRules(RvPolicyData.allRules), selected, onBack, onToggle)
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)

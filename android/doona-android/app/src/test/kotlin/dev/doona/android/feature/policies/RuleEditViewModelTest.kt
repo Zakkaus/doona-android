@@ -47,6 +47,35 @@ class RuleEditViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     @Test
+    fun `retrying delete cannot apply the form`() = runTest {
+        val vm = RuleEditViewModel(honk, "traffic:4", io = io)
+        honk.on("PUT", "/api/v1/config/sources/source-main", 503, HonkFixtures.body("errors/snapshot-unavailable"))
+        vm.delete()
+        assertNotNull(vm.uiState.value.writeFailure)
+        honk.calls.clear()
+        honk.on("PUT", "/api/v1/config/sources/source-main", 202, HonkFixtures.body("config-replace/queued"))
+        vm.retryWrite()
+        assertEquals(before.filterIndexed { i, _ -> i != 66 }, written())
+    }
+
+    @Test
+    fun `retry after deleting the first of two identical rules leaves the second in place`() = runTest {
+        val config = HonkFixtures.body("config/rv-sample-hand")
+        val row = before[66] + "\\n"
+        honk.on("GET", "/api/v1/config", 200, config.replace(row, row + row))
+        honk.on("GET", "/api/v1/operations/op-config-01", 503, HonkFixtures.body("errors/snapshot-unavailable"))
+        val vm = RuleEditViewModel(honk, "traffic:4", io = io)
+        vm.delete()
+        advanceUntilIdle()
+        assertNotNull(vm.uiState.value.writeFailure)
+        assertEquals(before, written())
+        honk.on("GET", "/api/v1/config", 200, config)
+        vm.retryWrite()
+        assertTrue(vm.uiState.value.done)
+        assertEquals(1, honk.calls.count { it.method == "PUT" })
+    }
+
+    @Test
     fun `a rule the form holds opens as its match, target and place, and 套用 rewrites its line`() = runTest {
         val vm = RuleEditViewModel(honk, "traffic:4", io = io)
         val ui = vm.uiState.value

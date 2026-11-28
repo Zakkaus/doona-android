@@ -55,11 +55,15 @@ internal class ServiceRulesViewModel(
     val uiState: StateFlow<ServiceRulesUiState> = state.asStateFlow()
 
     init {
+        load()
+    }
+
+    fun load() {
         viewModelScope.launch {
             try {
                 val read = withContext(io) { HonkPolicyRead.read(api) }.also { this@ServiceRulesViewModel.read = it }
                 val groups = read.policyGroups(read.nodes(places))
-                state.update { it.copy(main = read.mainGroupId?.let(groups::get), rules = rvServiceRules(read.policyRules(groups))) }
+                state.update { it.copy(main = read.mainGroupId?.let(groups::get), rules = rvServiceRules(read.policyRules(groups)), failure = null) }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {

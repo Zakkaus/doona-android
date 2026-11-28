@@ -2,8 +2,10 @@ package dev.doona.android.prototype.rv.policy
 
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isToggleable
@@ -70,7 +72,10 @@ class RvServiceRulesShotTest {
     @Test
     fun theRulesGoOutThroughTheMainNodeUnderOutbound() {
         compose.rvContent(dark = false) { RvServiceRulesPage(onBack = {}) }
-        compose.onNode(hasText(rvText(R.string.rv_service_outbound)) and hasText(rvText(R.string.rv_main_node))).assertExists()
+        val outbound = hasText(rvText(R.string.rv_service_outbound))
+        compose.onNode(outbound).assertExists()
+        compose.onNode(hasText(rvText(R.string.rv_main_node))).assertExists()
+        compose.onAllNodes(outbound and hasClickAction()).assertCountEquals(0)
     }
 
     @Test

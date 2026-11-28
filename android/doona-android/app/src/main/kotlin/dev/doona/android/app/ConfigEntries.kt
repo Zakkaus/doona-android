@@ -23,7 +23,7 @@ internal fun EntryProviderScope<NavKey>.configEntries(backStack: MutableList<Nav
     )
     entry<ConfigKey> { key -> ConfigOverviewRoute(nativeApi(), onBack = { backStack.pop(key) }, routes) }
     entry<ConfigSkippedKey> { key -> ConfigSkippedRoute(nativeApi(), onBack = { backStack.pop(key) }, onOpen = routes.file) }
-    entry<ConfigSourceKey> { key -> ConfigSourceRoute(nativeApi(), key.path, onBack = { backStack.pop(key) }, onApplied = { backStack.pop(key) }) }
+    entry<ConfigSourceKey> { key -> ConfigSourceRoute(nativeApi(), key.path, key.line, onBack = { backStack.pop(key) }, onApplied = { backStack.pop(key) }) }
     entry<ConfigHistoryKey> { key -> ConfigHistoryRoute(nativeApi(), onBack = { backStack.pop(key) }, routes) }
     entry<ConfigRevisionKey> { key -> ConfigRevisionRoute(nativeApi(), key.rev, onBack = { backStack.pop(key) }, onRestored = { backStack.pop(key) }) }
 }

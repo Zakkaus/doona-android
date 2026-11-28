@@ -61,7 +61,6 @@ class RvModelCopyTest {
             RvData.subscriptions,
             listOf("1.1.1.1"),
             RvLabel.Res(R.string.rv_main_node),
-            0,
         )
         val size = rules.size
         rules.clear()

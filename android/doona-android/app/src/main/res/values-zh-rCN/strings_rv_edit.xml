@@ -17,7 +17,7 @@
     <string name="rv_group_member_node">节点</string>
     <string name="rv_group_member_group">群组 · %1$s</string>
     <string name="rv_group_edit_member_group">群组</string>
-    <string name="rv_group_edit_in_source">名称和成员是配置文件里写的过滤条件，点一行即可打开。</string>
+    <string name="rv_group_edit_in_source">请用“编辑源码”修改组名或成员。</string>
     <string name="rv_group_member_remove_title">移除 %1$s？</string>
     <string name="rv_group_member_remove_body">它的流量改由群组的其他成员处理。</string>
     <string name="rv_group_member_remove_confirm">移除</string>

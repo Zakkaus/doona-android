@@ -179,7 +179,7 @@ internal fun RvMenuPanel(items: List<RvMenuItem>, onPick: (RvMenuItem) -> Unit, 
 
 /**
  * A row (or card) with a long-press menu, as the gestures brief has it (G3): [content] gets the modifier to put on the
- * element that is pressed. A tap runs [onClick]; a press held [RvMotion.LONG_PRESS_MS] (or the user's longer delay)
+ * element that is pressed. A tap runs [onClick] or opens the menu if no primary action is supplied. A press held [RvMotion.LONG_PRESS_MS] (or the user's longer delay)
  * shows the press, ticks, and opens [items] at the finger. A screen reader gets each item as a custom action, so no
  * item needs the gesture.
  */
@@ -193,7 +193,7 @@ internal fun RvLongPressMenu(items: List<RvMenuItem>, onClick: (() -> Unit)?, mo
                 Modifier
                     .pointerInput(Unit) { awaitEachGesture { touch = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial).position } }
                     // combinedClickable ticks on the long press.
-                    .rvRowPress(Role.Button, onClick ?: {}, onLongClick = { open = true })
+                    .rvRowPress(Role.Button, onClick ?: { open = true }, onLongClick = { open = true })
                     .rvMenuActions(items),
             )
         }

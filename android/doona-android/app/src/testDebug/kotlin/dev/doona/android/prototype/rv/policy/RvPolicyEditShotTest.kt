@@ -63,7 +63,7 @@ class RvPolicyEditShotTest {
     fun nativeFs200() = compose.rvShot("policy-edit-native", false, before = { assertWhole() }, fontScale = RV_FS200) { Page(RvNativeSample.profile) }
 
     @Test
-    @Config(qualifiers = "en-w412dp-h1647dp-notnight-xhdpi")
+    @Config(qualifiers = "en-w412dp-h1721dp-notnight-xhdpi")
     fun nativeEnLight() = compose.rvShot("policy-edit-native", false, before = { assertWhole() }, english = true) { Page(RvNativeSample.profile) }
 
     @Test fun confirmLight() = confirm(false)
@@ -134,10 +134,10 @@ class RvPolicyEditShotTest {
         val RULE = RvPolicyState(mode = RvRouteMode.Rule)
 
         /** Windows as tall as each whole page (the approved 策略 and its pencil are +h1990dp). */
-        const val WHOLE = "+h1989dp"
-        const val WHOLE_NATIVE = "+h1603dp"
-        const val WHOLE_REFUSED = "+h1777dp"
-        const val WHOLE_EMPTY = "+h1125dp"
-        const val WHOLE_NATIVE_FS200 = "+h2246dp"
+        const val WHOLE = "+h2047dp"
+        const val WHOLE_NATIVE = "+h1677dp"
+        const val WHOLE_REFUSED = "+h1851dp"
+        const val WHOLE_EMPTY = "+h1183dp"
+        const val WHOLE_NATIVE_FS200 = "+h2498dp"
     }
 }

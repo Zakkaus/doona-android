@@ -11,13 +11,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
@@ -37,14 +37,11 @@ import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSearchField
 import dev.doona.android.designsystem.rv.RvSearchSlot
 import dev.doona.android.designsystem.rv.RvSegmented
-import dev.doona.android.designsystem.rv.RvSkeletonCard
-import dev.doona.android.designsystem.rv.RvSkeletonEnd
-import dev.doona.android.designsystem.rv.RvSkeletonHeader
 import dev.doona.android.designsystem.rv.RvSkeletonLine
-import dev.doona.android.designsystem.rv.RvSkeletonRow
 import dev.doona.android.designsystem.rv.RvSkeletonSize
 import dev.doona.android.designsystem.rv.RvSkeletonText
 import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.rvMarkName
 import dev.doona.android.designsystem.rv.rvRowSelect
@@ -65,7 +62,6 @@ import dev.doona.android.feature.nodes.ui.RvApplyCard
 import dev.doona.android.feature.nodes.ui.RvApplyTo
 import dev.doona.android.feature.nodes.ui.RvNodePickRow
 import dev.doona.android.feature.nodes.ui.RvNodeSection
-import dev.doona.android.feature.nodes.ui.RvNodeSectionSkeleton
 import dev.doona.android.feature.nodes.ui.RvRowsComposed
 import dev.doona.android.feature.nodes.ui.RvScoreCard
 import dev.doona.android.feature.nodes.ui.matches
@@ -149,7 +145,6 @@ internal fun RvGroupPage(
     val open = sources.size <= RV_SECTIONS_OPEN_UP_TO
     // Score chooses the nodes, so a tap on one opens its detail rather than choose it.
     val pickNode = if (content.score) actions.detail else actions.tap
-    val evidence = content.evidence?.takeIf { content.score }
     val edit = stringResource(R.string.rv_menu_edit)
     RvScrollPage(
         name,
@@ -161,8 +156,8 @@ internal fun RvGroupPage(
     ) { titleBlock ->
         RvPageHeader(name, titleBlock, insets, caption = { Caption(group, content.score) })
         RvGutter(banner = banner) {
-            NetworkCard(group, choice, actions.detail, rows = evidence == null) { actions.apart(!it.apart) }
-            if (evidence != null) ScoreCards(evidence, choice.apart, group.members)
+            NetworkCard(group, choice, actions.detail, rows = !content.score) { actions.apart(!it.apart) }
+            if (content.score) ScoreCards(content.evidence, choice, group, actions.detail)
             if (choice.apart && !content.score) RvApplyCard(content.apply, actions.apply)
             if (group.groups.isNotEmpty()) MemberGroupsCard(group, choice, content.score, actions.tap)
         }
@@ -205,33 +200,13 @@ internal fun RvGroupPage(
     }
 }
 
-/**
- * The page before the group is read, row for row as it comes (owner, q-group-skeleton 2026-11-26): its name (a group's
- * id is `g-` and its name) over the caption's bar; 使用中 with the 分開選擇 TCP/UDP switch's row and the node's; the
- * search field and the two chips as they start (every subscription, by latency); a subscription's section as the node
- * pickers draw it before their catalog ([RvNodeSectionSkeleton]); and 測試群組, which waits for the group.
- */
+/** Until the group is known, draw only rows whose positions do not depend on its members or policy. */
 @Composable
 internal fun RvGroupSkeleton(title: String, onBack: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val test = stringResource(R.string.rv_policy_test_group)
     RvScrollPage(title, insets, onBack = onBack, bottomAction = { RvPrimaryButton(test, {}, enabled = false) }) { titleBlock ->
         RvPageHeader(title, titleBlock, insets, caption = { RvSkeletonLine(Rv.type.rowSub, RvSkeletonSize.CAPTION, Modifier.rvShimmer(), RvSkeletonText.Mixed) })
-        RvGutter {
-            RvSkeletonCard {
-                RvSkeletonHeader(stringResource(R.string.rv_nodes_in_use))
-                RvSkeletonRow(0, subtitle = null, title = stringResource(R.string.rv_group_apart))
-                RvSkeletonRow(1, RvSkeletonText.Mixed, RvSkeletonEnd.Latency, titleKeepWords = false)
-            }
-        }
-        Column(Modifier.fillMaxWidth().padding(horizontal = RvSpace.gutter)) {
-            var typed by remember { mutableStateOf("") }
-            RvSearchSlot { RvSearchField(null, typed, { typed = it }, it) }
-            val (subChip, orderChip) = rvNodeChips(emptyList(), emptyList(), null, RvNodeSort.Latency, {}, {})
-            RvFilterChipRow(subChip, orderChip)
-            Spacer(Modifier.height(RvSpace.controlGap))
-        }
-        RvNodeSectionSkeleton()
     }
 }
 
@@ -261,7 +236,7 @@ private fun MemberGroupsCard(group: RvPolicyGroup, choice: RvApplyChoice, score:
                 member.name.text(),
                 listOfNotNull(lead(choice, member.id, score), stringResource(member.kind.label)).joinToString(NODE_SEPARATOR),
                 member.node,
-                Modifier.rvRowSelect(chosen, { onTap(member.id) }),
+                if (score) Modifier else Modifier.rvRowSelect(chosen, { onTap(member.id) }),
                 current = chosen,
             )
         }
@@ -317,16 +292,17 @@ internal fun NetworkCard(group: RvPolicyGroup, choice: RvApplyChoice, onDetail: 
         RvSwitchRow(R.drawable.rv_sym_call_split, stringResource(R.string.rv_group_apart), choice.apart, onChange = { onApart(choice) })
         if (!rows) return@RvCard
         if (choice.apart) {
-            node(choice.tcpId)?.let { NetworkRow(it, stringResource(R.string.ui_tcp), onDetail) }
-            node(choice.udpId)?.let { NetworkRow(it, stringResource(R.string.ui_udp), onDetail) }
+            NetworkRow(node(choice.tcpId), stringResource(R.string.ui_tcp), onDetail)
+            NetworkRow(node(choice.udpId), stringResource(R.string.ui_udp), onDetail)
         } else {
-            node(choice.tcpId)?.let { NetworkRow(it, null, onDetail) }
+            NetworkRow(node(choice.tcpId), null, onDetail)
         }
     }
 }
 
 @Composable
-private fun NetworkRow(node: RvNode, network: String?, onDetail: (String) -> Unit) {
+private fun NetworkRow(node: RvNode?, network: String?, onDetail: (String) -> Unit) {
+    if (node == null) return RvStatRow(network ?: stringResource(R.string.rv_network_both), RV_NO_VALUE)
     val place = stringResource(node.place.label)
     val shown = rvShownName(node.name)
     RvRow(
@@ -339,16 +315,36 @@ private fun NetworkRow(node: RvNode, network: String?, onDetail: (String) -> Uni
 }
 
 /**
- * What Score compared, in the approved Score cards ([RvScoreCard]): TCP's and UDP's while the networks are chosen
- * [apart], else one card for both on TCP's evidence, as the approved joint sample has it.
+ * What Score compared on each split network, or on TCP for the combined card. The current choice is known even when
+ * honk has not provided evidence about it.
  */
 @Composable
-private fun ScoreCards(evidence: ScoreGroup, apart: Boolean, members: List<RvNode>) {
-    if (apart) {
-        RvScoreCard(stringResource(R.string.ui_tcp), rvScorePick(evidence.tcp), members)
-        RvScoreCard(stringResource(R.string.ui_udp), rvScorePick(evidence.udp), members)
-    } else {
-        RvScoreCard(stringResource(R.string.rv_network_both), rvScorePick(evidence.tcp), members)
+private fun ScoreCards(evidence: ScoreGroup?, choice: RvApplyChoice, group: RvPolicyGroup, onDetail: (String) -> Unit) {
+    repeat(if (choice.apart) 2 else 1) { index ->
+        val udp = index == 1
+        val id = if (udp) choice.udpId else choice.tcpId
+        val label = if (!choice.apart) {
+            R.string.rv_network_both
+        } else if (udp) {
+            R.string.ui_udp
+        } else {
+            R.string.ui_tcp
+        }
+        // honk-gap:score-evidence
+        val network = if (udp) evidence?.udp else evidence?.tcp
+        if (network != null) {
+            RvScoreCard(stringResource(label), rvScorePick(network), group.members)
+        } else {
+            RvCard {
+                RvCardHeader(stringResource(label), tag = stringResource(R.string.rv_score_coverage, RV_NO_VALUE))
+                val node = group.nodeOf(id)
+                if (node != null) {
+                    NetworkRow(node, null, onDetail)
+                } else {
+                    RvRow(null, group.groups.firstOrNull { it.id == id }?.name?.text() ?: RV_NO_VALUE, null)
+                }
+            }
+        }
     }
 }
 

@@ -122,13 +122,10 @@
     <string name="rv_effective_list_separator">",\u0020"</string>
     <string name="rv_effective_dns_via">DNS via</string>
     <string name="rv_effective_lan_value">Outside the tunnel</string>
-    <string name="rv_effective_apps_in">Apps in the tunnel</string>
     <plurals name="rv_effective_apps">
         <item quantity="one">%1$d app</item>
         <item quantity="other">%1$d apps</item>
     </plurals>
-    <string name="rv_effective_apps_rest">Other apps</string>
-    <string name="rv_effective_apps_rest_value">Direct</string>
     <string name="rv_effective_per_app">Per app</string>
     <string name="rv_effective_source">Source</string>
     <string name="rv_effective_copy">Copy</string>
@@ -181,7 +178,7 @@
     <string name="rv_score_wait_budget">Test limit reached</string>
     <string name="rv_score_wait_testing">Testing</string>
     <string name="rv_score_wait_backoff">Retrying later</string>
-    <string name="rv_score_coverage">Compared %1$d/%2$d</string>
+    <string name="rv_score_coverage">Compared %1$s</string>
     <string name="rv_score_faster">Faster</string>
     <string name="rv_score_similar">Similar</string>
     <string name="rv_score_slower">Slower</string>

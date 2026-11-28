@@ -42,6 +42,7 @@ internal data class SettingsUiState(
     val geoData: RvGeoData,
     val update: RvUpdate = RvUpdate.Idle,
     val logLevel: RvLogLevel = RvLogLevel.Info,
+    val configRev: Long? = null,
 )
 
 /**
@@ -86,14 +87,11 @@ internal class SettingsViewModel(
                 ),
                 perAppLoaded = loaded,
                 dnsLoaded = local.dnsServers != null,
+                configRev = local.configRev,
                 geoData = geoData(local),
                 update = local.update,
             )
         }.combine(levels.level) { state, level -> state.copy(logLevel = level) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initialState())
-
-    init {
-        load()
-    }
 
     /**
      * The page's switches and the manual tile sheet: the field the user turned on the page [drawn] ([changed] differs
@@ -150,7 +148,11 @@ internal class SettingsViewModel(
 
     /** Reads the DNS servers and honk's data and schedule; honk not answering shows as 未連線, with no data of its own. */
     private fun load() {
-        viewModelScope.launch { readDns() }
+        viewModelScope.launch {
+            readDns()
+            val revision = withContext(io) { runCatching { honk.revision() }.getOrNull() }
+            local.update { it.copy(configRev = revision) }
+        }
         viewModelScope.launch {
             val read = runCatching { withContext(io) { honk.geoData() to honk.geoInterval() } }.getOrNull()
             // An update under way keeps its own state until it ends.
@@ -196,6 +198,7 @@ internal class SettingsViewModel(
         val language: RvLanguage,
         val tileSheet: Boolean = false,
         val dnsServers: List<String>? = null,
+        val configRev: Long? = null,
         val geo: RvGeoData? = null,
         val geoInterval: RvGeoInterval? = null,
         val geoAsked: RvGeoUpdate? = null,
