@@ -16,9 +16,12 @@ import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvDiffFile
 import dev.doona.android.designsystem.rv.RvDiffKind
 import dev.doona.android.designsystem.rv.RvDiffLine
+import dev.doona.android.designsystem.rv.RvNotice
+import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.errorCode
+import dev.doona.android.feature.messageRes
 import dev.doona.android.feature.model.RvDnsServer
 import dev.doona.android.feature.model.RvMatchKind
 import dev.doona.android.feature.policies.RvNativeRuleAt
@@ -160,7 +163,7 @@ internal class DnsRuleEditViewModel(
             read = dns
             state.update {
                 it.copy(
-                    draft = rule?.let(::draft) ?: RvDnsRuleDraft(list, RvRuleDraft(RvMatchKind.Suffix, "", ""), list.actions.first()),
+                    draft = rule?.let(::draft) ?: it.draft ?: RvDnsRuleDraft(list, RvRuleDraft(RvMatchKind.Suffix, "", ""), list.actions.first()),
                     at = rule?.let { r -> RvNativeRuleAt(rules.indexOf(r) + 1, rules.size, statement(r)) },
                     upstreams = upstreams,
                     writeFailure = null,
@@ -171,7 +174,7 @@ internal class DnsRuleEditViewModel(
             throw cancelled
         } catch (error: Exception) {
             read = null
-            state.update { it.copy(draft = null, at = null, writeFailure = null, readFailure = error.errorCode()) }
+            state.update { it.copy(draft = it.draft.takeIf { ruleId == null }, at = null, writeFailure = null, readFailure = error.errorCode()) }
         }
     }
 
@@ -238,7 +241,8 @@ internal fun DnsRuleEditRoute(api: NativeApi, query: Boolean, ruleId: String?, o
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(ui.done) { if (ui.done) onBack() }
     val title = stringResource(if (query) R.string.rv_dns_query_title else R.string.rv_dns_response_title)
-    val draft = ui.draft ?: return ui.readFailure?.let { RvRuleFormFailed(title, readBanner(it, viewModel::retry), onBack) } ?: RvSettingsLoading()
+    ui.readFailure?.let { return RvRuleFormFailed(title, readBanner(it, viewModel::retry), onBack) }
+    val draft = ui.draft ?: return RvSettingsLoading()
     RvDnsRuleEditPage(
         draft,
         viewModel::change,
@@ -250,8 +254,10 @@ internal fun DnsRuleEditRoute(api: NativeApi, query: Boolean, ruleId: String?, o
         onDelete = viewModel::delete,
         onMove = viewModel::move,
         onOpenSource = { at -> ui.at?.statement?.source?.let { onOpenSource(it, at.line) } },
-        banner = ui.writeFailure?.let { (code, retry) -> changeBanner(stringResource(R.string.rv_config_apply_failed), code, retry) }
-            ?: ui.readFailure?.let { readBanner(it, viewModel::retry) },
+        banner = ui.writeFailure?.let { (code, action) ->
+            val label = if (action == viewModel::retry) R.string.rv_config_reload else R.string.rv_retry
+            RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_config_apply_failed), stringResource(code.messageRes()), stringResource(label), action)
+        },
     )
 }
 

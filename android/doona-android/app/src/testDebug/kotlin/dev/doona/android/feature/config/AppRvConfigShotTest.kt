@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
@@ -151,6 +152,13 @@ class AppRvConfigShotTest {
         val semantics = compose.onNode(editor).fetchSemanticsNode().config
         val range = semantics[SemanticsProperties.TextSelectionRange]
         assertEquals("unique draft text", semantics[SemanticsProperties.EditableText].text.substring(range.min, range.max))
+        val page = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
+        page.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 100_000f) }
+        val bottom = page.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value()
+        compose.onNodeWithContentDescription("搜尋檔案").performClick()
+        compose.onNode(hasContentDescription("搜尋檔案") and hasSetTextAction()).performTextInput("unique draft text")
+        compose.onNodeWithText("搜尋檔案").performClick()
+        compose.waitUntil(5_000) { page.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value() < bottom }
     }
 
     @Test

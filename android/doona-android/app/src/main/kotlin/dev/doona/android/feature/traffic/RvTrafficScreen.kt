@@ -61,12 +61,14 @@ internal fun RvTrafficScreen(state: RvTrafficState, onRange: (Int) -> Unit, onBa
     val rate: (Float) -> String = { format.rate(it.toDouble()).toString() }
     var upload by rememberSaveable { mutableStateOf(false) }
     var range by rememberSaveable { mutableIntStateOf(RV_TRAFFIC_LIVE) }
-    // A finger's point is not kept across a rotation: the finger has lifted by then.
-    var scrub by remember(upload, range, state.chart?.range) { mutableStateOf(initialScrub) }
     val report by rememberUpdatedState(onRange)
     LaunchedEffect(range) { report(range) }
     val chart = state.chart
     val values = chart?.values(upload).orEmpty()
+    // The chosen point is kept by its time, so it stays on its sample as the window moves on.
+    val timeAt = { index: Int -> chart?.let { it.endEpochMs - (values.lastIndex - index) * it.stepMs } }
+    var selectedTime by remember(upload, range, chart?.range) { mutableStateOf(initialScrub?.takeIf { it in values.indices }?.let(timeAt)) }
+    val shown = selectedTime?.let { time -> values.indices.firstOrNull { timeAt(it) == time } }
     val live = if (upload) state.upRate else state.downRate
     val title = stringResource(R.string.rv_traffic_title)
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
@@ -74,8 +76,7 @@ internal fun RvTrafficScreen(state: RvTrafficState, onRange: (Int) -> Unit, onBa
         RvPageHeader(title, titleBlock, insets, control = { RvSegmented(options, if (upload) 1 else 0, onSelect = { upload = it == 1 }) })
         // The rate, its chart and the ranges are one block of the page's column, as 活動's pager is.
         Column(Modifier.testTag(RvPart.BLOCK)) {
-            val shown = scrub?.takeIf { it in values.indices }
-            val at = if (chart != null && shown != null) format.clock(chart.endEpochMs - (values.lastIndex - shown) * chart.stepMs) else null
+            val at = selectedTime?.takeIf { shown != null }?.let { format.clock(it) }
             val sample = shown?.let { values[it].toDouble() }?.takeIf { it.isFinite() }
             val spoken = at?.let { stringResource(R.string.rv_a11y_stat_row, it, stringResource(direction(upload), sample?.let { v -> format.rate(v).toString() } ?: stringResource(R.string.rv_stats_no_data))) }
             Column(Modifier.padding(horizontal = RvSpace.gutter)) {
@@ -90,7 +91,7 @@ internal fun RvTrafficScreen(state: RvTrafficState, onRange: (Int) -> Unit, onBa
                     if (upload) Rv.colors.up else Rv.colors.down,
                     rate,
                     shown,
-                    onScrub = { scrub = it },
+                    onScrub = { selectedTime = it?.let(timeAt) },
                     modifier = if (spoken == null) Modifier else Modifier.semantics { contentDescription = spoken },
                     range = chart?.range ?: range,
                     empty = stringResource(R.string.rv_stats_no_data),

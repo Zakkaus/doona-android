@@ -25,9 +25,30 @@ internal fun rvLineDiff(source: String, base: String, candidate: String): List<R
     val omit = (suffix - 2).coerceAtLeast(0)
     val old = a.subList(start, a.size - omit)
     val new = b.subList(start, b.size - omit)
-    // Bounds both the rendered rows and the LCS matrix (at most 1,000,000 cells).
-    if (old.size + new.size.toLong() > 1_998) return null
-    val edits = edits(old, new, start)
+    // An aligned unchanged run of more than five lines is left out of the LCS: three lines stay after the change above
+    // (reach() shows two, so the third parts the hunks) and two before the change below. The budget bounds the rows
+    // and each LCS matrix (at most 1,000,000 cells).
+    val edits = buildList {
+        var budget = 1_998L
+        var from = 0
+        var i = 0
+        while (i < minOf(old.size, new.size)) {
+            if (old[i] != new[i]) {
+                i++
+                continue
+            }
+            val first = i
+            while (i < minOf(old.size, new.size) && old[i] == new[i]) i++
+            if (i - first <= 5) continue
+            val end = first + 3
+            budget -= 2L * (end - from)
+            if (budget < 0) return null
+            addAll(edits(old.subList(from, end), new.subList(from, end), start + from))
+            from = i - 2
+        }
+        if (old.size - from + (new.size - from).toLong() > budget) return null
+        addAll(edits(old.subList(from, old.size), new.subList(from, new.size), start + from))
+    }
     val changed = edits.indices.filter { edits[it].kind != RvDiffKind.Same }
     if (changed.isEmpty()) return emptyList()
     val shown = BooleanArray(edits.size)

@@ -14,6 +14,7 @@ import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.policies.dnsShown
 import dev.doona.android.feature.policies.readDns
+import dev.doona.android.honk.NativeConfig
 import dev.doona.android.honk.NativeSettings
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -151,10 +152,12 @@ internal class SettingsViewModel(
     /** Reads the DNS servers and honk's data and schedule; honk not answering shows as 未連線, with no data of its own. */
     private fun load() {
         viewModelScope.launch {
-            val dns = withContext(io) { runCatching { readDns(honk.api)?.let { dnsShown(it.address) } }.getOrNull() }
-            local.update { it.copy(dnsServer = dns) }
-            val revision = withContext(io) { runCatching { honk.revision() }.getOrNull() }
-            local.update { it.copy(configRev = revision) }
+            val (dns, revision) = withContext(io) {
+                val config = runCatching { NativeConfig(honk.api).config() }.getOrNull()
+                val upstream = config?.let { runCatching { readDns(honk.api, it) }.getOrNull() }
+                upstream?.let { dnsShown(it.address) } to config?.revision
+            }
+            local.update { it.copy(dnsServer = dns, configRev = revision) }
         }
         viewModelScope.launch {
             val read = runCatching { withContext(io) { honk.geoData() to honk.geoInterval() } }.getOrNull()

@@ -76,7 +76,7 @@
     <string name="rv_config_create">新建配置文件</string>
     <string name="rv_config_kind_note">%1$s：%2$s</string>
     <string name="rv_config_read_failed">无法读取配置文件</string>
-    <string name="rv_config_diff_limit">改动过多，无法预览。</string>
+    <string name="rv_config_diff_limit">改动过多，无法预览。请返回编辑器，分次应用。</string>
     <string name="rv_config_restore_failed">无法恢复版本</string>
     <string name="rv_config_apply_failed">无法应用</string>
     <string name="rv_config_export_title">导出配置文件？</string>

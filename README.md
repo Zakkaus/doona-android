@@ -31,15 +31,17 @@ TunBench is test tooling; its benchmark results are not a CI gate.
 Install the prerequisites listed in
 [`android/scripts/README.md`](android/scripts/README.md#prerequisites): JDK 21, the Android SDK
 with the API 37.1 platform and NDK `30.0.16248370`, rustup with the `aarch64-linux-android`
-target, and cargo-ndk 4.1.2. Then build the debug APK:
+target, and cargo-ndk 4.1.2. Then build the client's debug APK:
 
 ```sh
 git clone --recursive https://github.com/Zakkaus/doona-android
-cd doona-android/android/tunbench
+cd doona-android/android/doona-android
 ./gradlew assembleDebug
 ```
 
-The APK is `android/tunbench/app/build/outputs/apk/debug/app-debug.apk`. `assembleDebug` runs
+The APK is `android/doona-android/app/build/outputs/apk/debug/app-debug.apk`; [`android/doona-android/README.md`](android/doona-android/README.md)
+covers the release build. The TunBench benchmark APK builds the same way from `android/tunbench`, into
+`android/tunbench/app/build/outputs/apk/debug/app-debug.apk`. There `assembleDebug` runs
 `:app:buildHonkEngineDebug`, which provides that variant's native library: it runs `cargo ndk` in
 `crates/honk-android` with `rustc --lib --crate-type cdylib --release --locked --features bench`.
 It builds the `cdylib` alone because Cargo skips `lto = "fat"` for a unit that is also an `rlib`.

@@ -141,7 +141,7 @@ internal fun DoonaApp(
         RvNavHost(backStack, Modifier.fillMaxSize()) {
             entry<ActivityKey> {
                 // The RV page draws its own floating nav; the gate's welcome page takes the old tab frame.
-                val releases = rememberOpenReleases()
+                val releases = rememberOpenReleases { backStack.selectTab(Tab.Settings) }
                 val routes = remember(backStack, onSystemSettings, releases) { activityRoutes(backStack, onSystemSettings, releases) }
                 FirstRunGate(engine, imports, onAdd = { backStack.push(SubAddKey) }, frame = { OldTabFrame(Tab.Activity, onTab, onReselect, it) }) {
                     NodesPull(nodes, RvPullMotion.Sheet, rememberRvPullState(), onDetail = { backStack.push(NodeKey(it)) }, onAdd = { backStack.push(SubAddKey) }, onAddNode = addNode) { look ->
@@ -312,11 +312,14 @@ private fun OldTabFrame(tab: Tab, onTab: (Int) -> Unit, onReselect: () -> Boolea
     }
 }
 
-/** 檢查更新 for a page in `feature/`, which may not reach `data/`: the releases page, opened from the app's activity. */
+/**
+ * 檢查更新 for a page in `feature/`, which may not reach `data/`: the releases page, opened from the app's activity, or
+ * [onFailed] when no app opens it.
+ */
 @Composable
-private fun rememberOpenReleases(): () -> Unit {
+private fun rememberOpenReleases(onFailed: () -> Unit = {}): () -> Unit {
     val activity = LocalActivity.current
-    return remember<() -> Unit>(activity) { { activity?.let(UpdateCheck::openReleases) } }
+    return remember<() -> Unit>(activity) { { if (activity?.let(UpdateCheck::openReleases) != true) onFailed() } }
 }
 
 /** A subscription page's auto-update interval in hours, or null while auto-update is off. */

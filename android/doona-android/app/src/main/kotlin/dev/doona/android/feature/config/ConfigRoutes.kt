@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -237,7 +238,8 @@ internal fun ConfigSourceRoute(viewModel: ConfigSourceViewModel, onBack: () -> U
     if (diff == null) {
         var picking by rememberSaveable(draft.path) { mutableStateOf(false) }
         var query by remember(draft.path) { mutableStateOf<String?>(null) }
-        RvConfigSourcePage(draft, ui.value, viewModel::onValueChange, onBack, { picking = true }, { query = "" }, viewModel::review, readFailed(ui.failure, viewModel::review))
+        var searchRequest by remember(draft.path) { mutableIntStateOf(0) }
+        RvConfigSourcePage(draft, ui.value, viewModel::onValueChange, onBack, { picking = true }, { query = "" }, viewModel::review, readFailed(ui.failure, viewModel::review), searchRequest)
         RvSheet(picking, { picking = false }, stringResource(R.string.rv_config_files)) {
             RvSettingsRadioCard {
                 ui.paths.forEach { path ->
@@ -255,6 +257,7 @@ internal fun ConfigSourceRoute(viewModel: ConfigSourceViewModel, onBack: () -> U
             RvSearchField(null, term, { query = it }, hint = search)
             RvPrimaryButton(search, {
                 viewModel.onValueChange(ui.value.copy(selection = TextRange(start, start + term.length)))
+                searchRequest++
                 query = null
             }, enabled = start >= 0)
         }

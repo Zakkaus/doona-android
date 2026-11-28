@@ -70,7 +70,8 @@ class TrafficPageTest {
 
     @Test
     fun aScrubbedPointShowsItsRateAndWhenItEnded() {
-        compose.rvContent(dark = false) { RvTrafficScreen(state, onRange = {}, onBack = {}, initialScrub = 49) }
+        var current by mutableStateOf(chart)
+        compose.rvContent(dark = false) { RvTrafficScreen(state.copy(chart = current), onRange = {}, onBack = {}, initialScrub = 49) }
         // Point 49 of 60 ends ten seconds before the last: 10:23:50 UTC.
         assertTrue("its time", shows(format.clock(END - 10_000)))
         assertTrue("its rate", shows(format.liveRate(50_000.0).number))
@@ -78,6 +79,10 @@ class TrafficPageTest {
         val selected = rvText(R.string.rv_a11y_stat_row).format(format.clock(END - 10_000), download)
         compose.onNode(hasTestTag(RV_CHART) and hasContentDescription(selected), useUnmergedTree = true).assertExists()
         compose.onAllNodesWithText(rvText(R.string.rv_now), useUnmergedTree = true).assertCountIs(0, "not now")
+        compose.runOnIdle { current = chart.copy(endEpochMs = END + 1_000, down = chart.down.drop(1) + 0f) }
+        compose.onNode(hasTestTag(RV_CHART) and hasContentDescription(selected), useUnmergedTree = true).assertExists()
+        compose.runOnIdle { current = chart.copy(endEpochMs = END + 60_000) }
+        assertTrue(shows(rvText(R.string.rv_now)))
     }
 
     @Test

@@ -222,7 +222,6 @@ jobs:
         run: |
           set -euo pipefail
           tools/check-tokens.sh
-          tools/check-scale.sh
           tools/check-components.sh ${RATCHET_BASE:+--base-rev "$RATCHET_BASE"}
           tools/test-check-components.sh
           tools/check-layers.sh

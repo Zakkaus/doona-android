@@ -43,6 +43,7 @@ internal fun RvConfigSourcePage(
     onSearch: () -> Unit = {},
     onReview: () -> Unit = {},
     failure: RvNotice? = null,
+    searchRequest: Int = 0,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_config_source)
@@ -63,7 +64,7 @@ internal fun RvConfigSourcePage(
             caption = { RvCaption(stringResource(R.string.rv_config_draft_base, draft.baseRev ?: RV_NO_VALUE)) },
             control = { RvFilterChip(draft.path, onPickFile) },
         )
-        RvGutter(banner = failure) { RvSourceField(value, onValueChange, draft.path, marks = marks) }
+        RvGutter(banner = failure) { RvSourceField(value, onValueChange, draft.path, marks = marks, revealRequest = searchRequest) }
     }
 }
 
@@ -88,7 +89,7 @@ internal fun RvConfigDiffPage(
         title,
         insets,
         onBack = onBack,
-        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply, enabled = !diff.stale) },
+        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply, enabled = !diff.stale && diff.files != null) },
         actionScrim = true,
     ) { titleBlock ->
         RvPageHeader(title, titleBlock, insets, caption = { RvCaption(stringResource(R.string.rv_config_based_on, diff.baseRev ?: RV_NO_VALUE)) })
@@ -104,13 +105,9 @@ internal fun RvConfigDiffPage(
             null
         }
         RvGutter(banner = stale ?: failure) {
-            val files = diff.files
-            if (files == null) {
-                RvFootnote(stringResource(R.string.rv_config_diff_limit))
-            } else {
-                files.forEach { file -> RvSourceDiff(file, onOpen = { onOpen(file.source, it) }) }
-            }
+            diff.files?.forEach { file -> RvSourceDiff(file, onOpen = { onOpen(file.source, it) }) }
         }
+        if (diff.files == null) RvFootnote(stringResource(R.string.rv_config_diff_limit))
         RvFootnote(stringResource(R.string.rv_template_new_flows))
     }
 }

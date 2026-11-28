@@ -70,4 +70,19 @@ class DnsRulesViewModelTest {
         advanceUntilIdle()
         assertEquals(ErrorCode.Busy, vm.uiState.value.removeFailure?.second)
     }
+
+    @Test
+    fun retryResubmitsTheRefusedRemoval() = runTest {
+        val path = "/api/v1/config/sources/source-main"
+        val vm = DnsRulesViewModel(honk, io)
+        honk.on("PUT", path, 503, HonkFixtures.body("errors/snapshot-unavailable"))
+        vm.remove("Query:1")
+        advanceUntilIdle()
+        val refused = honk.calls.single { it.method == "PUT" }.body
+        honk.calls.clear()
+        honk.on("PUT", path, 202, HonkFixtures.body("config-replace/queued"))
+        checkNotNull(vm.uiState.value.removeFailure).third()
+        advanceUntilIdle()
+        assertEquals(refused, honk.calls.single { it.method == "PUT" }.body)
+    }
 }

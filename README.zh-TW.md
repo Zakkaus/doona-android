@@ -25,15 +25,15 @@ TunBench 是測試工具，其測量結果不作為 CI 的通過條件。
 
 ## 建置
 
-先安裝 [`android/scripts/README.md`](android/scripts/README.md#prerequisites) 列出的前置需求：JDK 21、含 API 37.1 平台與 NDK `30.0.16248370` 的 Android SDK、加上 `aarch64-linux-android` target 的 rustup，以及 cargo-ndk 4.1.2。接著建置 debug APK：
+先安裝 [`android/scripts/README.md`](android/scripts/README.md#prerequisites) 列出的前置需求：JDK 21、含 API 37.1 平台與 NDK `30.0.16248370` 的 Android SDK、加上 `aarch64-linux-android` target 的 rustup，以及 cargo-ndk 4.1.2。接著建置用戶端的 debug APK：
 
 ```sh
 git clone --recursive https://github.com/Zakkaus/doona-android
-cd doona-android/android/tunbench
+cd doona-android/android/doona-android
 ./gradlew assembleDebug
 ```
 
-APK 位於 `android/tunbench/app/build/outputs/apk/debug/app-debug.apk`。`assembleDebug` 會執行 `:app:buildHonkEngineDebug`，由它提供該建置變體的原生函式庫：在 `crates/honk-android` 執行 `cargo ndk`，參數是 `rustc --lib --crate-type cdylib --release --locked --features bench`。只建 `cdylib`，因為 Cargo 遇到同時是 `rlib` 的編譯單元就不套用 `lto = "fat"`。
+APK 位於 `android/doona-android/app/build/outputs/apk/debug/app-debug.apk`；release 建置見 [`android/doona-android/README.md`](android/doona-android/README.md)。TunBench 效能測試 APK 以相同方式在 `android/tunbench` 建置，輸出到 `android/tunbench/app/build/outputs/apk/debug/app-debug.apk`。在那裡，`assembleDebug` 會執行 `:app:buildHonkEngineDebug`，由它提供該建置變體的原生函式庫：在 `crates/honk-android` 執行 `cargo ndk`，參數是 `rustc --lib --crate-type cdylib --release --locked --features bench`。只建 `cdylib`，因為 Cargo 遇到同時是 `rlib` 的編譯單元就不套用 `lto = "fat"`。
 
 [`.github/workflows/android.yml`](.github/workflows/android.yml) 列出 CI 執行的檢查。
 

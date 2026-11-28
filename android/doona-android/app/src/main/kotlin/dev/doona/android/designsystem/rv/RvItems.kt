@@ -20,7 +20,6 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.constrainHeight
-import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -36,7 +35,7 @@ import kotlin.math.roundToInt
  * rest, so a page opens and renders as it always did; at animator scale 0 every change is immediate.
  */
 @Composable
-internal fun <T> RvItems(items: List<T>, key: (T) -> Any, gap: Dp = 0.dp, empty: (@Composable () -> Unit)? = null, content: @Composable (T) -> Unit) { // literal: no gap unless asked
+internal fun <T> RvItems(items: List<T>, key: (T) -> Any, gap: Dp = RvSpace.none, empty: (@Composable () -> Unit)? = null, content: @Composable (T) -> Unit) {
     val motion = Rv.motion
     val list = remember { RvItemList(items, key, empty != null) }
     // Rows come and go after the frame that saw the change, never while composing; a row's own data is the latest.

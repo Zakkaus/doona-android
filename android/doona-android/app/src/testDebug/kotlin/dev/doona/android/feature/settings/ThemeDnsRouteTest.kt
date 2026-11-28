@@ -104,9 +104,9 @@ class ThemeDnsRouteTest {
         honk.on("PUT", "/api/v1/config/sources/source-main", 412, HonkFixtures.body("errors/stale-revision"))
         honk.on("GET", "/api/v1/dns/rules", 200, moved.toString())
         compose.onNodeWithText("刪除").performClick()
-        compose.waitUntil(5_000) { compose.onAllNodesWithText(first).fetchSemanticsNodes().isEmpty() && compose.onAllNodesWithText("重試").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(first).fetchSemanticsNodes().isEmpty() && compose.onAllNodesWithText("重新載入").fetchSemanticsNodes().isNotEmpty() }
         val reads = honk.calls.count { it.path == "/api/v1/dns/rules" }
-        compose.onNodeWithText("重試").performClick()
+        compose.onNodeWithText("重新載入").performClick()
         compose.waitUntil(5_000) { synchronized(honk) { honk.calls.count { it.path == "/api/v1/dns/rules" } > reads } }
         compose.onNodeWithText("qname(geosite:cn)").assertExists()
         assertEquals(1, honk.calls.count { it.method == "PUT" })

@@ -75,6 +75,7 @@ internal fun RvSourceField(
     name: String,
     modifier: Modifier = Modifier,
     marks: List<RvSourceMark> = emptyList(),
+    revealRequest: Int = 0,
 ) {
     val colors = Rv.colors
     val text = value.text
@@ -98,7 +99,7 @@ internal fun RvSourceField(
     val floor = LocalRvContentFloor.current
     // Opening at a line, search and a diff row's jump set the selection from outside the field, which does not scroll
     // to it by itself; it lands above whatever floats over the page's bottom ([LocalRvContentFloor]).
-    LaunchedEffect(value.selection, layout != null) {
+    LaunchedEffect(value.selection, layout != null, revealRequest) {
         val result = layout ?: return@LaunchedEffect
         if (value.selection == TextRange.Zero) return@LaunchedEffect
         val index = shown.offsets.originalToTransformed(value.selection.min)

@@ -72,5 +72,5 @@
     <string name="rv_geo_interval_default">Default</string>
     <string name="rv_geo_interval_custom">Custom schedule</string>
     <string name="rv_geo_interval_unavailable">Automatic updates unavailable</string>
-    <string name="rv_geo_interval_footer">Updates only while connected, through the main node.</string>
+    <string name="rv_geo_interval_footer">Updates only while connected, using the download route configured in honk.</string>
 </resources>

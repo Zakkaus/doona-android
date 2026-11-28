@@ -76,7 +76,7 @@
     <string name="rv_config_create">新增設定檔</string>
     <string name="rv_config_kind_note">%1$s：%2$s</string>
     <string name="rv_config_read_failed">無法讀取設定檔</string>
-    <string name="rv_config_diff_limit">變更太多，無法預覽。</string>
+    <string name="rv_config_diff_limit">變更太多，無法預覽。請返回編輯器，分次套用。</string>
     <string name="rv_config_restore_failed">無法復原版本</string>
     <string name="rv_config_apply_failed">無法套用</string>
     <string name="rv_config_export_title">匯出設定檔？</string>

@@ -11,9 +11,12 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvListEdit
+import dev.doona.android.designsystem.rv.RvNotice
+import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.errorCode
+import dev.doona.android.feature.messageRes
 import dev.doona.android.feature.policies.RvReadOnReturn
 import dev.doona.android.feature.policies.ruleCondition
 import dev.doona.android.feature.policies.statementAt
@@ -35,7 +38,7 @@ import kotlinx.coroutines.withContext
 /** What DNS 規則 shows: honk's two DNS lists (null until read), why a removal did not land, why the read failed. */
 internal data class DnsRulesUiState(
     val lists: RvDnsLists? = null,
-    val removeFailure: Pair<String, ErrorCode>? = null,
+    val removeFailure: Triple<String, ErrorCode, () -> Unit>? = null,
     val readFailure: ErrorCode? = null,
 )
 
@@ -80,7 +83,11 @@ internal class DnsRulesViewModel(private val api: NativeApi, private val io: Cor
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                state.update { it.copy(removeFailure = ruleCondition(rule.expression).trim() to error.errorCode()) }
+                load()
+                // The same statement still at its place is removed again; else the page offers to reload.
+                val action: () -> Unit = if (id(list, index) == rule.id) ({ remove(key) }) else ::retry
+                state.update { it.copy(removeFailure = Triple(ruleCondition(rule.expression).trim(), error.errorCode(), action)) }
+                return@launch
             }
             load()
         }
@@ -130,8 +137,9 @@ internal fun DnsRulesRoute(api: NativeApi, onBack: () -> Unit, onOpen: (Boolean,
     RvReadOnReturn(viewModel::retry)
     // A first read that failed has no lists: the page then holds its banner over empty lists.
     val lists = state.lists ?: state.readFailure?.let { RvDnsLists(emptyList(), emptyList()) } ?: return RvSettingsLoading()
-    val removed = state.removeFailure?.let { (title, code) ->
-        changeBanner(stringResource(R.string.rv_list_delete_failed_title, title), code, viewModel::retry)
+    val removed = state.removeFailure?.let { (title, code, action) ->
+        val label = if (action == viewModel::retry) R.string.rv_config_reload else R.string.rv_retry
+        RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_list_delete_failed_title, title), stringResource(code.messageRes()), stringResource(label), action, titleKeepWords = false)
     }
     RvDnsRulesPage(
         lists,

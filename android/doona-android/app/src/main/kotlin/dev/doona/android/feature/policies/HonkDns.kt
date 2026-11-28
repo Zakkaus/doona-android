@@ -10,8 +10,7 @@ import dev.doona.android.honk.daeBlock
 import dev.doona.android.honk.daeCode
 import java.net.URI
 
-internal fun readDns(api: NativeApi): HonkUpstream? {
-    val config = NativeConfig(api).config()
+internal fun readDns(api: NativeApi, config: HonkConfig = NativeConfig(api).config()): HonkUpstream? {
     val dns = NativeRouting(api).dnsRules()
     return if (config.generationId == dns.generationId) fallbackUpstream(honkUpstreams(config), dns) else null
 }

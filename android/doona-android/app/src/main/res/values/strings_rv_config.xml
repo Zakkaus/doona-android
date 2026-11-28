@@ -85,7 +85,7 @@
     <string name="rv_template_group_openai" translatable="false">OpenAI</string>
     <string name="rv_template_group_netflix" translatable="false">Netflix</string>
     <string name="rv_config_read_failed">Couldn’t read the configuration</string>
-    <string name="rv_config_diff_limit">Too many changes to preview.</string>
+    <string name="rv_config_diff_limit">Too many changes to preview. Go back and apply fewer changes at a time.</string>
     <string name="rv_config_restore_failed">Couldn’t restore the revision</string>
     <string name="rv_config_apply_failed">Couldn’t apply</string>
     <string name="rv_config_export_title">Export configuration?</string>

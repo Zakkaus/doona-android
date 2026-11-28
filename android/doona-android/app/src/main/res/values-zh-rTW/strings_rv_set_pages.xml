@@ -61,5 +61,5 @@
     <string name="rv_geo_interval_default">預設</string>
     <string name="rv_geo_interval_custom">自訂排程</string>
     <string name="rv_geo_interval_unavailable">不支援自動更新</string>
-    <string name="rv_geo_interval_footer">只在連線時更新，經由主節點下載。</string>
+    <string name="rv_geo_interval_footer">只在連線時更新，下載路由依 honk 設定。</string>
 </resources>

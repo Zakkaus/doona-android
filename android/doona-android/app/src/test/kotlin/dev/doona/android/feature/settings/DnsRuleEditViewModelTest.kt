@@ -117,6 +117,23 @@ class DnsRuleEditViewModelTest {
         assertTrue(vm.uiState.value.done)
     }
 
+    @Test
+    fun reloadKeepsANewRuleDraft() = runTest {
+        val vm = DnsRuleEditViewModel(honk, RvDnsList.Query, null, io)
+        val draft = RvDnsRuleDraft(RvDnsList.Query, RvRuleDraft(RvMatchKind.Suffix, "corp.example", ""), RvDnsAction.Reject)
+        vm.change(draft)
+        honk.on("GET", "/api/v1/config", 200, HonkFixtures.body("config/rv-sample").replace("generation-42", "generation-43"))
+        vm.apply()
+        advanceUntilIdle()
+        honk.on("GET", "/api/v1/dns/rules", 200, HonkFixtures.body("dns-rules/rv-sample").replace("generation-42", "generation-43"))
+        checkNotNull(vm.uiState.value.writeFailure).second()
+        advanceUntilIdle()
+        assertEquals(draft, vm.uiState.value.draft)
+        vm.apply()
+        advanceUntilIdle()
+        assertTrue(written().any { "corp.example" in it })
+    }
+
     private fun written(): List<String> = Json.parseToJsonElement(checkNotNull(honk.calls.single { it.method == "PUT" }.body)).jsonObject
         .getValue("content").jsonPrimitive.content.lines()
 }

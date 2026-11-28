@@ -55,6 +55,13 @@ class ConfigSampleDataTest {
     }
 
     @Test
+    fun distantEditsKeepBothHunks() {
+        val middle = "\n".repeat(1_199)
+        val diff = checkNotNull(rvLineDiff("config.dae", "# old$middle# old", "# new$middle# new")).single()
+        assertEquals(listOf(1, 1_200), diff.hunks.map { hunk -> hunk.single { it.kind == RvDiffKind.Added }.line })
+    }
+
+    @Test
     fun aLargeReplacementExceedsThePreviewBudget() {
         assertNull(rvLineDiff("config.dae", "# Old\n".repeat(1_200), "# New\n".repeat(1_200)))
         assertNull(rvLineDiff("config.dae", "dns {}", "dns {}" + "\n".repeat(16_000)))
