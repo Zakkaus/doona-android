@@ -1,0 +1,17 @@
+[
+  {
+    "id": "group-proxy",
+    "name": "proxy",
+    "icon": "https://icons.example/proxy.png",
+    "config_revision": "17",
+    "policy": {
+      "kind": "urltest",
+      "native": "urltest"
+    },
+    "member_count": 2,
+    "selection": {
+      "tcp_member_id": "node-hk-01",
+      "udp_member_id": null
+    }
+  }
+]

@@ -1,0 +1,46 @@
+{
+  "generation_id": "generation-42",
+  "rules": [
+    {
+      "rule_id": "traffic:0",
+      "index": 0,
+      "expression": "pname(curl) -> direct",
+      "outbound": "direct",
+      "must": false,
+      "source": {
+        "file": "routing.dae",
+        "source_id": "source-routing",
+        "line": 12,
+        "column": 5
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "traffic:1",
+      "index": 1,
+      "expression": "dip(198.51.100.0/24) -> proxy",
+      "outbound": "proxy",
+      "must": false,
+      "source": {
+        "file": "routing.dae",
+        "source_id": "source-routing",
+        "line": 13,
+        "column": 5
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "traffic:2",
+      "index": 2,
+      "expression": "fallback: block",
+      "outbound": "block",
+      "must": false,
+      "source": null,
+      "kind": "fallback"
+    }
+  ],
+  "fallback": {
+    "outbound": "block",
+    "source": null
+  }
+}

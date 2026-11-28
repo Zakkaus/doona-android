@@ -24,6 +24,8 @@ import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeInstalledApps
 import dev.doona.android.testing.SeedTheme
+import dev.doona.android.vpn.ActivityHonkFixtures.empty
+import dev.doona.android.vpn.FakeHonk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -114,6 +116,8 @@ class PolicyFlowsTest {
     @Test
     fun `removing the last subscription while a tunnel runs keeps its status and the action that stops it, and the first-run page returns once it stops`() {
         val engine = FakeEngine(status = Status.Running(sinceEpochMs = 0))
+        // 活動 reads honk, which holds no subscription and no node by the time the page reads it.
+        (ApplicationProvider.getApplicationContext<DoonaApplication>().container.nativeApi as FakeHonk).empty()
         show(engine)
         compose.runOnIdle { engine.subscriptions.value = emptyList() }
 

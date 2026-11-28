@@ -1,0 +1,80 @@
+{
+  "id": "g-TW",
+  "name": "TW",
+  "icon": null,
+  "config_revision": "1",
+  "policy": {
+    "kind": "urltest",
+    "native": "urltest"
+  },
+  "members": [
+    {
+      "id": "n-0001c20e00000000",
+      "name": "Taipei 01",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001c20f00000000",
+      "name": "Taipei 02",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001c21000000000",
+      "name": "Taichung 03",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001c21100000000",
+      "name": "Taipei 04",
+      "kind": "node"
+    },
+    {
+      "id": "n-0001c21200000000",
+      "name": "Kaohsiung 05",
+      "kind": "node"
+    }
+  ],
+  "config": {
+    "default_member_id": null,
+    "final_outbound": null,
+    "check_url": null,
+    "check_interval": 300,
+    "tolerance": 50,
+    "idle_timeout": null,
+    "interrupt_connections": false
+  },
+  "runtime": {
+    "selection": {
+      "tcp": {
+        "member_id": "n-0001c21100000000",
+        "resolved_leaf_node_id": "n-0001c21100000000",
+        "source": "health"
+      },
+      "udp": {
+        "member_id": "n-0001c21100000000",
+        "resolved_leaf_node_id": "n-0001c21100000000",
+        "source": "health"
+      }
+    },
+    "health": []
+  },
+  "capabilities": {
+    "can_select": false,
+    "can_override": true,
+    "supports_nested_groups": true,
+    "mutable_config": [
+      "policy",
+      "default_member_id",
+      "final_outbound",
+      "check_url",
+      "check_interval",
+      "tolerance",
+      "idle_timeout",
+      "interrupt_connections"
+    ],
+    "probe_transports": [
+      "tcp",
+      "udp"
+    ]
+  }
+}

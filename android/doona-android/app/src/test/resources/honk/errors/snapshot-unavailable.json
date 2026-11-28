@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "snapshot_unavailable",
+    "message": "A coherent routing generation is unavailable; retry the read.",
+    "details": null
+  },
+  "request_id": "request-01HZX4K8W6"
+}

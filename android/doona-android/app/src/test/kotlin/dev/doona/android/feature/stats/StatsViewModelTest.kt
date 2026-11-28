@@ -1,11 +1,12 @@
 package dev.doona.android.feature.stats
 
-import dev.doona.android.engine.Engine
-import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.Subscription
-import dev.doona.android.engine.Usage
-import dev.doona.android.engine.fake.rvSampleEngine
+import dev.doona.android.vpn.ActivityHonkFixtures
+import dev.doona.android.vpn.ActivityHonkFixtures.empty
+import dev.doona.android.vpn.ActivityHonkFixtures.refusingProbes
+import dev.doona.android.vpn.FakeHonk
+import dev.doona.android.vpn.HonkExamples
+import dev.doona.android.vpn.HonkFixtures
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -17,10 +18,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.time.ZoneOffset
@@ -33,135 +31,95 @@ class StatsViewModelTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    /**
-     * The sample engine, counting its reads and calls, with `usage()` failing while [failUsage] is set, the latency test
-     * failing with [testFails] and the update of each id in [updateFails] with its code.
-     */
-    private class Counting(private val engine: Engine = rvSampleEngine()) : Engine by engine {
-        var usageReads = 0
-        var failUsage = false
-        var testFails: ErrorCode? = null
-        val updateFails = mutableMapOf<String, ErrorCode>()
-        val tests = mutableListOf<String?>()
-        val updates = mutableListOf<String>()
-
-        override suspend fun usage(): Result<Usage> {
-            usageReads++
-            return if (failUsage) Result.failure(IllegalStateException("read failed")) else engine.usage()
-        }
-
-        override suspend fun testLatency(groupId: String?): Result<Unit> {
-            tests += groupId
-            return testFails?.let { Result.failure(EngineException(it)) } ?: Result.success(Unit)
-        }
-
-        override suspend fun updateSubscription(id: String): Result<Subscription> {
-            updates += id
-            return updateFails[id]?.let { Result.failure(EngineException(it)) } ?: engine.updateSubscription(id)
-        }
+    /** 統計 over [honk], its profile read once and its page collected, as the route shows it. */
+    private fun TestScope.shown(honk: FakeHonk = ActivityHonkFixtures.sample()): StatsViewModel {
+        val work = UnconfinedTestDispatcher(testScheduler)
+        val vm = StatsViewModel(honk, clock = { SAMPLE_NOW }, zone = { ZoneOffset.UTC }, work = work, io = work)
+        vm.load()
+        backgroundScope.launch(work) { vm.uiState.collect {} }
+        return vm
     }
 
-    private fun TestScope.viewModel(engine: Engine) =
-        StatsViewModel(engine, clock = { SAMPLE_NOW }, zone = { ZoneOffset.UTC }, pollMs = POLL_MS, work = UnconfinedTestDispatcher(testScheduler))
+    private fun FakeHonk.reads(path: String) = calls.count { it.method == "GET" && it.path == path }
+
+    private fun FakeHonk.posts(path: String) = calls.count { it.method == "POST" && it.path == path }
 
     @Test
-    fun `shows today's usage once the first read answers and reads again while shown`() = runTest {
-        val engine = Counting()
-        val vm = viewModel(engine)
-        assertTrue("before the first read", vm.uiState.value.today.quiet)
-        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
-        val expected = engine.usage().getOrThrow().today.down.take(11).sum()
-        engine.usageReads = 0
-        advanceTimeBy(1)
-        assertEquals(expected, vm.uiState.value.today.downTotal)
-        assertNotNull(vm.uiState.value.split)
-        val reads = engine.usageReads
-        advanceTimeBy(POLL_MS)
-        assertTrue("read again after $POLL_MS ms", engine.usageReads > reads)
-        job.cancel()
+    fun `shows honk's profile once read, and reads nothing more while shown`() = runTest {
+        val honk = ActivityHonkFixtures.sample()
+        val vm = shown(honk)
+        assertEquals(2, vm.uiState.value.subscriptions.size)
+        assertEquals(48, vm.uiState.value.nodes.size)
+        advanceTimeBy(60_000)
+        assertEquals(1, honk.reads("/api/v1/providers"))
     }
 
     @Test
     fun `a failed read keeps the last answer`() = runTest {
-        val engine = Counting()
-        val vm = viewModel(engine)
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
-        advanceTimeBy(1)
-        assertFalse(vm.uiState.value.today.quiet)
-        engine.failUsage = true
-        advanceTimeBy(POLL_MS * 2)
-        assertFalse("still the last day read", vm.uiState.value.today.quiet)
+        val honk = ActivityHonkFixtures.sample()
+        val vm = shown(honk)
+        honk.on("GET", "/api/v1/providers", UNAVAILABLE, HonkExamples.UNAVAILABLE)
+        vm.load()
+        assertEquals(2, honk.reads("/api/v1/providers"))
+        assertEquals(2, vm.uiState.value.subscriptions.size)
     }
 
     @Test
-    fun `the tools test every node and update every subscription`() = runTest {
-        val engine = Counting()
-        val vm = viewModel(engine)
-        vm.testAll()
-        assertEquals(listOf<String?>(null), engine.tests)
-        vm.updateAll()
-        assertEquals(engine.subscriptions.value.map { it.id }, engine.updates)
-    }
-
-    @Test
-    fun `a failed test shows until the test next succeeds`() = runTest {
-        val engine = Counting().apply { testFails = ErrorCode.Busy }
-        val vm = viewModel(engine)
-        assertNull(vm.failure.value)
+    fun `a refused test shows until the test next succeeds, which probes every group and reads the profile again`() = runTest {
+        val honk = ActivityHonkFixtures.sample().refusingProbes()
+        val vm = shown(honk)
         vm.testAll()
         assertEquals(StatsFailure(StatsTool.TestAll, ErrorCode.Busy), vm.failure.value)
+        honk.on("POST", ActivityHonkFixtures.PROBES_PATH, ACCEPTED, HonkFixtures.body("probes/queued"))
+        honk.on("GET", "/api/v1/operations/op-01HZX4K8W9", OK, HonkFixtures.body("operations/probe-complete"))
+        val probes = honk.posts(ActivityHonkFixtures.PROBES_PATH)
         vm.retry()
-        assertEquals("重試 tests again", listOf<String?>(null, null), engine.tests)
-        assertNotNull("still failing", vm.failure.value)
-        engine.testFails = null
-        vm.retry()
-        assertNull("cleared by the next success", vm.failure.value)
+        // honk's operations are polled a second apart, one group after another.
+        advanceTimeBy(8 * 1_000L + 1)
+        assertNull(vm.failure.value)
+        assertEquals(8, honk.posts(ActivityHonkFixtures.PROBES_PATH) - probes)
+        assertEquals(3, honk.reads("/api/v1/providers"))
     }
 
     @Test
-    fun `a failed update names the first subscription that failed, and the others still update`() = runTest {
-        val engine = Counting()
-        val subscriptions = engine.subscriptions.value
-        val failing = subscriptions.first()
-        engine.updateFails[failing.id] = ErrorCode.FetchFailed
-        val vm = viewModel(engine)
+    fun `a failed update names the provider that failed, and the others still refresh`() = runTest {
+        val honk = ActivityHonkFixtures.sample()
+        honk.on("POST", "/api/v1/providers/s1/refresh", ACCEPTED, HonkFixtures.body("operations/provider-refresh-accepted"))
+        honk.on("GET", "/api/v1/operations/op-refresh", OK, HonkFixtures.body("operations/provider-refresh-s1"))
+        honk.on("POST", "/api/v1/providers/s2/refresh", CONFLICT, HonkExamples.UNAVAILABLE)
+        val vm = shown(honk)
         vm.updateAll()
-        assertEquals(subscriptions.map { it.id }, engine.updates)
-        assertEquals(StatsFailure(StatsTool.UpdateAll, ErrorCode.FetchFailed, failing.name), vm.failure.value)
-        engine.updateFails.clear()
-        vm.retry()
-        assertNull(vm.failure.value)
+        advanceTimeBy(1_001)
+        assertEquals(StatsFailure(StatsTool.UpdateAll, ErrorCode.Busy, "Lantern Net"), vm.failure.value)
+        assertEquals(1, honk.reads("/api/v1/operations/op-refresh"))
+        assertEquals(2, honk.reads("/api/v1/providers"))
     }
 
     @Test
     fun `a tool that succeeds leaves the other tool's failure`() = runTest {
-        val engine = Counting().apply { testFails = ErrorCode.Busy }
-        val vm = viewModel(engine)
+        val honk = ActivityHonkFixtures.sample().refusingProbes()
+        val vm = shown(honk)
         vm.testAll()
+        // No provider to refresh: the update succeeds at once.
+        honk.empty()
+        vm.load()
         vm.updateAll()
         assertEquals(StatsTool.TestAll, vm.failure.value?.tool)
     }
 
     @Test
     fun `the chips' picks reach the page`() = runTest {
-        val vm = viewModel(Counting())
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
-        advanceTimeBy(1)
-        assertNull(vm.uiState.value.period)
-        vm.pickRange(RvStatsRange.Month)
+        val vm = shown()
+        vm.pickRange(RvStatsRange.Week)
         vm.pickSubscription("s2")
-        advanceTimeBy(1)
-        assertEquals(RvStatsRange.Month, vm.uiState.value.range)
-        assertEquals(30, vm.uiState.value.period?.slots)
+        assertEquals(RvStatsRange.Week, vm.uiState.value.range)
         assertEquals("s2", vm.uiState.value.subscriptionId)
-        vm.pickRange(RvStatsRange.Today)
-        vm.pickSubscription(null)
-        advanceTimeBy(1)
-        assertNull(vm.uiState.value.period)
-        assertNull(vm.uiState.value.subscriptionId)
     }
 
     private companion object {
-        const val POLL_MS = 5_000L
+        const val OK = 200
+        const val ACCEPTED = 202
+        const val CONFLICT = 409
+        const val UNAVAILABLE = 503
     }
 }

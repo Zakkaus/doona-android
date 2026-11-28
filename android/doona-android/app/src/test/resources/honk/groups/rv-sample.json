@@ -1,0 +1,122 @@
+[
+  {
+    "id": "g-Proxy",
+    "name": "Proxy",
+    "icon": null,
+    "config_revision": "1",
+    "policy": {
+      "kind": "selector",
+      "native": "selector"
+    },
+    "member_count": 48,
+    "selection": {
+      "tcp_member_id": "n-0001938f00000000",
+      "udp_member_id": "n-0001938f00000000"
+    }
+  },
+  {
+    "id": "g-Auto",
+    "name": "Auto",
+    "icon": null,
+    "config_revision": "1",
+    "policy": {
+      "kind": "urltest",
+      "native": "urltest"
+    },
+    "member_count": 48,
+    "selection": {
+      "tcp_member_id": "n-0001c21100000000",
+      "udp_member_id": "n-0001c21100000000"
+    }
+  },
+  {
+    "id": "g-Streaming",
+    "name": "Streaming",
+    "icon": null,
+    "config_revision": "1",
+    "policy": {
+      "kind": "selector",
+      "native": "selector"
+    },
+    "member_count": 28,
+    "selection": {
+      "tcp_member_id": "n-0001c21100000000",
+      "udp_member_id": "n-0001c21100000000"
+    }
+  },
+  {
+    "id": "g-AI",
+    "name": "AI",
+    "icon": null,
+    "config_revision": "1",
+    "policy": {
+      "kind": "selector",
+      "native": "selector"
+    },
+    "member_count": 22,
+    "selection": {
+      "tcp_member_id": "n-00019bac00000000",
+      "udp_member_id": "n-00019bac00000000"
+    }
+  },
+  {
+    "id": "g-HK",
+    "name": "HK",
+    "icon": null,
+    "config_revision": "1",
+    "policy": {
+      "kind": "urltest",
+      "native": "urltest"
+    },
+    "member_count": 6,
+    "selection": {
+      "tcp_member_id": "n-0001938f00000000",
+      "udp_member_id": "n-0001938f00000000"
+    }
+  },
+  {
+    "id": "g-TW",
+    "name": "TW",
+    "icon": null,
+    "config_revision": "1",
+    "policy": {
+      "kind": "urltest",
+      "native": "urltest"
+    },
+    "member_count": 5,
+    "selection": {
+      "tcp_member_id": "n-0001c21100000000",
+      "udp_member_id": "n-0001c21100000000"
+    }
+  },
+  {
+    "id": "g-JP",
+    "name": "JP",
+    "icon": null,
+    "config_revision": "1",
+    "policy": {
+      "kind": "urltest",
+      "native": "urltest"
+    },
+    "member_count": 6,
+    "selection": {
+      "tcp_member_id": "n-00019bac00000000",
+      "udp_member_id": "n-00019bac00000000"
+    }
+  },
+  {
+    "id": "g-US",
+    "name": "US",
+    "icon": null,
+    "config_revision": "1",
+    "policy": {
+      "kind": "urltest",
+      "native": "urltest"
+    },
+    "member_count": 6,
+    "selection": {
+      "tcp_member_id": "n-0001c55300000000",
+      "udp_member_id": "n-0001c55300000000"
+    }
+  }
+]

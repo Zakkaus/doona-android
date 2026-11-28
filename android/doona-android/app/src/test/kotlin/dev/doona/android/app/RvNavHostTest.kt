@@ -197,12 +197,12 @@ class RvNavHostTest {
     }
 
     @Test
-    fun theBarsIdsSelectTabsAndConnectionsIsNotShipped() {
+    fun theBarsIdsSelectTabs() {
         val keys = mutableListOf<NavKey>(ActivityKey, PoliciesKey, GroupKey("g"))
         keys.selectTab(Tab.Settings.navId)
         assertEquals(listOf(ActivityKey, SettingsKey), keys)
         keys.selectTab(dev.doona.android.designsystem.rv.RV_NAV_CONNECTIONS)
-        assertEquals("連線 waits for c-list (D31)", listOf(ActivityKey, SettingsKey), keys)
+        assertEquals(listOf(ActivityKey, ConnectionsKey), keys)
         assertEquals(Tab.entries.map { it.navId }, APP_NAV.map { it.id })
     }
 

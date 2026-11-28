@@ -6,6 +6,17 @@
     native <methods>;
 }
 
+# The core builds NativeResponse and calls SocketProtector.protect by name and JNI descriptor.
+-keep class dev.doona.android.vpn.NativeResponse {
+    <init>(int, java.lang.String);
+}
+-keep interface dev.doona.android.vpn.SocketProtector {
+    boolean protect(int);
+}
+-keepclassmembers class * implements dev.doona.android.vpn.SocketProtector {
+    boolean protect(int);
+}
+
 # @Serializable DTOs and back stack keys: kotlinx.serialization looks serializers up by name at run time, and the
 # keys are saved across process death under their class names.
 -keep @kotlinx.serialization.Serializable class dev.doona.android.** { *; }

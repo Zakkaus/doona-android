@@ -1,0 +1,6 @@
+{
+  "operation_id": "op-config-01",
+  "kind": "reload",
+  "status": "queued",
+  "href": "/api/v1/operations/op-config-01"
+}

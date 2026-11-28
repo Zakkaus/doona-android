@@ -1,0 +1,72 @@
+{
+  "generation_id": "generation-42",
+  "request": [
+    {
+      "rule_id": "dns_request:0",
+      "index": 0,
+      "expression": "qname(geosite:cn) -> alidns",
+      "action": "upstream",
+      "upstream": "alidns",
+      "source": {
+        "file": "config.dae",
+        "source_id": "source-main",
+        "line": 40,
+        "column": 7
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "dns_request:1",
+      "index": 1,
+      "expression": "qtype(aaaa) -> reject",
+      "action": "reject",
+      "upstream": null,
+      "source": {
+        "file": "config.dae",
+        "source_id": "source-main",
+        "line": 41,
+        "column": 7
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "dns_request:2",
+      "index": 2,
+      "expression": "fallback: googledns",
+      "action": "upstream",
+      "upstream": "googledns",
+      "source": {
+        "file": "config.dae",
+        "source_id": "source-main",
+        "line": 42,
+        "column": 7
+      },
+      "kind": "fallback"
+    }
+  ],
+  "response": [
+    {
+      "rule_id": "dns_response:0",
+      "index": 0,
+      "expression": "upstream(googledns) && ip(geoip:private) -> alidns",
+      "action": "requery",
+      "upstream": "alidns",
+      "source": {
+        "file": "config.dae",
+        "source_id": "source-main",
+        "line": 45,
+        "column": 7
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "dns_response:1",
+      "index": 1,
+      "expression": "fallback: accept",
+      "action": "accept",
+      "upstream": null,
+      "source": null,
+      "kind": "fallback"
+    }
+  ]
+}

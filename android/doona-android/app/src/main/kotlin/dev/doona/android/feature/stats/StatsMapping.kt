@@ -1,74 +1,83 @@
 package dev.doona.android.feature.stats
 
-import dev.doona.android.designsystem.rv.RvPlace
-import dev.doona.android.engine.Catalog
-import dev.doona.android.engine.DayTotal
-import dev.doona.android.engine.DayUsage
-import dev.doona.android.engine.Member
-import dev.doona.android.engine.ScoreState
-import dev.doona.android.engine.Subscription
-import dev.doona.android.engine.TodayTraffic
-import dev.doona.android.engine.Usage
+import dev.doona.android.feature.activity.HonkProfile
+import dev.doona.android.feature.activity.honkActivityNodes
 import dev.doona.android.feature.model.CoreNodePlaces
+import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RvDay
 import dev.doona.android.feature.model.RvNode
+import dev.doona.android.feature.model.RvScorePick
 import dev.doona.android.feature.model.RvSplit
-import dev.doona.android.feature.model.RvSubscription
-import dev.doona.android.feature.model.leafOf
-import dev.doona.android.feature.model.rvLeafMembers
+import dev.doona.android.feature.subscriptions.rvSubscription
+import dev.doona.android.vpn.honk.Group
+import dev.doona.android.vpn.honk.GroupSelection
+import dev.doona.android.vpn.honk.HealthState
+import dev.doona.android.vpn.honk.OutboundKind
+import dev.doona.android.vpn.honk.OutboundTraffic
+import dev.doona.android.vpn.honk.PolicyKind
+import dev.doona.android.vpn.honk.Transport
 import java.time.DayOfWeek
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.TemporalAdjusters
 
 /**
- * Everything the 統計 page reads from the engine at one instant, and what its chips picked; [usage] is null until the
- * first read answers. A week starts on [firstDay], the locale's.
+ * What the 統計 page reads from honk at one instant, and what its chips picked; [profile] is null until the first read
+ * answers, and [outbounds] (the bytes per outbound since honk started) until its first read does. A week starts on [firstDay], the locale's.
  */
 internal class StatsInput(
-    val usage: Usage?,
-    val today: TodayTraffic,
-    val subscriptions: List<Subscription>,
-    val catalog: Catalog?,
-    val score: ScoreState?,
+    val profile: HonkProfile?,
     val nowEpochMs: Long,
     val zone: ZoneId,
     val range: RvStatsRange = RvStatsRange.Today,
     val subscriptionId: String? = null,
     val firstDay: DayOfWeek = DayOfWeek.MONDAY,
+    val outbounds: List<OutboundTraffic>? = null,
 )
 
 /**
- * The engine's reads as the 統計 page's model. Pure: the same input gives the same page. [placeOf] tells where a node is
- * from its name.
+ * honk's profile as the 統計 page's model. Pure: the same input gives the same page. [places] tells where a node is from
+ * its name. honk keeps no usage by the day, so the traffic cards show their empty state (q-usage, q-direct-proxy).
  */
-internal fun rvStatsState(input: StatsInput, placeOf: (String) -> RvPlace = CoreNodePlaces::placeOf): RvStatsState {
-    val nodes = input.catalog?.let(::rvLeafMembers).orEmpty().map { rvNode(it, placeOf) }
-    val day = input.usage?.today?.takeIf { it.date == localDate(input) }
-    val today = rvDay(day, hoursSoFar(input))
+internal fun rvStatsState(input: StatsInput, places: NodePlaces = CoreNodePlaces): RvStatsState {
+    val profile = input.profile
+    val nodes = honkActivityNodes(profile, places).nodes
+    val providers = profile?.providers.orEmpty()
+    val now = Instant.ofEpochMilli(input.nowEpochMs).atZone(input.zone)
+    val today = zeros(now.hour + 1)
+    val main = profile?.groups?.firstOrNull { it.name == profile.mainGroup }
     return RvStatsState(
         range = input.range,
         today = today,
-        yesterdaySoFar = input.today.yesterdayByNow,
-        subscriptions = input.subscriptions.map(::rvSubscription),
+        yesterdaySoFar = null,
+        subscriptions = providers.map { rvSubscription(it, userAgent = null) },
         nodes = nodes,
-        selectedId = input.catalog?.mainNodeId(),
-        split = day?.let(::rvSplit),
+        selectedId = main?.runtime?.selection?.tcp?.resolvedLeafNodeId,
+        split = input.outbounds?.let(::rvSplit),
         nowEpochMs = input.nowEpochMs,
-        nowHour = Instant.ofEpochMilli(input.nowEpochMs).atZone(input.zone).toLocalTime().toSecondOfDay().toFloat() / SECONDS_PER_HOUR,
-        score = input.score?.let { rvStatsScore(it, input.catalog, nodes) },
+        nowHour = now.toLocalTime().toSecondOfDay().toFloat() / SECONDS_PER_HOUR,
+        score = rvStatsScore(profile?.groups.orEmpty(), nodes),
         period = rvPeriod(input, today),
         // A subscription deleted since it was picked leaves the chip at all of them.
-        subscriptionId = input.subscriptionId?.takeIf { id -> input.subscriptions.any { it.id == id } },
+        subscriptionId = input.subscriptionId?.takeIf { id -> providers.any { it.id == id } },
     )
 }
 
 /**
- * 本週 (from the locale's first day) or 本月 (from the 1st) by the day: each past day's bytes from `usage().days` (a day
- * not listed had none; yesterday falls back to `usage().yesterday`), then today's so far. The week before is compared by
- * the same point: its days up to the same weekday whole, and that weekday by the share of today gone, since past days
- * keep no hours. A month has nothing to compare: the 31 days kept do not reach back over the month before.
+ * 分流比例 since honk started (labelled 本次啟動: owner, 2026-11-26, q-direct-proxy): `direct` against every group and
+ * node, as honk files each connection once under the outbound its rules picked; `block` carries nothing. Null before
+ * any byte, so the card shows its empty state.
+ */
+private fun rvSplit(outbounds: List<OutboundTraffic>): RvSplit? {
+    val bytes = { outbound: OutboundTraffic -> outbound.up + outbound.down }
+    val direct = outbounds.filter { it.kind == OutboundKind.Builtin && it.name == DIRECT }.sumOf(bytes)
+    val proxy = outbounds.filter { it.kind != OutboundKind.Builtin }.sumOf(bytes)
+    return RvSplit(proxyBytes = proxy, directBytes = direct).takeIf { proxy + direct > 0 }
+}
+
+/**
+ * 本週 (from the locale's first day) or 本月 (from the 1st) by the day, each day with no bytes, since honk keeps none by
+ * the day; nothing to compare with.
  */
 private fun rvPeriod(input: StatsInput, today: RvDay): RvStatsPeriod? {
     val now = Instant.ofEpochMilli(input.nowEpochMs).atZone(input.zone)
@@ -78,108 +87,49 @@ private fun rvPeriod(input: StatsInput, today: RvDay): RvStatsPeriod? {
         RvStatsRange.Week -> date.with(TemporalAdjusters.previousOrSame(input.firstDay)) to DAYS_PER_WEEK
         RvStatsRange.Month -> date.withDayOfMonth(1) to date.lengthOfMonth()
     }
-    val kept = input.usage?.days.orEmpty().associateBy { it.date }
-    val yesterday = input.usage?.yesterday?.let { DayTotal(it.date, it.up.sum(), it.down.sum()) }
-    fun on(day: LocalDate): DayTotal? = kept[day.toString()] ?: yesterday?.takeIf { it.date == day.toString() }
-    val past = generateSequence(first) { it.plusDays(1) }.takeWhile { it < date }.toList()
-    val days = RvDay(past.map { on(it)?.down ?: 0L } + today.downTotal, past.map { on(it)?.up ?: 0L } + today.upTotal, null)
-    val dayGone = now.toLocalTime().toSecondOfDay().toFloat() / SECONDS_PER_DAY
-    val before = if (input.range == RvStatsRange.Week) {
-        val sameDay = date.minusDays(DAYS_PER_WEEK.toLong())
-        val whole = past.sumOf { on(it.minusDays(DAYS_PER_WEEK.toLong()))?.total ?: 0L }
-        whole + ((on(sameDay)?.total ?: 0L) * dayGone).toLong()
-    } else {
-        null
-    }
-    return RvStatsPeriod(days, slots, past.size + dayGone, before)
+    val past = generateSequence(first) { it.plusDays(1) }.takeWhile { it < date }.count()
+    val days = RvDay(List(past) { 0L } + today.downTotal, List(past) { 0L } + today.upTotal, null)
+    return RvStatsPeriod(days, slots, past + now.toLocalTime().toSecondOfDay().toFloat() / SECONDS_PER_DAY, before = null)
 }
 
-private val DayTotal.total get() = up + down
-
-/** Today's hours from midnight up to the current one, which is still filling; a day not yet read is all zero. */
-private fun rvDay(day: DayUsage?, hours: Int): RvDay {
-    val zeros = List(hours) { 0L }
-    if (day == null) return RvDay(zeros, zeros, zeros.map(Long::toInt))
-    fun List<Long>.toNow() = List(hours) { getOrElse(it) { 0L } }
-    return RvDay(day.down.toNow(), day.up.toNow(), day.flows.toNow().map { it.coerceAtMost(Int.MAX_VALUE.toLong()).toInt() })
-}
-
-/** The hours of the local day so far, the current one included. */
-private fun hoursSoFar(input: StatsInput): Int = Instant.ofEpochMilli(input.nowEpochMs).atZone(input.zone).hour + 1
-
-private fun localDate(input: StatsInput): String = Instant.ofEpochMilli(input.nowEpochMs).atZone(input.zone).toLocalDate().toString()
+/** [hours] of the local day so far, the current one included, with no bytes and no connections. */
+private fun zeros(hours: Int): RvDay = List(hours) { 0L }.let { RvDay(it, it, List(hours) { 0 }) }
 
 /**
- * Bytes that left directly (route target `direct`) against the rest, which went through a proxy; `other` (route targets
- * past the day's 64) counts as proxy. Null before the day's first byte, so the card shows its empty state.
+ * The Score card: each of honk's Score groups with what it chose per network, its nodes among [nodes]; null when no
+ * group uses Score. honk reports no Score counters (connections started, trials), so those are zero (q-score).
  */
-private fun rvSplit(day: DayUsage): RvSplit? {
-    val total = day.outbounds.sumOf { it.up + it.down }
-    if (total <= 0L) return null
-    val direct = day.outbounds.filter { it.id == DIRECT }.sumOf { it.up + it.down }
-    return RvSplit(total - direct, direct)
+private fun rvStatsScore(groups: List<Group>, nodes: List<RvNode>): RvStatsScore? {
+    val score = groups.filter { it.policy.kind == PolicyKind.Score }.takeIf { it.isNotEmpty() } ?: return null
+    return RvStatsScore(
+        starts = null,
+        trialsOk = null,
+        trialsFailed = null,
+        groups = score.map { RvStatsScoreGroup(it.id, it.name, nodes, scorePick(it, Transport.Tcp), scorePick(it, Transport.Udp)) },
+    )
 }
 
 /**
- * A subscription as the quota card and the tools row read it. A provider that sent no quota is a total of 0, which the
- * card leaves out; a subscription never fetched has no update time, which the tools row skips.
+ * What [group] chose on [transport]: the member its selection names, followed to the node it ends on, and how many of its
+ * members honk has a probe of on that transport, out of all of them. honk's group shows its choice and each member's
+ * health; it names no wait and no challenger.
  */
-private fun rvSubscription(sub: Subscription) = RvSubscription(
-    id = sub.id,
-    name = sub.name,
-    nodes = sub.nodes,
-    updatedAtEpochMs = sub.lastFetch?.atEpochMs,
-    usedBytes = sub.usedBytes ?: 0L,
-    totalBytes = sub.totalBytes ?: 0L,
-    expiresAtEpochMs = sub.expiresAtEpochMs,
-)
-
-/**
- * A member as 節點分布 and 延遲分布 read it: its name, where it is, and its last test (a failed test as a timeout). The
- * endpoint fields stay empty: the page shows none of them.
- */
-private fun rvNode(member: Member, placeOf: (String) -> RvPlace) = RvNode(
-    id = member.id,
-    name = member.name,
-    short = member.name,
-    place = placeOf(member.name),
-    city = null,
-    protocol = "",
-    host = "",
-    port = 0,
-    transport = "",
-    tls = false,
-    subscription = member.subscriptionId.orEmpty(),
-    subscriptionId = member.subscriptionId.orEmpty(),
-    shareable = false,
-    history = when {
-        member.latencyMs != null -> listOf(member.latencyMs)
-        member.failed -> listOf(null)
-        else -> emptyList()
-    },
-)
-
-/**
- * The node the main group sends through, followed through any subgroup it selected ([leafOf]); null with no main group
- * (a hand-edited profile may have none) or a selection that ends in nothing.
- */
-private fun Catalog.mainNodeId(): String? {
-    val byId = groups.associateBy { it.id }
-    val main = byId[mainGroupId] ?: return null
-    return main.members.firstOrNull { it.id == main.selectedId }?.let { leafOf(it, byId) }?.id
-}
-
-/** The Score card's groups: each with the catalog's name and its nodes; null when no group uses Score. */
-private fun rvStatsScore(state: ScoreState, catalog: Catalog?, nodes: List<RvNode>): RvStatsScore? {
-    if (state.groups.isEmpty()) return null
-    val byId = nodes.associateBy { it.id }
-    val groups = state.groups.map { group ->
-        RvStatsScoreGroup(group.id, catalog?.groups?.firstOrNull { it.id == group.id }?.name ?: group.id, group.nodeIds.mapNotNull(byId::get))
-    }
-    return RvStatsScore(state, groups)
+private fun scorePick(group: Group, transport: Transport): RvScorePick {
+    val selection: GroupSelection? = if (transport == Transport.Tcp) group.runtime.selection.tcp else group.runtime.selection.udp
+    val probed = group.runtime.health.filter { it.transport == transport && it.state != HealthState.Unknown }.map { it.memberId }.toSet()
+    return RvScorePick(
+        selectedId = selection?.resolvedLeafNodeId,
+        selectedName = selection?.let { s -> group.members.firstOrNull { it.id == s.memberId }?.name },
+        settled = selection != null,
+        wait = null,
+        compared = group.members.count { it.id in probed },
+        candidates = group.members.size,
+        challengers = emptyList(),
+    )
 }
 
 private const val DIRECT = "direct"
+
 internal const val DAYS_PER_WEEK = 7
 private const val SECONDS_PER_DAY = 86_400
 private const val SECONDS_PER_HOUR = 3_600

@@ -1,0 +1,62 @@
+{
+  "observed_at": "2026-08-15T10:00:00Z",
+  "instance_id": "instance-7",
+  "lifecycle": {
+    "state": "running",
+    "started_at": "2026-08-15T08:00:00Z",
+    "uptime_seconds": "7200"
+  },
+  "generation": {
+    "active_id": "generation-42",
+    "config_revision": "17",
+    "state": "active",
+    "activated_at": "2026-08-15T09:30:00Z"
+  },
+  "datapath": {
+    "kind": "ebpf",
+    "state": "active",
+    "visibility": "partial",
+    "ebpf": {
+      "backend": "real",
+      "programs": "loaded",
+      "hooks": "attached",
+      "routing": {
+        "state": "published",
+        "generation_id": "generation-42"
+      },
+      "health": "healthy",
+      "last_error": null,
+      "checked_at": "2026-08-15T10:00:00Z"
+    }
+  },
+  "traffic": {
+    "scope": "visible",
+    "observed_by": "mixed",
+    "counter_since": "2026-08-15T08:00:00Z",
+    "sampled_at": "2026-08-15T10:00:00Z",
+    "connections": {
+      "tcp": 42,
+      "udp": 128,
+      "total": 170
+    },
+    "bytes": {
+      "upload": "123456789",
+      "download": "987654321"
+    },
+    "rates": {
+      "window_seconds": 1,
+      "upload_bytes_per_second": "4096",
+      "download_bytes_per_second": "32768"
+    }
+  },
+  "process": {
+    "pid": 1234,
+    "cpu_percent": null
+  },
+  "last_reload": {
+    "operation_id": "op-01HZX4K8W7",
+    "status": "succeeded",
+    "finished_at": "2026-08-15T09:30:00Z",
+    "error": null
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "stale_revision",
+    "message": "Source changed in the configuration store; reconcile before retrying."
+  },
+  "request_id": "request-write-2"
+}

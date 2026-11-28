@@ -7,6 +7,8 @@ import android.database.sqlite.SQLiteException
 import android.net.ConnectivityManager
 import android.os.Build
 import android.os.SystemClock
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.work.WorkManager
 import dev.doona.android.data.network.ownAddresses
 import dev.doona.android.data.settings.AppSettings
@@ -28,7 +30,9 @@ import dev.doona.android.report.ReportExport
 import dev.doona.android.report.ReportExporter
 import dev.doona.android.report.connectionOwnerUid
 import dev.doona.android.report.reportDir
+import dev.doona.android.vpn.NativeApi
 import dev.doona.android.vpn.QuickTile
+import dev.doona.android.vpn.RegionLookup
 import dev.doona.android.vpn.VpnLog
 import dev.doona.android.work.ForegroundRefresh
 import dev.doona.android.work.GeoRefresh
@@ -50,9 +54,21 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Process-wide objects, created once by [DoonaApplication] (manual dependency injection, ARCH D6). Activities,
  * ViewModel factories, the VPN service and the tile all take what they need from here.
  */
-class AppContainer(val application: Application, createEngine: () -> Engine, createInstalledApps: () -> InstalledApps) {
+class AppContainer(
+    val application: Application,
+    createEngine: () -> Engine,
+    createInstalledApps: () -> InstalledApps,
+    createNativeApi: () -> NativeApi,
+    createRegionLookup: () -> RegionLookup,
+) {
     /** Created on first use, so a process started for the tile or the service builds it once. */
     val engine: Engine by lazy(createEngine)
+
+    /** honk's native API, the one instance every page reads and writes the catalog through. */
+    val nativeApi: NativeApi by lazy(createNativeApi)
+
+    /** The country or region each node name is in, read by doona-core's region table: honk keeps none. */
+    val regions: RegionLookup by lazy(createRegionLookup)
 
     /** The apps per-app routing can name; read on demand, so nothing queries the device until that page opens. */
     val installedApps: InstalledApps by lazy(createInstalledApps)
@@ -205,3 +221,11 @@ class AppContainer(val application: Application, createEngine: () -> Engine, cre
     private fun localNetworkGranted(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.CINNAMON_BUN ||
         application.checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED
 }
+
+/** [AppContainer.nativeApi] for a page: the one instance, from the application. */
+@Composable
+internal fun nativeApi(): NativeApi = (LocalContext.current.applicationContext as DoonaApplication).container.nativeApi
+
+/** [AppContainer.regions] for a page. */
+@Composable
+internal fun regionLookup(): RegionLookup = (LocalContext.current.applicationContext as DoonaApplication).container.regions

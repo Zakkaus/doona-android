@@ -1,0 +1,33 @@
+{
+  "observed_at": "2026-08-15T10:00:00Z",
+  "counter_since": "2026-08-15T08:00:00Z",
+  "outbounds": [
+    {
+      "name": "direct",
+      "kind": "builtin",
+      "active_connections": 12,
+      "total_connections": "240",
+      "upload_bytes": "123456",
+      "download_bytes": "654321",
+      "errors": "0"
+    },
+    {
+      "name": "proxy",
+      "kind": "group",
+      "active_connections": 158,
+      "total_connections": "1200",
+      "upload_bytes": "123333333",
+      "download_bytes": "987000000",
+      "errors": "3"
+    },
+    {
+      "name": "block",
+      "kind": "builtin",
+      "active_connections": 0,
+      "total_connections": "0",
+      "upload_bytes": "0",
+      "download_bytes": "0",
+      "errors": "0"
+    }
+  ]
+}

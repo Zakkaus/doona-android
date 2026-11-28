@@ -4,44 +4,54 @@ import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
-import dev.doona.android.engine.Group
-import dev.doona.android.engine.GroupKind
 import dev.doona.android.engine.Member
+import dev.doona.android.engine.Mode
 import dev.doona.android.engine.NodeInfo
-import dev.doona.android.engine.RuleBytes
-import dev.doona.android.engine.RuleRow
-import dev.doona.android.engine.RuleTarget
-import dev.doona.android.engine.Settings
 import dev.doona.android.engine.Status
-import dev.doona.android.engine.Subscription
-import dev.doona.android.engine.SubscriptionFormat
-import dev.doona.android.engine.Traffic
-import dev.doona.android.engine.Usage
+import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RV_TESTS
 import dev.doona.android.feature.model.RvDay
-import dev.doona.android.feature.model.RvGroupKind
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvRouteMode
-import dev.doona.android.feature.model.RvSubFormat
 import dev.doona.android.feature.model.RvSubscription
-import dev.doona.android.feature.model.leafOf
 import dev.doona.android.feature.model.protocolName
 import dev.doona.android.feature.model.rvLeafMembers
-import java.net.URI
+import dev.doona.android.feature.model.rvNode
+import dev.doona.android.feature.policies.rvGroupKind
+import dev.doona.android.feature.subscriptions.rvSubscription
+import dev.doona.android.vpn.honk.Group
+import dev.doona.android.vpn.honk.HealthState
+import dev.doona.android.vpn.honk.MemberKind
+import dev.doona.android.vpn.honk.Node
+import dev.doona.android.vpn.honk.OutboundKind
+import dev.doona.android.vpn.honk.OutboundTraffic
+import dev.doona.android.vpn.honk.Provider
+import dev.doona.android.vpn.honk.RuntimeTraffic
+import dev.doona.android.vpn.honk.TrafficHistory
+import dev.doona.android.vpn.honk.Transport
 
 /**
- * What 活動's lists are mapped from, read far less often than the second's traffic: the core's [catalog] (null until
- * read; [settings] stand in for its mode until then), today's [usage] (null until the first read), the rule rows its
- * `byRule` ids resolve to ([rules], by id), yesterday's bytes by now, and now.
+ * What 活動's lists are mapped from, read far less often than the second's traffic: honk's [profile] (null until read),
+ * the [mode], the bytes each outbound carried since honk started ([outbounds], null until read), and now.
  */
 internal class ActivityData(
-    val catalog: Catalog?,
-    val settings: Settings,
-    val usage: Usage?,
-    val rules: Map<String, RuleRow>,
-    val yesterdayByNow: Long,
+    val profile: HonkProfile?,
+    val mode: Mode,
+    val outbounds: List<OutboundTraffic>?,
     val nowEpochMs: Long,
     val nowHour: Float,
+)
+
+/**
+ * honk's profile as 活動 reads it: its subscriptions ([providers]), [nodes] and [groups], the group its rules fall back
+ * to ([mainGroup], by name; null when they fall back to `direct` or `block`) and how many rules it has, its fallback among them (as 全部規則 lists it).
+ */
+internal class HonkProfile(
+    val providers: List<Provider>,
+    val nodes: List<Node>,
+    val groups: List<Group>,
+    val mainGroup: String?,
+    val ruleCount: Int,
 )
 
 /**
@@ -80,38 +90,70 @@ internal fun activityNodes(catalog: Catalog?, nodeInfo: Map<String, NodeInfo>): 
 }
 
 /**
- * Maps [data] to 活動's lists over [catalogNodes], the same catalog's nodes. The main node is what the main group's TCP
- * selection ends on (`catalog.mainGroupId`, not the first group), none in Direct.
+ * Every node of [profile] some group has as a member, once, in the groups' order, placed by its name ([places]), and
+ * whether honk found each unavailable at its last probe ([ActivityNodes.allFailed]).
  */
-internal fun activityCatalog(data: ActivityData, catalogNodes: ActivityNodes): ActivityCatalog {
-    val catalog = data.catalog
-    val mode = (catalog?.mode ?: data.settings.mode).routeMode()
-    val groups = catalog?.groups.orEmpty().associateBy { it.id }
-    val main = catalog?.let { groups[it.mainGroupId] }
-    val mainLeaf = main?.let { selectedLeaf(it, it.tcp.selectedId, groups) }
-    val byId = catalogNodes.byId
+internal fun honkActivityNodes(profile: HonkProfile?, places: NodePlaces): ActivityNodes {
+    val byId = profile?.nodes.orEmpty().associateBy { it.id }
+    val leaves = profile?.groups.orEmpty().asSequence().flatMap { it.members }.filter { it.kind == MemberKind.Node }.mapNotNull { byId[it.id] }.distinctBy { it.id }.toList()
+    val providers = profile?.providers.orEmpty().associateBy { it.id }
+    return ActivityNodes(leaves.map { rvNode(it, providers, places) }, allFailed = leaves.isNotEmpty() && leaves.all { it.unavailable() })
+}
+
+/**
+ * Maps [data] to 活動's lists over [profileNodes], the same profile's nodes. The main node is what the main group's TCP
+ * selection ends on (the group the rules fall back to), none in Direct. honk keeps no usage by the day, so 今日用量 has
+ * no bytes and yesterday none by now.
+ */
+internal fun activityCatalog(data: ActivityData, profileNodes: ActivityNodes): ActivityCatalog {
+    val profile = data.profile
+    val mode = data.mode.routeMode()
+    val groups = profile?.groups.orEmpty().associateBy { it.id }
+    val main = profile?.groups?.firstOrNull { it.name == profile.mainGroup }
+    val byId = profileNodes.byId
+    val mainLeaf = main?.runtime?.selection?.tcp?.resolvedLeafNodeId?.let(byId::get)
     val cards = RvActivityCards(
-        today = rvDay(data.usage, data.nowHour),
+        today = rvDay(data.nowHour),
         nowHour = data.nowHour,
-        yesterdayByNow = data.yesterdayByNow,
+        yesterdayByNow = 0L,
         nowEpochMs = data.nowEpochMs,
-        ruleCount = catalog?.ruleSource?.rules ?: 0,
+        ruleCount = profile?.ruleCount ?: 0,
         mainNodeId = mainLeaf?.id.orEmpty(),
         node = byId::get,
-        groupKind = { id -> groups[id]?.kind?.rvKind() },
+        groupKind = { id -> groups[id]?.policy?.kind?.let(::rvGroupKind) },
     )
+    val probe = mainLeaf?.history?.lastOrNull()
     return ActivityCatalog(
         mode = mode,
-        node = mainLeaf?.takeIf { mode != RvRouteMode.Direct }?.let { RvMainNode(it.id, it.name, it.latencyMs, it.failed) },
-        nodes = catalogNodes.nodes,
-        subscriptions = catalog?.subscriptions.orEmpty().map(::rvSubscription),
-        rules = catalog?.let { ruleRows(it, data.usage?.today?.byRule.orEmpty(), data.rules, groups) }.orEmpty(),
+        node = mainLeaf?.takeIf { mode != RvRouteMode.Direct }?.let { RvMainNode(it.id, it.name, probe, failed = it.history.isNotEmpty() && probe == null) },
+        nodes = profileNodes.nodes,
+        subscriptions = profile?.providers.orEmpty().map { rvSubscription(it, userAgent = null) },
+        rules = profile?.let { ruleRows(it, data.outbounds.orEmpty()) }.orEmpty(),
         cards = cards,
-        allFailed = catalogNodes.allFailed,
-        // Until the catalog is read nothing says there is none: the page waits rather than showing the empty state.
-        hasSubscriptions = catalog?.subscriptions?.isNotEmpty() ?: true,
+        allFailed = profileNodes.allFailed,
+        // Until the profile is read nothing says there is none: the page waits rather than showing the empty state.
+        hasSubscriptions = profile?.let { it.providers.isNotEmpty() || it.nodes.isNotEmpty() } ?: true,
     )
 }
+
+/**
+ * 活動's hero traffic: each way's rate now and the last minute's samples, oldest first, NaN where honk could not rate one
+ * (a gap in the line). Before the first read, none.
+ */
+internal class ActivityTraffic(
+    val upRate: Long = 0,
+    val downRate: Long = 0,
+    val upHistory: List<Float> = emptyList(),
+    val downHistory: List<Float> = emptyList(),
+)
+
+/** honk's [traffic] now over its [history]; a read that failed (null) shows none. */
+internal fun activityTraffic(traffic: RuntimeTraffic?, history: TrafficHistory?) = ActivityTraffic(
+    upRate = traffic?.upRate ?: 0,
+    downRate = traffic?.downRate ?: 0,
+    upHistory = history?.up.orEmpty().map { it?.toFloat() ?: Float.NaN },
+    downHistory = history?.down.orEmpty().map { it?.toFloat() ?: Float.NaN },
+)
 
 /**
  * 活動 as the page draws it: [catalog]'s lists under the live [status] and [traffic], with the one notice that applies
@@ -120,7 +162,7 @@ internal fun activityCatalog(data: ActivityData, catalogNodes: ActivityNodes): A
 internal fun activityModel(
     catalog: ActivityCatalog,
     status: Status,
-    traffic: Traffic,
+    traffic: ActivityTraffic,
     crashOffered: Boolean,
     ready: Boolean,
     failure: RvActivityFailure?,
@@ -133,8 +175,8 @@ internal fun activityModel(
         node = catalog.node,
         downRate = traffic.downRate,
         upRate = traffic.upRate,
-        downHistory = traffic.downHistory.map(Long::toFloat),
-        upHistory = traffic.upHistory.map(Long::toFloat),
+        downHistory = traffic.downHistory,
+        upHistory = traffic.upHistory,
     )
     return RvActivityUi(
         state = state,
@@ -183,26 +225,22 @@ private fun failureNotice(status: Status.Failed): RvActivityNotice = when (statu
 }
 
 /**
- * Today's rule bytes by target: each `byRule` id joined with its rule row, the bytes both ways summed per target, the
- * most first. Left out: `unmatched` and the rules that send to the main group (the main node's row stands for them),
- * `other` (ids past the day's 64, with no row), ids whose row is gone, rejected flows (they reach no outbound) and
- * groups the catalog no longer has.
+ * A row per group or 直連 that carried traffic since honk started, the most first by honk's bytes per outbound. The rows
+ * carry no bytes (honk counts none per rule, so the row shows [dev.doona.android.designsystem.rv.RV_NO_VALUE]: owner,
+ * 2026-11-27, keep-1127). Left out: the main group (the main node's row stands for it), `block` (it reaches no outbound),
+ * outbounds that carried nothing, single nodes (their bytes are counted again under their group) and groups the profile
+ * no longer has.
  */
-private fun ruleRows(catalog: Catalog, byRule: List<RuleBytes>, rows: Map<String, RuleRow>, groups: Map<String, Group>): List<RvActivityRule> {
-    val bytes = LinkedHashMap<RuleTarget, Long>()
-    byRule.forEach { entry ->
-        if (entry.id == UNMATCHED || entry.id == OTHER) return@forEach
-        val target = rows[entry.id]?.target ?: return@forEach
-        if (target == RuleTarget.Reject || target == RuleTarget.Group(catalog.mainGroupId)) return@forEach
-        bytes[target] = (bytes[target] ?: 0L) + entry.up + entry.down
-    }
-    return bytes.mapNotNull { (target, sum) ->
-        when (target) {
-            RuleTarget.Direct -> RvActivityRule(null, null, null, sum, null)
-            is RuleTarget.Group -> groups[target.id]?.let { groupRule(it, sum, groups) }
-            RuleTarget.Reject -> null
+private fun ruleRows(profile: HonkProfile, outbounds: List<OutboundTraffic>): List<RvActivityRule> {
+    val groups = profile.groups.associateBy { it.name }
+    return outbounds.sortedByDescending { it.up + it.down }.mapNotNull { outbound ->
+        when {
+            outbound.up + outbound.down == 0L || outbound.name == profile.mainGroup -> null
+            outbound.kind == OutboundKind.Builtin -> if (outbound.name == DIRECT) RvActivityRule(null, null, null, null, null) else null
+            outbound.kind == OutboundKind.Group -> groups[outbound.name]?.let(::groupRule)
+            else -> null
         }
-    }.sortedByDescending { it.bytes }
+    }
 }
 
 /**
@@ -231,16 +269,15 @@ internal fun ruleLead(node: RvNode?, udp: RvNode?): RuleLead = when {
     else -> RuleLead.Flag
 }
 
-/** A group's row: its TCP node, and its UDP node when that is another one. */
-private fun groupRule(group: Group, bytes: Long, groups: Map<String, Group>): RvActivityRule {
-    val tcp = selectedLeaf(group, group.tcp.selectedId, groups)
-    val udp = selectedLeaf(group, group.udp.selectedId, groups)
-    return RvActivityRule(group.name, group.id, tcp?.id, bytes, udp?.id?.takeIf { it != tcp?.id })
+/** A group's row: its TCP node, and its UDP node when that is another one, as honk resolves each selection. */
+private fun groupRule(group: Group): RvActivityRule {
+    val tcp = group.runtime.selection.tcp?.resolvedLeafNodeId
+    val udp = group.runtime.selection.udp?.resolvedLeafNodeId
+    return RvActivityRule(group.name, group.id, tcp, null, udp?.takeIf { it != tcp })
 }
 
-/** The node [group]'s [selected] member ends on, through any nested groups. */
-private fun selectedLeaf(group: Group, selected: String?, groups: Map<String, Group>): Member? =
-    group.members.firstOrNull { it.id == selected }?.let { leafOf(it, groups) }
+/** Whether honk found [this] unavailable at its last probe over TCP (or over any network when it has no TCP one). */
+private fun Node.unavailable(): Boolean = (health.firstOrNull { it.transport == Transport.Tcp } ?: health.firstOrNull())?.state == HealthState.Unavailable
 
 private fun rvNode(member: Member, info: NodeInfo?, subscriptions: Map<String, String>): RvNode {
     val history = info?.tests?.map { it.ms }?.takeLast(RV_TESTS)?.takeIf { it.isNotEmpty() } ?: memberHistory(member)
@@ -273,52 +310,12 @@ private fun memberHistory(member: Member): List<Int?> = when {
     else -> emptyList()
 }
 
-private fun rvSubscription(sub: Subscription) = RvSubscription(
-    id = sub.id,
-    name = sub.name,
-    nodes = sub.nodes,
-    updatedAtEpochMs = sub.lastFetch?.atEpochMs,
-    usedBytes = sub.usedBytes ?: 0L,
-    totalBytes = sub.totalBytes ?: 0L,
-    expiresAtEpochMs = sub.expiresAtEpochMs,
-    // Only the host: the rest of a link carries its token.
-    host = runCatching { URI(sub.url).host }.getOrNull().orEmpty(),
-    // Never fetched: no format yet.
-    format = when (sub.lastFetch?.format) {
-        SubscriptionFormat.Clash -> RvSubFormat.Clash
-        SubscriptionFormat.SingBox -> RvSubFormat.SingBox
-        SubscriptionFormat.Sip008 -> RvSubFormat.Sip008
-        SubscriptionFormat.ShareLinks, SubscriptionFormat.Base64 -> RvSubFormat.Links
-        null -> null
-    },
-    userAgent = sub.userAgent,
-)
-
-/**
- * Today by the hour up to the current one, [nowHour]'s, which is still filling: the core sends all 24, and the chart
- * draws a step for each hour it is given, so the hours still to come would run its lines on past now. Before the first
- * read, a day with no bytes.
- */
-private fun rvDay(usage: Usage?, nowHour: Float): RvDay {
+/** Today by the hour up to the current one, [nowHour]'s: honk keeps no usage by the day, so every hour has no bytes. */
+private fun rvDay(nowHour: Float): RvDay {
     val hours = (nowHour.toInt() + 1).coerceIn(1, HOURS)
-    val day = usage?.today ?: return RvDay(List(hours) { 0L }, List(hours) { 0L }, null)
-    return RvDay(day.down.take(hours), day.up.take(hours), day.flows.take(hours).map(Long::toInt))
+    return RvDay(List(hours) { 0L }, List(hours) { 0L }, null)
 }
 
-/** A fallback or load-balance group picks for itself, as a url-test does. */
-private fun GroupKind.rvKind(): RvGroupKind = when (this) {
-    GroupKind.Selector -> RvGroupKind.Select
-    GroupKind.UrlTest, GroupKind.LoadBalance, GroupKind.Fallback -> RvGroupKind.Auto
-    GroupKind.Score -> RvGroupKind.Score
-}
-
-/**
- * The rule ids today's `byRule` names that have a rule row: `unmatched` and `other` have none, so asking for them would
- * read the whole list to its end on every revision.
- */
-internal fun ruleIds(usage: Usage?): List<String> = usage?.today?.byRule.orEmpty().map { it.id }.filterNot { it == UNMATCHED || it == OTHER }
-
-private const val UNMATCHED = "unmatched"
-private const val OTHER = "other"
+private const val DIRECT = "direct"
 
 private const val HOURS = 24

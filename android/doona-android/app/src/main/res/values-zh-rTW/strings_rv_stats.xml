@@ -3,6 +3,7 @@
     <string name="rv_stats_title">統計</string>
     <string name="rv_stats_all_subscriptions">全部訂閱</string>
     <string name="rv_stats_today">今天</string>
+    <string name="rv_stats_since_start">本次啟動</string>
     <string name="rv_stats_week">本週</string>
     <string name="rv_stats_month">本月</string>
     <string name="rv_stats_used">已用流量</string>
@@ -43,7 +44,7 @@
         <item quantity="other">%1$d 個節點</item>
     </plurals>
     <plurals name="rv_score_trials">
-        <item quantity="other">測試 %1$d 次</item>
+        <item quantity="other">測試 %1$s 次</item>
     </plurals>
     <string name="rv_score_trial_ok">成功</string>
     <string name="rv_score_trial_failed">失敗</string>

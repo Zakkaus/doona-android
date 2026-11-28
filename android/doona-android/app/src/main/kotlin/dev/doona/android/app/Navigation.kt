@@ -6,6 +6,7 @@ import androidx.navigation3.runtime.NavKey
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RV_NAV
 import dev.doona.android.designsystem.rv.RV_NAV_ACTIVITY
+import dev.doona.android.designsystem.rv.RV_NAV_CONNECTIONS
 import dev.doona.android.designsystem.rv.RV_NAV_POLICY
 import dev.doona.android.designsystem.rv.RV_NAV_SETTINGS
 import dev.doona.android.designsystem.rv.RvNavItem
@@ -28,6 +29,13 @@ data object PoliciesKey : AppKey
 
 @Serializable
 data object SettingsKey : AppKey
+
+@Serializable
+data object ConnectionsKey : AppKey
+
+/** One open connection's page, by honk's connection id. */
+@Serializable
+data class ConnectionKey(val connectionId: String) : AppKey
 
 @Serializable
 data object TrafficKey : AppKey
@@ -127,13 +135,14 @@ data class LicenseTextKey(val index: String) : AppKey
 
 /**
  * The tabs of the floating nav, each with its root key and its id in the RV library's bar ([navId], an `RV_NAV_*`
- * value). 活動 is always the bottom of the back stack. 連線 (D31) waits for the connection list, so the app shows three.
+ * value). 活動 is always the bottom of the back stack.
  * [label] and [icon] are the old hub bar's, which the old pages' screenshot frame ([DoonaAppShell]) still draws.
  */
 enum class Tab(val key: NavKey, internal val navId: Int, @StringRes val label: Int, @DrawableRes val icon: Int) {
     // Each tab shows its first page's icon (doona `src/shell/HubBar.tsx:33`, `src/shell/registry.ts`).
     Activity(ActivityKey, RV_NAV_ACTIVITY, R.string.hub_activity, IconsR.drawable.sym_speed),
     Policies(PoliciesKey, RV_NAV_POLICY, R.string.nav_policies, IconsR.drawable.sym_share),
+    Connections(ConnectionsKey, RV_NAV_CONNECTIONS, R.string.rv_nav_connections, IconsR.drawable.sym_sync_alt),
     Settings(SettingsKey, RV_NAV_SETTINGS, R.string.hub_settings, IconsR.drawable.sym_description),
 }
 

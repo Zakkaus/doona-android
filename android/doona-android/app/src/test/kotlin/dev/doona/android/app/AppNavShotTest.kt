@@ -27,7 +27,7 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * The app's frame around a tab root, drawn through [DoonaApp] itself: the old 策略 page above RV's floating nav with
- * the app's three tabs (連線 waits for c-list, D31), 策略 selected. Golden `src/test/screenshots/app-nav-light.png`.
+ * the app's four tabs, 策略 selected. Golden `src/test/screenshots/app-nav-light.png`.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -52,7 +52,7 @@ class AppNavShotTest {
         val tab = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
         compose.onAllNodes(tab and hasText("活動")).assertCountEquals(1)
         compose.onAllNodes(tab and hasText("設定")).assertCountEquals(1)
-        compose.onAllNodes(tab and hasText("連線")).assertCountEquals(0)
+        compose.onAllNodes(tab and hasText("連線")).assertCountEquals(1)
         val image = compose.onRoot().captureToImage()
         assertTrue("app-nav-light: the content area shows nothing but fills", image.showsContent(compose.density.density))
         image.asAndroidBitmap().captureRoboImage("$dir/app-nav-light.png")

@@ -67,8 +67,8 @@ private fun groupGlyph(kind: RvGroupKind?): Int = (kind ?: RvGroupKind.Select).g
 
 /**
  * A rule group that sent traffic today: the node's flag, or for 直連 its own straight arrow (the diamond is the mode's), the
- * group (直連 when the rules send there themselves, then with no subtitle: [ruleRowText]), its node, its bytes; a tap
- * opens the group, or the rules for 直連. A group whose UDP uses another node (a sample) names both, a line each, each
+ * group (直連 when the rules send there themselves, then with no subtitle: [ruleRowText]), its node, its bytes (「—」 while
+ * honk counts none per rule); a tap opens the group, or the rules for 直連. A group whose UDP uses another node (a sample) names both, a line each, each
  * after its network (`TCP Taipei 04`, `UDP Hong Kong 01`); when the two are in different places no one flag stands for
  * them, and the group's glyph (how it picks, as 策略 draws the group) leads the row ([ruleLead]).
  */
@@ -100,7 +100,7 @@ private fun RuleRow(rule: RvActivityRule, cards: RvActivityCards, routes: RvActi
         onClick = { rule.groupId?.let(routes.rule) ?: routes.rules() },
         titleKeepWords = false,
         subtitleKeepWords = false,
-    ) { RvText(format.bytes(rule.bytes).toString(), Rv.type.rowValue, align = TextAlign.End) }
+    ) { RvText(rule.bytes?.let { format.bytes(it).toString() } ?: RV_NO_VALUE, Rv.type.rowValue, align = TextAlign.End) }
 }
 
 /** The outbound card lists two rule groups after the main node. */

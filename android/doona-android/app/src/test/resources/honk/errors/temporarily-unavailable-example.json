@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "temporarily_unavailable",
+    "message": "Probe queue is full."
+  },
+  "request_id": "request-1"
+}

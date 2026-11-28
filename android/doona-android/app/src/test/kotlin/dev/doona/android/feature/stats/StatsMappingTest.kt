@@ -1,324 +1,146 @@
 package dev.doona.android.feature.stats
 
-import dev.doona.android.designsystem.rv.RvPlace
-import dev.doona.android.engine.Catalog
-import dev.doona.android.engine.DayTotal
-import dev.doona.android.engine.DayUsage
-import dev.doona.android.engine.Group
-import dev.doona.android.engine.GroupKind
-import dev.doona.android.engine.Member
-import dev.doona.android.engine.Mode
-import dev.doona.android.engine.OutboundBytes
-import dev.doona.android.engine.ScoreState
-import dev.doona.android.engine.TodayTraffic
-import dev.doona.android.engine.Usage
-import dev.doona.android.engine.fake.rvSampleEngine
-import dev.doona.android.feature.model.CoreNodePlaces
-import kotlinx.coroutines.runBlocking
+import dev.doona.android.feature.activity.HonkProfile
+import dev.doona.android.feature.activity.readHonkProfile
+import dev.doona.android.feature.model.RvSplit
+import dev.doona.android.vpn.ActivityHonkFixtures
+import dev.doona.android.vpn.ActivityHonkFixtures.scoring
+import dev.doona.android.vpn.FakeHonk
+import dev.doona.android.vpn.honk.NativeCatalog
+import dev.doona.android.vpn.honk.NativeRouting
+import dev.doona.android.vpn.honk.OutboundKind
+import dev.doona.android.vpn.honk.OutboundTraffic
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.DayOfWeek
 import java.time.ZoneId
 import java.time.ZoneOffset
 
+/** 統計's mapping over the RV sample as honk serves it ([ActivityHonkFixtures.sample]); the sample's now is Sunday 10:24 UTC. */
 class StatsMappingTest {
-    private val engine = rvSampleEngine()
+    private val profile = profile(ActivityHonkFixtures.sample())
 
-    private fun sampleInput(score: ScoreState? = null) = runBlocking {
-        StatsInput(
-            usage = engine.usage().getOrThrow(),
-            today = engine.today.value,
-            subscriptions = engine.subscriptions.value,
-            catalog = engine.catalog.value,
-            score = score,
-            nowEpochMs = SAMPLE_NOW,
-            zone = ZoneOffset.UTC,
+    private fun profile(honk: FakeHonk) = readHonkProfile(NativeCatalog(honk), NativeRouting(honk))
+
+    private fun input(
+        profile: HonkProfile? = this.profile,
+        zone: ZoneId = ZoneOffset.UTC,
+        range: RvStatsRange = RvStatsRange.Today,
+        subscriptionId: String? = null,
+        firstDay: DayOfWeek = DayOfWeek.MONDAY,
+        outbounds: List<OutboundTraffic>? = null,
+    ) = StatsInput(profile, SAMPLE_NOW, zone, range, subscriptionId, firstDay, outbounds)
+
+    @Test
+    fun `the sample's providers, nodes and main node, over a day with no bytes`() {
+        val state = rvStatsState(input())
+        assertEquals(listOf("Harbor Cloud", "Lantern Net"), state.subscriptions.map { it.name })
+        assertTrue(state.subscriptions.all { it.totalBytes > 0 })
+        assertEquals(48, state.nodes.size)
+        assertEquals("n-0001938f00000000", state.selectedId)
+        // honk keeps no usage by the day: hours 0 to 10 so far, all zero, and nothing from yesterday; no outbounds read.
+        assertEquals(11, state.today.hours.size)
+        assertTrue(state.today.quiet)
+        assertNull(state.yesterdaySoFar)
+        assertNull(state.split)
+        assertNull(state.score)
+        assertNull(state.period)
+    }
+
+    @Test
+    fun `the split is direct against every group and node since honk started, without block`() {
+        val outbounds = listOf(
+            OutboundTraffic("direct", OutboundKind.Builtin, up = 10, down = 90),
+            OutboundTraffic("block", OutboundKind.Builtin, up = 0, down = 500),
+            OutboundTraffic("Streaming", OutboundKind.Group, up = 50, down = 250),
+            OutboundTraffic("Taipei 04", OutboundKind.Node, up = 0, down = 100),
         )
-    }
-
-    @Test
-    fun `today comes from usage by the hour up to the current one`() {
-        val input = sampleInput()
-        val day = input.usage!!.today
-        val state = rvStatsState(input)
-        // 10:24: hours 0 to 10, the current one still filling.
-        assertEquals(day.down.take(11), state.today.down)
-        assertEquals(day.up.take(11), state.today.up)
-        assertEquals(day.flows.take(11).map(Long::toInt), state.today.connections)
-        assertEquals(input.today.yesterdayByNow, state.yesterdaySoFar)
-        assertEquals(10.4f, state.nowHour, 1e-4f)
-    }
-
-    @Test
-    fun `hours after the current one are left out of today's total`() {
-        val hours = List(24) { it + 1L }
-        val day = DayUsage("2026-11-22", hours, hours.map { it * 10 }, hours, emptyList())
-        val state = rvStatsState(StatsInput(Usage(day, null, emptyList()), TodayTraffic(), emptyList(), null, null, SAMPLE_NOW, ZoneOffset.UTC))
-        // Hours 0 to 10 hold 1..11 up and 10..110 down; 11 to 23 are later today and must not count.
-        assertEquals(66L + 660L, state.today.total)
+        assertEquals(RvSplit(proxyBytes = 400, directBytes = 100), rvStatsState(input(outbounds = outbounds)).split)
+        // Nothing carried yet: the card's empty state.
+        assertNull(rvStatsState(input(outbounds = listOf(OutboundTraffic("direct", OutboundKind.Builtin, 0, 0)))).split)
     }
 
     @Test
     fun `the time of day is local, so a half-hour zone moves the running total's end`() {
-        val zone = ZoneId.of("Asia/Kolkata")
-        val day = DayUsage("2026-11-22", List(24) { 0L }, List(24) { 0L }, List(24) { 0L }, emptyList())
-        val state = rvStatsState(StatsInput(Usage(day, null, emptyList()), TodayTraffic(), emptyList(), null, null, SAMPLE_NOW, zone))
+        val state = rvStatsState(input(zone = ZoneId.of("Asia/Kolkata")))
         // 10:24 UTC is 15:54 in Kolkata (UTC+05:30): hour 15, 54 minutes in, not 24.
         assertEquals(16, state.today.hours.size)
         assertEquals(15.9f, state.nowHour, 1e-4f)
     }
 
     @Test
-    fun `a subscription without quota has no total and no expiry`() {
-        val bare = sampleInput().let { input ->
-            val subscriptions = input.subscriptions.map { it.copy(usedBytes = null, totalBytes = null, expiresAtEpochMs = null) }
-            StatsInput(input.usage, input.today, subscriptions, input.catalog, null, SAMPLE_NOW, ZoneOffset.UTC)
-        }
-        val subscriptions = rvStatsState(bare).subscriptions
-        // The quota card keeps only a total above zero, so no `0/0 B` legend; no expiry, so no date at the epoch (1970).
-        assertTrue(subscriptions.all { it.totalBytes == 0L && it.usedBytes == 0L })
-        assertTrue(subscriptions.all { it.expiresAtEpochMs == null })
-    }
-
-    @Test
-    fun `the split is direct against the rest of the route targets`() {
-        val day = sampleInput().usage!!.today
-        val direct = day.outbounds.single { it.id == "direct" }.let { it.up + it.down }
-        val split = rvStatsState(sampleInput()).split!!
-        assertEquals(direct, split.directBytes)
-        assertEquals(day.outbounds.sumOf { it.up + it.down } - direct, split.proxyBytes)
-    }
-
-    @Test
-    fun `subscriptions keep their quota and the nodes their last test`() {
-        val input = sampleInput()
-        val state = rvStatsState(input)
-        assertEquals(listOf(61_700_000_000L, 36_400_000_000L), state.subscriptions.map { it.usedBytes })
-        val members = input.catalog!!.groups.flatMap { it.members }.filterNot { it.isGroup }.distinctBy { it.id }
-        assertEquals(members.map { it.id }, state.nodes.map { it.id })
-        assertEquals(members.map { it.latencyMs }, state.nodes.map { it.latencyMs })
-        assertEquals(input.catalog.let { c -> c.groups.single { it.id == c.mainGroupId } }.selectedId, state.selectedId)
-    }
-
-    @Test
-    fun `a fresh install with no usage is the empty state`() {
-        val empty = DayUsage("2026-11-22", List(24) { 0L }, List(24) { 0L }, List(24) { 0L }, emptyList())
-        val state = rvStatsState(StatsInput(Usage(empty, null, emptyList()), TodayTraffic(), emptyList(), null, null, SAMPLE_NOW, ZoneOffset.UTC))
-        assertTrue(state.today.quiet)
-        assertEquals(11, state.today.hours.size)
-        assertNull(state.yesterdaySoFar)
-        assertNull(state.split)
-        assertNull(state.score)
+    fun `before the first read there are no nodes, no subscriptions and no main node`() {
+        val state = rvStatsState(input(profile = null))
+        assertTrue(state.nodes.isEmpty())
         assertTrue(state.subscriptions.isEmpty())
-        assertTrue(state.nodes.isEmpty())
-    }
-
-    @Test
-    fun `before the first read and after midnight the day is empty, not yesterday's`() {
-        val stale = sampleInput().let { StatsInput(it.usage, it.today, it.subscriptions, it.catalog, null, SAMPLE_NOW + DAY_MS, ZoneOffset.UTC) }
-        assertTrue(rvStatsState(stale).today.quiet)
-        assertNull(rvStatsState(stale).split)
-        val unread = sampleInput().let { StatsInput(null, it.today, it.subscriptions, it.catalog, null, SAMPLE_NOW, ZoneOffset.UTC) }
-        assertTrue(rvStatsState(unread).today.quiet)
-    }
-
-    @Test
-    fun `the hours follow the local day`() {
-        // 10:24 UTC is 21:24 in Melbourne (UTC+11), still on 2026-11-22.
-        val input = sampleInput().let { StatsInput(it.usage, it.today, it.subscriptions, it.catalog, null, SAMPLE_NOW, ZoneOffset.ofHours(11)) }
-        assertEquals(22, rvStatsState(input).today.hours.size)
-    }
-
-    @Test
-    fun `the score card reads the score state with the groups' names and nodes`() {
-        val score = runBlocking { engine.scoreState().getOrThrow() }
-        val input = sampleInput(score)
-        val state = rvStatsState(input).score!!
-        assertSame(score, state.state)
-        assertEquals(score.groups.map { it.id }, state.groups.map { it.id })
-        val names = score.groups.map { g -> input.catalog!!.groups.single { it.id == g.id }.name }
-        assertEquals(names, state.groups.map { it.name })
-        assertEquals(score.groups.map { it.nodeIds }, state.groups.map { g -> g.members.map { it.id } })
-    }
-
-    @Test
-    fun `no Score group means no Score card`() {
-        assertNull(rvStatsState(sampleInput(ScoreState(0, emptyList()))).score)
-    }
-
-    @Test
-    fun `the main node is followed through a selected subgroup`() {
-        val node = Member("n1", "Tokyo 01")
-        val sub = Group("g-JP", "JP", GroupKind.UrlTest, listOf(node), "n1")
-        val main = Group("g-Proxy", "Proxy", GroupKind.Selector, listOf(Member("g-JP", "JP", isGroup = true)), "g-JP")
-        val catalog = sampleInput().catalog!!.copy(mode = Mode.Rule, groups = listOf(main, sub), mainGroupId = "g-Proxy")
-        val state = rvStatsState(StatsInput(null, TodayTraffic(), emptyList(), catalog, null, SAMPLE_NOW, ZoneOffset.UTC))
-        assertEquals("n1", state.selectedId)
-        assertEquals(listOf("n1"), state.nodes.map { it.id })
-    }
-
-    @Test
-    fun `a catalog with no groups has no nodes, no main node, and Score groups named by their ids`() {
-        val catalog = sampleInput().catalog!!.copy(groups = emptyList())
-        val state = rvStatsState(StatsInput(null, TodayTraffic(), emptyList(), catalog, scoreOf("g-Auto"), SAMPLE_NOW, ZoneOffset.UTC))
-        assertTrue(state.nodes.isEmpty())
         assertNull(state.selectedId)
-        assertEquals(listOf("g-Auto"), state.score!!.groups.map { it.name })
-        assertTrue(state.score!!.groups.single().members.isEmpty())
     }
 
     @Test
     fun `a profile with no main group lists its nodes and selects none`() {
-        val node = Member("n1", "Tokyo 01")
-        val group = Group("g-JP", "JP", GroupKind.Selector, listOf(node), "n1")
-        val catalog = sampleInput().catalog!!.copy(groups = listOf(group), mainGroupId = "g-Proxy")
-        val state = rvStatsState(StatsInput(null, TodayTraffic(), emptyList(), catalog, null, SAMPLE_NOW, ZoneOffset.UTC))
-        assertEquals(listOf("n1"), state.nodes.map { it.id })
+        val state = rvStatsState(input(profile = profile.run { HonkProfile(providers, nodes, groups, mainGroup = null, ruleCount) }))
+        assertEquals(48, state.nodes.size)
         assertNull(state.selectedId)
     }
 
     @Test
-    fun `no catalog yet means no nodes and no main node, and Score groups named by their ids`() {
-        val state = rvStatsState(StatsInput(null, TodayTraffic(), emptyList(), null, scoreOf("g-Auto"), SAMPLE_NOW, ZoneOffset.UTC))
-        assertTrue(state.nodes.isEmpty())
-        assertNull(state.selectedId)
-        assertEquals(listOf("g-Auto"), state.score!!.groups.map { it.name })
+    fun `a Score group's card reads what it chose per network, with no counters`() {
+        val score = rvStatsState(input(profile = profile(ActivityHonkFixtures.sample().scoring()))).score!!
+        assertEquals(listOf(null, null, null), listOf(score.starts, score.trialsOk, score.trialsFailed))
+        val group = score.groups.single()
+        assertEquals("HK", group.name)
+        assertEquals("n-0001938f00000000", group.tcp.selectedId)
+        assertEquals("n-0001938e00000000", group.udp.selectedId)
+        assertTrue(group.tcp.settled)
+        assertEquals(6, group.tcp.candidates)
+        assertEquals(48, group.members.size)
     }
 
     @Test
-    fun `places come from a city, a flag or a country code, else other`() {
-        assertEquals(RvPlace.JP, CoreNodePlaces.placeOf("Tokyo 02"))
-        assertEquals(RvPlace.HK, CoreNodePlaces.placeOf("🇭🇰 香港 01"))
-        assertEquals(RvPlace.US, CoreNodePlaces.placeOf("US-West 03"))
-        assertEquals(RvPlace.Other, CoreNodePlaces.placeOf("節點 A"))
-        assertEquals(RvPlace.Other, CoreNodePlaces.placeOf("Hourly"))
-    }
-
-    @Test
-    fun `a failed test reads as no latency`() {
-        val members = listOf(Member("a", "Tokyo 01", latencyMs = 40), Member("b", "Tokyo 02", failed = true), Member("c", "Tokyo 03"))
-        val group = Group("g-Proxy", "Proxy", GroupKind.Selector, members, "a")
-        val catalog: Catalog = sampleInput().catalog!!.copy(groups = listOf(group), mainGroupId = "g-Proxy")
-        val nodes = rvStatsState(StatsInput(null, TodayTraffic(), emptyList(), catalog, null, SAMPLE_NOW, ZoneOffset.UTC)).nodes
-        assertEquals(listOf(40, null, null), nodes.map { it.latencyMs })
-        assertEquals(listOf(1, 0, 0), nodes.map { it.answered })
-    }
-
-    @Test
-    fun `other route targets count as proxy`() {
-        val day = DayUsage("2026-11-22", List(24) { 0L }, List(24) { 0L }, List(24) { 0L }, listOf(OutboundBytes("other", 1, 2), OutboundBytes("direct", 3, 4)))
-        val split = rvStatsState(StatsInput(Usage(day, null, emptyList()), TodayTraffic(), emptyList(), null, null, SAMPLE_NOW, ZoneOffset.UTC)).split!!
-        assertEquals(3L, split.proxyBytes)
-        assertEquals(7L, split.directBytes)
-    }
-
-    @Test
-    fun `a week from Monday is each day's bytes, then today's so far`() {
-        val input = sampleInput().with(range = RvStatsRange.Week, firstDay = DayOfWeek.MONDAY)
-        val period = rvStatsState(input).period!!
-        val usage = input.usage!!
-        val yesterday = usage.days.single { it.date == "2026-11-21" }
-        assertEquals(7, period.slots)
-        // 2026-11-22 is a Sunday: Monday the 16th to Saturday the 21st, then today.
-        assertEquals(listOf(0L, 0L, 0L, 0L, 0L, yesterday.down, usage.today.down.take(11).sum()), period.days.down)
-        assertEquals(listOf(0L, 0L, 0L, 0L, 0L, yesterday.up, usage.today.up.take(11).sum()), period.days.up)
-        assertNull("past days keep no flows", period.days.connections)
+    fun `a week from Monday is a day each up to today, with nothing to compare`() {
+        val period = rvStatsState(input(range = RvStatsRange.Week)).period!!
+        assertEquals(DAYS_PER_WEEK, period.slots)
+        assertEquals(DAYS_PER_WEEK, period.days.hours.size)
         assertEquals(6 + DAY_GONE, period.now, 1e-4f)
+        assertNull(period.before)
     }
 
     @Test
     fun `a week from Sunday on a Sunday is today alone`() {
-        val period = rvStatsState(sampleInput().with(range = RvStatsRange.Week, firstDay = DayOfWeek.SUNDAY)).period!!
-        assertEquals(1, period.days.down.size)
+        val period = rvStatsState(input(range = RvStatsRange.Week, firstDay = DayOfWeek.SUNDAY)).period!!
+        assertEquals(1, period.days.hours.size)
         assertEquals(DAY_GONE, period.now, 1e-4f)
     }
 
     @Test
-    fun `a month runs from the 1st over the month's days and has nothing to compare`() {
-        val period = rvStatsState(sampleInput().with(range = RvStatsRange.Month)).period!!
+    fun `a month runs from the 1st over the month's days`() {
+        val period = rvStatsState(input(range = RvStatsRange.Month)).period!!
         assertEquals(30, period.slots)
-        assertEquals(22, period.days.down.size)
+        assertEquals(22, period.days.hours.size)
         assertNull(period.before)
-        assertNull(RvStatsRange.Month.against)
     }
 
     @Test
-    fun `before the first read a week and a month are empty days, with nothing counted before them`() {
-        val week = rvStatsState(sampleInput().with(usage = null, range = RvStatsRange.Week)).period!!
-        assertEquals(List(7) { 0L }, week.days.down)
-        assertEquals(List(7) { 0L }, week.days.up)
-        assertEquals(0L, week.before)
-        // 2026-11-22: the 1st to the 21st, then today, of November's 30.
-        val month = rvStatsState(sampleInput().with(usage = null, range = RvStatsRange.Month)).period!!
-        assertEquals(List(22) { 0L }, month.days.down)
-        assertEquals(30, month.slots)
-        assertNull(month.before)
-    }
-
-    @Test
-    fun `today has no period`() {
-        assertNull(rvStatsState(sampleInput()).period)
-    }
-
-    @Test
-    fun `the week before is compared by the same point, its same weekday by the share of today gone`() {
-        val base = sampleInput()
-        val usage = base.usage!!.copy(days = listOf(DayTotal("2026-11-10", 200, 300), DayTotal("2026-11-15", 400, 600), DayTotal("2026-11-08", 9_999, 9_999)))
-        val period = rvStatsState(base.with(usage = usage, range = RvStatsRange.Week, firstDay = DayOfWeek.MONDAY)).period!!
-        // Tuesday the 10th whole, Sunday the 15th (today's weekday) by 10:24 of 24 h; the 8th is before that week.
-        assertEquals(500L + (1_000L * DAY_GONE).toLong(), period.before)
-    }
-
-    @Test
-    fun `yesterday missing from the kept days comes from usage's yesterday`() {
-        val base = sampleInput()
-        val usage = base.usage!!.copy(days = emptyList())
-        val period = rvStatsState(base.with(usage = usage, range = RvStatsRange.Week, firstDay = DayOfWeek.MONDAY)).period!!
-        assertEquals(usage.yesterday!!.down.sum(), period.days.down[5])
-    }
-
-    @Test
-    fun `a picked subscription narrows the quota and the nodes, not the traffic or the tools`() {
-        val base = sampleInput()
-        val picked = base.subscriptions.first().id
-        val all = rvStatsState(base)
-        val state = rvStatsState(base.with(subscriptionId = picked))
-        assertEquals(picked, state.subscriptionId)
-        assertEquals(listOf(picked), state.shownSubscriptions.map { it.id })
-        assertTrue(state.shownNodes.isNotEmpty())
-        assertTrue(state.shownNodes.all { it.subscription == picked })
-        assertTrue(state.shownNodes.size < state.nodes.size)
+    fun `a picked subscription narrows the quota and the nodes to that provider's`() {
+        val all = rvStatsState(input())
+        val state = rvStatsState(input(subscriptionId = "s2"))
+        assertEquals("s2", state.subscriptionId)
+        assertEquals(listOf("s2"), state.shownSubscriptions.map { it.id })
+        assertEquals(16, state.shownNodes.size)
+        assertTrue(state.shownNodes.all { it.subscriptionId == "s2" })
         assertEquals(all.nodes, state.nodes)
-        assertEquals(all.today, state.today)
-        assertEquals(all.split, state.split)
     }
 
     @Test
     fun `a subscription deleted since it was picked leaves the chip at all of them`() {
-        val state = rvStatsState(sampleInput().with(subscriptionId = "gone"))
+        val state = rvStatsState(input(subscriptionId = "gone"))
         assertNull(state.subscriptionId)
         assertEquals(state.subscriptions, state.shownSubscriptions)
     }
 
-    /** The sample's first Score group, renamed [id] and listing one node no catalog has. */
-    private fun scoreOf(id: String): ScoreState {
-        val sample = runBlocking { engine.scoreState().getOrThrow() }
-        return sample.copy(groups = listOf(sample.groups.first().copy(id = id, nodeIds = listOf("gone"))))
-    }
-
-    private fun StatsInput.with(
-        usage: Usage? = this.usage,
-        range: RvStatsRange = this.range,
-        subscriptionId: String? = this.subscriptionId,
-        firstDay: DayOfWeek = this.firstDay,
-    ) = StatsInput(usage, today, subscriptions, catalog, score, nowEpochMs, zone, range, subscriptionId, firstDay)
-
     private companion object {
-        const val DAY_MS = 86_400_000L
-
         /** The share of the sample's day gone at 10:24. */
         const val DAY_GONE = (10 * 60 + 24) / (24 * 60f)
     }

@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "resource_not_found",
+    "message": "Connection is unknown or already gone.",
+    "details": null
+  },
+  "request_id": "request-close-2"
+}
