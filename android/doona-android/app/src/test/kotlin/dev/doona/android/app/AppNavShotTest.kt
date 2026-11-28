@@ -47,6 +47,9 @@ class AppNavShotTest {
                 }
             }
         }
+        // The policies page reads off the main thread, which waitForIdle does not track: wait for its first row, or the
+        // shot catches the loading skeleton on a slow machine.
+        compose.waitUntil(5_000) { compose.onAllNodes(hasText("Harbor Cloud")).fetchSemanticsNodes().isNotEmpty() }
         compose.drawFully()
         // The nav's tabs, by label: the old 策略 page has tabs of its own.
         val tab = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
