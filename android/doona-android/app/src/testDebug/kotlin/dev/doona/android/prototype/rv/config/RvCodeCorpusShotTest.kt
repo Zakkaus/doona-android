@@ -44,7 +44,7 @@ class RvCodeCorpusShotTest {
 
     @Composable
     private fun Corpus() {
-        val draft = remember { RvSourceDraft(PATH, rvCodeCorpus(), RvConfigData.REV) }
+        val draft = remember { RvSourceDraft(PATH, rvCodeCorpus(), RvConfigData.REV.toLong()) }
         var value by remember { mutableStateOf(TextFieldValue(draft.text)) }
         RvConfigSourcePage(draft, value, { value = it }, onBack = {})
     }

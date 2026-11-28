@@ -124,7 +124,7 @@ internal fun RvPolicyScreen(
     onChange: (RvPolicyState) -> Unit,
     routes: RvPolicyRoutes = RvPolicyRoutes(),
     noSubscription: (() -> Unit)? = null,
-    configRev: Int? = null,
+    configRev: Long? = null,
     loading: Boolean = false,
     banner: RvNotice? = null,
     profile: RvPolicyProfile?,
@@ -220,7 +220,7 @@ private fun PolicyContent(
     state: RvPolicyState,
     onChange: (RvPolicyState) -> Unit,
     routes: RvPolicyRoutes,
-    configRev: Int?,
+    configRev: Long?,
     profile: RvPolicyProfile,
     editing: RvListEdit? = null,
 ) {
@@ -420,7 +420,7 @@ private fun RulesCard(profile: RvPolicyProfile, onAll: () -> Unit) {
  * 封鎖廣告, and 阻擋 QUIC, an option of a template that shows only when the rules come from one.
  */
 @Composable
-private fun OptionsCard(state: RvPolicyState, onChange: (RvPolicyState) -> Unit, routes: RvPolicyRoutes, configRev: Int?, source: RvRuleSource) {
+private fun OptionsCard(state: RvPolicyState, onChange: (RvPolicyState) -> Unit, routes: RvPolicyRoutes, configRev: Long?, source: RvRuleSource) {
     RvCard {
         ValueRow(R.drawable.rv_sym_rule, stringResource(R.string.rv_policy_template), source.text(), routes.template)
         // honk-gap:policy-config-revision

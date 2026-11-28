@@ -209,6 +209,6 @@ private fun policiesUiState(mode: Mode?, read: PolicyRead?, local: RvPolicyState
         nodeSort = local.nodeSort,
     ),
     profile = read?.profile,
-    configRev = read?.config?.honk?.store?.revision,
+    configRev = read?.config?.revision,
     failure = failure,
 )

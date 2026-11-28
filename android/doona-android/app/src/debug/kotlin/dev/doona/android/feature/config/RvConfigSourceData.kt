@@ -43,10 +43,10 @@ internal object RvConfigSourceData {
     val broken = cn(MISSING, wiki = true)
 
     /** The draft after its edits, checked clean. */
-    val source = RvSourceDraft(CN, clean, RvConfigData.REV)
+    val source = RvSourceDraft(CN, clean, RvConfigData.REV.toLong())
 
     /** The draft after `configCheck` refused the unknown group on line 7. */
-    val error = RvSourceDraft(CN, broken, RvConfigData.REV, broken.indexOf(MISSING).let { at -> RvConfigDiagnostic(bytes(broken, at), bytes(broken, at) + MISSING.length, MISSING) })
+    val error = RvSourceDraft(CN, broken, RvConfigData.REV.toLong(), broken.indexOf(MISSING).let { at -> RvConfigDiagnostic(bytes(broken, at), bytes(broken, at) + MISSING.length, MISSING) })
 
     private fun bytes(text: String, index: Int) = text.substring(0, index).encodeToByteArray().size
 
@@ -82,8 +82,8 @@ internal object RvConfigSourceData {
         ),
     )
 
-    val diff = RvConfigDiff(files, RvConfigData.REV, RvConfigData.REV)
+    val diff = RvConfigDiff(files, RvConfigData.REV.toLong(), RvConfigData.REV.toLong())
 
     /** The same diff after another apply made revision 10 the head. */
-    val stale = RvConfigDiff(files, RvConfigData.REV, RvConfigData.REV + 1)
+    val stale = RvConfigDiff(files, RvConfigData.REV.toLong(), RvConfigData.REV + 1L)
 }

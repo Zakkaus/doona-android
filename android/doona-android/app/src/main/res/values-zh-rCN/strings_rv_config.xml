@@ -8,7 +8,7 @@
     <string name="rv_gallery_diff">差异</string>
     <string name="rv_config_unknown_group">找不到策略组 %1$s</string>
     <string name="rv_config_title">配置文件</string>
-    <string name="rv_config_applied">第 %1$d 版 / %2$s 生效</string>
+    <string name="rv_config_applied">第 %1$s 版 / %2$s 生效</string>
     <string name="rv_config_files">文件</string>
     <string name="rv_config_entry">主配置文件</string>
     <string name="rv_config_included_by">由 %1$s 引入</string>
@@ -38,10 +38,10 @@
     <string name="rv_config_line">第 %1$d 行</string>
     <string name="rv_config_source">源码</string>
     <string name="rv_config_search">搜索文件</string>
-    <string name="rv_config_draft_base">草稿 / 基于第 %1$d 版</string>
-    <string name="rv_config_based_on">基于第 %1$d 版</string>
+    <string name="rv_config_draft_base">草稿 / 基于第 %1$s 版</string>
+    <string name="rv_config_based_on">基于第 %1$s 版</string>
     <string name="rv_config_stale_title">配置文件已更新</string>
-    <string name="rv_config_stale_reason">草稿基于第 %1$d 版，已应用第 %2$d 版。</string>
+    <string name="rv_config_stale_reason">草稿基于第 %1$s 版，已应用第 %2$s 版。</string>
     <string name="rv_config_reload">重新加载</string>
     <string name="rv_config_revision">第 %1$d 版</string>
     <string name="rv_config_origin_import">导入</string>
@@ -57,7 +57,7 @@
         <item quantity="other">导入最多 %1$d 个文件，共 %2$s。</item>
     </plurals>
     <string name="rv_config_pick_again">选择其他文件</string>
-    <string name="rv_config_still_in_use">第 %1$d 版仍在使用。</string>
+    <string name="rv_config_still_in_use">第 %1$s 版仍在使用。</string>
     <string name="rv_config_escape_title">引入的文件在导入范围外</string>
     <string name="rv_config_edit_source">编辑源码</string>
     <string name="rv_template_global">全局代理</string>

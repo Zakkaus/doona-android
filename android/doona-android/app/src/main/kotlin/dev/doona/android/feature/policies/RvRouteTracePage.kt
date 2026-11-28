@@ -46,19 +46,20 @@ internal data class RvTraceQuery(val host: String, val port: String, val proto: 
 /**
  * What `routeTrace` answers (config plan line 83): the statement that decided, by its [source] file, [line] and [text],
  * or the list's fallback ([fallback]); where the traffic goes ([target], a group, `direct` or `block`, and the [node]
- * the group picks); whether the VPN carries it ([captured]); and a [skipped] statement before the winner that the
- * phone does not apply (its file and line), which the page reports.
+ * the group picks); whether the VPN carries it ([captured]); and the [skipped] rule whose missing inputs prevent
+ * identifying the winner, with its file and line when known.
  */
 @Immutable
 internal data class RvTraceResult(
     val source: String,
     val line: Int,
     val text: String,
-    val target: String,
+    val target: String?,
     val node: String? = null,
     val fallback: Boolean = false,
     val captured: Boolean? = true,
     val skipped: Pair<String, Int>? = null,
+    val missingInputs: List<String> = emptyList(),
 )
 
 /**
@@ -107,7 +108,11 @@ internal fun RvRouteTracePage(
 
 @Composable
 private fun Answer(result: RvTraceResult, onOpenSource: (String, Int) -> Unit) {
-    val heading = if (result.fallback) R.string.rv_policy_rest else R.string.rv_trace_matched
+    val heading = when {
+        result.text.isEmpty() -> R.string.rv_trace_indeterminate
+        result.fallback -> R.string.rv_policy_rest
+        else -> R.string.rv_trace_matched
+    }
     RvSectionTitle(stringResource(heading), Modifier.padding(horizontal = RvSpace.gutter))
     val banner = result.skipped?.let { (file, line) ->
         RvNotice(
@@ -121,7 +126,7 @@ private fun Answer(result: RvTraceResult, onOpenSource: (String, Int) -> Unit) {
     }
     RvGutter(banner = banner) {
         if (result.source.isEmpty()) {
-            RvFootnote(result.text)
+            RvFootnote(result.text.ifEmpty { result.missingInputs.joinToString(" / ").ifEmpty { RV_NO_VALUE } })
         } else {
             RvSourceExcerpt(result.source, listOf(RvDiffLine(RvDiffKind.Same, result.line, result.text)), { at: RvDiffAt -> onOpenSource(result.source, at.line) })
         }
@@ -139,6 +144,7 @@ private fun Answer(result: RvTraceResult, onOpenSource: (String, Int) -> Unit) {
 /** 拒絕 for `block`, 直連 for `direct`, else the group and the node it picks. */
 @Composable
 private fun sendTo(result: RvTraceResult): String = when (result.target) {
+    null -> RV_NO_VALUE
     RV_BLOCK -> stringResource(R.string.rv_policy_reject)
     RV_DIRECT -> stringResource(R.string.mode_direct)
     else -> listOfNotNull(result.target, result.node).joinToString(TARGET_SEPARATOR)

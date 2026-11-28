@@ -14,6 +14,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
@@ -69,7 +70,7 @@ internal fun RvConfigOverviewPage(
     val title = stringResource(R.string.rv_config_title)
     val applied = rvConfigWhen(state.appliedAtEpochMs, state.nowEpochMs)
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
-        RvPageHeader(title, titleBlock, insets, caption = { RvCaption(stringResource(R.string.rv_config_applied, state.rev, applied)) })
+        RvPageHeader(title, titleBlock, insets, caption = { RvCaption(stringResource(R.string.rv_config_applied, state.rev ?: RV_NO_VALUE, applied)) })
         // A refused edit's [banner] heads the sections; the files' title then keeps its gap above.
         RvBannerSlot(banner, RvSpace.none)
         RvSectionTitle(stringResource(R.string.rv_config_files), Modifier.padding(horizontal = RvSpace.gutter), first = banner == null)

@@ -36,6 +36,16 @@ class NativeConfigTest {
         assertEquals(ErrorCode.InvalidArgument, failure { config.replace(source, "") })
     }
 
+    @Test
+    fun readsDatabaseRevisionsAboveIntRangeAndKeepsFileRevisionsNull() {
+        val body = HonkFixtures.body("config/rv-config")
+        val config = NativeConfig(honk)
+        honk.on("GET", "/api/v1/config", 200, body.replace("\"revision\": 9", "\"revision\": 2147483648"))
+        assertEquals(2147483648L, config.config().revision)
+        honk.on("GET", "/api/v1/config", 200, body.replace("\"kind\": \"db\"", "\"kind\": \"file\"").replace("\"revision\": 9", "\"revision\": null").replace("\"parent\": 8", "\"parent\": null"))
+        assertEquals(null, config.config().revision)
+    }
+
     private suspend fun failure(call: suspend () -> Unit): ErrorCode {
         try {
             call()

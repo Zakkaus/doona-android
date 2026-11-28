@@ -37,8 +37,8 @@ internal object RvConfigData {
     val lanRule = RvSkipped("!pname(helper) && mac(00:11:22:33:44:55) -> block", LAN, 3, listOf(RvSkipReason.ProcessName, RvSkipReason.MacAddress))
 
     /** The overview with the entry's Linux-only settings skipped. */
-    val overview = RvConfigState(REV, APPLIED_AT, files, summary, linuxOnly, nowEpochMs = RV_NOW)
+    val overview = RvConfigState(REV.toLong(), APPLIED_AT, files, summary, linuxOnly, nowEpochMs = RV_NOW)
 
     /** The same with the negative rule in `rules/lan.dae` skipped too: the sample engine's head. */
-    val skippedInclude = RvConfigState(REV, APPLIED_AT, files, summary, linuxOnly + lanRule, nowEpochMs = RV_NOW)
+    val skippedInclude = RvConfigState(REV.toLong(), APPLIED_AT, files, summary, linuxOnly + lanRule, nowEpochMs = RV_NOW)
 }

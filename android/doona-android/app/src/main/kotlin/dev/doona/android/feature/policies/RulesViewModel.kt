@@ -66,7 +66,7 @@ internal class RulesViewModel(
     private val state = MutableStateFlow(RulesUiState())
     val uiState: StateFlow<RulesUiState> = state.asStateFlow()
     private var reading: Job? = null
-    private var entries: List<HonkRuleEntry> = emptyList()
+    private var entries: Pair<String, List<HonkRuleEntry>>? = null
     private var failedWrite: (() -> Unit)? = null
 
     init {
@@ -74,7 +74,11 @@ internal class RulesViewModel(
     }
 
     /** The banner's 重試: reads again. */
-    fun retry() = load()
+    fun retry() {
+        failedWrite = null
+        state.update { it.copy(writeFailure = null) }
+        load()
+    }
 
     fun retryWrite() {
         failedWrite?.invoke()
@@ -95,9 +99,9 @@ internal class RulesViewModel(
     fun toggle(index: Int) = write(index) { it.toggled() }
 
     private fun write(index: Int, edit: (Statement) -> Pair<HonkSource, String>) {
-        val entry = entries.getOrNull(index)?.takeUnless { it is HonkRuleEntry.Loaded && it.rule.isFallback } ?: return
-        write {
-            val config = NativeConfig(api).config()
+        val (generation, rows) = entries ?: return
+        val entry = rows.getOrNull(index)?.takeUnless { it is HonkRuleEntry.Loaded && it.rule.isFallback } ?: return
+        write(generation) { config ->
             edit(
                 when (entry) {
                     is HonkRuleEntry.Loaded -> Statement(statementAt(config, entry.rule.source, entry.rule.expression), null)
@@ -107,21 +111,29 @@ internal class RulesViewModel(
         }
     }
 
-    private fun write(prepared: Pair<HonkSource, String>? = null, candidate: suspend () -> Pair<HonkSource, String>) {
+    private fun write(generation: String, prepared: Pair<HonkSource, String>? = null, candidate: (dev.doona.android.honk.HonkConfig) -> Pair<HonkSource, String>) {
         failedWrite = null
         state.update { it.copy(writeFailure = null) }
         viewModelScope.launch {
             var edit = prepared
             try {
-                withContext(io) {
-                    val (source, text) = edit ?: candidate().also { edit = it }
-                    val config = NativeConfig(api)
-                    if (prepared == null || config.config().sources.firstOrNull { it.id == source.id }?.content != text) config.replace(source, text)
+                val current = withContext(io) {
+                    val native = NativeConfig(api)
+                    val config = native.config()
+                    if (prepared != null && config.sources.firstOrNull { it.id == prepared.first.id }?.content == prepared.second) return@withContext true
+                    if (config.generationId != generation) return@withContext false
+                    val (source, text) = edit ?: candidate(config).also { edit = it }
+                    native.replace(source, text)
+                    true
+                }
+                if (!current) {
+                    failedWrite = ::retry
+                    state.update { it.copy(writeFailure = ErrorCode.Busy) }
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                failedWrite = { write(edit, candidate) }
+                failedWrite = { write(generation, edit, candidate) }
                 state.update { it.copy(writeFailure = error.errorCode()) }
             }
             load()
@@ -135,7 +147,8 @@ internal class RulesViewModel(
             } else {
                 val read = HonkPolicyRead.read(api)
                 val config = NativeConfig(api).config()
-                val entries = withPaused(read.rules.rules, pausedRules(config)).also { this@RulesViewModel.entries = it }
+                if (config.generationId != read.rules.generationId) throw EngineException(ErrorCode.Busy)
+                val entries = withPaused(read.rules.rules, pausedRules(config)).also { this@RulesViewModel.entries = config.generationId to it }
                 val groups = read.policyGroups(read.nodes(places))
                 val rules = read.policyRules(groups, entries)
                 RulesUiState(loading = false, rules = rules, ids = entries.map { (it as? HonkRuleEntry.Loaded)?.rule?.id })

@@ -69,12 +69,12 @@ internal object RvConfigHistoryData {
     private const val PICKED = "router.dae"
 
     /** The picked tree passed the 32-file budget: refused before parse, revision 9 untouched. */
-    val limit = RvImportState(PICKED, RvConfigData.REV, refusedAtLimit = true)
+    val limit = RvImportState(PICKED, RvConfigData.REV.toLong(), refusedAtLimit = true)
 
     /** The picked entry includes a glob outside its own directory; its relative include staged fine. */
     val escape = RvImportState(
         PICKED,
-        RvConfigData.REV,
+        RvConfigData.REV.toLong(),
         files = listOf(RvConfigFile(PICKED, null, 40), RvConfigFile(RvConfigData.NODES, PICKED, 12)),
         escapeLine = 4,
         escapePath = "/etc/honk/rules.d/*.dae",

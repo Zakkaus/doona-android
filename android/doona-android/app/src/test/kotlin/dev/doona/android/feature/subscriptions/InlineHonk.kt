@@ -105,6 +105,7 @@ internal class InlineHonk(private val regionOf: (String) -> String? = { null }) 
                 )
             }
         }
+        put("generation_id", "generation-1")
     }.toString()
 
     private fun write(id: String, request: JsonObject): NativeResponse {
