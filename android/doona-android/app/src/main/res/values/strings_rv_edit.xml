@@ -16,6 +16,8 @@
     <string name="rv_group_edit_unset">Not set</string>
     <string name="rv_group_member_node">Node</string>
     <string name="rv_group_member_group">Group · %1$s</string>
+    <string name="rv_group_edit_member_group">Group</string>
+    <string name="rv_group_edit_in_source">The name and members are the filters written in the config file. Tap a row to open it there.</string>
     <string name="rv_group_member_remove_title">Remove %1$s?</string>
     <string name="rv_group_member_remove_body">Its traffic goes to the group’s other members.</string>
     <string name="rv_group_member_remove_confirm">Remove</string>

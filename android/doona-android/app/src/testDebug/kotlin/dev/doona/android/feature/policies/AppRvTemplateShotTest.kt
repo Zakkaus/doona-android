@@ -28,6 +28,10 @@ import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvRowRules
 import dev.doona.android.testing.drawFully
+import dev.doona.android.vpn.FakeHonk
+import dev.doona.android.vpn.HonkFixtures
+import dev.doona.android.vpn.PolicyHonkFixtures
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +40,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.StandardTestDispatcher
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -60,55 +65,55 @@ class AppRvTemplateShotTest {
     val utc = Utc()
 
     @Test
-    fun templateLight() = shot("template", dark = false) { TemplateRoute(rvSampleEngine(), onBack = {}, onReview = {}) }
+    fun templateLight() = shot("template", dark = false) { Templates() }
 
     @Test
-    fun templateDark() = shot("template", dark = true, whole = true) { TemplateRoute(rvSampleEngine(), onBack = {}, onReview = {}) }
+    fun templateDark() = shot("template", dark = true, whole = true) { Templates() }
 
     @Test
     @Config(qualifiers = WHOLE_TEMPLATE_FS200)
     fun templateFs200() = shot("template", dark = false, fontScale = RV_FS200, whole = true) {
-        TemplateRoute(rvSampleEngine(), onBack = {}, onReview = {})
+        Templates()
     }
 
     @Test
     @Config(qualifiers = WHOLE_TEMPLATE_EN)
-    fun templateEnLight() = shot("template-en", dark = false, whole = true) { TemplateRoute(rvSampleEngine(), onBack = {}, onReview = {}) }
+    fun templateEnLight() = shot("template-en", dark = false, whole = true) { Templates() }
 
     @Test
-    fun templateHandWrittenLight() = shot("template-hand", dark = false) { TemplateRoute(handWritten(), onBack = {}, onReview = {}) }
+    fun templateHandWrittenLight() = shot("template-hand", dark = false) { Templates(PolicyHonkFixtures.handWritten()) }
 
     @Test
-    fun templateReadFailedLight() = shot("template-read-failed", dark = false) { TemplateRoute(Unlisted(), onBack = {}, onReview = {}) }
+    fun templateReadFailedLight() = shot("template-read-failed", dark = false) { Templates(unreadable()) }
 
     @Test
-    fun impactLight() = shot("template-impact", dark = false) { TemplateImpactRoute(handWritten(), "cn-direct", onBack = {}, onApplied = {}) }
+    fun impactLight() = shot("template-impact", dark = false) { Impact() }
 
-    /** Before the catalog is read (a back stack restored after the process died, DS 1126i 1): the review's skeleton. */
+    /** Before honk's config is read (a back stack restored after the process died, DS 1126i 1): the review's skeleton. */
     @Test
-    fun impactLoadingLight() = shot("template-impact-loading", dark = false) { TemplateImpactRoute(Late(), "cn-direct", onBack = {}, onApplied = {}) }
+    fun impactLoadingLight() = shot("template-impact-loading", dark = false) { Impact(io = StandardTestDispatcher()) }
 
     @Test
-    fun impactLoadingDark() = shot("template-impact-loading", dark = true) { TemplateImpactRoute(Late(), "cn-direct", onBack = {}, onApplied = {}) }
+    fun impactLoadingDark() = shot("template-impact-loading", dark = true) { Impact(io = StandardTestDispatcher()) }
 
     @Test
     fun impactLoadingFs200() = shot("template-impact-loading", dark = false, fontScale = RV_FS200) {
-        TemplateImpactRoute(Late(), "cn-direct", onBack = {}, onApplied = {})
+        Impact(io = StandardTestDispatcher())
     }
 
     @Test
-    fun impactDark() = shot("template-impact", dark = true) { TemplateImpactRoute(handWritten(), "cn-direct", onBack = {}, onApplied = {}) }
+    fun impactDark() = shot("template-impact", dark = true) { Impact() }
 
     @Test
     @Config(qualifiers = WHOLE_IMPACT_FS200)
     fun impactFs200() = shot("template-impact", dark = false, fontScale = RV_FS200, whole = true) {
-        TemplateImpactRoute(handWritten(), "cn-direct", onBack = {}, onApplied = {})
+        Impact()
     }
 
     @Test
     @Config(qualifiers = WHOLE_IMPACT_EN)
     fun impactEnLight() = shot("template-impact-en", dark = false, whole = true) {
-        TemplateImpactRoute(handWritten(), "cn-direct", onBack = {}, onApplied = {})
+        Impact()
     }
 
     @Test
@@ -131,9 +136,14 @@ class AppRvTemplateShotTest {
     @Test
     @Config(qualifiers = WHOLE_EFFECTIVE_REREAD)
     fun effectiveRereadFailedLight() {
-        val engine = Rereading()
-        shot("effective-config-reread-failed", dark = false, whole = true, then = { runBlocking { engine.setPerApp(PerApp(packages = setOf("a"))) } }) {
-            Effective { engine }
+        val honk = PolicyHonkFixtures.rvSample()
+        lateinit var vm: EffectiveConfigViewModel
+        val reread = {
+            honk.on("GET", "/api/v1/rules", 503, HonkFixtures.body("errors/snapshot-unavailable"))
+            vm.retry()
+        }
+        shot("effective-config-reread-failed", dark = false, whole = true, then = reread) {
+            Effective(honk) { vm = it }
         }
     }
 
@@ -141,51 +151,82 @@ class AppRvTemplateShotTest {
     @Test
     fun theReviewOpensOnlyForAnotherTemplate() {
         val opened = mutableListOf<String>()
-        compose.rvContent(dark = false) { TemplateRoute(handWritten(), onBack = {}, onReview = { opened += it }) }
+        compose.rvContent(dark = false) { Templates(PolicyHonkFixtures.handWritten(), onReview = { opened += it }) }
         compose.onNode(hasText(text(R.string.rv_template_review)), useUnmergedTree = true).performClick()
         assertEquals(listOf("cn-direct"), opened)
     }
 
-    /** 套用 sets the template, then leaves for 策略. */
+    /** 套用 writes the template into honk's file, then leaves for 策略. */
     @Test
     fun applyingSetsTheTemplateAndLeaves() {
-        val engine = handWritten()
+        val honk = applying()
+        val io = StandardTestDispatcher()
         var left = 0
-        compose.rvContent(dark = false) { TemplateImpactRoute(engine, "cn-direct", onBack = {}, onApplied = { left++ }) }
-        compose.onNode(hasText(text(R.string.rv_policy_apply)), useUnmergedTree = true).performClick()
+        compose.rvContent(dark = false) { Impact(honk, io = io, onApplied = { left++ }) }
+        io.scheduler.advanceUntilIdle()
         compose.waitForIdle()
-        assertEquals(listOf("cn-direct"), engine.applied)
+        compose.onNode(hasText(text(R.string.rv_policy_apply)), useUnmergedTree = true).performClick()
+        io.scheduler.advanceUntilIdle()
+        compose.waitForIdle()
+        assertEquals(listOf("PUT /api/v1/config/sources/source-main"), puts(honk))
         assertEquals(1, left)
     }
 
     /**
-     * Before the catalog is read 套用 does nothing and the line on new connections waits; once it is, the review shows
-     * with that line, and 套用 sets the template.
+     * Before honk's config is read 套用 does nothing and the line on new connections waits; once it is, the review shows
+     * with that line, and 套用 writes the template.
      */
     @Test
     fun theReviewWaitsForTheCatalog() {
-        val engine = Late()
+        val honk = applying()
+        val io = StandardTestDispatcher()
         var left = 0
-        compose.rvContent(dark = false) { TemplateImpactRoute(engine, "cn-direct", onBack = {}, onApplied = { left++ }) }
+        compose.rvContent(dark = false) { Impact(honk, io = io, onApplied = { left++ }) }
         val apply = compose.onNode(hasText(text(R.string.rv_policy_apply)), useUnmergedTree = true)
         val footnote = compose.onNode(hasText(text(R.string.rv_template_new_flows)), useUnmergedTree = true)
         footnote.assertDoesNotExist()
         apply.performClick()
         compose.waitForIdle()
-        assertEquals(emptyList<String>(), engine.applied)
-        engine.read.value = engine.loaded
+        assertEquals(emptyList<String>(), puts(honk))
+        io.scheduler.advanceUntilIdle()
         compose.waitForIdle()
         footnote.assertExists()
         apply.performClick()
+        io.scheduler.advanceUntilIdle()
         compose.waitForIdle()
-        assertEquals(listOf("cn-direct"), engine.applied)
+        assertEquals(listOf("PUT /api/v1/config/sources/source-main"), puts(honk))
         assertEquals(1, left)
     }
 
+    /** 範本 on honk serving [honk], reading on [io] (the test's thread unless given). */
     @Composable
-    private fun Effective(make: () -> Engine = ::rvSampleEngine) {
-        val engine = remember { make() }
-        val vm = remember { EffectiveConfigViewModel(engine, reads = Dispatchers.Unconfined) }
+    private fun Templates(honk: FakeHonk = PolicyHonkFixtures.rvSample(), onReview: (String) -> Unit = {}) {
+        TemplateRoute(remember { TemplateViewModel(honk, io = Dispatchers.Unconfined) }, onBack = {}, onReview = onReview)
+    }
+
+    /** The review of cn-direct over the hand-written sample, reading on [io]. */
+    @Composable
+    private fun Impact(honk: FakeHonk = PolicyHonkFixtures.handWritten(), io: CoroutineDispatcher = Dispatchers.Unconfined, onApplied: () -> Unit = {}) {
+        TemplateImpactRoute(remember { TemplateImpactViewModel(honk, "cn-direct", io) }, onBack = {}, onApplied = onApplied)
+    }
+
+    /** The hand-written sample, honk accepting a new file and reloading it. */
+    private fun applying(): FakeHonk = PolicyHonkFixtures.handWritten().apply {
+        on("PUT", "/api/v1/config/sources/source-main", 202, HonkFixtures.body("config-replace/queued"))
+        on("GET", "/api/v1/operations/op-config-01", 200, HonkFixtures.body("operations/reload-complete"))
+    }
+
+    private fun puts(honk: FakeHonk) = honk.calls.filter { it.method == "PUT" }.map { "${it.method} ${it.path}" }
+
+    /** The sample whose config honk cannot read. */
+    private fun unreadable(): FakeHonk = PolicyHonkFixtures.rvSample().apply {
+        on("GET", "/api/v1/config", 503, HonkFixtures.body("errors/snapshot-unavailable"))
+    }
+
+    /** The route on honk serving [honk], the mode the sample engine's, reading on the test's thread; [made] gets the view model. */
+    @Composable
+    private fun Effective(honk: FakeHonk = PolicyHonkFixtures.rvSample(), made: (EffectiveConfigViewModel) -> Unit = {}) {
+        val vm = remember { EffectiveConfigViewModel(rvSampleEngine(), honk, io = Dispatchers.Unconfined).also(made) }
         EffectiveConfigRoute(vm, onBack = {}, onRules = {})
     }
 
@@ -214,48 +255,10 @@ class AppRvTemplateShotTest {
         compose.onRoot().captureToImage().asAndroidBitmap().captureRoboImage("$SHOTS/$name.png")
     }
 
-    /** The sample engine whose configuration reads once, then fails with Busy. */
-    private class Rereading(private val base: FakeEngine = rvSampleEngine()) : Engine by base {
-        private var reads = 0
-
-        override suspend fun effectiveConfig(): Result<EffectiveConfig> =
-            if (reads++ == 0) base.effectiveConfig() else Result.failure(EngineException(ErrorCode.Busy))
-    }
-
-    /** The sample engine with its rules from the configuration file, no template; it records the templates set. */
-    private class HandWritten(private val base: Engine = rvSampleEngine()) : Engine by base {
-        val applied = mutableListOf<String>()
-
-        override val catalog: StateFlow<Catalog?> = base.catalog
-            .map { it?.copy(ruleSource = it.ruleSource.copy(template = null, subscriptionId = null)) }
-            .stateIn(CoroutineScope(Dispatchers.Unconfined), SharingStarted.Eagerly, null)
-
-        override suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit> {
-            applied += template
-            return Result.success(Unit)
-        }
-    }
-
-    private fun handWritten() = HandWritten()
-
-    /** [HandWritten] whose catalog is unread until the test sets [read] to [loaded]. */
-    private class Late(private val base: HandWritten = HandWritten()) : Engine by base {
-        val applied get() = base.applied
-        val loaded: Catalog? = base.catalog.value
-        val read = MutableStateFlow<Catalog?>(null)
-
-        override val catalog: StateFlow<Catalog?> = read
-    }
-
-    /** The sample engine, its template list unreadable. */
-    private class Unlisted(private val base: Engine = rvSampleEngine()) : Engine by base {
-        override suspend fun ruleTemplates(): Result<List<RuleTemplate>> = Result.failure(EngineException(ErrorCode.Internal))
-    }
-
     private companion object {
         val SHOTS: String = System.getProperty("doona.shots") ?: "src/test/screenshots"
 
-        /** Taller than 生效設定 whole, as `proto-rv-effective-config-*`'s window (+h2106dp) and the app's longer rules need. */
+        /** Taller than 生效設定 whole, as `proto-rv-effective-config-*`'s window (+h2186dp) and the app's longer rules need. */
         const val WHOLE_EFFECTIVE = "+h2600dp"
         const val WHOLE_EFFECTIVE_REREAD = "+h2600dp"
 

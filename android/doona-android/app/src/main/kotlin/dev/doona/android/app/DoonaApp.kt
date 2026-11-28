@@ -52,11 +52,15 @@ import dev.doona.android.feature.nodes.NodesViewModel
 import dev.doona.android.feature.onboarding.FirstRunGate
 import dev.doona.android.feature.perapp.PerAppRoute
 import dev.doona.android.feature.policies.EffectiveConfigRoute
+import dev.doona.android.feature.policies.GroupEditRoute
 import dev.doona.android.feature.policies.GroupRoute
 import dev.doona.android.feature.policies.PoliciesRoute
+import dev.doona.android.feature.policies.RouteTraceRoute
+import dev.doona.android.feature.policies.RuleEditRoute
 import dev.doona.android.feature.policies.RulesRoute
 import dev.doona.android.feature.policies.RvPolicyRoutes
 import dev.doona.android.feature.policies.RvRulesRoutes
+import dev.doona.android.feature.policies.ServiceRulesRoute
 import dev.doona.android.feature.policies.TemplateImpactRoute
 import dev.doona.android.feature.policies.TemplateRoute
 import dev.doona.android.feature.stats.StatsRoute
@@ -145,21 +149,29 @@ internal fun DoonaApp(
                     ),
                 )
             }
-            entry<GroupKey> { key -> GroupRoute(key.groupId, onBack = { backStack.pop(key) }) }
+            entry<GroupKey> { key -> GroupRoute(key.groupId, onBack = { backStack.pop(key) }, onEdit = { backStack.push(GroupEditKey(key.groupId)) }) }
+            entry<GroupEditKey> { key -> GroupEditRoute(key.groupId, onBack = { backStack.pop(key) }, onOpenSource = { backStack.push(ConfigSourceKey(it)) }) }
             entry<RulesKey> { key ->
                 RulesRoute(
-                    engine,
                     onBack = { backStack.pop(key) },
                     onTemplate = { backStack.push(TemplateKey) },
+                    onOpen = { backStack.push(RuleEditKey(it)) },
+                    onNew = { backStack.push(RuleEditKey(null)) },
+                    onService = { backStack.push(ServiceRulesKey) },
                     routes = RvRulesRoutes(effective = { backStack.push(EffectiveConfigKey) }),
                 )
             }
-            entry<TemplateKey> { key -> TemplateRoute(engine, onBack = { backStack.pop(key) }, onReview = { backStack.push(TemplateImpactKey(it)) }) }
+            entry<RuleEditKey> { key -> RuleEditRoute(key.ruleId, onBack = { backStack.pop(key) }, onOpenSource = { backStack.push(ConfigSourceKey(it)) }) }
+            entry<TemplateKey> { key -> TemplateRoute(onBack = { backStack.pop(key) }, onReview = { backStack.push(TemplateImpactKey(it)) }) }
+            entry<ServiceRulesKey> { key -> ServiceRulesRoute(onBack = { backStack.pop(key) }) }
             entry<TemplateImpactKey> { key ->
-                TemplateImpactRoute(engine, key.templateId, onBack = { backStack.pop(key) }, onApplied = { backStack.push(PoliciesKey) })
+                TemplateImpactRoute(key.templateId, onBack = { backStack.pop(key) }, onApplied = { backStack.push(PoliciesKey) })
             }
-            entry<EffectiveConfigKey> { key -> EffectiveConfigRoute(engine, onBack = { backStack.pop(key) }, onRules = { backStack.push(RulesKey) }) }
-            configEntries(engine, backStack)
+            entry<EffectiveConfigKey> { key ->
+                EffectiveConfigRoute(engine, onBack = { backStack.pop(key) }, onRules = { backStack.push(RulesKey) }, onTrace = { backStack.push(RouteTraceKey) })
+            }
+            entry<RouteTraceKey> { key -> RouteTraceRoute(onBack = { backStack.pop(key) }, onOpenSource = { backStack.push(ConfigSourceKey(it)) }) }
+            configEntries(backStack)
             entry<SubscriptionsKey> { key ->
                 SubscriptionsRoute(
                     onBack = { backStack.pop(key) },

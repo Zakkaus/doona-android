@@ -1,293 +1,221 @@
 package dev.doona.android.feature.policies
 
-import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Mode
-import dev.doona.android.engine.Network
-import dev.doona.android.engine.RuleOptions
-import dev.doona.android.engine.RulePage
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvRuleSource
-import kotlinx.coroutines.CoroutineScope
+import dev.doona.android.vpn.FakeHonk
+import dev.doona.android.vpn.HonkFixtures
+import dev.doona.android.vpn.PolicyHonkFixtures
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-@OptIn(ExperimentalCoroutinesApi::class)
+/** 策略 on honk serving the RV sample ([PolicyHonkFixtures.rvSample]); the mode alone is the engine's. */
 class PoliciesViewModelTest {
+    private val honk = PolicyHonkFixtures.rvSample().apply {
+        on("PUT", "/api/v1/config/sources/source-main", 202, HonkFixtures.body("config-replace/queued"))
+        on("GET", "/api/v1/operations/op-config-01", 200, HonkFixtures.body("operations/reload-complete"))
+        on("PUT", "/api/v1/groups/g-Proxy/selection", 200, "{}")
+        on("POST", "/api/v1/probes", 202, HonkFixtures.body("probes/queued"))
+        on("GET", "/api/v1/operations/op-01HZX4K8W9", 200, HonkFixtures.body("operations/probe-complete"))
+    }
+
     @Before
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    /** `WhileSubscribed` only follows the engine while someone collects, as the screen does; reads run in the test. */
-    private fun TestScope.collected(engine: Engine) =
-        PoliciesViewModel(engine, clock = { NOW }, reads = UnconfinedTestDispatcher(testScheduler)).also { vm ->
+    /** `WhileSubscribed` only follows the engine's mode while someone collects, as the screen does. */
+    private fun TestScope.collected(engine: Engine = Modes()) =
+        PoliciesViewModel(engine, honk, clock = { NOW }, io = UnconfinedTestDispatcher(testScheduler)).also { vm ->
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+            advanceUntilIdle()
         }
 
-    /**
-     * The sample engine, recording the calls 策略 makes and answering them with [result]. [revision] overrides the catalog's
-     * rules revision; [pageRevisions] are the revisions the next rule pages report, for a page read while the source changed.
-     */
-    private class Recording(val base: FakeEngine = rvSampleEngine()) : Engine by base {
-        var result: Result<Unit> = Result.success(Unit)
+    /** The sample engine, recording the modes set, which fail with [result]'s failure while it has one. */
+    private class Modes(val base: FakeEngine = rvSampleEngine()) : Engine by base {
         val calls = mutableListOf<String>()
-        val revision = MutableStateFlow<Long?>(null)
-        val pageRevisions = ArrayDeque<Long>()
-        var ruleReads = 0
-        var failRules = false
+        var result: Result<Unit> = Result.success(Unit)
 
-        override val catalog: StateFlow<Catalog?> = combine(base.catalog, revision) { catalog, revision ->
-            if (catalog == null || revision == null) catalog else catalog.copy(ruleSource = catalog.ruleSource.copy(rulesRevision = revision))
-        }.stateIn(CoroutineScope(Dispatchers.Unconfined), SharingStarted.Eagerly, null)
-
-        override suspend fun setMode(mode: Mode): Result<Unit> = answer("setMode $mode") { base.setMode(mode) }
-
-        override suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit> =
-            answer("setRuleSource $template ${options.blockQuic}") { base.setRuleSource(template, options) }
-
-        override suspend fun select(groupId: String, memberId: String?, network: Network?): Result<Unit> =
-            answer("select $groupId $memberId $network") { base.select(groupId, memberId, network) }
-
-        override suspend fun testLatency(groupId: String?): Result<Unit> = answer("test $groupId") { Result.success(Unit) }
-
-        override suspend fun setAdBlock(on: Boolean): Result<Unit> = answer("setAdBlock $on") { base.setAdBlock(on) }
-
-        override suspend fun rules(offset: Int, limit: Int): Result<RulePage> {
-            ruleReads++
-            if (failRules) return Result.failure(IllegalStateException("rules"))
-            val page = base.rules(offset, limit).getOrThrow()
-            return Result.success(page.copy(rulesRevision = pageRevisions.removeFirstOrNull() ?: catalog.value!!.ruleSource.rulesRevision))
-        }
-
-        private suspend fun answer(call: String, apply: suspend () -> Result<Unit>): Result<Unit> {
-            calls += call
-            return if (result.isSuccess) apply() else result
+        override suspend fun setMode(mode: Mode): Result<Unit> {
+            calls += "setMode $mode"
+            return result.onSuccess { base.setMode(mode) }
         }
     }
 
+    private fun writes() = honk.calls.filter { it.method != "GET" }.map { "${it.method} ${it.path}" }
+
+    private fun replaced(): String = Json.parseToJsonElement(honk.calls.last { it.method == "PUT" }.body!!).jsonObject.getValue("content").jsonPrimitive.content
+
     @Test
-    fun `a tap on the selected segment calls nothing`() = runTest {
-        val engine = Recording()
+    fun `the profile is honk's groups, subscriptions, template and switches`() = runTest {
+        val state = collected().uiState.value
+
+        assertFalse(state.loading)
+        assertNull(state.failure)
+        assertEquals("g-Proxy", state.profile!!.main!!.id)
+        assertEquals(7, state.profile.groups.size)
+        assertEquals(listOf("Harbor Cloud", "Lantern Net"), state.profile.subscriptions.map { it.name })
+        assertEquals("cn-direct", (state.profile.source as RvRuleSource.Template).template.id)
+        assertEquals(RV_POLICY_CARD_RULES, state.profile.rules.size)
+        assertTrue(state.state.blockAds)
+        assertFalse(state.state.blockQuic)
+    }
+
+    @Test
+    fun `a tap on the selected mode calls nothing, and another sets it on the engine`() = runTest {
+        val engine = Modes()
         val vm = collected(engine)
         val state = vm.uiState.value.state
         assertEquals(RvRouteMode.Rule, state.mode)
+
         vm.onChange(state.copy(mode = RvRouteMode.Rule))
         assertEquals(emptyList<String>(), engine.calls)
-    }
 
-    @Test
-    fun `a mode switch calls setMode once and shows the engine's mode`() = runTest {
-        val engine = Recording()
-        val vm = collected(engine)
-        vm.onChange(vm.uiState.value.state.copy(mode = RvRouteMode.Global))
+        vm.onChange(state.copy(mode = RvRouteMode.Global))
         assertEquals(listOf("setMode Global"), engine.calls)
         assertEquals(RvRouteMode.Global, vm.uiState.value.state.mode)
+        assertEquals(emptyList<String>(), writes())
     }
 
     @Test
-    fun `blocking QUIC keeps the template and sets the option`() = runTest {
-        val engine = Recording()
-        val vm = collected(engine)
+    fun `blocking QUIC puts its rule first in the routing file honk read, then reads again`() = runTest {
+        val vm = collected()
+        val reads = honk.calls.count { it.path == "/api/v1/config" }
+
         vm.onChange(vm.uiState.value.state.copy(blockQuic = true))
-        assertEquals(listOf("setRuleSource cn-direct true"), engine.calls)
-        assertTrue(vm.uiState.value.state.blockQuic)
-    }
+        advanceUntilIdle()
 
-    @Test
-    fun `封鎖廣告 shows the engine's switch, and a tap sets it once the engine has it`() = runTest {
-        val engine = Recording()
-        val vm = collected(engine)
-        assertTrue(vm.uiState.value.state.blockAds)
-        engine.result = Result.failure(EngineException(ErrorCode.Internal))
-        vm.onChange(vm.uiState.value.state.copy(blockAds = false))
-        assertTrue("a failed set keeps the switch", vm.uiState.value.state.blockAds)
-        assertEquals(PolicyFailure(PolicyAction.Ads, ErrorCode.Internal), vm.uiState.value.failure)
-        engine.result = Result.success(Unit)
-        vm.onChange(vm.uiState.value.state.copy(blockAds = false))
-        assertEquals(listOf("setAdBlock false", "setAdBlock false"), engine.calls)
-        assertFalse(vm.uiState.value.state.blockAds)
+        assertEquals(listOf("PUT /api/v1/config/sources/source-main"), writes())
+        val put = honk.calls.last { it.method == "PUT" }
+        assertTrue(put.headers.getValue("If-Match").startsWith("\""))
+        val routing = replaced().lines().dropWhile { it.trim() != "routing {" }
+        assertEquals("l4proto(udp) && dport(443) -> block", routing[1].trim())
+        assertEquals(reads + 1, honk.calls.count { it.path == "/api/v1/config" })
         assertNull(vm.uiState.value.failure)
     }
 
     @Test
+    fun `封鎖廣告 off takes its DNS rule out of the file, and a failed write shows in the banner`() = runTest {
+        val vm = collected()
+        honk.on("PUT", "/api/v1/config/sources/source-main", 412, HonkFixtures.body("errors/stale-revision"))
+
+        vm.onChange(vm.uiState.value.state.copy(blockAds = false))
+        advanceUntilIdle()
+
+        assertEquals(PolicyFailure(PolicyAction.Ads, ErrorCode.Busy), vm.uiState.value.failure)
+        assertTrue("honk still runs the rule", vm.uiState.value.state.blockAds)
+        assertFalse(replaced().contains("qname(geosite:category-ads-all) -> reject"))
+
+        honk.on("PUT", "/api/v1/config/sources/source-main", 202, HonkFixtures.body("config-replace/queued"))
+        vm.retry()
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.failure)
+        assertEquals(2, writes().size)
+    }
+
+    @Test
     fun `the order stays on the page`() = runTest {
-        val engine = Recording()
-        val vm = collected(engine)
-        val state = vm.uiState.value.state
-        vm.onChange(state.copy(nodeSort = RvNodeSort.Name))
-        assertEquals(emptyList<String>(), engine.calls)
+        val vm = collected()
+
+        vm.onChange(vm.uiState.value.state.copy(nodeSort = RvNodeSort.Name))
+
+        assertEquals(emptyList<String>(), writes())
         assertEquals(RvNodeSort.Name, vm.uiState.value.state.nodeSort)
     }
 
     @Test
     fun `choosing the main node selects it in the main group on both networks`() = runTest {
-        val engine = Recording()
-        val vm = collected(engine)
+        val vm = collected()
         val main = vm.uiState.value.profile!!.main!!
         val other = main.members.first { it.id != main.selectedId }.id
+
         vm.onChange(vm.uiState.value.state.choose(main.id, main.selectedId))
-        assertEquals(emptyList<String>(), engine.calls)
+        assertEquals(emptyList<String>(), writes())
+
         vm.onChange(vm.uiState.value.state.choose(main.id, other))
-        assertEquals(listOf("select g-Proxy $other null"), engine.calls)
-        assertEquals(other, vm.uiState.value.profile!!.main!!.selectedId)
+        advanceUntilIdle()
+
+        assertEquals(listOf("PUT /api/v1/groups/g-Proxy/selection"), writes())
+        val body = Json.parseToJsonElement(honk.calls.last { it.method == "PUT" }.body!!).jsonObject
+        assertEquals(other, body.getValue("member_id").jsonPrimitive.content)
+        assertEquals("both", body.getValue("network").jsonPrimitive.content)
     }
 
     @Test
-    fun `a failure shows in the banner until the next action succeeds`() = runTest {
-        val engine = Recording()
-        val vm = collected(engine)
-        engine.result = Result.failure(EngineException(ErrorCode.Busy))
+    fun `testing probes every group and reads again`() = runTest {
+        val vm = collected()
+
         vm.testAll()
-        assertEquals(PolicyFailure(PolicyAction.TestAll, ErrorCode.Busy), vm.uiState.value.failure)
-        engine.result = Result.success(Unit)
-        vm.onChange(vm.uiState.value.state.copy(mode = RvRouteMode.Direct))
-        assertNull(vm.uiState.value.failure)
-        assertEquals(listOf("test null", "setMode Direct"), engine.calls)
-    }
+        advanceUntilIdle()
 
-    @Test
-    fun `retry makes the failed call again, and nothing once an attempt succeeds`() = runTest {
-        val engine = Recording()
-        val vm = collected(engine)
-        engine.result = Result.failure(EngineException(ErrorCode.Busy))
-        vm.onChange(vm.uiState.value.state.copy(mode = RvRouteMode.Global))
-        assertEquals(PolicyFailure(PolicyAction.Mode, ErrorCode.Busy), vm.uiState.value.failure)
-        engine.result = Result.success(Unit)
-        vm.retry()
-        assertNull(vm.uiState.value.failure)
-        assertEquals(RvRouteMode.Global, vm.uiState.value.state.mode)
-        vm.retry()
-        assertEquals(listOf("setMode Global", "setMode Global"), engine.calls)
-    }
-
-    @Test
-    fun `rules from a subscription name it as their source, and 阻擋 QUIC calls nothing`() = runTest {
-        val base = rvSampleEngine()
-        val sub = base.catalog.value!!.subscriptions.first()
-        val engine = object : Engine by base {
-            val calls = mutableListOf<String>()
-            override val catalog: StateFlow<Catalog?> = base.catalog.map { it?.copy(ruleSource = it.ruleSource.copy(template = null, subscriptionId = sub.id)) }
-                .stateIn(CoroutineScope(Dispatchers.Unconfined), SharingStarted.Eagerly, null)
-
-            override suspend fun setRuleSource(template: String, options: RuleOptions): Result<Unit> {
-                calls += template
-                return base.setRuleSource(template, options)
-            }
-        }
-        val vm = collected(engine)
-        assertEquals(RvRuleSource.Subscription(sub.name), vm.uiState.value.profile?.source)
-        vm.onChange(vm.uiState.value.state.copy(blockQuic = true))
-        assertEquals(emptyList<String>(), engine.calls)
+        assertEquals(8, writes().count { it == "POST /api/v1/probes" })
+        val first = Json.parseToJsonElement(honk.calls.first { it.method == "POST" }.body!!).jsonObject
+        assertEquals("g-Proxy", first.getValue("target").jsonObject.getValue("group_id").jsonPrimitive.content)
         assertNull(vm.uiState.value.failure)
     }
 
     @Test
-    fun `loading until the engine is ready and the profile is read`() = runTest {
-        val engine = Recording()
-        engine.base.ready.value = false
-        val vm = collected(engine)
-        assertTrue(vm.uiState.value.loading)
-        engine.base.ready.value = true
-        assertFalse(vm.uiState.value.loading)
-        assertNotNull(vm.uiState.value.profile)
+    fun `updating refreshes every subscription in order and shows the first failure`() = runTest {
+        val vm = collected()
+        honk.on("POST", "/api/v1/providers/s1/refresh", 503, HonkFixtures.body("errors/snapshot-unavailable"))
+        honk.on("POST", "/api/v1/providers/s2/refresh", 503, HonkFixtures.body("errors/snapshot-unavailable"))
+
+        vm.updateSubscriptions()
+        advanceUntilIdle()
+
+        assertEquals(listOf("POST /api/v1/providers/s1/refresh", "POST /api/v1/providers/s2/refresh"), writes())
+        assertEquals(PolicyFailure(PolicyAction.Update, ErrorCode.Busy), vm.uiState.value.failure)
     }
 
     @Test
     fun `a failed first read shows its failure, and 重試 reads again`() = runTest {
-        val engine = Recording()
-        engine.failRules = true
-        val vm = collected(engine)
-        val failed = vm.uiState.value
-        assertFalse("no endless skeleton", failed.loading)
-        assertNull(failed.profile)
-        assertEquals(PolicyFailure(PolicyAction.Read, ErrorCode.Internal), failed.failure)
-        engine.failRules = false
+        honk.on("GET", "/api/v1/rules", 503, HonkFixtures.body("errors/snapshot-unavailable"))
+        val vm = collected()
+
+        assertFalse(vm.uiState.value.loading)
+        assertNull(vm.uiState.value.profile)
+        assertEquals(PolicyFailure(PolicyAction.Read, ErrorCode.Busy), vm.uiState.value.failure)
+
+        honk.on("GET", "/api/v1/rules", 200, HonkFixtures.body("rules/rv-sample"))
         vm.retry()
-        assertNotNull(vm.uiState.value.profile)
+        advanceUntilIdle()
+
         assertNull(vm.uiState.value.failure)
+        assertEquals("g-Proxy", vm.uiState.value.profile!!.main!!.id)
     }
 
     @Test
-    fun `a failed read keeps the profile shown and says so, and 重試 reads again`() = runTest {
-        val engine = Recording()
-        val vm = collected(engine)
-        val shown = vm.uiState.value.profile
-        engine.failRules = true
-        engine.revision.value = 2L
-        assertEquals(shown, vm.uiState.value.profile)
-        assertEquals(PolicyAction.Read, vm.uiState.value.failure?.action)
-        engine.failRules = false
-        vm.retry()
-        assertNull(vm.uiState.value.failure)
-    }
+    fun `no subscription when honk has none`() = runTest {
+        honk.on("GET", "/api/v1/providers", 200, """{"providers": [], "next_cursor": null}""")
 
-    @Test
-    fun `no subscription when the catalog has none`() = runTest {
-        val vm = collected(Recording(FakeEngine(subscriptions = emptyList())))
-        assertTrue(vm.uiState.value.noSubscription)
-        assertFalse(collected(Recording()).uiState.value.noSubscription)
-    }
-
-    @Test
-    fun `the rules are read again only when their revision changes`() = runTest {
-        val engine = Recording()
-        val vm = collected(engine)
-        assertEquals(1, engine.ruleReads)
-        val main = vm.uiState.value.profile!!.main!!
-        vm.onChange(vm.uiState.value.state.choose(main.id, main.members.first { it.id != main.selectedId }.id))
-        assertEquals(1, engine.ruleReads)
-        engine.revision.value = 2L
-        assertEquals(2, engine.ruleReads)
-        assertNotNull(vm.uiState.value.profile)
-    }
-
-    @Test
-    fun `a stale page of rules is read again`() = runTest {
-        val engine = Recording()
-        engine.pageRevisions += 99L
-        val vm = collected(engine)
-        assertEquals(2, engine.ruleReads)
-        assertEquals(RV_POLICY_CARD_RULES, vm.uiState.value.profile!!.rules.size)
-    }
-
-    @Test
-    fun `updating refreshes every subscription in order`() = runTest {
-        val updated = mutableListOf<String>()
-        val engine = object : Engine by rvSampleEngine() {
-            override suspend fun updateSubscription(id: String) = Result.success(catalog.value!!.subscriptions.first { it.id == id }).also { updated += id }
-        }
-        collected(engine).updateSubscriptions()
-        assertEquals(listOf("s1", "s2"), updated)
+        assertTrue(collected().uiState.value.noSubscription)
     }
 
     private companion object {
-        const val NOW = 1_764_000_000_000L
+        const val NOW = 1_780_000_000_000L
     }
 }

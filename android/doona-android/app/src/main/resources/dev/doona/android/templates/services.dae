@@ -1,0 +1,73 @@
+# doona starting configuration: a group for each service, mainland China direct.
+# This is ordinary honk configuration. Edit it freely; the app reads whatever groups,
+# rules and DNS settings it holds.
+
+group {
+    # Every node; the user picks one or auto.
+    proxy {
+        filter: group('auto')
+        filter: !name('direct', 'block')
+        policy: select
+        default: 'auto'
+    }
+    # Every node, chosen by observed quality.
+    auto {
+        filter: !name('direct', 'block')
+        policy: score
+    }
+    # Telegram.
+    telegram {
+        filter: group('proxy', 'auto')
+        filter: !name('direct', 'block')
+        policy: select
+        default: 'proxy'
+    }
+    # Streaming services.
+    media {
+        filter: group('proxy', 'auto')
+        filter: !name('direct', 'block')
+        policy: select
+        default: 'proxy'
+    }
+    # Apple services.
+    apple {
+        filter: group('proxy', 'auto')
+        filter: !name('direct', 'block')
+        policy: select
+        default: 'proxy'
+    }
+}
+
+routing {
+    # Microsoft services connect directly.
+    domain(geosite:microsoft) -> direct
+    # Apple services.
+    domain(geosite:apple) -> apple
+    # Telegram.
+    domain(geosite:telegram) -> telegram
+    dip(geoip:telegram) -> telegram
+    # Streaming services.
+    domain(geosite:youtube, geosite:netflix, geosite:disney, geosite:hbo, geosite:primevideo, geosite:twitch, geosite:spotify) -> media
+    # Sites blocked in mainland China.
+    domain(geosite:gfw) -> proxy
+    # Mainland China.
+    domain(geosite:cn) -> direct
+    dip(geoip:cn) -> direct
+    fallback: proxy
+}
+
+dns {
+    upstream {
+        alidns: 'https://223.5.5.5/dns-query?tls_server_name=dns.alidns.com' -> direct
+        cloudflare: 'https://1.1.1.1/dns-query?tls_server_name=cloudflare-dns.com' -> proxy
+    }
+    routing {
+        request {
+            # Block ads: answer ad domains with an empty reply.
+# paused r-5fbbaffc75615770:             qname(geosite:category-ads-all) -> reject
+            # Mainland names from a mainland resolver.
+            qname(geosite:cn) -> alidns
+            fallback: cloudflare
+        }
+    }
+}

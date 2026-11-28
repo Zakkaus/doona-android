@@ -44,8 +44,9 @@ import dev.doona.android.feature.model.text
  * 檢視生效設定 (rule-mode R3's `effectiveConfig`, read-only), from 全部規則 and from 設定 → 進階, in node detail's grammar:
  * the large title, then one card a section, each under its section title: 模式 with the main node; 策略組, each group
  * with how it picks, its first members and the node it uses; 規則, counted as D34 counts them, with the way to the list;
- * DNS; 依 App; and 來源, the template and the subscriptions the nodes come from. It ends with 複製 and 匯出 (the text
- * carries no credentials, D21). When the core cut the text at 1 MiB ([truncated]) a line under the title says so; a
+ * DNS; 依 App; and 來源, the template and the subscriptions the nodes come from. Under the rules card a row opens 路由測試
+ * ([onTrace]). It ends with 複製 and 匯出 (the text carries no credentials, D21). When the core cut the text at 1 MiB
+ * ([truncated]) a line under the title says so; a
  * [banner] (the config could not be read) stands in [RvGutter]'s slot: in place of the cards before the first read,
  * above them after it. What the cards say is [config]'s, which is null until the first read: the title stands alone.
  */
@@ -59,6 +60,7 @@ internal fun RvEffectiveConfigPage(
     truncated: Boolean = false,
     banner: RvNotice? = null,
     config: RvEffectiveConfig?,
+    onTrace: () -> Unit = {},
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_effective_title)
@@ -73,7 +75,11 @@ internal fun RvEffectiveConfigPage(
         }
         if (config != null) {
             Section(R.string.rv_policy_groups) { GroupsCard(policy, listOfNotNull(config.main) + config.groups) }
-            Section(R.string.rv_policy_rules) { RulesCard(config.rules, onRules) }
+            Section(R.string.rv_policy_rules) {
+                RulesCard(config.rules, onRules)
+                // q-trace-entry = 1 (review page v85): one row under the rules card.
+                RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_call_split) }, stringResource(R.string.rv_trace_title), null, onClick = onTrace) }
+            }
             Section(R.string.rv_settings_dns) {
                 RvCard {
                     RvStatRow(stringResource(R.string.rv_settings_dns_server), dnsLine(config.dns), valueKeepWords = false)

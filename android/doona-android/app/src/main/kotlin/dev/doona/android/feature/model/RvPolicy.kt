@@ -75,14 +75,15 @@ internal enum class RvRuleState { On, Off, Skipped }
 internal enum class RvRuleEnd { Direct, Reject, Missing }
 
 /**
- * A rule as the 策略 page lists it: what it matches, the group it sends to, and its bytes today. With no [group], [end]
+ * A rule as the 策略 page lists it: what it matches, the group it sends to, and its bytes today, null where they are not
+ * counted (honk keeps no bytes per rule, so its rows show 「—」: owner, 2026-11-27, keep-1127). With no [group], [end]
  * says where its flows end.
  */
 @Immutable
 internal class RvPolicyRule(
     val match: RvRuleMatch,
     val group: RvPolicyGroup?,
-    val bytes: Long,
+    val bytes: Long?,
     val state: RvRuleState = RvRuleState.On,
     val end: RvRuleEnd = RvRuleEnd.Direct,
 )

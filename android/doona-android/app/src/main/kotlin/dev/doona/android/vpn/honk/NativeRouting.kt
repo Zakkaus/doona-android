@@ -1,6 +1,7 @@
 package dev.doona.android.vpn.honk
 
 import dev.doona.android.vpn.NativeApi
+import dev.doona.android.vpn.nativeJson
 import dev.doona.android.vpn.read
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -13,6 +14,10 @@ internal class NativeRouting(private val api: NativeApi) {
     fun rules(): HonkRules = api.read("GET", "/api/v1/rules", HonkRules.serializer())
 
     fun dnsRules(): HonkDnsRules = api.read("GET", "/api/v1/dns/rules", HonkDnsRules.serializer())
+
+    /** How the running generation would route [input], simulated without dialing or resolving (`resolve: none`). */
+    fun trace(input: HonkTraceInput): HonkTrace =
+        api.read("POST", "/api/v1/routing/trace", HonkTrace.serializer(), nativeJson.encodeToString(HonkTraceRequest.serializer(), HonkTraceRequest(input)))
 
     /**
      * Whether honk's last reload left its files unloaded: they did not pass admission, so honk still runs the generation
@@ -35,7 +40,7 @@ internal class HonkLastReload(val status: String, val error: HonkReloadError?) {
 internal class HonkReloadError(val details: HonkReloadDetails? = null)
 
 @Serializable
-internal class HonkReloadDetails(val committed: Boolean? = null)
+internal class HonkReloadDetails(val committed: Boolean? = null, val diagnostics: List<HonkDiagnostic> = emptyList())
 
 @Serializable
 internal class HonkRules(
@@ -85,5 +90,31 @@ internal class HonkDnsRule(
 ) {
     val isFallback: Boolean get() = kind == FALLBACK
 }
+
+/** A destination to trace: [domain] or [dstIp] (at least one), its port and transport. */
+@Serializable
+internal class HonkTraceInput(
+    val network: Transport,
+    @SerialName("dst_port") val dstPort: Int,
+    val domain: String? = null,
+    @SerialName("dst_ip") val dstIp: String? = null,
+)
+
+@Serializable
+private class HonkTraceRequest(val input: HonkTraceInput)
+
+@Serializable
+internal class HonkTrace(@SerialName("generation_id") val generationId: String, val evaluations: List<HonkEvaluation>)
+
+/**
+ * One destination address's verdict: [outbound] is null when [decision] is `indeterminate`, as a rule before the winner
+ * needs an input the trace lacks. [rules] are in evaluation order, each `matched`, `not_matched`, `indeterminate` or
+ * `skipped` (not reached).
+ */
+@Serializable
+internal class HonkEvaluation(val outbound: String?, val rules: List<HonkRuleEvaluation>)
+
+@Serializable
+internal class HonkRuleEvaluation(@SerialName("rule_id") val ruleId: String, val result: String)
 
 private const val FALLBACK = "fallback"

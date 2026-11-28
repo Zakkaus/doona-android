@@ -25,12 +25,18 @@ import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.seedSchemes
 import dev.doona.android.prototype.rv.settings.RV_SAMPLE_THEME_PREVIEW
+import dev.doona.android.vpn.FakeHonk
+import dev.doona.android.vpn.HonkFixtures
 import dev.doona.android.vpn.NativeSettings
+import dev.doona.android.vpn.PolicyHonkFixtures
 import dev.doona.android.vpn.SettingsHonk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -82,46 +88,46 @@ class ThemeDnsRouteTest {
     }
 
     @Test
-    fun aPresetAndTypedServersReachTheCore() {
-        val engine = FakeEngine()
-        compose.rvContent(dark = false) { DnsRoute(engine, onBack = {}) }
+    fun aPresetAndATypedServerReachHonk() {
+        val honk = honk()
+        compose.rvContent(dark = false) { DnsRoute(honk, onBack = {}, onServers = {}, onRules = {}) }
         compose.onNodeWithText(QUAD9).performClick()
         compose.waitForIdle()
-        assertEquals(listOf("9.9.9.9:53"), servers(engine))
+        assertEquals("cloudflare: 'https://9.9.9.9/dns-query?tls_server_name=dns.quad9.net' -> Proxy", written(honk, 1))
+        compose.waitUntil(5_000) { honk.calls.count { it.path == "/api/v1/operations/op-config-01" } >= 1 }
 
         compose.onNodeWithText(CUSTOM).performClick()
         compose.waitForIdle()
-        compose.onNode(hasSetTextAction()).performTextReplacement("223.5.5.5, 1.1.1.1")
+        compose.onNode(hasSetTextAction()).performTextReplacement("223.5.5.5")
         compose.onNodeWithText(SAVE).performClick()
         compose.waitForIdle()
-        assertEquals(listOf("223.5.5.5:53", "1.1.1.1:53"), servers(engine))
+        assertEquals("cloudflare: 'udp://223.5.5.5:53' -> Proxy", written(honk, 2))
     }
 
     /**
-     * The core accepts IPv6 servers, bare or as `[addr]:port`, and refuses link-local ones (doona-core `parse_upstreams`);
-     * the sheet's hint and error name both forms (s1126b, 2026-11-26 07:14).
+     * An IPv6 server, bare or as `[addr]:port`, reaches honk; a link-local one is refused, and the sheet's hint and error
+     * name both forms (s1126b, 2026-11-26 07:14).
      */
     @Test
-    fun ipv6ServersReachTheCoreAndALinkLocalOneSaysWhy() {
-        val engine = FakeEngine()
-        compose.rvContent(dark = false) { DnsRoute(engine, onBack = {}) }
+    fun anIpv6ServerReachesHonkAndALinkLocalOneSaysWhy() {
+        val honk = honk()
+        compose.rvContent(dark = false) { DnsRoute(honk, onBack = {}, onServers = {}, onRules = {}) }
         compose.onNodeWithText(CUSTOM).performClick()
         compose.waitForIdle()
         compose.onNodeWithText(V6_HINT, useUnmergedTree = true).assertFits()
-        compose.onNode(hasSetTextAction()).performTextReplacement("2606:4700:4700::1111, [2001:4860:4860::8888]:5353 1.1.1.1")
+        compose.onNode(hasSetTextAction()).performTextReplacement("[2001:4860:4860::8888]:5353")
         compose.onNodeWithText(SAVE).performClick()
         compose.waitForIdle()
-        assertEquals(listOf("[2606:4700:4700::1111]:53", "[2001:4860:4860::8888]:5353", "1.1.1.1:53"), servers(engine))
+        assertEquals("cloudflare: 'udp://[2001:4860:4860::8888]:5353' -> Proxy", written(honk, 1))
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(SAVE).fetchSemanticsNodes().isEmpty() }
 
         compose.onNodeWithText(CUSTOM).performClick()
         compose.waitForIdle()
-        // Opened again, the field holds the servers as typed: the default port and its brackets dropped.
-        compose.onNodeWithText("2606:4700:4700::1111, [2001:4860:4860::8888]:5353, 1.1.1.1").assertExists()
         compose.onNode(hasSetTextAction()).performTextReplacement("fe80::1")
         compose.onNodeWithText(SAVE).performClick()
         compose.waitForIdle()
         compose.onNodeWithText(V6_INVALID, useUnmergedTree = true).assertFits()
-        assertEquals(3, servers(engine).size)
+        assertEquals(1, honk.calls.count { it.method == "PUT" })
     }
 
     /** At Android's largest font the hint and the error take more than two lines; the library draws them whole. */
@@ -129,7 +135,7 @@ class ThemeDnsRouteTest {
     fun atFs200TheHintAndTheErrorAreWhole() {
         // The sheet is a window of its own, which takes the system's font scale rather than the page's density.
         RuntimeEnvironment.setFontScale(RV_FS200)
-        compose.rvContent(dark = false, fontScale = RV_FS200) { DnsRoute(FakeEngine(), onBack = {}) }
+        compose.rvContent(dark = false, fontScale = RV_FS200) { DnsRoute(honk(), onBack = {}, onServers = {}, onRules = {}) }
         compose.onNodeWithText(CUSTOM).performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNodeWithText(V6_HINT, useUnmergedTree = true).assertFits()
@@ -220,7 +226,17 @@ class ThemeDnsRouteTest {
         assertFalse("cut: ${layouts.first().layoutInput.text}", layouts.first().hasVisualOverflow)
     }
 
-    private fun servers(engine: FakeEngine) = runBlocking { engine.effectiveConfig().getOrThrow().dnsUpstreams }
+    private fun honk(): FakeHonk = PolicyHonkFixtures.rvSample().apply {
+        on("PUT", "/api/v1/config/sources/source-main", 202, HonkFixtures.body("config-replace/queued"))
+        on("GET", "/api/v1/operations/op-config-01", 200, HonkFixtures.body("operations/reload-complete"))
+    }
+
+    /** The fallback server's line in the [n]th file [honk] was handed, once honk has it (the write runs on IO). */
+    private fun written(honk: FakeHonk, n: Int): String {
+        compose.waitUntil(5_000) { honk.calls.count { it.method == "PUT" } >= n }
+        return Json.parseToJsonElement(checkNotNull(honk.calls.filter { it.method == "PUT" }[n - 1].body)).jsonObject
+            .getValue("content").jsonPrimitive.content.lines().single { it.trim().startsWith("cloudflare:") }.trim()
+    }
 
     private companion object {
         const val DARK = "深色"

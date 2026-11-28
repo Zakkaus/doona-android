@@ -4,17 +4,15 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvDiffFile
-import dev.doona.android.engine.RevisionOrigin
-import dev.doona.android.engine.SupportReason
 
 /**
- * A file of the configuration tree, as `configRead` lists its include manifest: the [path] relative to the entry, the
+ * A file of the configuration, as honk lists its sources: the [path] relative to the entry, the
  * file that includes it ([parent]; none for the entry) and how many lines it has.
  */
 @Immutable
 internal data class RvConfigFile(val path: String, val parent: String?, val lines: Int)
 
-/** `configRead`'s summary: what the tree declares, DNS request and response rules counted apart, fallbacks left out. */
+/** What honk runs from the files: DNS request and response rules counted apart, the traffic fallback left out. */
 @Immutable
 internal data class RvConfigSummary(
     val subscriptions: Int,
@@ -31,12 +29,6 @@ internal enum class RvSkipReason(@StringRes val label: Int) {
     LinuxOnly(R.string.rv_config_reason_linux),
     ProcessName(R.string.rv_config_reason_process),
     MacAddress(R.string.rv_config_reason_mac),
-}
-
-internal fun rvSkipReason(reason: SupportReason): RvSkipReason = when (reason) {
-    SupportReason.LinuxOnly -> RvSkipReason.LinuxOnly
-    SupportReason.ProcessName -> RvSkipReason.ProcessName
-    SupportReason.MacAddress -> RvSkipReason.MacAddress
 }
 
 /**
@@ -71,7 +63,7 @@ internal data class RvConfigState(
 }
 
 /**
- * A diagnostic from `configCheck` in one file: its UTF-8 byte span in that file and the group name its message quotes
+ * A diagnostic from honk's check in one file: its UTF-8 byte span in that file and the group name its message quotes
  * (the text of that span).
  */
 @Immutable
@@ -90,19 +82,12 @@ internal data class RvConfigDiff(val files: List<RvDiffFile>, val baseRev: Int, 
     val stale = headRev != baseRev
 }
 
-/** Where an applied revision came from, as `configHistory` gives its origin. */
+/** Where an applied revision came from, as honk's db gives its origin. */
 internal enum class RvRevisionOrigin(@StringRes val label: Int) {
     Edit(R.string.rv_rule_menu_edit),
     Import(R.string.rv_config_origin_import),
     Template(R.string.rv_policy_template),
     Restore(R.string.rv_config_origin_restore),
-}
-
-internal fun rvRevisionOrigin(origin: RevisionOrigin): RvRevisionOrigin = when (origin) {
-    RevisionOrigin.Edit -> RvRevisionOrigin.Edit
-    RevisionOrigin.Import -> RvRevisionOrigin.Import
-    RevisionOrigin.Template -> RvRevisionOrigin.Template
-    RevisionOrigin.Restore -> RvRevisionOrigin.Restore
 }
 
 /**
@@ -139,8 +124,9 @@ internal data class RvImportState(
     val escapePath: String = "",
 )
 
-/** The pin's `SourceLimits::DEFAULT` (config-plan.md:36): 32 files, 8 MiB, entry, includes and companions together. */
+/** honk's check budget (`config_validate`): 32 files and 8 MiB, the entry, includes and dependencies together. */
 internal object RvConfigLimits {
     const val FILES = 32
     const val SIZE = "8 MiB"
+    const val BYTES = 8 * 1024 * 1024
 }

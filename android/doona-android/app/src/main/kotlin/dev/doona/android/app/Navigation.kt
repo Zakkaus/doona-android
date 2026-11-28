@@ -55,20 +55,35 @@ data class NodeKey(val nodeId: String) : AppKey
 @Serializable
 data class GroupKey(val groupId: String) : AppKey
 
+/** The group editor (the group page's 編輯) of honk's group [groupId]. */
+@Serializable
+data class GroupEditKey(val groupId: String) : AppKey
+
 @Serializable
 data object MainNodeChoiceKey : AppKey
 
 @Serializable
 data object RulesKey : AppKey
 
+/** A rule's page, from 全部規則: honk's rule [ruleId], or a new rule (新增規則) when it is null. */
+@Serializable
+data class RuleEditKey(val ruleId: String?) : AppKey
+
 @Serializable
 data object TemplateKey : AppKey
+
+@Serializable
+data object ServiceRulesKey : AppKey
 
 @Serializable
 data class TemplateImpactKey(val templateId: String) : AppKey
 
 @Serializable
 data object EffectiveConfigKey : AppKey
+
+/** 路由測試, from 生效設定. */
+@Serializable
+data object RouteTraceKey : AppKey
 
 /** 設定檔, the configuration's overview. */
 @Serializable
@@ -119,6 +134,18 @@ data object ThemeKey : AppKey
 
 @Serializable
 data object DnsKey : AppKey
+
+/** DNS 伺服器, from 設定 › DNS. */
+@Serializable
+data object DnsServersKey : AppKey
+
+/** DNS 規則, from 設定 › DNS and from a DNS server removal refused because rules name it. */
+@Serializable
+data object DnsRulesKey : AppKey
+
+/** A DNS rule's page, from DNS 規則: in honk's [list] (`request` or `response`), honk's [ruleId], or a new rule when null. */
+@Serializable
+data class DnsRuleEditKey(val list: String, val ruleId: String?) : AppKey
 
 @Serializable
 data object LogLevelKey : AppKey

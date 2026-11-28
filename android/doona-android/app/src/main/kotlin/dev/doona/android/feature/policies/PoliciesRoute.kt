@@ -7,6 +7,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.R
+import dev.doona.android.app.nativeApi
+import dev.doona.android.designsystem.rv.RvListEdit
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.engine.Engine
@@ -20,7 +22,7 @@ import dev.doona.android.feature.messageRes
  */
 @Composable
 internal fun PoliciesRoute(engine: Engine, onOpenGroup: (String) -> Unit, onOpenSubscriptions: () -> Unit, routes: RvPolicyRoutes = RvPolicyRoutes()) {
-    val viewModel: PoliciesViewModel = viewModel(factory = PoliciesViewModel.factory(engine))
+    val viewModel: PoliciesViewModel = viewModel(factory = PoliciesViewModel.factory(engine, nativeApi()))
     PoliciesRoute(viewModel, onOpenGroup, onOpenSubscriptions, routes)
 }
 
@@ -47,6 +49,8 @@ internal fun PoliciesRoute(viewModel: PoliciesViewModel, onOpenGroup: (String) -
         loading = ui.loading,
         banner = ui.failure?.let { policyBanner(it, viewModel::retry) },
         profile = ui.profile,
+        // The groups card is always editable (owner, q-edit-wire 2026-11-26): a new group is a block in the file.
+        groupsEdit = RvListEdit(onAdd = routes.config, onRemove = viewModel::removeGroup),
     )
 }
 
@@ -71,4 +75,5 @@ private val PolicyAction.title: Int
         PolicyAction.Ads -> R.string.rv_policy_failed_ads
         PolicyAction.Quic -> R.string.rv_policy_failed_quic
         PolicyAction.Update -> R.string.rv_policy_failed_update
+        PolicyAction.RemoveGroup -> R.string.rv_config_apply_failed
     }

@@ -15,12 +15,17 @@ import dev.doona.android.engine.ExportKind
 
 /**
  * 匯出設定檔's sheet (config-plan row 16): the credential warning, then the two kinds as a radio list, 完整封存 (every
- * file as applied) and 可攜 (a closed tree that loads elsewhere), then 匯出, which stages [kind] ([onExport]).
+ * file as applied) and 可攜 (a closed tree that loads elsewhere), then 匯出, which stages [kind] ([onExport]). honk has
+ * one export, every file merged into one, the portable kind, so 完整封存 stays in its place but disabled until honk
+ * exports an archive (owner, 2026-11-27, keep-1127).
  */
 @Composable
 internal fun RvConfigExportSheet(visible: Boolean, kind: ExportKind, onKind: (ExportKind) -> Unit, onExport: (ExportKind) -> Unit, onDismiss: () -> Unit) {
     RvSheet(visible, onDismiss, stringResource(R.string.rv_config_export_title)) { RvConfigExportContent(kind, onKind, { onExport(kind) }, onDismiss) }
 }
+
+/** The export kinds honk can make: the portable one alone, every file merged. */
+internal val HONK_EXPORT_KINDS = setOf(ExportKind.Portable)
 
 /** What [RvConfigExportSheet] shows in its card. */
 @Composable
@@ -39,7 +44,7 @@ internal fun ColumnScope.RvConfigExportContent(kind: ExportKind, onKind: (Export
                     ExportKind.Archive -> R.string.rv_config_export_archive to R.string.rv_config_export_archive_line
                     ExportKind.Portable -> R.string.rv_config_export_portable to R.string.rv_config_export_portable_line
                 }
-                RvRadioRow(null, stringResource(title), each == kind, stringResource(line), onSelect = { onKind(each) })
+                RvRadioRow(null, stringResource(title), each == kind, stringResource(line), enabled = each in HONK_EXPORT_KINDS, onSelect = { onKind(each) })
             }
         }
     }

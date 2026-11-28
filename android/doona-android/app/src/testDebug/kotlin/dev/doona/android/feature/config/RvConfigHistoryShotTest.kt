@@ -354,13 +354,14 @@ class RvConfigHistoryShotTest {
     fun partialEn() = compose.rvShot("config-export-partial-en", dark = false) { Banner(refused = false) }
 
     @Test
-    fun theSheetExportsTheKindPicked() {
-        var kind by mutableStateOf(ExportKind.Archive)
+    fun theSheetOffersBothKindsAndExportsThePortableOneHonkMakes() {
+        var kind by mutableStateOf(ExportKind.Portable)
         var exported: ExportKind? = null
         compose.setContent {
             Themed { Column { RvConfigExportContent(kind, { kind = it }, { exported = kind }, {}) } }
         }
-        compose.onNodeWithText("可攜版本").performClick()
+        compose.onNodeWithText("完整封存").assertIsNotEnabled()
+        compose.onNodeWithText("完整封存").performClick()
         compose.onNodeWithText("匯出").performClick()
         assertEquals(ExportKind.Portable, exported)
     }
@@ -385,7 +386,7 @@ class RvConfigHistoryShotTest {
     private fun Export() {
         Box(Modifier.fillMaxSize()) {
             History()
-            RvSheetLayout({ 1f }, {}, stringResource(R.string.rv_config_export_title)) { RvConfigExportContent(ExportKind.Archive, {}, {}, {}) }
+            RvSheetLayout({ 1f }, {}, stringResource(R.string.rv_config_export_title)) { RvConfigExportContent(ExportKind.Portable, {}, {}, {}) }
         }
     }
 

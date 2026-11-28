@@ -36,6 +36,7 @@ import dev.doona.android.vpn.HonkFixtures
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -247,6 +248,8 @@ class NavigationTest {
     fun `a group page leaves when honk has no such group`() {
         // Removed from the configuration, as on another device: honk answers the page's read with 404.
         val honk = ApplicationProvider.getApplicationContext<DoonaApplication>().container.nativeApi as FakeHonk
+        val groups = Json.parseToJsonElement(HonkFixtures.body("groups/rv-sample")).jsonArray.filterNot { it.jsonObject.getValue("id").jsonPrimitive.content == "g-Auto" }
+        honk.on("GET", "/api/v1/groups", 200, groups.toString())
         honk.on("GET", "/api/v1/groups/g-Auto", 404, HonkFixtures.body("errors/group-not-found"))
         compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS), FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, PoliciesKey, GroupKey("g-Auto"))) } }
 

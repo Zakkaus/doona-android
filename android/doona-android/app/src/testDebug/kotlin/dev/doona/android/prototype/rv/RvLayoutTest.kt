@@ -25,6 +25,8 @@ import dev.doona.android.feature.nodes.RvNodePicker
 import dev.doona.android.feature.nodes.RvNodePickerPage
 import dev.doona.android.feature.nodes.RvNodesPage
 import dev.doona.android.feature.perapp.RvPerAppScreen
+import dev.doona.android.feature.policies.RvRuleDraft
+import dev.doona.android.feature.policies.RvRuleEditPage
 import dev.doona.android.feature.policies.RvRulesPage
 import dev.doona.android.feature.policies.RvTemplateImpactPage
 import dev.doona.android.feature.report.RvRedaction
@@ -51,11 +53,10 @@ import dev.doona.android.prototype.rv.policy.RvPolicyGroupPage
 import dev.doona.android.prototype.rv.policy.RvPolicyRulePage
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.policy.RvQuickRule
-import dev.doona.android.prototype.rv.policy.RvRuleDraft
-import dev.doona.android.prototype.rv.policy.RvRuleEditPage
 import dev.doona.android.prototype.rv.policy.RvServiceRulesPage
 import dev.doona.android.prototype.rv.policy.RvTemplateData
 import dev.doona.android.prototype.rv.policy.RvTemplatePageSample
+import dev.doona.android.prototype.rv.policy.rvSampleTargets
 import dev.doona.android.prototype.rv.settings.RV_SAMPLE_THEME_PREVIEW
 import dev.doona.android.prototype.rv.settings.RvSettingsScreenSample
 import dev.doona.android.prototype.rv.settings.rvAboutRoutes
@@ -128,7 +129,7 @@ class RvLayoutTest {
     fun ruleFlow() = measure("policy-flow", Top.Title) { RvPolicyRulePage(RvPolicyData.connection, RvQuickRule(), onChange = {}, onBack = {}, onApply = {}) }
 
     @Test
-    fun ruleEdit() = measure("rule-edit", Top.Title) { RvRuleEditPage(RvRuleDraft.of(RvPolicyData.allRules[GITHUB]), onChange = {}, onBack = {}, onApply = {}, onDelete = {}) }
+    fun ruleEdit() = measure("rule-edit", Top.Title) { RvRuleEditPage(RvRuleDraft.of(RvPolicyData.allRules[GITHUB]), onChange = {}, onBack = {}, onApply = {}, onDelete = {}, targets = rvSampleTargets) }
 
     @Test
     fun template() = measure("template", Top.Title) { RvTemplatePageSample(RvTemplateData.cnDirect, RvTemplateData.services, onSelect = {}, onBack = {}, onReview = {}) }
@@ -188,7 +189,7 @@ class RvLayoutTest {
     }
 
     @Test
-    fun dns() = measure("settings-dns", Top.Title) { RvDnsScreen(RvDnsUpstream.Cloudflare, onSelect = {}, onBack = {}, onCustom = {}) }
+    fun dns() = measure("settings-dns", Top.Title) { RvDnsScreen(RvDnsUpstream.Cloudflare, onSelect = {}, onBack = {}, onCustom = {}, onServers = {}) }
 
     @Test
     fun connections() = measure("connections", Top.Tab) { RvConnectionsPage(RvPolicyData.connections) }

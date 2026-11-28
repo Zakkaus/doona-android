@@ -1,0 +1,36 @@
+{
+  "active": 3,
+  "max_revisions": 50,
+  "revisions": [
+    {
+      "revision": 3,
+      "parent": 2,
+      "created_at": "2026-08-15T09:40:00Z",
+      "principal": "administrator",
+      "origin": "write",
+      "content_sha256": "c3b0e3c0bdbf7cf2a9a5b4e8f1d2c3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0",
+      "bytes": 412,
+      "sources": [{"path": "config.dae", "sha256": "d1f62f00c6da9ec33956e66b8cc3b4670f164556fc12453193904af23451dec1"}]
+    },
+    {
+      "revision": 2,
+      "parent": 1,
+      "created_at": "2026-08-14T21:10:00Z",
+      "principal": "administrator",
+      "origin": "write",
+      "content_sha256": "a7f3d0e5c1b2a3948576e8f9d0c1b2a3e4f5061728394a5b6c7d8e9f0a1b2c3d",
+      "bytes": 398,
+      "sources": [{"path": "config.dae", "sha256": "5e2c8a1f0b9d4e3c7a6b5d8f1e0c2a9b4d7f6e3c8a1b0d5e2f9c4a7b6d3e8f1a"}]
+    },
+    {
+      "revision": 1,
+      "parent": null,
+      "created_at": "2026-08-14T08:00:00Z",
+      "principal": "startup",
+      "origin": "import",
+      "content_sha256": "0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b1a0f9e",
+      "bytes": 377,
+      "sources": [{"path": "config.dae", "sha256": "9b8a7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b"}]
+    }
+  ]
+}

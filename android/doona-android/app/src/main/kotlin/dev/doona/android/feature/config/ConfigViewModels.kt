@@ -2,17 +2,21 @@ package dev.doona.android.feature.config
 
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.designsystem.rv.RvDiffFile
-import dev.doona.android.engine.ConfigDraft
-import dev.doona.android.engine.ConfigEngine
-import dev.doona.android.engine.DiagnosticCode
-import dev.doona.android.engine.DraftFrom
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.ExportKind
-import dev.doona.android.engine.SourceAt
 import dev.doona.android.feature.errorCode
+import dev.doona.android.feature.policies.HonkPolicyRead
+import dev.doona.android.vpn.NativeApi
+import dev.doona.android.vpn.honk.NativeConfig
+import dev.doona.android.vpn.honk.NativeRevisions
+import dev.doona.android.vpn.honk.NativeRouting
+import dev.doona.android.vpn.honk.daeCode
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,50 +30,151 @@ import kotlinx.coroutines.launch
 internal data class ConfigRead<T>(val value: T? = null, val failure: ErrorCode? = null)
 
 /** Reads [load] on [reads] into [state] now and on every [retry]; a failed read keeps what was read before. */
-internal abstract class ConfigReadViewModel<T>(private val reads: CoroutineDispatcher) : ViewModel() {
+internal abstract class ConfigReadViewModel<T>(protected val reads: CoroutineDispatcher) : ViewModel() {
     protected val state = MutableStateFlow(ConfigRead<T>())
     val uiState: StateFlow<ConfigRead<T>> = state.asStateFlow()
 
-    protected abstract suspend fun load(): Result<T>
+    /** Blocking reads of honk. */
+    protected abstract suspend fun load(): T
 
-    fun retry() {
+    fun retry() = attempt { state.value = ConfigRead(load()) }
+
+    /** Runs [block] on [reads]; a failure lands in the state's [ConfigRead.failure]. */
+    protected fun attempt(block: suspend () -> Unit) {
         viewModelScope.launch(reads) {
-            load().fold({ value -> state.value = ConfigRead(value) }, { error -> state.update { it.copy(failure = error.errorCode()) } })
+            try {
+                block()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                state.update { it.copy(failure = error.errorCode()) }
+            }
         }
     }
 }
 
-/** 設定檔 and 已略過: `configRead`, the head's time from `configHistory`, and the text of every file holding a record. */
+/** 設定檔 and 已略過: honk's accepted files (`GET /config`) and what it runs from them. */
 internal class ConfigOverviewViewModel(
-    private val engine: ConfigEngine,
+    private val api: NativeApi,
     private val now: () -> Long = System::currentTimeMillis,
-    reads: CoroutineDispatcher = Dispatchers.Default,
+    reads: CoroutineDispatcher = Dispatchers.IO,
 ) : ConfigReadViewModel<RvConfigState>(reads) {
+    private val _imported = MutableStateFlow<RvConfigImport?>(null)
+
+    /** How the last 匯入 ended, until its banner is read. */
+    val imported: StateFlow<RvConfigImport?> = _imported.asStateFlow()
+
     init {
         retry()
     }
 
-    override suspend fun load(): Result<RvConfigState> {
-        val tree = engine.configRead().getOrElse { return Result.failure(it) }
-        val head = engine.configHistory().getOrElse { return Result.failure(it) }.first { it.rev == tree.rev }
-        val texts = engine.texts(SourceAt.Revision(tree.rev), tree.support.map { it.at.fileId }).getOrElse { return Result.failure(it) }
-        return Result.success(rvConfigState(tree, head.appliedAtEpochMs, texts, now()))
+    override suspend fun load(): RvConfigState =
+        rvConfigState(NativeConfig(api).config(), HonkPolicyRead.read(api), NativeRouting(api).dnsRules(), now())
+
+    /**
+     * 匯入: honk checks [text] as the entry file ([NativeConfig.validate]); a file it accepts replaces the entry file and
+     * the page reads again, one it rejects changes nothing and says honk's first error (owner, q-import 2026-11-26).
+     * A write that fails says why.
+     */
+    fun import(text: String) {
+        _imported.value = null
+        viewModelScope.launch(reads) {
+            _imported.value = try {
+                val native = NativeConfig(api)
+                val main = native.config().main
+                val check = native.validate(listOf(main.path to text))
+                if (check.valid) {
+                    native.replace(main, text)
+                    state.value = ConfigRead(load())
+                    RvConfigImport.Done
+                } else {
+                    RvConfigImport.Rejected(check.diagnostics.firstOrNull { it.level == "error" }?.message ?: check.diagnostics.firstOrNull()?.message)
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                RvConfigImport.Failed(error.errorCode())
+            }
+        }
+    }
+
+    /** The import's banner was read. */
+    fun importSeen() {
+        _imported.value = null
+    }
+
+    private val _writeFailure = MutableStateFlow<ErrorCode?>(null)
+
+    /** Why the last removal did not land. */
+    val writeFailure: StateFlow<ErrorCode?> = _writeFailure.asStateFlow()
+
+    /**
+     * The files card's remove control (owner, q-edit-wire 2026-11-26): deletes the line of the `include { }` block that
+     * names [path] in the file that includes it, so the file and what it includes leave the configuration; honk checks
+     * the file before it takes it. The entry file cannot go.
+     */
+    fun removeFile(path: String) {
+        val parent = state.value.value?.files?.firstOrNull { it.path == path }?.parent ?: return
+        _writeFailure.value = null
+        viewModelScope.launch(reads) {
+            try {
+                val native = NativeConfig(api)
+                val source = native.config().files.firstOrNull { it.path == parent } ?: throw EngineException(ErrorCode.NotFound)
+                val lines = source.content.lines()
+                val at = includeLine(lines, path) ?: throw EngineException(ErrorCode.NotFound)
+                native.replace(source, lines.filterIndexed { i, _ -> i != at }.joinToString("\n"))
+                state.value = ConfigRead(load())
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                _writeFailure.value = error.errorCode()
+            }
+        }
+    }
+
+    companion object {
+        fun factory(api: NativeApi): ViewModelProvider.Factory = viewModelFactory { initializer { ConfigOverviewViewModel(api) } }
     }
 }
 
-/** 版本紀錄's content: the revisions newest first and the head. */
+/** The 0-based line of an `include { }` block in [lines] that names [path] (quotes aside), or null. */
+internal fun includeLine(lines: List<String>, path: String): Int? {
+    var inside = false
+    lines.forEachIndexed { i, line ->
+        val code = daeCode(line)
+        when {
+            !inside && INCLUDE_OPEN.matches(code) -> inside = true
+            inside && code == "}" -> inside = false
+            inside && code.trim('\'', '"', ',', ' ') == path -> return i
+        }
+    }
+    return null
+}
+
+private val INCLUDE_OPEN = Regex("""include\s*\{""")
+
+/** How 匯入 ended: the file replaced the entry file; honk rejected it ([message], its first error); the write failed. */
+internal sealed interface RvConfigImport {
+    data object Done : RvConfigImport
+
+    data class Rejected(val message: String?) : RvConfigImport
+
+    data class Failed(val code: ErrorCode) : RvConfigImport
+}
+
+/** 版本紀錄's content: the revisions newest first and the active one. */
 @Immutable
 internal data class RvHistory(val revisions: List<RvRevision>, val headRev: Int, val nowEpochMs: Long)
 
 /**
- * 版本紀錄: `configHistory`; a rename is `configName`, then a read; 匯出設定檔 stages the head with `configExport` as the
- * kind the sheet chose and hands its token on ([exported]) for the picker to stream (slice 13). A tree naming files
- * outside its root leaves an [exportNotice]: a portable copy is refused (no token), an archive leaves those files out.
+ * 版本紀錄: honk's configuration db (`GET /x-honk/config/revisions`). 匯出設定檔 hands honk's export of the accepted
+ * files ([exported], one inlined document whichever kind the sheet chose) on for the picker to write. honk keeps no
+ * revision names, so a rename is not kept (owner question).
  */
 internal class ConfigHistoryViewModel(
-    private val engine: ConfigEngine,
+    private val api: NativeApi,
     private val now: () -> Long = System::currentTimeMillis,
-    private val reads: CoroutineDispatcher = Dispatchers.Default,
+    reads: CoroutineDispatcher = Dispatchers.IO,
 ) : ConfigReadViewModel<RvHistory>(reads) {
     private val _rename = MutableStateFlow<RvRevisionRename?>(null)
     val rename: StateFlow<RvRevisionRename?> = _rename.asStateFlow()
@@ -82,27 +187,22 @@ internal class ConfigHistoryViewModel(
         retry()
     }
 
-    override suspend fun load(): Result<RvHistory> = engine.configHistory().map { list -> RvHistory(list.map(::rvRevision), list.first().rev, now()) }
+    override suspend fun load(): RvHistory {
+        val history = NativeRevisions(api).revisions()
+        return RvHistory(history.revisions.map(::rvRevision), history.active?.toInt() ?: 0, now())
+    }
 
     fun onRename(rename: RvRevisionRename?) {
         _rename.value = rename
     }
 
+    @Suppress("UNUSED_PARAMETER")
     fun saveName(rev: Int, name: String?) {
-        viewModelScope.launch(reads) {
-            engine.configName(rev, name).onSuccess { retry() }.onFailure { error -> state.update { it.copy(failure = error.errorCode()) } }
-        }
+        _rename.value = null
     }
 
-    fun export(kind: ExportKind) {
-        val head = state.value.value?.headRev ?: return
-        _exportNotice.value = null
-        viewModelScope.launch(reads) {
-            engine.configExport(head, kind).onSuccess { staged ->
-                _exportNotice.value = staged.external.takeIf { it.isNotEmpty() }?.let { RvExportNotice(refused = staged.token == null, paths = it) }
-                staged.token?.let { _exported.value = it }
-            }.onFailure { error -> state.update { it.copy(failure = error.errorCode()) } }
-        }
+    fun export() {
+        attempt { _exported.value = NativeConfig(api).export() }
     }
 
     /** The export's banner was read. */
@@ -110,27 +210,31 @@ internal class ConfigHistoryViewModel(
         _exportNotice.value = null
     }
 
-    /** The picker took the token. */
+    /** The picker took the text. */
     fun exportHandled() {
         _exported.value = null
     }
+
+    companion object {
+        fun factory(api: NativeApi): ViewModelProvider.Factory = viewModelFactory { initializer { ConfigHistoryViewModel(api) } }
+    }
 }
 
-/** One revision's page: the revision and what restoring it changes against the head, file by file. */
+/** One revision's page: the revision and the files restoring it changes against the active one, line by line. */
 @Immutable
 internal data class RvRevisionView(val revision: RvRevision, val files: List<RvDiffFile>, val nowEpochMs: Long)
 
 /**
- * A revision's page: `configHistory` for the revision, a draft `from: revision` checked against the head for its
- * files, then 還原 applies that draft as a new revision ([restored] true). The head has nothing to restore.
+ * A revision's page: the revision from honk's db. honk lists a revision's files by hash, without their text, so the
+ * page shows no diff and no 還原 until honk serves a revision's text (owner question); 還原 activates the revision,
+ * which honk records as a new revision ([restored] true).
  */
 internal class ConfigRevisionViewModel(
-    private val engine: ConfigEngine,
+    private val api: NativeApi,
     private val rev: Int,
     private val now: () -> Long = System::currentTimeMillis,
-    private val reads: CoroutineDispatcher = Dispatchers.Default,
+    reads: CoroutineDispatcher = Dispatchers.IO,
 ) : ConfigReadViewModel<RvRevisionView>(reads) {
-    private var draft: ConfigDraft? = null
     private val _rename = MutableStateFlow<RvRevisionRename?>(null)
     val rename: StateFlow<RvRevisionRename?> = _rename.asStateFlow()
     private val _restored = MutableStateFlow(false)
@@ -140,59 +244,50 @@ internal class ConfigRevisionViewModel(
         retry()
     }
 
-    override suspend fun load(): Result<RvRevisionView> {
-        val history = engine.configHistory().getOrElse { return Result.failure(it) }
-        val revision = history.firstOrNull { it.rev == rev } ?: return Result.failure(EngineException(ErrorCode.NotFound))
-        if (rev == history.first().rev) return Result.success(RvRevisionView(rvRevision(revision), emptyList(), now()))
-        val started = engine.configDraft(DraftFrom.Revision(rev)).getOrElse { return Result.failure(it) }
-        val check = engine.configCheck(started).getOrElse { return Result.failure(it) }
-        val files = engine.rvCheckDiff(check).getOrElse { return Result.failure(it) }
-        draft = started
-        return Result.success(RvRevisionView(rvRevision(revision), files, now()))
+    override suspend fun load(): RvRevisionView {
+        val history = NativeRevisions(api).revisions()
+        val revision = history.revisions.firstOrNull { it.revision == rev.toLong() } ?: throw EngineException(ErrorCode.NotFound)
+        return RvRevisionView(rvRevision(revision), emptyList(), now())
     }
 
     fun onRename(rename: RvRevisionRename?) {
         _rename.value = rename
     }
 
+    @Suppress("UNUSED_PARAMETER")
     fun saveName(rev: Int, name: String?) {
-        viewModelScope.launch(reads) {
-            engine.configName(rev, name).onSuccess { retry() }.onFailure { error -> state.update { it.copy(failure = error.errorCode()) } }
-        }
+        _rename.value = null
     }
 
     fun restore() {
-        val pending = draft ?: return
-        viewModelScope.launch(reads) {
-            engine.configApply(pending).onSuccess { _restored.value = true }.onFailure { error -> state.update { it.copy(failure = error.errorCode()) } }
+        attempt {
+            NativeRevisions(api).activate(rev.toLong())
+            _restored.value = true
         }
+    }
+
+    companion object {
+        fun factory(api: NativeApi, rev: Int): ViewModelProvider.Factory = viewModelFactory { initializer { ConfigRevisionViewModel(api, rev) } }
     }
 }
 
 /**
- * 匯入設定檔 after the picker staged [token] for the file [name]: a draft `from: import`, refused at the budget, or
- * checked, with the first include outside the staged root on its line.
+ * 匯入設定檔 for the picked file [name] with [text], as the entry file: refused past honk's check budget
+ * ([RvConfigLimits.BYTES]), the configuration unchanged. What an import writes is an owner question.
  */
 internal class ConfigImportViewModel(
-    private val engine: ConfigEngine,
-    private val token: String,
+    private val api: NativeApi,
+    private val text: String,
     private val name: String,
-    reads: CoroutineDispatcher = Dispatchers.Default,
+    reads: CoroutineDispatcher = Dispatchers.IO,
 ) : ConfigReadViewModel<RvImportState>(reads) {
     init {
         retry()
     }
 
-    override suspend fun load(): Result<RvImportState> {
-        val head = engine.configRead().getOrElse { return Result.failure(it) }.rev
-        val draft = engine.configDraft(DraftFrom.Import(token)).getOrElse { error ->
-            return if (error.errorCode() == ErrorCode.SourceLimit) Result.success(RvImportState(name, head, refusedAtLimit = true)) else Result.failure(error)
-        }
-        val check = engine.configCheck(draft).getOrElse { return Result.failure(it) }
-        val escape = check.diagnostics.firstOrNull { it.code == DiagnosticCode.IncludeEscape }?.at
-        val text = escape?.let { engine.configSource(SourceAt.Draft(draft), it.fileId).getOrElse { error -> return Result.failure(error) } }
-        return Result.success(
-            RvImportState(name, head, files = rvConfigFiles(check.files), escapeLine = escape?.line ?: 0, escapePath = if (escape != null && text != null) rvSpanText(text, escape) else ""),
-        )
+    override suspend fun load(): RvImportState {
+        val config = NativeConfig(api).config()
+        if (text.encodeToByteArray().size > RvConfigLimits.BYTES) return RvImportState(name, config.revision, refusedAtLimit = true)
+        return RvImportState(name, config.revision, files = listOf(RvConfigFile(name, null, text.lines().size)))
     }
 }

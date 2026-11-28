@@ -5,6 +5,7 @@ import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvRuleEnd
 import dev.doona.android.feature.model.RvRuleMatch
+import dev.doona.android.feature.model.RvRuleState
 import dev.doona.android.vpn.honk.HonkRule
 
 /**
@@ -12,14 +13,19 @@ import dev.doona.android.vpn.honk.HonkRule
  * names its outbound; one it names that is not there is drawn as missing, not as 直連. honk has no per-rule byte count,
  * so every rule shows none.
  */
-internal fun rvPolicyRule(rule: HonkRule, groups: Map<String, RvPolicyGroup>): RvPolicyRule {
-    val match = if (rule.isFallback) RvRuleMatch.Rest else rvRuleMatch(ruleCondition(rule.expression))
-    return when (rule.outbound) {
-        DIRECT -> RvPolicyRule(match, null, 0L)
-        BLOCK -> RvPolicyRule(match, null, 0L, end = RvRuleEnd.Reject)
-        else -> groups[rule.outbound]?.let { RvPolicyRule(match, it, 0L) } ?: RvPolicyRule(match, null, 0L, end = RvRuleEnd.Missing)
+internal fun rvPolicyRule(rule: HonkRule, groups: Map<String, RvPolicyGroup>): RvPolicyRule =
+    rvPolicyRule(if (rule.isFallback) RvRuleMatch.Rest else rvRuleMatch(ruleCondition(rule.expression)), rule.outbound, groups)
+
+/** A rule paused in its file ([HonkPausedRule]), drawn as [rvPolicyRule] draws a loaded one but 已停用. */
+internal fun rvPolicyRule(rule: HonkPausedRule, groups: Map<String, RvPolicyGroup>): RvPolicyRule =
+    rvPolicyRule(rvRuleMatch(ruleCondition(rule.expression)), rule.outbound, groups, RvRuleState.Off)
+
+private fun rvPolicyRule(match: RvRuleMatch, outbound: String, groups: Map<String, RvPolicyGroup>, state: RvRuleState = RvRuleState.On): RvPolicyRule =
+    when (outbound) {
+        DIRECT -> RvPolicyRule(match, null, null, state)
+        BLOCK -> RvPolicyRule(match, null, null, state, RvRuleEnd.Reject)
+        else -> groups[outbound]?.let { RvPolicyRule(match, it, null, state) } ?: RvPolicyRule(match, null, null, state, RvRuleEnd.Missing)
     }
-}
 
 /**
  * What one condition matches, as the pages say it: a single `domain(...)` or `dip(...)` matcher in the words the rule
@@ -47,6 +53,38 @@ internal fun rvRuleMatch(condition: String): RvRuleMatch {
 
         else -> RvRuleMatch.Value(RvMatchKind.Full, condition)
     }
+}
+
+/**
+ * [condition] as the rule form edits it, or null when the form cannot hold it: a single [domain] matcher (`domain` in
+ * routing, `qname` in DNS) of one suffix, full or keyword value, or a single [address] matcher (`dip` in routing, `ip`
+ * in a DNS response) of one IPv4 range, `geoip: cn` or `geoip: private`.
+ */
+internal fun formMatch(condition: String, domain: String = "domain", address: String = "dip"): Pair<RvMatchKind, String>? {
+    val matcher = MATCHER.matchEntire(condition)?.takeIf { topLevel(condition, AND).size == 1 } ?: return null
+    val single = topLevel(matcher.groupValues[2], ",").singleOrNull()?.let(::argument) ?: return null
+    return when (matcher.groupValues[1]) {
+        domain -> DOMAIN_KINDS[single.key]?.let { it to single.value }
+
+        address -> when {
+            single.key == "geoip" && single.value.equals("cn", ignoreCase = true) -> RvMatchKind.GeoIpCn to ""
+            single.key == "geoip" && single.value.equals(PRIVATE, ignoreCase = true) -> RvMatchKind.Private to ""
+            single.key == null && FORM_CIDR.matches(single.value) -> RvMatchKind.Cidr to single.value
+            else -> null
+        }
+
+        else -> null
+    }
+}
+
+/** The honk condition of the form's [kind] and [value], over the [domain] and [address] matchers as [formMatch] reads them. */
+internal fun matchText(kind: RvMatchKind, value: String, domain: String = "domain", address: String = "dip"): String = when (kind) {
+    RvMatchKind.Full -> "$domain(full: $value)"
+    RvMatchKind.Suffix -> "$domain(suffix: $value)"
+    RvMatchKind.Keyword -> "$domain(keyword: $value)"
+    RvMatchKind.Cidr -> "$address($value)"
+    RvMatchKind.GeoIpCn -> "$address(geoip: cn)"
+    RvMatchKind.Private -> "$address(geoip: $PRIVATE)"
 }
 
 /** The condition of honk's rule text `condition -> outbound`: what comes before its first arrow outside quotes. */
@@ -104,6 +142,7 @@ private const val PRIVATE = "private"
 private const val QUOTES = "'\""
 private val MATCHER = Regex("""([a-z0-9_]+)\((.*)\)""", RegexOption.DOT_MATCHES_ALL)
 private val KEY = Regex("""^([a-z]+)\s*:""")
+private val FORM_CIDR = Regex("""\d{1,3}(\.\d{1,3}){3}/\d{1,2}""")
 private val KEYS = setOf("suffix", "keyword", "full", "regex", "geosite", "geoip")
 
 /** A bare `domain(...)` value is a suffix, as honk reads it. */

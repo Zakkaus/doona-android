@@ -1,0 +1,84 @@
+# doona starting configuration: mainland China direct, everything else through proxy.
+# This is ordinary honk configuration. Edit it freely; the app reads whatever groups,
+# rules and DNS settings it holds.
+
+group {
+    # Every node; the user picks one, a region or auto.
+    proxy {
+        filter: group('auto', 'hk', 'tw', 'jp', 'sg', 'us', 'kr')
+        filter: !name('direct', 'block')
+        policy: select
+        default: 'auto'
+    }
+    # Every node, chosen by observed quality.
+    auto {
+        filter: !name('direct', 'block')
+        policy: score
+    }
+    # Streaming services.
+    media {
+        filter: group('proxy', 'auto', 'hk', 'tw', 'jp', 'sg', 'us', 'kr')
+        filter: !name('direct', 'block')
+        policy: select
+        default: 'proxy'
+    }
+    # AI services.
+    ai {
+        filter: group('proxy', 'auto', 'hk', 'tw', 'jp', 'sg', 'us', 'kr')
+        filter: !name('direct', 'block')
+        policy: select
+        default: 'proxy'
+    }
+    # Regions, by node name.
+    hk {
+        filter: name(regex: '港|HK|Hong Kong|HongKong|🇭🇰')
+        policy: score
+    }
+    tw {
+        filter: name(regex: '台|臺|TW|Taiwan|🇹🇼')
+        policy: score
+    }
+    jp {
+        filter: name(regex: '日|JP|Japan|Tokyo|🇯🇵')
+        policy: score
+    }
+    sg {
+        filter: name(regex: '新加坡|獅城|狮城|SG|Singapore|🇸🇬')
+        policy: score
+    }
+    us {
+        filter: name(regex: '美|US|United States|America|🇺🇸')
+        policy: score
+    }
+    kr {
+        filter: name(regex: '韓|韩|KR|Korea|🇰🇷')
+        policy: score
+    }
+}
+
+routing {
+    # Streaming services.
+    domain(geosite:youtube, geosite:netflix, geosite:disney, geosite:hbo, geosite:primevideo, geosite:twitch, geosite:spotify) -> media
+    # AI services.
+    domain(geosite:openai, geosite:anthropic) -> ai
+    # Mainland China.
+    domain(geosite:cn) -> direct
+    dip(geoip:cn) -> direct
+    fallback: proxy
+}
+
+dns {
+    upstream {
+        alidns: 'https://223.5.5.5/dns-query?tls_server_name=dns.alidns.com' -> direct
+        cloudflare: 'https://1.1.1.1/dns-query?tls_server_name=cloudflare-dns.com' -> proxy
+    }
+    routing {
+        request {
+            # Block ads: answer ad domains with an empty reply.
+# paused r-5fbbaffc75615770:             qname(geosite:category-ads-all) -> reject
+            # Mainland names from a mainland resolver.
+            qname(geosite:cn) -> alidns
+            fallback: cloudflare
+        }
+    }
+}

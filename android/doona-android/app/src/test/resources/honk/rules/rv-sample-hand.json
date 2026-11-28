@@ -1,0 +1,98 @@
+{
+  "generation_id": "generation-1",
+  "rules": [
+    {
+      "rule_id": "traffic:0",
+      "index": 0,
+      "expression": "domain(geosite:youtube, geosite:netflix, geosite:disney, geosite:hbo, geosite:primevideo, geosite:twitch, geosite:spotify) -> media",
+      "outbound": "media",
+      "must": false,
+      "source": {
+        "file": "config.dae",
+        "source_id": "source-main",
+        "line": 61,
+        "column": 5
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "traffic:1",
+      "index": 1,
+      "expression": "domain(geosite:openai, geosite:anthropic) -> ai",
+      "outbound": "ai",
+      "must": false,
+      "source": {
+        "file": "config.dae",
+        "source_id": "source-main",
+        "line": 63,
+        "column": 5
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "traffic:2",
+      "index": 2,
+      "expression": "domain(geosite:cn) -> direct",
+      "outbound": "direct",
+      "must": false,
+      "source": {
+        "file": "config.dae",
+        "source_id": "source-main",
+        "line": 65,
+        "column": 5
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "traffic:3",
+      "index": 3,
+      "expression": "dip(geoip:cn) -> direct",
+      "outbound": "direct",
+      "must": false,
+      "source": {
+        "file": "config.dae",
+        "source_id": "source-main",
+        "line": 66,
+        "column": 5
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "traffic:4",
+      "index": 4,
+      "expression": "domain(suffix: corp.example) -> direct",
+      "outbound": "direct",
+      "must": false,
+      "source": {
+        "file": "config.dae",
+        "source_id": "source-main",
+        "line": 67,
+        "column": 5
+      },
+      "kind": "rule"
+    },
+    {
+      "rule_id": "traffic:5",
+      "index": 5,
+      "expression": "fallback: proxy",
+      "outbound": "proxy",
+      "must": false,
+      "source": {
+        "file": "config.dae",
+        "source_id": "source-main",
+        "line": 68,
+        "column": 5
+      },
+      "kind": "fallback"
+    }
+  ],
+  "fallback": {
+    "outbound": "proxy",
+    "source": {
+      "file": "config.dae",
+      "source_id": "source-main",
+      "line": 68,
+      "column": 5
+    }
+  }
+}

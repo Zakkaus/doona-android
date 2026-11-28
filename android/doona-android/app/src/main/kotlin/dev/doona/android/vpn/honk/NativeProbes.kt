@@ -5,6 +5,9 @@ import dev.doona.android.engine.ErrorCode
 import dev.doona.android.vpn.NativeApi
 import dev.doona.android.vpn.expect
 import dev.doona.android.vpn.nativeJson
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -15,13 +18,14 @@ import kotlinx.serialization.json.putJsonObject
 internal class NativeProbes(private val api: NativeApi) {
     /**
      * Tests the direct members of each of [groupIds] by HTTP over TCP, from cold, all groups at once, and waits until
-     * every probe ends; honk keeps the results as the members' health. A probe honk could not run fails with its error.
+     * every probe ends, polling them together; honk keeps the results as the members' health. A probe honk could not run fails with its error.
      */
     suspend fun groups(groupIds: List<String>) {
         val operations = groupIds.map { id ->
             nativeJson.decodeFromString(OperationAccepted.serializer(), api.expect("POST", "/api/v1/probes", body(id))).href
         }
-        operations.map { api.finished(it) }.firstOrNull { it.status == OperationStatus.Failed }?.let { failed ->
+        val ended = coroutineScope { operations.map { async { api.finished(it) } }.awaitAll() }
+        ended.firstOrNull { it.status == OperationStatus.Failed }?.let { failed ->
             throw EngineException(failed.error?.errorCode() ?: ErrorCode.Internal)
         }
     }

@@ -135,6 +135,7 @@
     <string name="rv_rule_edit_move_down">下移</string>
     <string name="rv_rule_edit_position_line">第 %1$d 條，共 %2$d 條</string>
     <string name="rv_rule_edit_match_in_source">這條規則的條件只能在原始碼中修改，點一行即可開啟。</string>
+    <string name="rv_rule_edit_multiline">這條規則寫在多行，只能在原始碼中修改，點一行即可開啟。</string>
     <string name="rv_rule_delete_title">刪除這條規則？</string>
     <string name="rv_rule_delete_body">「%1$s」會從清單移除。</string>
     <string name="rv_rule_delete_confirm">刪除</string>
@@ -144,6 +145,9 @@
     <string name="rv_rule_menu_on">啟用</string>
     <string name="rv_rule_menu_delete">刪除</string>
     <string name="rv_service_add">新增服務規則</string>
+    <string name="rv_rules_add_rule">規則</string>
+    <string name="rv_rules_add_service">服務規則</string>
+    <string name="rv_service_apply">加入並套用</string>
     <string name="rv_service_outbound">出站</string>
     <string name="rv_service_has_rule">已有規則：%1$s</string>
     <string name="rv_service_games">遊戲</string>
@@ -206,5 +210,6 @@
     <string name="rv_trace_yes">是</string>
     <string name="rv_trace_no">否</string>
     <string name="rv_trace_skipped_title">有一條規則已略過</string>
-    <string name="rv_trace_skipped_reason">%1$s 第 %2$d 行的規則排在前面，但手機上沒有套用。</string>
+    <string name="rv_trace_skipped_reason">%1$s 第 %2$d 行的規則排在前面，但這條規則需要 App 資訊，測試無法判斷。</string>
+    <string name="rv_trace_failed">無法執行路由測試</string>
 </resources>

@@ -11,6 +11,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -31,6 +32,7 @@ import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvLanguage
+import dev.doona.android.feature.policies.RuleEditRoute
 import dev.doona.android.feature.report.ReportFacts
 import dev.doona.android.feature.report.ReportPage
 import dev.doona.android.feature.report.ReportViewModel
@@ -69,6 +71,7 @@ import dev.doona.android.vpn.FakeHonk
 import dev.doona.android.vpn.HonkFixtures
 import dev.doona.android.vpn.NativeApi
 import dev.doona.android.vpn.NativeSettings
+import dev.doona.android.vpn.PolicyHonkFixtures
 import dev.doona.android.vpn.SettingsHonk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -271,13 +274,29 @@ class SettingsAppShotTest {
         ThemeRoute(FakeSettingsStore(), seedSchemes(), APP_THEME_PREVIEW, onBack = {})
     }
 
-    @Test fun dnsLight() = compose.app("settings-dns", dark = false) { DnsRoute(FakeEngine(), onBack = {}) }
+    @Test fun dnsLight() = compose.app("settings-dns", dark = false) { DnsRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onServers = {}, onRules = {}) }
 
-    @Test fun dnsDark() = compose.app("settings-dns", dark = true) { DnsRoute(FakeEngine(), onBack = {}) }
+    @Test fun dnsDark() = compose.app("settings-dns", dark = true) { DnsRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onServers = {}, onRules = {}) }
 
-    @Test fun dnsFs200() = compose.app("settings-dns", fontScale = RV_FS200) { DnsRoute(FakeEngine(), onBack = {}) }
+    @Test fun dnsFs200() = compose.app("settings-dns", fontScale = RV_FS200) { DnsRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onServers = {}, onRules = {}) }
 
     /** 自訂 open on the core's two servers, over the page. */
+    @Test fun dnsServersLight() = compose.app("settings-dns-servers", dark = false, before = { shows("cloudflare") }) { DnsServersRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onRules = {}) }
+
+    @Test fun dnsServersDark() = compose.app("settings-dns-servers", dark = true, before = { shows("cloudflare") }) { DnsServersRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onRules = {}) }
+
+    @Test fun dnsRulesLight() = compose.app("settings-dns-rules", dark = false, before = { shows("qname(geosite:cn)") }) { DnsRulesRoute(PolicyHonkFixtures.rvSample(), onBack = {}) }
+
+    @Test fun dnsRulesDark() = compose.app("settings-dns-rules", dark = true, before = { shows("qname(geosite:cn)") }) { DnsRulesRoute(PolicyHonkFixtures.rvSample(), onBack = {}) }
+
+    /** A DNS statement the form cannot hold (a GeoSite match): its line in 依據, then 動作 and its servers. */
+    @Test fun dnsRuleEditLight() = compose.app("settings-dns-rule-edit", dark = false, before = { shows("alidns") }) {
+        DnsRuleEditRoute(PolicyHonkFixtures.rvSample(), query = true, ruleId = "dns_request:1", onBack = {}, onOpenSource = {})
+    }
+
+    /** 全部規則 → github.com, on the app's honk (the sample): a suffix rule to Proxy, sixth of thirteen. */
+    @Test fun ruleEditLight() = compose.app("rule-edit", dark = false, before = { shows("github.com") }) { RuleEditRoute("traffic:5", onBack = {}, onOpenSource = {}) }
+
     @Test fun dnsCustomLight() = compose.app("settings-dns-custom", dark = false) { DnsCustom(DnsUiState(SERVERS, true, TYPED)) }
 
     @Test fun dnsCustomDark() = compose.app("settings-dns-custom", dark = true) { DnsCustom(DnsUiState(SERVERS, true, TYPED)) }
@@ -294,7 +313,7 @@ class SettingsAppShotTest {
     @Composable
     private fun DnsCustom(state: DnsUiState) {
         Box(Modifier.fillMaxSize()) {
-            RvDnsScreen(rvDnsUpstream(state.servers), onSelect = {}, onBack = {}, onCustom = {})
+            RvDnsScreen(rvDnsUpstream(state.servers), onSelect = {}, onBack = {}, onCustom = {}, onServers = {})
             RvSheetLayout({ 1f }, {}, stringResource(R.string.rv_settings_dns_custom_title)) { RvDnsCustomContent(state, onText = {}, onSave = {}, onDismiss = {}) }
         }
     }
@@ -424,6 +443,11 @@ private fun ComposeContentTestRule.app(
     rvRowRules(golden)
     onRoot().captureToImage().asAndroidBitmap().captureRoboImage("$SHOTS/$golden.png")
 }
+
+/** Waits for [text], which honk's read puts on the page: the read runs on Dispatchers.IO, which compose does not track. */
+private fun ComposeContentTestRule.shows(text: String) = waitUntil(READ_MS) { onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty() }
+
+private const val READ_MS = 5_000L
 
 /** The sample page in English, for the panels' approved column where no English golden exists. */
 private fun ComposeContentTestRule.sample(name: String, content: @Composable () -> Unit) {

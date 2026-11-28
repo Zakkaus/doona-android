@@ -1,0 +1,82 @@
+{
+    "generation_id": "generation-10",
+    "revision": "10",
+    "sources": [
+        {
+            "id": "source-f1",
+            "path": "config.dae",
+            "kind": "main",
+            "content_sha256": "8c2fe3d9eca4eff256b9a3016c2ae2023b810279faf8b1e19048e8d3b0ababe5",
+            "bytes": 512,
+            "writable": true,
+            "loaded_at": "2026-11-22T10:24:00Z",
+            "content": "global {\n  tproxy_port: 12345\n  lan_interface: docker0\n  wan_interface: auto\n  log_level: info\n  tcp_check_url: 'http://cp.cloudflare.com'\n  check_interval: 30s\n}\n\ninclude {\n  nodes.dae\n  rules/cn.dae\n  rules/lan.dae\n  dns.dae\n}\n\ngroup {\n  proxy {\n    filter: subtag(feed)\n    policy: min_moving_avg\n  }\n\n  # 影音\n  media {\n    filter: name(keyword: 'HK')\n    policy: min\n  }\n  ai {\n    filter: name(keyword: 'JP')\n    policy: min_moving_avg\n  }\n  office {\n    filter: subtag(office)\n    policy: fixed(0)\n  }\n}",
+            "line_count": 36
+        },
+        {
+            "id": "source-f2",
+            "path": "nodes.dae",
+            "kind": "include",
+            "content_sha256": "cad182cc75b9afce13f84e5d8e6ffaf1749afafe8ba989742b95069bca1fe6ef",
+            "bytes": 156,
+            "writable": true,
+            "loaded_at": "2026-11-22T10:24:00Z",
+            "content": "include {\n  nodes/office.dae\n}\n\nsubscription {\n  feed: 'https://sub.example/a'\n  backup: 'https://sub.example/b'\n}\n\nnode {\n  lab: 'socks5://10.0.0.2:1080'\n}",
+            "line_count": 12
+        },
+        {
+            "id": "source-f3",
+            "path": "nodes/office.dae",
+            "kind": "include",
+            "content_sha256": "377421a773fde4bcf25c2c92733dc1435c6a4285bcf01085792805cc7136d96e",
+            "bytes": 171,
+            "writable": true,
+            "loaded_at": "2026-11-22T10:24:00Z",
+            "content": "# 公司節點\nnode {\n  office-hk: 'trojan://office.example:443'\n  office-jp: 'trojan://office.example:8443'\n  office-sg: 'trojan://office.example:9443'\n}\n\n# 由 IT 維護",
+            "line_count": 8
+        },
+        {
+            "id": "source-f4",
+            "path": "rules/cn.dae",
+            "kind": "include",
+            "content_sha256": "6ca2e553ff3a990522fec7d7dceb114c5c3844ab4c1d055d9b3d8b885ed7d27b",
+            "bytes": 526,
+            "writable": true,
+            "loaded_at": "2026-11-22T10:24:00Z",
+            "content": "# 中國大陸直連\nrouting {\n  domain(geosite:cn) -> direct\n  dip(geoip:cn) -> direct\n  domain(suffix: cn.example) -> direct\n\n  domain(keyword: 影音) -> media\n  domain(suffix: video.example) -> media\n  domain(suffix: music.example) -> media\n\n  # 公司內網\n  domain(suffix: corp.example) -> direct\n  dip(10.8.0.0/16) -> direct\n\n  # 下載\n  domain(suffix: mirror.example) -> direct\n  domain(suffix: cdn.example) && l4proto(tcp) -> direct\n\n  domain(suffix: chat.example) -> proxy\n  domain(suffix: news.example) -> proxy\n}",
+            "line_count": 21
+        },
+        {
+            "id": "source-f5",
+            "path": "rules/lan.dae",
+            "kind": "include",
+            "content_sha256": "f4e39170a3e3835cc5f638619bb3a69d364650f87b7fa46932fea907b6f42310",
+            "bytes": 189,
+            "writable": true,
+            "loaded_at": "2026-11-22T10:24:00Z",
+            "content": "routing {\n  dip(192.168.0.0/16) -> direct\n  !pname(helper) && mac(00:11:22:33:44:55) -> block\n  dip(172.16.0.0/12) -> direct\n\n  # 印表機\n  dip(192.168.1.20) -> direct\n  fallback: proxy\n}",
+            "line_count": 9
+        },
+        {
+            "id": "source-f6",
+            "path": "dns.dae",
+            "kind": "include",
+            "content_sha256": "a5636e5c543e92ff0c187d399cc7001e99b1e4b3089837a1d3cf8df51fa43218",
+            "bytes": 428,
+            "writable": true,
+            "loaded_at": "2026-11-22T10:24:00Z",
+            "content": "dns {\n  upstream {\n    local: 'udp://223.5.5.5:53'\n    remote: 'tcp+udp://1.1.1.1:53'\n    backup: 'https://dns.example/dns-query'\n  }\n  routing {\n    request {\n      qname(geosite: category-ads-all) -> reject\n      qname(geosite:cn) -> local\n      qname(suffix: corp.example) -> local\n      qname(suffix: lan) -> asis\n      fallback: remote\n    }\n    response {\n      upstream(remote) && ip(geoip: private) -> backup\n    }\n  }\n}",
+            "line_count": 19
+        }
+    ],
+    "diagnostics": [],
+    "secrets_redacted": false,
+    "x-honk": {
+        "store": {
+            "kind": "db",
+            "revision": 10,
+            "parent": 9,
+            "recorded": true
+        }
+    }
+}

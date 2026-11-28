@@ -1,0 +1,21 @@
+{
+    "valid": false,
+    "diagnostics": [
+        {
+            "level": "error",
+            "source_id": "candidate-1",
+            "line": 7,
+            "column": 30,
+            "span": {
+                "start_line": 7,
+                "start_column": 30,
+                "end_line": 7,
+                "end_column": 36
+            },
+            "code": "unknown-routing-target",
+            "message": "Routing target is not a known outbound or group."
+        }
+    ],
+    "generation_id": "generation-9",
+    "validated_at": "2026-11-22T10:24:00Z"
+}

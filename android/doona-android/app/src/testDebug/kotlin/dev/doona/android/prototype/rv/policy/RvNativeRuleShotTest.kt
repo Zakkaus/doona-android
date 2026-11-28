@@ -19,6 +19,9 @@ import dev.doona.android.designsystem.rv.RvDiffLine
 import dev.doona.android.feature.model.RV_BLOCK
 import dev.doona.android.feature.model.RV_DIRECT
 import dev.doona.android.feature.model.RvMatchKind
+import dev.doona.android.feature.policies.RvNativeRuleAt
+import dev.doona.android.feature.policies.RvRuleDraft
+import dev.doona.android.feature.policies.RvRuleEditPage
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
@@ -119,7 +122,7 @@ class RvNativeRuleShotTest {
 
     @Test
     fun theApprovedPageOffersNoBlock() {
-        compose.setContent { Themed { RvRuleEditPage(OPENAI, {}, {}, {}, {}) } }
+        compose.setContent { Themed { RvRuleEditPage(OPENAI, {}, {}, {}, {}, rvSampleTargets) } }
         compose.onNodeWithText("拒絕").assertDoesNotExist()
     }
 

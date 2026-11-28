@@ -14,7 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
-import dev.doona.android.designsystem.rv.RvAddRow
+import dev.doona.android.designsystem.rv.RvAddMenuButton
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
@@ -52,6 +52,7 @@ internal class RvRulesRoutes(
     val delete: (Int) -> Unit = {},
     val edit: (Boolean) -> Unit = {},
     val newRule: () -> Unit = {},
+    val service: () -> Unit = {},
     val apply: () -> Unit = {},
     val discard: () -> Unit = {},
     val effective: () -> Unit = {},
@@ -67,7 +68,7 @@ internal class RvRulesRoutes(
  * or the rules could not be read) stands in [RvGutter]'s slot over the rules a failed reread kept, or in place of the
  * cards when none were kept; the title, the bar and the bottom action stay. While [loading] (the first read) a skeleton
  * of the rules card stands in for the cards, and they fade in over it. [removable] ends every rule but the last with
- * the remove control and the rules card with 新增規則.
+ * the remove control; new rules come from the bottom 新增 (q-add-primary).
  */
 @Composable
 internal fun RvRulesPage(
@@ -115,13 +116,22 @@ private fun RulesSkeleton() {
     }
 }
 
-/** The page's one action: 完成 while reordering, 套用 N 條 while rules are held, else 新增規則. */
+/** The page's one action: 完成 while reordering, 套用 N 條 while rules are held, else 新增 with its menu of 規則 and 服務規則. */
 @Composable
 private fun BottomAction(held: Int, editing: Boolean, routes: RvRulesRoutes) {
     when {
         editing -> RvPrimaryButton(stringResource(R.string.rv_rules_done), { routes.edit(false) })
+
         held > 0 -> RvPrimaryButton(pluralStringResource(R.plurals.rv_rules_apply_held, held, held), routes.apply)
-        else -> RvPrimaryButton(stringResource(R.string.rv_policy_new_rule), routes.newRule)
+
+        // 新增 adds a rule or service rules (owner, q-service-rules 2026-11-26).
+        else -> RvAddMenuButton(
+            stringResource(R.string.rv_list_create),
+            listOf(
+                RvMenuItem(stringResource(R.string.rv_rules_add_rule), R.drawable.rv_sym_edit, onClick = routes.newRule),
+                RvMenuItem(stringResource(R.string.rv_rules_add_service), R.drawable.rv_sym_apps, onClick = routes.service),
+            ),
+        )
     }
 }
 
@@ -155,7 +165,6 @@ private fun RulesCard(rules: List<RvPolicyRule>, editing: Boolean, routes: RvRul
                 else -> RvLongPressMenu(ruleMenu(rule, { routes.open(i) }, { routes.toggle(i) }, { deleting = i }), { routes.open(i) }) { RvRuleRow(rule, it, remove = remove) }
             }
         }
-        if (removable) RvAddRow(stringResource(R.string.rv_policy_new_rule), routes.newRule)
     }
     val target = deleting?.let(rules::getOrNull)
     RvConfirmSheet(

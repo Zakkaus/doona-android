@@ -1,0 +1,62 @@
+[
+  {
+    "id": "g-出口",
+    "name": "出口",
+    "icon": null,
+    "config_revision": "1",
+    "policy": {
+      "kind": "selector",
+      "native": "selector"
+    },
+    "member_count": 5,
+    "selection": {
+      "tcp_member_id": "g-香港",
+      "udp_member_id": "g-香港"
+    }
+  },
+  {
+    "id": "g-香港",
+    "name": "香港",
+    "icon": null,
+    "config_revision": "1",
+    "policy": {
+      "kind": "urltest",
+      "native": "urltest"
+    },
+    "member_count": 6,
+    "selection": {
+      "tcp_member_id": "n-0001938f00000000",
+      "udp_member_id": "n-0001938f00000000"
+    }
+  },
+  {
+    "id": "g-日本",
+    "name": "日本",
+    "icon": null,
+    "config_revision": "1",
+    "policy": {
+      "kind": "fallback",
+      "native": "fallback"
+    },
+    "member_count": 6,
+    "selection": {
+      "tcp_member_id": "n-00019bab00000000",
+      "udp_member_id": "n-00019bab00000000"
+    }
+  },
+  {
+    "id": "g-空",
+    "name": "空",
+    "icon": null,
+    "config_revision": "1",
+    "policy": {
+      "kind": "selector",
+      "native": "selector"
+    },
+    "member_count": 0,
+    "selection": {
+      "tcp_member_id": null,
+      "udp_member_id": null
+    }
+  }
+]

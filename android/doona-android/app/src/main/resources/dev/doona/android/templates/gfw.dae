@@ -1,0 +1,44 @@
+# doona starting configuration: only sites blocked in mainland China go through proxy.
+# Everything else connects directly. The rules need the geosite list gfw.
+# This is ordinary honk configuration. Edit it freely; the app reads whatever groups,
+# rules and DNS settings it holds.
+
+group {
+    # Every node; the user picks one or auto.
+    proxy {
+        filter: group('auto')
+        filter: !name('direct', 'block')
+        policy: select
+        default: 'auto'
+    }
+    # Every node, chosen by observed quality.
+    auto {
+        filter: !name('direct', 'block')
+        policy: score
+    }
+}
+
+routing {
+    # Telegram.
+    domain(geosite:telegram) -> proxy
+    dip(geoip:telegram) -> proxy
+    # Sites blocked in mainland China.
+    domain(geosite:gfw) -> proxy
+    fallback: direct
+}
+
+dns {
+    upstream {
+        alidns: 'https://223.5.5.5/dns-query?tls_server_name=dns.alidns.com' -> direct
+        cloudflare: 'https://1.1.1.1/dns-query?tls_server_name=cloudflare-dns.com' -> proxy
+    }
+    routing {
+        request {
+            # Block ads: answer ad domains with an empty reply.
+# paused r-5fbbaffc75615770:             qname(geosite:category-ads-all) -> reject
+            # Blocked names from a resolver reached through proxy.
+            qname(geosite:telegram, geosite:gfw) -> cloudflare
+            fallback: alidns
+        }
+    }
+}

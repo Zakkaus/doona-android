@@ -1,54 +1,52 @@
 package dev.doona.android.feature.config
 
-import dev.doona.android.designsystem.rv.RvDiffFile
-import dev.doona.android.engine.ConfigCheck
-import dev.doona.android.engine.ConfigEngine
-import dev.doona.android.engine.ConfigFile
-import dev.doona.android.engine.ConfigRevision
-import dev.doona.android.engine.ConfigTree
-import dev.doona.android.engine.SourceAt
-import dev.doona.android.engine.SourceSpan
+import dev.doona.android.feature.policies.HonkPolicyRead
+import dev.doona.android.feature.policies.honkUpstreams
+import dev.doona.android.vpn.honk.HonkConfig
+import dev.doona.android.vpn.honk.HonkDnsRules
+import dev.doona.android.vpn.honk.HonkRevision
+import java.time.Instant
 
-/** The text of [span] in [text]: its UTF-8 bytes `[start, end)`, as the core counts them. */
-internal fun rvSpanText(text: String, span: SourceSpan): String = text.encodeToByteArray().decodeToString(span.start, span.end)
+/** The text of the UTF-8 bytes `[start, end)` of [text]. */
+internal fun rvSpanText(text: String, start: Int, end: Int): String = text.encodeToByteArray().decodeToString(start, end)
 
-/** The texts of the files [ids] at [at], read one by one; the first failure is the result. */
-internal suspend fun ConfigEngine.texts(at: SourceAt, ids: Collection<String>): Result<Map<String, String>> {
-    val texts = LinkedHashMap<String, String>()
-    for (id in ids.distinct()) texts[id] = configSource(at, id).getOrElse { return Result.failure(it) }
-    return Result.success(texts)
-}
-
-/** The manifest's files as the pages show them: each path, and the path of the file that includes it. */
-internal fun rvConfigFiles(files: List<ConfigFile>): List<RvConfigFile> {
-    val paths = files.associate { it.id to it.path }
-    return files.map { RvConfigFile(it.path, it.parentId?.let(paths::get), it.lines) }
+/**
+ * honk's files as the pages list them: the entry, then the includes in load order. honk does not say which file names
+ * an include, so each sits under the entry.
+ */
+internal fun rvConfigFiles(config: HonkConfig): List<RvConfigFile> {
+    val entry = config.main
+    return config.files.map { RvConfigFile(it.path, if (it === entry) null else entry.path, it.lineCount) }
 }
 
 /**
- * The overview of [tree] applied at [appliedAt]: its files, summary and support records, each skipped one spelled as
- * [texts] (the head's text of every file that holds one) has it at its span, in the order the core lists them.
+ * The overview of honk's accepted [config], loaded when its entry was: its files, what honk runs ([policies], the DNS
+ * servers of the files, the DNS rules [dns]); honk applies every declaration it accepted, so nothing is skipped.
  */
-internal fun rvConfigState(tree: ConfigTree, appliedAt: Long, texts: Map<String, String>, nowEpochMs: Long): RvConfigState {
-    val paths = tree.files.associate { it.id to it.path }
-    val skipped = tree.support.filter { it.skipped }.map { record ->
-        RvSkipped(rvSpanText(texts.getValue(record.at.fileId), record.at), paths.getValue(record.at.fileId), record.at.line, record.reasons.map(::rvSkipReason))
-    }
-    return RvConfigState(tree.rev, appliedAt, rvConfigFiles(tree.files), rvConfigSummary(tree), skipped, tree.support.count { !it.skipped }, nowEpochMs)
-}
+internal fun rvConfigState(config: HonkConfig, policies: HonkPolicyRead, dns: HonkDnsRules, nowEpochMs: Long): RvConfigState = RvConfigState(
+    rev = config.revision,
+    appliedAtEpochMs = Instant.parse(config.main.loadedAt).toEpochMilli(),
+    files = rvConfigFiles(config),
+    summary = RvConfigSummary(
+        subscriptions = policies.subscriptions.size,
+        nodes = policies.nodes.size,
+        groups = policies.groups.size,
+        trafficRules = policies.rules.rules.count { !it.isFallback },
+        dnsUpstreams = honkUpstreams(config).size,
+        dnsRequestRules = dns.request.size,
+        dnsResponseRules = dns.response.size,
+    ),
+    skipped = emptyList(),
+    nowEpochMs = nowEpochMs,
+)
 
-private fun rvConfigSummary(tree: ConfigTree) = with(tree.summary) {
-    RvConfigSummary(subscriptions, nodes, groups, trafficRules, dnsUpstreams, dnsRequestRules, dnsResponseRules)
-}
-
-internal fun rvRevision(revision: ConfigRevision): RvRevision =
-    RvRevision(revision.rev, revision.appliedAtEpochMs, rvRevisionOrigin(revision.origin), revision.restored, revision.name)
-
-/** The line diffs of every file [check] changed: its base revision's text against the draft's, in manifest order. */
-internal suspend fun ConfigEngine.rvCheckDiff(check: ConfigCheck): Result<List<RvDiffFile>> {
-    val ids = check.changes.map { it.fileId }
-    val paths = check.files.associate { it.id to it.path }
-    val base = texts(SourceAt.Revision(check.draft.baseRev), ids).getOrElse { return Result.failure(it) }
-    val draft = texts(SourceAt.Draft(check.draft), ids).getOrElse { return Result.failure(it) }
-    return Result.success(ids.mapNotNull { rvLineDiff(paths.getValue(it), base.getValue(it), draft.getValue(it)) })
-}
+/** A revision of honk's configuration db: `import`, `activate` (a restore) or `write` (an edit); honk keeps no names. */
+internal fun rvRevision(revision: HonkRevision): RvRevision = RvRevision(
+    rev = revision.revision.toInt(),
+    appliedAtEpochMs = Instant.parse(revision.createdAt).toEpochMilli(),
+    origin = when (revision.origin) {
+        "import" -> RvRevisionOrigin.Import
+        "activate" -> RvRevisionOrigin.Restore
+        else -> RvRevisionOrigin.Edit
+    },
+)

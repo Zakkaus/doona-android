@@ -78,7 +78,7 @@ internal fun RvRuleMatch.kind(): String = when (this) {
 
 /**
  * A rule as the 策略 card and the list of all rules draw it, after 活動's rule rows: where the traffic ends, what it
- * matches over its kind, and the target over [end] (today's bytes by default). A rule that is off or skipped says so
+ * matches over its kind, and the target over [end] (today's bytes by default, 「—」 where honk counts none). A rule that is off or skipped says so
  * after its kind and shows no bytes.
  */
 @Composable
@@ -89,7 +89,7 @@ internal fun RvRuleRow(rule: RvPolicyRule, modifier: Modifier = Modifier, end: S
         RvRuleState.Off -> rule.match.kind() + SEPARATOR + stringResource(R.string.rv_policy_rule_off)
         RvRuleState.Skipped -> rule.match.kind() + SEPARATOR + stringResource(R.string.rv_policy_rule_skipped)
     }
-    val bytes = if (rule.state == RvRuleState.On) format.bytes(rule.bytes).toString() else RV_NO_VALUE
+    val bytes = rule.bytes?.takeIf { rule.state == RvRuleState.On }?.let { format.bytes(it).toString() } ?: RV_NO_VALUE
     val title = rule.match.title()
     val removeLabel = stringResource(R.string.rv_list_remove, title)
     RvRow(

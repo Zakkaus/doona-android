@@ -28,6 +28,9 @@ import dev.doona.android.feature.model.RvThemeMode
 import dev.doona.android.feature.report.AppReportFacts
 import dev.doona.android.feature.report.ReportRoute
 import dev.doona.android.feature.settings.DnsRoute
+import dev.doona.android.feature.settings.DnsRuleEditRoute
+import dev.doona.android.feature.settings.DnsRulesRoute
+import dev.doona.android.feature.settings.DnsServersRoute
 import dev.doona.android.feature.settings.GeoIntervalRoute
 import dev.doona.android.feature.settings.IntervalRoute
 import dev.doona.android.feature.settings.LabRoute
@@ -261,7 +264,22 @@ internal fun EntryProviderScope<NavKey>.settingsEntries(backStack: MutableList<N
     entry<ThemeKey> { key ->
         ThemeRoute(rememberSettingsStore(), rvSystemSchemes(), APP_THEME_PREVIEW, onBack = { backStack.pop(key) })
     }
-    entry<DnsKey> { key -> DnsRoute(engine, onBack = { backStack.pop(key) }) }
+    entry<DnsKey> { key ->
+        DnsRoute(nativeApi(), onBack = { backStack.pop(key) }, onServers = { backStack.push(DnsServersKey) }, onRules = { backStack.push(DnsRulesKey) })
+    }
+    // 查看規則 opens nothing until the DNS rules page is in the app.
+    entry<DnsServersKey> { key -> DnsServersRoute(nativeApi(), onBack = { backStack.pop(key) }, onRules = { backStack.push(DnsRulesKey) }) }
+    entry<DnsRulesKey> { key ->
+        DnsRulesRoute(
+            nativeApi(),
+            onBack = { backStack.pop(key) },
+            onOpen = { query, id -> backStack.push(DnsRuleEditKey(dnsList(query), id)) },
+            onAdd = { backStack.push(DnsRuleEditKey(dnsList(it), null)) },
+        )
+    }
+    entry<DnsRuleEditKey> { key ->
+        DnsRuleEditRoute(nativeApi(), key.list == dnsList(true), key.ruleId, onBack = { backStack.pop(key) }, onOpenSource = { backStack.push(ConfigSourceKey(it)) })
+    }
     entry<LanguageKey> { key -> LanguageRoute(rememberSettingsStore(), onBack = { backStack.pop(key) }) }
     // 自訂 has no page yet (plan 8: built, not hidden).
     entry<IntervalKey> { key -> IntervalRoute(rememberSettingsStore(), onBack = { backStack.pop(key) }) }
@@ -294,3 +312,6 @@ private fun rememberSettingsSystem(): SettingsSystem {
     val container = container()
     return remember(context, container) { ActivitySettingsSystem(context as Activity, container.quickTile) }
 }
+
+/** honk's name of a DNS list: `request` for queries, `response`. */
+private fun dnsList(query: Boolean) = if (query) "request" else "response"

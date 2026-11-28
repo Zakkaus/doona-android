@@ -13,6 +13,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvSystemScheme
+import dev.doona.android.feature.policies.RvRouteTracePage
+import dev.doona.android.feature.policies.RvTraceQuery
+import dev.doona.android.feature.policies.RvTraceResult
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
@@ -116,7 +119,7 @@ class RvRouteTraceShotTest {
     private companion object {
         /** Windows as tall as each whole page. */
         const val WHOLE_ANSWER = "+h936dp"
-        const val WHOLE_SKIPPED = "+h1109dp"
+        const val WHOLE_SKIPPED = "+h1133dp"
         const val WHOLE_SKIPPED_EN = "en-w412dp-h1129dp-notnight-xhdpi"
     }
 }

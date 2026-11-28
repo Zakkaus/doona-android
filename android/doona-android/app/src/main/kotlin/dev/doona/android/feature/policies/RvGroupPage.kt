@@ -24,6 +24,7 @@ import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
 import dev.doona.android.designsystem.rv.RvEmptyCaption
 import dev.doona.android.designsystem.rv.RvFilterChipRow
+import dev.doona.android.designsystem.rv.RvGlassButton
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvLatencyChange
 import dev.doona.android.designsystem.rv.RvNameDisc
@@ -79,6 +80,7 @@ internal class RvGroupActions(
     val apart: (Boolean) -> Unit = {},
     val apply: (RvApplyTo) -> Unit = {},
     val test: () -> Unit = {},
+    val edit: (() -> Unit)? = null,
 )
 
 /**
@@ -148,7 +150,15 @@ internal fun RvGroupPage(
     // Score chooses the nodes, so a tap on one opens its detail rather than choose it.
     val pickNode = if (content.score) actions.detail else actions.tap
     val evidence = content.evidence?.takeIf { content.score }
-    RvScrollPage(name, insets, modifier, onBack = actions.back, bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_test_group), actions.test) }) { titleBlock ->
+    val edit = stringResource(R.string.rv_menu_edit)
+    RvScrollPage(
+        name,
+        insets,
+        modifier,
+        onBack = actions.back,
+        actions = actions.edit?.let { onEdit -> { glass -> RvGlassButton(glass, R.drawable.rv_sym_edit, edit, onEdit) } },
+        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_test_group), actions.test) },
+    ) { titleBlock ->
         RvPageHeader(name, titleBlock, insets, caption = { Caption(group, content.score) })
         RvGutter(banner = banner) {
             NetworkCard(group, choice, actions.detail, rows = evidence == null) { actions.apart(!it.apart) }

@@ -19,4 +19,9 @@
     <string name="vpn_failure_incompatible_core">核心與目前的 doona 版本不相容。</string>
     <string name="vpn_failure_lockdown_enabled">已開啟「封鎖沒有 VPN 的連線」，doona 目前無法在此模式下運作。請在系統 VPN 設定中關閉此選項。</string>
     <string name="vpn_failure_not_established">Android 未建立 VPN 連線。請開啟 doona 後重新連線。</string>
+    <!-- honk rejected the configuration; a tap goes back to the previous revision. -->
+    <string name="vpn_config_unusable_title">目前設定無法使用</string>
+    <!-- %1$s is a configuration file's path, %2$d a line number in it. -->
+    <string name="vpn_config_unusable_at">%1$s 第 %2$d 行有錯誤。點一下換回上一份能用的設定。</string>
+    <string name="vpn_config_unusable_restore">點一下換回上一份能用的設定。</string>
 </resources>

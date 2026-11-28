@@ -55,6 +55,9 @@
     <string name="rv_config_restore">Restore</string>
     <string name="rv_config_export">Export configuration</string>
     <string name="rv_config_import_refused">Could not import</string>
+    <string name="rv_config_import_done">Config imported</string>
+    <string name="rv_config_import_done_reason">The picked file replaced the main config file, and honk reloaded it.</string>
+    <string name="rv_config_import_rejected_reason">honk did not accept this file. Nothing was changed.</string>
     <plurals name="rv_config_import_limit">
         <item quantity="one">An import holds at most %1$d file, %2$s in all.</item>
         <item quantity="other">An import holds at most %1$d files, %2$s in all.</item>

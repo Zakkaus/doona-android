@@ -14,6 +14,8 @@ import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.nodes.RvNodePicker
 import dev.doona.android.feature.nodes.RvNodePickerPage
 import dev.doona.android.feature.policies.RvPolicyRoutes
+import dev.doona.android.feature.policies.RvRuleDraft
+import dev.doona.android.feature.policies.RvRuleEditPage
 import dev.doona.android.feature.policies.RvRulesPage
 import dev.doona.android.feature.policies.RvRulesRoutes
 import dev.doona.android.feature.policies.RvTemplateImpactPage
@@ -35,7 +37,7 @@ internal class RvPolicyPreviewState(pending: List<RvPolicyRule> = emptyList()) {
     var draft: RvRuleDraft? by mutableStateOf(null)
 
     // The services ticked on the 新增服務規則 sample.
-    var services by mutableStateOf(RvServiceData.sample)
+    var services by mutableStateOf(RV_SERVICE_SAMPLE)
 
     // The main node's picker keeps its own order, apart from 全域's (in the policy state), as each screen remembers its last.
     var pickerSort by mutableStateOf(RvNodeSort.Latency)
@@ -164,7 +166,7 @@ internal fun RvPolicyPreview(
             RvRuleEditPage(draft, { state.draft = it }, onBack = leave, onApply = leave, onDelete = {
                 state.delete(i)
                 leave()
-            })
+            }, targets = rvSampleTargets)
         }
 
         r.TEMPLATE -> RvTemplatePageSample(RvTemplateData.cnDirect, state.template, { state.template = it }, onBack = pop, onReview = { push(r.IMPACT) })

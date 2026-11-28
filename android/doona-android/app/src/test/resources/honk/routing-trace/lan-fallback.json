@@ -1,0 +1,52 @@
+{
+  "mode": "simulation",
+  "instance_id": "instance-7",
+  "generation_id": "generation-42",
+  "observed_at": "2026-09-14T10:00:00Z",
+  "evaluations": [
+    {
+      "dst_ip": "192.168.1.20",
+      "decision": "determinate",
+      "outbound": "block",
+      "missing_inputs": [],
+      "rules": [
+        {
+          "rule_id": "traffic:0",
+          "expression": "pname(curl) -> direct",
+          "result": "not_matched",
+          "missing_inputs": [],
+          "conditions": [
+            {
+              "id": "traffic:0/pname",
+              "expression": "pname(curl)",
+              "result": "not_matched",
+              "missing_inputs": []
+            }
+          ]
+        },
+        {
+          "rule_id": "traffic:1",
+          "expression": "dip(198.51.100.0/24) -> proxy",
+          "result": "not_matched",
+          "missing_inputs": [],
+          "conditions": [
+            {
+              "id": "traffic:1/dip",
+              "expression": "dip(198.51.100.0/24)",
+              "result": "not_matched",
+              "missing_inputs": []
+            }
+          ]
+        },
+        {
+          "rule_id": "traffic:2",
+          "expression": "fallback: block",
+          "result": "matched",
+          "missing_inputs": [],
+          "conditions": []
+        }
+      ]
+    }
+  ],
+  "dns": []
+}
