@@ -340,7 +340,7 @@ class CoreDtoTest {
             "local_network", "dns_failed", "storage_full", "write_failed",
             "conflict", "source_limit", "non_native_source", "activation_failed",
         )
-        assertEquals(ErrorCode.entries.toList(), core.map(::errorCodeOf))
+        assertEquals(ErrorCode.entries - setOf(ErrorCode.Unsupported, ErrorCode.DuplicateProviderName, ErrorCode.RequestTooLarge), core.map(::errorCodeOf))
         assertEquals(ErrorCode.Internal, errorCodeOf("a_later_code"))
     }
 

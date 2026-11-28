@@ -84,12 +84,11 @@ class NativeCatalogTest {
     }
 
     @Test
-    fun aRefreshThatCouldNotParseIsParseFailed() = runTest {
+    fun refreshReportsTheOperationsOwnFailure() = runTest {
         api.on("POST", "/api/v1/providers/s1/refresh", 202, accepted("provider_refresh"))
-        val error = """{"code":"fetch_failed","message":"no nodes","details":{"stage":"parse_failed"}}"""
+        val error = """{"code":"fetch_failed","message":"Subscription fetch failed","details":null}"""
         api.on("GET", OPERATION, 200, operation("provider_refresh", "failed", error = error))
-
-        assertCode(ErrorCode.ParseFailed) { catalog.refreshProvider("s1") }
+        assertCode(ErrorCode.FetchFailed) { catalog.refreshProvider("s1") }
     }
 
     @Test
@@ -100,7 +99,7 @@ class NativeCatalogTest {
     }
 
     @Test
-    fun addingAProviderSendsItsUserAgentAndANameInUseIsInvalidArgument() = runTest {
+    fun providerCreationDistinguishesADuplicateNameFromAConcurrentChange() = runTest {
         api.on("POST", "/api/v1/providers", 201, provider("p9"))
 
         assertEquals("p9", catalog.addProvider("Nine", "https://sub.example/9", "clash").id)
@@ -108,7 +107,8 @@ class NativeCatalogTest {
         assertEquals("clash", body.getValue("user_agent").jsonPrimitive.content)
 
         api.on("POST", "/api/v1/providers", 409, ERROR)
-        assertCode(ErrorCode.InvalidArgument) { catalog.addProvider("Nine", "https://sub.example/9", null) }
+        assertCode(ErrorCode.Conflict) { catalog.addProvider("Nine", "https://sub.example/9", null) }
+        assertCode(ErrorCode.DuplicateProviderName) { catalog.addProvider("Harbor Cloud", "https://sub.example/9", null) }
     }
 
     @Test
@@ -123,12 +123,12 @@ class NativeCatalogTest {
     }
 
     @Test
-    fun removingWhatHonkNoLongerHasIsNotFound() = runTest {
+    fun zeroDeletedIsSuccessButAnUnsupportedDeletionFails() = runTest {
         api.on("DELETE", "/api/v1/nodes/n-mine", 200, """{"deleted":0}""")
-        api.on("DELETE", "/api/v1/providers/gone", 404, ERROR)
+        api.on("DELETE", "/api/v1/providers/gone", 404, ERROR.replace("state_conflict", "capability_not_supported"))
 
-        assertCode(ErrorCode.NotFound) { catalog.removeNode("n-mine") }
-        assertCode(ErrorCode.NotFound) { catalog.removeProvider("gone") }
+        catalog.removeNode("n-mine")
+        assertCode(ErrorCode.Unsupported) { catalog.removeProvider("gone") }
     }
 
     private inline fun assertCode(code: ErrorCode, block: () -> Unit) {
@@ -138,12 +138,12 @@ class NativeCatalogTest {
 
     private companion object {
         const val OPERATION = "/api/v1/operations/op-1"
-        const val ERROR = """{"error":{"code":"conflict","message":"The request conflicts with the current state."},"request_id":"request-1"}"""
+        const val ERROR = """{"error":{"code":"state_conflict","message":"The request conflicts with the current state."},"request_id":"request-1"}"""
         const val NODE = """{"id":"n-mine","name":"Mine","protocol":"trojan","stream_transport":"tcp","subscription_tag":null,""" +
             """"provider_id":null,"group_ids":[],"health":[]}"""
 
         fun provider(id: String) = """{"id":"$id","name":"$id","kind":"subscription","url_redacted":"https://sub.example/$id",""" +
-            """"node_count":0,"updated_at":null,"expires_at":null,"traffic":null,"status":"ok","last_error":null}"""
+            """"node_count":0,"updated_at":null,"expires_at":null,"traffic":null,"status":"stale","last_error":null}"""
 
         fun accepted(kind: String) = """{"operation_id":"op-1","kind":"$kind","status":"queued","href":"$OPERATION"}"""
 

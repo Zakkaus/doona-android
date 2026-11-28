@@ -47,9 +47,9 @@ class HonkGeoDataTest {
     }
 
     @Test
-    fun honkWithoutGeodataIsNotFound() {
-        honk.on("GET", "/api/v1/geodata", 404, "")
+    fun honkWithoutGeodataReportsTheUnsupportedCapability() {
+        honk.on("GET", "/api/v1/geodata", 404, """{"error":{"code":"capability_not_supported","message":"Unavailable"},"request_id":"geo"}""")
 
-        assertEquals(ErrorCode.NotFound, assertThrows(EngineException::class.java) { honk.geoData() }.code)
+        assertEquals(ErrorCode.Unsupported, assertThrows(EngineException::class.java) { honk.geoData() }.code)
     }
 }

@@ -6,6 +6,7 @@ import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.feature.model.RvSubFormat
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.honk.Provider
+import dev.doona.android.honk.errorCode
 import java.net.URI
 import java.time.OffsetDateTime
 
@@ -45,6 +46,7 @@ internal fun rvSubscription(provider: Provider, userAgent: String?): RvSubscript
     // honk-gap:sub-format-ua
     format = null,
     userAgent = userAgent,
+    lastFetchError = provider.lastError?.errorCode(),
 )
 
 private fun epochMs(timestamp: String): Long = OffsetDateTime.parse(timestamp).toInstant().toEpochMilli()
@@ -56,23 +58,12 @@ internal fun rvSubFormat(format: SubscriptionFormat): RvSubFormat = when (format
     SubscriptionFormat.ShareLinks, SubscriptionFormat.Base64 -> RvSubFormat.Links
 }
 
-/**
- * Why an import failed, in the reasons the page tells apart: the body was over the core's bound; the body was
- * read but held no subscription ([ErrorCode.ParseFailed], [ErrorCode.NoNodes]); the subscription not saved
- * ([ErrorCode.StorageFull], [ErrorCode.WriteFailed]); or anything else, which leaves the link and the network to
- * check, the local network refused included.
- */
+/** Use the import-specific explanations for content and network failures, and the engine's reason for other refusals. */
 internal fun rvAddFailure(code: ErrorCode): RvAddFailure = when (code) {
     ErrorCode.TooLarge -> RvAddFailure.TooLarge
-
     ErrorCode.ParseFailed, ErrorCode.NoNodes -> RvAddFailure.NotSubscription
-
-    ErrorCode.StorageFull, ErrorCode.WriteFailed -> RvAddFailure.NotSaved(code)
-
-    ErrorCode.InvalidArgument, ErrorCode.NotFound, ErrorCode.FetchFailed, ErrorCode.Busy, ErrorCode.Internal,
-    ErrorCode.LocalNetwork, ErrorCode.DnsFailed, ErrorCode.Conflict, ErrorCode.SourceLimit, ErrorCode.NonNativeSource,
-    ErrorCode.ActivationFailed,
-    -> RvAddFailure.Unreachable
+    ErrorCode.FetchFailed, ErrorCode.DnsFailed -> RvAddFailure.Unreachable
+    else -> RvAddFailure.NotSaved(code)
 }
 
 /**

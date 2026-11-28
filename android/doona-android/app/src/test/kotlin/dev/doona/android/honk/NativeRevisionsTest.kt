@@ -5,6 +5,9 @@ import androidx.test.core.app.ApplicationProvider
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -61,6 +64,14 @@ class NativeRevisionsTest {
         assertEquals("目前設定無法使用", context.configUnusableTitle())
         assertEquals("config.dae 第 1 行有錯誤。點一下換回上一份能用的設定。", context.configUnusableText(failure))
         assertEquals("點一下換回上一份能用的設定。", context.configUnusableText(ConfigFailure(null, 1)))
+    }
+
+    @Test
+    fun beforeTheFirstReloadSourcesAreUsableAndThereIsNoFailure() {
+        val runtime = nativeJson.parseToJsonElement(HonkFixtures.body("runtime/runtime-example")).jsonObject
+        honk.on("GET", "/api/v1/runtime", 200, JsonObject(runtime + ("last_reload" to JsonNull)).toString())
+        assertFalse(NativeRouting(honk).sourcesRejected())
+        assertNull(NativeRevisions(honk).lastFailure())
     }
 
     @Test

@@ -26,8 +26,11 @@ class ErrorTextTest {
         val expected = mapOf(
             ErrorCode.InvalidArgument to Triple(R.string.rv_reason_invalid_argument, "這個值無效。", "这个值无效。"),
             ErrorCode.NotFound to Triple(R.string.rv_reason_not_found, "這個項目已不存在。", "这个项目已不存在。"),
+            ErrorCode.Unsupported to Triple(R.string.rv_reason_unsupported, "honk 不支援這項操作。", "honk 不支持此操作。"),
+            ErrorCode.DuplicateProviderName to Triple(R.string.rv_reason_duplicate_provider_name, "已有同名訂閱，請換個名稱。", "已有同名订阅，请换个名称。"),
             ErrorCode.FetchFailed to Triple(R.string.rv_reason_fetch_failed, "伺服器沒有回應。", "服务器没有响应。"),
             ErrorCode.TooLarge to Triple(R.string.rv_reason_too_large, "訂閱內容太大。", "订阅内容太大。"),
+            ErrorCode.RequestTooLarge to Triple(R.string.rv_reason_request_too_large, "請求內容太大。", "请求内容太大。"),
             ErrorCode.ParseFailed to Triple(R.string.rv_reason_parse_failed, "無法解析訂閱內容。", "无法解析订阅内容。"),
             ErrorCode.NoNodes to Triple(R.string.rv_reason_no_nodes, "訂閱中沒有節點。", "订阅中没有节点。"),
             ErrorCode.Busy to Triple(R.string.rv_reason_busy, "另一項變更正在進行。", "另一项更改正在进行。"),
@@ -44,8 +47,11 @@ class ErrorTextTest {
         val english = mapOf(
             ErrorCode.InvalidArgument to "The value is not valid.",
             ErrorCode.NotFound to "It no longer exists.",
+            ErrorCode.Unsupported to "honk does not support this action.",
+            ErrorCode.DuplicateProviderName to "A subscription already uses this name. Choose another name.",
             ErrorCode.FetchFailed to "Its server did not answer.",
             ErrorCode.TooLarge to "Its content is too large.",
+            ErrorCode.RequestTooLarge to "The request is too large.",
             ErrorCode.ParseFailed to "Its content could not be read.",
             ErrorCode.NoNodes to "It has no nodes.",
             ErrorCode.Busy to "Another change is in progress.",

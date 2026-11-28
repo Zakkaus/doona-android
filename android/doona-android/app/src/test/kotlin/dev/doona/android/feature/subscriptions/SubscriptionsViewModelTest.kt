@@ -131,7 +131,7 @@ class SubscriptionsViewModelTest {
     @Test
     fun `a failed update's banner says why`() = runTest {
         for ((status, code) in listOf(409 to ErrorCode.Busy, 503 to ErrorCode.Busy, 404 to ErrorCode.NotFound)) {
-            honk.on("POST", "/api/v1/providers/s1/refresh", status, HonkFixtures.body("errors/temporarily-unavailable"))
+            honk.on("POST", "/api/v1/providers/s1/refresh", status, HonkFixtures.body(if (status == 404) "errors/group-not-found" else "errors/temporarily-unavailable"))
             val vm = list()
             vm.update("s1")
             assertEquals(code, vm.uiState.value.page.failed?.code)
@@ -192,13 +192,12 @@ class SubscriptionsViewModelTest {
     }
 
     @Test
-    fun `a delete honk answers not_found is gone already, with no banner`() = runTest {
-        honk.on("DELETE", "/api/v1/providers/s1", 404, HonkFixtures.body("errors/temporarily-unavailable"))
+    fun `an unsupported deletion keeps the subscription and the refusal`() = runTest {
+        honk.on("DELETE", "/api/v1/providers/s1", 404, """{"error":{"code":"capability_not_supported","message":"The provider cannot be removed."},"request_id":"r1"}""")
         val vm = list()
-        honk.on("GET", "/api/v1/providers", 200, withoutS1())
         vm.confirmDelete("s1")
-        assertNull(vm.uiState.value.page.deleteFailed)
-        assertTrue(vm.uiState.value.page.subscriptions.none { it.id == "s1" })
+        assertEquals(RvSubFailure("s1", ErrorCode.Unsupported), vm.uiState.value.page.deleteFailed)
+        assertTrue(vm.uiState.value.page.subscriptions.any { it.id == "s1" })
     }
 
     @Test

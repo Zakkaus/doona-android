@@ -54,6 +54,7 @@ import dev.doona.android.designsystem.rv.rvFirstNotice
 import dev.doona.android.designsystem.rv.rvRemoveTrailing
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.reasonRes
 import dev.doona.android.feature.rvReasonLine
 
 /**
@@ -171,7 +172,11 @@ internal fun RvSubsPage(
 internal fun rvFailedBanner(sub: RvSubscription, code: ErrorCode, onRetry: () -> Unit) = RvNotice(
     RvNoticeKind.Error,
     stringResource(R.string.rv_sub_failed_title, sub.name),
-    rvReasonLine(code, pluralStringResource(R.plurals.rv_sub_kept_nodes, sub.nodes, sub.nodes)),
+    if (code == ErrorCode.FetchFailed && sub.lastFetchError != null) {
+        stringResource(R.string.rv_sentences, stringResource(R.string.rv_recent_fetch_error, stringResource(sub.lastFetchError.reasonRes())), pluralStringResource(R.plurals.rv_sub_kept_nodes, sub.nodes, sub.nodes))
+    } else {
+        rvReasonLine(code, pluralStringResource(R.plurals.rv_sub_kept_nodes, sub.nodes, sub.nodes))
+    },
     stringResource(R.string.rv_retry),
     onRetry,
     titleKeepWords = false,
@@ -181,8 +186,8 @@ internal fun rvFailedBanner(sub: RvSubscription, code: ErrorCode, onRetry: () ->
 @Composable
 internal fun rvDeleteFailedBanner(sub: RvSubscription, code: ErrorCode, onRetry: () -> Unit) = RvNotice(
     RvNoticeKind.Error,
-    stringResource(R.string.rv_sub_delete_failed_title, sub.name),
-    rvReasonLine(code, stringResource(R.string.rv_sub_delete_failed_reason)),
+    if (code == ErrorCode.NotFound) sub.name else stringResource(R.string.rv_sub_delete_failed_title, sub.name),
+    if (code == ErrorCode.NotFound) stringResource(R.string.rv_delete_unknown) else rvReasonLine(code, stringResource(R.string.rv_sub_delete_failed_reason)),
     stringResource(R.string.rv_retry),
     onRetry,
     titleKeepWords = false,

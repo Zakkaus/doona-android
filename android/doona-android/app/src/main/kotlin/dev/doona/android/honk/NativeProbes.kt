@@ -14,17 +14,30 @@ import kotlinx.serialization.json.putJsonObject
 /** honk's probes through its native API. Blocking: run on `Dispatchers.IO`. */
 internal class NativeProbes(private val api: NativeApi) {
     /**
-     * Tests the direct members of each of [groupIds] by HTTP over TCP, from cold, all groups at once, and waits until
-     * every probe ends, polling them together; honk keeps the results as the members' health. A probe honk could not run fails with its error.
+     * Tests the direct members of each of [groupIds] by HTTP over TCP, from cold, four groups at a time (honk runs at most
+     * four probe jobs), and waits until every admitted probe ends; honk keeps the results as the members' health. A group
+     * that fails does not stop the others; the first error is thrown at the end. A busy honk stops the later batches.
      */
     suspend fun groups(groupIds: List<String>) {
-        val operations = groupIds.map { id ->
-            nativeJson.decodeFromString(OperationAccepted.serializer(), api.expect("POST", "/api/v1/probes", body(id))).href
+        var firstError: ErrorCode? = null
+        for (batch in groupIds.chunked(4)) {
+            val errors = coroutineScope {
+                batch.map { id ->
+                    async {
+                        try {
+                            val accepted = api.read("POST", "/api/v1/probes", OperationAccepted.serializer(), body(id))
+                            val operation = api.finished(accepted.href)
+                            if (operation.status == OperationStatus.Failed) operation.error?.errorCode() ?: ErrorCode.Internal else null
+                        } catch (error: EngineException) {
+                            error.code
+                        }
+                    }
+                }.awaitAll()
+            }
+            if (firstError == null) firstError = errors.firstOrNull { it != null }
+            if (ErrorCode.Busy in errors) break
         }
-        val ended = coroutineScope { operations.map { async { api.finished(it) } }.awaitAll() }
-        ended.firstOrNull { it.status == OperationStatus.Failed }?.let { failed ->
-            throw EngineException(failed.error?.errorCode() ?: ErrorCode.Internal)
-        }
+        firstError?.let { throw EngineException(it) }
     }
 
     /** Tests node [nodeId] the same way and waits until its probe ends; a probe honk could not run fails with its error. */

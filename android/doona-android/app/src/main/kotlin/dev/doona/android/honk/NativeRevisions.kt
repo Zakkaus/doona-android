@@ -38,7 +38,7 @@ internal class NativeRevisions(private val api: NativeApi) {
      * reload did not fail. The diagnostics name the accepted sources, which `GET /config` lists.
      */
     fun lastFailure(): ConfigFailure? {
-        val reload = api.read("GET", "/api/v1/runtime", HonkRuntimeReload.serializer()).lastReload
+        val reload = api.read("GET", "/api/v1/runtime", HonkRuntimeReload.serializer()).lastReload ?: return null
         if (reload.status != "failed") return null
         return configFailure(reload.error?.details?.diagnostics.orEmpty(), NativeConfig(api).config().sources)
     }

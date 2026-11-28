@@ -103,7 +103,10 @@ internal class SubDetailViewModel(
     fun change(state: RvSubDetailState) = sheet.update { state }
 
     /** Updates through honk (重試 on the banner, again); a refusal shows the banner, saying why. */
-    fun update() = call(RvSubDetailFailure::Update, then = { load() }) { catalog.refreshProvider(id) }
+    fun update() = call({ code ->
+        if (code == ErrorCode.FetchFailed) load()
+        RvSubDetailFailure.Update(code)
+    }, then = { load() }) { catalog.refreshProvider(id) }
 
     /**
      * Renames the provider's entry; a refusal (a name already in use, which honk's reload rejects, among them) opens
@@ -122,14 +125,12 @@ internal class SubDetailViewModel(
 
     /**
      * Deletes through honk (重試 on the banner, again); a refusal shows the banner over the page, saying why.
-     * `not_found` means it is gone already: the page leaves with no banner.
      */
-    fun delete() = call(RvSubDetailFailure::Delete, then = { read.update { it.copy(gone = true) } }) {
-        try {
-            catalog.removeProvider(id)
-        } catch (error: EngineException) {
-            if (error.code != ErrorCode.NotFound) throw error
-        }
+    fun delete() = call({ code ->
+        if (code == ErrorCode.NotFound) load()
+        RvSubDetailFailure.Delete(code)
+    }, then = { read.update { it.copy(gone = true) } }) {
+        catalog.removeProvider(id)
     }
 
     /** The provider [name]'s entry and the configuration file that holds it; null when no file has one. */
@@ -147,7 +148,10 @@ internal class SubDetailViewModel(
     private fun <T> call(failure: (ErrorCode) -> RvSubDetailFailure, then: (T) -> Unit, action: suspend () -> T) {
         sheet.update { it.copy(failed = null) }
         viewModelScope.launch {
-            attempt { action() }.onSuccess(then).onFailure { e -> sheet.update { it.copy(failed = failure(e.errorCode())) } }
+            attempt { action() }.onSuccess(then).onFailure { e ->
+                val failed = failure(e.errorCode())
+                sheet.update { it.copy(failed = failed) }
+            }
         }
     }
 

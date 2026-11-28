@@ -173,9 +173,20 @@ class SubDetailViewModelTest {
         honk.on("POST", "/api/v1/providers/s1/refresh", 202, HonkFixtures.body("operations/provider-refresh-accepted"))
         honk.on("GET", "/api/v1/operations/op-refresh", 200, HonkFixtures.body("operations/provider-refresh-failed"))
         val vm = detail()
+        for ((stage, code) in listOf("parse_failed" to ErrorCode.ParseFailed, "asset_too_large" to ErrorCode.TooLarge)) {
+            val error = """{"code":"fetch_failed","message":"The subscription could not be fetched.","details":{"stage":"$stage","node":null,"group_id":null}}"""
+            val providers = HonkFixtures.body("providers/rv-sample").replaceFirst("\"ok\"", "\"stale\"").replaceFirst("\"last_error\": null", "\"last_error\": $error")
+            honk.on("GET", "/api/v1/providers", 200, providers)
+            vm.update()
+            advanceUntilIdle()
+            assertEquals(RvSubDetailFailure.Update(ErrorCode.FetchFailed), vm.uiState.value.sheet.failed)
+            assertEquals(code, vm.uiState.value.sub?.lastFetchError)
+        }
+        honk.on("GET", "/api/v1/providers", 503, BUSY)
         vm.update()
         advanceUntilIdle()
         assertEquals(RvSubDetailFailure.Update(ErrorCode.FetchFailed), vm.uiState.value.sheet.failed)
+        assertEquals(ErrorCode.Busy, vm.uiState.value.readError)
     }
 
     @Test
@@ -200,11 +211,17 @@ class SubDetailViewModelTest {
     }
 
     @Test
-    fun `a delete honk answers not_found is gone already, with no banner`() = runTest {
-        honk.on("DELETE", "/api/v1/providers/s1", 404, BUSY)
+    fun `a missing delete operation leaves only when a new read finds no provider`() = runTest {
+        honk.on("DELETE", "/api/v1/providers/s1", 202, HonkFixtures.body("operations/provider-delete-accepted"))
+        honk.on("GET", "/api/v1/operations/op-delete", 404, """{"error":{"code":"resource_not_found","message":"The requested operation was not found."},"request_id":"r1"}""")
         val vm = detail()
         vm.delete()
-        assertNull(vm.uiState.value.sheet.failed)
+        advanceUntilIdle()
+        assertEquals(RvSubDetailFailure.Delete(ErrorCode.NotFound), vm.uiState.value.sheet.failed)
+        assertFalse(vm.uiState.value.gone)
+        honk.on("GET", "/api/v1/providers", 200, """{"providers":[],"next_cursor":null}""")
+        vm.delete()
+        advanceUntilIdle()
         assertTrue(vm.uiState.value.gone)
     }
 

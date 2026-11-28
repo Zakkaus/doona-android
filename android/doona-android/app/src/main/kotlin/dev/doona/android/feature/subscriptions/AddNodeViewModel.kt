@@ -154,14 +154,14 @@ internal class AddNodeViewModel(
 
     /**
      * Deletes node [id] after the question (重試 on the banner, again). A refusal leaves it in the list, with the banner
-     * and why; `not_found` means it is gone already, so the next read drops it with no banner.
+     * explaining why.
      */
     fun confirmDelete(id: String) {
         val name = catalogNodes.value?.first?.firstOrNull { it.id == id }?.name ?: local.value.deleteFailed?.name.orEmpty()
         local.update { it.copy(deletingId = null, deleteFailed = null, added = null) }
         viewModelScope.launch {
             val code = attempt { removeNode(id) }.exceptionOrNull()?.errorCode()
-            if (code != null && code != ErrorCode.NotFound) local.update { it.copy(deleteFailed = RvNodeDeleteFailed(id, name, code)) }
+            if (code != null) local.update { it.copy(deleteFailed = RvNodeDeleteFailed(id, name, code)) }
             load()
         }
     }

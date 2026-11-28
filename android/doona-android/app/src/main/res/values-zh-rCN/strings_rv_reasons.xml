@@ -4,6 +4,12 @@
          banner puts it before what stayed the same, joined by rv_sentences. -->
     <string name="rv_reason_invalid_argument">这个值无效。</string>
     <string name="rv_reason_not_found">这个项目已不存在。</string>
+    <string name="rv_reason_unsupported">honk 不支持此操作。</string>
+    <string name="rv_reason_duplicate_provider_name">已有同名订阅，请换个名称。</string>
+    <string name="rv_reason_request_too_large">请求内容太大。</string>
+    <string name="rv_add_conflict">无法添加订阅。请确认名称未被使用后重试。</string>
+    <string name="rv_delete_unknown">honk 无法确认订阅是否已删除。</string>
+    <string name="rv_recent_fetch_error">最近一次获取失败：%1$s</string>
     <string name="rv_reason_fetch_failed">服务器没有响应。</string>
     <string name="rv_reason_too_large">订阅内容太大。</string>
     <string name="rv_reason_parse_failed">无法解析订阅内容。</string>

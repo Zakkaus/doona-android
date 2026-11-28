@@ -51,7 +51,7 @@ internal data class ImportState(
  * that is left during a slow import must neither lose it nor let the page it returns to start a second one that also
  * commits. The import adds a provider to honk on [io] and runs in [scope], which outlives every page. honk requires a
  * name, so a request with none is named by its link's host; a name already in use fails with
- * [ErrorCode.InvalidArgument]. honk tells a fetch the local network refused from no other failed fetch, so a link on a
+ * [ErrorCode.DuplicateProviderName]. honk tells a fetch the local network refused from no other failed fetch, so a link on a
  * local address ([onLocalNetwork]) first asks [localNetwork] for access (ARCH D26) and, refused, fails with
  * [ErrorCode.LocalNetwork] without calling honk.
  */

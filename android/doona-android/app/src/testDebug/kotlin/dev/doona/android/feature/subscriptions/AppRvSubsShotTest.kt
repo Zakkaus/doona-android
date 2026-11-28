@@ -545,13 +545,13 @@ class AppRvSubsShotTest {
     private fun answering(answer: Answer): FakeHonk = sampleHonk().apply {
         on("POST", "/api/v1/providers", 201, HonkFixtures.body("providers/created-harbor"))
         val failed = when ((answer as? Answer.Fails)?.code) {
-            ErrorCode.FetchFailed -> "provider-create-fetch-failed"
-            ErrorCode.ParseFailed -> "provider-create-parse-failed"
-            ErrorCode.TooLarge -> return@apply on("POST", "/api/v1/providers", 413, HonkFixtures.body("errors/request-too-large"))
+            ErrorCode.FetchFailed -> HonkFixtures.body("operations/provider-create-fetch-failed")
+            ErrorCode.ParseFailed -> HonkFixtures.body("operations/provider-create-parse-failed")
+            ErrorCode.TooLarge -> HonkFixtures.body("operations/provider-create-parse-failed").replace("parse_failed", "asset_too_large")
             else -> return@apply
         }
         on("POST", "/api/v1/providers", 202, HonkFixtures.body("operations/provider-create-accepted"))
-        on("GET", "/api/v1/operations/op-create", 200, HonkFixtures.body("operations/$failed"))
+        on("GET", "/api/v1/operations/op-create", 200, failed)
     }
 
     private companion object {

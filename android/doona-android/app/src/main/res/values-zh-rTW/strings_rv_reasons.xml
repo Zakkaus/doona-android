@@ -4,6 +4,12 @@
          banner puts it before what stayed the same, joined by rv_sentences. -->
     <string name="rv_reason_invalid_argument">這個值無效。</string>
     <string name="rv_reason_not_found">這個項目已不存在。</string>
+    <string name="rv_reason_unsupported">honk 不支援這項操作。</string>
+    <string name="rv_reason_duplicate_provider_name">已有同名訂閱，請換個名稱。</string>
+    <string name="rv_reason_request_too_large">請求內容太大。</string>
+    <string name="rv_add_conflict">無法新增訂閱。請確認名稱未被使用後重試。</string>
+    <string name="rv_delete_unknown">honk 無法確認訂閱是否已刪除。</string>
+    <string name="rv_recent_fetch_error">最近一次取得失敗：%1$s</string>
     <string name="rv_reason_fetch_failed">伺服器沒有回應。</string>
     <string name="rv_reason_too_large">訂閱內容太大。</string>
     <string name="rv_reason_parse_failed">無法解析訂閱內容。</string>

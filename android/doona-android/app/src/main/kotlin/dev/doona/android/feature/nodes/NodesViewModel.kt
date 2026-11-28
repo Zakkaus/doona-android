@@ -131,12 +131,12 @@ class NodesViewModel internal constructor(
         val groupIds = read.value?.groupIds.orEmpty()
         viewModelScope.launch {
             try {
-                val done = attempt(NodesAction.Test) {
+                attempt(NodesAction.Test) {
                     withContext(io) {
                         if (nodeId != null) probes.node(nodeId) else probes.groups(groupIds)
                     }
                 }
-                if (done) load()
+                load()
             } finally {
                 running.value = null
             }
