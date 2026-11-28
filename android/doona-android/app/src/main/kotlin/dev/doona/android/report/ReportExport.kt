@@ -33,7 +33,7 @@ data class ExportedCrashes(val names: List<String>, val mark: Long)
  * carries, the crash files a pick in that sheet clears ([crashes]; none without the core's listing), and the new-issue
  * form on GitHub ([issueLink]: with the failure when there is one, else with the app and phone alone).
  */
-data class ReportZip(val file: File, val token: String, val crashes: ExportedCrashes?, val issueLink: String)
+data class ReportZip(val file: File, val token: String, val crashes: ExportedCrashes?, val issueLink: String, val eventCount: Int, val crashCount: Int)
 
 /**
  * The diagnostic report export: a zip in [outDir] of `report.json` ([reportJson]: honk's build, state and catalog read
@@ -45,7 +45,7 @@ data class ReportZip(val file: File, val token: String, val crashes: ExportedCra
  * listing (the core is unavailable) the zip takes the app's own, and nothing is cleared. An app crash file goes into the
  * zip only in the current format, its lines checked again; `report.json` names only the files the zip
  * holds, and a pick clears only those. Each zip is written under a part name and then takes a name of its own; one a
- * sheet took is deleted [SHARE_GRACE_MS] after the sheet returns ([returned]), which leaves the app picked time to read
+ * sheet took is deleted [SHARE_GRACE_MS] after release ([deleteAfterGrace]), which leaves the app picked time to read
  * it, and one no sheet took at once ([notOpened]); [sweep] removes what an earlier run left. Android-free; the share
  * sheet is [ReportExporter]'s.
  */
@@ -108,8 +108,8 @@ class ReportExport(
     /** Whether [zip] is still on disk: the system may clear the app's cache while a report waits to be shared. */
     suspend fun present(zip: ReportZip): Boolean = withContext(io) { zip.file.exists() }
 
-    /** The share sheet for [zip] returned, whatever the user did there. The zip goes after [SHARE_GRACE_MS]. */
-    fun returned(zip: ReportZip) {
+    /** Keep [zip] readable for [SHARE_GRACE_MS] after its owner releases it. */
+    fun deleteAfterGrace(zip: ReportZip) {
         scope.launch(io) {
             delay(SHARE_GRACE_MS)
             zip.file.delete()
@@ -211,7 +211,7 @@ class ReportExport(
             zip.delete()
             throw e
         }
-        return ReportZip(zip, token, cleared, issueLink)
+        return ReportZip(zip, token, cleared, issueLink, events.size, files.size)
     }
 
     /**

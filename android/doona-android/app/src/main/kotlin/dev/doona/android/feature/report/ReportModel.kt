@@ -25,9 +25,9 @@ internal data class RvRedaction(val nodes: Boolean = true, val ip: Boolean = tru
 internal data class RvReportPreview(
     val app: String,
     val device: String,
-    val nodes: Int,
-    val subscriptions: Int,
-    val rules: Int,
-    val events: Int,
-    val crashes: Int,
+    val nodes: Int?,
+    val subscriptions: Int?,
+    val rules: Int?,
+    val events: Int?,
+    val crashes: Int?,
 )

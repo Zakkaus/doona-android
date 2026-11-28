@@ -122,11 +122,12 @@ class RvReportShotTest {
         val ran = mutableListOf<String>()
         val actions = rvReportActions(github = { ran += "github" }, share = { ran += "share" })
         compose.setContent { Themed { RvReportScreen(RvReportBuild.Ready(redaction.value), rvSampleReport, redaction.value, { redaction.value = it }, onBack = {}, actions = actions) } }
-        for (id in listOf(R.string.rv_redact_ip, R.string.rv_redact_nodes, R.string.rv_redact_domains, R.string.rv_redact_apps)) {
+        compose.onNodeWithText(rvText(R.string.rv_redact_nodes)).assertIsNotEnabled()
+        for (id in listOf(R.string.rv_redact_ip, R.string.rv_redact_domains, R.string.rv_redact_apps)) {
             compose.onNodeWithText(rvText(id)).performSemanticsAction(SemanticsActions.OnClick)
             compose.waitForIdle()
         }
-        assertEquals(RvRedaction(nodes = false, ip = false, domains = false, apps = true), redaction.value)
+        assertEquals(RvRedaction(nodes = true, ip = false, domains = false, apps = true), redaction.value)
         compose.onNodeWithText(rvText(R.string.rv_report_github)).performClick()
         compose.onNodeWithText(rvText(R.string.rv_report_share)).performClick()
         assertEquals(listOf("github", "share"), ran)

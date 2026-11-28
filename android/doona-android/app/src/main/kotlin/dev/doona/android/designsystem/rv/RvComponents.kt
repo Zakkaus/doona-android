@@ -96,8 +96,8 @@ internal fun Modifier.rvRowSelect(selected: Boolean, onClick: () -> Unit, enable
 
 /** A switch row: the whole row toggles [value], with [rvRowPress]'s highlight. */
 @Composable
-internal fun Modifier.rvRowToggle(value: Boolean, onValueChange: (Boolean) -> Unit): Modifier =
-    toggleable(value, interactionSource = null, indication = rvRowIndication(), role = Role.Switch, onValueChange = onValueChange)
+internal fun Modifier.rvRowToggle(value: Boolean, onValueChange: ((Boolean) -> Unit)?): Modifier =
+    toggleable(value, enabled = onValueChange != null, interactionSource = null, indication = rvRowIndication(), role = Role.Switch, onValueChange = onValueChange ?: {})
 
 /** A choice drawn as a tile or disc: clipped to [shape], it selects with [rvPress]'s layer; while not [enabled] it takes no press. */
 @Composable

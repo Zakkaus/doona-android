@@ -81,9 +81,8 @@ internal class DebugHooks : BroadcastReceiver() {
 }
 
 /**
- * Writes the report through [exporter] and starts its share sheet with [start], in a task of its own. No result of the
- * sheet reaches a broadcast, so it counts as returned once it started: the zip goes
- * [dev.doona.android.report.ReportExport.SHARE_GRACE_MS] later, as after a page's sheet.
+ * Writes the report through [exporter] and starts its share sheet in a task of its own. Once started, the broadcast
+ * releases the zip with the same grace period as the report page.
  */
 internal suspend fun shareReport(exporter: ReportExporter, start: (Intent) -> Unit) {
     val share = exporter.export() ?: return VpnLog.warn("debug export: no report")
@@ -93,7 +92,7 @@ internal suspend fun shareReport(exporter: ReportExporter, start: (Intent) -> Un
         share.notOpened()
         return VpnLog.warn("debug export: no share sheet")
     }
-    share.returned()
+    share.deleteAfterGrace()
     VpnLog.info("debug export: share sheet started")
 }
 

@@ -236,7 +236,7 @@ class ReportExportTest : ExportFixture() {
         assertTrue(engine.cleared.isEmpty())
 
         // The sheet's return comes before its pick, or after: the order is the system's.
-        export.returned(ready)
+        export.deleteAfterGrace(ready)
         runCurrent()
         assertTrue("the return alone clears nothing", engine.cleared.isEmpty())
         export.picked(ready.token)
@@ -273,7 +273,7 @@ class ReportExportTest : ExportFixture() {
         val diagnostics = Json.parseToJsonElement(zip.getValue(ReportExport.REPORT_ENTRY)).jsonObject["diagnostics"]!!.jsonObject
         assertEquals("Internal", diagnostics["error"]!!.jsonPrimitive.content)
         export.picked(ready.token)
-        export.returned(ready)
+        export.deleteAfterGrace(ready)
         advanceUntilIdle()
         assertTrue(engine.cleared.isEmpty())
     }
@@ -298,7 +298,7 @@ class ReportExportTest : ExportFixture() {
         fake.crashes = listOf(CrashFile(crash, 1))
         val engine = Recording(fake)
         val export = export(engine)
-        export.returned(export.build()!!)
+        export.deleteAfterGrace(export.build()!!)
         advanceUntilIdle()
         assertTrue(engine.cleared.isEmpty())
     }
@@ -317,7 +317,7 @@ class ReportExportTest : ExportFixture() {
         val export = export(fixtureEngine())
         val ready = export.build()!!
         val zip = ready.file
-        export.returned(ready)
+        export.deleteAfterGrace(ready)
         advanceTimeBy(ReportExport.SHARE_GRACE_MS - 1)
         runCurrent()
         assertTrue(zip.exists())
@@ -356,7 +356,7 @@ class ReportExportTest : ExportFixture() {
         val engine = Recording(fake)
         val export = export(engine)
         val firstExport = export.build()!!
-        export.returned(firstExport)
+        export.deleteAfterGrace(firstExport)
         // A crash after the first export: only the second holds it.
         val second = appCrash(1_795_300_160_000)
         fake.crashes = listOf(CrashFile(first, 1), CrashFile(second, 1))
@@ -427,7 +427,7 @@ class ReportExportTest : ExportFixture() {
         val export = export(engine)
         val ready = export.build()!!
         export.picked(ready.token)
-        export.returned(ready)
+        export.deleteAfterGrace(ready)
         advanceUntilIdle()
         val saved = tmp.root.resolve("report-exports.json")
         assertTrue(saved.setReadable(false))
@@ -467,7 +467,7 @@ class ReportExportTest : ExportFixture() {
         val engine = Recording(fake)
         val export = export(engine)
         val tokens = (1..9).map {
-            export.build()!!.also(export::returned).token
+            export.build()!!.also(export::deleteAfterGrace).token
         }
         export.picked(tokens.first())
         advanceUntilIdle()

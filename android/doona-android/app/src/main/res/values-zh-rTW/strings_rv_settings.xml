@@ -66,7 +66,6 @@
 
     <string name="rv_report_title">回報問題</string>
     <string name="rv_report_failed">無法匯出診斷報告</string>
-    <string name="rv_report_failed_reason">doona 的核心沒有回應。</string>
     <string name="rv_report_link_failed">無法開啟 GitHub</string>
     <string name="rv_report_link_failed_reason">這支手機沒有 App 能開啟連結，請改用分享檔案。</string>
     <string name="rv_log_failed">無法變更日誌等級</string>

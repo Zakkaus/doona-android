@@ -26,7 +26,7 @@ class ExportPicksTest : ExportFixture() {
         val process = CoroutineScope(StandardTestDispatcher(testScheduler) + Job())
         val before = export(dying, scope = process)
         val tokens = (1..2).map {
-            before.build()!!.also(before::returned).token
+            before.build()!!.also(before::deleteAfterGrace).token
         }
         // The first clear does not return; the second pick waits for it.
         tokens.forEach { before.picked(it) }
