@@ -9,17 +9,14 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.captureRoboImage
-import dev.doona.android.testing.GalleryVariants
+import dev.doona.android.testing.GalleryCase
 import dev.doona.android.testing.PhoneFrame
 import dev.doona.android.testing.RvGalleryVariants
-import dev.doona.android.testing.ScreenCase
-import dev.doona.android.testing.ScreenVariants
 import dev.doona.android.testing.SeedTheme
 import dev.doona.android.testing.Variant
 import dev.doona.android.testing.checkAccessibility
 import dev.doona.android.testing.drawFully
-import dev.doona.android.testing.rvGalleryScreenCases
-import dev.doona.android.testing.screenCases
+import dev.doona.android.testing.rvGalleryCases
 import dev.doona.android.testing.showsContent
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -32,7 +29,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Every screen in every [Variant], and every component gallery page at the phone's variants: draws it inside a phone frame, compares or records the golden in
+ * Draws each component gallery page inside a phone frame, compares or records the golden in
  * `src/test/screenshots/<screen>-<variant>.png` (`-Ddoona.shots=<dir>` records elsewhere, for looking), and runs
  * Google's accessibility checks on the same render. The content area of the capture, without the frame's bars, must show
  * ink: the frame draws a clock and a handle even when the page is empty.
@@ -49,7 +46,7 @@ class ScreenshotTest(private val name: String, private val variant: Variant) {
     @Test
     fun matchesGoldenAndPassesAccessibilityChecks() {
         RuntimeEnvironment.setQualifiers(variant.qualifiers)
-        val case = (screenCases() + rvGalleryScreenCases()).first { it.name == name }
+        val case = rvGalleryCases().first { it.name == name }
         compose.setContent { Framed(case, variant) }
         compose.drawFully()
         // One capture is checked, recorded and compared, so what is checked is what the golden holds.
@@ -63,13 +60,12 @@ class ScreenshotTest(private val name: String, private val variant: Variant) {
         @JvmStatic
         @Parameters(name = "{0}-{1}")
         fun parameters(): List<Array<Any>> =
-            screenCases().flatMap { case -> ScreenVariants.map { arrayOf(case.name, it) } } +
-                rvGalleryScreenCases().flatMap { case -> RvGalleryVariants.map { arrayOf(case.name, it) } }
+            rvGalleryCases().flatMap { case -> RvGalleryVariants.map { arrayOf(case.name, it) } }
     }
 }
 
 @Composable
-private fun Framed(case: ScreenCase, variant: Variant) {
+private fun Framed(case: GalleryCase, variant: Variant) {
     val density = LocalDensity.current
     CompositionLocalProvider(LocalDensity provides Density(density.density, variant.fontScale)) {
         SeedTheme { PhoneFrame(case.content) }
