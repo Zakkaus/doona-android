@@ -153,8 +153,8 @@ class NavigationTest {
     @Test
     fun `全部規則 on 活動 opens the rules page and back returns to 活動`() {
         val res = ApplicationProvider.getApplicationContext<Context>().resources
-        // 活動 counts the rules honk runs: the app's honk serves its contract's three.
-        val rules = Json.parseToJsonElement(HonkFixtures.body("rules/running")).jsonObject.getValue("rules").jsonArray.size
+        // 活動 counts the rules honk runs: the app's honk serves the RV sample's.
+        val rules = Json.parseToJsonElement(HonkFixtures.body("rules/rv-sample")).jsonObject.getValue("rules").jsonArray.size
         val seeAll = res.getQuantityString(R.plurals.rv_see_all_rules, rules, rules)
         compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS, mode = Mode.Rule), FakeInstalledApps(), onConnect = {}) } }
         appears(seeAll)

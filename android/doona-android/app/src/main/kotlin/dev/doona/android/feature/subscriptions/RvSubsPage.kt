@@ -238,8 +238,6 @@ private fun SubsSkeleton(subscriptions: List<RvSubscription>) {
 /** The subscription cards the skeleton shows: two, as Revolut's list skeleton shows two rows (revolut-UX §11). */
 private const val SKELETON_CARDS = 2
 
-/** The key (and row) of 新增訂閱 closing a removable list: no subscription id takes this form. */
-
 /**
  * Used of total at the start and the end date as of [nowEpochMs] at the end, over the quota's bar (Revolut's goal card,
  * #13). With no quota the start reads — and there is no bar, as on the subscription's page.
