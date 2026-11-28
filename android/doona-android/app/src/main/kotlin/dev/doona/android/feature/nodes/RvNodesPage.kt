@@ -267,7 +267,7 @@ private fun RegionCard(region: RvRegion, nodes: List<RvNode>, current: Set<Strin
 }
 
 /**
- * A node in its part of the world: the flag (badged in use), the name, `協定 · 地區`, and its latency over its change. With
+ * A node in its part of the world: the flag (badged in use), the name, `協定 / 地區`, and its latency over its change. With
  * [score] the line begins with the node's Score mark where a Score group chose it.
  */
 @Composable

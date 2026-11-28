@@ -113,7 +113,7 @@ class RvNodeScoreShotTest {
     @Config(qualifiers = PAGE_BOTH)
     fun bothNetworksMarkScoreAlone() {
         compose.rvContent(dark = false) { Page(both) }
-        assertEquals(listOf(listOf("Score · VLESS · 香港")), markedLinesNow())
+        assertEquals(listOf(listOf("Score / VLESS / 香港")), markedLinesNow())
     }
 
     @Test
@@ -136,7 +136,7 @@ class RvNodeScoreShotTest {
             .flatMap { it.config[SemanticsProperties.Text] }
             .map { it.text.replace(WORD_JOINER, "") }
             .filter { it.startsWith(MARK) }
-        assertEquals(listOf("Score TCP · VLESS · 香港", "Score UDP · Trojan · 香港"), marked)
+        assertEquals(listOf("Score TCP / VLESS / 香港", "Score UDP / Trojan / 香港"), marked)
         val points = compose.onAllNodesWithText("分", substring = true, useUnmergedTree = true).fetchSemanticsNodes()
             .flatMap { it.config[SemanticsProperties.Text] }
             .filter { it.text.replace(WORD_JOINER, "").matches(POINTS) }
@@ -146,19 +146,19 @@ class RvNodeScoreShotTest {
     /** A marked row's line fits one line at the default size, as an unmarked row's does. */
     @Test
     @Config(qualifiers = PAGE_A)
-    fun aMarkKeepsTheLineOnOneLine() = assertEquals(listOf(listOf("Score TCP · VLESS · 香港"), listOf("Score UDP · Trojan · 香港")), markedLines(1f))
+    fun aMarkKeepsTheLineOnOneLine() = assertEquals(listOf(listOf("Score TCP / VLESS / 香港"), listOf("Score UDP / Trojan / 香港")), markedLines(1f))
 
-    /** At fs115 the line is too long for one line and breaks after the mark's dot: the protocol begins the second line. */
+    /** At fs115 the line is too long for one line and breaks after the mark's slash: the protocol begins the second line. */
     @Test
     @Config(qualifiers = PAGE_A_FS115)
-    fun aMarkBreaksAfterTheDotAtFs115() =
-        assertEquals(listOf(listOf("Score TCP ·", "VLESS · 香港"), listOf("Score UDP ·", "Trojan · 香港")), markedLines(RV_FS115))
+    fun aMarkBreaksAfterTheSlashAtFs115() =
+        assertEquals(listOf(listOf("Score TCP /", "VLESS / 香港"), listOf("Score UDP /", "Trojan / 香港")), markedLines(RV_FS115))
 
-    /** At fs200 too the dot ends the first line and the protocol begins the next. */
+    /** At fs200 too the slash ends the first line and the protocol begins the next. */
     @Test
     @Config(qualifiers = PAGE_A_FS200)
-    fun aMarkBreaksAfterTheDotAtFs200() = markedLines(RV_FS200).forEach { lines ->
-        assertEquals(lines.toString(), true, lines.size > 1 && lines.dropLast(1).all { it.endsWith(" ·") } && lines[1].first().isLetter())
+    fun aMarkBreaksAfterTheSlashAtFs200() = markedLines(RV_FS200).forEach { lines ->
+        assertEquals(lines.toString(), true, lines.size > 1 && lines.dropLast(1).all { it.endsWith(" /") } && lines[1].first().isLetter())
     }
 
     /** The lines each marked row's line is laid out in, without word joiners. */

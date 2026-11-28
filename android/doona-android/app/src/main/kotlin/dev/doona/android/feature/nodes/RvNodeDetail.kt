@@ -104,7 +104,7 @@ internal fun RvNodeDetail(
 
 /**
  * A node's page before the catalog is read, as after process death (the page knows only the node's id): the head's
- * flag, name and `協定 · 地區` as bars, 延遲紀錄's figure, time and chart, then 詳細資料's labels over their values' bars, each
+ * flag, name and `協定 / 地區` as bars, 延遲紀錄's figure, time and chart, then 詳細資料's labels over their values' bars, each
  * in the bounds of what replaces it (decision 2026-11-24 15:17). The status chips and the floating actions come with the
  * node.
  */
@@ -141,7 +141,7 @@ internal fun RvNodeDetailSkeleton(onBack: () -> Unit) {
 }
 
 /**
- * The flag over the name, `協定 · 地區`, and the chips that apply: in use, a Score group's choice ([scoreMark], the same
+ * The flag over the name, `協定 / 地區`, and the chips that apply: in use, a Score group's choice ([scoreMark], the same
  * chip in the same green), and a latency over the good range.
  */
 @Composable

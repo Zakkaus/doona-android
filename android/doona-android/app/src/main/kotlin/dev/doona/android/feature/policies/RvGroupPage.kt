@@ -46,7 +46,6 @@ import dev.doona.android.designsystem.rv.RvSkeletonSize
 import dev.doona.android.designsystem.rv.RvSkeletonText
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSwitchRow
-import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rvMarkName
 import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.designsystem.rv.rvShimmer
@@ -61,6 +60,7 @@ import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.rvScorePick
 import dev.doona.android.feature.model.rvSectionOrder
 import dev.doona.android.feature.model.text
+import dev.doona.android.feature.nodes.ui.NODE_SEPARATOR
 import dev.doona.android.feature.nodes.ui.RvApplyCard
 import dev.doona.android.feature.nodes.ui.RvApplyTo
 import dev.doona.android.feature.nodes.ui.RvNodePickRow
@@ -259,7 +259,7 @@ private fun MemberGroupsCard(group: RvPolicyGroup, choice: RvApplyChoice, score:
             RvGroupRow(
                 member.kind.glyph,
                 member.name.text(),
-                listOfNotNull(lead(choice, member.id, score), stringResource(member.kind.label)).joinToString(SEPARATOR),
+                listOfNotNull(lead(choice, member.id, score), stringResource(member.kind.label)).joinToString(NODE_SEPARATOR),
                 member.node,
                 Modifier.rvRowSelect(chosen, { onTap(member.id) }),
                 current = chosen,
@@ -332,7 +332,7 @@ private fun NetworkRow(node: RvNode, network: String?, onDetail: (String) -> Uni
     RvRow(
         { RvNameDisc(shown.mark, node.place.flag, current = true) },
         shown.text.ifEmpty { rvMarkName(shown.mark, place) },
-        listOfNotNull(network, node.protocol, place).joinToString(SEPARATOR),
+        listOfNotNull(network, node.protocol, place).joinToString(NODE_SEPARATOR),
         onClick = { onDetail(node.id) },
         titleKeepWords = false,
     ) { RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut) }

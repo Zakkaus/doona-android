@@ -10,7 +10,6 @@ import androidx.compose.ui.unit.Dp
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvNameDisc
 import dev.doona.android.designsystem.rv.RvNameMark
-import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.rvMarkLabel
 import dev.doona.android.designsystem.rv.rvMarkName
 import dev.doona.android.designsystem.rv.rvShownName
@@ -56,7 +55,10 @@ internal fun RvNodeDisc(node: RvNode, size: Dp, modifier: Modifier = Modifier, c
 }
 
 /**
- * A node row's second line: its [parts] (a mark, the protocol, the place) joined by the separator, the empty ones left
- * out, so a node whose details the core has not sent (no protocol yet) reads 其他, not 「 · 其他」.
+ * A node row's second line: its [parts] (a mark, the protocol, the place) joined by [NODE_SEPARATOR], the empty ones left
+ * out, so a node whose details the core has not sent (no protocol yet) reads 其他, not 「 / 其他」.
  */
-internal fun rvNodeLine(vararg parts: String?): String = parts.filterNot { it.isNullOrEmpty() }.joinToString(SEPARATOR)
+internal fun rvNodeLine(vararg parts: String?): String = parts.filterNot { it.isNullOrEmpty() }.joinToString(NODE_SEPARATOR)
+
+/** The slash between a node's mark, protocol and place (owner, 2026-11-29; it replaced 「·」). */
+internal const val NODE_SEPARATOR = " / "
