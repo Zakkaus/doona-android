@@ -74,7 +74,7 @@ internal class TemplateViewModel(private val api: NativeApi, private val io: Cor
     private fun loadsGeosite(): Boolean = try {
         api.geoData().assets.any { it.kind == GEOSITE }
     } catch (error: EngineException) {
-        if (error.code != ErrorCode.NotFound) throw error
+        if (error.code != ErrorCode.Unsupported) throw error
         false
     }
 

@@ -5,6 +5,7 @@
     <plurals name="rv_conn_summary">
         <item quantity="other">%1$d 條連線，下載 %2$s，上傳 %3$s</item>
     </plurals>
+    <string name="rv_conn_loaded_scope">已載入 %1$d 條，共 %2$d 條。流量統計與搜尋只包含已載入的連線。</string>
     <string name="rv_conn_all_apps">全部 App</string>
     <string name="rv_conn_newest">最新優先</string>
     <string name="rv_conn_oldest">最早優先</string>
@@ -16,6 +17,8 @@
     <string name="rv_conn_rule_index">第 %1$d 條規則</string>
     <string name="rv_conn_no_domain">無網域</string>
     <string name="rv_conn_close">關閉連線</string>
+    <string name="rv_conn_not_closable">honk 無法關閉這條連線。</string>
+    <string name="rv_conn_close_unknown">honk 無法確認連線是否已關閉。</string>
     <plurals name="rv_conn_matches">
         <item quantity="other">%1$d 條連線符合</item>
     </plurals>

@@ -20,12 +20,12 @@ internal class NativeRouting(private val api: NativeApi) {
      * Whether honk's last reload left its files unloaded: they did not pass admission, so honk still runs the generation
      * before them, and the rules read are not the ones on disk.
      */
-    fun sourcesRejected(): Boolean = api.read("GET", "/api/v1/runtime", HonkRuntimeReload.serializer()).lastReload.rejected
+    fun sourcesRejected(): Boolean = api.read("GET", "/api/v1/runtime", HonkRuntimeReload.serializer()).lastReload?.rejected == true
 }
 
 /** The part of `GET /runtime` the rule pages read. */
 @Serializable
-internal class HonkRuntimeReload(@SerialName("last_reload") val lastReload: HonkLastReload)
+internal class HonkRuntimeReload(@SerialName("last_reload") val lastReload: HonkLastReload?)
 
 /** A reload that failed with nothing committed ([HonkReloadDetails.committed] false) kept the generation before it. */
 @Serializable

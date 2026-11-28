@@ -16,7 +16,6 @@ import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.feature.messageRes
-import dev.doona.android.honk.NativeConnections
 
 /**
  * The 連線 tab (`ConnectionsKey`): [model]'s list, read each time the page starts during [session],
@@ -37,6 +36,7 @@ internal fun ConnectionsRoute(model: ConnectionsViewModel, session: Long?, onOpe
         session != null,
         ui.nowEpochMs,
         loaded = ui.session == session && ui.loaded,
+        truncatedTotal = ui.truncatedTotal,
     )
 }
 
@@ -54,7 +54,7 @@ internal fun ConnectionRoute(model: ConnectionsViewModel, id: String, session: L
     val snapshot = ui.takeIf { it.session == session }
     val connection = snapshot?.connections?.firstOrNull { it.id == id }
     if (session == null || connection == null) {
-        if (session == null || (snapshot?.loaded == true && snapshot.connections.size < NativeConnections.LIMIT)) {
+        if (session == null || (snapshot?.loaded == true && snapshot.truncatedTotal == null)) {
             LaunchedEffect(id) { onBack() }
         } else {
             val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
@@ -65,10 +65,13 @@ internal fun ConnectionRoute(model: ConnectionsViewModel, id: String, session: L
         }
         return
     }
+    val notice = model.closeNotices[id]
+    if (notice == null && id in model.closeNotices) LaunchedEffect(session, id) { onBack() }
     RvConnectionDetail(
         connection,
         onBack = onBack,
-        onClose = { model.close(id, onBack) },
+        closeNotice = notice?.let { stringResource(it) },
+        onClose = if (id in model.closeNotices && notice in listOf(null, R.string.rv_a11y_busy, R.string.rv_conn_not_closable)) null else ({ model.close(session, id) }),
         onNewRule = { onNewRule(if (connection.hasDomain) connection.host else connection.host + if (':' in connection.host) "/128" else "/32") },
         nowEpochMs = ui.nowEpochMs,
     )

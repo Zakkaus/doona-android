@@ -1,12 +1,21 @@
 package dev.doona.android.feature.connections
 
+import dev.doona.android.R
 import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.honk.HonkFixtures
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -44,19 +53,48 @@ class ConnectionsViewModelTest {
     }
 
     @Test
-    fun closeClosesTheConnectionAndReadsAgain() {
-        honk.on("DELETE", "/api/v1/connections/tcp-sample-01", 204, "")
-        val reading = model.load(NOW, "tcp-sample-01")
-        honk.on("GET", LIST_PATH, 200, HonkFixtures.body("connections/connections-example"))
+    fun theSummaryRetainsTheTotalBeyondTheLoadedPage() {
+        val sample = Json.parseToJsonElement(HonkFixtures.body("connections/connections-sample")).jsonObject
+        val tcp = sample.getValue("tcp").jsonArray.first().jsonObject
+        val page = sample + ("tcp" to JsonArray(List(999) { JsonObject(tcp + ("id" to JsonPrimitive("tcp-$it"))) }))
+        for ((tcpCount, expected) in listOf(1000L to 1001L, 999L to null)) {
+            val response = JsonObject(page + ("truncated" to JsonPrimitive(expected != null)) + ("total_tcp" to JsonPrimitive(tcpCount)))
+            honk.on("GET", LIST_PATH, 200, response.toString())
+            model.load(NOW).cancel()
+            assertEquals(1000, model.ui.value.connections.size)
+            assertEquals(expected, model.ui.value.truncatedTotal)
+        }
+    }
 
-        var closed = false
-        model.close("tcp-sample-01") { closed = true }
-        assertTrue(closed)
-        main.scheduler.advanceTimeBy(MS_PER_SECOND + 1)
-        reading.cancel()
+    @Test
+    fun rotatingWhileClosingDoesNotResendAndKeepsTheRefusal() = runTest {
+        val vm = ConnectionsViewModel(honk, CoreNodePlaces, { NOW }, StandardTestDispatcher(testScheduler))
+        val id = "tcp-sample-01"
+        honk.on("DELETE", "/api/v1/connections/$id", 409, """{"error":{"code":"state_conflict","message":"Connection is not owned by a closable userspace transport"},"request_id":"r1"}""")
+        val first = vm.load(NOW, id)
+        testScheduler.runCurrent()
+        vm.close(NOW, id)
+        first.cancel()
+        val restored = vm.load(NOW, id)
+        vm.close(NOW, id)
+        testScheduler.runCurrent()
+        assertEquals(R.string.rv_conn_not_closable, vm.closeNotices[id])
+        vm.close(NOW, id)
+        testScheduler.runCurrent()
+        assertEquals(1, honk.calls.count { it.method == "DELETE" })
+        restored.cancel()
+    }
 
-        assertEquals(1, honk.calls.count { it.method == "DELETE" && it.path == "/api/v1/connections/tcp-sample-01" })
-        assertEquals(listOf("udp-01HZX4K8W6", "tcp-01HZX4K8W5"), model.ui.value.connections.map { it.id })
+    @Test
+    fun anUnconfirmedCloseCanBeRetriedUntilItSucceeds() {
+        val id = "tcp-sample-01"
+        model.load(NOW).cancel()
+        honk.on("DELETE", "/api/v1/connections/$id", 503, HonkFixtures.body("errors/temporarily-unavailable"))
+        model.close(NOW, id)
+        assertEquals(R.string.rv_conn_close_unknown, model.closeNotices[id])
+        honk.on("DELETE", "/api/v1/connections/$id", 204, "")
+        model.close(NOW, id)
+        assertTrue(id in model.closeNotices && model.closeNotices[id] == null)
     }
 
     @Test

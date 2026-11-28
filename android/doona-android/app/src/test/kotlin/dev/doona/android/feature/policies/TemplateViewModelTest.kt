@@ -49,7 +49,7 @@ class TemplateViewModelTest {
 
     @Test
     fun `without a GeoSite file honk loaded, every template that reads GeoSite needs one`() = runTest {
-        val honk = PolicyHonkFixtures.handWritten().apply { on("GET", "/api/v1/geodata", 404, HonkFixtures.body("errors/snapshot-unavailable")) }
+        val honk = PolicyHonkFixtures.handWritten().apply { on("GET", "/api/v1/geodata", 404, """{"error":{"code":"capability_not_supported","message":"Unavailable"},"request_id":"geo"}""") }
         val vm = TemplateViewModel(honk, io = UnconfinedTestDispatcher(testScheduler))
         advanceUntilIdle()
         assertEquals(RvRuleSource.File, vm.uiState.value.source)

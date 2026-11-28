@@ -200,9 +200,16 @@ private fun Imported(sub: RvSubscription, protocols: List<RvProtocolCount>) {
 private fun failure(failure: RvAddFailure, onRetry: () -> Unit): RvNotice {
     val reason = when (failure) {
         RvAddFailure.Unreachable -> stringResource(R.string.rv_add_unreachable)
+
         RvAddFailure.NotSubscription -> stringResource(R.string.rv_add_not_subscription_reason)
+
         RvAddFailure.TooLarge -> stringResource(R.string.rv_add_too_large, rememberRvFormat().mebibytes(BuildConfig.SUBSCRIPTION_MAX_BODY_BYTES).unbroken())
-        is RvAddFailure.NotSaved -> stringResource(failure.code.reasonRes())
+
+        is RvAddFailure.NotSaved -> when (failure.code) {
+            ErrorCode.LocalNetwork -> stringResource(R.string.rv_lan_denied_title)
+            ErrorCode.Conflict -> stringResource(R.string.rv_add_conflict)
+            else -> stringResource(failure.code.reasonRes())
+        }
     }
     return RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_add_failed), reason, stringResource(R.string.rv_retry), onRetry)
 }

@@ -11,10 +11,7 @@ import kotlinx.serialization.Serializable
  */
 internal class NativeConnections(private val api: NativeApi) {
     /** Up to [LIMIT] open connections, TCP and UDP together, newest first. */
-    fun list(): List<HonkConnection> {
-        val page = api.read("GET", "/api/v1/connections?limit=$LIMIT&detail=full", ConnectionListDto.serializer())
-        return (page.tcp.map { it.toConnection(udp = false) } + page.udp.map { it.toConnection(udp = true) }).sortedByDescending { it.startedAtEpochMs }
-    }
+    fun list(): ConnectionListDto = api.read("GET", "/api/v1/connections?limit=$LIMIT&detail=full", ConnectionListDto.serializer())
 
     /** Closes [id]; one already gone fails with [ErrorCode.NotFound], one honk does not carry itself with [ErrorCode.InvalidArgument]. */
     fun close(id: String) {
@@ -52,7 +49,9 @@ internal data class HonkConnection(
 )
 
 @Serializable
-internal class ConnectionListDto(val tcp: List<ConnectionDto>, val udp: List<ConnectionDto>)
+internal class ConnectionListDto(val tcp: List<ConnectionDto>, val udp: List<ConnectionDto>, val truncated: Boolean, @SerialName("total_tcp") val totalTcp: Long, @SerialName("total_udp") val totalUdp: Long) {
+    val rows get() = (tcp.map { it.toConnection(udp = false) } + udp.map { it.toConnection(udp = true) }).sortedByDescending { it.startedAtEpochMs }
+}
 
 @Serializable
 internal class ConnectionDto(

@@ -13,6 +13,7 @@ import dev.doona.android.engine.FailureReason
 fun ErrorCode.messageRes(): Int = when (this) {
     ErrorCode.InvalidArgument -> R.string.error_invalid_argument
     ErrorCode.NotFound -> R.string.error_not_found
+    ErrorCode.Unsupported, ErrorCode.DuplicateProviderName, ErrorCode.RequestTooLarge -> reasonRes()
     ErrorCode.FetchFailed -> R.string.error_fetch_failed
     ErrorCode.TooLarge -> R.string.error_too_large
     ErrorCode.ParseFailed -> R.string.error_parse_failed
@@ -34,8 +35,11 @@ fun ErrorCode.messageRes(): Int = when (this) {
 fun ErrorCode.reasonRes(): Int = when (this) {
     ErrorCode.InvalidArgument -> R.string.rv_reason_invalid_argument
     ErrorCode.NotFound -> R.string.rv_reason_not_found
+    ErrorCode.Unsupported -> R.string.rv_reason_unsupported
+    ErrorCode.DuplicateProviderName -> R.string.rv_reason_duplicate_provider_name
     ErrorCode.FetchFailed -> R.string.rv_reason_fetch_failed
     ErrorCode.TooLarge -> R.string.rv_reason_too_large
+    ErrorCode.RequestTooLarge -> R.string.rv_reason_request_too_large
     ErrorCode.ParseFailed -> R.string.rv_reason_parse_failed
     ErrorCode.NoNodes -> R.string.rv_reason_no_nodes
     ErrorCode.Busy -> R.string.rv_reason_busy

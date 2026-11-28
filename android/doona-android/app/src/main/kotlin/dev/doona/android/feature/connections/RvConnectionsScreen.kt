@@ -71,6 +71,7 @@ internal fun RvConnectionsPage(
     connected: Boolean = true,
     nowEpochMs: Long,
     loaded: Boolean = true,
+    truncatedTotal: Long? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -93,9 +94,10 @@ internal fun RvConnectionsPage(
     ) {
         when {
             !connected || !loaded -> RvTabHeader(insets)
-            query == null -> RvTabHeader(insets, caption = { Summary(connections) }, control = { Filters(order) { order = it } })
+            query == null -> RvTabHeader(insets, caption = { Summary(connections, truncatedTotal) }, control = { Filters(order) { order = it } })
             else -> RvTabHeader(insets, caption = { RvCaption(pluralStringResource(R.plurals.rv_conn_matches, shown.size, shown.size)) })
         }
+        if (connected && loaded && truncatedTotal != null) RvGutter { RvCaption(stringResource(R.string.rv_conn_loaded_scope, connections.size, truncatedTotal), lines = Int.MAX_VALUE) }
         when {
             !connected -> Disconnected()
 
@@ -137,11 +139,11 @@ private fun Connections(shown: List<RvConnection>, routes: RvConnectionsRoutes, 
 
 /** How many connections are open and what they moved each way: the header's caption, as 節點's. */
 @Composable
-private fun Summary(connections: List<RvConnection>) {
+private fun Summary(connections: List<RvConnection>, truncatedTotal: Long?) {
     val format = rememberRvFormat()
     val down = format.bytes(connections.sumOf { it.downBytes }).toString()
     val up = format.bytes(connections.sumOf { it.upBytes }).toString()
-    RvCaption(pluralStringResource(R.plurals.rv_conn_summary, connections.size, connections.size, down, up))
+    RvCaption(pluralStringResource(R.plurals.rv_conn_summary, connections.size, truncatedTotal ?: connections.size.toLong(), down, up))
 }
 
 /** The app and order chips, the header's control row: one at each end of the gutter. */

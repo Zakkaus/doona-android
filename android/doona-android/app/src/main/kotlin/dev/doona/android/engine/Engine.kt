@@ -175,10 +175,13 @@ interface Engine : ConfigEngine {
  * written, as the disk or the app's quota is full, or for another I/O error.
  */
 enum class ErrorCode {
+    Unsupported,
+    DuplicateProviderName,
     InvalidArgument,
     NotFound,
     FetchFailed,
     TooLarge,
+    RequestTooLarge,
     ParseFailed,
     NoNodes,
     Busy,

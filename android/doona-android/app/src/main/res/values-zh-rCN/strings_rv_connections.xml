@@ -5,6 +5,7 @@
     <plurals name="rv_conn_summary">
         <item quantity="other">%1$d 条连接，下载 %2$s，上传 %3$s</item>
     </plurals>
+    <string name="rv_conn_loaded_scope">已加载 %1$d 条，共 %2$d 条。流量统计与搜索仅包含已加载的连接。</string>
     <string name="rv_conn_all_apps">全部应用</string>
     <string name="rv_conn_newest">最新优先</string>
     <string name="rv_conn_oldest">最早优先</string>
@@ -16,6 +17,8 @@
     <string name="rv_conn_rule_index">第 %1$d 条规则</string>
     <string name="rv_conn_no_domain">无域名</string>
     <string name="rv_conn_close">关闭连接</string>
+    <string name="rv_conn_not_closable">honk 无法关闭这条连接。</string>
+    <string name="rv_conn_close_unknown">honk 无法确认连接是否已关闭。</string>
     <plurals name="rv_conn_matches">
         <item quantity="other">%1$d 条连接匹配</item>
     </plurals>

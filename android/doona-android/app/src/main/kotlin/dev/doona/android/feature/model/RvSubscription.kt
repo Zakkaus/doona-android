@@ -1,6 +1,7 @@
 package dev.doona.android.feature.model
 
 import androidx.compose.runtime.Immutable
+import dev.doona.android.engine.ErrorCode
 
 /**
  * A subscription: its name, the nodes it gave, when it was refreshed, its quota used of total, when it ends, if it does,
@@ -20,6 +21,7 @@ internal data class RvSubscription(
     val host: String = "",
     val format: RvSubFormat? = RvSubFormat.Links,
     val userAgent: String? = null,
+    val lastFetchError: ErrorCode? = null,
 ) {
     /** Whether the provider sent a quota; the sample marks none as a total of 0, as 統計 and 訂閱's bar already read it. */
     val hasQuota: Boolean get() = totalBytes > 0L

@@ -2,7 +2,6 @@ package dev.doona.android.honk
 
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
-import kotlinx.coroutines.delay
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonPrimitive
@@ -21,7 +20,7 @@ internal class NativeCatalog(private val api: NativeApi) {
         api.read("GET", page("/api/v1/providers", cursor), ProviderList.serializer()).let { it.providers to it.nextCursor }
     }
 
-    /** A [userAgent] of null leaves honk's default. A name already in use fails with [ErrorCode.InvalidArgument]. */
+    /** A [userAgent] of null leaves honk's default. A name already in use fails with [ErrorCode.DuplicateProviderName]. */
     suspend fun addProvider(name: String, url: String, userAgent: String?): Provider {
         val body = buildJsonObject {
             put("name", name)
@@ -29,14 +28,23 @@ internal class NativeCatalog(private val api: NativeApi) {
             put("url", url)
             userAgent?.let { put("user_agent", it) }
         }
-        return created("POST", "/api/v1/providers", body.toString(), Provider.serializer())
+        val response = try {
+            api.expect("POST", "/api/v1/providers", body.toString(), conflict = ErrorCode.Conflict)
+        } catch (error: EngineException) {
+            // honk answers 409 for a name in use and for a concurrent change alike; only a listed name tells them apart.
+            val duplicate = error.code == ErrorCode.Conflict &&
+                runCatching { providers().any { it.kind == ProviderKind.Subscription && it.name == name } }.getOrDefault(false)
+            throw if (duplicate) EngineException(ErrorCode.DuplicateProviderName) else error
+        }
+        return resource(response, Provider.serializer())
     }
 
     suspend fun removeProvider(id: String) = removed("/api/v1/providers/$id")
 
     /** Fetches [id] now and waits for honk to publish its nodes; another refresh of it in flight fails with [ErrorCode.Busy]. */
-    suspend fun refreshProvider(id: String): Provider =
-        finished(api.read("POST", "/api/v1/providers/$id/refresh", OperationAccepted.serializer()), Provider.serializer())
+    suspend fun refreshProvider(id: String): Provider {
+        return resource(api.expect("POST", "/api/v1/providers/$id/refresh"), Provider.serializer())
+    }
 
     fun nodes(): List<Node> = pages { cursor ->
         api.read("GET", page("/api/v1/nodes", cursor), NodeList.serializer()).let { it.nodes to it.nextCursor }
@@ -77,32 +85,16 @@ internal class NativeCatalog(private val api: NativeApi) {
         resource(api.expect(method, path, body, conflict = ErrorCode.InvalidArgument), serializer)
 
     private suspend fun removed(path: String) {
-        if (resource(api.expect("DELETE", path), DeleteCount.serializer()).deleted == 0) throw EngineException(ErrorCode.NotFound)
+        resource(api.expect("DELETE", path), DeleteCount.serializer())
     }
 
     /** [body] is the resource itself, or the [OperationAccepted] that yields it: only the latter has an `operation_id`. */
     private suspend fun <T> resource(body: String, serializer: KSerializer<T>): T {
         val json = nativeJson.parseToJsonElement(body).jsonObject
         if ("operation_id" !in json) return nativeJson.decodeFromJsonElement(serializer, json)
-        return finished(nativeJson.decodeFromJsonElement(OperationAccepted.serializer(), json), serializer)
-    }
-
-    /** Polls [accepted] until it ends: its result, or its error as an [EngineException]. */
-    private suspend fun <T> finished(accepted: OperationAccepted, serializer: KSerializer<T>): T {
-        while (true) {
-            delay(POLL_MS)
-            val operation = api.read("GET", accepted.href, Operation.serializer(serializer))
-            when (operation.status) {
-                OperationStatus.Succeeded -> return checkNotNull(operation.result) { "a finished operation without a result" }
-                OperationStatus.Failed -> throw EngineException(checkNotNull(operation.error) { "a failed operation without an error" }.errorCode())
-                OperationStatus.Queued, OperationStatus.Running -> Unit
-            }
-        }
-    }
-
-    private companion object {
-        /** honk's operations ask to be polled no more than once a second (`Retry-After: 1`). */
-        const val POLL_MS = 1_000L
+        val operation = api.finished(nativeJson.decodeFromJsonElement(OperationAccepted.serializer(), json).href)
+        if (operation.status == OperationStatus.Failed) throw EngineException(checkNotNull(operation.error).errorCode())
+        return nativeJson.decodeFromJsonElement(serializer, checkNotNull(operation.result))
     }
 }
 
@@ -111,9 +103,16 @@ internal class NativeCatalog(private val api: NativeApi) {
  * whose change honk could not record in its configuration store (`store_unavailable`) is [ErrorCode.WriteFailed].
  */
 internal fun SafeError.errorCode(): ErrorCode = when {
-    code == "fetch_failed" && (details?.get("stage") as? JsonPrimitive)?.content == "parse_failed" -> ErrorCode.ParseFailed
-    code == "fetch_failed" || code == "route_unavailable" -> ErrorCode.FetchFailed
+    code == "fetch_failed" -> when ((details?.get("stage") as? JsonPrimitive)?.content) {
+        "parse_failed" -> ErrorCode.ParseFailed
+        "asset_too_large" -> ErrorCode.TooLarge
+        else -> ErrorCode.FetchFailed
+    }
+
+    code == "route_unavailable" -> ErrorCode.FetchFailed
+
     code == "store_unavailable" -> ErrorCode.WriteFailed
+
     else -> ErrorCode.Internal
 }
 

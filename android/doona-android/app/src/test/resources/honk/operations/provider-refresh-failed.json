@@ -9,8 +9,6 @@
   "error": {
     "code": "fetch_failed",
     "message": "The subscription could not be fetched.",
-    "details": {
-      "stage": "connect"
-    }
+    "details": null
   }
 }

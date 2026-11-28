@@ -4,6 +4,8 @@ import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /** honk's JSON as the app reads it: fields it has no use for are skipped. */
 internal val nativeJson = Json { ignoreUnknownKeys = true }
@@ -30,18 +32,27 @@ internal fun NativeApi.expect(
 ): String {
     val response = call(method, path, body, headers)
     if (response.status in 200..299) return response.body
-    throw EngineException(nativeErrorCode(response.status, conflict))
+    throw EngineException(nativeErrorCode(response, conflict))
 }
 
 /**
  * The status of honk's error envelope decides the code. 410 (an expired cursor), 412 (a file changed since it was read)
  * and 503 (honk cannot take the request now) can be retried, so they are [ErrorCode.Busy].
  */
-private fun nativeErrorCode(status: Int, conflict: ErrorCode) = when (status) {
+private fun nativeErrorCode(response: NativeResponse, conflict: ErrorCode) = when (response.status) {
     400, 422 -> ErrorCode.InvalidArgument
-    404 -> ErrorCode.NotFound
+
+    404 -> when (nativeJson.parseToJsonElement(response.body).jsonObject["error"]?.jsonObject?.get("code")?.jsonPrimitive?.content) {
+        "resource_not_found" -> ErrorCode.NotFound
+        "capability_not_supported" -> ErrorCode.Unsupported
+        else -> ErrorCode.Internal
+    }
+
     409 -> conflict
-    410, 412, 503 -> ErrorCode.Busy
-    413 -> ErrorCode.TooLarge
+
+    410, 412, 429, 503 -> ErrorCode.Busy
+
+    413 -> ErrorCode.RequestTooLarge
+
     else -> ErrorCode.Internal
 }

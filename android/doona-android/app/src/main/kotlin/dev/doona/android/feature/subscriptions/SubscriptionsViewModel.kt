@@ -125,13 +125,13 @@ internal class SubscriptionsViewModel(
 
     /**
      * Deletes [id] after the question (重試 on the banner, again). A refusal leaves it in the list, with the banner saying
-     * why; `not_found` means it is gone already, so the next read drops it with no banner.
+     * why.
      */
     fun confirmDelete(id: String) {
         local.update { it.copy(deletingId = null, deleteFailed = null) }
         viewModelScope.launch {
             val code = attempt { removeProvider(id) }.exceptionOrNull()?.errorCode()
-            if (code != null && code != ErrorCode.NotFound) local.update { it.copy(deleteFailed = RvSubFailure(id, code)) }
+            if (code != null) local.update { it.copy(deleteFailed = RvSubFailure(id, code)) }
             load()
         }
     }

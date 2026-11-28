@@ -63,16 +63,16 @@ class GroupViewModelTest {
                 "PUT" -> select(id, body)
                 "DELETE" -> change("clear $id ${path.substringAfter("network=")}") { groups.getValue(id).pinned = false }
                 "POST" -> probe(path, body)
-                else -> NativeResponse(404, ERROR)
+                else -> NativeResponse(404, MISSING)
             }
         }
 
         private fun read(path: String, id: String): NativeResponse = when (path) {
             "/api/v1/nodes" -> if (failNodes) NativeResponse(500, ERROR) else ok(NODE_LIST).also { onNodes?.invoke() }
             "/api/v1/providers" -> ok(PROVIDERS)
-            "/api/v1/groups/$id" -> groups[id]?.let { ok(json(it)) } ?: NativeResponse(404, ERROR)
+            "/api/v1/groups/$id" -> groups[id]?.let { ok(json(it)) } ?: NativeResponse(404, MISSING)
             "/api/v1/operations/op-1" -> ok("""{"operation_id":"op-1","kind":"probe","status":"succeeded","result":{},"error":null}""")
-            else -> NativeResponse(404, ERROR)
+            else -> NativeResponse(404, MISSING)
         }
 
         private fun select(id: String, body: String?): NativeResponse = change("select $id ${field(body, "member_id")} ${field(body, "network")}") {
@@ -84,14 +84,14 @@ class GroupViewModelTest {
         }
 
         private fun probe(path: String, body: String?): NativeResponse {
-            if (path != "/api/v1/probes") return NativeResponse(404, ERROR)
+            if (path != "/api/v1/probes") return NativeResponse(404, MISSING)
             val target = Json.parseToJsonElement(body!!).jsonObject.getValue("target").jsonObject.getValue("group_id").jsonPrimitive.content
             return change("test $target") {}.let { if (it.status == 200) NativeResponse(202, ACCEPTED) else it }
         }
 
         private fun change(call: String, apply: () -> Unit): NativeResponse {
             calls += call
-            status?.let { return NativeResponse(it, ERROR) }
+            status?.let { return NativeResponse(it, if (it == 404) MISSING else ERROR) }
             apply()
             return ok("{}")
         }
@@ -373,6 +373,7 @@ class GroupViewModelTest {
         const val NOW = 1_764_000_000_000L
         val NODES = listOf("n1", "n2", "n3")
         const val ERROR = """{"error":{"code":"conflict","message":"The request conflicts with the current state."},"request_id":"request-1"}"""
+        const val MISSING = """{"error":{"code":"resource_not_found","message":"Group not found."},"request_id":"request-1"}"""
         const val ACCEPTED = """{"operation_id":"op-1","kind":"probe","status":"queued","href":"/api/v1/operations/op-1"}"""
         const val PROVIDERS = """{"providers":[{"id":"s1","name":"Harbor","kind":"subscription","url_redacted":"https://sub.example/s1",""" +
             """"node_count":3,"updated_at":null,"expires_at":null,"traffic":null,"status":"ok","last_error":null}],"next_cursor":null}"""

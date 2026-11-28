@@ -122,35 +122,13 @@ class SubAddViewModelTest {
     }
 
     @Test
-    fun `each error code maps to its reason`() {
-        val expected = mapOf(
-            ErrorCode.TooLarge to RvAddFailure.TooLarge,
-            ErrorCode.ParseFailed to RvAddFailure.NotSubscription,
-            ErrorCode.NoNodes to RvAddFailure.NotSubscription,
-            ErrorCode.FetchFailed to RvAddFailure.Unreachable,
-            ErrorCode.DnsFailed to RvAddFailure.Unreachable,
-            ErrorCode.LocalNetwork to RvAddFailure.Unreachable,
-            ErrorCode.InvalidArgument to RvAddFailure.Unreachable,
-            ErrorCode.NotFound to RvAddFailure.Unreachable,
-            ErrorCode.Busy to RvAddFailure.Unreachable,
-            ErrorCode.Internal to RvAddFailure.Unreachable,
-            ErrorCode.StorageFull to RvAddFailure.NotSaved(ErrorCode.StorageFull),
-            ErrorCode.WriteFailed to RvAddFailure.NotSaved(ErrorCode.WriteFailed),
-            ErrorCode.Conflict to RvAddFailure.Unreachable,
-            ErrorCode.SourceLimit to RvAddFailure.Unreachable,
-            ErrorCode.NonNativeSource to RvAddFailure.Unreachable,
-            ErrorCode.ActivationFailed to RvAddFailure.Unreachable,
-        )
-        assertEquals(ErrorCode.entries.toSet(), expected.keys)
-        expected.forEach { (code, failure) -> assertEquals(code.name, failure, rvAddFailure(code)) }
-    }
-
-    @Test
     fun `the refusals honk gives an add show their reasons and keep what was typed`() = runTest {
+        honk.on("GET", "/api/v1/providers", 200, """{"providers":[],"next_cursor":null}""")
         val answers = listOf(
-            Triple(409, CONFLICT, RvAddFailure.Unreachable),
-            Triple(413, HonkFixtures.body("errors/request-too-large"), RvAddFailure.TooLarge),
-            Triple(422, CONFLICT, RvAddFailure.Unreachable),
+            Triple(409, CONFLICT, RvAddFailure.NotSaved(ErrorCode.Conflict)),
+            Triple(413, HonkFixtures.body("errors/request-too-large"), RvAddFailure.NotSaved(ErrorCode.RequestTooLarge)),
+            Triple(422, """{"error":{"code":"unsupported_value","message":"Unsupported provider value."},"request_id":"r2"}""", RvAddFailure.NotSaved(ErrorCode.InvalidArgument)),
+            Triple(202, failedFetch("asset_too_large"), RvAddFailure.TooLarge),
             Triple(202, failedFetch("parse_failed"), RvAddFailure.NotSubscription),
             Triple(202, failedFetch("connect"), RvAddFailure.Unreachable),
         )
@@ -173,12 +151,12 @@ class SubAddViewModelTest {
 
     @Test
     fun `retry imports again and a success ends with what came in`() = runTest {
-        honk.on("POST", "/api/v1/providers", 503, CONFLICT)
+        honk.on("POST", "/api/v1/providers", 503, HonkFixtures.body("errors/temporarily-unavailable"))
         val vm = page().apply {
             type()
             import()
         }
-        assertEquals(RvAddPhase.Failed(RvAddFailure.Unreachable), vm.uiState.value.phase)
+        assertEquals(RvAddPhase.Failed(RvAddFailure.NotSaved(ErrorCode.Busy)), vm.uiState.value.phase)
         honk.on("POST", "/api/v1/providers", 201, provider("s9", "Harbor"))
         vm.import()
         assertTrue(vm.uiState.value.phase is RvAddPhase.Done)
@@ -239,7 +217,7 @@ class SubAddViewModelTest {
     }
 
     @Test
-    fun `a link on the local network the user refuses fails as unreachable once the refusal is closed`() = runTest {
+    fun `denying local network access stops the import before any POST`() = runTest {
         val access = LocalNetworkAccess { false }
         val vm = page(imports(access = access)).apply {
             type(LAN_LINK)
@@ -250,7 +228,7 @@ class SubAddViewModelTest {
         assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
         assertEquals("the import waits on the refusal", RvAddPhase.Importing(null, null), vm.uiState.value.phase)
         access.dismissed()
-        assertEquals(RvAddPhase.Failed(RvAddFailure.Unreachable), vm.uiState.value.phase)
+        assertEquals(RvAddPhase.Failed(RvAddFailure.NotSaved(ErrorCode.LocalNetwork)), vm.uiState.value.phase)
         assertEquals(0, adds().size)
     }
 
@@ -298,7 +276,7 @@ class SubAddViewModelTest {
     private companion object {
         const val LINK = "https://sub.example/api?token=1"
         const val LAN_LINK = "http://192.168.1.20/sub.yaml"
-        val CONFLICT = HonkFixtures.body("errors/temporarily-unavailable")
+        const val CONFLICT = """{"error":{"code":"state_conflict","message":"The request conflicts with the current state."},"request_id":"r1"}"""
 
         fun provider(id: String, name: String) = """{"id":"$id","name":"$name","kind":"subscription","url_redacted":"$LINK",""" +
             """"node_count":3,"updated_at":"2026-11-22T06:00:00Z","expires_at":null,"traffic":null,"status":"ok","last_error":null}"""

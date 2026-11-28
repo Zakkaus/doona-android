@@ -23,6 +23,6 @@ internal class GeoAsset(val kind: String, @SerialName("modified_at") val modifie
 
 /**
  * The geodata honk loaded. Never touches the network. honk without geodata (`resources.geodata.available` false)
- * answers 404, an [dev.doona.android.engine.EngineException] with `NotFound`. Blocking: run it on `Dispatchers.IO`.
+ * answers 404 `capability_not_supported`. Blocking: run it on `Dispatchers.IO`.
  */
 internal fun NativeApi.geoData(): GeoData = read("GET", "/api/v1/geodata", GeoData.serializer())
