@@ -59,5 +59,7 @@
     <string name="rv_geo_interval_daily">每天</string>
     <string name="rv_geo_interval_weekly">每週</string>
     <string name="rv_geo_interval_default">預設</string>
+    <string name="rv_geo_interval_custom">自訂排程</string>
+    <string name="rv_geo_interval_unavailable">不支援自動更新</string>
     <string name="rv_geo_interval_footer">只在連線時更新，經由主節點下載。</string>
 </resources>

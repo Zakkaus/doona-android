@@ -39,9 +39,8 @@ private fun releaseDate(date: String): LocalDate? = try {
  * the order the core asks them): the first server, on port 53, at a preset's address. Null, which the row shows as
  * 自訂, for any other server, another port, or no server.
  */
-internal fun rvDnsUpstream(servers: List<String>): RvDnsUpstream? {
-    val first = servers.firstOrNull() ?: return null
-    val host = first.removeSuffix(":$DNS_PORT").removeSurrounding("[", "]")
+internal fun rvDnsUpstream(address: String?): RvDnsUpstream? {
+    val host = address?.removeSuffix(":$DNS_PORT")?.removeSurrounding("[", "]") ?: return null
     return RvDnsUpstream.entries.firstOrNull { it.address == host }
 }
 

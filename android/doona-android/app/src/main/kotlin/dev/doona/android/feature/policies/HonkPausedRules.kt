@@ -12,7 +12,11 @@ import dev.doona.android.honk.daeCode
  * which honk does not load, so its `GET /rules` does not list it (owner, q-rule-paused 2026-11-26).
  */
 internal class HonkPausedRule(val source: HonkSourceAt, val expression: String) {
-    val outbound: String get() = topLevel(expression, "->").last()
+    val outbound: String
+        get() {
+            val target = topLevel(expression, "->").last()
+            return if (target.substringBefore('(').trimEnd() == "direct") "direct" else target.removeSuffix("(must)").trimEnd()
+        }
 }
 
 /** One row of 全部規則: a rule honk runs, or one paused in its file. */
@@ -79,7 +83,7 @@ internal fun pausedAt(config: HonkConfig, rule: HonkPausedRule): HonkStatementAt
 private fun pausedText(line: String): String? {
     val text = line.trim().takeIf { it.startsWith("#") }?.removePrefix("#")?.trim() ?: return null
     val parts = topLevel(text, "->")
-    return text.takeIf { parts.size == 2 && CONDITION.matches(parts[0]) && OUTBOUND.matches(parts[1]) }
+    return text.takeIf { parts.size == 2 && CONDITION.matches(parts[0]) && parts[1].isNotEmpty() }
 }
 
 /** How much [code] opens braces, outside quotes. */
@@ -99,4 +103,3 @@ private fun braces(code: String): Int {
 
 private val ROUTING_OPEN = Regex("""routing\s*\{""")
 private val CONDITION = Regex("""!?[a-z_][a-z0-9_]*\s*\(.*\).*""", RegexOption.DOT_MATCHES_ALL)
-private val OUTBOUND = Regex("""[A-Za-z0-9_-]+""")

@@ -58,14 +58,14 @@ internal class NativeConfig(private val api: NativeApi) {
 
 /** The accepted configuration; [store] is honk's configuration db, whose revision the history lists. */
 @Serializable
-internal class HonkConfig(val sources: List<HonkSource>, @SerialName("x-honk") val honk: HonkConfigExtensions? = null) {
+internal class HonkConfig(val sources: List<HonkSource>, @SerialName("generation_id") val generationId: String, @SerialName("x-honk") val honk: HonkConfigExtensions? = null) {
     /** The entry file. */
     val main: HonkSource get() = sources.first { it.kind == MAIN }
 
     /** The files honk reads as written, entry first: the ones the configuration pages list and edit. */
     val files: List<HonkSource> get() = sources.filter { it.kind == MAIN || it.kind == INCLUDE }
 
-    val revision: Int get() = honk?.store?.revision ?: 0
+    val revision: Long? get() = honk?.store?.revision
 }
 
 private const val MAIN = "main"
@@ -75,7 +75,7 @@ private const val INCLUDE = "include"
 internal class HonkConfigExtensions(val store: HonkStore? = null)
 
 @Serializable
-internal class HonkStore(val kind: String, val revision: Int? = null)
+internal class HonkStore(val kind: String, val revision: Long? = null)
 
 /** [kind] is `main`, `include`, `subscription` or `generated`; only a [writable] source can be replaced. */
 @Serializable

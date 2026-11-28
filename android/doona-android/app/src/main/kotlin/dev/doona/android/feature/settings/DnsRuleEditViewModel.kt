@@ -125,9 +125,16 @@ internal class DnsRuleEditViewModel(
         state.update { it.copy(writeFailure = null) }
         viewModelScope.launch {
             try {
-                withContext(io) {
-                    val (source, text) = edit(NativeConfig(api).config(), dns)
+                val current = withContext(io) {
+                    val config = NativeConfig(api).config()
+                    if (config.generationId != dns.generationId) return@withContext false
+                    val (source, text) = edit(config, dns)
                     NativeConfig(api).replace(source, text)
+                    true
+                }
+                if (!current) {
+                    state.update { it.copy(writeFailure = ErrorCode.Busy to this@DnsRuleEditViewModel::retry) }
+                    return@launch
                 }
                 if (landed == null) {
                     state.update { it.copy(done = true) }
@@ -146,22 +153,25 @@ internal class DnsRuleEditViewModel(
     private suspend fun load() {
         try {
             val (dns, config) = withContext(io) { NativeRouting(api).dnsRules() to NativeConfig(api).config() }
-            read = dns
+            if (config.generationId != dns.generationId) throw EngineException(ErrorCode.Busy)
             val upstreams = honkUpstreams(config).map { RvDnsServer(it.name, it.address) }
             val rule = ruleId?.let { rule(dns) ?: throw EngineException(ErrorCode.NotFound) }
             val rules = statements(dns).filterNot { it.isFallback }
+            read = dns
             state.update {
                 it.copy(
                     draft = rule?.let(::draft) ?: RvDnsRuleDraft(list, RvRuleDraft(RvMatchKind.Suffix, "", ""), list.actions.first()),
                     at = rule?.let { r -> RvNativeRuleAt(rules.indexOf(r) + 1, rules.size, statement(r)) },
                     upstreams = upstreams,
+                    writeFailure = null,
                     readFailure = null,
                 )
             }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
-            state.update { it.copy(readFailure = error.errorCode()) }
+            read = null
+            state.update { it.copy(draft = null, at = null, writeFailure = null, readFailure = error.errorCode()) }
         }
     }
 

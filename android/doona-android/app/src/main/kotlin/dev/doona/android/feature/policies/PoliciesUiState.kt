@@ -27,5 +27,5 @@ internal data class PoliciesUiState(
     val state: RvPolicyState = RvPolicyState(),
     val profile: RvPolicyProfile? = null,
     val failure: PolicyFailure? = null,
-    val configRev: Int? = null,
+    val configRev: Long? = null,
 )

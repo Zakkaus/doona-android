@@ -95,7 +95,7 @@ class ConfigHistoryViewModelTest {
         val vm = ConfigOverviewViewModel(honk, now = { RvSampleConfig.NOW }, reads = Dispatchers.Unconfined)
         vm.retry()
         val state = checkNotNull(vm.uiState.value.value)
-        assertEquals(RvSampleConfig.HEAD, state.rev)
+        assertEquals(RvSampleConfig.HEAD.toLong(), state.rev)
         assertEquals(listOf("config.dae", "nodes.dae", "nodes/office.dae", "rules/cn.dae", "rules/lan.dae", "dns.dae"), state.files.map { it.path })
         assertEquals(listOf(null) + List(5) { "config.dae" }, state.files.map { it.parent })
         assertEquals(RvSampleConfig.history.first().appliedAtEpochMs, state.appliedAtEpochMs)

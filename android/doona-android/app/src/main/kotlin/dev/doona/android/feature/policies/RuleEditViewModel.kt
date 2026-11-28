@@ -134,11 +134,19 @@ internal class RuleEditViewModel(
         viewModelScope.launch {
             var candidate = prepared
             try {
-                withContext(io) {
+                val current = withContext(io) {
                     val native = NativeConfig(api)
                     val config = native.config()
+                    if (prepared != null && config.sources.firstOrNull { it.id == prepared.first.id }?.content == prepared.second) return@withContext true
+                    if (config.generationId != snapshot.rules.generationId) return@withContext false
                     val (source, text) = candidate ?: edit(config, snapshot).also { candidate = it }
-                    if (prepared == null || config.sources.firstOrNull { it.id == source.id }?.content != text) native.replace(source, text)
+                    native.replace(source, text)
+                    true
+                }
+                if (!current) {
+                    failedWrite = ::retry
+                    state.update { it.copy(writeFailure = ErrorCode.Busy) }
+                    return@launch
                 }
                 if (landed == null) {
                     state.update { it.copy(done = true) }
@@ -158,6 +166,8 @@ internal class RuleEditViewModel(
     private suspend fun load() {
         try {
             val (read, config) = withContext(io) { HonkPolicyRead.read(api) to ruleId?.let { NativeConfig(api).config() } }
+            if (config != null && config.generationId != read.rules.generationId) throw EngineException(ErrorCode.Busy)
+            failedWrite = null
             this.read = read
             val groups = read.policyGroups(read.nodes(places))
             val main = read.mainGroupId?.let(groups::get)
@@ -176,13 +186,15 @@ internal class RuleEditViewModel(
                     ),
                     at = rule?.let { r -> ruleAt(r, read, config) },
                     targets = targets,
+                    writeFailure = null,
                     readFailure = null,
                 )
             }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
-            state.update { it.copy(readFailure = error.errorCode()) }
+            read = null
+            state.update { it.copy(draft = null, at = null, writeFailure = null, readFailure = error.errorCode()) }
         }
     }
 

@@ -45,21 +45,20 @@ internal class HonkRouting(val source: HonkSource, val template: String?, val bl
 
     /**
      * The file with the template [id] in it, as doona web writes one: the template's routing in place of the file's,
-     * 阻擋 QUIC kept as it was, and each of the template's groups the file does not name added to its groups. The file's
-     * own groups and DNS stay as they are.
+     * 阻擋 QUIC kept as it was, and each of the template's groups that no file of the configuration names ([existing])
+     * added to its groups. The file's own groups and DNS stay as they are.
      */
-    fun withTemplate(id: String): String {
+    fun withTemplate(id: String, existing: Set<String>): String {
         val template = HonkTemplates.text(id)
         val templateLines = template.lines()
-        val own = daeChildren(source.content, GROUP).map { it.first }.toSet()
-        val added = daeChildren(template, GROUP).filter { it.first !in own }.flatMap { templateLines.slice(it.second) }
+        val added = daeChildren(template, GROUP).filter { it.first !in existing }.flatMap { templateLines.slice(it.second) }
         var lines = source.content.lines()
         val routing = daeBlock(source.content, ROUTING) ?: throw EngineException(ErrorCode.Busy)
         lines = lines.take(routing.first) + templateLines.slice(checkNotNull(daeBlock(template, ROUTING))) + lines.drop(routing.last + 1)
         val groups = daeBlock(lines.joinToString("\n"), GROUP)
         lines = when {
             added.isEmpty() -> lines
-            groups == null -> templateLines.slice(checkNotNull(daeBlock(template, GROUP)).let { it.first - 1..it.last + 1 }) + "" + lines
+            groups == null -> listOf("group {") + added + listOf("}", "") + lines
             else -> lines.take(groups.last + 1) + added + lines.drop(groups.last + 1)
         }
         val written = HonkRouting(HonkSource(source.id, source.path, source.kind, source.sha256, lines.joinToString("\n"), source.writable, lines.size, source.loadedAt), id, false)

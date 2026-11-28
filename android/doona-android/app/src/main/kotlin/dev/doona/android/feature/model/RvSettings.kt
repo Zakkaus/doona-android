@@ -55,12 +55,14 @@ internal enum class RvDnsUpstream(@StringRes val label: Int, val address: String
 }
 
 /**
- * How often honk updates GeoIP/GeoSite: never, daily (the default), or weekly.
+ * The effective GeoIP/GeoSite schedule or its unavailable state.
  */
 internal enum class RvGeoInterval(@StringRes val label: Int) {
     Off(R.string.ui_off),
     Daily(R.string.rv_geo_interval_daily),
     Weekly(R.string.rv_geo_interval_weekly),
+    Custom(R.string.rv_geo_interval_custom),
+    Unavailable(R.string.rv_geo_interval_unavailable),
 }
 
 /**
@@ -80,5 +82,5 @@ internal data class RvSettingsState(
     val language: RvLanguage = RvLanguage.TraditionalChinese,
     val tileAdded: Boolean = true,
     val tileSheet: Boolean = false,
-    val geoInterval: RvGeoInterval = RvGeoInterval.Daily,
+    val geoInterval: RvGeoInterval? = null,
 )

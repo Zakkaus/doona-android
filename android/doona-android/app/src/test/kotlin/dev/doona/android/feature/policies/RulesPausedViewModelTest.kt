@@ -1,10 +1,12 @@
 package dev.doona.android.feature.policies
 
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.model.RvMatchKind
 import dev.doona.android.feature.model.RvRuleMatch
 import dev.doona.android.feature.model.RvRuleState
 import dev.doona.android.honk.FakeHonk
 import dev.doona.android.honk.HonkFixtures
+import dev.doona.android.honk.NativeConfig
 import dev.doona.android.honk.PolicyHonkFixtures
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -18,6 +20,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
@@ -37,6 +40,22 @@ class RulesPausedViewModelTest {
         on("PUT", "/api/v1/config/sources/source-main", 202, HonkFixtures.body("config-replace/queued"))
         on("GET", "/api/v1/operations/op-config-01", 200, HonkFixtures.body("operations/reload-complete"))
     }
+
+    @Test
+    fun retryCannotWriteAnUnchangedFileAfterAnotherSourceChanged() {
+        val vm = RulesViewModel(honk, io = io)
+        honk.on("PUT", "/api/v1/config/sources/source-main", 503, HonkFixtures.body("errors/snapshot-unavailable"))
+        vm.toggle(1)
+        honk.on("GET", "/api/v1/config", 200, config.replace("generation-42", "generation-43"))
+        vm.retryWrite()
+        assertEquals(1, honk.calls.count { it.method == "PUT" })
+        assertEquals(ErrorCode.Busy, vm.uiState.value.writeFailure)
+        honk.on("GET", "/api/v1/rules", 200, HonkFixtures.body("rules/rv-sample-hand").replace("generation-42", "generation-43"))
+        vm.retryWrite()
+        assertNull(vm.uiState.value.writeFailure)
+        assertEquals(1, honk.calls.count { it.method == "PUT" })
+    }
+
     private val before = Json.parseToJsonElement(config).jsonObject.getValue("sources").jsonArray[0]
         .jsonObject.getValue("content").jsonPrimitive.content.lines()
 
@@ -45,6 +64,27 @@ class RulesPausedViewModelTest {
 
     @After
     fun tearDown() = Dispatchers.resetMain()
+
+    @Test
+    fun pausedTargetsKeepNamesAndRestoreTheOriginalAction() {
+        val targets = listOf(
+            "direct(mark:0x10,must)" to "direct",
+            "direct(mark:'0x10')" to "direct",
+            "direct( must )" to "direct",
+            "direct()" to "direct",
+            "Hong Kong(must)" to "Hong Kong",
+            "港澳(must)" to "港澳",
+            "Hong Kong (office)(must)" to "Hong Kong (office)",
+        )
+        for ((target, name) in targets) {
+            val text = config.replace(PAUSED, PAUSED.substringBefore(" ->") + " -> $target")
+            honk.on("GET", "/api/v1/config", 200, text)
+            val source = NativeConfig(honk).config()
+            val rule = pausedRules(source).single()
+            assertEquals(name, rule.outbound)
+            assertEquals("domain(suffix: paused.example) -> $target", rule.expression)
+        }
+    }
 
     @Test
     fun `a paused rule is listed 已停用 where it is written, with no honk id`() = runTest {
@@ -85,6 +125,6 @@ class RulesPausedViewModelTest {
         .getValue("content").jsonPrimitive.content.lines()
 
     private companion object {
-        const val PAUSED = "domain(suffix: paused.example) -> direct"
+        const val PAUSED = "domain(suffix: paused.example) -> direct(must)"
     }
 }

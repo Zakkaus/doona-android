@@ -130,16 +130,10 @@ private fun PathCard(connection: RvConnection) {
         RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, rule?.title() ?: RV_NO_VALUE, line, titleKeepWords = false)
         val group = connection.group
         val node = connection.node
+        if (group != null) RvRow({ RvIconDisc(group.kind.glyph) }, group.name, stringResource(group.kind.label), titleKeepWords = false)
         when {
-            group != null && node != null -> {
-                RvRow({ RvIconDisc(group.kind.glyph) }, group.name, stringResource(group.kind.label), titleKeepWords = false)
-                RvRow({ RvFlag(node.place.flag, RvSize.rowDisc) }, node.name, rvNodeLine(node.protocol, stringResource(node.place.label)), titleKeepWords = false)
-            }
-
-            group != null -> RvRow({ RvIconDisc(group.kind.glyph) }, group.name, stringResource(group.kind.label), titleKeepWords = false)
-
+            node != null -> RvRow({ RvFlag(node.place.flag, RvSize.rowDisc) }, node.name, rvNodeLine(node.protocol, stringResource(node.place.label)), titleKeepWords = false)
             connection.end == RvRuleEnd.Direct -> RvRow({ RvIconDisc(R.drawable.rv_sym_arrow_right_alt) }, stringResource(R.string.mode_direct), stringResource(R.string.rv_policy_no_proxy))
-
             connection.end != null -> RvRow({ RvIconDisc(R.drawable.rv_sym_block) }, connection.targetName().orEmpty(), null)
         }
     }

@@ -14,12 +14,12 @@ feature/stats/RvStatsCards.kt	RvText(stringResource(R.string.rv_stats_quota_tota
 feature/stats/RvStatsCards.kt	RvText(stringResource(if (split != null) R.string.rv_stats_via_proxy else R.string.rv_stats_no_data), Rv.type.rowSub, co	a stat card's own line, inside the card
 feature/subscriptions/RvSubsPage.kt	RvText(ends, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a subscription card's usage and end date, inside the card
 feature/config/RvConfigHistoryPage.kt	RvCaption(state.name)	a page header's caption (RvCaption under the large title), not under a card
-feature/config/RvConfigOverviewPage.kt	RvCaption(stringResource(R.string.rv_config_applied, state.rev, applied))	a page header's caption (RvCaption under the large title), not under a card
+feature/config/RvConfigOverviewPage.kt	RvCaption(stringResource(R.string.rv_config_applied, state.rev ?: RV_NO_VALUE, applied))	a page header's caption (RvCaption under the large title), not under a card
 feature/config/RvConfigRevisionPage.kt	RvCaption(origin)	a page header's caption (RvCaption under the large title), not under a card
 feature/config/RvConfigRevisionPage.kt	RvCaption(rvConfigWhen(revision.appliedAtEpochMs, nowEpochMs))	a page header's caption (RvCaption under the large title), not under a card
 feature/config/RvConfigSkippedPage.kt	RvCaption(pluralStringResource(R.plurals.rv_config_items, count, count))	a page header's caption (RvCaption under the large title), not under a card
-feature/config/RvConfigSourcePage.kt	RvCaption(stringResource(R.string.rv_config_based_on, diff.baseRev))	a page header's caption (RvCaption under the large title), not under a card
-feature/config/RvConfigSourcePage.kt	RvCaption(stringResource(R.string.rv_config_draft_base, draft.baseRev))	a page header's caption (RvCaption under the large title), not under a card
+feature/config/RvConfigSourcePage.kt	RvCaption(stringResource(R.string.rv_config_based_on, diff.baseRev ?: RV_NO_VALUE))	a page header's caption (RvCaption under the large title), not under a card
+feature/config/RvConfigSourcePage.kt	RvCaption(stringResource(R.string.rv_config_draft_base, draft.baseRev ?: RV_NO_VALUE))	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/config/RvConfigTemplatePage.kt	RvCaption(stringResource(R.string.rv_config_based_on, apply.baseRev))	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/connections/RvConnectionsPage.kt	RvCaption(pluralStringResource(R.plurals.rv_conn_matches, shown.size, shown.size))	a page header's caption (RvCaption under the large title), not under a card
 feature/connections/RvConnectionsScreen.kt	RvCaption(pluralStringResource(R.plurals.rv_conn_matches, shown.size, shown.size))	a page header's caption (RvCaption under the large title), not under a card

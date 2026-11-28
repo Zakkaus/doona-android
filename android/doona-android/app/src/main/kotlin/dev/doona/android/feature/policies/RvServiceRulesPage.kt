@@ -105,7 +105,12 @@ internal object RvServiceData {
 
 /** The rule already written for each service, by code, as web finds it: the first GeoSite rule on the service's code. */
 internal fun rvServiceRules(rules: List<RvPolicyRule>): Map<String, RvPolicyRule> = RvServiceData.all.mapNotNull { service ->
-    rules.firstOrNull { (it.match as? RvRuleMatch.GeoSite)?.category == service.code }?.let { service.code to it }
+    rules.firstOrNull {
+        when (val match = it.match) {
+            is RvRuleMatch.GeoSite -> match.category.trim().equals(service.code, ignoreCase = true)
+            else -> false
+        }
+    }?.let { service.code to it }
 }.toMap()
 
 /**

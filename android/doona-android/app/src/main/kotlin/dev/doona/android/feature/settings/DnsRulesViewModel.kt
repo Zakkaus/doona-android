@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvListEdit
+import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.policies.RvReadOnReturn
@@ -65,12 +66,15 @@ internal class DnsRulesViewModel(private val api: NativeApi, private val io: Cor
     /** Removes the statement keyed `<list>:<index>`, as [RvDnsRulesPage] names it. */
     fun remove(key: String) {
         val (list, index) = key.split(':').let { RvDnsList.valueOf(it[0]) to it[1].toInt() }
-        val rule = read?.let { if (list == RvDnsList.Query) it.request else it.response }?.getOrNull(index) ?: return
+        val dns = read ?: return
+        val rule = (if (list == RvDnsList.Query) dns.request else dns.response).getOrNull(index) ?: return
         state.update { it.copy(removeFailure = null) }
         viewModelScope.launch {
             try {
                 withContext(io) {
-                    val (source, text) = statementAt(NativeConfig(api).config(), rule.source, rule.expression).removed()
+                    val config = NativeConfig(api).config()
+                    if (config.generationId != dns.generationId) throw EngineException(ErrorCode.Busy)
+                    val (source, text) = statementAt(config, rule.source, rule.expression).removed()
                     NativeConfig(api).replace(source, text)
                 }
             } catch (cancelled: CancellationException) {
@@ -104,12 +108,12 @@ internal class DnsRulesViewModel(private val api: NativeApi, private val io: Cor
 /** honk's lists as the page shows them: each statement by its condition, the fallback last with none. */
 internal fun rvDnsLists(dns: HonkDnsRules) = RvDnsLists(dns.request.map { rvDnsRow(it, RvDnsList.Query) }, dns.response.map { rvDnsRow(it, RvDnsList.Response) })
 
-/** `upstream` to `asis` is 原伺服器; a response's `upstream` or `requery` asks the server named again. */
+/** A request's `asis` action is 原伺服器; a response's `upstream` or `requery` asks the server named again. */
 internal fun rvDnsRow(rule: HonkDnsRule, list: RvDnsList): RvDnsRow {
     val action = when {
         rule.action == REJECT -> RvDnsAction.Reject
         rule.action == ACCEPT -> RvDnsAction.Accept
-        list == RvDnsList.Query && rule.upstream == ASIS -> RvDnsAction.AsIs
+        list == RvDnsList.Query && rule.action == ASIS -> RvDnsAction.AsIs
         else -> RvDnsAction.Upstream
     }
     return RvDnsRow(if (rule.isFallback) null else ruleCondition(rule.expression).trim(), action, rule.upstream?.takeIf { action == RvDnsAction.Upstream })

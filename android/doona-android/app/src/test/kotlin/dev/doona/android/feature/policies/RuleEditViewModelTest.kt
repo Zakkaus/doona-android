@@ -76,6 +76,20 @@ class RuleEditViewModelTest {
     }
 
     @Test
+    fun staleGenerationCannotInsertAtTheOldFallback() {
+        val vm = RuleEditViewModel(honk, null, io = io, destination = "example.org")
+        honk.on("GET", "/api/v1/config", 200, HonkFixtures.body("config/rv-sample-hand").replace("generation-42", "generation-43"))
+        vm.apply()
+        assertEquals(ErrorCode.Busy, vm.uiState.value.writeFailure)
+        assertTrue(honk.calls.none { it.method == "PUT" })
+        honk.on("GET", "/api/v1/rules", 200, HonkFixtures.body("rules/rv-sample-hand").replace("generation-42", "generation-43"))
+        vm.retryWrite()
+        assertNull(vm.uiState.value.writeFailure)
+        assertNotNull(vm.uiState.value.draft)
+        assertTrue(honk.calls.none { it.method == "PUT" })
+    }
+
+    @Test
     fun connectionDestinationPrefillsTheNewRule() {
         for ((destination, kind) in listOf("example.org" to RvMatchKind.Full, "192.0.2.1/32" to RvMatchKind.Cidr, "2001:db8::1/128" to RvMatchKind.Cidr)) {
             val draft = RuleEditViewModel(honk, null, io = io, destination = destination).uiState.value.draft

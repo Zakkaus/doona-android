@@ -223,11 +223,12 @@
     <string name="rv_trace_host">Domain or IP</string>
     <string name="rv_trace_run">Test</string>
     <string name="rv_trace_matched">Matching rule</string>
+    <string name="rv_trace_indeterminate">Matching rule undetermined</string>
     <string name="rv_trace_result">Result</string>
     <string name="rv_trace_captured">Through the VPN</string>
     <string name="rv_trace_yes">Yes</string>
     <string name="rv_trace_no">No</string>
-    <string name="rv_trace_skipped_title">A rule was skipped</string>
-    <string name="rv_trace_skipped_reason">The rule on line %2$d of %1$s comes first, but it needs app information, so the test cannot tell.</string>
+    <string name="rv_trace_skipped_title">An earlier rule may match</string>
+    <string name="rv_trace_skipped_reason">Line %2$d of %1$s needs more input.</string>
     <string name="rv_trace_failed">Couldn’t run the route test</string>
 </resources>

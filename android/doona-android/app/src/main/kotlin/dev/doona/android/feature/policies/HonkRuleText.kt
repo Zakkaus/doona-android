@@ -91,9 +91,9 @@ internal fun matchText(kind: RvMatchKind, value: String, domain: String = "domai
 internal fun ruleCondition(expression: String): String = topLevel(expression, "->").first()
 
 /** One matcher argument, `key: value` or a bare value, its quotes dropped. */
-private class Argument(val key: String?, val value: String)
+internal class Argument(val key: String?, val value: String)
 
-private fun argument(text: String): Argument {
+internal fun argument(text: String): Argument {
     val key = KEY.find(text)?.takeIf { it.groupValues[1] in KEYS }
     return Argument(key?.groupValues?.get(1), unquote(key?.let { text.substring(it.range.last + 1).trim() } ?: text))
 }

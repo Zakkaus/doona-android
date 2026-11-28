@@ -48,7 +48,7 @@ internal class SettingsHonk(private val others: NativeApi? = null) : NativeApi {
             .on("PATCH", "/api/v1/runtime/settings", 200, RUNTIME_SETTINGS)
 
         /** honk running with the sample's data (the APK's copy, never updated) and the sample's 每週 schedule. */
-        fun sample(): SettingsHonk = SettingsHonk()
+        fun sample(): SettingsHonk = SettingsHonk(PolicyHonkFixtures.rvSample())
             .on("GET", "/api/v1/geodata", 200, HonkFixtures.body("geodata/rv-sample"))
             .on("GET", "/api/v1/runtime/settings", 200, HonkFixtures.body("runtime-settings/rv-sample"))
             .on("POST", "/api/v1/geodata/update", 202, GEODATA_QUEUED)
@@ -75,12 +75,13 @@ internal class SettingsHonk(private val others: NativeApi? = null) : NativeApi {
         }
 
         /** `runtime-settings/current` with [enabled] and [hours] as its automatic update. */
-        fun runtimeSettings(enabled: Boolean = true, hours: Int = 24): String {
+        fun runtimeSettings(enabled: Boolean = true, hours: Int = 24, cron: String? = null): String {
             val current = Json.parseToJsonElement(RUNTIME_SETTINGS).jsonObject
             val geodata = current.getValue("geodata").jsonObject
             val auto = buildJsonObject {
                 put("enabled", enabled)
                 put("interval_hours", hours)
+                put("cron", JsonPrimitive(cron))
             }
             return JsonObject(current + ("geodata" to JsonObject(geodata + ("auto_update" to auto)))).toString()
         }

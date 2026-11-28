@@ -44,7 +44,7 @@ internal data class RvSkipped(val text: String, val source: String, val line: In
  */
 @Immutable
 internal data class RvConfigState(
-    val rev: Int,
+    val rev: Long?,
     val appliedAtEpochMs: Long,
     val files: List<RvConfigFile>,
     val summary: RvConfigSummary,
@@ -71,16 +71,14 @@ internal data class RvConfigDiagnostic(val start: Int, val end: Int, val name: S
 
 /** A draft of one file in the source editor: the file, its text, the revision the draft is based on, any diagnostic. */
 @Immutable
-internal data class RvSourceDraft(val path: String, val text: String, val baseRev: Int, val diagnostic: RvConfigDiagnostic? = null)
+internal data class RvSourceDraft(val path: String, val text: String, val baseRev: Long?, val diagnostic: RvConfigDiagnostic? = null)
 
 /**
  * The check's diff before 套用: each changed file against the draft's base [baseRev]; [headRev] is today's head, newer
  * than the base when another apply landed first. Null [files] means the changes exceed the local preview budget.
  */
 @Immutable
-internal data class RvConfigDiff(val files: List<RvDiffFile>?, val baseRev: Int, val headRev: Int) {
-    val stale = headRev != baseRev
-}
+internal data class RvConfigDiff(val files: List<RvDiffFile>?, val baseRev: Long?, val headRev: Long?, val stale: Boolean = headRev != baseRev)
 
 /** Where an applied revision came from, as honk's db gives its origin. */
 internal enum class RvRevisionOrigin(@StringRes val label: Int) {
@@ -117,7 +115,7 @@ internal data class RvRevisionRename(val rev: Int, val name: String)
 @Immutable
 internal data class RvImportState(
     val name: String,
-    val headRev: Int,
+    val headRev: Long?,
     val refusedAtLimit: Boolean = false,
     val files: List<RvConfigFile> = emptyList(),
     val escapeLine: Int = 0,

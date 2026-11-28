@@ -134,7 +134,7 @@ internal fun RvConfigImportPage(
                 ),
                 gapBelow = RvSpace.none,
             )
-            RvFootnote(stringResource(R.string.rv_config_still_in_use, state.headRev))
+            RvFootnote(stringResource(R.string.rv_config_still_in_use, state.headRev ?: RV_NO_VALUE))
         } else {
             RvBannerSlot(
                 RvNotice(

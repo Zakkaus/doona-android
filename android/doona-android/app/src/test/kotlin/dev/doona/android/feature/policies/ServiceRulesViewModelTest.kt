@@ -60,7 +60,7 @@ class ServiceRulesViewModelTest {
         val io = UnconfinedTestDispatcher(testScheduler)
         Dispatchers.setMain(io)
         val honk = PolicyHonkFixtures.handWritten().apply {
-            on("GET", "/api/v1/rules", 200, HonkFixtures.body("rules/rv-sample-hand").replace("\"outbound\": \"proxy\"", "\"outbound\": \"Proxy\""))
+            on("GET", "/api/v1/rules", 200, HonkFixtures.body("rules/rv-sample-hand").replace("geosite:youtube", "geosite:YouTube").replace("\"outbound\": \"proxy\"", "\"outbound\": \"Proxy\""))
             on("PUT", "/api/v1/config/sources/source-main", 202, HonkFixtures.body("config-replace/queued"))
             on("GET", "/api/v1/operations/op-config-01", 200, HonkFixtures.body("operations/reload-complete"))
         }
@@ -73,8 +73,8 @@ class ServiceRulesViewModelTest {
         assertTrue(vm.uiState.value.done)
         val written = content(checkNotNull(honk.calls.single { it.method == "PUT" }.body))
         assertEquals(before.take(67), written.take(67))
-        assertEquals(setOf("    domain(geosite:steam) -> Proxy", "    domain(geosite:youtube) -> Proxy"), written.subList(67, 69).toSet())
-        assertEquals(before.drop(67), written.drop(69))
+        assertEquals("    domain(geosite:steam) -> Proxy", written[67])
+        assertEquals(before.drop(67), written.drop(68))
     }
 
     private fun content(json: String): List<String> {

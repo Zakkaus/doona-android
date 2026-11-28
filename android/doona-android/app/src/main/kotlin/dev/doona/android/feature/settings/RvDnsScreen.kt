@@ -95,13 +95,13 @@ internal fun DnsRoute(api: NativeApi, onBack: () -> Unit, onServers: () -> Unit,
     val viewModel: DnsViewModel = viewModel(factory = DnsViewModel.factory(api))
     val state = viewModel.uiState.collectAsStateWithLifecycle().value ?: return RvSettingsLoading()
     val banner = state.presetFailure?.let { (choice, code) -> changeBanner(stringResource(R.string.rv_perapp_save_failed), code) { viewModel.select(choice) } }
-    RvDnsScreen(rvDnsUpstream(state.servers), viewModel::select, onBack, onCustom = viewModel::openCustom, onServers = onServers, onRules = onRules, banner = banner)
+    RvDnsScreen(rvDnsUpstream(state.servers.firstOrNull()), viewModel::select, onBack, onCustom = viewModel::openCustom, onServers = onServers, onRules = onRules, banner = banner)
     RvDnsCustomSheet(state, viewModel::editCustom, viewModel::saveCustom, viewModel::dismissCustom)
 }
 
 /**
- * 自訂: a sheet titled by what it sets, one field for 1 to 4 addresses separated by commas, with a preset's two as its
- * placeholder, and 儲存 and 取消. A save the core refuses keeps the sheet open with why under the field.
+ * 自訂: a sheet titled by what it sets, one field for one server address (honk names one upstream), with a preset's as
+ * its placeholder, and 儲存 and 取消. A save the core refuses keeps the sheet open with why under the field.
  */
 @Composable
 internal fun RvDnsCustomSheet(state: DnsUiState, onText: (String) -> Unit, onSave: () -> Unit, onDismiss: () -> Unit) {
@@ -124,8 +124,8 @@ private fun customWords(state: DnsUiState): Triple<String, String, String?> = Tr
     state.customError?.let { stringResource(if (it == ErrorCode.InvalidArgument) R.string.rv_settings_dns_custom_invalid else it.messageRes()) },
 )
 
-/** 自訂's placeholder: two presets' addresses, the form the field takes. */
-private val PLACEHOLDER = "${RvDnsUpstream.Cloudflare.address}, ${RvDnsUpstream.Google.address}"
+/** 自訂's placeholder: a preset's address, the form the field takes. */
+private val PLACEHOLDER = RvDnsUpstream.Cloudflare.address
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)

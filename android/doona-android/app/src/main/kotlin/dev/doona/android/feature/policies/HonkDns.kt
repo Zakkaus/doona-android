@@ -3,9 +3,18 @@ package dev.doona.android.feature.policies
 import dev.doona.android.honk.HonkConfig
 import dev.doona.android.honk.HonkDnsRules
 import dev.doona.android.honk.HonkSource
+import dev.doona.android.honk.NativeApi
+import dev.doona.android.honk.NativeConfig
+import dev.doona.android.honk.NativeRouting
 import dev.doona.android.honk.daeBlock
 import dev.doona.android.honk.daeCode
 import java.net.URI
+
+internal fun readDns(api: NativeApi): HonkUpstream? {
+    val config = NativeConfig(api).config()
+    val dns = NativeRouting(api).dnsRules()
+    return if (config.generationId == dns.generationId) fallbackUpstream(honkUpstreams(config), dns) else null
+}
 
 /**
  * A DNS server a honk file declares in `dns { upstream { name: 'address' [-> via] } }`; with no [via] it goes direct.

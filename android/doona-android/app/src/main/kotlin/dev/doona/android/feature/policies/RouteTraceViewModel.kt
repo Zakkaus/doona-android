@@ -9,10 +9,6 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.errorCode
-import dev.doona.android.honk.Group
-import dev.doona.android.honk.HonkConfig
-import dev.doona.android.honk.HonkRules
-import dev.doona.android.honk.HonkTrace
 import dev.doona.android.honk.HonkTraceInput
 import dev.doona.android.honk.NativeApi
 import dev.doona.android.honk.NativeCatalog
@@ -75,10 +71,48 @@ internal class RouteTraceViewModel(
         val routing = NativeRouting(api)
         val input = traceInput(query, carries)
         val trace = routing.trace(input)
-        // Rule ids hold within one generation: a reload between the two reads would name another rule.
-        val rules = routing.rules().takeIf { it.generationId == trace.generationId } ?: throw EngineException(ErrorCode.Busy)
+        val evaluation = trace.evaluations.first()
+        val uncertain = evaluation.rules.firstOrNull { it.result == INDETERMINATE }
+        val target = evaluation.outbound
         val catalog = NativeCatalog(api)
-        return rvTraceResult(trace, rules, NativeConfig(api).config(), catalog.groups(), catalog.nodes().associate { it.id to it.name }, input, carries)
+        val group = target?.let { catalog.summaries().firstOrNull { it.name == target } }
+        val selected = group?.let { catalog.group(it.id).runtime.selection }?.let { if (input.network == Transport.Udp) it.udp else it.tcp }
+        val node = selected?.let { pick -> catalog.nodes().firstOrNull { it.id == (pick.resolvedLeafNodeId ?: pick.memberId) }?.name }
+        if (uncertain != null || evaluation.decision == INDETERMINATE) {
+            val at = uncertain?.let { rule ->
+                routing.rules().takeIf { it.generationId == trace.generationId }?.rules?.firstOrNull { it.id == rule.ruleId }?.source
+            }
+            return RvTraceResult(
+                "",
+                0,
+                "",
+                target,
+                node,
+                captured = input.dstIp?.let(carries),
+                skipped = at?.let { it.file to it.line },
+                missingInputs = evaluation.missingInputs,
+            )
+        }
+        val matched = evaluation.rules.firstOrNull { it.result == MATCHED } ?: throw EngineException(ErrorCode.Internal)
+        val rules = routing.rules()
+        if (rules.generationId != trace.generationId) throw EngineException(ErrorCode.Busy)
+        val winner = rules.rules.firstOrNull { it.id == matched.ruleId } ?: throw EngineException(ErrorCode.Internal)
+        val at = winner.source
+        val source = at?.let {
+            val config = NativeConfig(api).config()
+            if (config.generationId != trace.generationId) throw EngineException(ErrorCode.Busy)
+            config.sources.firstOrNull { file -> file.id == it.sourceId }
+        }
+        val line = at?.line ?: 0
+        return RvTraceResult(
+            source?.path.orEmpty(),
+            line,
+            source?.content?.lineSequence()?.elementAtOrNull(line - 1)?.trim() ?: winner.expression,
+            target,
+            node,
+            winner.isFallback,
+            input.dstIp?.let(carries),
+        )
     }
 
     companion object {
@@ -94,45 +128,6 @@ internal fun traceInput(query: RvTraceQuery, carries: (String) -> Boolean?): Hon
     val network = if (query.proto == RvTraceProto.Udp) Transport.Udp else Transport.Tcp
     val port = query.port.toInt()
     return if (carries(host) != null) HonkTraceInput(network, port, dstIp = host) else HonkTraceInput(network, port, domain = host)
-}
-
-/**
- * The page's answer from honk's [trace] of [input]: the first rule that matched, at its source line ([config] holds the
- * text); a rule honk could not decide before it (it needs an input the trace lacks, such as the app) as the skipped
- * warning; the target, and the node a target group uses for [input]'s transport. Only destinations the tun [carries]
- * pass through the VPN; a domain is taken to.
- */
-internal fun rvTraceResult(
-    trace: HonkTrace,
-    rules: HonkRules,
-    config: HonkConfig,
-    groups: List<Group>,
-    nodeNames: Map<String, String>,
-    input: HonkTraceInput,
-    carries: (String) -> Boolean?,
-): RvTraceResult {
-    val evaluation = trace.evaluations.first()
-    val byId = rules.rules.associateBy { it.id }
-    val winnerAt = evaluation.rules.indexOfFirst { it.result == MATCHED }
-    val winner = evaluation.rules.getOrNull(winnerAt)?.let { byId[it.ruleId] } ?: throw EngineException(ErrorCode.Internal)
-    val skipped = evaluation.rules.take(winnerAt).firstOrNull { it.result == INDETERMINATE }?.let { byId[it.ruleId]?.source }
-    val sources = config.sources.associateBy { it.id }
-    val at = winner.source
-    val path = at?.let { sources[it.sourceId]?.path ?: it.file }.orEmpty()
-    val text = at?.let { sources[it.sourceId]?.content?.lines()?.getOrNull(it.line - 1)?.trim() } ?: winner.expression
-    val target = evaluation.outbound ?: winner.outbound
-    val group = groups.firstOrNull { it.name == target }
-    val selection = group?.runtime?.selection?.let { if (input.network == Transport.Udp) it.udp else it.tcp }
-    return RvTraceResult(
-        source = path,
-        line = at?.line ?: 0,
-        text = text,
-        target = target,
-        node = selection?.let { nodeNames[it.resolvedLeafNodeId ?: it.memberId] },
-        fallback = winner.isFallback,
-        captured = input.dstIp?.let(carries),
-        skipped = skipped?.let { (sources[it.sourceId]?.path ?: it.file) to it.line },
-    )
 }
 
 private const val MATCHED = "matched"

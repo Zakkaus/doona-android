@@ -2,6 +2,7 @@ package dev.doona.android.feature.settings
 
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.honk.FakeHonk
+import dev.doona.android.honk.HonkDnsRule
 import dev.doona.android.honk.HonkFixtures
 import dev.doona.android.honk.PolicyHonkFixtures
 import kotlinx.coroutines.Dispatchers
@@ -44,6 +45,12 @@ class DnsRulesViewModelTest {
             RvDnsRow(null, RvDnsAction.Upstream, "cloudflare"),
         )
         assertEquals(RvDnsLists(query, listOf(RvDnsRow(null, RvDnsAction.Accept))), vm.uiState.value.lists)
+    }
+
+    @Test
+    fun asIsActionDoesNotRequireAnUpstream() {
+        val rule = HonkDnsRule("r", 0, "fallback: asis", "asis", null, null, "fallback")
+        assertEquals(RvDnsRow(null, RvDnsAction.AsIs), rvDnsRow(rule, RvDnsList.Query))
     }
 
     @Test

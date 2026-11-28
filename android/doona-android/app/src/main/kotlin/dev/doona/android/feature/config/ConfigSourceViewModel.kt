@@ -75,7 +75,7 @@ internal class ConfigSourceViewModel(
     /** 檢視變更: honk's check of the buffer, then the diff. */
     fun review() = launchRead {
         val source = base ?: return@launchRead
-        val baseRev = state.value.draft?.baseRev ?: return@launchRead
+        val baseRev = state.value.draft?.baseRev
         val text = state.value.value.text
         val native = NativeConfig(api)
         val entry = native.config().main
@@ -89,8 +89,8 @@ internal class ConfigSourceViewModel(
         }
         val files = rvLineDiff(path, source.content, text)
         val head = native.config()
-        val headRev = if (head.files.firstOrNull { it.path == path }?.sha256 == source.sha256) baseRev else head.revision
-        state.update { it.copy(draft = RvSourceDraft(path, text, baseRev), diff = RvConfigDiff(files, baseRev, headRev), failure = null) }
+        val stale = head.files.firstOrNull { it.path == path }?.sha256 != source.sha256
+        state.update { it.copy(draft = RvSourceDraft(path, text, baseRev), diff = RvConfigDiff(files, baseRev, if (stale) head.revision else baseRev, stale), failure = null) }
     }
 
     /** 套用; a file changed since it was read turns the diff stale against today's revision. */
@@ -104,7 +104,7 @@ internal class ConfigSourceViewModel(
         } catch (error: EngineException) {
             if (error.code != ErrorCode.Busy) throw error
             val head = NativeConfig(api).config().revision
-            state.update { it.copy(diff = it.diff?.copy(headRev = head), failure = null) }
+            state.update { it.copy(diff = it.diff?.copy(headRev = head, stale = true), failure = null) }
         }
     }
 

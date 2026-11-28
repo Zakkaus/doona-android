@@ -20,7 +20,7 @@ import kotlin.time.Duration
  * schedules the data itself; this class only reads and asks. Every call blocks in [NativeApi]: run them on
  * `Dispatchers.IO`.
  */
-internal class NativeSettings(private val api: NativeApi, private val zone: () -> ZoneId = ZoneId::systemDefault) {
+internal class NativeSettings(val api: NativeApi, private val zone: () -> ZoneId = ZoneId::systemDefault) {
     fun revision(): Long? = NativeRevisions(api).revisions().active
 
     /** The loaded data's date, null when honk reports none, and [RvGeoUpdate.Failed] while honk's last attempt failed. */
@@ -49,13 +49,19 @@ internal class NativeSettings(private val api: NativeApi, private val zone: () -
         }
     }
 
-    /** honk's automatic update as 自動更新's choice: off, or the preset nearer its interval; null when honk has none. */
+    /**
+     * honk's automatic update as 自動更新's choice: off; 每天 for honk's default cron or 24 hours; 每週 for 168 hours;
+     * 自訂 for any other cron or interval. Null when honk reports no schedule.
+     */
     fun geoInterval(): RvGeoInterval? {
         val auto = api.read("GET", SETTINGS, RuntimeSettings.serializer()).geodata?.autoUpdate ?: return null
         return when {
             !auto.enabled -> RvGeoInterval.Off
-            auto.intervalHours < (DAY_HOURS + WEEK_HOURS) / 2 -> RvGeoInterval.Daily
-            else -> RvGeoInterval.Weekly
+            auto.cron == "0 3 * * *" -> RvGeoInterval.Daily
+            auto.cron != null -> RvGeoInterval.Custom
+            auto.intervalHours == DAY_HOURS -> RvGeoInterval.Daily
+            auto.intervalHours == WEEK_HOURS -> RvGeoInterval.Weekly
+            else -> RvGeoInterval.Custom
         }
     }
 
@@ -67,6 +73,7 @@ internal class NativeSettings(private val api: NativeApi, private val zone: () -
                     put("enabled", interval != RvGeoInterval.Off)
                     when (interval) {
                         RvGeoInterval.Off -> Unit
+                        RvGeoInterval.Custom, RvGeoInterval.Unavailable -> error("Not a selectable interval")
                         RvGeoInterval.Daily -> put("interval_hours", DAY_HOURS)
                         RvGeoInterval.Weekly -> put("interval_hours", WEEK_HOURS)
                     }

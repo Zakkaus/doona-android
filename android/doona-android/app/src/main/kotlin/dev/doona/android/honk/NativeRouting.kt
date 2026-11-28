@@ -109,7 +109,7 @@ internal class HonkTrace(@SerialName("generation_id") val generationId: String, 
  * `skipped` (not reached).
  */
 @Serializable
-internal class HonkEvaluation(val outbound: String?, val rules: List<HonkRuleEvaluation>)
+internal class HonkEvaluation(val decision: String, val outbound: String?, @SerialName("missing_inputs") val missingInputs: List<String>, val rules: List<HonkRuleEvaluation>)
 
 @Serializable
 internal class HonkRuleEvaluation(@SerialName("rule_id") val ruleId: String, val result: String)

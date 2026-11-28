@@ -23,6 +23,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.Instant
 
 /** honk's flows (`GET /flows`, `detail=full`) as the report's events; bodies are `flows/full.json` with other values. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -43,6 +44,7 @@ class FlowEventsTest : ExportFixture() {
         honk.on("GET", ReportHonk.FLOWS, 200, list(flows.map { it.copy(state = "closed") }))
         producer.recordRecent()
         val names = listOf("first.example", "second.example", "later.example")
+        assertEquals(Instant.parse(flows[1].startedAt).toEpochMilli(), producer.snapshot().first().atEpochMs)
         assertEquals(names, producer.snapshot().map { it.visitedDomain })
         assertEquals(listOf(TCP_FLOW_EVENT, TCP_FLOW_EVENT, UDP_FLOW_EVENT).sorted(), producer.snapshot().map { it.text }.sorted())
 

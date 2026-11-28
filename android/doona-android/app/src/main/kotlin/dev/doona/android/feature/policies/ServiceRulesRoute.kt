@@ -8,6 +8,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.R
 import dev.doona.android.app.nativeApi
+import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.settings.changeBanner
 import dev.doona.android.feature.settings.readBanner
 
@@ -30,6 +31,6 @@ internal fun ServiceRulesRoute(viewModel: ServiceRulesViewModel, onBack: () -> U
         onBack,
         viewModel::toggle,
         onApply = viewModel::apply,
-        banner = ui.writeFailure?.let { changeBanner(stringResource(R.string.rv_config_apply_failed), it, viewModel::apply) },
+        banner = ui.writeFailure?.let { changeBanner(stringResource(R.string.rv_config_apply_failed), it, if (it == ErrorCode.Busy) viewModel::load else viewModel::apply) },
     )
 }

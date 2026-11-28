@@ -7,6 +7,8 @@ import dev.doona.android.feature.model.RvGeoUpdate
 import dev.doona.android.feature.settings.RvLogLevel
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
@@ -81,11 +83,13 @@ class NativeSettingsTest {
     }
 
     @Test
-    fun theScheduleIsOffOrTheNearerPreset() {
+    fun onlyExactIntervalsArePresets() {
         val cases = listOf(
+            SettingsHonk.RUNTIME_SETTINGS to RvGeoInterval.Daily,
             SettingsHonk.runtimeSettings(hours = 24) to RvGeoInterval.Daily,
-            SettingsHonk.runtimeSettings(hours = 48) to RvGeoInterval.Daily,
-            SettingsHonk.runtimeSettings(hours = 120) to RvGeoInterval.Weekly,
+            SettingsHonk.runtimeSettings(hours = 24, cron = "0 3 * * 1-5") to RvGeoInterval.Custom,
+            SettingsHonk.runtimeSettings(hours = 48) to RvGeoInterval.Custom,
+            SettingsHonk.runtimeSettings(hours = 120) to RvGeoInterval.Custom,
             SettingsHonk.runtimeSettings(hours = 168) to RvGeoInterval.Weekly,
             SettingsHonk.runtimeSettings(enabled = false, hours = 24) to RvGeoInterval.Off,
         )
@@ -97,7 +101,8 @@ class NativeSettingsTest {
 
     @Test
     fun noScheduleWhenHonkReportsNoGeodataSettings() {
-        api.on("GET", "/api/v1/runtime/settings", 200, """{"observed_at":"2026-08-15T10:00:05Z","source":"runtime","log":{"level":"debug","buffered_records":4096}}""")
+        val settings = Json.parseToJsonElement(SettingsHonk.RUNTIME_SETTINGS).jsonObject
+        api.on("GET", "/api/v1/runtime/settings", 200, JsonObject(settings - "geodata").toString())
 
         assertNull(utc.geoInterval())
     }
@@ -106,7 +111,7 @@ class NativeSettingsTest {
     fun eachChoicePatchesHonksAutomaticUpdate() {
         api.on("PATCH", "/api/v1/runtime/settings", 200, SettingsHonk.RUNTIME_SETTINGS)
 
-        RvGeoInterval.entries.forEach(utc::setGeoInterval)
+        listOf(RvGeoInterval.Off, RvGeoInterval.Daily, RvGeoInterval.Weekly).forEach(utc::setGeoInterval)
 
         assertEquals(
             listOf(

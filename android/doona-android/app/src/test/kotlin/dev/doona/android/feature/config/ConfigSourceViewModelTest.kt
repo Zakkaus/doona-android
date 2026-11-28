@@ -50,7 +50,7 @@ class ConfigSourceViewModelTest {
     fun aCleanCheckLaysTheBufferOverTheFileAfterTheEntryAndShowsItsDiff() {
         val ui = editor().apply { review() }.uiState.value
         val diff = checkNotNull(ui.diff)
-        assertEquals(RvSampleConfig.HEAD, diff.baseRev)
+        assertEquals(RvSampleConfig.HEAD.toLong(), diff.baseRev)
         assertFalse(diff.stale)
         assertEquals(listOf(CN), checkNotNull(diff.files).map { it.source })
         val sent = Json.parseToJsonElement(honk.calls.single { it.path == "/api/v1/config/validate" }.body!!).jsonObject
@@ -94,7 +94,7 @@ class ConfigSourceViewModelTest {
         val vm = editor()
         honk.on("GET", "/api/v1/config", 200, HonkFixtures.body("config/rv-config-landed"))
         vm.review()
-        assertEquals(RvSampleConfig.HEAD + 1, vm.uiState.value.diff?.headRev)
+        assertEquals(RvSampleConfig.HEAD + 1L, vm.uiState.value.diff?.headRev)
         honk.on("PUT", "/api/v1/config/sources/source-f4", 412, HonkFixtures.body("errors/stale-revision"))
         vm.apply()
         assertFalse(vm.uiState.value.applied)

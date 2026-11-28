@@ -47,7 +47,7 @@ internal fun RvPolicyScreenSample(
     banner: RvNotice? = null,
     groupsEdit: RvListEdit? = null,
     profile: RvPolicyProfile = rvSamplePolicyProfile,
-) = RvPolicyScreen(state, onChange, routes, noSubscription, configRev, loading, banner, profile, groupsEdit)
+) = RvPolicyScreen(state, onChange, routes, noSubscription, configRev?.toLong(), loading, banner, profile, groupsEdit)
 
 /** Where the sample's quick rule and rule page can send: the main node's group, then every other group. */
 internal val rvSampleTargets: List<RvPolicyGroup> = listOf(RvPolicyData.main) + RvPolicyData.groups

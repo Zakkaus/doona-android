@@ -7,6 +7,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvDiffAt
 import dev.doona.android.designsystem.rv.RvFilterChip
@@ -59,7 +60,7 @@ internal fun RvConfigSourcePage(
             title,
             titleBlock,
             insets,
-            caption = { RvCaption(stringResource(R.string.rv_config_draft_base, draft.baseRev)) },
+            caption = { RvCaption(stringResource(R.string.rv_config_draft_base, draft.baseRev ?: RV_NO_VALUE)) },
             control = { RvFilterChip(draft.path, onPickFile) },
         )
         RvGutter(banner = failure) { RvSourceField(value, onValueChange, draft.path, marks = marks) }
@@ -90,12 +91,12 @@ internal fun RvConfigDiffPage(
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply, enabled = !diff.stale) },
         actionScrim = true,
     ) { titleBlock ->
-        RvPageHeader(title, titleBlock, insets, caption = { RvCaption(stringResource(R.string.rv_config_based_on, diff.baseRev)) })
+        RvPageHeader(title, titleBlock, insets, caption = { RvCaption(stringResource(R.string.rv_config_based_on, diff.baseRev ?: RV_NO_VALUE)) })
         val stale = if (diff.stale) {
             RvNotice(
                 RvNoticeKind.Error,
                 stringResource(R.string.rv_config_stale_title),
-                rvKeepTail(rvKeepRuns(stringResource(R.string.rv_config_stale_reason, diff.baseRev, diff.headRev))),
+                rvKeepTail(rvKeepRuns(stringResource(R.string.rv_config_stale_reason, diff.baseRev ?: RV_NO_VALUE, diff.headRev ?: RV_NO_VALUE))),
                 stringResource(R.string.rv_config_reload),
                 onReload,
             )

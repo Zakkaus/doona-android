@@ -203,11 +203,12 @@
     <string name="rv_trace_host">網域或 IP</string>
     <string name="rv_trace_run">測試</string>
     <string name="rv_trace_matched">符合的規則</string>
+    <string name="rv_trace_indeterminate">無法判定符合的規則</string>
     <string name="rv_trace_result">結果</string>
     <string name="rv_trace_captured">經由 VPN</string>
     <string name="rv_trace_yes">是</string>
     <string name="rv_trace_no">否</string>
-    <string name="rv_trace_skipped_title">有一條規則已略過</string>
-    <string name="rv_trace_skipped_reason">%1$s 第 %2$d 行的規則排在前面，但這條規則需要 App 資訊，測試無法判斷。</string>
+    <string name="rv_trace_skipped_title">前面的規則可能符合</string>
+    <string name="rv_trace_skipped_reason">缺少判定 %1$s 第 %2$d 行所需的輸入。</string>
     <string name="rv_trace_failed">無法執行路由測試</string>
 </resources>

@@ -6,12 +6,14 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyRule
+import dev.doona.android.feature.model.RvRuleMatch
 import dev.doona.android.honk.NativeApi
 import dev.doona.android.honk.NativeConfig
 import kotlinx.coroutines.CancellationException
@@ -63,7 +65,24 @@ internal class ServiceRulesViewModel(
             try {
                 val read = withContext(io) { HonkPolicyRead.read(api) }.also { this@ServiceRulesViewModel.read = it }
                 val groups = read.policyGroups(read.nodes(places))
-                state.update { it.copy(main = read.mainGroupId?.let(groups::get), rules = rvServiceRules(read.policyRules(groups)), failure = null) }
+                val services = buildMap<String, RvPolicyRule> {
+                    read.policyRules(groups).forEachIndexed { index, row ->
+                        when (val match = row.match) {
+                            is RvRuleMatch.GeoSite -> putIfAbsent(match.category.trim().lowercase(), row)
+
+                            is RvRuleMatch.Domains -> {
+                                val condition = ruleCondition(read.rules.rules[index].expression)
+                                for (arg in topLevel(condition.substringAfter('(').dropLast(1), ",")) {
+                                    val value = argument(arg)
+                                    if (value.key == "geosite") putIfAbsent(value.value.trim().lowercase(), row)
+                                }
+                            }
+
+                            else -> Unit
+                        }
+                    }
+                }
+                state.update { it.copy(main = read.mainGroupId?.let(groups::get), rules = services.filterKeys { code -> RvServiceData.all.any { it.code == code } }, failure = null, writeFailure = null) }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
@@ -84,7 +103,9 @@ internal class ServiceRulesViewModel(
             try {
                 withContext(io) {
                     val fallback = read.rules.rules.lastOrNull { it.isFallback }?.source ?: read.rules.fallback.source
-                    val (source, text) = statementAt(NativeConfig(api).config(), fallback, null).before(codes.map { "domain(geosite:$it) -> $main" })
+                    val config = NativeConfig(api).config()
+                    if (config.generationId != read.rules.generationId) throw EngineException(ErrorCode.Busy)
+                    val (source, text) = statementAt(config, fallback, null).before(codes.map { "domain(geosite:$it) -> $main" })
                     NativeConfig(api).replace(source, text)
                 }
                 state.update { it.copy(done = true) }

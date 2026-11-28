@@ -12,6 +12,13 @@
     "max_flows": 10000,
     "retention_seconds": 300
   },
+  "recording": {
+    "flows": {"allowed": true, "mode": "auto", "active": false},
+    "logs": {"allowed": true, "mode": "auto", "active": false},
+    "dns_log": {"allowed": true, "mode": "auto", "active": false},
+    "events": {"active": false},
+    "grace_remaining_seconds": 0
+  },
   "geodata": {
     "source": "default",
     "geosite": {
@@ -28,6 +35,7 @@
     },
     "auto_update": {
       "enabled": true,
+      "cron": null,
       "interval_hours": 168
     },
     "download": {
