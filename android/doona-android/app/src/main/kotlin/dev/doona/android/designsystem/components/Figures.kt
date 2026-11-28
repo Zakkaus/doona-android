@@ -36,9 +36,3 @@ fun DoonaFigureText(whole: String, unit: String, style: TextStyle, unitStyle: Te
     }
     BasicText(text, modifier.layoutRole(LayoutRole.Figure), style = style.copy(color = DoonaTheme.colors.text), maxLines = 1)
 }
-
-/** A formatted [figure] split at [locale]'s decimal separator: the integer, and the separator with the decimals (or nothing). */
-fun splitDecimals(figure: String, locale: Locale): Pair<String, String> {
-    val cut = figure.indexOf(DecimalFormatSymbols.getInstance(locale).decimalSeparator)
-    return if (cut < 0) figure to "" else figure.substring(0, cut) to figure.substring(cut)
-}

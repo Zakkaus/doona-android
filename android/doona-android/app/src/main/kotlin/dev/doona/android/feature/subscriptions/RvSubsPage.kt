@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -22,9 +21,7 @@ import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvAddEntry
 import dev.doona.android.designsystem.rv.RvAddRow
-import dev.doona.android.designsystem.rv.RvBusy
 import dev.doona.android.designsystem.rv.RvCard
-import dev.doona.android.designsystem.rv.RvChevron
 import dev.doona.android.designsystem.rv.RvConfirmSheet
 import dev.doona.android.designsystem.rv.RvEmptyState
 import dev.doona.android.designsystem.rv.RvGlass
@@ -34,6 +31,7 @@ import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvLongPressMenu
 import dev.doona.android.designsystem.rv.RvMenuItem
+import dev.doona.android.designsystem.rv.RvNavEnd
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvPrimaryButton
@@ -41,7 +39,6 @@ import dev.doona.android.designsystem.rv.RvProgress
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvRowRemove
 import dev.doona.android.designsystem.rv.RvScrollPage
-import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSkeletonCard
 import dev.doona.android.designsystem.rv.RvSkeletonCards
 import dev.doona.android.designsystem.rv.RvSkeletonGoal
@@ -221,14 +218,7 @@ private fun SubscriptionCard(sub: RvSubscription, actions: RvSubsActions, nowEpo
 
 /** A subscription row's end: the chevron, after a busy bar while it updates. */
 @Composable
-private fun SubscriptionEnd(updating: Boolean) {
-    if (!updating) return RvChevron()
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        RvBusy(Modifier.width(RvSize.busy))
-        Spacer(Modifier.width(RvSpace.trailingGap))
-        RvChevron()
-    }
-}
+private fun SubscriptionEnd(updating: Boolean) = RvNavEnd(busy = updating)
 
 /**
  * 訂閱's cards while it loads: subscription cards, each its row (the name over its nodes and update, the chevron's room)

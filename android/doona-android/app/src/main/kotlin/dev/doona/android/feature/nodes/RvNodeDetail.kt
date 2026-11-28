@@ -152,8 +152,8 @@ private fun Header(node: RvNode, current: Boolean, titleBlock: Modifier, insets:
         {
             // Chips that do not fit one line (two at fs200) wrap, the same gap between lines as between chips.
             FlowRow(horizontalArrangement = Arrangement.spacedBy(RvSpace.tight * 2), verticalArrangement = Arrangement.spacedBy(RvSpace.tight * 2)) {
-                if (current) RvStatusChip(R.drawable.rv_nodes_ic_check_circle, stringResource(R.string.rv_nodes_in_use), Rv.colors.positive)
-                if (scoreMark != null) RvStatusChip(R.drawable.rv_nodes_ic_check_circle, scoreMark, Rv.colors.positive)
+                if (current) RvStatusChip(R.drawable.rv_nodes_ic_check_circle, stringResource(R.string.rv_nodes_in_use), Rv.colors.selected)
+                if (scoreMark != null) RvStatusChip(R.drawable.rv_nodes_ic_check_circle, scoreMark, Rv.colors.selected)
                 if (high) RvStatusChip(R.drawable.rv_nodes_ic_warning, stringResource(R.string.rv_nodes_latency_high), latencyColor(node.latencyMs))
             }
         }

@@ -1,17 +1,14 @@
 package dev.doona.android.feature.stats
 
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -19,13 +16,12 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.Dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.Rv
+import dev.doona.android.designsystem.rv.RvDeltaTriangle
 import dev.doona.android.designsystem.rv.RvFigure
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvSpanText
-import dev.doona.android.designsystem.rv.RvStatsSize
 import dev.doona.android.designsystem.rv.scripted
 
 /** A card's figure: the number in [style], its unit in [unitStyle] on the same baseline. */
@@ -45,7 +41,7 @@ internal fun RvStatsDelta(up: Boolean, change: String, against: RvStatsAgainst, 
     val spoken = stringResource(if (up) against.up else against.down, change)
     val line = stringResource(against.line)
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Triangle(up, color, RvStatsSize.delta)
+        RvDeltaTriangle(up, color)
         Spacer(Modifier.width(RvSpace.tight))
         val text = buildAnnotatedString {
             withStyle(SpanStyle(color = color)) { append(change) }
@@ -53,26 +49,6 @@ internal fun RvStatsDelta(up: Boolean, change: String, against: RvStatsAgainst, 
             append(scripted(line))
         }
         RvSpanText(text, Rv.type.tileCaption.copy(color = Rv.colors.textSecondary), Modifier.semantics { contentDescription = spoken }, maxLines = 1)
-    }
-}
-
-@Composable
-private fun Triangle(up: Boolean, color: Color, side: Dp) {
-    Canvas(Modifier.size(side)) {
-        val (w, h) = size.width to size.height
-        val path = Path().apply {
-            if (up) {
-                moveTo(w / 2, 0f)
-                lineTo(w, h)
-                lineTo(0f, h)
-            } else {
-                moveTo(0f, 0f)
-                lineTo(w, 0f)
-                lineTo(w / 2, h)
-            }
-            close()
-        }
-        drawPath(path, color)
     }
 }
 

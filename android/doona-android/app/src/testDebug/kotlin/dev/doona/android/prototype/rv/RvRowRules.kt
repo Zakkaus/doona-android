@@ -119,10 +119,10 @@ internal fun rvRowsOf(nodes: List<RvNode>): List<RvRowRead> = nodes.indices.mapN
 /** The parts that stand on a text line as its end: a line end, and the busy bar that replaces one. */
 private val LINE_ENDS = setOf(RvRowPart.LINE_END, RvPart.BUSY)
 
-private val LEADS = setOf(RvPart.DISC, RvRowPart.ICON_DISC, RvRowPart.FLAG, RvRowPart.APP_DISC, RvRowPart.GLYPH)
+private val LEADS = setOf(RvRowPart.ICON_DISC, RvRowPart.FLAG, RvRowPart.APP_DISC, RvRowPart.GLYPH)
 
 /** The 40 dp leading visuals of the iconstyle rule (R4); a bare glyph is not one. */
-private val DISCS = setOf(RvPart.DISC, RvRowPart.ICON_DISC, RvRowPart.FLAG, RvRowPart.APP_DISC)
+private val DISCS = setOf(RvRowPart.ICON_DISC, RvRowPart.FLAG, RvRowPart.APP_DISC)
 
 private fun List<RvNode>.subtree(i: Int): List<Int> {
     val out = mutableListOf<Int>()

@@ -132,7 +132,7 @@ private fun PendingCard(pending: List<RvPolicyRule>, onDiscard: () -> Unit) {
     RvCard {
         RvCardHeader(stringResource(R.string.rv_rules_pending))
         pending.forEach { RvRuleRow(it, end = held) }
-        RvRow({ RvIconDisc(R.drawable.rv_sym_delete) }, stringResource(R.string.rv_rules_discard), null, onClick = onDiscard)
+        RvRow({ RvIconDisc(R.drawable.rv_sym_delete, destructive = true) }, stringResource(R.string.rv_rules_discard), null, onClick = onDiscard)
     }
 }
 

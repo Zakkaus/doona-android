@@ -118,7 +118,7 @@ internal fun RvSubDetail(
                 RvRow({ RvIconDisc(R.drawable.rv_sym_link) }, stringResource(R.string.rv_sub_link), sub.host, subtitleKeepWords = false)
             }
             RvCard {
-                RvRow({ RvIconDisc(R.drawable.rv_sym_delete, Rv.colors.error) }, stringResource(R.string.rv_sub_delete), null, onClick = { onChange(state.copy(sheet = RvSubSheet.Delete)) })
+                RvRow({ RvIconDisc(R.drawable.rv_sym_delete, destructive = true) }, stringResource(R.string.rv_sub_delete), null, onClick = { onChange(state.copy(sheet = RvSubSheet.Delete)) })
             }
         }
     }

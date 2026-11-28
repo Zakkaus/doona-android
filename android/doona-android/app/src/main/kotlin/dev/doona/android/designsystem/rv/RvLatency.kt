@@ -50,25 +50,31 @@ internal fun RvDelta(changeMs: Int) {
     // The triangle and the colour carry the direction for the eye; a screen reader is told it in words (a latency that fell is faster).
     val spoken = stringResource(if (changeMs < 0) R.string.rv_a11y_faster else R.string.rv_a11y_slower, stringResource(R.string.latency_ms, abs(changeMs)))
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(RvHomeSize.deltaGap)) {
-        Canvas(Modifier.size(RvHomeSize.delta)) {
-            val h = size.width * TRIANGLE_HEIGHT
-            val top = (size.height - h) / 2
-            val path = Path().apply {
-                if (changeMs > 0) {
-                    moveTo(size.width / 2, top)
-                    lineTo(size.width, top + h)
-                    lineTo(0f, top + h)
-                } else {
-                    moveTo(0f, top)
-                    lineTo(size.width, top)
-                    lineTo(size.width / 2, top + h)
-                }
-                close()
-            }
-            drawPath(path, color)
-        }
+        RvDeltaTriangle(up = changeMs > 0, color)
         // The words ride on the amount's own node, so the row's measured parts stay what they were.
         RvText(stringResource(R.string.latency_ms, abs(changeMs)), Rv.type.rowSub, Modifier.semantics { contentDescription = spoken }, color = color)
+    }
+}
+
+/** A delta's filled 8 dp triangle (measured §7), pointing up when [up], in [color]: [RvDelta]'s, and the stats cards'. */
+@Composable
+internal fun RvDeltaTriangle(up: Boolean, color: Color) {
+    Canvas(Modifier.size(RvHomeSize.delta)) {
+        val h = size.width * TRIANGLE_HEIGHT
+        val top = (size.height - h) / 2
+        val path = Path().apply {
+            if (up) {
+                moveTo(size.width / 2, top)
+                lineTo(size.width, top + h)
+                lineTo(0f, top + h)
+            } else {
+                moveTo(0f, top)
+                lineTo(size.width, top)
+                lineTo(size.width / 2, top + h)
+            }
+            close()
+        }
+        drawPath(path, color)
     }
 }
 

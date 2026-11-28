@@ -48,6 +48,7 @@ import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvBar
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvChrome
+import dev.doona.android.designsystem.rv.RvEmptyCaption
 import dev.doona.android.designsystem.rv.RvFilterChipRow
 import dev.doona.android.designsystem.rv.RvFrames
 import dev.doona.android.designsystem.rv.RvGutter
@@ -208,7 +209,7 @@ private fun ListStart(loading: Boolean, empty: Boolean, apply: RvApplyTo?, onApp
             Spacer(Modifier.height(RvSpace.cardGap))
         }
     }
-    if (noMatch) RvGutter { RvCaption(stringResource(R.string.rv_nodes_no_match)) }
+    if (noMatch) RvGutter { RvEmptyCaption(stringResource(R.string.rv_nodes_no_match), stringResource(R.string.rv_conn_none_line)) }
 }
 
 /**

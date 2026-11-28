@@ -7,25 +7,15 @@
     <string name="nav_overview">System status</string>
     <string name="nav_policies">Policies</string>
     <string name="nav_nodes">Nodes</string>
-    <string name="nav_rules">Rules</string>
-    <string name="ui_search">Search</string>
-    <string name="ui_more_options">More options</string>
     <string name="ui_back">Back</string>
-    <string name="group_new_group">Create group</string>
-    <string name="policy_edit">Edit group</string>
     <string name="backend_connected">Connected</string>
     <string name="act_mode">Outbound mode</string>
     <string name="mode_rule">Rule</string>
     <string name="mode_direct">Direct</string>
     <string name="mode_global">Global</string>
-    <string name="act_global">Global outbound</string>
     <string name="ui_download">Download</string>
     <string name="ui_upload">Upload</string>
-    <string name="act_latency">Latency</string>
     <string name="latency_ms">%1$d ms</string>
-    <string name="latency_good">Fast</string>
-    <string name="latency_fair">Fair</string>
-    <string name="latency_slow">Slow</string>
     <string name="latency_untested">Not tested</string>
     <string name="policy_kind_selector">Manual</string>
     <string name="policy_kind_urltest">Fastest</string>
@@ -35,22 +25,14 @@
     <string name="group_policy_score_hint">Picks a node by its observed reliability and recent connection quality</string>
     <string name="policy_healthy">%1$d available</string>
     <string name="policy_untested">%1$d untested</string>
-    <string name="policy_current">Current</string>
     <string name="ui_tcp" translatable="false">TCP</string>
     <string name="ui_udp" translatable="false">UDP</string>
-    <string name="policy_both">Both</string>
     <string name="ui_all_count">All %1$d</string>
-    <string name="policy_kind_manual">Manual %1$d</string>
     <string name="policy_kind_auto">Automatic %1$d</string>
-    <string name="policy_all_regions">All regions</string>
-    <string name="policy_by_latency">By latency</string>
-    <string name="policy_alive_only">Available only</string>
     <plurals name="policy_members">
         <item quantity="one">%1$d member</item>
         <item quantity="other">%1$d members</item>
     </plurals>
-    <string name="ui_group">Group</string>
-    <string name="group_every_node">Includes every node</string>
     <string name="policy_test_all">Test all</string>
     <string name="policy_test_group">Test this group</string>
     <string name="policy_unpin">Return to automatic</string>
@@ -65,7 +47,6 @@
     <string name="first_no_nodes">No node available.</string>
     <string name="ui_dismiss">Dismiss</string>
     <string name="ui_clear">Clear</string>
-    <string name="ui_in_progress">In progress</string>
     <string name="ui_on">On</string>
     <string name="ui_off">Off</string>
     <string name="act_rate" translatable="false">%1$s/s</string>

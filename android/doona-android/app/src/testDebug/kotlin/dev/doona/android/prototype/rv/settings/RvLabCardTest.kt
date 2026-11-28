@@ -9,9 +9,8 @@ import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvSettingsCard
-import dev.doona.android.designsystem.rv.RvSettingsSpace
-import dev.doona.android.designsystem.rv.RvSettingsSwitchRow
 import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.RvRowRead
@@ -74,9 +73,9 @@ class RvLabCardTest {
             RvTheme(seedColorScheme(Seed.Cyan.argb, false), false) {
                 Column(Modifier.fillMaxSize()) {
                     Box(Modifier.weight(1f)) { RvLabScreen(performance = true) }
-                    Column(Modifier.padding(horizontal = RvSettingsSpace.margin)) {
-                        RvSettingsCard { RvSettingsSwitchRow(OTHER, R.drawable.rv_sym_rule, true, {}, OTHER_SUB) }
-                        RvSettingsCard { RvSettingsSwitchRow(SHORT, R.drawable.rv_sym_rule, true, {}, SHORT_SUB) }
+                    Column(Modifier.padding(horizontal = RvSpace.gutter)) {
+                        RvSettingsCard { RvSwitchRow(R.drawable.rv_sym_rule, OTHER, true, OTHER_SUB, onChange = {}) }
+                        RvSettingsCard { RvSwitchRow(R.drawable.rv_sym_rule, SHORT, true, SHORT_SUB, onChange = {}) }
                     }
                 }
             }

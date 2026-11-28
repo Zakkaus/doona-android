@@ -46,7 +46,6 @@ import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.toSize
 import java.lang.Character.UnicodeScript
 import java.util.Locale
-import kotlin.math.ceil
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -57,7 +56,7 @@ import kotlin.math.roundToInt
  * room. [maxLines] lets it run to more lines, the last ending in the platform's ellipsis, and [overflow] may put the
  * ellipsis in the middle of a single line instead. Given [autoSize], a line too long for its width shrinks to fit. A text
  * that wraps is laid out again until it reads well ([RvWrap]): a meta line breaks only between its parts, a value
- * breaks at its dots and its port's colon rather than inside a word, and the last line keeps a word, not one or two
+ * breaks at its dots, its hyphens and its port's colon rather than inside a word, and the last line keeps a word, not one or two
  * letters (「當機」, not 「機」; 「不經代理」, not 「代理」). A row's title and subtitle ([RvRow], the settings rows) take
  * their role's Latin [lineBox] ([RvLineBox]), so the row's height and the disc and ends centred on it do not depend on
  * the script of its text, as does an end on a row's line ([LocalRvRowLine]); any other text keeps the line boxes its
@@ -221,6 +220,9 @@ private const val ELLIPSIS = "\u2026"
  *   over `3/15 到期`, not `61.7/200` over `GB`), unless a part is longer than its line ([unbound]);
  * - [soft]: a value broken inside a word (a host:port, an app's package) may break after a dot between letters and before
  *   a port's colon instead (`gemini.google.com` over `:443`, not `…com:4` over `43`);
+ * - [hyphens]: a value still broken between two letters or digits may break after a hyphen between them instead
+ *   (`aarch64-linux-` over `android`, not `…androi` over `d`); a value already broken at a slash keeps that break
+ *   (`dns.example/` over `dns-query`);
  * - [joined]: one letter alone on the last line is joined to the letter before (「當機」, not 「機」);
  * - [word]: a last line of fewer than [LAST_LINE_LETTERS] letters takes the whole word that ended the line before, joined
  *   to it ([word] is where the last line started; 「發生當機」, not 「當機」; 「不經代理」, not 「代理」); -2 once dropped;
@@ -234,6 +236,7 @@ private data class RvWrap(
     val bound: Boolean = false,
     val unbound: Boolean = false,
     val soft: Boolean = false,
+    val hyphens: Boolean = false,
     val joined: Boolean = false,
     val word: Int = -1,
     val narrower: Int = 0,
@@ -243,6 +246,7 @@ private data class RvWrap(
     fun text(text: String): String {
         var shown = if (bound) rvBind(text) else text
         if (soft) shown = rvSoftBreaks(shown)
+        if (hyphens) shown = rvHyphenBreaks(shown)
         if (joined) shown = rvJoinLast(shown)
         return if (word >= 0) rvJoinWord(shown, word) else shown
     }
@@ -267,15 +271,16 @@ private data class RvWrap(
             narrower > 0 -> if (worse) copy(narrower = -1) else null
             word >= 0 && worse -> copy(word = -2)
             last < 1 -> null
-            else -> breaks(text, torn) ?: lastLine(layout)
+            else -> breaks(text, torn, torn && rvTornInWord(layout)) ?: lastLine(layout)
         }
     }
 
     /** A meta line bound, a bound one that tore a part let go, or a torn value given its soft breaks. */
-    private fun breaks(text: String, torn: Boolean): RvWrap? = when {
+    private fun breaks(text: String, torn: Boolean, inWord: Boolean): RvWrap? = when {
         bound && torn -> copy(bound = false, unbound = true)
         !bound && !unbound && META_SEPARATOR in text -> copy(bound = true)
         torn && !soft && rvSoftBreaks(text) != text -> copy(soft = true)
+        inWord && !hyphens && rvHyphenBreaks(text) != text -> copy(hyphens = true)
         else -> null
     }
 
@@ -338,75 +343,8 @@ private const val WRAP_STEPS = 6
 /** [RvWrap.width] before any layout. */
 private const val NOT_LAID_OUT = -1
 
-/** A wrapped line ends on fewer letters than this only where nothing better fits. */
-private const val LAST_LINE_LETTERS = 3
-
-private const val META_SEPARATOR = " · "
-
-/** The letters and digits on the last of [layout]'s lines; none counted when it ends in an ellipsis. */
-private fun rvLastLetters(layout: TextLayoutResult): Int {
-    val last = layout.lineCount - 1
-    if (layout.isLineEllipsized(last)) return Int.MAX_VALUE
-    val line = layout.layoutInput.text.text.substring(layout.getLineStart(last), layout.getLineEnd(last))
-    return line.codePoints().filter(Character::isLetterOrDigit).count().toInt()
-}
-
-/** Whether a line of [layout] ends inside a word: a Latin letter, digit or sign on both sides of the break, no space. */
-private fun rvTorn(layout: TextLayoutResult): Boolean {
-    val text = layout.layoutInput.text.text
-    return (0 until layout.lineCount - 1).any { line ->
-        val end = layout.getLineEnd(line)
-        val before = text.substring(0, end).lastOrNull { it != WORD_JOINER_CHAR }
-        val after = text.substring(end).firstOrNull { it != WORD_JOINER_CHAR }
-        before != null && after != null && before.inWord() && after.inWord()
-    }
-}
-
-private fun Char.inWord() = !isWhitespace() && this != ZERO_WIDTH_SPACE && !rvCjk()
-
 /** [text] with no break inside a meta line's parts or before a separator: a word joiner after each space but the separators'. */
 private fun rvBind(text: String): String = text.split(META_SEPARATOR).joinToString(" $WORD_JOINER· ") { it.replace(" ", " $WORD_JOINER") }
-
-/** [text] with a break allowed after a dot between letters and before a colon that follows a letter and leads a number. */
-private fun rvSoftBreaks(text: String): String = buildString {
-    text.forEachIndexed { i, c ->
-        val before = text.getOrNull(i - 1)
-        val after = text.getOrNull(i + 1)
-        if (c == ':' && before?.isLetter() == true && after?.isDigit() == true) append(ZERO_WIDTH_SPACE)
-        append(c)
-        if (c == '.' && before?.isLetter() == true && after?.isLetter() == true) append(ZERO_WIDTH_SPACE)
-    }
-}
-
-/**
- * [text] with word joiners through the word that ends before [start] (the last line's start, spaces skipped) and on to
- * [start], so no break falls inside that word or between it and the last line; [text] as it is when that word starts it.
- * Words are ICU's, a dictionary's for CJK.
- */
-private fun rvJoinWord(text: String, start: Int): String {
-    var end = start
-    while (end > 0 && (text[end - 1].isWhitespace() || text[end - 1] == WORD_JOINER_CHAR)) end--
-    if (end == 0) return text
-    val words = BreakIterator.getWordInstance()
-    words.setText(text)
-    val from = words.preceding(end)
-    if (from <= 0) return text
-    return buildString {
-        text.forEachIndexed { i, c ->
-            if (i in from + 1..start && text[i - 1] != WORD_JOINER_CHAR && c != WORD_JOINER_CHAR) append(WORD_JOINER_CHAR)
-            append(c)
-        }
-    }
-}
-
-/**
- * The width of the last line of [layout], in whole px: a line that much narrower cannot keep the word that ended the
- * line before, since the last line did not fit after it.
- */
-private fun rvLastLineWidth(layout: TextLayoutResult): Int {
-    val last = layout.lineCount - 1
-    return ceil(layout.getLineRight(last) - layout.getLineLeft(last)).toInt()
-}
 
 /** [text] with a word joiner before its last letter: no line break can fall between it and the letter before. */
 private fun rvJoinLast(text: String): String {
@@ -443,8 +381,8 @@ internal fun rvCjkLetter(point: Int): Boolean = point >= 0 && when (UnicodeScrip
     else -> false
 }
 
-private const val ZERO_WIDTH_SPACE = '\u200B'
-private const val WORD_JOINER_CHAR = '\u2060'
+internal const val ZERO_WIDTH_SPACE = '\u200B'
+internal const val WORD_JOINER_CHAR = '\u2060'
 private const val WORD_JOINER = "\u2060"
 
 /**

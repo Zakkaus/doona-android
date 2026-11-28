@@ -28,10 +28,10 @@ import dev.doona.android.designsystem.rv.RvInputContent
 import dev.doona.android.designsystem.rv.RvInputSheet
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvPageEnd
+import dev.doona.android.designsystem.rv.RvRadioRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSettingsCard
 import dev.doona.android.designsystem.rv.RvSettingsColumn
-import dev.doona.android.designsystem.rv.RvSettingsRadioRow
 import dev.doona.android.designsystem.rv.RvSettingsRow
 import dev.doona.android.designsystem.rv.RvSettingsSection
 import dev.doona.android.designsystem.rv.RvSettingsSpace
@@ -59,7 +59,7 @@ internal fun RvDnsScreen(selected: RvDnsUpstream?, onSelect: (RvDnsUpstream) -> 
             // The first section sits on the header's gap, as 主題's does.
             RvSettingsSection(stringResource(R.string.rv_settings_dns_server), first = true)
             RvSettingsCard {
-                RvDnsUpstream.entries.forEach { RvSettingsRadioRow(stringResource(it.label), it == selected, { onSelect(it) }, subtitle = it.address, subtitleKeepWords = false) }
+                RvDnsUpstream.entries.forEach { RvRadioRow(null, stringResource(it.label), it == selected, it.address, subtitleKeepWords = false, onSelect = { onSelect(it) }) }
                 // No glyph, so its text lines up with the servers above it.
                 RvSettingsRow(stringResource(R.string.rv_settings_dns_custom), Modifier.rvRowPress(Role.Button, onCustom), subtitle = stringResource(R.string.rv_settings_dns_custom_sub)) {
                     RvChevron()

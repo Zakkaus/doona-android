@@ -65,7 +65,7 @@ internal fun RvSpentCard(state: RvStatsState) {
         Row(Modifier.weight(1f)) {
             Column(Modifier.weight(1f - RvStatsSize.SPENT_CHART_SHARE)) {
                 RvCardHeader(stringResource(R.string.rv_stats_used), tag = scope)
-                Column(Modifier.padding(horizontal = RvStatsSpace.pad)) {
+                Column(Modifier.padding(horizontal = RvSpace.rowPadding)) {
                     RvStatsFigure(format.bytes(day.total).figure())
                     Spacer(Modifier.height(RvSpace.tight))
                     val before = if (period != null) period.before else state.yesterdaySoFar
@@ -81,7 +81,7 @@ internal fun RvSpentCard(state: RvStatsState) {
                     }
                 }
             }
-            val share = Modifier.weight(RvStatsSize.SPENT_CHART_SHARE).testTag(RV_SPENT_CHART).fillMaxHeight().padding(top = RvStatsSpace.pad, end = RvStatsSpace.pad)
+            val share = Modifier.weight(RvStatsSize.SPENT_CHART_SHARE).testTag(RV_SPENT_CHART).fillMaxHeight().padding(top = RvSpace.rowPadding, end = RvSpace.rowPadding)
             if (period == null) RvUsageChart(day, state.nowHour, share) else RvUsageChart(day, period.now, share, period.slots, gridEvery(period.slots))
         }
         Spacer(Modifier.height(RvUsageSize.chartAboveLegend))
@@ -284,7 +284,7 @@ internal fun RvToolsCard(tools: List<RvStatsTool>) {
 }
 
 /** A card's body under its header: the card's padding at the sides and the bottom. */
-internal val cardBody = Modifier.padding(start = RvStatsSpace.pad, end = RvStatsSpace.pad, bottom = RvStatsSpace.pad)
+internal val cardBody = Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding)
 
 /** The chart grid's step: every 4 hours of a day, every day of a week, every week of a month. */
 internal fun gridEvery(slots: Int): Int = when (slots) {

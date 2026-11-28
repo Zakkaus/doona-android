@@ -5,16 +5,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvIconDisc
-import dev.doona.android.designsystem.rv.RvRadio
-import dev.doona.android.designsystem.rv.RvRow
+import dev.doona.android.designsystem.rv.RvRadioRow
 import dev.doona.android.designsystem.rv.RvSeeAll
-import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.feature.model.RV_BLOCK
 import dev.doona.android.feature.model.RV_DIRECT
 import dev.doona.android.feature.model.RvDnsServer
@@ -47,30 +44,29 @@ internal fun RvTargetCard(groups: List<RvPolicyGroup>, targetId: String, block: 
 /** One destination: the group and the node it uses, or 直連; the whole row picks it. */
 @Composable
 private fun Target(group: RvPolicyGroup?, selected: Boolean, onSelect: () -> Unit) {
-    val pick = Modifier.rvRowSelect(selected, onSelect)
-    RvRow(
+    RvRadioRow(
         { RvPolicyTarget(group) },
         group?.name?.text() ?: stringResource(R.string.mode_direct),
+        selected,
         if (group == null) stringResource(R.string.rv_policy_no_proxy) else group.selected?.name ?: stringResource(group.kind.label),
-        pick,
         titleKeepWords = false,
         subtitleKeepWords = false,
-        endFirstLine = true,
-    ) { RvRadio(selected) }
+        onSelect = onSelect,
+    )
 }
 
 /** 拒絕: the flow is refused, as the rules card draws a rule that ends there. */
 @Composable
 private fun Block(selected: Boolean, onSelect: () -> Unit) {
-    RvRow(
+    RvRadioRow(
         { RvIconDisc(R.drawable.rv_sym_block) },
         stringResource(R.string.rv_policy_reject),
+        selected,
         stringResource(R.string.rv_policy_block_line),
-        Modifier.rvRowSelect(selected, onSelect),
         titleKeepWords = false,
         subtitleKeepWords = false,
-        endFirstLine = true,
-    ) { RvRadio(selected) }
+        onSelect = onSelect,
+    )
 }
 
 /**
@@ -82,15 +78,15 @@ internal fun RvDnsServerCard(upstreams: List<RvDnsServer>, selected: String?, on
     RvCard {
         upstreams.forEach { upstream ->
             val chosen = upstream.name == selected
-            RvRow(
+            RvRadioRow(
                 { RvIconDisc(R.drawable.rv_sym_dns) },
                 upstream.name,
+                chosen,
                 upstream.address,
-                Modifier.rvRowSelect(chosen, { onSelect(upstream.name) }),
                 titleKeepWords = false,
                 subtitleKeepWords = false,
-                endFirstLine = true,
-            ) { RvRadio(chosen) }
+                onSelect = { onSelect(upstream.name) },
+            )
         }
     }
 }

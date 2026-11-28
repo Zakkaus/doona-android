@@ -28,7 +28,7 @@ import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RV_NAV_SETTINGS
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvAction
-import dev.doona.android.designsystem.rv.RvBanner
+import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvBarSpacer
 import dev.doona.android.designsystem.rv.RvDuckMark
 import dev.doona.android.designsystem.rv.RvFloatingNav
@@ -43,9 +43,9 @@ import dev.doona.android.designsystem.rv.RvSettingsNavRow
 import dev.doona.android.designsystem.rv.RvSettingsSection
 import dev.doona.android.designsystem.rv.RvSettingsSize
 import dev.doona.android.designsystem.rv.RvSettingsSpace
-import dev.doona.android.designsystem.rv.RvSettingsSwitchRow
 import dev.doona.android.designsystem.rv.RvSettingsText
 import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.rvActionRowFit
 import dev.doona.android.designsystem.rv.rvBarHeight
 import dev.doona.android.designsystem.rv.rvDotMap
@@ -96,7 +96,8 @@ internal fun RvSettingsScreen(
         Hero(titleBlock, insets, routes, update)
         // The banner stands where the first section title would, which then keeps its own gap above it (as 回報問題's).
         rvUpdateNotice(update, version, routes.release)?.let {
-            RvBanner(it, Modifier.padding(start = RvSpace.gutter, top = RvSpace.sectionAbove, end = RvSpace.gutter))
+            Spacer(Modifier.height(RvSpace.sectionAbove))
+            RvBannerSlot(it, gapBelow = RvSpace.none)
         }
         RvSettingsColumn {
             ConnectionGroup(state, onChange, routes, perAppLoaded)
@@ -200,7 +201,7 @@ private fun ConnectionGroup(state: RvSettingsState, onChange: (RvSettingsState) 
                 subtitle = stringResource(R.string.rv_settings_quick_tile_sub),
             )
         }
-        RvSettingsSwitchRow(stringResource(R.string.rv_settings_notify_drop), R.drawable.rv_settings_ic_notifications, state.notifyOnDrop, { onChange(state.copy(notifyOnDrop = it)) })
+        RvSwitchRow(R.drawable.rv_settings_ic_notifications, stringResource(R.string.rv_settings_notify_drop), state.notifyOnDrop, onChange = { onChange(state.copy(notifyOnDrop = it)) })
         RvSettingsNavRow(stringResource(R.string.rv_settings_per_app), R.drawable.rv_sym_apps, routes.perApp, perAppValue(state.perApp).takeIf { perAppLoaded })
     }
     RvFootnote(stringResource(R.string.rv_settings_connection_footer))
@@ -210,7 +211,7 @@ private fun ConnectionGroup(state: RvSettingsState, onChange: (RvSettingsState) 
 private fun SubscriptionGroup(state: RvSettingsState, onChange: (RvSettingsState) -> Unit, onOpenInterval: () -> Unit) {
     RvSettingsSection(stringResource(R.string.rv_settings_group_subscription))
     RvSettingsCard {
-        RvSettingsSwitchRow(stringResource(R.string.rv_settings_auto_update), R.drawable.rv_sym_rss_feed, state.autoUpdate, { onChange(state.copy(autoUpdate = it)) })
+        RvSwitchRow(R.drawable.rv_sym_rss_feed, stringResource(R.string.rv_settings_auto_update), state.autoUpdate, onChange = { onChange(state.copy(autoUpdate = it)) })
         RvSettingsNavRow(
             stringResource(R.string.rv_settings_update_interval),
             R.drawable.rv_sym_schedule,

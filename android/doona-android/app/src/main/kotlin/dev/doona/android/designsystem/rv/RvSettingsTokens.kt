@@ -8,14 +8,6 @@ import androidx.compose.ui.unit.dp
 // screen width). Only the components of this folder read them.
 
 internal object RvSettingsSpace {
-    /** Side margin of cards, section titles and the large title. */
-    val margin = 16.dp
-    val cardGap = 16.dp
-
-    /** Start and end padding of a row. */
-    val rowInset = 16.dp
-    val trailingGap = 12.dp
-
     val bottom = 24.dp
 
     /** The hero's two round actions; the first section title sits its usual 24 dp under them, as under any content. */

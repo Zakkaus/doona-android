@@ -3,7 +3,6 @@ package dev.doona.android.feature.report
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
@@ -13,7 +12,7 @@ import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.Rv
-import dev.doona.android.designsystem.rv.RvBanner
+import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvBusy
 import dev.doona.android.designsystem.rv.RvButtonPair
 import dev.doona.android.designsystem.rv.RvFootnote
@@ -26,9 +25,9 @@ import dev.doona.android.designsystem.rv.RvSettingsColumn
 import dev.doona.android.designsystem.rv.RvSettingsRow
 import dev.doona.android.designsystem.rv.RvSettingsSection
 import dev.doona.android.designsystem.rv.RvSettingsSpace
-import dev.doona.android.designsystem.rv.RvSettingsSwitchRow
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.SEPARATOR
 
 /** What the report page's actions do: open the prefilled issue, hand the file to the share sheet, write it again. */
@@ -68,7 +67,7 @@ internal fun RvReportScreen(
         RvLargeTitle(title, titleBlock, insets)
         val banner = failure(build, actions.retry) ?: linkFailure(linkFailed && ready, actions.share)
         // The banner stands where the first section title stood, which then keeps its own gap above it.
-        banner?.let { RvBanner(it, Modifier.padding(horizontal = RvSpace.gutter)) }
+        RvBannerSlot(banner, gapBelow = RvSpace.none)
         RvSettingsColumn {
             if (building) {
                 RvSettingsCard {
@@ -111,22 +110,10 @@ private fun Contents(preview: RvReportPreview) {
 @Composable
 private fun Redaction(redaction: RvRedaction, onChange: (RvRedaction) -> Unit) {
     RvSettingsCard {
-        RvSettingsSwitchRow(
-            stringResource(R.string.rv_redact_nodes),
-            R.drawable.rv_sym_dns,
-            redaction.nodes,
-            { onChange(redaction.copy(nodes = it)) },
-            stringResource(R.string.rv_redact_nodes_sub),
-        )
-        RvSettingsSwitchRow(stringResource(R.string.rv_redact_ip), R.drawable.rv_sym_vpn_lock, redaction.ip, { onChange(redaction.copy(ip = it)) }, stringResource(R.string.rv_redact_ip_sub))
-        RvSettingsSwitchRow(
-            stringResource(R.string.rv_redact_domains),
-            R.drawable.rv_settings_ic_language,
-            redaction.domains,
-            { onChange(redaction.copy(domains = it)) },
-            stringResource(R.string.rv_redact_domains_sub),
-        )
-        RvSettingsSwitchRow(stringResource(R.string.rv_redact_apps), R.drawable.rv_sym_apps, redaction.apps, { onChange(redaction.copy(apps = it)) }, stringResource(R.string.rv_redact_apps_sub))
+        RvSwitchRow(R.drawable.rv_sym_dns, stringResource(R.string.rv_redact_nodes), redaction.nodes, stringResource(R.string.rv_redact_nodes_sub), onChange = { onChange(redaction.copy(nodes = it)) })
+        RvSwitchRow(R.drawable.rv_sym_vpn_lock, stringResource(R.string.rv_redact_ip), redaction.ip, stringResource(R.string.rv_redact_ip_sub), onChange = { onChange(redaction.copy(ip = it)) })
+        RvSwitchRow(R.drawable.rv_settings_ic_language, stringResource(R.string.rv_redact_domains), redaction.domains, stringResource(R.string.rv_redact_domains_sub), onChange = { onChange(redaction.copy(domains = it)) })
+        RvSwitchRow(R.drawable.rv_sym_apps, stringResource(R.string.rv_redact_apps), redaction.apps, stringResource(R.string.rv_redact_apps_sub), onChange = { onChange(redaction.copy(apps = it)) })
     }
 }
 

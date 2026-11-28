@@ -292,43 +292,6 @@ fun DoonaPageSheet(modifier: Modifier = Modifier, content: @Composable ColumnSco
 }
 
 /**
- * The page sheet for a long list, such as the apps on a device: the same chrome as [DoonaPageSheet] (surface fill, 16 px
- * top corners, the column at most 600 dp wide and placed by [columnAlignment], padding 20 top, 16 sides and below the
- * last row, and the gesture bar's inset at the end), with [content] a lazy list that scrolls in it and composes the rows
- * in view only. [DoonaPageSheet] scrolls its blocks in a vertical scroll, which gives a lazy list unbounded height and
- * throws, so a list of more than a screenful goes here. Put it under a [DoonaTopBar], as [DoonaPage] does the other.
- *
- * The old screens' lazy sheet: a page lane that rebuilds a long list replaces it with [DoonaScrollPage]'s scaffold
- * (the bar over the content, edge to edge) around its own lazy list.
- */
-@Composable
-fun DoonaLazyPageSheet(modifier: Modifier = Modifier, state: LazyListState = rememberLazyListState(), content: LazyListScope.() -> Unit) {
-    val bottomBar = DoonaTheme.insets.only(WindowInsetsSides.Bottom).asPaddingValues().calculateBottomPadding()
-    Box(
-        modifier
-            .fillMaxSize()
-            .clip(DoonaTheme.shape.sheet)
-            .background(DoonaTheme.colors.page),
-        contentAlignment = columnAlignment(),
-    ) {
-        LazyColumn(
-            Modifier
-                .layoutRole(LayoutRole.Sheet)
-                .widthIn(max = DoonaTheme.size.contentMax)
-                .fillMaxSize(),
-            state = state,
-            contentPadding = PaddingValues(
-                start = DoonaTheme.spacing.gutter,
-                end = DoonaTheme.spacing.gutter,
-                top = DoonaTheme.spacing.sheetTop,
-                bottom = DoonaTheme.spacing.sheetBottom + bottomBar,
-            ),
-            content = content,
-        )
-    }
-}
-
-/**
  * Page title `.rp-h1` 28/36/800 at the top of the sheet: the large title of the top app bar. The old screens' title: a
  * page lane that rebuilds a screen replaces it with [DoonaLargeTitle].
  */

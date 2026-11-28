@@ -16,16 +16,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import dev.doona.android.designsystem.theme.DoonaTheme
 import dev.doona.android.designsystem.theme.scripted
 
-// The old pickers, which the sample has no counterpart for: they stay, restyled by the theme, until the page lanes
-// rebuild their screens with the filter chip ([DoonaFilterChip]).
-
-/**
- * A picker: value and down arrow on a control-height row. Quiet, it has no fill and no padding, so its text starts on
- * the content edge and its arrow ends on it; [DoonaFilterPicker] is the filled one of a filter bar.
- */
-@Composable
-fun DoonaPicker(value: String, onClick: () -> Unit, modifier: Modifier = Modifier) = PickerRow(value, onClick, modifier, filled = false)
-
 /** The picker of a filter bar: a control with the disc fill and 12 dp of padding at its sides. */
 @Composable
 fun DoonaFilterPicker(value: String, onClick: () -> Unit, modifier: Modifier = Modifier) = PickerRow(value, onClick, modifier, filled = true)

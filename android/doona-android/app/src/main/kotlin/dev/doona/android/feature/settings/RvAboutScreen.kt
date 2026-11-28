@@ -17,6 +17,7 @@ import dev.doona.android.designsystem.rv.RvSettingsNavRow
 import dev.doona.android.designsystem.rv.RvSettingsRow
 import dev.doona.android.designsystem.rv.RvSettingsSection
 import dev.doona.android.designsystem.rv.RvSettingsSpace
+import dev.doona.android.designsystem.rv.RvSpace
 
 /**
  * The versions 關於 names: the app's, and the honk revision its proxy engine is built on, short. The core is not named:
@@ -43,7 +44,7 @@ internal fun RvAboutEntry(version: String, onOpen: () -> Unit) {
 }
 
 /**
- * 關於 doona, a page of 設定 in the other pages' form: the large title, then three cards [RvSettingsSpace.cardGap] apart
+ * 關於 doona, a page of 設定 in the other pages' form: the large title, then three cards [RvSpace.cardGap] apart
  * with no section title, as Revolut's About us (§13.3): the [versions], doona over the app's and honk over what it is
  * and its revision, each with its glyph as the other rows; GitHub 專案 and 回報問題; the licences and the privacy page.
  * 檢查更新 is on 設定 itself ([RvAboutEntry]).
@@ -54,7 +55,7 @@ internal fun RvAboutScreen(versions: RvAboutVersions, onBack: () -> Unit, routes
     val title = stringResource(R.string.rv_about_title)
     RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
-        RvSettingsColumn(verticalArrangement = Arrangement.spacedBy(RvSettingsSpace.cardGap)) {
+        RvSettingsColumn(verticalArrangement = Arrangement.spacedBy(RvSpace.cardGap)) {
             RvSettingsCard {
                 RvSettingsRow(stringResource(R.string.app_name), icon = R.drawable.rv_settings_ic_info, subtitle = versions.app, subtitleKeepWords = false)
                 RvSettingsRow(stringResource(R.string.rv_about_honk), icon = R.drawable.rv_sym_memory, subtitle = stringResource(R.string.rv_about_honk_sub, versions.honk))

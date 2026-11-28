@@ -30,7 +30,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -571,13 +570,6 @@ internal fun RvSwitch(checked: Boolean, modifier: Modifier = Modifier) {
                 .then(if (checked) Modifier else Modifier.border(size.switchThumbRing, colors.control, CircleShape)),
         )
     }
-}
-
-/** A card row whose whole width toggles its switch: [icon]'s disc, [title] over an optional [subtitle], the switch at the end. */
-@Composable
-internal fun RvSwitchRow(@DrawableRes icon: Int, title: String, checked: Boolean, subtitle: String? = null, onChange: (Boolean) -> Unit) {
-    val toggle = Modifier.toggleable(checked, interactionSource = null, indication = rvRowIndication(), role = Role.Switch, onValueChange = onChange)
-    RvRow({ RvIconDisc(icon) }, title, subtitle, toggle, endFirstLine = true) { RvSwitch(checked) }
 }
 
 /** A radio: a 2 dp ring in [RvColors.control], in the accent with a dot inside once selected. */

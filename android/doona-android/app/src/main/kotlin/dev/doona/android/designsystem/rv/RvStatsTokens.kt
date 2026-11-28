@@ -6,9 +6,6 @@ import androidx.compose.ui.unit.dp
 // sections 2, 8 and 10.2) and the iOS study's §5 (plans/revolut-study.md). The page reads them through its components.
 
 internal object RvStatsSpace {
-    /** A card's inner padding, Revolut's 16 dp. */
-    val pad = 16.dp
-
     /** From a card's figure block to its chart, and between a legend's lines. */
     val chartGap = 16.dp
     val legendGap = 10.dp
@@ -35,9 +32,6 @@ internal object RvStatsSize {
     val bars = 54.dp
     const val BAR_SHARE = 0.56f
     val barStub = 3.dp
-
-    /** The delta's filled triangle, Revolut's 8 dp. */
-    val delta = 8.dp
 
     /** The quota ring, Revolut's 'Total assets' (151 dp, 8 dp stroke), and the card-coloured gap between its parts (S05). */
     val ring = 132.dp

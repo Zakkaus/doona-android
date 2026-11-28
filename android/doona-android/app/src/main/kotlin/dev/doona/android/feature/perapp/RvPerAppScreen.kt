@@ -28,19 +28,18 @@ import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvPart
 import dev.doona.android.designsystem.rv.RvPrimaryButton
+import dev.doona.android.designsystem.rv.RvRadioRow
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSearchField
 import dev.doona.android.designsystem.rv.RvSearchSlot
 import dev.doona.android.designsystem.rv.RvSettingsCard
-import dev.doona.android.designsystem.rv.RvSettingsRadioRow
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSkeletonCard
 import dev.doona.android.designsystem.rv.RvSkeletonFade
 import dev.doona.android.designsystem.rv.RvSkeletonRow
 import dev.doona.android.designsystem.rv.RvSpace
-import dev.doona.android.designsystem.rv.RvSwitch
-import dev.doona.android.designsystem.rv.rvRowToggle
+import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
 import dev.doona.android.feature.FailureFix
 import dev.doona.android.feature.model.RvAppPolicy
@@ -123,7 +122,7 @@ internal fun RvPerAppScreen(
 @Composable
 internal fun RvPerAppPolicyCard(state: RvPerAppState, actions: RvPerAppActions) {
     RvSettingsCard {
-        RvAppPolicy.entries.forEach { RvSettingsRadioRow(stringResource(it.label), it == state.edited.policy, { actions.policy(it) }) }
+        RvAppPolicy.entries.forEach { RvRadioRow(null, stringResource(it.label), it == state.edited.policy, onSelect = { actions.policy(it) }) }
     }
 }
 
@@ -182,8 +181,7 @@ private fun Apps(state: RvPerAppState, actions: RvPerAppActions, app: @Composabl
  */
 @Composable
 private fun SwitchRow(app: RvApp, checked: Boolean, onToggle: (Boolean) -> Unit) {
-    val toggle = Modifier.rvRowToggle(checked, onToggle)
-    RvRow({ RvAppDisc(app.packageName) }, app.label, app.packageName, toggle, titleKeepWords = false, subtitleKeepWords = false, endFirstLine = true) { RvSwitch(checked) }
+    RvSwitchRow({ RvAppDisc(app.packageName) }, app.label, checked, app.packageName, titleKeepWords = false, subtitleKeepWords = false, onChange = onToggle)
 }
 
 /** Something under way: the sync glyph's disc and the busy bar where a row's end stands, as an export under way. */

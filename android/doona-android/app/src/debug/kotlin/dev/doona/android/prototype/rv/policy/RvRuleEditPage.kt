@@ -38,11 +38,10 @@ import dev.doona.android.designsystem.rv.RvSectionTitle
 import dev.doona.android.designsystem.rv.RvSegmented
 import dev.doona.android.designsystem.rv.RvSourceExcerpt
 import dev.doona.android.designsystem.rv.RvSpace
-import dev.doona.android.designsystem.rv.RvSwitch
+import dev.doona.android.designsystem.rv.RvSwitchRow
 import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rvInkStart
-import dev.doona.android.designsystem.rv.rvRowToggle
 import dev.doona.android.designsystem.rv.rvSystemScheme
 import dev.doona.android.feature.model.RV_DIRECT
 import dev.doona.android.feature.model.RvMatchKind
@@ -203,11 +202,9 @@ internal fun RvRuleFormPage(
 private fun Toggles(form: RvRuleForm, onDelete: () -> Unit) {
     val draft = form.draft
     RvCard {
-        val toggle = Modifier.rvRowToggle(draft.enabled) { form.onChange(draft.copy(enabled = it)) }
-        RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, stringResource(R.string.rv_rule_edit_enabled), null, toggle) { RvSwitch(draft.enabled) }
+        RvSwitchRow(R.drawable.rv_sym_rule, stringResource(R.string.rv_rule_edit_enabled), draft.enabled) { form.onChange(draft.copy(enabled = it)) }
         if (form.must) {
-            val must = Modifier.rvRowToggle(draft.must) { form.onChange(draft.copy(must = it)) }
-            RvRow({ RvIconDisc(R.drawable.rv_sym_vpn_lock) }, stringResource(R.string.rv_rule_edit_must), null, must) { RvSwitch(draft.must) }
+            RvSwitchRow(R.drawable.rv_sym_vpn_lock, stringResource(R.string.rv_rule_edit_must), draft.must) { form.onChange(draft.copy(must = it)) }
         }
         RvRow({ RvIconDisc(R.drawable.rv_sym_delete) }, stringResource(R.string.rv_rule_edit_delete), null, onClick = onDelete)
     }
