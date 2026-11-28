@@ -7,6 +7,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.RV_ROW_TITLE_LINES
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvBannerSlot
@@ -53,8 +54,8 @@ internal fun RvConfigHistoryPage(
     onRevision: (Int) -> Unit = {},
     onExport: () -> Unit = {},
     rename: RvRevisionRename? = null,
-    onRename: (RvRevisionRename?) -> Unit = {},
-    onSaveName: (Int, String?) -> Unit = { _, _ -> },
+    onRename: ((RvRevisionRename?) -> Unit)? = null,
+    onSaveName: ((Int, String?) -> Unit)? = null,
     banner: RvNotice? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
@@ -62,21 +63,30 @@ internal fun RvConfigHistoryPage(
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         RvGutter(banner = banner) {
-            RvCard { revisions.forEach { RevisionRow(it, it.rev == headRev, nowEpochMs, onRevision) { onRename(RvRevisionRename(it.rev, it.name.orEmpty())) } } }
+            RvCard {
+                revisions.forEach { revision ->
+                    val renameRevision = onRename?.let { { it(RvRevisionRename(revision.rev, revision.name.orEmpty())) } }
+                    RevisionRow(revision, revision.rev == headRev, nowEpochMs, onRevision, renameRevision)
+                }
+            }
             RvCard { RvSettingsNavRow(stringResource(R.string.rv_config_export), R.drawable.rv_sym_ios_share, onExport) }
         }
     }
     RvRevisionRenameSheet(rename, onRename, onSaveName)
 }
 
+// honk-gap:rev-name
+
 /** The menu a revision's row opens on a long press: 重新命名. */
 @Composable
-internal fun rvRevisionMenu(onRename: () -> Unit): List<RvMenuItem> = listOf(RvMenuItem(stringResource(R.string.rv_sub_rename), R.drawable.rv_sym_edit, onClick = onRename))
+internal fun rvRevisionMenu(onRename: (() -> Unit)?): List<RvMenuItem> =
+    listOf(RvMenuItem(stringResource(R.string.rv_sub_rename), R.drawable.rv_sym_edit, enabled = onRename != null, onClick = { onRename?.invoke() }))
 
 @Composable
-private fun RevisionRow(revision: RvRevision, head: Boolean, nowEpochMs: Long, onRevision: (Int) -> Unit, onRename: () -> Unit) {
+private fun RevisionRow(revision: RvRevision, head: Boolean, nowEpochMs: Long, onRevision: (Int) -> Unit, onRename: (() -> Unit)?) {
     val number = stringResource(R.string.rv_config_revision, revision.rev)
-    val origin = revision.restored?.let { stringResource(revision.origin.label, it) } ?: stringResource(revision.origin.label)
+    // honk-gap:rev-restored-from
+    val origin = stringResource(revision.origin.label, revision.restored?.toString() ?: RV_NO_VALUE)
     val inUse: (@Composable () -> Unit)? = if (head) ({ RvStatusChip(R.drawable.rv_nodes_ic_check_circle, stringResource(R.string.rv_template_in_use), Rv.colors.positive) }) else null
     val time = rvConfigWhen(revision.appliedAtEpochMs, nowEpochMs)
     val name = revision.name
@@ -84,7 +94,7 @@ private fun RevisionRow(revision: RvRevision, head: Boolean, nowEpochMs: Long, o
         RvSettingsRow(
             name ?: number,
             press,
-            subtitle = rvConfigLine(if (name == null) listOf(time, origin) else listOf(time, origin, number)),
+            subtitle = rvConfigLine(listOfNotNull(time, origin, number.takeIf { name != null })),
             titleLines = if (name == null) RV_ROW_TITLE_LINES else Int.MAX_VALUE,
             titleKeepWords = false,
             titleWhole = RvWhole.RevisionName.takeIf { name != null },

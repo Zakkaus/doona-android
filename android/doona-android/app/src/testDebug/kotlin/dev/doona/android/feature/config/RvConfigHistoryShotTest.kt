@@ -7,9 +7,11 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
@@ -220,10 +222,11 @@ class RvConfigHistoryShotTest {
     }
 
     @Test
-    fun anUnnamedRevisionSaysSoAndOffersRestore() {
+    fun aRevisionWithoutAFileDiffShowsTheGapAndOffersRestore() {
         var restored = false
-        compose.setContent { Themed { RvConfigRevisionPage(revision(UNNAMED), listOf(RvConfigHistoryData.restoreDiff), RV_NOW, onBack = {}, onRestore = { restored = true }) } }
-        compose.onNodeWithText("未命名").assertExists()
+        compose.setContent { Themed { RvConfigRevisionPage(revision(UNNAMED), null, RV_NOW, onBack = {}, onRestore = { restored = true }) } }
+        compose.onNodeWithText("—").assertExists()
+        compose.onNodeWithText(NAME).assertHasNoClickAction()
         compose.onNodeWithText("復原").performClick()
         assertEquals(true, restored)
     }
@@ -404,7 +407,7 @@ class RvConfigHistoryShotTest {
     private fun LongNamed() = RvConfigHistoryPage(longNamed, RvConfigData.REV, RV_NOW, onBack = {})
 
     @Composable
-    private fun RevisionLongNamed() = RvConfigRevisionPage(longNamed.first { it.rev == RvConfigData.REV }, listOf(RvConfigHistoryData.restoreDiff), RV_NOW, onBack = {})
+    private fun RevisionLongNamed() = RvConfigRevisionPage(longNamed.first { it.rev == RvConfigData.REV }, emptyList(), RV_NOW, onBack = {})
 
     /** The named revisions with the head's name long enough to take several lines at every font size. */
     private val longNamed = RvConfigHistoryData.named.map { if (it.rev == RvConfigData.REV) it.named(LONG_NAME) else it }
@@ -417,7 +420,7 @@ class RvConfigHistoryShotTest {
     private fun MenuOpen() {
         Box(Modifier.fillMaxSize()) {
             Named()
-            RvMenuPanel(rvRevisionMenu {}, onPick = {}, Modifier.offset(menuAt.x, menuAt.y))
+            RvMenuPanel(rvRevisionMenu(null), onPick = {}, Modifier.offset(menuAt.x, menuAt.y))
         }
     }
 
@@ -437,7 +440,10 @@ class RvConfigHistoryShotTest {
     }
 
     @Composable
-    private fun Revision(rev: Int) = RvConfigRevisionPage(revision(rev), listOf(RvConfigHistoryData.restoreDiff), RV_NOW, onBack = {})
+    private fun Revision(rev: Int) {
+        var restored by remember { mutableStateOf(false) }
+        if (restored) History() else RvConfigRevisionPage(revision(rev), listOf(RvConfigHistoryData.restoreDiff), RV_NOW, onBack = {}, onRestore = { restored = true })
+    }
 
     private fun revision(rev: Int) = RvConfigHistoryData.named.first { it.rev == rev }
 

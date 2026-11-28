@@ -53,7 +53,7 @@ class FlowEventsTest : ExportFixture() {
     }
 
     @Test
-    fun `only active flows have an owner and the first sorted package wins`() = runTest {
+    fun `only active flows are looked up and a shared UID does not identify a package`() = runTest {
         val closed = Flow("flow-1", domain = "closed.example", state = "closed", startedAt = "2026-08-15T09:59:40Z")
         val lookups = mutableListOf<Pair<String, String>>()
         val producer = producer(honk(listOf(FLOW, closed)), { _, local, remote ->
@@ -62,7 +62,7 @@ class FlowEventsTest : ExportFixture() {
         }, { arrayOf("com.zulu.app", PACKAGE) })
         producer.recordRecent()
         assertEquals(listOf(FLOW.src to FLOW.dst), lookups)
-        assertEquals(listOf("closed.example" to null, FLOW.domain to PACKAGE), producer.snapshot().map { it.visitedDomain to it.appPackage })
+        assertEquals(listOf("closed.example" to null, FLOW.domain to null), producer.snapshot().map { it.visitedDomain to it.appPackage })
     }
 
     @Test

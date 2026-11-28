@@ -93,7 +93,7 @@ private val NO_VALUE = setOf(RvMatchKind.GeoIpCn, RvMatchKind.Private)
 
 /** The slider's two sets of kinds: a domain's three, as the quick rule offers them, and an address's three. */
 private val DOMAIN_KINDS = listOf(RvMatchKind.Full, RvMatchKind.Suffix, RvMatchKind.Keyword)
-private val ADDRESS_KINDS = listOf(RvMatchKind.Cidr, RvMatchKind.GeoIpCn, RvMatchKind.Private)
+internal val ADDRESS_KINDS = listOf(RvMatchKind.Cidr, RvMatchKind.GeoIpCn, RvMatchKind.Private)
 private val CIDR = Regex("""(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d|[12]\d|3[0-2])""")
 private val CIDR6 = Regex("""[0-9A-Fa-f.]*:[0-9A-Fa-f:.]*/(\d|[1-9]\d|1[01]\d|12[0-8])""")
 private val DOMAIN = Regex("""[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*""")

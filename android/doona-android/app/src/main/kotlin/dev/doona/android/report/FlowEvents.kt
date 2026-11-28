@@ -83,7 +83,7 @@ class FlowEvents internal constructor(
         val local = flow.input?.src ?: return null
         val remote = flow.input.dst ?: return null
         val uid = ownerUid(protocol, local, remote)
-        if (uid == Process.INVALID_UID) null else packagesForUid(uid)?.minOrNull()
+        if (uid == Process.INVALID_UID) null else packagesForUid(uid)?.singleOrNull()
     } catch (_: SecurityException) {
         null
     }

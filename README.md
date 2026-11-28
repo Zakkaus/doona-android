@@ -7,8 +7,8 @@ doona-android holds the Android side of [honk](https://github.com/daeuniverse/ho
 an Android app that benchmarks it against
 [hev-socks5-tunnel](https://github.com/heiher/hev-socks5-tunnel) on one phone.
 
-This is test tooling. honk ships nothing from this repository, and the bench figures are not a
-CI gate.
+The Android client uses the same node for TCP and UDP by default. You can select a different node for each.
+TunBench is test tooling; its benchmark results are not a CI gate.
 
 ## Layout
 

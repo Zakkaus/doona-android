@@ -30,6 +30,7 @@ import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.policies.RuleEditRoute
+import dev.doona.android.honk.HonkFixtures
 import dev.doona.android.honk.NativeSettings
 import dev.doona.android.honk.PolicyHonkFixtures
 import dev.doona.android.honk.SettingsHonk
@@ -187,6 +188,17 @@ class SettingsAppShotTest {
     @Test fun dnsServersLight() = compose.app("settings-dns-servers", dark = false, before = { shows("cloudflare") }) { DnsServersRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onRules = {}) }
 
     @Test fun dnsServersDark() = compose.app("settings-dns-servers", dark = true, before = { shows("cloudflare") }) { DnsServersRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onRules = {}) }
+
+    @Test
+    fun dnsServersCanRetryAfterTheFirstReadFails() {
+        val honk = PolicyHonkFixtures.rvSample()
+        honk.on("GET", "/api/v1/config", 503, HonkFixtures.body("errors/snapshot-unavailable"))
+        compose.rvContent(dark = false) { DnsServersRoute(honk, onBack = {}, onRules = {}) }
+        compose.shows("重試")
+        honk.on("GET", "/api/v1/config", 200, HonkFixtures.body("config/rv-sample"))
+        compose.onNodeWithText("重試").performClick()
+        compose.shows("cloudflare")
+    }
 
     @Test fun dnsRulesLight() = compose.app("settings-dns-rules", dark = false, before = { shows("qname(geosite:cn)") }) { DnsRulesRoute(PolicyHonkFixtures.rvSample(), onBack = {}) }
 

@@ -131,20 +131,20 @@ class ReportViewModelTest : ExportFixture() {
     }
 
     @Test
-    fun `a share sheet's return keeps the ready report, to share again`() = runTest {
+    fun `opening the chooser keeps the ready report to share again`() = runTest {
         val (vm, reports) = page()
         advanceUntilIdle()
         val share = checkNotNull(vm.uiState.value.share)
         val first = zips().single()
 
-        vm.shareReturned(share)
+        vm.shareOpened(share)
         advanceTimeBy(ReportExport.SHARE_GRACE_MS + 1)
         runCurrent()
         assertEquals("not written again", 1, reports.options.size)
         assertSame(share, vm.uiState.value.share)
         assertEquals(RvReportBuild.Ready(RvRedaction()), vm.uiState.value.build)
         assertTrue("kept to share again", first.exists())
-        vm.shareReturned(share)
+        vm.shareOpened(share)
         assertTrue(first.exists())
     }
 
@@ -176,7 +176,7 @@ class ReportViewModelTest : ExportFixture() {
         val (vm, reports) = page()
         advanceUntilIdle()
         val share = checkNotNull(vm.uiState.value.share)
-        vm.shareReturned(share)
+        vm.shareOpened(share)
         assertTrue(zips().single().delete())
         val opened = mutableListOf<ReportShare>()
 
@@ -199,7 +199,7 @@ class ReportViewModelTest : ExportFixture() {
         advanceUntilIdle()
         val share = checkNotNull(vm.uiState.value.share)
         val first = zips().single()
-        vm.shareReturned(share)
+        vm.shareOpened(share)
 
         vm.setRedaction(vm.uiState.value.redaction.copy(apps = true))
         runCurrent()
@@ -217,7 +217,7 @@ class ReportViewModelTest : ExportFixture() {
         val share = checkNotNull(vm.uiState.value.share)
         vm.linkFailed()
         assertTrue(vm.uiState.value.linkFailed)
-        vm.shareReturned(share)
+        vm.shareOpened(share)
         assertFalse("shared instead", vm.uiState.value.linkFailed)
 
         vm.linkFailed()
@@ -268,7 +268,7 @@ class ReportViewModelTest : ExportFixture() {
     }
 
     @Test
-    fun `a log that cannot be read counts 0 events, and the page still opens`() = runTest {
+    fun `an unreadable log leaves the event count unknown and the page still opens`() = runTest {
         val broken = object : ReportFacts {
             override val app = "0.1"
             override val device = "Pixel 9 · Android 16"
@@ -277,17 +277,17 @@ class ReportViewModelTest : ExportFixture() {
         }
         val (vm, _) = page(facts = broken)
         advanceUntilIdle()
-        assertEquals(0, vm.uiState.value.preview.events)
+        assertNull(vm.uiState.value.preview.events)
         assertEquals(3, vm.uiState.value.preview.nodes)
         assertEquals(RvReportBuild.Ready(RvRedaction()), vm.uiState.value.build)
     }
 
     @Test
-    fun `the preview counts what was read, and 0 for each part that was not`() = runTest {
+    fun `the preview distinguishes empty lists from unread sources`() = runTest {
         val diagnostics = CoreDiagnostics(LogLevel.Info, listOf(CrashFile("1.txt", 1), CrashFile("2.txt", 1)), crashMark = 0, json = "{}")
         val read = rvReportPreview("0.1", "phone", nodes = 3, subscriptions = 0, rules = 14, events = 5, diagnostics = diagnostics)
         assertEquals(RvReportPreview("0.1", "phone", nodes = 3, subscriptions = 0, rules = 14, events = 5, crashes = 2), read)
         val none = rvReportPreview("0.1", "phone", nodes = null, subscriptions = null, rules = null, events = null, diagnostics = null)
-        assertEquals(RvReportPreview("0.1", "phone", nodes = 0, subscriptions = 0, rules = 0, events = 0, crashes = 0), none)
+        assertEquals(RvReportPreview("0.1", "phone", nodes = null, subscriptions = null, rules = null, events = null, crashes = null), none)
     }
 }

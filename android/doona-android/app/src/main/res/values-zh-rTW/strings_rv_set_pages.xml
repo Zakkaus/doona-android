@@ -29,6 +29,11 @@
     <string name="rv_report_device">裝置</string>
     <string name="rv_report_settings">設定摘要</string>
     <string name="rv_report_log">日誌</string>
+    <string name="rv_report_unknown_nodes">%1$s 個節點</string>
+    <string name="rv_report_unknown_subscriptions">%1$s 個訂閱</string>
+    <string name="rv_report_unknown_rules">%1$s 條規則</string>
+    <string name="rv_report_unknown_events">最近 %1$s 筆事件</string>
+    <string name="rv_report_unknown_crashes">%1$s 份當機記錄</string>
     <plurals name="rv_report_rules">
         <item quantity="other">%1$d 條規則</item>
     </plurals>

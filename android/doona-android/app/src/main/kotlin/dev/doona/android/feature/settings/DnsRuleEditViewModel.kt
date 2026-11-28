@@ -56,7 +56,7 @@ internal data class DnsRuleEditUiState(
     val draft: RvDnsRuleDraft? = null,
     val at: RvNativeRuleAt? = null,
     val upstreams: List<RvDnsServer> = emptyList(),
-    val writeFailure: ErrorCode? = null,
+    val writeFailure: Pair<ErrorCode, () -> Unit>? = null,
     val readFailure: ErrorCode? = null,
     val done: Boolean = false,
 )
@@ -85,11 +85,11 @@ internal class DnsRuleEditViewModel(
         viewModelScope.launch { load() }
     }
 
-    fun change(draft: RvDnsRuleDraft) = state.update { it.copy(draft = draft) }
+    fun change(draft: RvDnsRuleDraft) = state.update { it.copy(draft = draft, writeFailure = null) }
 
     fun apply() {
         val draft = state.value.draft ?: return
-        write { config, dns ->
+        write(::apply) { config, dns ->
             val rule = rule(dns)
             if (rule == null) {
                 val text = dnsRuleText(draft, null).let { if (draft.match.enabled) it else "# $it" }
@@ -105,7 +105,7 @@ internal class DnsRuleEditViewModel(
 
     fun delete() {
         if (ruleId == null) return state.update { it.copy(done = true) }
-        write { config, dns ->
+        write(::delete) { config, dns ->
             val rule = rule(dns) ?: throw EngineException(ErrorCode.NotFound)
             statementAt(config, rule.source, rule.expression).removed()
         }
@@ -114,13 +114,13 @@ internal class DnsRuleEditViewModel(
     /** 上移 or 下移: the statement to 1-based place [index] in its list, the page then on it there. */
     fun move(index: Int) {
         val other = read?.let(::statements)?.filterNot { it.isFallback }?.getOrNull(index - 1) ?: return
-        write(landed = { ruleId = other.id }) { config, dns ->
+        write({ move(index) }, landed = { ruleId = other.id }) { config, dns ->
             val rule = rule(dns) ?: throw EngineException(ErrorCode.NotFound)
             statementAt(config, rule.source, rule.expression).swapped(statementAt(config, other.source, other.expression))
         }
     }
 
-    private fun write(landed: (() -> Unit)? = null, edit: (HonkConfig, HonkDnsRules) -> Pair<HonkSource, String>) {
+    private fun write(retry: () -> Unit, landed: (() -> Unit)? = null, edit: (HonkConfig, HonkDnsRules) -> Pair<HonkSource, String>) {
         val dns = read ?: return
         state.update { it.copy(writeFailure = null) }
         viewModelScope.launch {
@@ -138,7 +138,7 @@ internal class DnsRuleEditViewModel(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                state.update { it.copy(writeFailure = error.errorCode()) }
+                state.update { it.copy(writeFailure = error.errorCode() to retry) }
             }
         }
     }
@@ -240,7 +240,7 @@ internal fun DnsRuleEditRoute(api: NativeApi, query: Boolean, ruleId: String?, o
         onDelete = viewModel::delete,
         onMove = viewModel::move,
         onOpenSource = { at -> ui.at?.statement?.source?.let { onOpenSource(it, at.line) } },
-        banner = ui.writeFailure?.let { changeBanner(stringResource(R.string.rv_config_apply_failed), it, viewModel::apply) }
+        banner = ui.writeFailure?.let { (code, retry) -> changeBanner(stringResource(R.string.rv_config_apply_failed), code, retry) }
             ?: ui.readFailure?.let { readBanner(it, viewModel::retry) },
     )
 }

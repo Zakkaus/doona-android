@@ -75,10 +75,10 @@ internal data class RvSourceDraft(val path: String, val text: String, val baseRe
 
 /**
  * The check's diff before 套用: each changed file against the draft's base [baseRev]; [headRev] is today's head, newer
- * than the base when another apply landed first (the draft is stale and `configApply` answers `conflict`).
+ * than the base when another apply landed first. Null [files] means the changes exceed the local preview budget.
  */
 @Immutable
-internal data class RvConfigDiff(val files: List<RvDiffFile>, val baseRev: Int, val headRev: Int) {
+internal data class RvConfigDiff(val files: List<RvDiffFile>?, val baseRev: Int, val headRev: Int) {
     val stale = headRev != baseRev
 }
 

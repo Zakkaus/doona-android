@@ -50,7 +50,7 @@
     <string name="rv_config_reload">Reload</string>
     <string name="rv_config_revision">Revision %1$d</string>
     <string name="rv_config_origin_import">Imported</string>
-    <string name="rv_config_origin_restore">Restored from revision %1$d</string>
+    <string name="rv_config_origin_restore">Restored from revision %1$s</string>
     <string name="rv_config_unnamed">Unnamed</string>
     <string name="rv_config_restore">Restore</string>
     <string name="rv_config_export">Export configuration</string>
@@ -84,8 +84,12 @@
     <string name="rv_template_group_openai" translatable="false">OpenAI</string>
     <string name="rv_template_group_netflix" translatable="false">Netflix</string>
     <string name="rv_config_read_failed">Couldn’t read the configuration</string>
+    <string name="rv_config_diff_limit">Too many changes to preview.</string>
+    <string name="rv_config_restore_failed">Couldn’t restore the revision</string>
     <string name="rv_config_apply_failed">Couldn’t apply</string>
     <string name="rv_config_export_title">Export configuration?</string>
+    <string name="rv_config_export_done">Configuration exported</string>
+    <string name="rv_config_export_failed">Could not export configuration</string>
     <string name="rv_config_export_body">The files can hold passwords and keys.</string>
     <string name="rv_config_export_confirm">Export</string>
     <string name="rv_config_export_archive">Full archive</string>

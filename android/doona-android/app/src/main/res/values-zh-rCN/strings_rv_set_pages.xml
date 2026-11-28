@@ -29,6 +29,11 @@
     <string name="rv_report_device">设备</string>
     <string name="rv_report_settings">设置摘要</string>
     <string name="rv_report_log">日志</string>
+    <string name="rv_report_unknown_nodes">%1$s 个节点</string>
+    <string name="rv_report_unknown_subscriptions">%1$s 个订阅</string>
+    <string name="rv_report_unknown_rules">%1$s 条规则</string>
+    <string name="rv_report_unknown_events">最近 %1$s 条事件</string>
+    <string name="rv_report_unknown_crashes">%1$s 份崩溃记录</string>
     <plurals name="rv_report_rules">
         <item quantity="other">%1$d 条规则</item>
     </plurals>

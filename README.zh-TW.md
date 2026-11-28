@@ -2,12 +2,12 @@
 
 [English](README.md) | 繁體中文
 
-doona-android 是 [honk](https://github.com/daeuniverse/honk) 的 Android 部分，包含兩項：
+doona-android 是 [honk](https://github.com/daeuniverse/honk) 的 Android 專案。用戶端預設讓 TCP 和 UDP 共用節點，也可以分別選擇節點。倉庫另含：
 
 - `honk-android`：在 Android VpnService 的 tun 上執行 honk-netstack 的 Rust crate；
 - TunBench：在同一部手機上比較它和 [hev-socks5-tunnel](https://github.com/heiher/hev-socks5-tunnel) 的 Android app。
 
-這是測試工具。honk 不發佈這個倉庫的任何內容，測得的數據也不是 CI 門禁。
+TunBench 是測試工具，其測量結果不作為 CI 的通過條件。
 
 ## 目錄
 

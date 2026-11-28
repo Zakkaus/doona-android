@@ -37,6 +37,11 @@
     <string name="rv_report_device">Device</string>
     <string name="rv_report_settings">Settings summary</string>
     <string name="rv_report_log">Log</string>
+    <string name="rv_report_unknown_nodes">%1$s nodes</string>
+    <string name="rv_report_unknown_subscriptions">%1$s subscriptions</string>
+    <string name="rv_report_unknown_rules">%1$s rules</string>
+    <string name="rv_report_unknown_events">Last %1$s events</string>
+    <string name="rv_report_unknown_crashes">%1$s crash logs</string>
     <plurals name="rv_report_rules">
         <item quantity="one">%1$d rule</item>
         <item quantity="other">%1$d rules</item>

@@ -11,6 +11,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvBusy
@@ -90,13 +91,13 @@ internal fun RvReportScreen(
 @Composable
 private fun Contents(preview: RvReportPreview) {
     val settings = listOf(
-        pluralStringResource(R.plurals.rv_nodes_nodes, preview.nodes, preview.nodes),
-        pluralStringResource(R.plurals.rv_stats_subscriptions, preview.subscriptions, preview.subscriptions),
-        pluralStringResource(R.plurals.rv_report_rules, preview.rules, preview.rules),
+        preview.nodes?.let { pluralStringResource(R.plurals.rv_nodes_nodes, it, it) } ?: stringResource(R.string.rv_report_unknown_nodes, RV_NO_VALUE),
+        preview.subscriptions?.let { pluralStringResource(R.plurals.rv_stats_subscriptions, it, it) } ?: stringResource(R.string.rv_report_unknown_subscriptions, RV_NO_VALUE),
+        preview.rules?.let { pluralStringResource(R.plurals.rv_report_rules, it, it) } ?: stringResource(R.string.rv_report_unknown_rules, RV_NO_VALUE),
     )
     val log = listOf(
-        pluralStringResource(R.plurals.rv_report_events, preview.events, preview.events),
-        pluralStringResource(R.plurals.rv_report_crashes, preview.crashes, preview.crashes),
+        preview.events?.let { pluralStringResource(R.plurals.rv_report_events, it, it) } ?: stringResource(R.string.rv_report_unknown_events, RV_NO_VALUE),
+        preview.crashes?.let { pluralStringResource(R.plurals.rv_report_crashes, it, it) } ?: stringResource(R.string.rv_report_unknown_crashes, RV_NO_VALUE),
     )
     RvSettingsCard {
         // The app's version alone: the core ships in the same APK, so its version is the app's.
@@ -110,7 +111,8 @@ private fun Contents(preview: RvReportPreview) {
 @Composable
 private fun Redaction(redaction: RvRedaction, onChange: (RvRedaction) -> Unit) {
     RvSettingsCard {
-        RvSwitchRow(R.drawable.rv_sym_dns, stringResource(R.string.rv_redact_nodes), redaction.nodes, stringResource(R.string.rv_redact_nodes_sub), onChange = { onChange(redaction.copy(nodes = it)) })
+        // honk-gap:node-address
+        RvSwitchRow(R.drawable.rv_sym_dns, stringResource(R.string.rv_redact_nodes), redaction.nodes, stringResource(R.string.rv_redact_nodes_sub), onChange = null)
         RvSwitchRow(R.drawable.rv_sym_vpn_lock, stringResource(R.string.rv_redact_ip), redaction.ip, stringResource(R.string.rv_redact_ip_sub), onChange = { onChange(redaction.copy(ip = it)) })
         RvSwitchRow(R.drawable.rv_settings_ic_language, stringResource(R.string.rv_redact_domains), redaction.domains, stringResource(R.string.rv_redact_domains_sub), onChange = { onChange(redaction.copy(domains = it)) })
         RvSwitchRow(R.drawable.rv_sym_apps, stringResource(R.string.rv_redact_apps), redaction.apps, stringResource(R.string.rv_redact_apps_sub), onChange = { onChange(redaction.copy(apps = it)) })
@@ -135,10 +137,10 @@ private fun linkFailure(shown: Boolean, onShare: () -> Unit): RvNotice? = if (sh
     null
 }
 
-/** The banner of a build that failed: the page's fixed reason (the export gives no cause), and 重試. */
+/** A failed export does not identify its cause. */
 @Composable
 private fun failure(build: RvReportBuild, onRetry: () -> Unit): RvNotice? = if (build == RvReportBuild.Failed) {
-    RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_report_failed), stringResource(R.string.rv_report_failed_reason), stringResource(R.string.rv_retry), onRetry)
+    RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_report_failed), null, stringResource(R.string.rv_retry), onRetry)
 } else {
     null
 }

@@ -11,10 +11,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.engine.Engine
@@ -131,7 +133,8 @@ internal fun GeoIntervalRoute(honk: NativeSettings, onBack: () -> Unit) =
 @Composable
 internal fun GeoIntervalPage(viewModel: GeoIntervalViewModel, onBack: () -> Unit) {
     val state = viewModel.state.collectAsStateWithLifecycle().value ?: return RvSettingsLoading()
-    RvGeoIntervalScreen(state.selected, viewModel::select, onBack)
+    val banner = state.failure?.let { (choice, code) -> changeBanner(stringResource(R.string.rv_perapp_save_failed), code) { viewModel.select(choice) } }
+    RvGeoIntervalScreen(state.selected, viewModel::select, onBack, banner)
 }
 
 /** 日誌等級 over the app's [levels]. */

@@ -5,8 +5,11 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import dev.doona.android.engine.ErrorCode
+import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.model.RvGeoInterval
 import dev.doona.android.honk.NativeSettings
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,8 +33,14 @@ internal class GeoIntervalViewModel(private val honk: NativeSettings, private va
 
     fun select(choice: RvGeoInterval) {
         viewModelScope.launch {
-            runCatching { withContext(io) { honk.setGeoInterval(choice) } }
-            read()
+            try {
+                withContext(io) { honk.setGeoInterval(choice) }
+                read()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                read.value = read.value?.copy(failure = choice to e.errorCode())
+            }
         }
     }
 
@@ -54,4 +63,4 @@ internal class GeoIntervalViewModel(private val honk: NativeSettings, private va
 }
 
 /** 自動更新's page: honk's [selected] interval, null while honk does not answer. */
-internal data class GeoIntervalState(val selected: RvGeoInterval?)
+internal data class GeoIntervalState(val selected: RvGeoInterval?, val failure: Pair<RvGeoInterval, ErrorCode>? = null)

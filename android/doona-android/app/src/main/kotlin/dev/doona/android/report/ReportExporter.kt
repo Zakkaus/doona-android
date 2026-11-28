@@ -31,16 +31,18 @@ interface ReportExporter {
 }
 
 /**
- * A report ready to go: start [intent], the share sheet. Then call [returned] once the sheet returns, whatever the user
- * did there, or [notOpened] when it could not open, so the zip goes; a zip neither is called for goes at the next start.
+ * Start [intent] to share the report. Call [deleteAfterGrace] when releasing a shared zip, or [notOpened]
+ * if the chooser could not open. A zip neither is called for goes at the next start.
  */
 class ReportShare internal constructor(val intent: Intent, private val zip: ReportZip, private val reports: ReportExport) {
     val issueLink: String get() = zip.issueLink
+    val eventCount: Int get() = zip.eventCount
+    val crashCount: Int get() = zip.crashCount
 
     /** Whether the zip is still there to share; read on the export's dispatcher. */
     suspend fun present(): Boolean = reports.present(zip)
 
-    fun returned() = reports.returned(zip)
+    fun deleteAfterGrace() = reports.deleteAfterGrace(zip)
 
     fun notOpened() = reports.notOpened(zip)
 }

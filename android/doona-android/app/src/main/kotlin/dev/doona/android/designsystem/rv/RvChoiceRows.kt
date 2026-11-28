@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 
 /** A card row whose whole width toggles its switch: [icon]'s disc, [title] over an optional [subtitle], the switch at the end. */
 @Composable
-internal fun RvSwitchRow(@DrawableRes icon: Int, title: String, checked: Boolean, subtitle: String? = null, onChange: (Boolean) -> Unit) =
+internal fun RvSwitchRow(@DrawableRes icon: Int, title: String, checked: Boolean, subtitle: String? = null, onChange: ((Boolean) -> Unit)?) =
     RvSwitchRow({ RvIconDisc(icon) }, title, checked, subtitle, onChange = onChange)
 
 /**
@@ -24,9 +24,10 @@ internal fun RvSwitchRow(
     subtitle: String? = null,
     titleKeepWords: Boolean = true,
     subtitleKeepWords: Boolean = true,
-    onChange: (Boolean) -> Unit,
+    onChange: ((Boolean) -> Unit)?,
 ) {
-    RvRow(leading, title, subtitle, Modifier.rvRowToggle(checked, onChange), titleKeepWords = titleKeepWords, subtitleKeepWords = subtitleKeepWords, endFirstLine = true) { RvSwitch(checked) }
+    val fade = if (onChange != null) Modifier else Modifier.graphicsLayer { alpha = RvAlpha.DISABLED }
+    RvRow(leading, title, subtitle, fade.rvRowToggle(checked, onChange), titleKeepWords = titleKeepWords, subtitleKeepWords = subtitleKeepWords, endFirstLine = true) { RvSwitch(checked) }
 }
 
 /** A card row whose whole width picks it: [icon]'s disc, [title] over an optional [subtitle], the radio at the end. */

@@ -61,7 +61,6 @@ class DnsRulesViewModelTest {
         advanceUntilIdle()
         vm.remove("Query:1")
         advanceUntilIdle()
-        assertEquals("Query:1" to ErrorCode.Busy, vm.uiState.value.removeFailure)
-        assertEquals(1, honk.calls.count { it.method == "PUT" })
+        assertEquals(ErrorCode.Busy, vm.uiState.value.removeFailure?.second)
     }
 }

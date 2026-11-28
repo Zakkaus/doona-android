@@ -94,14 +94,17 @@ internal fun RvSourceField(
     }
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     val reveal = remember { BringIntoViewRequester() }
-    val initial = remember { value.selection.start }
     val window = LocalWindowInfo.current.containerSize.height
     val floor = LocalRvContentFloor.current
-    LaunchedEffect(layout != null) {
-        if (initial > 0) {
-            layout?.getCursorRect(shown.offsets.originalToTransformed(initial))?.let { rect ->
-                reveal.bringIntoView(rect.copy(bottom = rect.bottom + (window - (floor?.invoke() ?: window.toFloat())).coerceAtLeast(0f)))
-            }
+    // Opening at a line, search and a diff row's jump set the selection from outside the field, which does not scroll
+    // to it by itself; it lands above whatever floats over the page's bottom ([LocalRvContentFloor]).
+    LaunchedEffect(value.selection, layout != null) {
+        val result = layout ?: return@LaunchedEffect
+        if (value.selection == TextRange.Zero) return@LaunchedEffect
+        val index = shown.offsets.originalToTransformed(value.selection.min)
+        if (index <= result.layoutInput.text.length) {
+            val rect = result.getCursorRect(index)
+            reveal.bringIntoView(rect.copy(bottom = rect.bottom + (window - (floor?.invoke() ?: window.toFloat())).coerceAtLeast(0f)))
         }
     }
     val source = remember { MutableInteractionSource() }

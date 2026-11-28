@@ -88,7 +88,7 @@ class ReportFlowTest {
         assertWellFormed(share.intent)
 
         // The sheet closed without a pick answers as a share sent through it does: no result.
-        share.returned()
+        share.deleteAfterGrace()
         shadowOf(Looper.getMainLooper()).idle()
         assertTrue("a return alone keeps the crash files", engine.crashes.isNotEmpty())
 
@@ -103,7 +103,7 @@ class ReportFlowTest {
     /** Exports a report, closes its sheet without a pick, and answers the sheet's callback. */
     private fun share(): IntentSender {
         val share = export()
-        share.returned()
+        share.deleteAfterGrace()
         return pickSender(share.intent)!!
     }
 

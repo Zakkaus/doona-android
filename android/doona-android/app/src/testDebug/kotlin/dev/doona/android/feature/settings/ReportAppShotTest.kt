@@ -165,7 +165,7 @@ private fun reportEngine(): Engine = rvSampleEngine().apply {
 /** honk on the RV sample, its node list cut to the sample report's node count; its 2 subscriptions and 14 rules as they are. */
 private fun reportHonk(): NativeApi = HonkFixtures.rvSample().apply {
     val list = Json.parseToJsonElement(HonkFixtures.body("nodes/rv-sample")).jsonObject
-    val nodes = list.getValue("nodes").jsonArray.take(rvSampleReport.nodes)
+    val nodes = list.getValue("nodes").jsonArray.take(checkNotNull(rvSampleReport.nodes))
     check(nodes.size == rvSampleReport.nodes)
     on("GET", "/api/v1/nodes", 200, JsonObject(list + ("nodes" to JsonArray(nodes))).toString())
 }
@@ -175,7 +175,7 @@ private object SampleFacts : ReportFacts {
     override val app = rvSampleReport.app
     override val device = rvSampleReport.device
 
-    override suspend fun events() = rvSampleReport.events
+    override suspend fun events() = checkNotNull(rvSampleReport.events)
 }
 
 /** Where the report stands when the page is drawn. */
@@ -195,11 +195,10 @@ private class ShotReports(private val built: Built, private val tmp: TemporaryFo
     override suspend fun export(options: RedactionOptions, failure: ReportFailure?): ReportShare? = when (built) {
         Built.Building -> awaitCancellation()
         Built.Failed -> null
-        Built.Ready -> ReportShare(android.content.Intent(), ReportZip(tmp.root.resolve("report.zip"), "t", null, ISSUE), shotExport(tmp))
+        Built.Ready -> ReportShare(android.content.Intent(), ReportZip(tmp.root.resolve("report.zip"), "t", null, ISSUE, checkNotNull(rvSampleReport.events), checkNotNull(rvSampleReport.crashes)), shotExport(tmp))
     }
 }
 
-/** An export over [tmp] for a share that is never sent: only its returned and notOpened are reachable. */
 private fun shotExport(tmp: TemporaryFolder): ReportExport {
     val engine = rvSampleEngine()
     val scope = CoroutineScope(Dispatchers.Unconfined)
