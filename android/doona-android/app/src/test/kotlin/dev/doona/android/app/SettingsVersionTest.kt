@@ -43,8 +43,9 @@ class SettingsVersionTest {
     @Test
     fun `a shell that knows no version shows a dash`() {
         settings("")
-        waitForCount("—", 2)
-        compose.onAllNodesWithText("—").assertCountEquals(2)
+        // 檢查更新 and 關於, and 設定檔, whose revision the page is not given yet.
+        waitForCount("—", 3)
+        compose.onAllNodesWithText("—").assertCountEquals(3)
     }
 
     private companion object {

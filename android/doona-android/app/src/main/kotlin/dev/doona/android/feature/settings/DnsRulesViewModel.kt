@@ -54,6 +54,7 @@ internal class DnsRulesViewModel(private val api: NativeApi, private val io: Cor
     }
 
     fun retry() {
+        state.update { it.copy(removeFailure = null) }
         viewModelScope.launch { load() }
     }
 
@@ -75,7 +76,7 @@ internal class DnsRulesViewModel(private val api: NativeApi, private val io: Cor
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                state.update { it.copy(removeFailure = key to error.errorCode()) }
+                state.update { it.copy(removeFailure = ruleCondition(rule.expression).trim() to error.errorCode()) }
             }
             load()
         }
@@ -125,10 +126,8 @@ internal fun DnsRulesRoute(api: NativeApi, onBack: () -> Unit, onOpen: (Boolean,
     RvReadOnReturn(viewModel::retry)
     // A first read that failed has no lists: the page then holds its banner over empty lists.
     val lists = state.lists ?: state.readFailure?.let { RvDnsLists(emptyList(), emptyList()) } ?: return RvSettingsLoading()
-    val removed = state.removeFailure?.let { (key, code) ->
-        val (list, index) = key.split(':').let { RvDnsList.valueOf(it[0]) to it[1].toInt() }
-        val title = (if (list == RvDnsList.Query) lists.query else lists.response).getOrNull(index)?.source.orEmpty()
-        changeBanner(stringResource(R.string.rv_list_delete_failed_title, title), code) { viewModel.remove(key) }
+    val removed = state.removeFailure?.let { (title, code) ->
+        changeBanner(stringResource(R.string.rv_list_delete_failed_title, title), code, viewModel::retry)
     }
     RvDnsRulesPage(
         lists,

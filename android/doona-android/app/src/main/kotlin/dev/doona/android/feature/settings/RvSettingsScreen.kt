@@ -26,6 +26,7 @@ import androidx.compose.ui.semantics.semantics
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RV_NAV_SETTINGS
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvAction
 import dev.doona.android.designsystem.rv.RvBannerSlot
@@ -62,7 +63,7 @@ import dev.doona.android.feature.model.RvSettingsState
  * settings with a section title over it and, where it helps, a footer under it, all scrolling under the floating nav.
  * There is no search capsule; the title collapses into the bar as the page scrolls. [version] is the app's version name. The state is the caller's, so the
  * switches turn; the rows open [routes], 主題 opens [onOpenTheme] and the nav's tabs [onTab].
- * [configRev] is a preview flag (PV-f): set, 進階 gains 設定檔 with the applied revision, which opens the configuration's
+ * 進階 lists 設定檔 with the applied revision when known ([configRev]), and opens the configuration's
  * overview ([RvSettingsRoutes.config]). Just before 關於, the last group, 更新 holds 檢查更新 and the GeoIP/GeoSite row
  * ([RvUpdateGroup]; [geoData], whose 更新 runs [RvSettingsRoutes.geoUpdate]). Where the [update] check stands shows on
  * the hero's 檢查更新 action, on its row and, for a newer release, in the banner under the hero ([rvUpdateNotice]); a
@@ -150,7 +151,7 @@ private fun Hero(titleBlock: Modifier, insets: WindowInsets, routes: RvSettingsR
 
 /**
  * Where 設定 leads beyond the theme: the system's VPN settings, where always-on is turned on (Android owns that switch, D14), 依 App, the DNS picker, the effective config, 回報問題 from 進階's row
- * and the hero's 匯出診斷, 日誌等級 ([logLevel]), 關於 doona (which holds the licences), and the configuration's overview (with the preview flag); and 加到快速設定
+ * and the hero's 匯出診斷, 日誌等級 ([logLevel]), 關於 doona (which holds the licences), and the configuration's overview; and 加到快速設定
  * ([addTile]), the system's dialog or the sheet that tells how; the GeoIP/GeoSite update ([geoUpdate], with its sample flag); and
  * how often that data updates by itself ([geoInterval], 自動更新's page); the update check ([checkUpdate], the hero's action
  * and 關於's row) and a newer release's GitHub page ([release]); and the
@@ -242,9 +243,8 @@ private fun AdvancedGroup(state: RvSettingsState, routes: RvSettingsRoutes, conf
         RvSettingsNavRow(stringResource(R.string.rv_settings_dns), R.drawable.rv_sym_dns, routes.dns, dnsValue(state.dns).takeIf { dnsLoaded })
         RvSettingsNavRow(stringResource(R.string.rv_report_title), R.drawable.rv_sym_ios_share, routes.report)
         RvSettingsNavRow(stringResource(R.string.rv_settings_log_level), R.drawable.rv_settings_ic_description, routes.logLevel, stringResource(logLevel.label))
-        if (configRev != null) {
-            RvSettingsNavRow(stringResource(R.string.rv_config_title), R.drawable.rv_sym_edit, routes.config, stringResource(R.string.rv_config_revision, configRev))
-        }
+        // honk-gap:settings-revision
+        RvSettingsNavRow(stringResource(R.string.rv_config_title), R.drawable.rv_sym_edit, routes.config, configRev?.let { stringResource(R.string.rv_config_revision, it) } ?: RV_NO_VALUE)
         RvSettingsNavRow(stringResource(R.string.rv_effective_open), R.drawable.rv_sym_rule, routes.effectiveConfig)
     }
 }

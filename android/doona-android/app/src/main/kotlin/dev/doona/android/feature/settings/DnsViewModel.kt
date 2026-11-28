@@ -38,6 +38,7 @@ internal data class DnsUiState(
     val customOpen: Boolean = false,
     val customText: String = "",
     val customError: ErrorCode? = null,
+    val presetFailure: Pair<RvDnsUpstream, ErrorCode>? = null,
 )
 
 /**
@@ -57,10 +58,17 @@ internal class DnsViewModel(private val api: NativeApi, private val io: Coroutin
     }
 
     fun select(preset: RvDnsUpstream) {
-        state.update { it?.copy(servers = listOf(preset.address)) }
+        state.update { it?.copy(presetFailure = null) }
         viewModelScope.launch {
-            runCatching { save(PRESETS.getValue(preset)) }
-            reload()
+            try {
+                save(PRESETS.getValue(preset))
+                reload()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                reload()
+                state.update { it?.copy(presetFailure = preset to e.errorCode()) }
+            }
         }
     }
 
@@ -78,7 +86,7 @@ internal class DnsViewModel(private val api: NativeApi, private val io: Coroutin
         viewModelScope.launch {
             runCatching { save(honkAddress(typed.trim()) ?: throw EngineException(ErrorCode.InvalidArgument)) }
                 .onSuccess {
-                    state.update { it?.copy(customOpen = false) }
+                    state.update { it?.copy(customOpen = false, presetFailure = null) }
                     reload()
                 }
                 .onFailure { e -> state.update { it?.copy(customError = e.errorCode()) } }

@@ -105,4 +105,5 @@ internal class SettingsNav(
     val language: () -> Unit,
     val interval: () -> Unit,
     val lab: () -> Unit,
+    val config: () -> Unit,
 )

@@ -18,6 +18,7 @@ import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.messageRes
 import dev.doona.android.feature.model.RvDnsServer
+import dev.doona.android.feature.policies.RvRuleFormFailed
 import dev.doona.android.feature.policies.dnsRulesNaming
 import dev.doona.android.feature.policies.honkUpstreams
 import dev.doona.android.feature.policies.upstreamAdded
@@ -134,12 +135,17 @@ internal class DnsServersViewModel(private val api: NativeApi, private val io: C
 internal fun DnsServersRoute(api: NativeApi, onBack: () -> Unit, onRules: () -> Unit) {
     val viewModel: DnsServersViewModel = viewModel(factory = DnsServersViewModel.factory(api))
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
-    val servers = state.servers ?: return RvSettingsLoading()
+    val readError = state.readFailure?.let { readBanner(it, viewModel::retry) }
+    val servers = state.servers ?: return if (readError == null) {
+        RvSettingsLoading()
+    } else {
+        RvRuleFormFailed(stringResource(R.string.rv_config_dns_servers), readError, onBack)
+    }
     RvDnsServersPage(
         servers,
         onBack,
         edit = RvListEdit({ viewModel.adding(RvDnsServer("", "")) }, viewModel::remove),
-        banner = state.readFailure?.let { readBanner(it, viewModel::retry) } ?: state.failure?.let { failureBanner(it, viewModel, onRules) },
+        banner = readError ?: state.failure?.let { failureBanner(it, viewModel, onRules) },
         adding = state.adding,
         onAdding = viewModel::adding,
         onCreate = viewModel::create,

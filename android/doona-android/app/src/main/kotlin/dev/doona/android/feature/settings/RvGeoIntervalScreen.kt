@@ -6,8 +6,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvFootnote
 import dev.doona.android.designsystem.rv.RvLargeTitle
+import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvRadioRow
 import dev.doona.android.designsystem.rv.RvScrollPage
@@ -25,11 +27,12 @@ import dev.doona.android.feature.model.RvGeoInterval
  * 未連線 (owner, 2026-11-26, q-k4-geooffline).
  */
 @Composable
-internal fun RvGeoIntervalScreen(selected: RvGeoInterval?, onSelect: (RvGeoInterval) -> Unit, onBack: () -> Unit) {
+internal fun RvGeoIntervalScreen(selected: RvGeoInterval?, onSelect: (RvGeoInterval) -> Unit, onBack: () -> Unit, banner: RvNotice? = null) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_settings_auto_update)
     RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
+        RvBannerSlot(banner)
         RvSettingsColumn {
             RvSettingsRadioCard {
                 RvGeoInterval.entries.forEach {

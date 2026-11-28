@@ -43,6 +43,7 @@ internal fun ColumnScope.RvInputContent(
     error: String?,
     keyboardType: KeyboardType,
 ) {
+    val canSave = text.isNotBlank()
     RvConfirmContent(
         title = title,
         body = null,
@@ -50,7 +51,7 @@ internal fun ColumnScope.RvInputContent(
         dismiss = stringResource(R.string.rv_cancel),
         onConfirm = onSave,
         onDismiss = onDismiss,
-        confirmEnabled = text.isNotBlank(),
+        confirmEnabled = canSave,
     ) {
         RvTextField(
             text,
@@ -61,7 +62,7 @@ internal fun ColumnScope.RvInputContent(
             supporting = hint,
             error = error,
             keyboard = KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Done),
-            actions = KeyboardActions(onDone = { onSave() }),
+            actions = KeyboardActions(onDone = { if (canSave) onSave() }),
         )
     }
 }

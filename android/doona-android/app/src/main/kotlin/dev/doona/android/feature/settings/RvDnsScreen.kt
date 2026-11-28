@@ -22,11 +22,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvChevron
 import dev.doona.android.designsystem.rv.RvFootnote
 import dev.doona.android.designsystem.rv.RvInputContent
 import dev.doona.android.designsystem.rv.RvInputSheet
 import dev.doona.android.designsystem.rv.RvLargeTitle
+import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvRadioRow
 import dev.doona.android.designsystem.rv.RvScrollPage
@@ -60,11 +62,13 @@ internal fun RvDnsScreen(
     onCustom: () -> Unit,
     onServers: () -> Unit,
     onRules: () -> Unit = {},
+    banner: RvNotice? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_settings_dns)
     RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
+        RvBannerSlot(banner)
         RvSettingsColumn {
             // The first section sits on the header's gap, as 主題's does.
             RvSettingsSection(stringResource(R.string.rv_settings_dns_server), first = true)
@@ -90,7 +94,8 @@ internal fun RvDnsScreen(
 internal fun DnsRoute(api: NativeApi, onBack: () -> Unit, onServers: () -> Unit, onRules: () -> Unit) {
     val viewModel: DnsViewModel = viewModel(factory = DnsViewModel.factory(api))
     val state = viewModel.uiState.collectAsStateWithLifecycle().value ?: return RvSettingsLoading()
-    RvDnsScreen(rvDnsUpstream(state.servers), viewModel::select, onBack, onCustom = viewModel::openCustom, onServers = onServers, onRules = onRules)
+    val banner = state.presetFailure?.let { (choice, code) -> changeBanner(stringResource(R.string.rv_perapp_save_failed), code) { viewModel.select(choice) } }
+    RvDnsScreen(rvDnsUpstream(state.servers), viewModel::select, onBack, onCustom = viewModel::openCustom, onServers = onServers, onRules = onRules, banner = banner)
     RvDnsCustomSheet(state, viewModel::editCustom, viewModel::saveCustom, viewModel::dismissCustom)
 }
 

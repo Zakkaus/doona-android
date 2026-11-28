@@ -20,6 +20,8 @@ import dev.doona.android.designsystem.rv.RvSegmented
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.rvInkStart
 import dev.doona.android.feature.model.RvDnsServer
+import dev.doona.android.feature.model.RvMatchKind
+import dev.doona.android.feature.policies.ADDRESS_KINDS
 import dev.doona.android.feature.policies.RvDnsServerCard
 import dev.doona.android.feature.policies.RvNativeRuleAt
 import dev.doona.android.feature.policies.RvRuleDraft
@@ -52,6 +54,14 @@ internal fun RvDnsRuleEditPage(
     val title = stringResource(if (draft.list == RvDnsList.Query) R.string.rv_dns_query_title else R.string.rv_dns_response_title)
     val form = RvRuleForm(title, draft.match, { onChange(draft.copy(match = it)) }, at, must = false, privateLine = R.string.rv_dns_private_line)
     RvRuleFormPage(form, onBack, onApply, onDelete, onMove, onOpenSource, banner) { toggles ->
+        if (draft.list == RvDnsList.Response && at.statement == null) {
+            val address = draft.match.kind in ADDRESS_KINDS
+            RvGutter {
+                RvSegmented(listOf(stringResource(R.string.rv_policy_kind_domain), stringResource(R.string.rv_dns_server_address)), if (address) 1 else 0, { index ->
+                    if ((index == 1) != address) onChange(draft.copy(match = draft.match.copy(kind = if (index == 1) RvMatchKind.Cidr else RvMatchKind.Suffix, value = "")))
+                })
+            }
+        }
         RvSectionTitle(stringResource(R.string.rv_dns_action), Modifier.padding(horizontal = RvSpace.gutter))
         ActionField(draft) { action -> onChange(draft.copy(action = action, upstream = draft.upstream ?: upstreams.firstOrNull()?.name)) }
         if (draft.action == RvDnsAction.Upstream) {

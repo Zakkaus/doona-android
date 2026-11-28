@@ -58,6 +58,24 @@ class DnsViewModelTest {
     }
 
     @Test
+    fun `a rejected preset retries against the newly read source`() = runTest {
+        val vm = DnsViewModel(honk, io)
+        val source = "/api/v1/config/sources/source-main"
+        val fresh = "b".repeat(64)
+        honk.on("GET", "/api/v1/config", 200, HonkFixtures.body("config/rv-sample").replace(honkSha(), fresh))
+        honk.on("PUT", source, 412, HonkFixtures.body("errors/stale-revision"))
+        vm.select(RvDnsUpstream.Quad9)
+        advanceUntilIdle()
+        val failure = checkNotNull(vm.state.presetFailure)
+        assertEquals(RvDnsUpstream.Quad9 to ErrorCode.Busy, failure)
+        honk.on("PUT", source, 202, HonkFixtures.body("config-replace/queued"))
+        vm.select(failure.first)
+        advanceUntilIdle()
+        assertEquals(listOf("\"${honkSha()}\"", "\"$fresh\""), honk.calls.filter { it.method == "PUT" }.map { it.headers["If-Match"] })
+        assertNull(vm.state.presetFailure)
+    }
+
+    @Test
     fun `自訂 opens on the server as typed and writes a typed address as plain DNS`() = runTest {
         val vm = DnsViewModel(honk, io)
         vm.openCustom()

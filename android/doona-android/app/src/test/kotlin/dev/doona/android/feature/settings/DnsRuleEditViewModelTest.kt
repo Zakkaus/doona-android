@@ -7,6 +7,7 @@ import dev.doona.android.honk.HonkFixtures
 import dev.doona.android.honk.PolicyHonkFixtures
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -81,6 +82,39 @@ class DnsRuleEditViewModelTest {
         assertTrue(at > 74)
         assertEquals(listOf("        response {", "            ip(geoip: private) -> reject", "        }"), text.subList(at, at + 3))
         assertEquals(before.size + 3, text.size)
+    }
+
+    @Test
+    fun `retry applies edits made before the first refusal arrived`() = runTest {
+        val path = "/api/v1/config/sources/source-main"
+        val vm = DnsRuleEditViewModel(honk, RvDnsList.Query, "dns_request:1", StandardTestDispatcher(testScheduler))
+        advanceUntilIdle()
+        honk.on("PUT", path, 503, HonkFixtures.body("errors/snapshot-unavailable"))
+        vm.apply()
+        vm.change(checkNotNull(vm.uiState.value.draft).copy(action = RvDnsAction.Reject))
+        advanceUntilIdle()
+        honk.calls.clear()
+        honk.on("PUT", path, 202, HonkFixtures.body("config-replace/queued"))
+        checkNotNull(vm.uiState.value.writeFailure).second()
+        advanceUntilIdle()
+        assertEquals(before.toMutableList().also { it[79] = "            qname(geosite:cn) -> reject" }, written())
+    }
+
+    @Test
+    fun `retry a refused delete removes the statement instead of saving the draft`() = runTest {
+        val path = "/api/v1/config/sources/source-main"
+        val vm = DnsRuleEditViewModel(honk, RvDnsList.Query, "dns_request:1", io)
+        vm.change(checkNotNull(vm.uiState.value.draft).copy(action = RvDnsAction.Reject))
+        honk.on("PUT", path, 503, HonkFixtures.body("errors/snapshot-unavailable"))
+        vm.delete()
+        advanceUntilIdle()
+        val retry = checkNotNull(vm.uiState.value.writeFailure).second
+        honk.calls.clear()
+        honk.on("PUT", path, 202, HonkFixtures.body("config-replace/queued"))
+        retry()
+        advanceUntilIdle()
+        assertEquals(before.toMutableList().also { it.removeAt(79) }, written())
+        assertTrue(vm.uiState.value.done)
     }
 
     private fun written(): List<String> = Json.parseToJsonElement(checkNotNull(honk.calls.single { it.method == "PUT" }.body)).jsonObject

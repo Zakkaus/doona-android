@@ -10,6 +10,7 @@ import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -35,6 +36,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
@@ -85,6 +89,26 @@ class ThemeDnsRouteTest {
         assertTrue(RvAppearance(RvThemeMode.Dark, false, 0).isDark(systemDark = false))
         assertFalse(RvAppearance(RvThemeMode.Light, false, 0).isDark(systemDark = true))
         assertTrue(RvAppearance(RvThemeMode.System, false, 0).isDark(systemDark = true))
+    }
+
+    @Test
+    fun retryingAFailedRemovalKeepsTheRuleNowInItsPlace() {
+        val honk = honk()
+        val rules = Json.parseToJsonElement(HonkFixtures.body("dns-rules/rv-sample")).jsonObject
+        val moved = JsonObject(rules + ("request" to JsonArray(rules.getValue("request").jsonArray.drop(1))))
+        compose.rvContent(dark = false) { DnsRulesRoute(honk, onBack = {}) }
+        val first = "qname(geosite:category-ads-all)"
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(first).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithContentDescription("刪除 $first").performScrollTo().performClick()
+        honk.on("PUT", "/api/v1/config/sources/source-main", 412, HonkFixtures.body("errors/stale-revision"))
+        honk.on("GET", "/api/v1/dns/rules", 200, moved.toString())
+        compose.onNodeWithText("刪除").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(first).fetchSemanticsNodes().isEmpty() && compose.onAllNodesWithText("重試").fetchSemanticsNodes().isNotEmpty() }
+        val reads = honk.calls.count { it.path == "/api/v1/dns/rules" }
+        compose.onNodeWithText("重試").performClick()
+        compose.waitUntil(5_000) { synchronized(honk) { honk.calls.count { it.path == "/api/v1/dns/rules" } > reads } }
+        compose.onNodeWithText("qname(geosite:cn)").assertExists()
+        assertEquals(1, honk.calls.count { it.method == "PUT" })
     }
 
     @Test
@@ -156,11 +180,14 @@ class ThemeDnsRouteTest {
         val native = NativeSettings(honk)
         val vm = SettingsViewModel(FakeEngine(), native, FakeSettingsStore(), io = Dispatchers.Unconfined)
         val interval = GeoIntervalViewModel(native, Dispatchers.Unconfined)
-        val nav = SettingsNav({}, {}, {}, {}, {}, geoInterval = { opened++ }, {}, {}, {}, {}, {})
+        var configOpened = false
+        val nav = SettingsNav({}, {}, {}, {}, {}, geoInterval = { opened++ }, {}, {}, {}, {}, {}, config = { configOpened = true })
         var page by mutableStateOf(false)
         compose.rvContent(dark = false) {
             if (page) GeoIntervalPage(interval, onBack = {}) else SettingsPage(vm, NoSystem, nav, "0.1.0", onTab = {})
         }
+        compose.onNodeWithText("設定檔").performScrollTo().performClick()
+        assertTrue(configOpened)
         compose.onNodeWithText(DAILY).performScrollTo().performClick()
         assertEquals(1, opened)
 
@@ -186,7 +213,7 @@ class ThemeDnsRouteTest {
             override suspend fun set(level: RvLogLevel): Result<Unit> = Result.success(Unit)
         }
         val vm = SettingsViewModel(FakeEngine(), NativeSettings(SettingsHonk.running()), FakeSettingsStore(), levels = levels, io = Dispatchers.Unconfined)
-        val nav = SettingsNav({}, {}, {}, {}, logLevel = { opened++ }, {}, {}, {}, {}, {}, {})
+        val nav = SettingsNav({}, {}, {}, {}, logLevel = { opened++ }, {}, {}, {}, {}, {}, {}, config = {})
         compose.rvContent(dark = false) { SettingsPage(vm, NoSystem, nav, "0.1.0", onTab = {}) }
         compose.onNodeWithText(DEBUG).performScrollTo().assertExists()
         compose.onNodeWithText(LOG_LEVEL).performScrollTo().performClick()
@@ -211,7 +238,7 @@ class ThemeDnsRouteTest {
             override fun requestTile(onAnswer: (TileAnswer) -> Unit) = Unit
         }
         val vm = SettingsViewModel(FakeEngine(), NativeSettings(SettingsHonk.running()), FakeSettingsStore(), releases = { Result.success("v9.0.0") }, io = Dispatchers.Unconfined)
-        compose.rvContent(dark = false) { SettingsPage(vm, system, SettingsNav({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}), "0.1.0", onTab = {}) }
+        compose.rvContent(dark = false) { SettingsPage(vm, system, SettingsNav({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, config = {}), "0.1.0", onTab = {}) }
         // 檢查更新 is both the hero's action and the row; either checks.
         compose.onAllNodesWithText(CHECK).onFirst().performScrollTo().performClick()
         compose.waitForIdle()

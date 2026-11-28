@@ -6,19 +6,36 @@ set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
 files="$root/app/src/main/kotlin/dev/doona/android/designsystem/rv/RvTokens.kt $root/app/src/main/kotlin/dev/doona/android/designsystem/rv/RvSettingsTokens.kt"
 scale=" 0 4 8 12 16 24 "
-# name: reason (LAYOUT-RULES.md, "Exceptions")
-exceptions=" subGap titleToSubtitle emptyLine barGap headerTop heroToActions actionColumn titleToActions accentInset "
+# Exceptions from LAYOUT-RULES.md, in dp.
+exceptions=" subGap:6 titleToSubtitle:2 emptyLine:10 barGap:14 headerTop:152 heroToActions:64 actionColumn:96 titleToActions:40 accentInset:10 "
 bad=$(
     for f in $files; do
         awk -v f="$f" '
+            {
+                if (comment) {
+                    end = index($0, "*/"); if (!end) next
+                    $0 = substr($0, end + 2); comment = 0
+                }
+                gsub(/\/\*([^*]|\*+[^*\/])*\*+\//, " ")
+                sub(/\/\/.*/, "")
+                if (sub(/\/\*.*/, "")) comment = 1
+            }
             /^internal object Rv(Settings)?Space[ {]/ { inside = 1; next }
             /^}/ { inside = 0 }
-            inside && /^[[:space:]]+val [A-Za-z]+ = [0-9.]+\.dp/ {
-                name = $2; v = $4; sub(/\.dp.*/, "", v); print name, v, f
+            inside && $0 !~ /^[[:space:]]*$/ {
+                decl = $0
+                if (!sub(/^[[:space:]]*val[[:space:]]+/, "", decl) || decl !~ /^[[:alnum:]_]+[[:space:]]*(:[[:space:]]*Dp[[:space:]]*)?=[[:space:]]*[0-9]+\.dp[[:space:]]*$/) {
+                    print "?", "unsupported-declaration:", f ":" FNR; next
+                }
+                name = decl; sub(/[^[:alnum:]_].*$/, "", name)
+                sub(/^.*=[[:space:]]*/, "", decl); sub(/\.dp.*$/, "", decl); print name, decl, f
             }' "$f"
     done | while read -r name v f; do
-        case "$scale" in *" $v "*) continue ;; esac
-        case "$exceptions" in *" $name "*) continue ;; esac
+        case "$exceptions" in
+            *" $name:$v "*) continue ;;
+            *" $name:"*) ;;
+            *) case "$scale" in *" $v "*) continue ;; esac ;;
+        esac
         echo "$f: $name = $v dp is not a step of the scale"
     done
 )

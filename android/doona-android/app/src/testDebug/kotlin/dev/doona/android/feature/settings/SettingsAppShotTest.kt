@@ -30,6 +30,7 @@ import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvLanguage
 import dev.doona.android.feature.policies.RuleEditRoute
+import dev.doona.android.honk.HonkFixtures
 import dev.doona.android.honk.NativeSettings
 import dev.doona.android.honk.PolicyHonkFixtures
 import dev.doona.android.honk.SettingsHonk
@@ -188,6 +189,17 @@ class SettingsAppShotTest {
 
     @Test fun dnsServersDark() = compose.app("settings-dns-servers", dark = true, before = { shows("cloudflare") }) { DnsServersRoute(PolicyHonkFixtures.rvSample(), onBack = {}, onRules = {}) }
 
+    @Test
+    fun dnsServersCanRetryAfterTheFirstReadFails() {
+        val honk = PolicyHonkFixtures.rvSample()
+        honk.on("GET", "/api/v1/config", 503, HonkFixtures.body("errors/snapshot-unavailable"))
+        compose.rvContent(dark = false) { DnsServersRoute(honk, onBack = {}, onRules = {}) }
+        compose.shows("重試")
+        honk.on("GET", "/api/v1/config", 200, HonkFixtures.body("config/rv-sample"))
+        compose.onNodeWithText("重試").performClick()
+        compose.shows("cloudflare")
+    }
+
     @Test fun dnsRulesLight() = compose.app("settings-dns-rules", dark = false, before = { shows("qname(geosite:cn)") }) { DnsRulesRoute(PolicyHonkFixtures.rvSample(), onBack = {}) }
 
     @Test fun dnsRulesDark() = compose.app("settings-dns-rules", dark = true, before = { shows("qname(geosite:cn)") }) { DnsRulesRoute(PolicyHonkFixtures.rvSample(), onBack = {}) }
@@ -273,7 +285,7 @@ class SettingsAppEnShotTest {
     val compose = createComposeRule()
 
     @Test
-    @Config(qualifiers = "+h2040dp")
+    @Config(qualifiers = "+h2122dp")
     fun settings() = compose.app("settings-en", dark = false, whole = true, content = settingsPage())
 
     @Test fun lab() = compose.app("settings-lab-en", dark = false, whole = true) { LabRoute(FakeSettingsStore(), onBack = {}, onRestart = {}) }
@@ -407,10 +419,10 @@ private object NoSystem : SettingsSystem {
     override fun requestTile(onAnswer: (TileAnswer) -> Unit) = Unit
 }
 
-private fun noNav() = SettingsNav({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
+private fun noNav() = SettingsNav({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, config = {})
 
 /** As tall as each page at each font size, as its approved golden (RvLabShotTest's approved 設定, RvReportShotTest). */
-private const val LONG_PAGE = "+h1990dp"
+private const val LONG_PAGE = "+h2072dp"
 
 /** 主題 whole: the window the page fills at 1× and 2×. */
 private const val THEME_PAGE = "+h975dp"
@@ -419,8 +431,8 @@ private const val THEME_PAGE_FS200 = "+h1062dp"
 /** The core's servers in [FakeEngine], and 自訂 as it opens on them. */
 private val SERVERS = listOf("1.1.1.1:53", "8.8.8.8:53")
 private const val TYPED = "1.1.1.1, 8.8.8.8"
-private const val LONG_PAGE_FS115 = "+h2015dp"
-private const val LONG_PAGE_FS200 = "+h2589dp"
+private const val LONG_PAGE_FS115 = "+h2097dp"
+private const val LONG_PAGE_FS200 = "+h2696dp"
 
 /** Turns 實驗室's 效能模式, the page's one switch. */
 private fun ComposeContentTestRule.turnPerformance() {

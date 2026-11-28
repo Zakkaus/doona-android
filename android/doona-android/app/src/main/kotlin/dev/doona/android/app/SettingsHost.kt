@@ -233,6 +233,7 @@ internal fun EntryProviderScope<NavKey>.settingsEntries(backStack: MutableList<N
                 perApp = { backStack.push(PerAppKey) },
                 dns = { backStack.push(DnsKey) },
                 effectiveConfig = { backStack.push(EffectiveConfigKey) },
+                config = { backStack.push(ConfigKey) },
                 report = { backStack.push(ReportKey) },
                 logLevel = { backStack.push(LogLevelKey) },
                 geoInterval = { backStack.push(GeoIntervalKey) },
