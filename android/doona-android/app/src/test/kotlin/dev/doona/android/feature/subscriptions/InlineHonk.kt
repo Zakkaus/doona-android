@@ -99,6 +99,8 @@ internal class InlineHonk(private val regionOf: (String) -> String? = { null }) 
                         put("content_sha256", content.hashCode().toString())
                         put("content", content)
                         put("writable", id != "source-us")
+                        put("line_count", content.lines().size)
+                        put("loaded_at", LOADED_AT)
                     },
                 )
             }
@@ -137,6 +139,7 @@ internal class InlineHonk(private val regionOf: (String) -> String? = { null }) 
         const val PROVIDERS = "/api/v1/providers"
         const val GROUPS = "/api/v1/groups"
         const val CONFIG = "/api/v1/config"
+        const val LOADED_AT = "2026-11-26T00:00:00Z"
         const val RELOAD = "/api/v1/operations/op-config-01"
 
         val MAIN = listOf(
