@@ -1,5 +1,7 @@
 package dev.doona.android.designsystem.rv
 
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -7,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -86,8 +89,9 @@ internal fun RvSourceField(
         List(lines.size) { measurer.measure((it + 1).toString(), numbers.copy(color = colors.textSecondary)) }
     }
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val source = remember { MutableInteractionSource() }
     Column(modifier.fillMaxWidth()) {
-        RvCard {
+        RvCard(Modifier.indication(source, rvFocusIndication(RoundedCornerShape(Rv.cardRadius)))) {
             BasicTextField(
                 value,
                 onValueChange,
@@ -115,6 +119,7 @@ internal fun RvSourceField(
                 textStyle = style.copy(color = colors.text),
                 visualTransformation = SourceMarks(shown, space, inks),
                 onTextLayout = { layout = it },
+                interactionSource = source,
                 cursorBrush = SolidColor(colors.positive),
                 decorationBox = { field ->
                     Row {

@@ -24,6 +24,7 @@ Icon alignment: **C** = centred on the row; **T** = top on the title's top (the 
 | Settings row, `RvSettingsRow` family | C one line; T with a subtitle; a wrapped title without a subtitle: centred on its first line (DECISIONS 2026-11-26 21:46, q-d-wrapped) | 40 disc, x 32 | 88 (32 without icon) | 2 (q-s1125c-titlegap) | right edge 380; value, chip, chevron, switch, radio, check: F with a subtitle or a wrapped title, C on one line; in-card button 40: T with a subtitle, C without | 58 / 82 / 32 + text (≥ 58) | 16 min, equal above and below | 0 / 16 |
 | Notice, `RvBanner` | T | 40 disc (24 glyph), x 32 | 88 | 2 (q-s1125c-titlegap) | none; the button stands under the text, 16 below, at x 88 | text + 32 | 16 / 16 | 16 below the card |
 | Menu item, `RvLongPressMenu` | C | 24 bare glyph, x 16 in the item | 56 | – | none | 50 | centred | 0 / – |
+| Menu panel, `RvMenu` | – | – | width fits the longest label within `RvMenuSize` | – | – | scrolls when the rows exceed the visible window minus outer margins and shadow room | unchanged | – |
 | Section header | – | – | 16 (page gutter) | – | – | 24 box | 24 above, 12 below to the card | – |
 | Footnote | – | – | the card's text column on both sides: `footnoteStart` in from the card's start, `footnoteEnd` in from its end, 32 to 380 (DECISIONS 2026-11-25 19:05, q-s1125c-footgap 「右邊也內縮到 32 dp」; was 32 to 396; R20) | – | – | text | 12 above (to the card, DECISIONS 2026-11-25 18:55, q-s1125c-footgap; was 8), 24 below | – |
 | Card | – | – | – | – | – | – | 16 gutter, 20 radius | 16 |

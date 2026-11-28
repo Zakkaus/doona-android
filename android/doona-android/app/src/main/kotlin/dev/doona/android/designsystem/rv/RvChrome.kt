@@ -6,6 +6,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -279,12 +281,14 @@ internal fun RvSearchField(
     val colors = Rv.colors
     val keyboard = LocalSoftwareKeyboardController.current
     val search = remember { SearchKey() }
+    val source = remember { MutableInteractionSource() }
     RvKeyboardBack(search, onClose)
     Row(
         modifier
             .then(if (glass != null) Modifier.minimumInteractiveComponentSize() else Modifier)
             .height(RvChrome.control)
             .rvControl(glass, CircleShape)
+            .indication(source, rvFocusIndication(CircleShape))
             .padding(start = RvChrome.searchInset),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(RvChrome.searchInset),
@@ -303,6 +307,7 @@ internal fun RvSearchField(
                     keyboard?.hide()
                 },
             ),
+            interactionSource = source,
             cursorBrush = SolidColor(colors.positive),
             visualTransformation = { TransformedText(scripted(it.text), OffsetMapping.Identity) },
             decorationBox = { field ->

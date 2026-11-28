@@ -3,6 +3,8 @@ package dev.doona.android.feature.connections
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import dev.doona.android.R
 import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.honk.HonkFixtures
 import dev.doona.android.prototype.rv.RV_EN
@@ -10,7 +12,9 @@ import dev.doona.android.prototype.rv.RV_FS200
 import dev.doona.android.prototype.rv.Utc
 import dev.doona.android.prototype.rv.assertWhole
 import dev.doona.android.prototype.rv.data.RV_NOW
+import dev.doona.android.prototype.rv.rvContent
 import dev.doona.android.prototype.rv.rvShot
+import dev.doona.android.prototype.rv.rvText
 import kotlinx.coroutines.Dispatchers
 import org.junit.Rule
 import org.junit.Test
@@ -42,6 +46,13 @@ class AppRvConnectionsShotTest {
         { RV_NOW },
         io = Dispatchers.Unconfined,
     )
+
+    @Test
+    fun emptyListDoesNotSuggestClearingSearch() {
+        compose.rvContent(dark = false) { RvConnectionsPage(emptyList(), nowEpochMs = RV_NOW) }
+        compose.onNodeWithText(rvText(R.string.rv_conn_empty_title)).assertExists()
+        compose.onNodeWithText(rvText(R.string.rv_conn_none_line)).assertDoesNotExist()
+    }
 
     @Test
     @Config(qualifiers = WHOLE_LIST)

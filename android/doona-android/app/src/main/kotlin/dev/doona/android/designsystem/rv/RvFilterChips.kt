@@ -1,11 +1,10 @@
 package dev.doona.android.designsystem.rv
 
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
 /**
@@ -17,13 +16,13 @@ internal class RvChipPick(val label: String, val onClick: () -> Unit = {}, val i
 
 /**
  * Analytics' two chips under a title or a search: the subscription at the start, the order at the end. The 節點 page and
- * a policy group's page list nodes the same way and share this row.
+ * a policy group's page list nodes the same way and share this row. When the controls do not fit together, the end chip
+ * moves to the next line instead of being cut off.
  */
 @Composable
 internal fun RvFilterChipRow(start: RvChipPick, end: RvChipPick, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    FlowRow(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(RvChrome.buttonGap)) {
         Chip(start)
-        Spacer(Modifier.weight(1f))
         Chip(end)
     }
 }

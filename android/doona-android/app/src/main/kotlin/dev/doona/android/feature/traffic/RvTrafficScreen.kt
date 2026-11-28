@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,7 +62,7 @@ internal fun RvTrafficScreen(state: RvTrafficState, onRange: (Int) -> Unit, onBa
     var upload by rememberSaveable { mutableStateOf(false) }
     var range by rememberSaveable { mutableIntStateOf(RV_TRAFFIC_LIVE) }
     // A finger's point is not kept across a rotation: the finger has lifted by then.
-    var scrub by remember { mutableStateOf(initialScrub) }
+    var scrub by remember(upload, range, state.chart?.range) { mutableStateOf(initialScrub) }
     val report by rememberUpdatedState(onRange)
     LaunchedEffect(range) { report(range) }
     val chart = state.chart
@@ -83,15 +84,17 @@ internal fun RvTrafficScreen(state: RvTrafficState, onRange: (Int) -> Unit, onBa
                 Hero(if (at == null) glided else format.liveRate(rate), at, upload, format)
             }
             Spacer(Modifier.height(RvSpace.chartGap))
-            RvDetailChart(
-                values,
-                if (upload) Rv.colors.up else Rv.colors.down,
-                rate,
-                scrub,
-                onScrub = { scrub = it },
-                range = chart?.range ?: range,
-                empty = stringResource(R.string.rv_stats_no_data),
-            )
+            key(upload) {
+                RvDetailChart(
+                    values,
+                    if (upload) Rv.colors.up else Rv.colors.down,
+                    rate,
+                    scrub,
+                    onScrub = { scrub = it },
+                    range = chart?.range ?: range,
+                    empty = stringResource(R.string.rv_stats_no_data),
+                )
+            }
             Spacer(Modifier.height(RvChartSize.pillClear))
             Ranges(range) { range = it }
         }

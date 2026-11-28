@@ -2,6 +2,7 @@ package dev.doona.android.prototype.rv
 
 import androidx.compose.ui.geometry.Offset
 import dev.doona.android.designsystem.rv.RV_MAP_REST_LON
+import dev.doona.android.designsystem.rv.RvDotMotion
 import dev.doona.android.designsystem.rv.RvDots
 import dev.doona.android.designsystem.rv.RvPlace
 import dev.doona.android.designsystem.rv.RvSpace
@@ -29,6 +30,14 @@ class RvMapPanTest {
 
     /** Where a pan may start: at rest, on any spot, and on any spot a turn either way (a pan across the antimeridian). */
     private val starts = listOf(RV_MAP_REST_LON) + spots.flatMap { (_, at) -> listOf(at.lon, at.lon - FULL_TURN, at.lon + FULL_TURN) }
+
+    @Test
+    fun markerAcrossTheAntimeridianIsOneCellEastDuringThePan() {
+        val spot = RvSpot(1f, -179f)
+        val pan = RvDotMotion(lat = { 3f }, lon = { 179f })
+        val rest = rvMarkerAt(spot, Offset.Zero, PITCH_PX)
+        assertEquals(rest + Offset(PITCH_PX, PITCH_PX), rvMarkerAt(spot, Offset.Zero, PITCH_PX, pan))
+    }
 
     @Test
     fun theTableIsTheCoresFiftyFourRegions() {

@@ -95,6 +95,7 @@ internal fun RvConnectionsPage(
         }
         when {
             !connected -> Disconnected()
+            loaded && connections.isEmpty() -> RvGutter { RvEmptyCaption(stringResource(R.string.rv_conn_empty_title), stringResource(R.string.rv_conn_empty_line)) }
             loaded -> Connections(shown, routes, nowEpochMs)
         }
     }

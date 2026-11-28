@@ -5,8 +5,12 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.FocusInteraction
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,10 +36,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -49,26 +51,34 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.em
+import dev.doona.android.R
 import kotlinx.coroutines.launch
-import kotlin.math.ceil
 import kotlin.math.roundToInt
 
 /** Where values sit in a chart's canvas, in pixels: 0 on [bottom], [high] on [top]. */
@@ -179,23 +189,25 @@ private fun RvFigure.text(unit: SpanStyle) = buildAnnotatedString {
 
 /**
  * A tile's sparkline, as Revolut's crypto tiles draw one: [values] as a 2 dp line in [color] from zero to 10 % above
- * their peak, over a neutral grey fill that fades to nothing at the bottom, and a light grey dotted line at the opening
- * value, the window's first. No axes and no labels.
+ * their peak, over a neutral grey fill that fades to nothing at the bottom, and a light grey dotted line at the first
+ * known sample. Missing samples keep their place in the window. No axes and no labels.
  */
 @Composable
 internal fun RvSparkline(values: List<Float>, color: Color, modifier: Modifier = Modifier) {
     val colors = Rv.colors
     val glide = rememberRvGlide(values)
+    val opening = remember(values) { values.firstOrNull { !it.isNaN() } }
+    val peak = remember(values) { values.maxOfOrNull { if (it.isNaN()) 0f else it } ?: 0f }
     // A layer of its own: a frame of the glide records the line alone, not the page around it with the glass over it.
     Canvas(modifier.fillMaxWidth().height(RvChartSize.spark).testTag(RvPart.FRAME).graphicsLayer {}) {
-        if (values.size < 2) return@Canvas
+        if (values.size < 2 || opening == null) return@Canvas
         val stroke = RvChartSize.sparkStroke.toPx()
-        val scale = Scale(values.max() * RvChartSize.SPARK_HEADROOM, 0f, size.height - stroke / 2)
-        gliding(glide, values, size.width) { drawn, right ->
-            drawPath(areaUnder(drawn, scale, right, size.height), Brush.verticalGradient(listOf(colors.tileFill, Color.Transparent), scale.y(values.max()), size.height))
+        val scale = Scale(peak * RvChartSize.SPARK_HEADROOM, 0f, size.height - stroke / 2)
+        gliding(glide, values, size.width) {
+            drawPath(areaUnder(values, glide.lead, scale, size.width, size.height), Brush.verticalGradient(listOf(colors.tileFill, Color.Transparent), scale.y(peak), size.height))
         }
-        dottedAcross(colors.reference, scale.y(values.first()))
-        gliding(glide, values, size.width) { drawn, right -> drawPath(polyline(drawn, scale, right), color, style = lineStroke(stroke)) }
+        dottedAcross(colors.reference, scale.y(opening))
+        gliding(glide, values, size.width) { drawPath(polyline(values, glide.lead, scale, size.width), color, style = lineStroke(stroke)) }
     }
 }
 
@@ -203,27 +215,11 @@ internal fun RvSparkline(values: List<Float>, color: Color, modifier: Modifier =
  * Draws [draw] with [values] at rest, or, while [glide] runs, with the sample that just left in front and the whole
  * moved right by what is left of a step, clipped to [right]: the window scrolls on by one sample each second.
  */
-private inline fun DrawScope.gliding(glide: RvGlide, values: List<Float>, right: Float, draw: DrawScope.(List<Float>, Float) -> Unit) {
-    val lead = glide.lead
-    if (lead == null) return draw(values, right)
+private inline fun DrawScope.gliding(glide: RvGlide, values: List<Float>, right: Float, draw: DrawScope.() -> Unit) {
+    if (glide.lead == null) return draw()
     val step = right / (values.size - 1)
     clipRect(right = right) {
-        translate(left = (glide.drawnShift() - 1f) * step) { draw(listOf(lead) + values, right + step) }
-    }
-}
-
-/** Revolut's empty 'Income' card: twelve faint bars of made-up [heights] across the width, each fading out downward. */
-@Composable
-internal fun RvGhostBars(heights: FloatArray, modifier: Modifier = Modifier) {
-    val ghost = Rv.colors.ghost
-    Canvas(modifier.fillMaxWidth().height(RvChartSize.spark).testTag(RvPart.FRAME)) {
-        val bar = RvChartSize.ghostBar.toPx()
-        val pitch = (size.width - bar) / (RvChartSize.GHOST_BARS - 1)
-        heights.forEachIndexed { i, height ->
-            val top = size.height * (1 - height)
-            val brush = Brush.verticalGradient(listOf(ghost, Color.Transparent), top, size.height)
-            drawRoundRect(brush, Offset(i * pitch, top), Size(bar, size.height - top), CornerRadius(bar / 2))
-        }
+        translate(left = glide.drawnShift() * step) { draw() }
     }
 }
 
@@ -256,21 +252,57 @@ internal fun RvDetailChart(
     val ink = DetailInk(series, colors, RvPillInk(colors.pill, colors.raisedShadow), Rv.type.pill.copy(color = colors.textSecondary), rememberTextMeasurer(), label)
     val glide = rememberRvGlide(values)
     val change = rememberRangeChange(values, range)
+    val stats = remember(values) { chartStats(values) }
+    val previous = remember(change) { change.before?.let(::chartStats) }
     val haptics = LocalHapticFeedback.current
     val ticks = remember(haptics) { ScrubTicks(haptics) }
     val follow: (Int?) -> Unit = { i ->
         ticks.follow(i, values)
         onScrub(i)
     }
-    Box(modifier.fillMaxWidth().height(RvChartSize.detail + RvChartSize.pill + RvChartSize.pillClear)) {
-        Canvas(Modifier.matchParentSize().testTag(RV_CHART).scrubbing(values.size, follow)) {
-            hairlineGrid(colors.grid, RvChartSize.detail.toPx())
-            val top = if (change.moving) change.top.value else axisTop(values)
-            val fade = change.fade.value
-            change.before?.takeIf { fade < 1f }?.let { detailSeries(it, ink, top, AT_REST, 1f - fade, null) }
-            detailSeries(values, ink, top, glide, fade, scrub)
+    val browse = if (stats == null) {
+        Modifier
+    } else {
+        val summary = stringResource(R.string.rv_chart_summary, label(stats.first), label(stats.second), label(stats.third))
+        val back = stringResource(R.string.rv_chart_previous)
+        val next = stringResource(R.string.rv_chart_next)
+        val now = stringResource(R.string.rv_now)
+        val source = remember { MutableInteractionSource() }
+        val report by rememberUpdatedState(onScrub)
+        LaunchedEffect(source) {
+            source.interactions.collect { if (it is FocusInteraction.Unfocus) report(null) }
         }
-        if (empty != null && values.count { !it.isNaN() } < 2) RvEmptyChartLine(empty, Modifier.fillMaxWidth().height(RvChartSize.detail))
+        fun move(forward: Boolean): Boolean {
+            val indices = if (forward) ((scrub ?: -1) + 1)..values.lastIndex else (scrub ?: values.size) - 1 downTo 0
+            return indices.firstOrNull { !values[it].isNaN() }?.also(follow) != null
+        }
+        Modifier.semantics {
+            contentDescription = summary
+            customActions = buildList {
+                add(CustomAccessibilityAction(back) { move(false) })
+                add(CustomAccessibilityAction(next) { move(true) })
+                if (scrub != null) {
+                    add(
+                        CustomAccessibilityAction(now) {
+                            follow(null)
+                            true
+                        },
+                    )
+                }
+            }
+        }.onKeyEvent { event ->
+            event.type == KeyEventType.KeyDown && (event.key == Key.DirectionLeft || event.key == Key.DirectionRight) && move(event.key == Key.DirectionRight)
+        }.indication(source, rvFocusIndication(RoundedCornerShape(Rv.cardRadius))).focusable(interactionSource = source)
+    }
+    Box(modifier.fillMaxWidth().height(RvChartSize.detail + RvChartSize.pill + RvChartSize.pillClear)) {
+        Canvas(Modifier.matchParentSize().testTag(RV_CHART).then(browse).scrubbing(values.size, follow)) {
+            hairlineGrid(colors.grid, RvChartSize.detail.toPx())
+            val top = if (change.moving) change.top.value else (stats?.third ?: 0f) * RvChartSize.DETAIL_HEADROOM
+            val fade = change.fade.value
+            change.before?.takeIf { fade < 1f }?.let { detailSeries(it, previous, ink, top, AT_REST, 1f - fade, null) }
+            detailSeries(values, stats, ink, top, glide, fade, scrub)
+        }
+        if (empty != null && stats == null) RvEmptyChartLine(empty, Modifier.fillMaxWidth().height(RvChartSize.detail))
     }
 }
 
@@ -295,20 +327,18 @@ private class DetailInk(val series: RvSeries, colors: RvColors, val pill: RvPill
  * One series of the detail chart at [alpha] on an axis from zero to [top]: its fill, the dotted start line, the line, the
  * live point, then the [scrub]bed second's marker or else the value pills.
  */
-private fun DrawScope.detailSeries(values: List<Float>, ink: DetailInk, top: Float, glide: RvGlide, alpha: Float, scrub: Int?) {
-    val known = values.filterNot { it.isNaN() }
-    if (known.size < 2) return
+private fun DrawScope.detailSeries(values: List<Float>, stats: Triple<Float, Float, Float>?, ink: DetailInk, top: Float, glide: RvGlide, alpha: Float, scrub: Int?) {
+    val (opening, low, peak) = stats ?: return
     val plot = RvChartSize.detail.toPx()
     val stroke = RvChartSize.detailStroke.toPx()
     val line = ink.series.line
-    val peak = known.max()
     val scale = Scale(top, 0f, plot - stroke)
     val right = size.width - RvChartSize.detailEnd.toPx()
-    gliding(glide, values, right) { drawn, end ->
-        drawPath(areaUnder(drawn, scale, end, plot), Brush.verticalGradient(listOf(ink.series.area, Color.Transparent), scale.y(peak), plot), alpha)
+    gliding(glide, values, right) {
+        drawPath(areaUnder(values, glide.lead, scale, right, plot), Brush.verticalGradient(listOf(ink.series.area, Color.Transparent), scale.y(peak), plot), alpha)
     }
-    dottedAcross(ink.reference, scale.y(known.first()), alpha)
-    gliding(glide, values, right) { drawn, end -> drawPath(polyline(drawn, scale, end), line, alpha, lineStroke(stroke)) }
+    dottedAcross(ink.reference, scale.y(opening), alpha)
+    gliding(glide, values, right) { drawPath(polyline(values, glide.lead, scale, right), line, alpha, lineStroke(stroke)) }
     val live = liveValue(values, glide)?.let { Offset(right, scale.y(it)) }
     live?.let {
         drawCircle(line.copy(alpha = RvAlpha.HALO), RvChartSize.liveHalo.toPx() / 2, it, alpha)
@@ -318,12 +348,25 @@ private fun DrawScope.detailSeries(values: List<Float>, ink: DetailInk, top: Flo
     if (i != null) return scrubMarker(Offset(right * i / (values.size - 1), scale.y(values[i])), line, ink.ring, plot)
     val pills = PillPlacer(this, values, scale, right, live)
     pills.place(ink.measurer.measure(ink.label(peak), ink.pillStyle), scale.y(peak), end = true, ink.pill, alpha)
-    pills.place(ink.measurer.measure(ink.label(known.min()), ink.pillStyle), scale.y(known.min()), end = true, ink.pill, alpha)
-    pills.place(ink.measurer.measure(ink.label(known.first()), ink.pillStyle), scale.y(known.first()), end = false, ink.pill, alpha)
+    pills.place(ink.measurer.measure(ink.label(low), ink.pillStyle), scale.y(low), end = true, ink.pill, alpha)
+    pills.place(ink.measurer.measure(ink.label(opening), ink.pillStyle), scale.y(opening), end = false, ink.pill, alpha)
+}
+
+private fun chartStats(values: List<Float>): Triple<Float, Float, Float>? {
+    var opening = Float.NaN
+    var low = Float.POSITIVE_INFINITY
+    var peak = Float.NEGATIVE_INFINITY
+    var count = 0
+    for (v in values) if (!v.isNaN()) {
+        if (count++ == 0) opening = v
+        low = minOf(low, v)
+        peak = maxOf(peak, v)
+    }
+    return if (count < 2) null else Triple(opening, low, peak)
 }
 
 /** The detail chart's axis for [values]: up to their peak × [RvChartSize.DETAIL_HEADROOM], or 0 with nothing known. */
-private fun axisTop(values: List<Float>): Float = (values.filterNot { it.isNaN() }.maxOrNull() ?: 0f) * RvChartSize.DETAIL_HEADROOM
+private fun axisTop(values: List<Float>): Float = (values.maxOfOrNull { if (it.isNaN()) 0f else it } ?: 0f) * RvChartSize.DETAIL_HEADROOM
 
 /** A series that does not glide: the one a range change fades out. */
 private val AT_REST = RvGlide(null, Animatable(0f))
@@ -492,11 +535,12 @@ private fun DrawScope.scrubMarker(at: Offset, color: Color, ring: Color, plot: F
  * [values] spread over [0, right], joined by straight segments: at one sample a second the line stays dense and jagged,
  * as Revolut's are, and a spike keeps its sharp tip. A missing sample (NaN) breaks the line; nothing bridges the gap.
  */
-private fun polyline(values: List<Float>, scale: Scale, right: Float): Path {
+private fun polyline(values: List<Float>, lead: Float?, scale: Scale, right: Float): Path {
     val step = right / (values.size - 1)
     return Path().apply {
         var drawing = false
-        values.forEachIndexed { i, v ->
+        for (i in (if (lead == null) 0 else -1)..values.lastIndex) {
+            val v = if (i < 0) checkNotNull(lead) else values[i]
             when {
                 v.isNaN() -> drawing = false
 
@@ -514,18 +558,19 @@ private fun polyline(values: List<Float>, scale: Scale, right: Float): Path {
 }
 
 /** The area under each unbroken run of [values] over [0, right], down to [bottom]. */
-private fun areaUnder(values: List<Float>, scale: Scale, right: Float, bottom: Float) = Path().apply {
+private fun areaUnder(values: List<Float>, lead: Float?, scale: Scale, right: Float, bottom: Float) = Path().apply {
     val step = right / (values.size - 1)
-    var start = -1
-    for (i in 0..values.size) {
-        val known = i < values.size && !values[i].isNaN()
-        if (known && start < 0) start = i
-        if (!known && start >= 0) {
-            moveTo(start * step, bottom)
-            for (j in start until i) lineTo(j * step, scale.y(values[j]))
+    var drawing = false
+    for (i in (if (lead == null) 0 else -1)..values.size) {
+        val value = if (i < 0) lead else values.getOrNull(i)
+        if (value != null && !value.isNaN()) {
+            if (!drawing) moveTo(i * step, bottom)
+            lineTo(i * step, scale.y(value))
+            drawing = true
+        } else if (drawing) {
             lineTo((i - 1) * step, bottom)
             close()
-            start = -1
+            drawing = false
         }
     }
 }
@@ -538,42 +583,5 @@ internal fun DrawScope.rvDots() = PathEffect.dashPathEffect(floatArrayOf(DOT_LEN
 private fun DrawScope.dottedAcross(color: Color, y: Float, alpha: Float = 1f) =
     drawLine(color, Offset(0f, y), Offset(size.width, y), RvChartSize.dotted.toPx(), StrokeCap.Round, rvDots(), alpha)
 
-/** Ghost bar heights as shares of the chart's height: download's, and upload's of its own shape (S5-09). */
-internal val RV_GHOST_DOWN = floatArrayOf(0.42f, 0.64f, 0.5f, 0.8f, 0.58f, 0.36f, 0.7f, 0.9f, 0.54f, 0.68f, 0.46f, 0.76f)
-internal val RV_GHOST_UP = floatArrayOf(0.3f, 0.22f, 0.48f, 0.34f, 0.6f, 0.4f, 0.26f, 0.52f, 0.72f, 0.44f, 0.58f, 0.38f)
-
 /** A dash this short with round caps draws as a dot. */
 private const val DOT_LENGTH = 0.01f
-
-/** A latency chart's axis (node detail and 統計): up to the first whole 100 ms that leaves the slowest 5 % below the top. */
-internal fun rvLatencyAxisTop(slowest: Int): Int = ceil(maxOf(slowest, 1) * LATENCY_HEADROOM / LATENCY_STEP).toInt() * LATENCY_STEP
-
-/**
- * The axis for a chart of one test, which then sits on its middle line: twice [value], so the middle label is the test's
- * own figure (92 → 184 ms; 20 → 40 ms). A test that timed out ([value] 0) keeps [rvLatencyAxisTop]'s.
- */
-internal fun rvLatencyAxisMiddle(value: Int): Int = if (value > 0) 2 * value else rvLatencyAxisTop(value)
-
-private const val LATENCY_HEADROOM = 1.05f
-private const val LATENCY_STEP = 100
-
-/**
- * The picked point of a latency chart, as Revolut's EPS chart marks its picked year (§10.2): a column of [fill] behind
- * the dot at [x], one [pitch] wide but no narrower than twice its [dot] and no wider than [RvChartSize.markerColumn],
- * from the top to [RvChartSize.markerBelow] under [plotBottom]; and [label] in a chip of the same fill, the value pill's
- * height and padding, [RvChartSize.markerGap] under the plot, kept inside the chart. Returns the chip's start and end.
- */
-internal fun DrawScope.rvChartMarker(x: Float, pitch: Float, dot: Float, plotBottom: Float, label: TextLayoutResult, fill: Color): ClosedFloatingPointRange<Float> {
-    val column = pitch.coerceIn(2 * dot, RvChartSize.markerColumn.toPx())
-    drawRoundRect(fill, Offset(x - column / 2, 0f), Size(column, plotBottom + RvChartSize.markerBelow.toPx()), CornerRadius(column / 2))
-    val padH = RvChartSize.pillPadH.toPx()
-    val chip = Size(label.size.width + 2 * padH, rvMarkerChip(label.size.height.toFloat()))
-    val left = (x - chip.width / 2).coerceAtMost(size.width - chip.width).coerceAtLeast(0f)
-    val top = plotBottom + RvChartSize.markerGap.toPx()
-    drawRoundRect(fill, Offset(left, top), chip, CornerRadius(chip.height / 2))
-    drawText(label, topLeft = Offset(left + padH, top + (chip.height - label.size.height) / 2))
-    return left..(left + chip.width)
-}
-
-/** The marker chip's height round a label [text] px tall: the value pill's, or the label's at a large font scale. */
-internal fun Density.rvMarkerChip(text: Float): Float = maxOf(RvChartSize.pill.toPx(), text)
