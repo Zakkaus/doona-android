@@ -18,12 +18,14 @@ import dev.doona.android.feature.model.RvGeoInterval
 
 /**
  * 自動更新 for the GeoIP/GeoSite data, a page of 設定's 更新 group (owner, 2026-11-26 07:13, q-p6a-geointerval), laid out
- * as 日誌等級: the large title, one card of the three intervals as radio rows, 每週 over 預設, and one footer line: the
- * data updates only while the VPN is up, through the main node. [selected] is the stored interval; a choice goes to
- * [onSelect].
+ * as 日誌等級: the large title, one card of the three intervals as radio rows, 每天 over 預設
+ * (honk's own 24 hours; owner, 2026-11-26, q-k4-geodefault), and one footer line: the
+ * data updates only while the VPN is up, through the main node. [selected] is honk's interval; a choice goes to
+ * [onSelect]. Null, honk is not running (VPN off): the rows are drawn disabled with none chosen, and the footer reads
+ * 未連線 (owner, 2026-11-26, q-k4-geooffline).
  */
 @Composable
-internal fun RvGeoIntervalScreen(selected: RvGeoInterval, onSelect: (RvGeoInterval) -> Unit, onBack: () -> Unit) {
+internal fun RvGeoIntervalScreen(selected: RvGeoInterval?, onSelect: (RvGeoInterval) -> Unit, onBack: () -> Unit) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(R.string.rv_settings_auto_update)
     RvScrollPage(title, insets, onBack = onBack, end = RvPageEnd.Inset(RvSettingsSpace.bottom)) { titleBlock ->
@@ -31,11 +33,11 @@ internal fun RvGeoIntervalScreen(selected: RvGeoInterval, onSelect: (RvGeoInterv
         RvSettingsColumn {
             RvSettingsRadioCard {
                 RvGeoInterval.entries.forEach {
-                    val default = if (it == RvGeoInterval.Weekly) stringResource(R.string.rv_geo_interval_default) else null
-                    RvRadioRow(null, stringResource(it.label), it == selected, default, onSelect = { onSelect(it) })
+                    val default = if (it == RvGeoInterval.Daily) stringResource(R.string.rv_geo_interval_default) else null
+                    RvRadioRow(null, stringResource(it.label), it == selected, default, enabled = selected != null, onSelect = { onSelect(it) })
                 }
             }
-            RvFootnote(stringResource(R.string.rv_geo_interval_footer))
+            RvFootnote(stringResource(if (selected == null) R.string.status_stopped else R.string.rv_geo_interval_footer))
         }
     }
 }

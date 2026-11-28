@@ -30,7 +30,8 @@ class ReportRedactionTest : ExportFixture() {
         val defaults = RedactionOptions()
         val cases = listOf(
             defaults to listOf(PACKAGE),
-            defaults.copy(showNodeEndpoints = true) to listOf(ENDPOINT, PACKAGE),
+            // honk names no node's server, so this switch has nothing in the report to show.
+            defaults.copy(showNodeEndpoints = true) to listOf(PACKAGE),
             defaults.copy(showOwnAddresses = true) to listOf(OWN_IP, PACKAGE),
             defaults.copy(showVisitedDomains = true) to listOf(VISITED, PACKAGE),
             defaults.copy(showAppNames = false) to emptyList(),
@@ -84,12 +85,10 @@ class ReportRedactionTest : ExportFixture() {
         val fake = fixtureEngine()
         val crashName = "1795300140000.txt"
         val appCrash = "1795300150000.txt"
-        val sub = fake.catalog.value!!.subscriptions.single().url
+        val sub = "https://sub.provider-example.net/api/v1/client/subscribe?token=tk_9f8e7d6c5b4a"
         val credential = "test-user:test-pass"
         val token = "fixture-token-8842"
         val raw = "$sub $credential $token"
-        val nodeCredential = "u:p@h"
-        val nodeUrl = "https://node.example/sub?token=node-token"
         val addressHost = "fixture-address-token"
         val addressBytes = ByteArray(16).apply {
             this[0] = 0x20
@@ -109,10 +108,6 @@ class ReportRedactionTest : ExportFixture() {
         AppEvents.record(AppEventLevel.Warn, ACTION, visitedDomain = sub, appPackage = credential)
         AppEvents.record(AppEventLevel.Warn, ACTION, visitedDomain = token, appPackage = token)
         val engine = object : Engine by fake {
-            override suspend fun nodes(ids: List<String>?) = fake.nodes(ids).map { nodes ->
-                listOf(nodes[0].copy(server = nodeCredential), nodes[1].copy(server = nodeUrl), nodes[2].copy(server = "2001:db8::21"))
-            }
-
             override suspend fun diagnostics(level: LogLevel?) = fake.diagnostics(level).map {
                 it.copy(
                     json = """
@@ -123,21 +118,28 @@ class ReportRedactionTest : ExportFixture() {
                 )
             }
         }
-        val result = export(engine, ownAddresses = { listOf(address) }).build(SHOW_ALL, FAILURE)!!
+        val honk = ReportHonk.secrets().apply {
+            on(
+                "GET",
+                "/api/v1/version",
+                200,
+                """{"api":{"name":"daeuniverse/native","major":1,"status":"draft"},"engine":{"name":"$credential","version":"$token"},""" +
+                    """"build":{"revision":"$sub","target":"$credential","built_at":null}}""",
+            )
+        }
+        val result = export(engine, ownAddresses = { listOf(address) }, honk = honk).build(SHOW_ALL, FAILURE)!!
         val files = entries(result.file)
         val report = files.getValue(ReportExport.REPORT_ENTRY)
         val crash = files.getValue("crash/$crashName")
         assertTrue("\"code\": \"internal\"" in report)
         assertTrue("\"upTotal\": 12" in report)
         assertTrue("0 libdoonacore.so 0x1f2e" in crash)
-        assertTrue("[2001:db8::21]:443" in report)
         assertTrue(address.hostAddress!!.substringBefore('%') in report)
         assertTrue(appText.trimEnd() in files.getValue("crash/$appCrash"))
         val draft = draft(result)
         assertTrue(ACTION in draft)
-        assertFalse("[2001:db8::21]:443" in draft)
         val zipText = files.values.joinToString("\n")
-        val planted = secrets + listOf(sub, credential, token, nodeCredential, nodeUrl, addressHost, "%42", "app-crash-token")
+        val planted = secrets + listOf(sub, credential, token, addressHost, "%42", "app-crash-token")
         assertEquals("exported planted secrets", emptyList<String>(), planted.filter { it in zipText || it in draft })
     }
 

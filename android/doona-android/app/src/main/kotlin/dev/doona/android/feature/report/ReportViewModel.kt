@@ -9,13 +9,22 @@ import dev.doona.android.engine.Engine
 import dev.doona.android.report.RedactionOptions
 import dev.doona.android.report.ReportExporter
 import dev.doona.android.report.ReportShare
+import dev.doona.android.vpn.NativeApi
+import dev.doona.android.vpn.honk.NativeCatalog
+import dev.doona.android.vpn.honk.ProviderKind
+import dev.doona.android.vpn.read
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 /**
  * What the report page reads besides the engine: the app's version and the phone, as the preview names them, and how
@@ -38,8 +47,10 @@ internal interface ReportFacts {
  */
 internal class ReportViewModel(
     private val engine: Engine,
+    private val api: NativeApi,
     private val reports: ReportExporter,
     private val facts: ReportFacts,
+    private val io: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
     private val state = MutableStateFlow(ReportUiState(preview = emptyPreview(facts)))
     private var building: Job? = null
@@ -50,7 +61,7 @@ internal class ReportViewModel(
     val uiState: StateFlow<ReportUiState> = state.asStateFlow()
 
     init {
-        viewModelScope.launch { state.update { it.copy(preview = reportPreview(engine, facts)) } }
+        viewModelScope.launch { state.update { it.copy(preview = reportPreview(engine, api, facts, io)) } }
         build()
     }
 
@@ -126,8 +137,8 @@ internal class ReportViewModel(
     }
 
     companion object {
-        fun factory(engine: Engine, reports: ReportExporter, facts: ReportFacts): ViewModelProvider.Factory = viewModelFactory {
-            initializer { ReportViewModel(engine, reports, facts) }
+        fun factory(engine: Engine, api: NativeApi, reports: ReportExporter, facts: ReportFacts): ViewModelProvider.Factory = viewModelFactory {
+            initializer { ReportViewModel(engine, api, reports, facts) }
         }
     }
 }
@@ -156,18 +167,33 @@ internal fun RvRedaction.options() = RedactionOptions(
 private fun emptyPreview(facts: ReportFacts) = RvReportPreview(facts.app, facts.device, nodes = 0, subscriptions = 0, rules = 0, events = 0, crashes = 0)
 
 /**
- * The preview of what a report holds, from the engine and the app's log as they stand ([rvReportPreview]). A read that
- * fails counts 0: the export reads them again and says what it could not read.
+ * The preview of what a report holds, from honk ([api]: its nodes, subscriptions and rules), the core's crash listing
+ * and the app's log as they stand ([rvReportPreview]). A read that fails counts 0: the export reads them again and says
+ * what it could not read.
  */
-internal suspend fun reportPreview(engine: Engine, facts: ReportFacts): RvReportPreview = rvReportPreview(
-    app = facts.app,
-    device = facts.device,
-    catalog = engine.catalog.value,
-    subscriptions = engine.subscriptions.value,
-    rules = engine.rules(0, 1).getOrNull(),
-    events = readEvents(facts),
-    diagnostics = engine.diagnostics().getOrNull(),
-)
+internal suspend fun reportPreview(engine: Engine, api: NativeApi, facts: ReportFacts, io: CoroutineDispatcher): RvReportPreview {
+    val catalog = NativeCatalog(api)
+    val (nodes, subscriptions, rules) = withContext(io) {
+        Triple(
+            runCatching { catalog.nodes().size }.getOrNull(),
+            runCatching { catalog.providers().count { it.kind == ProviderKind.Subscription } }.getOrNull(),
+            runCatching { api.read("GET", "/api/v1/rules", HonkRuleCount.serializer()).rules.size }.getOrNull(),
+        )
+    }
+    return rvReportPreview(
+        app = facts.app,
+        device = facts.device,
+        nodes = nodes,
+        subscriptions = subscriptions,
+        rules = rules,
+        events = readEvents(facts),
+        diagnostics = engine.diagnostics().getOrNull(),
+    )
+}
+
+/** honk's `GET /rules`, only to count its rows. */
+@Serializable
+private class HonkRuleCount(val rules: List<JsonElement>)
 
 /** The app's events, or null when the log could not be read. */
 private suspend fun readEvents(facts: ReportFacts): Int? = try {

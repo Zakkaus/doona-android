@@ -5,12 +5,10 @@ import androidx.lifecycle.ViewModelStore
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.data.settings.AppSettings
-import dev.doona.android.data.settings.GeoUpdateInterval
 import dev.doona.android.data.settings.ThemeAccent
 import dev.doona.android.data.settings.ThemeAppearance
 import dev.doona.android.data.settings.ThemeMode
 import dev.doona.android.feature.model.RvAppearance
-import dev.doona.android.feature.model.RvGeoInterval
 import dev.doona.android.feature.model.RvThemeMode
 import dev.doona.android.feature.settings.ThemeViewModel
 import dev.doona.android.vpn.QuickTile
@@ -81,16 +79,6 @@ class AppSettingsStoreTest {
         assertEquals(36, store.updateHours.reaches(36))
         assertEquals(false, store.autoUpdate.reaches(false))
         assertEquals(true, settings.performanceMode.reaches(true))
-    }
-
-    @Test
-    fun `自動更新's choice is the interval GeoRefresh reads, each way`() {
-        assertEquals(RvGeoInterval.Weekly, store.geoInterval.reaches(RvGeoInterval.Weekly))
-        for ((chosen, stored) in listOf(RvGeoInterval.Off to GeoUpdateInterval.Off, RvGeoInterval.Daily to GeoUpdateInterval.Daily, RvGeoInterval.Weekly to GeoUpdateInterval.Weekly)) {
-            store.setGeoInterval(chosen)
-            assertEquals(stored, settings.geoUpdateInterval.reaches(stored))
-            assertEquals(chosen, store.geoInterval.reaches(chosen))
-        }
     }
 
     @Test

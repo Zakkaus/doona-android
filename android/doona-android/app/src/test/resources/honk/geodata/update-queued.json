@@ -1,0 +1,6 @@
+{
+  "operation_id": "op-geodata-01",
+  "kind": "geodata_update",
+  "status": "queued",
+  "href": "/api/v1/operations/op-geodata-01"
+}

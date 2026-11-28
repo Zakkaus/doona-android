@@ -25,6 +25,7 @@ import dev.doona.android.engine.Status
 import dev.doona.android.engine.TodayTraffic
 import dev.doona.android.engine.Traffic
 import dev.doona.android.engine.TrafficSeries
+import dev.doona.android.feature.settings.RvLogLevel
 import dev.doona.android.report.AppEvents
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -359,15 +360,15 @@ class EngineTelemetryTest {
     fun stoppingARunningTunnelEndsDebugCapture() = runTest {
         lateinit var logLevels: LogLevelController
         val engine = engine { logLevels.endCapture() }
-        logLevels = LogLevelController(engine::setLogLevel, backgroundScope) { testScheduler.currentTime }
+        logLevels = LogLevelController({ engine.setLogLevel(LogLevel.valueOf(it.name)) }, backgroundScope) { testScheduler.currentTime }
         start(engine)
-        logLevels.set(LogLevel.Debug).getOrThrow()
+        logLevels.set(RvLogLevel.Debug).getOrThrow()
 
         engine.disconnect()
         runCurrent()
 
         assertEquals(Status.Stopped, engine.status.value)
-        assertEquals(LogLevel.Info, logLevels.level.value)
+        assertEquals(RvLogLevel.Info, logLevels.level.value)
         assertEquals("setLogLevel" to """{"level":"info"}""", core.calls.last())
     }
 
@@ -375,15 +376,15 @@ class EngineTelemetryTest {
     fun revokingTheTunnelEndsDebugCapture() = runTest {
         lateinit var levels: LogLevelController
         val engine = engine { levels.endCapture() }
-        levels = LogLevelController(engine::setLogLevel, backgroundScope) { testScheduler.currentTime }
+        levels = LogLevelController({ engine.setLogLevel(LogLevel.valueOf(it.name)) }, backgroundScope) { testScheduler.currentTime }
         start(engine)
-        levels.set(LogLevel.Debug).getOrThrow()
+        levels.set(RvLogLevel.Debug).getOrThrow()
 
         engine.controller.revoke(host)
         runCurrent()
 
         assertEquals(Status.Failed(FailureReason.Revoked), engine.status.value)
-        assertEquals(LogLevel.Info, levels.level.value)
+        assertEquals(RvLogLevel.Info, levels.level.value)
         assertEquals("setLogLevel" to """{"level":"info"}""", core.calls.last())
     }
 
@@ -391,8 +392,8 @@ class EngineTelemetryTest {
     fun aFailedStartEndsDebugCapture() = runTest {
         lateinit var levels: LogLevelController
         val engine = engine { levels.endCapture() }
-        levels = LogLevelController(engine::setLogLevel, backgroundScope) { testScheduler.currentTime }
-        levels.set(LogLevel.Debug).getOrThrow()
+        levels = LogLevelController({ engine.setLogLevel(LogLevel.valueOf(it.name)) }, backgroundScope) { testScheduler.currentTime }
+        levels.set(RvLogLevel.Debug).getOrThrow()
         core.onStart = { throw IllegalStateException("no_nodes") }
 
         engine.connect()
@@ -400,7 +401,7 @@ class EngineTelemetryTest {
         runCurrent()
 
         assertTrue(engine.status.value is Status.Failed)
-        assertEquals(LogLevel.Info, levels.level.value)
+        assertEquals(RvLogLevel.Info, levels.level.value)
         assertEquals("setLogLevel" to """{"level":"info"}""", core.calls.last())
     }
 
@@ -409,15 +410,15 @@ class EngineTelemetryTest {
         var elapsed = 0L
         lateinit var levels: LogLevelController
         val engine = engine(expireDebugCapture = { levels.expireIfDue() })
-        levels = LogLevelController(engine::setLogLevel, backgroundScope) { elapsed }
-        levels.set(LogLevel.Debug).getOrThrow()
+        levels = LogLevelController({ engine.setLogLevel(LogLevel.valueOf(it.name)) }, backgroundScope) { elapsed }
+        levels.set(RvLogLevel.Debug).getOrThrow()
         runCurrent()
         elapsed += 3_600_000
 
         engine.setMode(Mode.Rule).getOrThrow()
         assertEquals(listOf("setLogLevel", "setLogLevel", "setMode"), core.calls.map { it.first })
 
-        levels.set(LogLevel.Debug).getOrThrow()
+        levels.set(RvLogLevel.Debug).getOrThrow()
         runCurrent()
         elapsed += 3_600_000
         core.reply = ContractFixtures.read("call-ok-traffic-series.json")

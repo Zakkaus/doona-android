@@ -1,0 +1,54 @@
+{
+  "instance_id": "instance-7",
+  "observed_at": "2026-09-14T10:00:00Z",
+  "coverage": {
+    "userspace_tcp": "full",
+    "userspace_udp": "partial",
+    "kernel_direct": "none",
+    "kernel_block": "none",
+    "dns_intercept": "partial",
+    "kernel_bypass": "none"
+  },
+  "dropped_records": "3",
+  "flows": [
+    {
+      "id": "flow-23",
+      "instance_id": "instance-7",
+      "revision": 8,
+      "network": "tcp",
+      "state": "active",
+      "pname": "curl",
+      "connection_id": "tcp-01HZX4K8W5",
+      "outbound": "proxy",
+      "chain": [
+        "group-proxy",
+        "node-hk-01"
+      ],
+      "chain_source": "evaluation",
+      "rule_id": null,
+      "rule_generation_id": null,
+      "rule_expression": null,
+      "rule_source": "unknown",
+      "ingress": "wan",
+      "domain_source": "tls_sni",
+      "observed_by": "userspace",
+      "started_at": "2026-08-15T09:59:50Z",
+      "ended_at": null,
+      "trace_status": "partial",
+      "input": {
+        "src": "192.168.1.100:12345",
+        "dst": "1.2.3.4:443",
+        "domain": "example.com",
+        "domain_source": "tls_sni",
+        "pid": null,
+        "process_path": null,
+        "src_mac": null,
+        "ingress": "wan",
+        "domain_rule_ids": null,
+        "dscp": 0,
+        "mark": 0
+      }
+    }
+  ],
+  "next_cursor": null
+}

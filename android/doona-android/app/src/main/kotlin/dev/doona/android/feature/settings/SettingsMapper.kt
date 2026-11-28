@@ -1,12 +1,10 @@
 package dev.doona.android.feature.settings
 
 import dev.doona.android.engine.AppPolicy
-import dev.doona.android.engine.ConfigAssets
 import dev.doona.android.engine.PerApp
 import dev.doona.android.feature.model.RvAppPolicy
 import dev.doona.android.feature.model.RvDnsUpstream
 import dev.doona.android.feature.model.RvGeoData
-import dev.doona.android.feature.model.RvGeoUpdate
 import dev.doona.android.feature.model.RvPerApp
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
@@ -22,29 +20,12 @@ internal fun rvPerApp(perApp: PerApp) = RvPerApp(
 )
 
 /**
- * Where a geo update stands for the core's `lastResult` (the set `work/GeoRefresh` reads): still checking, downloading
- * or verifying; nothing newer; newer data, which the core uses from its next start; or failed. Before any update, and
- * for a word the app does not know, the row shows only the date.
+ * The GeoIP/GeoSite row for honk's [data], null while honk does not answer: honk's date, else the APK's own
+ * ([shippedDate], no date at all when that is not a `YYYY-MM-DD` day, which the row shows as a dash rather than
+ * ending 設定); without honk the row says 未連線, as an update needs it.
  */
-internal fun rvGeoUpdate(lastResult: String): RvGeoUpdate = when (lastResult) {
-    "checking", "downloading", "verifying" -> RvGeoUpdate.Updating
-    "up_to_date" -> RvGeoUpdate.Latest
-    "ready_on_next_start", "activated" -> RvGeoUpdate.Updated
-    "failed" -> RvGeoUpdate.Failed
-    else -> RvGeoUpdate.Idle
-}
-
-/**
- * The GeoIP/GeoSite row for the core's [assets]: the active data's release date, the APK's own ([shippedDate]) when the
- * core reports none, could not be read, or reports a release that is not a `YYYY-MM-DD` date (no date at all when the
- * APK's is none either, which the row shows as a dash rather than ending 設定); where an update stands;
- * and whether the VPN is [connected], which an update needs.
- */
-internal fun rvGeoData(assets: ConfigAssets?, shippedDate: String, connected: Boolean) = RvGeoData(
-    date = assets?.release?.let(::releaseDate) ?: releaseDate(shippedDate),
-    update = assets?.let { rvGeoUpdate(it.lastResult) } ?: RvGeoUpdate.Idle,
-    connected = connected,
-)
+internal fun rvGeoData(data: RvGeoData?, shippedDate: String) =
+    data?.let { it.copy(date = it.date ?: releaseDate(shippedDate)) } ?: RvGeoData(releaseDate(shippedDate), connected = false)
 
 /** The day of a `YYYY-MM-DD` release, kept a calendar day so no time zone moves it; null for any other text. */
 private fun releaseDate(date: String): LocalDate? = try {

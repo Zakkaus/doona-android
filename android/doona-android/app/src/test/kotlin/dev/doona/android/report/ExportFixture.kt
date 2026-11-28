@@ -16,6 +16,7 @@ import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.SubscriptionFetch
 import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.engine.fake.FakeEngine
+import dev.doona.android.vpn.NativeApi
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -29,7 +30,7 @@ import java.io.File
 import java.net.InetAddress
 import java.util.zip.ZipFile
 
-/** What the export's tests share: the directories, a catalog full of secrets, an export over them, and its zip. */
+/** What the export's tests share: the directories, a honk whose catalog is full of secrets, an export over it, and its zip. */
 @OptIn(ExperimentalCoroutinesApi::class)
 abstract class ExportFixture {
     @get:Rule
@@ -49,30 +50,8 @@ abstract class ExportFixture {
     private val token = "tk_9f8e7d6c5b4a"
     protected val secrets = listOf(token, "provider-example.net", "203.0.113.45", "198.51.100.7", "hk1.edge-example.org", "2001:db8::17", "harbor-home", "user:pass")
 
-    protected suspend fun fixtureEngine(): FakeEngine {
-        val nodes = listOf(
-            Member("n-1a2b3c4d5e6f7081", "203.0.113.45:443 hk", latencyMs = 42, subscriptionId = "s1"),
-            Member("n-9f8e7d6c5b4a3921", "hk1.edge-example.org vmess", failed = true, error = ErrorCode.LocalNetwork, subscriptionId = "s1"),
-            Member("n-0011223344556677", "[2001:db8::17]:8443 user:pass", subscriptionId = "s1"),
-        )
-        val groups = listOf(
-            // A subscription may name its groups too, so a group's name or id is no safer than a node's.
-            Group("g-198.51.100.7", "198.51.100.7", GroupKind.Selector, nodes + Member("g-Auto", "Auto", isGroup = true), selectedId = "g-Auto"),
-            Group("g-Auto", "Auto", GroupKind.UrlTest, nodes, selectedId = nodes[0].id),
-        )
-        val subscription = Subscription(
-            id = "s1",
-            name = "harbor-home",
-            url = "https://sub.provider-example.net/api/v1/client/subscribe?token=$token",
-            nodes = 3,
-            lastFetch = SubscriptionFetch(1_795_300_000_000, SubscriptionFormat.Clash),
-            error = ErrorCode.FetchFailed,
-            totalBytes = 1L shl 40,
-        )
-        val engine = FakeEngine(groups, listOf(subscription), Status.Running(sinceEpochMs = 1_795_300_000_000))
-        engine.setPerApp(PerApp(AppPolicy.OnlyListed, setOf("com.example.secretapp")))
-        return engine
-    }
+    /** The engine beside honk ([ReportHonk.secrets]): the mode and an app list by name, which the report counts. */
+    protected suspend fun fixtureEngine(): FakeEngine = FakeEngine().apply { setPerApp(PerApp(AppPolicy.OnlyListed, setOf("com.example.secretapp"))) }
 
     protected val app = AppInfo("0.1", 1, "debug", listOf("arm64-v8a"), "16", 36, "Google", "Pixel 9")
 
@@ -80,13 +59,14 @@ abstract class ExportFixture {
         engine: Engine,
         now: Long = 1_795_300_200_000,
         scope: CoroutineScope = this,
-        logLevels: LogLevelController = LogLevelController(engine::setLogLevel, scope) { testScheduler.currentTime },
+        logLevels: LogLevelController = LogLevelController({ engine.setLogLevel(LogLevel.valueOf(it.name)) }, scope) { testScheduler.currentTime },
         ownAddresses: () -> List<InetAddress> = { emptyList() },
         flowEvents: FlowEvents = testFlowEvents(StandardTestDispatcher(testScheduler)),
+        honk: NativeApi = ReportHonk.secrets(),
     ): ReportExport {
         val files = CrashFiles(crashDir)
         val dispatcher = StandardTestDispatcher(testScheduler)
-        return ReportExport(engine, files, CrashOffer(files, tmp.root.resolve("seen")), { outDir }, tokens, { app }, scope, dispatcher, logLevels, flowEvents, ownAddresses) { now }
+        return ReportExport(engine, honk, files, CrashOffer(files, tmp.root.resolve("seen")), { outDir }, tokens, { app }, scope, dispatcher, logLevels, flowEvents, ownAddresses) { now }
     }
 
     /** Every entry of the zip, by name. */
@@ -102,7 +82,7 @@ abstract class ExportFixture {
     }
 }
 
-internal fun testFlowEvents(io: CoroutineDispatcher): FlowEvents = FlowEvents(FakeEngine(), io, { _, _, _ -> Process.INVALID_UID }, { null })
+internal fun testFlowEvents(io: CoroutineDispatcher): FlowEvents = FlowEvents(ReportHonk.down(), io, { _, _, _ -> Process.INVALID_UID }, { null })
 
 /** Records the clears it is sent; the first [failures] fail, and with [hangs] none returns, as in a process that ends. */
 internal class Recording(

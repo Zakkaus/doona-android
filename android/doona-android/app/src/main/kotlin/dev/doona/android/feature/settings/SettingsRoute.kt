@@ -17,9 +17,10 @@ import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.engine.Engine
 import dev.doona.android.feature.model.RvLanguage
+import dev.doona.android.vpn.NativeSettings
 
 /**
- * The 設定 tab: builds the ViewModel over the [engine], the app's [store], [releases] (檢查更新) and the core's log
+ * The 設定 tab: builds the ViewModel over the [engine], [honk], the app's [store], [releases] (檢查更新) and the core's log
  * [levels] (日誌等級's row) and shows the page;
  * [system] takes what Android does, [nav] the pages 設定 opens, and [onTab] the floating nav's tabs. [version] is the
  * app's version name, a dash when the shell has none.
@@ -27,6 +28,7 @@ import dev.doona.android.feature.model.RvLanguage
 @Composable
 internal fun SettingsRoute(
     engine: Engine,
+    honk: NativeSettings,
     store: SettingsStore,
     releases: ReleaseCheck,
     levels: LogLevels,
@@ -35,7 +37,7 @@ internal fun SettingsRoute(
     version: String,
     onTab: (Int) -> Unit,
 ) {
-    val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.factory(engine, store, releases, levels))
+    val viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.factory(engine, honk, store, releases, levels))
     SettingsPage(viewModel, system, nav, version, onTab)
 }
 
@@ -113,11 +115,19 @@ internal fun LanguageRoute(store: SettingsStore, onBack: () -> Unit, system: RvL
     }, onBack)
 }
 
-/** GeoIP/GeoSite's 自動更新 over the [store]: a choice is stored at once, and GeoRefresh reads it on its next run. */
+/** GeoIP/GeoSite's 自動更新 over [honk]'s schedule: a choice goes to honk, and the page shows what honk then reports. */
 @Composable
-internal fun GeoIntervalRoute(store: SettingsStore, onBack: () -> Unit) {
-    val selected = store.geoInterval.collectAsStateWithLifecycle(null).value ?: return RvSettingsLoading()
-    RvGeoIntervalScreen(selected, store::setGeoInterval, onBack)
+internal fun GeoIntervalRoute(honk: NativeSettings, onBack: () -> Unit) =
+    GeoIntervalPage(viewModel(factory = GeoIntervalViewModel.factory(honk)), onBack)
+
+/**
+ * 自動更新 on [viewModel]'s schedule, the page's background alone until the first read ends, then disabled with 未連線
+ * when honk did not answer; the goldens drive their own ViewModel through it.
+ */
+@Composable
+internal fun GeoIntervalPage(viewModel: GeoIntervalViewModel, onBack: () -> Unit) {
+    val state = viewModel.state.collectAsStateWithLifecycle().value ?: return RvSettingsLoading()
+    RvGeoIntervalScreen(state.selected, viewModel::select, onBack)
 }
 
 /** 日誌等級 over the app's [levels]. */

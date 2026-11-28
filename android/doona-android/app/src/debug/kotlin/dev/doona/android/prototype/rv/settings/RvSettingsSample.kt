@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import dev.doona.android.feature.model.RvAppearance
 import dev.doona.android.feature.model.RvDnsUpstream
 import dev.doona.android.feature.model.RvGeoData
+import dev.doona.android.feature.model.RvGeoInterval
 import dev.doona.android.feature.model.RvSettingsState
 import dev.doona.android.feature.model.RvThemeMode
 import dev.doona.android.feature.report.RvReportPreview
@@ -22,7 +23,7 @@ internal val RV_SAMPLE_THEME_PREVIEW: RvThemePreviewPage = { RvActivityScreenSam
 
 internal fun rvSampleAppearance() = RvAppearance(RvThemeMode.System, followWallpaper = false, accent = 0)
 
-/** The settings page as [RvData] has it. */
+/** The settings page as [RvData] has it, with the sample's 每週 schedule (honk's default is 每天). */
 internal fun rvSampleSettings() = RvSettingsState(
     notifyOnDrop = true,
     perApp = RvPerAppData.saved,
@@ -30,6 +31,7 @@ internal fun rvSampleSettings() = RvSettingsState(
     updateHours = RvData.UPDATE_HOURS,
     appearance = rvSampleAppearance(),
     dns = RvDnsUpstream.Cloudflare,
+    geoInterval = RvGeoInterval.Weekly,
 )
 
 /** The sample's data: the copy the APK ships. */

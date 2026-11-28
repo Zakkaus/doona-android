@@ -6,16 +6,17 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.engine.CoreDiagnostics
 import dev.doona.android.engine.CrashFile
 import dev.doona.android.engine.LogLevel
-import dev.doona.android.engine.RulePage
 import dev.doona.android.report.ExportFixture
 import dev.doona.android.report.FakeReports
 import dev.doona.android.report.RedactionOptions
 import dev.doona.android.report.ReportExport
+import dev.doona.android.report.ReportHonk
 import dev.doona.android.report.ReportShare
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -52,7 +53,7 @@ class ReportViewModelTest : ExportFixture() {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
         val engine = fixtureEngine()
         val reports = FakeReports(export(engine, scope = backgroundScope)).also { it.fail = fail }
-        val vm = ReportViewModel(engine, reports, facts)
+        val vm = ReportViewModel(engine, ReportHonk.secrets(), reports, facts, StandardTestDispatcher(testScheduler))
         backgroundScope.launch { vm.uiState.collect {} }
         return vm to reports
     }
@@ -117,7 +118,7 @@ class ReportViewModelTest : ExportFixture() {
     }
 
     @Test
-    fun `the preview counts the catalog's nodes, the subscriptions and the app's events`() = runTest {
+    fun `the preview counts honk's nodes, subscriptions and rules and the app's events`() = runTest {
         val (vm, _) = page()
         advanceUntilIdle()
         val preview = vm.uiState.value.preview
@@ -125,6 +126,7 @@ class ReportViewModelTest : ExportFixture() {
         assertEquals("Pixel 9 · Android 16", preview.device)
         assertEquals(3, preview.nodes)
         assertEquals(1, preview.subscriptions)
+        assertEquals(3, preview.rules)
         assertEquals(7, preview.events)
     }
 
@@ -255,7 +257,7 @@ class ReportViewModelTest : ExportFixture() {
         val engine = fixtureEngine()
         val reports = FakeReports(export(engine, scope = backgroundScope))
         val store = ViewModelStore()
-        val vm = ViewModelProvider(store, ReportViewModel.factory(engine, reports, facts))[ReportViewModel::class.java]
+        val vm = ViewModelProvider(store, ReportViewModel.factory(engine, ReportHonk.secrets(), reports, facts))[ReportViewModel::class.java]
         advanceUntilIdle()
         assertNotNull(vm.uiState.value.share)
         val zip = zips().single()
@@ -282,11 +284,10 @@ class ReportViewModelTest : ExportFixture() {
 
     @Test
     fun `the preview counts what was read, and 0 for each part that was not`() = runTest {
-        val catalog = checkNotNull(fixtureEngine().catalog.value)
         val diagnostics = CoreDiagnostics(LogLevel.Info, listOf(CrashFile("1.txt", 1), CrashFile("2.txt", 1)), crashMark = 0, json = "{}")
-        val read = rvReportPreview("0.1", "phone", catalog, emptyList(), RulePage(1, total = 14, rows = emptyList()), events = 5, diagnostics = diagnostics)
+        val read = rvReportPreview("0.1", "phone", nodes = 3, subscriptions = 0, rules = 14, events = 5, diagnostics = diagnostics)
         assertEquals(RvReportPreview("0.1", "phone", nodes = 3, subscriptions = 0, rules = 14, events = 5, crashes = 2), read)
-        val none = rvReportPreview("0.1", "phone", catalog = null, subscriptions = emptyList(), rules = null, events = null, diagnostics = null)
+        val none = rvReportPreview("0.1", "phone", nodes = null, subscriptions = null, rules = null, events = null, diagnostics = null)
         assertEquals(RvReportPreview("0.1", "phone", nodes = 0, subscriptions = 0, rules = 0, events = 0, crashes = 0), none)
     }
 }

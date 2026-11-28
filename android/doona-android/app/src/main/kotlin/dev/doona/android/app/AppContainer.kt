@@ -31,6 +31,7 @@ import dev.doona.android.report.ReportExporter
 import dev.doona.android.report.connectionOwnerUid
 import dev.doona.android.report.reportDir
 import dev.doona.android.vpn.NativeApi
+import dev.doona.android.vpn.NativeSettings
 import dev.doona.android.vpn.QuickTile
 import dev.doona.android.vpn.RegionLookup
 import dev.doona.android.vpn.VpnLog
@@ -46,6 +47,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
@@ -87,7 +89,12 @@ class AppContainer(
     /** 設定's store; its writes run in [uiScope], so a choice made just before leaving a page is still stored. */
     internal val settingsStore: SettingsStore by lazy { AppSettingsStore(application, AppSettings.get(application), quickTile, uiScope) }
 
-    val logLevels: LogLevelController by lazy { LogLevelController({ engine.setLogLevel(it) }, uiScope, SystemClock::elapsedRealtime) }
+    /** honk's GeoIP/GeoSite data and runtime settings, which 設定 and 日誌等級 read and set. */
+    internal val nativeSettings by lazy { NativeSettings(nativeApi) }
+
+    internal val logLevels: LogLevelController by lazy {
+        LogLevelController({ level -> runCatching { withContext(Dispatchers.IO) { nativeSettings.setLogLevel(level) } } }, uiScope, SystemClock::elapsedRealtime)
+    }
 
     /** What the user refused on the way to connecting; [MainActivity] sets it, 活動 shows it. */
     val connectRefusals = ConnectRefusals()
@@ -163,7 +170,7 @@ class AppContainer(
         val connectivity = checkNotNull(application.getSystemService(ConnectivityManager::class.java))
         val lookup = connectivity::getConnectionOwnerUid
         FlowEvents(
-            engine,
+            nativeApi,
             Dispatchers.IO,
             { protocol, local, remote -> connectionOwnerUid(protocol, local, remote, lookup) },
             application.packageManager::getPackagesForUid,
@@ -182,6 +189,7 @@ class AppContainer(
         val tokens = ExportTokens { File(application.noBackupFilesDir, "report-exports.json") }
         ReportExport(
             engine,
+            nativeApi,
             crashFiles,
             crashOffer,
             { reportDir(application) },
