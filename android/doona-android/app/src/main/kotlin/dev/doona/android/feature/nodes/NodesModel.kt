@@ -57,7 +57,7 @@ internal data class NodesState(
 internal data class NodesUi(
     val state: NodesState = NodesState.Empty,
     val loaded: Boolean = false,
-    val testing: Boolean = false,
+    val testing: Set<String>? = null,
     val failure: NodesFailure? = null,
     val score: RvScoreMarks? = null,
     val nowEpochMs: Long = 0L,
@@ -66,10 +66,10 @@ internal data class NodesUi(
 
 /**
  * An action that failed, with honk's reason: a node switch, a latency test, the read of the nodes, or a row menu's update
- * or deletion of a subscription. [subject] is the updated subscription's name.
+ * or deletion of a subscription. [subject] is its display name on an update; [providerId] is the retry target.
  */
 @Immutable
-internal data class NodesFailure(val action: NodesAction, val code: ErrorCode, val subject: String? = null)
+internal data class NodesFailure(val action: NodesAction, val code: ErrorCode, val subject: String? = null, val providerId: String? = null)
 
 internal enum class NodesAction { Select, Test, Read, Update, Remove }
 
@@ -83,15 +83,17 @@ internal fun nodesState(nodes: List<Node>, providers: List<Provider>, main: Grou
     val byId = providers.associateBy { it.id }
     val tcp = main?.runtime?.selection?.tcp
     val udp = main?.runtime?.selection?.udp
+    val tcpId = tcp?.leaf().orEmpty()
+    val udpId = udp?.leaf().orEmpty()
     val rows = nodes.map { rvNode(it, byId, places) }
     return NodesState(
         nodes = rows,
         subscriptions = providers.map { rvSubscription(it, null) },
-        currentId = tcp?.leaf().orEmpty(),
+        currentId = tcpId,
         mainGroupId = main?.id,
         testedAt = nodes.zip(rows).associate { (node, row) -> node.id to if (row.history.isEmpty()) emptyList() else listOfNotNull(node.probedAt()) },
-        split = main != null && tcp?.memberId != udp?.memberId,
-        udpId = udp?.leaf().orEmpty(),
+        split = tcp?.memberId != udp?.memberId || tcpId != udpId,
+        udpId = udpId,
     )
 }
 

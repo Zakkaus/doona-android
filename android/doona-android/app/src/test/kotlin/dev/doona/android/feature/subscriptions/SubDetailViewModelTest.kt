@@ -60,8 +60,12 @@ class SubDetailViewModelTest {
         assertNull("honk names no body format", sub.format)
         assertEquals(RvAutoUpdate.Every(6), vm.uiState.value.autoUpdate)
 
+        honk.on("GET", "/api/v1/config", 503, HonkFixtures.body("errors/snapshot-unavailable"))
+        val unread = detail()
+        assertNull(unread.uiState.value.sub)
         honk.on("GET", "/api/v1/config", 200, config { it.replace("'Harbor Cloud': 'https://sub.harbor-cloud.example/sub'", "'Harbor Cloud': 'https://sub.harbor-cloud.example/sub'(clash.meta)") })
-        assertEquals("clash.meta", detail().uiState.value.sub?.userAgent)
+        unread.retryRead()
+        assertEquals("clash.meta", unread.uiState.value.sub?.userAgent)
     }
 
     @Test

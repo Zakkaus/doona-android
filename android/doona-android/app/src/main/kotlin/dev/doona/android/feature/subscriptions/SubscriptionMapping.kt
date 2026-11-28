@@ -42,6 +42,7 @@ internal fun rvSubscription(provider: Provider, userAgent: String?): RvSubscript
     totalBytes = provider.traffic?.totalBytes?.toLong() ?: 0L,
     expiresAtEpochMs = provider.expiresAt?.let(::epochMs),
     host = provider.urlRedacted?.let(::subscriptionHost).orEmpty(),
+    // honk-gap:sub-format-ua
     format = null,
     userAgent = userAgent,
 )

@@ -41,5 +41,5 @@ class AndroidClipboardLinks(private val clipboard: ClipboardManager) : Clipboard
         return description.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN) || description.hasMimeType(ClipDescription.MIMETYPE_TEXT_URILIST)
     }
 
-    override fun text(): String? = clipboard.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString()?.trim()?.ifEmpty { null }
+    override fun text(): String? = clipboard.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.let { (it.text ?: it.uri)?.toString()?.trim()?.ifEmpty { null } }
 }

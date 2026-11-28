@@ -50,6 +50,7 @@ import dev.doona.android.designsystem.rv.rvSkeletonRowsToFill
 import dev.doona.android.feature.model.RV_INLINE
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvSubscription
+import dev.doona.android.feature.nodes.RvScoreMarks
 import kotlinx.coroutines.flow.first
 
 /**
@@ -76,6 +77,7 @@ internal fun RvNodeSection(
     initiallyOpen: Boolean = true,
     row: (@Composable (node: RvNode, label: String, current: Boolean, order: Int) -> Unit)? = null,
     alsoCurrent: Set<String> = emptySet(),
+    score: RvScoreMarks? = null,
 ) {
     // Read here, so that as more rows are composed this group composes again, not the picker.
     val limit = rows.composed() - rows.first
@@ -101,7 +103,7 @@ internal fun RvNodeSection(
                                 AnimatedVisibility(node.id in matching, enter = fadeIn(fold) + expandVertically(size), exit = fadeOut(fold) + shrinkVertically(size)) {
                                     val label = labels.getValue(node.id)
                                     val current = node.id == currentId || node.id in alsoCurrent
-                                    if (row != null) row(node, label, current, order) else RvNodePickRow(node, label, current, order, onPick, onDetail)
+                                    if (row != null) row(node, label, current, order) else RvNodePickRow(node, label, current, order, onPick, onDetail, lead = score?.mark(node.id))
                                 }
                             }
                         }
@@ -131,14 +133,15 @@ internal fun RvInlineFold(count: Int, open: Boolean, enabled: Boolean, onToggle:
 internal fun RvSubscriptionFold(sub: RvSubscription, open: Boolean, enabled: Boolean, nowEpochMs: Long, onToggle: () -> Unit) {
     val format = rememberRvFormat()
     val total = format.bytes(sub.totalBytes)
+    val used = if (sub.hasQuota) stringResource(R.string.rv_subs_used, format.usedOf(sub.usedBytes, total), total.toString()) else RV_NO_VALUE
     val updating = sub.id in LocalRvUpdating.current
     var deleting by remember { mutableStateOf(false) }
     RvMenuAnchor(rvSubscriptionMenu(sub) { deleting = true }) { menu, actions ->
         RvFoldRow(
             R.drawable.rv_sym_rss_feed,
             sub.name,
-            stringResource(R.string.rv_subscription_usage, format.usedOf(sub.usedBytes, total), total.toString(), sub.expiresAtEpochMs?.let { format.expiry(it, nowEpochMs) } ?: RV_NO_VALUE),
-            format.bytes(sub.leftBytes).toString(),
+            stringResource(R.string.rv_subscription_usage, used, sub.expiresAtEpochMs?.let { format.expiry(it, nowEpochMs) } ?: RV_NO_VALUE),
+            if (sub.hasQuota) format.bytes(sub.leftBytes).toString() else RV_NO_VALUE,
             open,
             enabled,
             onToggle,
@@ -217,7 +220,7 @@ internal fun RvNodePickRow(
 /** The row's latency and change, then the info mark that opens the node's page, on the latency's line ([RvRowEnd]). */
 @Composable
 internal fun RvNodeTrailing(node: RvNode, order: Int, details: String, onDetail: (String) -> Unit) {
-    RvRowEnd({ RvLatencyChange(node.latencyMs, node.changeMs, order = order, node = node.id) }) {
+    RvRowEnd({ RvLatencyChange(node.latencyMs, node.changeMs, node.timedOut, order, node.id) }) {
         RvEndMark(R.drawable.rv_sym_info, details) { onDetail(node.id) }
     }
 }

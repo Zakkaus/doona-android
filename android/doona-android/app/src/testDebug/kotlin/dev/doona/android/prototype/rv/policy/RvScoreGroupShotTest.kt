@@ -103,8 +103,8 @@ class RvScoreGroupShotTest {
     @Config(qualifiers = EVALUATING)
     fun evaluatingSaysWhatEachNetworkWaitsFor() {
         compose.rvContent(dark = false) { Evaluating() }
-        compose.onNodeWithText("評估中 · 測試中").assertExists()
-        compose.onNodeWithText("評估中 · 測試流量已達上限").assertExists()
+        compose.onNodeWithText("評估中 / 測試中").assertExists()
+        compose.onNodeWithText("評估中 / 測試流量已達上限").assertExists()
         compose.onNodeWithText("已比較 1/6").assertExists()
         compose.onNodeWithText("已比較 0/6").assertExists()
         // One node chosen on both networks.
@@ -151,7 +151,7 @@ class RvScoreGroupShotTest {
         const val EVALUATING_FS200 = "+h2137dp"
         const val EMPTY = "+h1100dp"
         const val EMPTY_FS115 = "+h1102dp"
-        const val EMPTY_FS200 = "+h1509dp"
+        const val EMPTY_FS200 = "+h1624dp"
 
         const val SELECTED = "已選定"
         const val FASTER = "較快"

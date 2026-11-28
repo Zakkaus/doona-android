@@ -26,6 +26,7 @@ import dev.doona.android.honk.Node
 import dev.doona.android.honk.OutboundKind
 import dev.doona.android.honk.OutboundTraffic
 import dev.doona.android.honk.Provider
+import dev.doona.android.honk.ProviderKind
 import dev.doona.android.honk.RuntimeTraffic
 import dev.doona.android.honk.TrafficHistory
 import dev.doona.android.honk.Transport
@@ -127,7 +128,7 @@ internal fun activityCatalog(data: ActivityData, profileNodes: ActivityNodes): A
         mode = mode,
         node = mainLeaf?.takeIf { mode != RvRouteMode.Direct }?.let { RvMainNode(it.id, it.name, probe, failed = it.history.isNotEmpty() && probe == null) },
         nodes = profileNodes.nodes,
-        subscriptions = profile?.providers.orEmpty().map { rvSubscription(it, userAgent = null) },
+        subscriptions = profile?.providers.orEmpty().mapNotNull { if (it.kind == ProviderKind.Subscription) rvSubscription(it, userAgent = null) else null },
         rules = profile?.let { ruleRows(it, data.outbounds.orEmpty()) }.orEmpty(),
         cards = cards,
         allFailed = profileNodes.allFailed,

@@ -119,7 +119,7 @@ class RvGroupFullShotTest {
     fun fSampleDark() = compose.rvShot("samples-gfull-f-sample", dark = true, before = { assertWhole() }) { RvGroupFullPage(RvGroupFullSample.five, apart = true, source = PICKED, order = RvNodeSort.Name) }
 
     @Test
-    @Config(qualifiers = "zh-rTW-w412dp-h2715dp-notnight-xhdpi")
+    @Config(qualifiers = "zh-rTW-w412dp-h2754dp-notnight-xhdpi")
     fun fSampleFs200() = compose.rvShot("samples-gfull-f-sample", dark = false, before = { assertWhole() }, fontScale = RV_FS200) { RvGroupFullPage(RvGroupFullSample.five, apart = true, source = PICKED, order = RvNodeSort.Name) }
 
     @Test

@@ -244,7 +244,7 @@ private fun RvSamplePage(
             searchPage = true,
         )
 
-        NODES -> RvNodesPage(RvNodesPageState(run.nodes, setOf(run.currentId)), onBack = pages.pop, onOpen = { pages.push("$NODE:$it") }, onAllNodes = {})
+        NODES -> RvNodesPage(RvNodesPageState(run.nodes, setOf(run.currentId)), onBack = pages.pop, onOpen = { pages.push("$NODE:$it") }, onAllNodes = {}, onAddNode = {})
 
         NODE -> {
             val node = run.nodes.first { it.id == route.substringAfter(':') }

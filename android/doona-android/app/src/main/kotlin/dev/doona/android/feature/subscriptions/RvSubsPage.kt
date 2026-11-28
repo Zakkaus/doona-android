@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -20,6 +21,7 @@ import dev.doona.android.designsystem.rv.LocalRvUpdating
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvAddMenuButton
+import dev.doona.android.designsystem.rv.RvBusy
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvConfirmSheet
 import dev.doona.android.designsystem.rv.RvEmptyState
@@ -39,6 +41,7 @@ import dev.doona.android.designsystem.rv.RvProgress
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvRowRemove
 import dev.doona.android.designsystem.rv.RvScrollPage
+import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSkeletonCard
 import dev.doona.android.designsystem.rv.RvSkeletonCards
 import dev.doona.android.designsystem.rv.RvSkeletonGoal
@@ -132,7 +135,7 @@ internal fun RvSubsPage(
     }
     RvScrollPage(title, insets, onBack = actions.back, actions = updateAll, bottomAction = add) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
-        RvGutter(banner = rvFirstNotice(failed, banner.takeUnless { loading })) {
+        RvGutter(banner = rvFirstNotice(banner.takeUnless { loading }, failed)) {
             RvSkeletonCards(loading, { SubsSkeleton(state.subscriptions) }) {
                 // The empty state is the list's last row gone (and its first one coming), so either moves as one.
                 val emptyState: (@Composable () -> Unit)? = if (extraKeepsPage) {
@@ -208,8 +211,17 @@ private fun SubscriptionCard(sub: RvSubscription, actions: RvSubsActions, nowEpo
         RvLongPressMenu(menu, onClick = { actions.open(sub.id) }) { press ->
             Column(press) {
                 val removeLabel = stringResource(R.string.rv_list_remove, sub.name)
-                val trailing = rvRemoveTrailing(remove, removeLabel) ?: { SubscriptionEnd(updating) }
-                RvRow({ RvIconDisc(R.drawable.rv_sym_rss_feed) }, sub.name, rvNodesUpdated(sub), titleKeepWords = false, trailing = trailing)
+                val removeControl = rvRemoveTrailing(remove, removeLabel)
+                RvRow({ RvIconDisc(R.drawable.rv_sym_rss_feed) }, sub.name, rvNodesUpdated(sub), titleKeepWords = false) {
+                    if (removeControl == null) {
+                        SubscriptionEnd(updating)
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (updating) RvBusy(Modifier.width(RvSize.busy))
+                            removeControl()
+                        }
+                    }
+                }
                 Usage(sub, nowEpochMs)
             }
         }
@@ -261,7 +273,7 @@ private fun Usage(sub: RvSubscription, nowEpochMs: Long) {
     }
 }
 
-/** `32 個節點 · 06:00 更新`, or `0 個節點 · 尚未更新` for a subscription never fetched. */
+/** The node count with the time of the last update, or with the pending update status. */
 @Composable
 internal fun rvNodesUpdated(sub: RvSubscription): String {
     val nodes = pluralStringResource(R.plurals.rv_nodes_nodes, sub.nodes, sub.nodes)

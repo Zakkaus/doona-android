@@ -44,6 +44,8 @@ import androidx.compose.ui.preferredFrameRate
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
@@ -165,7 +167,16 @@ internal fun RvMenuPanel(items: List<RvMenuItem>, onPick: (RvMenuItem) -> Unit, 
                     .fillMaxWidth()
                     .testTag(RvRowPart.MENU_ROW)
                     .heightIn(min = RvMenuSize.row)
-                    .then(if (item.enabled) Modifier.rvRowPress(Role.Button, { onPick(item) }) else Modifier.alpha(RvAlpha.DISABLED))
+                    .then(
+                        if (item.enabled) {
+                            Modifier.rvRowPress(Role.Button, { onPick(item) })
+                        } else {
+                            Modifier.alpha(RvAlpha.DISABLED).semantics(mergeDescendants = true) {
+                                role = Role.Button
+                                disabled()
+                            }
+                        },
+                    )
                     .padding(horizontal = RvSpace.rowPadding),
                 verticalAlignment = Alignment.CenterVertically,
             ) {

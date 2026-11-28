@@ -89,7 +89,7 @@ class RvBoardTest {
      */
     @Test
     fun aLongPageGetsEveryScreenToItsEnd() {
-        val dir = capture("nodes") { RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {}) }
+        val dir = capture("nodes") { RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {}, onAddNode = {}) }
         val windows = generateSequence(1) { it + 1 }.takeWhile { File(dir, "nodes-light-$it.json").isFile }.map { json(dir, "nodes-light-$it") }.toList()
         assertTrue("節點 takes more than two windows, got ${windows.size}", windows.size > 2)
         assertTrue(File(dir, "nodes-light-${windows.size}.png").isFile)

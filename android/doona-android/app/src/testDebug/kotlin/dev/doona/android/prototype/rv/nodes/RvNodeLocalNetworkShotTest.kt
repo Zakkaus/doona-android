@@ -74,7 +74,7 @@ class RvNodeLocalNetworkShotTest {
 
     private companion object {
         /** The whole page (1309.5 dp): the page with no header chip, as `-node-detail-probes0-*` has it, the banner and its card gap. */
-        const val WHOLE = "+h1310dp"
+        const val WHOLE = "+h1355dp"
 
         /** A private address (RFC 1918), which the engine classes as the local network. */
         const val LAN_HOST = "192.168.1.20"

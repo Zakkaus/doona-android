@@ -5,6 +5,7 @@ import dev.doona.android.engine.ErrorCode
 import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.feature.model.NodePlace
 import dev.doona.android.feature.model.NodePlaces
+import dev.doona.android.honk.ActivityHonkFixtures.scoring
 import dev.doona.android.honk.FakeHonk
 import dev.doona.android.honk.HonkFixtures
 import dev.doona.android.honk.SelectionNetwork
@@ -50,6 +51,7 @@ class NodesViewModelTest {
 
     private fun TestScope.collected(api: FakeHonk, places: NodePlaces = CoreNodePlaces) =
         NodesViewModel(api, UnconfinedTestDispatcher(testScheduler), places, clock = { NOW }).also { vm ->
+            vm.load()
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.ui.collect {} }
         }
 
@@ -72,6 +74,8 @@ class NodesViewModelTest {
         assertFalse(ui.state.split)
         assertEquals(listOf("Harbor Cloud", "Lantern Net"), ui.state.subscriptions.map { it.name })
         assertNull("honk reports no Score evidence", ui.score)
+        val marks = collected(HonkFixtures.rvSample().scoring()).ui.value.score
+        assertEquals(RvScoreMarks(setOf(HK2), setOf("n-0001938e00000000")), marks)
     }
 
     @Test
@@ -105,6 +109,17 @@ class NodesViewModelTest {
         assertEquals("n-2", state.udpId)
         assertTrue(state.split)
         assertEquals(setOf("n-1", "n-2"), state.current)
+    }
+
+    @Test
+    fun oneNestedMemberCanResolveToDifferentNodesForTcpAndUdp() = runTest {
+        val groups = listOf(
+            group("g-HK", "HK", members = listOf("n-1" to "node", "n-2" to "node"), tcp = sel("n-1"), udp = sel("n-2")),
+            group("g-Main", "Main", members = listOf("g-HK" to "group"), tcp = sel("g-HK", leaf = "n-1"), udp = sel("g-HK", leaf = "n-2")),
+        )
+        val state = collected(honk(groups = groups, fallback = "Main")).ui.value.state
+        assertEquals(setOf("n-1", "n-2"), state.current)
+        assertTrue(state.split)
     }
 
     @Test
@@ -165,9 +180,9 @@ class NodesViewModelTest {
         val api = probing(HonkFixtures.rvSample())
         val vm = collected(api)
         vm.test()
-        assertTrue(vm.ui.value.testing)
+        assertEquals(emptySet<String>(), vm.ui.value.testing)
         advanceUntilIdle()
-        assertFalse(vm.ui.value.testing)
+        assertNull(vm.ui.value.testing)
         val targets = api.calls.filter { it.path == "/api/v1/probes" }.map { Json.parseToJsonElement(it.body!!).jsonObject.getValue("target").jsonObject }
         assertEquals(8, targets.size)
         assertTrue(targets.all { it.getValue("type").jsonPrimitive.content == "group" })
@@ -183,6 +198,7 @@ class NodesViewModelTest {
         assertEquals(NodesFailure(NodesAction.Test, ErrorCode.Busy), vm.ui.value.failure)
         probing(api)
         vm.retry()
+        assertEquals(setOf(TOKYO), vm.ui.value.testing)
         advanceUntilIdle()
         assertNull(vm.ui.value.failure)
         val targets = api.calls.filter { it.path == "/api/v1/probes" }.map { Json.parseToJsonElement(it.body!!).jsonObject.getValue("target").toString() }
@@ -207,7 +223,7 @@ class NodesViewModelTest {
     fun aFirstReadThatFailsShowsNoNodeUnderItsBanner() = runTest {
         val api = HonkFixtures.rvSample().apply { on("GET", "/api/v1/groups", 500, ERROR) }
         val ui = collected(api).ui.value
-        assertTrue(ui.loaded)
+        assertFalse(ui.loaded)
         assertEquals(NodesState.Empty, ui.state)
         assertEquals(NodesAction.Read, ui.failure?.action)
     }
@@ -227,11 +243,37 @@ class NodesViewModelTest {
         }
         val vm = collected(api)
         vm.update("s1")
-        assertEquals(NodesFailure(NodesAction.Update, ErrorCode.Busy, "Harbor Cloud"), vm.ui.value.failure)
+        assertEquals(NodesFailure(NodesAction.Update, ErrorCode.Busy, "Harbor Cloud", providerId = "s1"), vm.ui.value.failure)
         assertEquals(emptySet<String>(), vm.ui.value.updating)
         vm.remove("s2")
         assertTrue(api.calls.any { it.method == "DELETE" && it.path == "/api/v1/providers/s2" })
         assertEquals("a deletion reads again", 2, api.calls.count { it.path == "/api/v1/providers" })
+    }
+
+    @Test
+    fun aFailedDeletionRetriesTheConfirmedProviderAfterAnotherProviderIsUpdatedOrRemoved() = runTest {
+        val a = "/api/v1/providers/s1"
+        val b = "/api/v1/providers/s2"
+        val removed = """{"deleted":1}"""
+        val api = HonkFixtures.rvSample().apply {
+            on("DELETE", a, 409, ERROR)
+            on("DELETE", b, 200, removed)
+            on("POST", "$b/refresh", 202, HonkFixtures.body("operations/provider-refresh-accepted"))
+            on("GET", "/api/v1/operations/op-refresh", 200, HonkFixtures.body("operations/provider-refresh-s1"))
+        }
+        val vm = collected(api)
+        vm.remove("s1")
+        vm.update("s2")
+        api.on("DELETE", a, 200, removed)
+        vm.retry()
+        assertEquals(listOf(a, a), api.calls.filter { it.method == "DELETE" }.map { it.path })
+        assertNull(vm.ui.value.failure)
+
+        api.on("DELETE", a, 409, ERROR)
+        vm.remove("s1")
+        vm.remove("s2")
+        vm.retry()
+        assertEquals(listOf(a, a, a, b, a), api.calls.filter { it.method == "DELETE" }.map { it.path })
     }
 
     private companion object {

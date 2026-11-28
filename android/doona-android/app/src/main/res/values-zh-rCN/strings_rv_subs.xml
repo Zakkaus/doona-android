@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="rv_subs_nodes_updated">%1$s · %2$s 更新</string>
-    <string name="rv_subs_nodes_not_updated">%1$s · 尚未更新</string>
+    <string name="rv_subs_nodes_updated">%1$s，%2$s 更新</string>
+    <string name="rv_subs_nodes_not_updated">%1$s，尚未更新</string>
     <string name="rv_subs_no_expiry">无到期日</string>
     <string name="rv_sub_update_now">立即更新</string>
     <string name="rv_sub_node_count">节点数</string>
@@ -40,7 +40,11 @@
     <string name="rv_import_add">添加</string>
     <!-- 新增節點 on 訂閱 (p5d; approved s1125f-addnode-*, except the lines marked new) -->
     <string name="rv_addnode">添加节点</string>
-    <string name="rv_addnode_help">粘贴节点的分享链接。节点名称取自链接的 #⁠片段，没有则取主机名。</string>
+    <string name="rv_addnode_help">粘贴节点的分享链接。名称取自链接的 #⁠片段或主机名。两者均不可见时，以编号命名。</string>
+    <string name="rv_addnode_preview_name">核心预览：节点名称</string>
+    <string name="rv_addnode_preview_count">可导入的节点数</string>
+    <string name="rv_addnode_preview_skipped">跳过的行</string>
+    <string name="rv_addnode_preview_error">验证错误</string>
     <string name="rv_addnode_link">节点链接</string>
     <string name="rv_addnode_as">将添加为「%1$s」</string>
     <string name="rv_addnode_invalid">节点链接须为 协议://… 格式，例如 ss://、vmess://、vless://、trojan://、hysteria2://</string>
@@ -69,7 +73,7 @@
     </plurals>
     <string name="rv_list_sep">、</string>
     <string name="rv_list_last">%1$s 和 %2$s</string>
-    <string name="rv_addnode_joined">已加入%1$s组。</string>
+    <string name="rv_addnode_joined">已加入：%1$s</string>
     <string name="rv_addnode_view_groups">查看策略组</string>
     <string name="rv_addnode_groups">加入策略组</string>
     <string name="rv_addnode_group_every">已含全部节点</string>

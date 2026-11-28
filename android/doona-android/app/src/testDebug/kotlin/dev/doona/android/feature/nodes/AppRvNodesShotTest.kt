@@ -132,7 +132,7 @@ class AppRvNodesShotTest {
     /** A search that matches no node: the chips, then 找不到符合的節點 where the list would start. */
     @Test
     fun searchNoMatchLight() = shot("node-search-nomatch", dark = false, act = { _, _ -> compose.onNode(hasSetTextAction()).performTextInput("xyz") }) {
-        NodeSearchRoute(it, onClose = {}, onDetail = {}, onAdd = {})
+        NodeSearchRoute(it, onClose = {}, onDetail = {}, onAdd = {}, onAddNode = {})
     }
 
     /** No node at all: the pull-down's picker shows the empty state with 新增訂閱, not chips over nothing. */
@@ -141,7 +141,7 @@ class AppRvNodesShotTest {
     /** 規則's 主節點 page, whole: the search pill over every node picker's 訂閱 and 排序 chips (ruling q-p3c-mainchips). */
     @Test
     @Config(qualifiers = WHOLE_PAGE)
-    fun mainNodeLight() = shot("main-node", dark = false, whole = true) { MainNodeRoute(it, onBack = {}, onSearch = {}, onAdd = {}) }
+    fun mainNodeLight() = shot("main-node", dark = false, whole = true) { MainNodeRoute(it, onBack = {}, onSearch = {}, onAdd = {}, onAddNode = {}) }
 
     /** Before the catalog is first read (`-loading`, a cold start or a restore): each page's skeleton, never the empty state. */
     @Test
@@ -164,7 +164,7 @@ class AppRvNodesShotTest {
 
     /** The node lists' skeleton runs to the window's foot, so these two are their first screen. */
     @Test
-    fun mainNodeLoadingLight() = shot("main-node-loading", dark = false, io = Unread) { MainNodeRoute(it, onBack = {}, onSearch = {}, onAdd = {}) }
+    fun mainNodeLoadingLight() = shot("main-node-loading", dark = false, io = Unread) { MainNodeRoute(it, onBack = {}, onSearch = {}, onAdd = {}, onAddNode = {}) }
 
     @Test fun pickerLight() = shot("node-picker", dark = false) { Picker(it) }
 
@@ -189,6 +189,7 @@ class AppRvNodesShotTest {
         rvAnimatorScale(0f)
         val api = honk()
         val vm = NodesViewModel(api, io, CoreNodePlaces, clock = { RvData.nowEpochMs })
+        vm.load()
         compose.rvContent(dark, fontScale) { content(vm) }
         act(api, vm)
         if (whole) compose.assertWhole()
@@ -204,7 +205,7 @@ class AppRvNodesShotTest {
     }
 
     @Composable
-    private fun Page(vm: NodesViewModel) = NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {})
+    private fun Page(vm: NodesViewModel) = NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {}, onAddNode = {})
 
     /** The node of the prototype's detail golden, found by its name in honk's nodes. */
     @Composable
@@ -212,7 +213,7 @@ class AppRvNodesShotTest {
 
     @Composable
     private fun Picker(vm: NodesViewModel) =
-        NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true), onDetail = {}, onAdd = {}) {}
+        NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true), onDetail = {}, onAdd = {}, onAddNode = {}) {}
 
     /** The sample with Proxy's UDP on its first member, Hong Kong 01, while TCP is on Hong Kong 02. */
     private fun splitHonk(): FakeHonk = HonkFixtures.rvSample().apply {
@@ -263,8 +264,8 @@ class AppRvNodesShotTest {
         const val WHOLE_PAGE = "+h2893dp"
         const val WHOLE_PAGE_FS200 = "+h4925dp"
         const val WHOLE_PAGE_EN = "en-w412dp-h2950dp-notnight-xhdpi"
-        const val WHOLE_DETAIL = "+h1220dp"
-        const val WHOLE_DETAIL_BANNER = "+h1360dp"
+        const val WHOLE_DETAIL = "+h1266dp"
+        const val WHOLE_DETAIL_BANNER = "+h1415dp"
         const val INLINE_ID = "inline-home-01"
         const val HK1 = "n-0001938e00000000"
         const val HK2 = "n-0001938f00000000"
@@ -275,6 +276,6 @@ class AppRvNodesShotTest {
         }
         const val WHOLE_PICKER = "+h4850dp"
         const val WHOLE_DETAIL_FS200 = "+h1900dp"
-        const val WHOLE_DETAIL_EN = "en-w412dp-h1220dp-notnight-xhdpi"
+        const val WHOLE_DETAIL_EN = "en-w412dp-h1265dp-notnight-xhdpi"
     }
 }

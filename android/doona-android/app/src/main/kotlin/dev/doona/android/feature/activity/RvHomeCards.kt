@@ -16,9 +16,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Constraints
 import dev.doona.android.R
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCardHeader
+import dev.doona.android.designsystem.rv.RvFigure
 import dev.doona.android.designsystem.rv.RvFigureText
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvLatencyChange
@@ -107,7 +109,8 @@ internal fun RvSubscriptionsCard(subscriptions: List<RvSubscription>, nowEpochMs
     RvCard {
         RvCardHeader(stringResource(R.string.rv_subscriptions), onOpen)
         Row(Modifier.padding(horizontal = RvSpace.rowPadding), verticalAlignment = Alignment.Bottom) {
-            RvFigureText(format.bytes(subscriptions.sumOf { it.leftBytes }).figure(), Rv.type.cardValue, Rv.type.cardUnit, Modifier.alignByBaseline())
+            val left = if (subscriptions.all { it.hasQuota }) format.bytes(subscriptions.sumOf { it.leftBytes }).figure() else RvFigure(RV_NO_VALUE, "")
+            RvFigureText(left, Rv.type.cardValue, Rv.type.cardUnit, Modifier.alignByBaseline())
             Spacer(Modifier.width(RvSpace.tight * 2))
             RvText(stringResource(R.string.rv_remaining), Rv.type.cardUnit, Modifier.alignByBaseline(), color = Rv.colors.textSecondary)
         }

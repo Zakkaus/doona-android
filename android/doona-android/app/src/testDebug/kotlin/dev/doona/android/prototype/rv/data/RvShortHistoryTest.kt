@@ -5,6 +5,7 @@ import dev.doona.android.feature.model.steadiest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** A node the engine has probed once, or not at all, as the app meets it after a subscription is added. */
@@ -20,6 +21,8 @@ class RvShortHistoryTest {
         assertNull(none.spreadMs)
         assertEquals(0, none.answered)
         assertFalse("no probe is not a timeout", none.timedOut)
+        assertTrue(none.withTest(null).timedOut)
+        assertFalse(none.withTest(null).untested().timedOut)
         assertEquals("steadiest() must not lead with a node nobody has probed", Double.MAX_VALUE, none.jitterMs, 0.0)
     }
 

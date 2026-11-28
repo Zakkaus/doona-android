@@ -14,6 +14,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RV_NODE_LINK_PLACEHOLDER
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
+import dev.doona.android.designsystem.rv.RvBanner
 import dev.doona.android.designsystem.rv.RvCaption
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvCheckRow
@@ -22,7 +24,9 @@ import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.designsystem.rv.RvRow
+import dev.doona.android.designsystem.rv.RvSegmented
 import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.feature.messageRes
 import dev.doona.android.feature.model.RvNode
@@ -40,6 +44,7 @@ internal class RvInlineActions(
     val confirmDelete: (String) -> Unit = {},
     val viewGroups: () -> Unit = {},
     val pick: (String) -> Unit = {},
+    val retryGroups: () -> Unit = {},
 )
 
 /**
@@ -80,6 +85,8 @@ internal fun RvAddNodeSheet(sheet: RvAddNodeSheet?, actions: RvInlineActions) {
         onDismiss = actions.close,
         confirmEnabled = check.addable && sheet?.adding != true,
         extra = {
+            // honk-gap:hops-exit
+            RvSegmented(listOf(stringResource(R.string.rv_sub_link), stringResource(R.string.rv_node_chain)), 0, {}, disabledIndex = 1)
             // As 新增訂閱's form: the clipboard's row, then the field a little below it.
             if (sheet?.clipboard == true && sheet.text.isEmpty()) {
                 RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_content_paste) }, stringResource(R.string.rv_add_clipboard), null, onClick = actions.paste) }
@@ -97,6 +104,14 @@ internal fun RvAddNodeSheet(sheet: RvAddNodeSheet?, actions: RvInlineActions) {
                     lines = LINK_LINES,
                 )
             }
+            // honk-gap:node-link-preview
+            RvCard {
+                RvStatRow(stringResource(R.string.rv_addnode_preview_name), RV_NO_VALUE)
+                RvStatRow(stringResource(R.string.rv_addnode_preview_count), RV_NO_VALUE)
+                RvStatRow(stringResource(R.string.rv_addnode_preview_skipped), RV_NO_VALUE)
+                RvStatRow(stringResource(R.string.rv_addnode_preview_error), RV_NO_VALUE)
+            }
+            sheet?.groupsError?.let { code -> RvBanner(RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_group_read_failed), stringResource(code.messageRes()), stringResource(R.string.rv_retry), actions.retryGroups)) }
             if (check.addable && sheet != null && sheet.groups.isNotEmpty()) GroupPicks(sheet, actions.pick)
         },
     )
@@ -184,17 +199,19 @@ private fun sentences(parts: List<String>): String = parts.joinToString(if (Loca
 @Composable
 internal fun rvAddedBanner(added: RvAddedNodes, onViewGroups: () -> Unit): RvNotice {
     val skipped = added.skipped.count + added.skipped.unread
-    val reason = added.failed?.let { stringResource(it.messageRes()) }
-        ?: if (added.groups.isEmpty()) null else stringResource(R.string.rv_addnode_joined, listed(added.groups))
+    val reason = listOfNotNull(
+        added.failed?.let { stringResource(it.messageRes()) },
+        if (added.unconfirmed.isNotEmpty()) stringResource(R.string.rv_membership_unknown) else added.groups.takeIf { it.isNotEmpty() }?.let { stringResource(R.string.rv_addnode_joined, listed(it)) },
+    ).joinToString("\n").ifEmpty { null }
     return RvNotice(
-        if (skipped == 0 && added.failed == null) RvNoticeKind.Info else RvNoticeKind.Error,
+        if (skipped == 0 && added.failed == null && added.unconfirmed.isEmpty()) RvNoticeKind.Info else RvNoticeKind.Error,
         if (skipped == 0) {
             pluralStringResource(R.plurals.rv_addnode_added, added.count, added.count)
         } else {
             pluralStringResource(R.plurals.rv_addnode_added_partial, added.count, added.count, skipped)
         },
         reason,
-        stringResource(R.string.rv_addnode_view_groups),
+        stringResource(if (added.unconfirmed.isEmpty()) R.string.rv_addnode_view_groups else R.string.rv_retry),
         onViewGroups,
         reasonKeepWords = false,
     )

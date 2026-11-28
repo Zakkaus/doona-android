@@ -117,10 +117,12 @@ internal fun RvNodePicker(
     banner: RvNotice? = null,
     caption: String? = stringResource(R.string.rv_main_node_hint),
     alsoCurrent: Set<String> = emptySet(),
+    score: RvScoreMarks? = null,
     apply: RvApplyTo? = null,
     onApply: (RvApplyTo) -> Unit = {},
     onAdd: () -> Unit = {},
     loading: Boolean = false,
+    onAddNode: () -> Unit,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val focus = remember { FocusRequester() }
@@ -163,10 +165,11 @@ internal fun RvNodePicker(
                     // With no node the chips have nothing to pick or order; the empty state takes the list's place. Before the
                     // catalog is read the chips stand (their labels are known) over the list's skeleton.
                     val empty = !loading && nodes.isEmpty()
-                    val chips: (@Composable () -> Unit)? = if (empty) null else ({ RvFilterChipRow(subChip, orderChip) })
+                    val chips: (@Composable () -> Unit)? = if (empty || (loading && banner != null)) null else ({ RvFilterChipRow(subChip, orderChip) })
                     RvPageHeader(title, Modifier, insets, caption = caption?.let { line -> { RvCaption(line) } }, control = chips)
                     RvBannerSlot(banner)
-                    ListStart(loading, empty, apply, onApply, onAdd, noMatch = query.isNotBlank() && matching.isEmpty())
+                    if (loading && banner != null) return@Column
+                    ListStart(loading, empty, apply, onApply, onAdd, onAddNode, noMatch = query.isNotBlank() && matching.isEmpty())
                 }
                 var first = 0
                 sections.forEachIndexed { i, sub ->
@@ -174,7 +177,7 @@ internal fun RvNodePicker(
                     val rows = RvRowsComposed(first, composed)
                     // Keyed by section, so each keeps its open state while the 訂閱 chip changes which are listed.
                     key(sub?.id ?: RV_INLINE) {
-                        RvNodeSection(sub, members, matching, labels, currentId, searching = query.isNotBlank(), onPick, onDetail, rows, nowEpochMs, section(2 + i), alsoCurrent = alsoCurrent)
+                        RvNodeSection(sub, members, matching, labels, currentId, searching = query.isNotBlank(), onPick, onDetail, rows, nowEpochMs, section(2 + i), alsoCurrent = alsoCurrent, score = score)
                     }
                     first += 1 + members.size
                 }
@@ -198,11 +201,11 @@ internal fun RvNodePicker(
  * A search that matches no node ([noMatch]) says so under the chips, where the list would start.
  */
 @Composable
-private fun ListStart(loading: Boolean, empty: Boolean, apply: RvApplyTo?, onApply: (RvApplyTo) -> Unit, onAdd: () -> Unit, noMatch: Boolean) {
+private fun ListStart(loading: Boolean, empty: Boolean, apply: RvApplyTo?, onApply: (RvApplyTo) -> Unit, onAdd: () -> Unit, onAddNode: () -> Unit, noMatch: Boolean) {
     when {
         loading -> return RvNodeSectionSkeleton()
 
-        empty -> RvGutter { RvNoSubscription(onAdd) }
+        empty -> RvGutter { RvNoSubscription(onAdd, onAddNode) }
 
         apply != null -> {
             RvGutter { RvApplyCard(apply, onApply) }

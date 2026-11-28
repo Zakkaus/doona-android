@@ -97,7 +97,7 @@ internal fun RvSkeletonPage(page: String, loading: Boolean) {
 
         RvSkeletonPages.SUBS -> RvSubsPage(rvSubsStateSample(), RvSubsActions(), loading = loading)
 
-        RvSkeletonPages.NODES -> RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {}, loading = loading)
+        RvSkeletonPages.NODES -> RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {}, onAddNode = {}, loading = loading)
 
         // A node with no status chip: the chips come with the node, so the skeleton has none.
         RvSkeletonPages.NODE -> if (loading) RvNodeDetailSkeleton(onBack = {}) else RvNodeDetail(RvData.nodes.first { latencyTone(it.latencyMs) == Tone.Ok }, current = false, rvTestTimes(), onBack = {}, onUse = {}, onTest = {})

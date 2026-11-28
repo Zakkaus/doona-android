@@ -26,7 +26,6 @@ import dev.doona.android.designsystem.rv.RvDelta
 import dev.doona.android.designsystem.rv.RvFilterChipRow
 import dev.doona.android.designsystem.rv.RvFlag
 import dev.doona.android.designsystem.rv.RvGutter
-import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvItems
 import dev.doona.android.designsystem.rv.RvLatencyChange
 import dev.doona.android.designsystem.rv.RvLatencyText
@@ -43,6 +42,7 @@ import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvNodeGroup
 import dev.doona.android.feature.model.RvNodeSort
+import dev.doona.android.feature.nodes.RvScoreMarks
 
 /**
  * The node list's control row: the search pill, which opens the search page ([onSearch]), unless that is null, [RvSpace.searchGap]
@@ -52,7 +52,7 @@ import dev.doona.android.feature.model.RvNodeSort
  * the pill out: one search per page (rule 9); the main node's pushed page has none in its bar, so its list keeps it.
  */
 @Composable
-internal fun RvNodeListControls(sort: RvNodeSort, onSort: (RvNodeSort) -> Unit, onSearch: (() -> Unit)?) {
+internal fun RvNodeListControls(sort: RvNodeSort, onSort: (RvNodeSort) -> Unit, onSearch: (() -> Unit)?, comparable: Boolean = true) {
     Column {
         if (onSearch != null) {
             RvSearchPill(onSearch, Modifier.fillMaxWidth())
@@ -61,7 +61,7 @@ internal fun RvNodeListControls(sort: RvNodeSort, onSort: (RvNodeSort) -> Unit, 
         }
         // The control row's gap below measures from the selected chip's shadow, the edge the eye sees.
         val sorts = RvNodeSort.entries
-        RvRangeRow(sorts.map { stringResource(it.label) }, sorts.indexOf(sort), { onSort(sorts[it]) }, Modifier.padding(bottom = rvRaisedReach))
+        RvRangeRow(sorts.map { stringResource(it.label) }, sorts.indexOf(sort), { onSort(sorts[it]) }, Modifier.padding(bottom = rvRaisedReach), disabledIndex = if (comparable) -1 else RvNodeSort.Stability.ordinal)
     }
 }
 
@@ -98,16 +98,17 @@ internal fun RvNodeGroups(
     sort: RvNodeSort,
     nowEpochMs: Long,
     alsoCurrent: Set<String> = emptySet(),
+    score: RvScoreMarks? = null,
     onPick: (String) -> Unit,
 ) {
     val current = setOf(currentId) + alsoCurrent
     RvGutter {
-        RvItems(groups, { it.key }, RvSpace.cardGap) { GroupCard(it, current, sort, nowEpochMs, onPick) }
+        RvItems(groups, { it.key }, RvSpace.cardGap) { GroupCard(it, current, sort, nowEpochMs, score, onPick) }
     }
 }
 
 @Composable
-private fun GroupCard(group: RvNodeGroup, current: Set<String>, sort: RvNodeSort, nowEpochMs: Long, onPick: (String) -> Unit) {
+private fun GroupCard(group: RvNodeGroup, current: Set<String>, sort: RvNodeSort, nowEpochMs: Long, score: RvScoreMarks?, onPick: (String) -> Unit) {
     var all by rememberSaveable(group.key) { mutableStateOf(false) }
     val shown = if (all) group.nodes else group.nodes.take(ROWS) + group.nodes.drop(ROWS).filter { it.id in current }
     val count = group.nodes.size
@@ -116,17 +117,10 @@ private fun GroupCard(group: RvNodeGroup, current: Set<String>, sort: RvNodeSort
             is RvNodeGroup.Subscription -> RvSubscriptionRow(group.subscription, nowEpochMs)
             is RvNodeGroup.Inline -> RvInlineRow(count)
             is RvNodeGroup.Place -> PlaceRow(group.place, count)
-            is RvNodeGroup.Inline -> InlineRow(count)
         }
-        RvItems(shown, { it.id }) { NodeRow(it, it.id in current, sort, onPick) }
+        RvItems(shown, { it.id }) { NodeRow(it, it.id in current, sort, score?.mark(it.id), onPick) }
         RvSeeAll(pluralStringResource(R.plurals.rv_nodes_see_all, count, count), shown = shown.size < count) { all = true }
     }
-}
-
-/** 組態內's head row, laid out as a country's: the link disc, 組態內, and how many nodes it has. */
-@Composable
-private fun InlineRow(count: Int) {
-    RvRow({ RvIconDisc(R.drawable.rv_sym_link) }, stringResource(R.string.rv_nodes_inline), pluralStringResource(R.plurals.rv_nodes_nodes, count, count))
 }
 
 /** A country's head row, laid out as a subscription's: its flag, its name, and how many nodes it has. */
@@ -140,7 +134,7 @@ private fun PlaceRow(place: RvPlace, count: Int) {
  * 穩定 over how many of its tests answered.
  */
 @Composable
-private fun NodeRow(node: RvNode, current: Boolean, sort: RvNodeSort, onPick: (String) -> Unit) {
+private fun NodeRow(node: RvNode, current: Boolean, sort: RvNodeSort, lead: String?, onPick: (String) -> Unit) {
     val inUse = stringResource(R.string.rv_nodes_in_use)
     val pick = Modifier.rvRowSelect(current, { onPick(node.id) })
     val steady = stringResource(R.string.rv_nodes_stability, node.answered, node.history.size)
@@ -153,7 +147,7 @@ private fun NodeRow(node: RvNode, current: Boolean, sort: RvNodeSort, onPick: (S
     RvRow(
         { RvNodeDisc(node, RvNodesSize.rowFlag, current = current) },
         rvNodeTitle(node),
-        rvNodeLine(node.protocol, stringResource(node.place.label)),
+        rvNodeLine(lead, node.protocol, stringResource(node.place.label)),
         if (current) pick.semantics { stateDescription = inUse } else pick,
         titleEnd = { RvLatencyText(node.latencyMs, node.timedOut) },
         subtitleEnd = second,

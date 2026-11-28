@@ -77,7 +77,7 @@ class RvNoSubscriptionShotTest {
         RvNodePickerPageSample(emptyList(), emptyList(), RvData.CURRENT_ID, RvNodeSort.Latency, onSort = {}, onPick = {}, onBack = {}, onTest = {}, onSearch = {})
 
     @Composable
-    private fun Nodes() = RvNodesPage(RvNodesPageState(emptyList(), setOf(RvData.CURRENT_ID)), onBack = {}, onOpen = {}, onAllNodes = {})
+    private fun Nodes() = RvNodesPage(RvNodesPageState(emptyList(), setOf(RvData.CURRENT_ID)), onBack = {}, onOpen = {}, onAllNodes = {}, onAddNode = {})
 
     @Composable
     private fun Subs() = RvSubsPage(rvSubsStateSample(subscriptions = emptyList()), RvSubsActions())

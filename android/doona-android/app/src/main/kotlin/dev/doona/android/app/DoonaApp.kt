@@ -9,8 +9,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -116,10 +120,19 @@ internal fun DoonaApp(
     lanAsking: Flow<Boolean> = flowOf(false),
 ) {
     val backStack = rememberNavBackStack(*start.toTypedArray())
+    val destination = backStack.lastOrNull()
+    var openNodeSheet by rememberSaveable { mutableStateOf(false) }
+    val addNode: () -> Unit = {
+        openNodeSheet = true
+        backStack.push(SubscriptionsKey)
+    }
     val onTab: (Int) -> Unit = { backStack.selectTab(it) }
     val onReselect: () -> Boolean = { backStack.reselectTab() }
     // Held beside the root 活動 rather than in an entry: the pull-down and every 節點 page read one catalog, mapped once.
     val nodes: NodesViewModel = viewModel(factory = NodesViewModel.factory(nativeApi()))
+    if (destination == ActivityKey || destination == NodesKey || destination is NodeKey || destination == MainNodeChoiceKey || destination == NodeSearchKey) {
+        LaunchedEffect(nodes) { nodes.load() }
+    }
     // The 連線 list and a connection's page read one list, held by the owner 節點's is held by; built when 連線 first shows.
     val owner = checkNotNull(LocalViewModelStoreOwner.current) { "DoonaApp runs inside a ViewModelStoreOwner" }
     val connections: @Composable () -> ConnectionsViewModel = { viewModel(owner, factory = ConnectionsViewModel.factory(nativeApi())) }
@@ -130,7 +143,7 @@ internal fun DoonaApp(
                 // The RV page draws its own floating nav; the gate's welcome page takes the old tab frame.
                 val routes = remember(backStack, onSystemSettings) { activityRoutes(backStack, onSystemSettings) }
                 FirstRunGate(engine, imports, onAdd = { backStack.push(SubAddKey) }, frame = { OldTabFrame(Tab.Activity, onTab, onReselect, it) }) {
-                    NodesPull(nodes, RvPullMotion.Sheet, rememberRvPullState(), onDetail = { backStack.push(NodeKey(it)) }, onAdd = { backStack.push(SubAddKey) }) { look ->
+                    NodesPull(nodes, RvPullMotion.Sheet, rememberRvPullState(), onDetail = { backStack.push(NodeKey(it)) }, onAdd = { backStack.push(SubAddKey) }, onAddNode = addNode) { look ->
                         ActivityRoute(engine, crashOffer, network, refusals, onConnect, routes, look)
                     }
                 }
@@ -180,6 +193,8 @@ internal fun DoonaApp(
                     onAdd = { backStack.push(SubAddKey) },
                     onOpenNode = { backStack.push(NodeKey(it)) },
                     onViewGroups = { backStack.selectTab(Tab.Policies) },
+                    openNodeSheet = openNodeSheet,
+                    onSheetOpened = { openNodeSheet = false },
                 )
             }
             entry<SubAddKey> { key ->
@@ -211,11 +226,12 @@ internal fun DoonaApp(
                     onOpen = { backStack.push(NodeKey(it)) },
                     onAllNodes = { backStack.push(MainNodeChoiceKey) },
                     onAdd = { backStack.push(SubAddKey) },
+                    onAddNode = addNode,
                 )
             }
             entry<NodeKey> { key -> NodeRoute(nodes, key.nodeId, onBack = { backStack.pop(key) }) }
             entry<NodeSearchKey> { key ->
-                NodeSearchRoute(nodes, onClose = { backStack.pop(key) }, onDetail = { backStack.push(NodeKey(it)) }, onAdd = { backStack.push(SubAddKey) })
+                NodeSearchRoute(nodes, onClose = { backStack.pop(key) }, onDetail = { backStack.push(NodeKey(it)) }, onAdd = { backStack.push(SubAddKey) }, onAddNode = addNode)
             }
             entry<ConnectionsKey> {
                 ConnectionsRoute(connections(), connected = status is Status.Running, onOpen = { backStack.push(ConnectionKey(it)) }, onTab = onTab)
@@ -224,7 +240,7 @@ internal fun DoonaApp(
                 ConnectionRoute(connections(), key.connectionId, onBack = { backStack.pop(key) }, onNewRule = { backStack.push(RulesKey) })
             }
             entry<MainNodeChoiceKey> { key ->
-                MainNodeRoute(nodes, onBack = { backStack.pop(key) }, onSearch = { backStack.push(NodeSearchKey) }, onAdd = { backStack.push(SubAddKey) })
+                MainNodeRoute(nodes, onBack = { backStack.pop(key) }, onSearch = { backStack.push(NodeSearchKey) }, onAdd = { backStack.push(SubAddKey) }, onAddNode = addNode)
             }
         }
     }

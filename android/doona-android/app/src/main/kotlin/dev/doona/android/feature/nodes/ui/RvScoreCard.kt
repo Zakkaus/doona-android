@@ -13,7 +13,6 @@ import dev.doona.android.designsystem.rv.RvLatencyText
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvText
-import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvScorePick
 import dev.doona.android.feature.model.RvScoreRelation
@@ -72,7 +71,7 @@ internal fun RvScorePick.stateText(): String? {
         RvScoreWait.Backoff -> R.string.rv_score_wait_backoff
         null -> null
     }
-    return listOfNotNull(word, waiting?.let { stringResource(it) }).joinToString(SEPARATOR)
+    return rvNodeLine(word, waiting?.let { stringResource(it) })
 }
 
 /** A challenger as 節點 lists a node, and at its end how it compares to the chosen node. */

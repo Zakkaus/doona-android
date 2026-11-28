@@ -12,6 +12,7 @@ import dev.doona.android.honk.NativeApi
 import dev.doona.android.honk.NativeCatalog
 import dev.doona.android.honk.NativeProbes
 import dev.doona.android.honk.NativeRouting
+import dev.doona.android.honk.PolicyKind
 import dev.doona.android.honk.SelectionNetwork
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -32,7 +33,7 @@ import kotlinx.coroutines.withContext
  * here and on 重試, and mapped once into immutable values. A pick selects the node in the main group ([pick], see
  * [mainGroup]); a test probes every group's members ([test]) or one node ([testNode]); the rows' menus refresh or delete a
  * provider ([update], [remove]). A failure stays until the same action next succeeds, and [retry] runs it again. [clock]
- * is now, for the subscriptions' end dates. honk has no share links and no Score evidence, so the pages get neither.
+ * is now, for the subscriptions' end dates. Score marks reflect selections, not comparison statistics.
  */
 class NodesViewModel internal constructor(
     private val api: NativeApi,
@@ -44,13 +45,12 @@ class NodesViewModel internal constructor(
     private val probes = NativeProbes(api)
     private val read = MutableStateFlow<Read?>(null)
     private val failure = MutableStateFlow<NodesFailure?>(null)
-    private val running = MutableStateFlow(false)
+    private val running = MutableStateFlow<Set<String>?>(null) // null: idle; empty: all groups; otherwise: the node under test.
     private val updating = MutableStateFlow(emptySet<String>())
     private var reading: Job? = null
 
-    /** The node of the last one-node test (null: every group's), the last subscription acted on. */
+    /** The node of the last one-node test (null: every group's). */
     private var lastTest: String? = null
-    private var lastSub: String? = null
 
     /** The last pick that has not succeeded yet, with what to do once it does; [retry] makes it again after it failed. */
     private var lastPick: Pick? = null
@@ -58,40 +58,45 @@ class NodesViewModel internal constructor(
     private class Pick(val nodeId: String, val network: SelectionNetwork, val onPicked: () -> Unit)
 
     /** One read: the pages' state and every group's id, for [test]. */
-    private class Read(val state: NodesState, val groupIds: List<String>)
+    private class Read(val state: NodesState, val groupIds: List<String>, val score: RvScoreMarks? = null)
 
     internal val ui: StateFlow<NodesUi> = combine(read, running, failure, updating) { read, testing, failure, updating ->
         NodesUi(
             read?.state ?: NodesState.Empty,
             loaded = read != null,
             testing = testing,
+            score = read?.score,
             failure = failure,
             nowEpochMs = clock(),
             updating = updating,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), NodesUi())
 
-    init {
-        load()
-    }
-
     /**
      * Reads everything again. A failed read keeps what was shown under its banner; a first read that fails shows no node,
      * so the pages leave their skeletons.
      */
-    private fun load() {
+    internal fun load() {
         reading?.cancel()
-        reading = viewModelScope.launch {
-            var fresh: Read? = null
-            attempt(NodesAction.Read) { fresh = withContext(io) { readAll() } }
-            read.value = fresh ?: read.value ?: Read(NodesState.Empty, emptyList())
-        }
+        reading = viewModelScope.launch { attempt(NodesAction.Read) { read.value = withContext(io) { readAll() } } }
+    }
+
+    internal suspend fun catalogState(): NodesState? {
+        reading?.join()
+        return read.value?.state?.takeUnless { failure.value?.action == NodesAction.Read }
     }
 
     private fun readAll(): Read {
         val groups = catalog.groups()
         val state = nodesState(catalog.nodes(), catalog.providers(), mainGroup(groups, NativeRouting(api).rules()), places)
-        return Read(state, groups.map { it.id })
+        val scoring = groups.filter { it.policy.kind == PolicyKind.Score }
+        val marks = scoring.takeIf { it.isNotEmpty() }?.let {
+            RvScoreMarks(
+                it.mapNotNullTo(mutableSetOf()) { g -> g.runtime.selection.tcp?.resolvedLeafNodeId },
+                it.mapNotNullTo(mutableSetOf()) { g -> g.runtime.selection.udp?.resolvedLeafNodeId },
+            )
+        }
+        return Read(state, groups.map { it.id }, marks)
     }
 
     /**
@@ -120,9 +125,9 @@ class NodesViewModel internal constructor(
     fun testNode(nodeId: String) = probe(nodeId)
 
     private fun probe(nodeId: String?) {
-        if (running.value) return
+        if (running.value != null) return
         lastTest = nodeId
-        running.value = true
+        running.value = nodeId?.let(::setOf).orEmpty()
         val groupIds = read.value?.groupIds.orEmpty()
         viewModelScope.launch {
             try {
@@ -133,7 +138,7 @@ class NodesViewModel internal constructor(
                 }
                 if (done) load()
             } finally {
-                running.value = false
+                running.value = null
             }
         }
     }
@@ -141,11 +146,10 @@ class NodesViewModel internal constructor(
     /** Refreshes provider [id]; its row shows it updating until honk has fetched it ([NodesUi.updating]). */
     fun update(id: String) {
         if (id in updating.value) return
-        lastSub = id
         updating.update { it + id }
         viewModelScope.launch {
             try {
-                if (attempt(NodesAction.Update, subscriptionName(id)) { withContext(io) { catalog.refreshProvider(id) } }) load()
+                if (attempt(NodesAction.Update, subscriptionName(id), providerId = id) { withContext(io) { catalog.refreshProvider(id) } }) load()
             } finally {
                 updating.update { it - id }
             }
@@ -154,28 +158,32 @@ class NodesViewModel internal constructor(
 
     /** Deletes provider [id], once its row's sheet has asked. */
     fun remove(id: String) {
-        lastSub = id
         viewModelScope.launch {
-            if (attempt(NodesAction.Remove) { withContext(io) { catalog.removeProvider(id) } }) load()
+            if (attempt(NodesAction.Remove, providerId = id) { withContext(io) { catalog.removeProvider(id) } }) load()
         }
     }
 
     /** Runs the failed action again: the last pick, test, read, update or deletion. */
     fun retry() {
-        when (failure.value?.action) {
+        val failed = failure.value ?: return
+        when (failed.action) {
             NodesAction.Select -> lastPick?.let { pick(it.nodeId, it.network, it.onPicked) }
             NodesAction.Test -> probe(lastTest)
             NodesAction.Read -> load()
-            NodesAction.Update -> lastSub?.let(::update)
-            NodesAction.Remove -> lastSub?.let(::remove)
-            null -> Unit
+            NodesAction.Update -> failed.providerId?.let(::update)
+            NodesAction.Remove -> failed.providerId?.let(::remove)
         }
     }
 
     private fun subscriptionName(id: String): String? = read.value?.state?.subscriptions?.firstOrNull { it.id == id }?.name
 
-    /** Runs [call]: a failure stands for [action] until it next succeeds; a success clears only its own action's failure. */
-    private suspend fun attempt(action: NodesAction, subject: String? = null, call: suspend () -> Unit): Boolean {
+    /** A success clears the failure only if it matches the action and subscription, when there is one. */
+    private suspend fun attempt(
+        action: NodesAction,
+        subject: String? = null,
+        providerId: String? = null,
+        call: suspend () -> Unit,
+    ): Boolean {
         val error = try {
             call()
             null
@@ -186,8 +194,8 @@ class NodesViewModel internal constructor(
         }
         failure.update { last ->
             when {
-                error != null -> NodesFailure(action, error.errorCode(), subject)
-                last?.action == action -> null
+                error != null -> NodesFailure(action, error.errorCode(), subject, providerId)
+                last?.action == action && last.providerId == providerId -> null
                 else -> last
             }
         }

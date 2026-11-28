@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="rv_subs_nodes_updated">%1$s · %2$s 更新</string>
-    <string name="rv_subs_nodes_not_updated">%1$s · 尚未更新</string>
+    <string name="rv_subs_nodes_updated">%1$s，%2$s 更新</string>
+    <string name="rv_subs_nodes_not_updated">%1$s，尚未更新</string>
     <string name="rv_subs_no_expiry">無到期日</string>
     <string name="rv_sub_update_now">立即更新</string>
     <string name="rv_sub_node_count">節點數</string>
@@ -40,7 +40,11 @@
     <string name="rv_import_add">新增</string>
     <!-- 新增節點 on 訂閱 (p5d; approved s1125f-addnode-*, except the lines marked new) -->
     <string name="rv_addnode">新增節點</string>
-    <string name="rv_addnode_help">貼上節點的分享連結。節點名稱取自連結的 #⁠片段，沒有則取主機名稱。</string>
+    <string name="rv_addnode_help">貼上節點的分享連結。名稱取自連結的 #⁠片段或主機名稱。兩者都看不到時，以編號命名。</string>
+    <string name="rv_addnode_preview_name">核心預覽：節點名稱</string>
+    <string name="rv_addnode_preview_count">可匯入的節點數</string>
+    <string name="rv_addnode_preview_skipped">略過的行</string>
+    <string name="rv_addnode_preview_error">驗證錯誤</string>
     <string name="rv_addnode_link">節點連結</string>
     <string name="rv_addnode_as">將新增為「%1$s」</string>
     <string name="rv_addnode_invalid">節點連結須為 協定://… 格式，例如 ss://、vmess://、vless://、trojan://、hysteria2://</string>
@@ -69,7 +73,7 @@
     </plurals>
     <string name="rv_list_sep">、</string>
     <string name="rv_list_last">%1$s 與 %2$s</string>
-    <string name="rv_addnode_joined">已加入%1$s群組。</string>
+    <string name="rv_addnode_joined">已加入：%1$s</string>
     <string name="rv_addnode_view_groups">查看策略群組</string>
     <string name="rv_addnode_groups">加入策略群組</string>
     <string name="rv_addnode_group_every">已含全部節點</string>

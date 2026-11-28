@@ -156,7 +156,7 @@ internal fun RvLatencyText(latencyMs: Int?, timedOut: Boolean) {
     when {
         latencyMs != null -> RvText(stringResource(R.string.latency_ms, latencyMs), Rv.type.rowValue, align = TextAlign.End)
 
-        timedOut -> RvText(stringResource(R.string.rv_nodes_timed_out), Rv.type.rowValue, color = Rv.colors.slow, align = TextAlign.End)
+        timedOut -> RvText(stringResource(R.string.rv_nodes_probe_failed), Rv.type.rowValue, color = Rv.colors.slow, align = TextAlign.End)
 
         else -> {
             val untested = stringResource(R.string.latency_untested)

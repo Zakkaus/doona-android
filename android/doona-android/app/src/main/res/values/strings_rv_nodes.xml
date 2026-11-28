@@ -99,7 +99,10 @@
     <string name="rv_nodes_sort_name">Name</string>
     <string name="rv_nodes_sort_region">Region</string>
     <string name="rv_nodes_stability">Steady %1$d/%2$d</string>
-    <string name="rv_nodes_timed_out">Timed out</string>
+    <string name="rv_node_chain">Chain</string>
+    <string name="rv_node_hops">Hops</string>
+    <string name="rv_nodes_probe_failed">Test failed</string>
+    <string name="rv_membership_unknown">Could not confirm which groups include the new nodes.</string>
     <!-- Score on 節點 and a node's page: the mark of a node a Score group chose on both networks (節點 only), and the mark
          naming its networks (TCP, UDP, or TCP/UDP on the node's page). -->
     <string name="rv_score_mark" translatable="false">Score</string>

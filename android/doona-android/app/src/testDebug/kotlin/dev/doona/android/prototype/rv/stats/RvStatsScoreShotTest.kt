@@ -61,8 +61,8 @@ class RvStatsScoreShotTest {
         assertEquals(1, count("測試 14 次"))
         assertEquals(1, count("12 成功"))
         assertEquals(1, count("2 失敗"))
-        assertEquals(1, count("TCP · 已選定"))
-        assertEquals(1, count("UDP · 評估中 · 等待可比較的流量"))
+        assertEquals(1, count("TCP / 已選定"))
+        assertEquals(1, count("UDP / 評估中 / 等待可比較的流量"))
     }
 
     private fun count(text: String) = compose.onAllNodes(shows(text), useUnmergedTree = true).fetchSemanticsNodes().size

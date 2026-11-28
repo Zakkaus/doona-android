@@ -9,6 +9,7 @@ import dev.doona.android.honk.HonkSource
 import dev.doona.android.honk.Node
 import dev.doona.android.honk.Provider
 import dev.doona.android.honk.daeGroup
+import java.net.URI
 import java.net.URLDecoder
 
 /**
@@ -20,13 +21,19 @@ internal data class AddNodeLine(val line: Int, val link: String) {
     val linkLike: Boolean get() = SCHEME.containsMatchIn(link)
 
     /**
-     * The name honk files the node under, which its POST /nodes requires: the name the link carries after `#`, else
-     * its host, else the link, cut to honk's 64 characters. honk reads the rest of the link itself.
+     * A display name the link supplies: a fragment or a host. A bare authority can be encoded credentials.
      */
-    val name: String
+    val name: String?
         get() {
-            val fragment = link.substringAfter('#', "").let { runCatching { URLDecoder.decode(it, "UTF-8") }.getOrDefault(it) }.trim()
-            return fragment.ifEmpty { subscriptionHost(link) }.ifEmpty { link }.take(NODE_NAME_MAX)
+            val first = link.substringBefore("->")
+            val fragment = first.substringAfter('#', "").let { runCatching { URLDecoder.decode(it, "UTF-8") }.getOrDefault(it) }.trim()
+            return fragment.ifEmpty {
+                when (first.substringBefore(':').lowercase()) {
+                    "ss", "vmess", "vless" -> runCatching { URI(first) }.getOrNull()?.takeIf { it.rawUserInfo != null || it.port != -1 }?.host.orEmpty()
+                    "trojan", "socks", "socks5", "http", "https", "hysteria2", "hy2", "tuic" -> subscriptionHost(first)
+                    else -> ""
+                }
+            }.take(NODE_NAME_MAX).ifEmpty { null }
         }
 }
 
@@ -57,8 +64,7 @@ internal data class RvSkipped(
 
 /**
  * What 新增節點's field says about what was pasted: nothing yet ([None]), the one node it will add by the name it files
- * it under ([One]), how many it will add and which lines it skips ([Many]), that nothing can be added ([Refused]), or
- * that honk could not be asked ([Failed]).
+ * it under ([One]), how many it will send and which lines it skips ([Many]), or that nothing can be added ([Refused]).
  */
 internal sealed interface RvAddNodeCheck {
     data object None : RvAddNodeCheck
@@ -72,24 +78,38 @@ internal sealed interface RvAddNodeCheck {
     data class Failed(val code: ErrorCode) : RvAddNodeCheck
 
     /** Whether 新增 can run on it. */
-    val addable: Boolean get() = this is One || this is Many
+    val addable: Boolean get() = this is One || this is Many || this is Failed
 }
 
 /**
  * [lines] split into the ones an add sends and the lines it skips: no share link, or a name honk would refuse as in use
- * ([names], 組態內's nodes, or a line above with the same name). honk reads each link only when it is added.
+ * ([names] in the catalog, or a line above with the same name). honk reads each link only when it is added.
  */
-internal fun addNodeRows(lines: List<AddNodeLine>, names: Set<String>): Pair<List<AddNodeLine>, RvSkipped> {
+internal fun addNodeRows(lines: List<AddNodeLine>, names: Set<String>): Pair<List<Pair<AddNodeLine, String>>, RvSkipped> {
     val taken = names.toMutableSet()
-    val sent = mutableListOf<AddNodeLine>()
+    val sent = mutableListOf<Pair<AddNodeLine, String>>()
     val notLink = mutableListOf<Int>()
     val duplicate = mutableListOf<Int>()
-    lines.forEach { line ->
-        when {
-            !line.linkLike -> notLink += line.line
-            !taken.add(line.name) -> duplicate += line.line
-            else -> sent += line
+    val candidates = lines.mapNotNull { line ->
+        if (line.linkLike) return@mapNotNull line to line.name
+        notLink += line.line
+        null
+    }
+    val explicitNames = candidates.mapNotNullTo(HashSet()) { it.second }
+    val anonymous = HashSet<String>()
+    var next = 1
+    for ((line, explicit) in candidates) {
+        var name = explicit
+        if (name == null) {
+            if (!anonymous.add(line.link)) {
+                duplicate += line.line
+                continue
+            }
+            do {
+                name = "node-${next++}"
+            } while (name in taken || name in explicitNames)
         }
+        if (taken.add(name)) sent += line to name else duplicate += line.line
     }
     return sent to RvSkipped(notLink, duplicate)
 }
@@ -101,7 +121,7 @@ internal fun addNodeCheck(lines: List<AddNodeLine>, names: Set<String>, unread: 
     val skipped = rows.copy(unread = unread)
     return when {
         sent.isEmpty() -> RvAddNodeCheck.Refused(skipped)
-        lines.size == 1 -> RvAddNodeCheck.One(sent.single().name)
+        lines.size == 1 -> RvAddNodeCheck.One(sent.single().second)
         else -> RvAddNodeCheck.Many(sent.size, skipped)
     }
 }
@@ -121,7 +141,7 @@ internal fun inlineNodes(nodes: List<Node>, providers: List<Provider>): List<Nod
  * 加入群組 could not take them ([failed]; the nodes are in either way).
  */
 @Immutable
-internal data class RvAddedNodes(val count: Int, val groups: List<String>, val skipped: RvSkipped, val failed: ErrorCode? = null)
+internal data class RvAddedNodes(val count: Int, val groups: List<String>, val skipped: RvSkipped, val failed: ErrorCode? = null, val unconfirmed: Set<String> = emptySet())
 
 /**
  * A group in 新增節點's 加入群組, by its [name] in honk: one that takes every node already ([every], no node filter and no
@@ -154,6 +174,8 @@ internal data class RvInlineState(
     val added: RvAddedNodes? = null,
     val deletingId: String? = null,
     val deleteFailed: RvNodeDeleteFailed? = null,
+    val loading: Boolean = true,
+    val readError: ErrorCode? = null,
 )
 
 /** 新增節點's sheet: the field's [text], whether the clipboard may hold a link, what the field says, an add running, and 加入群組. */
@@ -164,6 +186,7 @@ internal data class RvAddNodeSheet(
     val check: RvAddNodeCheck = RvAddNodeCheck.None,
     val adding: Boolean = false,
     val groups: List<RvGroupPick> = emptyList(),
+    val groupsError: ErrorCode? = null,
 )
 
 /** The most lines one add takes, as doona web's batch. */

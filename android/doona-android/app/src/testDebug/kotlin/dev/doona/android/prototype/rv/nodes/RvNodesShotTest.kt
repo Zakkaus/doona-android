@@ -48,7 +48,7 @@ class RvNodesShotTest {
     fun detailDark() = compose.rvShot("node-detail", dark = true, before = { assertWhole() }) { Detail() }
 
     @Composable
-    private fun Page() = RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {})
+    private fun Page() = RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {}, onAddNode = {})
 
     @Composable
     private fun Detail() {
@@ -62,6 +62,6 @@ class RvNodesShotTest {
         const val WHOLE_PAGE = "+h2893dp"
 
         /** A window as tall as the whole node page, so one capture holds every stat above the floating actions. */
-        const val WHOLE_DETAIL = "+h1220dp"
+        const val WHOLE_DETAIL = "+h1266dp"
     }
 }

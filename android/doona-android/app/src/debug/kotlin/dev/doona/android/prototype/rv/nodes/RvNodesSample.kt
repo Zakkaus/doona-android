@@ -45,7 +45,7 @@ internal fun RvNodePickerSample(
     title: String = stringResource(R.string.rv_nodes_title),
     banner: RvNotice? = null,
     caption: String = stringResource(R.string.rv_main_node_hint),
-) = RvNodePicker(nodes, subscriptions, currentId, RvData.nowEpochMs, onPick, onDetail, onClose, section, stretch, searchPage, title, banner, caption)
+) = RvNodePicker(nodes, subscriptions, currentId, RvData.nowEpochMs, onPick, onDetail, onClose, section, stretch, searchPage, title, banner, caption, onAddNode = {})
 
 /** The main node's picker on the sample: the subscriptions' end dates as of [RvData]'s now. The page takes it as a parameter. */
 @Composable
@@ -60,7 +60,7 @@ internal fun RvNodePickerPageSample(
     onTest: () -> Unit,
     onSearch: () -> Unit,
     onAdd: () -> Unit = {},
-) = RvNodePickerPage(nodes, subscriptions, currentId, sort, onSort, onPick, onBack, onTest, onSearch, RvData.nowEpochMs, onAdd)
+) = RvNodePickerPage(nodes, subscriptions, currentId, sort, onSort, onPick, onBack, onTest, onSearch, RvData.nowEpochMs, onAdd, onAddNode = {})
 
 @Preview(name = "Light", locale = "zh-rTW", widthDp = 412, heightDp = 915)
 @Preview(name = "Dark", locale = "zh-rTW", widthDp = 412, heightDp = 915, uiMode = Configuration.UI_MODE_NIGHT_YES)
@@ -98,5 +98,5 @@ private fun RvNodePickerPagePreview() {
 @Composable
 private fun RvNodesPagePreview() {
     val dark = isSystemInDarkTheme()
-    RvTheme(rvSystemScheme(dark), dark) { RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {}) }
+    RvTheme(rvSystemScheme(dark), dark) { RvNodesPage(sampleNodesPage(), onBack = {}, onOpen = {}, onAllNodes = {}, onAddNode = {}) }
 }

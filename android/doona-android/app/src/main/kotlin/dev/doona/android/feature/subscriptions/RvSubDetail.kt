@@ -19,10 +19,12 @@ import dev.doona.android.designsystem.rv.RvConfirmSheet
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvIconDisc
 import dev.doona.android.designsystem.rv.RvLargeTitle
+import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSectionTitle
+import dev.doona.android.designsystem.rv.RvSkeletonStatRow
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvTextField
@@ -89,7 +91,7 @@ internal enum class RvSubSheet { Rename, UserAgent, Delete }
  */
 @Composable
 internal fun RvSubDetail(
-    sub: RvSubscription,
+    sub: RvSubscription?,
     state: RvSubDetailState,
     onChange: (RvSubDetailState) -> Unit,
     onBack: () -> Unit,
@@ -99,8 +101,16 @@ internal fun RvSubDetail(
     onAutoUpdate: () -> Unit,
     onRename: (String) -> Unit = {},
     onDelete: () -> Unit = {},
+    readFailure: RvNotice? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
+    if (sub == null) {
+        val title = stringResource(R.string.rv_sub_section)
+        return RvScrollPage(title, insets, onBack = onBack) { block ->
+            RvLargeTitle(title, block, insets)
+            RvGutter(banner = readFailure) { if (readFailure == null) RvSkeletonStatRow(title) }
+        }
+    }
     RvScrollPage(
         sub.name,
         insets,
@@ -108,7 +118,7 @@ internal fun RvSubDetail(
         bottomAction = { RvPrimaryButton(stringResource(R.string.rv_sub_update_now), onUpdate) },
     ) { titleBlock ->
         RvLargeTitle(sub.name, titleBlock, insets)
-        RvGutter(banner = state.failed?.let { rvSubDetailBanner(sub, it, onUpdate, onUserAgent, onDelete) }) { KeyStats(sub) }
+        RvGutter(banner = readFailure ?: state.failed?.let { rvSubDetailBanner(sub, it, onUpdate, onUserAgent, onDelete) }) { KeyStats(sub) }
         RvSectionTitle(stringResource(R.string.rv_sub_updates), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter { UpdatesCard(sub.userAgent, autoUpdate, onAutoUpdate) { onChange(state.copy(sheet = RvSubSheet.UserAgent, userAgent = sub.userAgent.orEmpty())) } }
         RvSectionTitle(stringResource(R.string.rv_sub_section), Modifier.padding(horizontal = RvSpace.gutter))
@@ -236,6 +246,7 @@ private fun KeyStats(sub: RvSubscription) {
         RvStatRow(stringResource(R.string.rv_sub_expires), sub.expiresAtEpochMs?.let { format.date(it) } ?: stringResource(R.string.rv_subs_no_expiry))
         // A subscription never fetched has neither yet.
         RvStatRow(stringResource(R.string.rv_sub_updated), sub.updatedAtEpochMs?.let(format::time) ?: RV_NO_VALUE)
+        // honk-gap:sub-format-ua
         RvStatRow(stringResource(R.string.rv_sub_format), sub.format?.let { stringResource(it.label) } ?: RV_NO_VALUE)
     }
 }

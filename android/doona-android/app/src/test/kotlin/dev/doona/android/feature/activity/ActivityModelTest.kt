@@ -19,6 +19,10 @@ import dev.doona.android.honk.GroupSelections
 import dev.doona.android.honk.NativeCatalog
 import dev.doona.android.honk.NativeRouting
 import dev.doona.android.honk.NativeRuntime
+import dev.doona.android.honk.Provider
+import dev.doona.android.honk.ProviderKind
+import dev.doona.android.honk.ProviderStatus
+import dev.doona.android.honk.ProviderTraffic
 import dev.doona.android.honk.RuntimeTraffic
 import dev.doona.android.honk.TrafficHistory
 import org.junit.Assert.assertEquals
@@ -40,6 +44,16 @@ class ActivityModelTest {
     private fun map(data: ActivityData) = activityCatalog(data, honkActivityNodes(data.profile, CoreNodePlaces))
 
     private fun HonkProfile.with(groups: List<Group> = this.groups, mainGroup: String? = this.mainGroup) = HonkProfile(providers, nodes, groups, mainGroup, ruleCount)
+
+    @Test
+    fun `only subscriptions contribute to remaining quota`() {
+        fun provider(kind: ProviderKind, traffic: ProviderTraffic?) = Provider(kind.name, kind.name, kind, null, 0, null, null, traffic, ProviderStatus.Ok, null)
+        fun subscriptions(vararg providers: Provider) = map(data(HonkProfile(providers.toList(), emptyList(), emptyList(), null, 0))).subscriptions
+        val inline = provider(ProviderKind.Inline, null)
+        val known = provider(ProviderKind.Subscription, ProviderTraffic("0", "0", "10000000000"))
+        assertEquals(10_000_000_000L, subscriptions(inline, known).single().leftBytes)
+        assertEquals(listOf(true, false), subscriptions(inline, known, provider(ProviderKind.Subscription, null)).map { it.hasQuota })
+    }
 
     @Test
     fun `the main node is what the group the rules fall back to selects over TCP`() {
