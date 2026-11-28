@@ -2,7 +2,11 @@ package dev.doona.android.feature.subscriptions
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.doona.android.engine.Engine
+import dev.doona.android.vpn.NativeApi
+import dev.doona.android.vpn.honk.NativeCatalog
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -13,6 +17,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** What 新增訂閱 typed and follows: the fields, whether the clipboard may hold a link, and the import it waits for. */
 internal data class SubAddLocal(
@@ -33,7 +38,7 @@ internal fun rvAddPhase(own: Long?, import: ImportState, lanAsking: Boolean): Rv
     if (own == null || import.lastId != own) return RvAddPhase.Editing
     if (import.busy) return if (lanAsking) RvAddPhase.Editing else RvAddPhase.Importing(downloadedBytes = null, fraction = null)
     import.error?.let { return RvAddPhase.Failed(rvAddFailure(it)) }
-    return import.added?.let { RvAddPhase.Done(rvSubscription(it)) } ?: RvAddPhase.Editing
+    return import.added?.let { RvAddPhase.Done(it) } ?: RvAddPhase.Editing
 }
 
 internal fun subAddState(local: SubAddLocal, import: ImportState, lanAsking: Boolean) = RvAddState(
@@ -48,14 +53,15 @@ internal fun subAddState(local: SubAddLocal, import: ImportState, lanAsking: Boo
  * 新增訂閱's state holder (plan §2.2). The import is [imports]', which outlives the page: a page opened while one runs,
  * or after one failed while the page was away, follows it and shows what it fetches. The clipboard's content is read
  * only when the user taps its row ([paste]); [refreshClipboard] reads only whether it may hold a link. [protocols]
- * counts what the page's import brought in, by protocol, once it is done. [lanAsking] is whether the local network
- * prompt is up, which an import of a link on the local network waits on.
+ * counts what the page's import brought in, by protocol, once it is done: honk's nodes of the new provider, read on
+ * [io]. [lanAsking] is whether the local network prompt is up, which an import of a link on the local network waits on.
  */
 internal class SubAddViewModel(
-    private val engine: Engine,
+    private val api: NativeApi,
     private val imports: SubscriptionImports,
     private val clipboard: ClipboardLinks,
     lanAsking: Flow<Boolean>,
+    private val io: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
     private val local = MutableStateFlow(followed())
     private val counted = MutableStateFlow<List<RvProtocolCount>>(emptyList())
@@ -72,11 +78,16 @@ internal class SubAddViewModel(
             val added = combine(local, imports.state) { page, import -> import.added?.takeIf { page.own != null && import.lastId == page.own && !import.busy } }
                 .filterNotNull()
                 .first()
-            // The catalog takes the nodes in after the call returns; it lists the subscription once it holds them. Every
-            // node counts, whether or not a group of the user's names it.
-            engine.subscriptions.first { subs -> subs.any { it.id == added.id } }
-            val nodes = engine.nodes().getOrNull().orEmpty().filter { it.subscriptionId == added.id }
-            counted.value = rvProtocolCounts(nodes.map { it.protocol })
+            // honk answers the add once the provider is active. Every node counts, whether or not a group names it; a
+            // failed read counts none.
+            val nodes = try {
+                withContext(io) { NativeCatalog(api).nodes() }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                emptyList()
+            }
+            counted.value = rvProtocolCounts(nodes.filter { it.providerId == added.id }.mapNotNull { it.protocol })
         }
     }
 

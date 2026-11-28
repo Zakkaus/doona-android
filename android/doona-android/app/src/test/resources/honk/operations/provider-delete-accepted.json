@@ -1,0 +1,6 @@
+{
+  "operation_id": "op-delete",
+  "kind": "provider_delete",
+  "status": "queued",
+  "href": "/api/v1/operations/op-delete"
+}

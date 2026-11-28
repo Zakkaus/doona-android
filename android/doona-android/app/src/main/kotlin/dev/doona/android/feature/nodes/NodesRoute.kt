@@ -1,6 +1,5 @@
 package dev.doona.android.feature.nodes
 
-import android.content.ClipData
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -8,11 +7,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.ClipEntry
-import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.doona.android.R
@@ -24,17 +20,16 @@ import dev.doona.android.designsystem.rv.RvPullDown
 import dev.doona.android.designsystem.rv.RvPullLook
 import dev.doona.android.designsystem.rv.RvPullMotion
 import dev.doona.android.designsystem.rv.RvPullState
-import dev.doona.android.engine.Network
 import dev.doona.android.feature.messageRes
 import dev.doona.android.feature.model.RvNodeSort
 import dev.doona.android.feature.nodes.ui.LocalRvRowActions
 import dev.doona.android.feature.nodes.ui.RvApplyTo
 import dev.doona.android.feature.nodes.ui.RvRowActions
-import kotlinx.coroutines.launch
+import dev.doona.android.vpn.honk.SelectionNetwork
 
 /*
  * The 節點 pages on the one [NodesViewModel] that 活動's entry holds (plan 2.2): the routing builds it there with
- * `NodesViewModel.factory(engine)` and hands the same instance to the pull-down, 節點, a node's page, search and the main
+ * `NodesViewModel.factory(api)` and hands the same instance to the pull-down, 節點, a node's page, search and the main
  * node's picker, so each reads the catalog mapped once.
  */
 
@@ -94,7 +89,7 @@ internal fun NodeSearchRoute(viewModel: NodesViewModel, onClose: () -> Unit, onD
             ui.state.subscriptions,
             ui.state.currentId,
             ui.nowEpochMs,
-            onPick = { viewModel.pick(it, apply?.network(), onClose) },
+            onPick = { viewModel.pick(it, apply.network(), onClose) },
             onDetail = onDetail,
             onClose = onClose,
             searchPage = true,
@@ -126,7 +121,7 @@ internal fun MainNodeRoute(viewModel: NodesViewModel, onBack: () -> Unit, onSear
             ui.state.currentId,
             sort,
             { sort = it },
-            onPick = { viewModel.pick(it, apply?.network()) },
+            onPick = { viewModel.pick(it, apply.network()) },
             onBack = onBack,
             onTest = viewModel::test,
             onSearch = onSearch,
@@ -167,7 +162,7 @@ internal fun NodesPull(
                 ui.state.subscriptions,
                 ui.state.currentId,
                 ui.nowEpochMs,
-                onPick = { viewModel.pick(it, apply?.network(), motion.close) },
+                onPick = { viewModel.pick(it, apply.network(), motion.close) },
                 onDetail = onDetail,
                 onClose = motion.close,
                 section = motion.section,
@@ -186,23 +181,19 @@ internal fun NodesPull(
 
 /**
  * What every 節點 route gives its page: the test running ([LocalRvTesting]), the subscriptions updating
- * ([LocalRvUpdating]) and the rows' menus' actions ([LocalRvRowActions]) on [viewModel]: 設為主節點, 測試延遲, 複製分享連結
- * (the core's link to the clipboard), and a subscription's 更新 and 刪除. A pull-down picker not [shown] follows no test or
- * update, as [RvPullDown] keeps it (a busy bar would run in each row).
+ * ([LocalRvUpdating]) and the rows' menus' actions ([LocalRvRowActions]) on [viewModel]: 設為主節點, 測試延遲, and a
+ * subscription's 更新 and 刪除. honk keeps no share link, so every node's 複製分享連結 is disabled. A pull-down picker not [shown]
+ * follows no test or update, as [RvPullDown] keeps it (a busy bar would run in each row).
  */
 @Composable
 private fun NodesLocals(viewModel: NodesViewModel, ui: NodesUi, shown: Boolean = true, content: @Composable () -> Unit) {
-    val clipboard = LocalClipboard.current
-    val scope = rememberCoroutineScope()
-    val actions = remember(viewModel, clipboard, scope) {
+    val actions = remember(viewModel) {
         RvRowActions(
             useNode = { viewModel.pick(it) },
             testNode = viewModel::testNode,
             updateSubscription = viewModel::update,
             deleteSubscription = viewModel::remove,
-            copyLink = { node ->
-                viewModel.copyLink(node.id) { link -> scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(node.name, link))) } }
-            },
+            noShareLinks = true,
         )
     }
     CompositionLocalProvider(
@@ -241,14 +232,13 @@ private val NodesAction.title: Int
         NodesAction.Select -> R.string.rv_failed_switch_node
         NodesAction.Test -> R.string.rv_failed_test_latency
         NodesAction.Read -> R.string.rv_failed_read_nodes
-        NodesAction.Share -> R.string.rv_failed_copy_link
         NodesAction.Update -> R.string.rv_sub_failed_title
         NodesAction.Remove -> R.string.rv_failed_remove_subscription
     }
 
-/** The engine's network for a 套用到 choice; null for both. */
-private fun RvApplyTo.network(): Network? = when (this) {
-    RvApplyTo.Both -> null
-    RvApplyTo.Tcp -> Network.Tcp
-    RvApplyTo.Udp -> Network.Udp
+/** honk's network for a 套用到 row's choice; both while the row is not shown. */
+private fun RvApplyTo?.network(): SelectionNetwork = when (this) {
+    RvApplyTo.Both, null -> SelectionNetwork.Both
+    RvApplyTo.Tcp -> SelectionNetwork.Tcp
+    RvApplyTo.Udp -> SelectionNetwork.Udp
 }

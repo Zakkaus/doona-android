@@ -26,6 +26,22 @@ internal class NativeProbes(private val api: NativeApi) {
         }
     }
 
+    /** Tests node [nodeId] the same way and waits until its probe ends; a probe honk could not run fails with its error. */
+    suspend fun node(nodeId: String) {
+        val body = buildJsonObject {
+            putJsonObject("target") {
+                put("type", "node")
+                put("node_id", nodeId)
+            }
+            put("kind", "http")
+            putJsonArray("transport") { add("tcp") }
+            put("ip_version", "any")
+            put("warmth", "cold")
+        }.toString()
+        val operation = api.finished(nativeJson.decodeFromString(OperationAccepted.serializer(), api.expect("POST", "/api/v1/probes", body)).href)
+        operation.error?.let { throw EngineException(it.errorCode()) }
+    }
+
     private fun body(groupId: String) = buildJsonObject {
         putJsonObject("target") {
             put("type", "group")

@@ -17,6 +17,7 @@ import dev.doona.android.app.PoliciesKey
 import dev.doona.android.app.SettingsKey
 import dev.doona.android.app.SubscriptionsKey
 import dev.doona.android.app.currentTab
+import dev.doona.android.app.nativeApi
 import dev.doona.android.app.pop
 import dev.doona.android.app.selectTab
 import dev.doona.android.engine.Engine
@@ -26,6 +27,7 @@ import dev.doona.android.feature.perapp.PerAppRoute
 import dev.doona.android.feature.policies.GroupRoute
 import dev.doona.android.feature.policies.PoliciesRoute
 import dev.doona.android.feature.subscriptions.SubscriptionsRoute
+import dev.doona.android.feature.subscriptions.rememberSubscriptionImports
 
 /**
  * The old pages in the old hub frame, as the app drew them before RV's navigation (wire-p1a): the old screen cases,
@@ -44,15 +46,15 @@ internal fun OldShellApp(engine: Engine, installedApps: InstalledApps, start: Li
             entryProvider = entryProvider {
                 entry<ActivityKey> {
                     // 活動 is the RV page now, with goldens of its own: the old shell shows only its first-run gate.
-                    FirstRunGate(engine, onAdd = {}, frame = { it() }) {}
+                    FirstRunGate(engine, rememberSubscriptionImports(nativeApi()), onAdd = {}, frame = { it() }) {}
                 }
                 entry<PoliciesKey> {
                     PoliciesRoute(engine, onOpenGroup = { backStack.add(GroupKey(it)) }, onOpenSubscriptions = { backStack.add(SubscriptionsKey) })
                 }
                 entry<GroupKey> { key ->
-                    GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) })
+                    GroupRoute(key.groupId, onBack = { backStack.pop(key) })
                 }
-                entry<SubscriptionsKey> { key -> SubscriptionsRoute(engine, onBack = { backStack.pop(key) }, onOpen = {}, onAdd = {}) }
+                entry<SubscriptionsKey> { key -> SubscriptionsRoute(onBack = { backStack.pop(key) }, onOpen = {}, onAdd = {}) }
                 entry<PerAppKey> { key -> PerAppRoute(engine, installedApps, onConnect = {}, onAddSubscription = {}, onCheckUpdate = {}, onBack = { backStack.pop(key) }) }
                 // 設定 is an RV page now (RvSettingsScreen), with goldens of its own.
                 entry<SettingsKey> {}

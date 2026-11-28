@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "resource_not_found",
+    "message": "Group not found."
+  },
+  "request_id": "request-group-1"
+}

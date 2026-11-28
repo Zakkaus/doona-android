@@ -1,0 +1,51 @@
+{
+  "providers": [
+    {
+      "id": "s1",
+      "name": "Harbor Cloud",
+      "kind": "subscription",
+      "url_redacted": "https://sub.harbor-cloud.example/sub",
+      "node_count": 32,
+      "updated_at": "2026-11-22T06:00:00Z",
+      "expires_at": "2027-03-15T12:00:00Z",
+      "traffic": {
+        "upload_bytes": "1700000000",
+        "download_bytes": "60000000000",
+        "total_bytes": "200000000000"
+      },
+      "status": "error",
+      "last_error": {
+        "code": "fetch_failed",
+        "message": "The subscription could not be fetched.",
+        "details": {
+          "stage": "connect"
+        }
+      },
+      "download": {
+        "route": "routing",
+        "group_id": null
+      }
+    },
+    {
+      "id": "s2",
+      "name": "Lantern Net",
+      "kind": "subscription",
+      "url_redacted": "https://lantern-net.example/sub",
+      "node_count": 16,
+      "updated_at": "2026-11-22T06:00:00Z",
+      "expires_at": "2026-12-31T12:00:00Z",
+      "traffic": {
+        "upload_bytes": "1400000000",
+        "download_bytes": "35000000000",
+        "total_bytes": "100000000000"
+      },
+      "status": "ok",
+      "last_error": null,
+      "download": {
+        "route": "routing",
+        "group_id": null
+      }
+    }
+  ],
+  "next_cursor": null
+}

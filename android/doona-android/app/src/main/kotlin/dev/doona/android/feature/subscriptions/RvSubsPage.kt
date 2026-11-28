@@ -19,8 +19,7 @@ import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.LocalRvUpdating
 import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.Rv
-import dev.doona.android.designsystem.rv.RvAddEntry
-import dev.doona.android.designsystem.rv.RvAddRow
+import dev.doona.android.designsystem.rv.RvAddMenuButton
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvConfirmSheet
 import dev.doona.android.designsystem.rv.RvEmptyState
@@ -96,8 +95,8 @@ internal class RvSubsActions(
  * subscription cards once they are loaded; [extraKeepsPage] keeps the page for it when there is no subscription (nodes
  * added by hand), with nothing to update. [addNode] puts 新增節點 beside the empty state's 新增訂閱, the only way to add a
  * node before there is one (owner, q-p5d-empty 2026-11-26). [banner] (what the last add or node delete did) takes the banner's place first.
- * With [removable] each subscription's row ends with the remove control, which asks in the same sheet, and 新增訂閱
- * ends the list as a row.
+ * With [removable] each subscription's row ends with the remove control, which asks in the same sheet; 新增訂閱 stays
+ * the bottom button (owner, q-add-primary 2026-11-26).
  */
 @Composable
 internal fun RvSubsPage(
@@ -118,7 +117,12 @@ internal fun RvSubsPage(
     } else {
         { glass -> RvGlassButton(glass, R.drawable.rv_stats_ic_sync, stringResource(R.string.rv_stats_update_all), actions.updateAll) }
     }
-    val add: (@Composable () -> Unit)? = if (empty) null else ({ RvPrimaryButton(stringResource(R.string.rv_add_subscription), actions.add) })
+    // One 新增 for both kinds, the same menu as 全部規則's (owner, 2026-11-26 21:58).
+    val items = listOfNotNull(
+        RvMenuItem(stringResource(R.string.rv_subs_add_subscription), R.drawable.rv_sym_rss_feed, onClick = actions.add),
+        addNode?.let { RvMenuItem(stringResource(R.string.rv_subs_add_node), R.drawable.rv_sym_link, onClick = it) },
+    )
+    val add: @Composable () -> Unit = { RvAddMenuButton(stringResource(R.string.rv_list_create), items) }
     // A failed update's banner waits for the cards: while they load it is not known yet.
     val failed = if (loading) {
         null
@@ -134,24 +138,10 @@ internal fun RvSubsPage(
                 val emptyState: (@Composable () -> Unit)? = if (extraKeepsPage) {
                     null
                 } else {
-                    {
-                        RvEmptyState(
-                            stringResource(R.string.rv_empty_subscription),
-                            stringResource(R.string.rv_empty_subscription_line),
-                            stringResource(R.string.rv_add_subscription),
-                            actions.add,
-                            second = addNode?.let { RvAddEntry(stringResource(R.string.rv_addnode), it) },
-                        )
-                    }
+                    { RvEmptyState(stringResource(R.string.rv_empty_subscription), stringResource(R.string.rv_empty_subscription_line), null, {}) }
                 }
-                // 新增訂閱's row closes the list as one more card, leaving with the last subscription.
-                val rows: List<Any> = if (removable && state.subscriptions.isNotEmpty()) state.subscriptions + ADD_ROW else state.subscriptions
-                RvItems(rows, { (it as? RvSubscription)?.id ?: ADD_ROW }, RvSpace.cardGap, emptyState) { row ->
-                    if (row is RvSubscription) {
-                        SubscriptionCard(row, actions, state.nowEpochMs, if (removable) RvRowRemove { actions.delete(row.id) } else null)
-                    } else {
-                        RvCard { RvAddRow(stringResource(R.string.rv_add_subscription), actions.add) }
-                    }
+                RvItems(state.subscriptions, { it.id }, RvSpace.cardGap, emptyState) { sub ->
+                    SubscriptionCard(sub, actions, state.nowEpochMs, if (removable) RvRowRemove { actions.delete(sub.id) } else null)
                 }
             }
             if (!loading && !empty) extra?.invoke()
@@ -249,7 +239,6 @@ private fun SubsSkeleton(subscriptions: List<RvSubscription>) {
 private const val SKELETON_CARDS = 2
 
 /** The key (and row) of 新增訂閱 closing a removable list: no subscription id takes this form. */
-private const val ADD_ROW = "\u0000add"
 
 /**
  * Used of total at the start and the end date as of [nowEpochMs] at the end, over the quota's bar (Revolut's goal card,

@@ -1,0 +1,19 @@
+{
+  "generation_id": "generation-42",
+  "revision": "17",
+  "sources": [
+    {
+      "id": "source-main",
+      "path": "config.dae",
+      "kind": "main",
+      "content_sha256": "ac6f6d2bb6c406b3310281d629fef68a53528af8cbb36028afedbec2cf1f6ee3",
+      "bytes": 161,
+      "writable": true,
+      "loaded_at": "2026-11-22T06:00:00Z",
+      "content": "subscription {\n    'Harbor Cloud': 'https://sub.harbor-cloud.example/sub'\n    'Lantern Net': 'https://lantern-net.example/sub'\n}\nrouting {\n    fallback: Proxy\n}\n",
+      "line_count": 7
+    }
+  ],
+  "diagnostics": [],
+  "secrets_redacted": false
+}

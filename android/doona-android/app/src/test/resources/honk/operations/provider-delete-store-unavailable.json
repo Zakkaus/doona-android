@@ -1,0 +1,14 @@
+{
+  "operation_id": "op-delete",
+  "kind": "provider_delete",
+  "status": "failed",
+  "created_at": "2026-11-22T06:00:00Z",
+  "started_at": "2026-11-22T06:00:00Z",
+  "finished_at": "2026-11-22T06:00:01Z",
+  "result": null,
+  "error": {
+    "code": "store_unavailable",
+    "message": "The configuration store is unavailable.",
+    "details": null
+  }
+}

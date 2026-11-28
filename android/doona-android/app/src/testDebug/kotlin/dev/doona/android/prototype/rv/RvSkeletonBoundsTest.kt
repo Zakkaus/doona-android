@@ -28,12 +28,14 @@ import dev.doona.android.designsystem.rv.Tone
 import dev.doona.android.designsystem.rv.latencyTone
 import dev.doona.android.feature.model.RvPolicyState
 import dev.doona.android.feature.model.RvRouteMode
+import dev.doona.android.feature.model.text
 import dev.doona.android.feature.nodes.RvNodeDetail
 import dev.doona.android.feature.nodes.RvNodeDetailSkeleton
 import dev.doona.android.feature.nodes.RvNodesPage
 import dev.doona.android.feature.nodes.ui.RvNodePickRow
 import dev.doona.android.feature.nodes.ui.RvNodeSectionSkeleton
 import dev.doona.android.feature.perapp.RvPerAppScreen
+import dev.doona.android.feature.policies.RvGroupSkeleton
 import dev.doona.android.feature.policies.RvPolicyScreen
 import dev.doona.android.feature.policies.RvTemplateImpactPage
 import dev.doona.android.feature.subscriptions.RvSubsActions
@@ -43,6 +45,8 @@ import dev.doona.android.prototype.rv.data.rvTestTimes
 import dev.doona.android.prototype.rv.nodes.sampleNodesPage
 import dev.doona.android.prototype.rv.policy.RvPolicyScreenSample
 import dev.doona.android.prototype.rv.policy.RvTemplateData
+import dev.doona.android.prototype.rv.samples.RvGroupFullPage
+import dev.doona.android.prototype.rv.samples.RvGroupFullSample
 import dev.doona.android.prototype.rv.settings.RvPerAppLook
 import dev.doona.android.prototype.rv.settings.RvPerAppLookScreen
 import dev.doona.android.prototype.rv.settings.rvPerAppActions
@@ -76,6 +80,7 @@ internal object RvSkeletonPages {
     const val NODES = "nodes"
     const val NODE = "node"
     const val TEMPLATE_IMPACT = "template-impact"
+    const val GROUP = "group"
 }
 
 /** [page] with its skeleton while [loading], else with its content, in the samples its goldens show. */
@@ -98,6 +103,9 @@ internal fun RvSkeletonPage(page: String, loading: Boolean) {
         RvSkeletonPages.NODE -> if (loading) RvNodeDetailSkeleton(onBack = {}) else RvNodeDetail(RvData.nodes.first { latencyTone(it.latencyMs) == Tone.Ok }, current = false, rvTestTimes(), onBack = {}, onUse = {}, onTest = {})
 
         RvSkeletonPages.PER_APP_V1 -> RvPerAppLookScreen(rvPerAppLookSample(if (loading) "loading" else ""), rvPerAppActions(), onBack = {}, look = RvPerAppLook.Checks)
+
+        // A group's name is its id's, so the skeleton has the title the loaded page has.
+        RvSkeletonPages.GROUP -> if (loading) RvGroupSkeleton(RvGroupFullSample.two.group.name.text(), onBack = {}) else RvGroupFullPage(RvGroupFullSample.two, apart = false)
 
         RvSkeletonPages.TEMPLATE_IMPACT -> RvTemplateImpactPage(RvTemplateData.impact.takeUnless { loading }, onBack = {}, onApply = {})
 
@@ -184,6 +192,12 @@ class RvSkeletonBoundsTest {
     @Test fun nodeFs115() = bounds(RvSkeletonPages.NODE, RV_FS115)
 
     @Test fun nodeFs200() = bounds(RvSkeletonPages.NODE, RV_FS200)
+
+    @Test fun group() = bounds(RvSkeletonPages.GROUP, 1f)
+
+    @Test fun groupFs115() = bounds(RvSkeletonPages.GROUP, RV_FS115)
+
+    @Test fun groupFs200() = bounds(RvSkeletonPages.GROUP, RV_FS200)
 
     /**
      * The node pickers' skeleton ([RvNodeSectionSkeleton]) fills the window with no data, so its rows cannot stand for the
@@ -379,6 +393,8 @@ class RvSkeletonBoundsTest {
          * its nodes, which their latency orders; at 2.0 訂閱's subscriptions over their nodes and last update, and 依 App's
          * apps over their packages, which the phone's list gives. 檢視變更's rows (5 stats, 4 groups, then the rules): at
          * 1.15 the first rule's domains beside its group; at 2.0 範本's source → template, and the first two groups' lines.
+         * A group's page: its subscription's use and end date, and a long node name, in two lines; at 2.0 also 分開選擇
+         * TCP/UDP beside the switch (the skeleton row has no switch's room) and the chosen node's name.
          * A node's 詳細資料 at 2.0: its server, set under its label ([STACKS]).
          */
         val WRAPS = mapOf(
@@ -388,6 +404,9 @@ class RvSkeletonBoundsTest {
             (RvSkeletonPages.PER_APP_V1 to RV_FS200) to setOf(3, 4, 5),
             (RvSkeletonPages.TEMPLATE_IMPACT to RV_FS115) to setOf(9),
             (RvSkeletonPages.TEMPLATE_IMPACT to RV_FS200) to setOf(0, 5, 6),
+            (RvSkeletonPages.GROUP to 1f) to setOf(2, 5),
+            (RvSkeletonPages.GROUP to RV_FS115) to setOf(2, 5),
+            (RvSkeletonPages.GROUP to RV_FS200) to setOf(0, 1, 2),
             (RvSkeletonPages.NODE to RV_FS200) to setOf(1),
         )
 

@@ -24,6 +24,7 @@ import dev.doona.android.engine.Mode
 import dev.doona.android.engine.Status
 import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.engine.fake.FakeInstalledApps
+import dev.doona.android.engine.fake.FakeRuleMode
 import dev.doona.android.engine.fake.rvSampleEngine
 import dev.doona.android.report.CrashFiles
 import dev.doona.android.report.CrashHandler
@@ -243,15 +244,14 @@ class NavigationTest {
     }
 
     @Test
-    fun `a group page leaves when its group is removed`() {
-        val engine = FakeEngine(FakeEngine.SAMPLE_GROUPS)
-        compose.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, PoliciesKey, GroupKey("g-Auto"))) } }
-        appears(TEST_GROUP)
+    fun `a group page leaves when honk has no such group`() {
+        // Removed from the configuration, as on another device: honk answers the page's read with 404.
+        val honk = ApplicationProvider.getApplicationContext<DoonaApplication>().container.nativeApi as FakeHonk
+        honk.on("GET", "/api/v1/groups/g-Auto", 404, HonkFixtures.body("errors/group-not-found"))
+        compose.setContent { SeedTheme { DoonaApp(FakeEngine(FakeEngine.SAMPLE_GROUPS), FakeInstalledApps(), onConnect = {}, start = listOf(ActivityKey, PoliciesKey, GroupKey("g-Auto"))) } }
 
-        engine.groups.value = engine.groups.value.filter { it.id != "g-Auto" }
-
-        compose.onNodeWithContentDescription("Back").assertDoesNotExist()
         appears(POLICIES)
+        compose.onNodeWithContentDescription("Back").assertDoesNotExist()
     }
 
     @Test

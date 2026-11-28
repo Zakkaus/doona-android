@@ -26,16 +26,16 @@ import dev.doona.android.engine.fake.FakeInstalledApps
 import dev.doona.android.testing.SeedTheme
 import dev.doona.android.vpn.ActivityHonkFixtures.empty
 import dev.doona.android.vpn.FakeHonk
+import dev.doona.android.vpn.HonkFixtures
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
  * The policies and group pages as a user moves through them, in the shell, and when the first run's welcome page takes
- * 活動's place.
+ * 活動's place. The pages read honk, the app's RV sample profile ([DoonaTestApplication]), off the main thread.
  */
 @RunWith(AndroidJUnit4::class)
 class PolicyFlowsTest {
@@ -57,6 +57,12 @@ class PolicyFlowsTest {
 
     private fun shows(text: String) = compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
 
+    /** honk as the app reads it. */
+    private val honk get() = ApplicationProvider.getApplicationContext<DoonaApplication>().container.nativeApi as FakeHonk
+
+    /** honk with no node: with no subscription either, the first run's welcome page shows. */
+    private fun noNodes() = honk.on("GET", "/api/v1/nodes", 200, NO_NODES)
+
     private val url = "https://example.invalid/x"
 
     private fun string(id: Int, vararg args: Any): String = ApplicationProvider.getApplicationContext<Context>().getString(id, *args)
@@ -68,48 +74,46 @@ class PolicyFlowsTest {
 
     @Test
     fun `the first run's welcome page leads to 新增訂閱, and the first import hands over to 活動`() {
-        val engine = FakeEngine(subscriptions = emptyList())
-        show(engine)
-        assertTrue("the welcome page", welcomeShown())
+        noNodes()
+        show(FakeEngine(subscriptions = emptyList()))
+        compose.waitUntil(READ_MS) { welcomeShown() }
         roundAction(CONNECT).assertDoesNotExist()
         compose.onNodeWithText("Connected", substring = true).assertDoesNotExist()
 
         compose.onNodeWithText(string(R.string.rv_add_subscription)).performClick()
         typeUrl()
+        // honk publishes the new subscription's nodes as it adds it.
+        honk.on("GET", "/api/v1/nodes", 200, HonkFixtures.body("nodes/rv-sample"))
         compose.onNodeWithText(string(R.string.rv_add_import)).performClick()
+        compose.waitUntil(READ_MS) { shows(string(R.string.rv_done)) }
         compose.onNodeWithText(string(R.string.rv_done)).performClick()
 
-        assertFalse("no welcome page", welcomeShown())
+        compose.waitUntil(READ_MS) { !welcomeShown() }
         roundAction(CONNECT).assertExists()
     }
 
     @Test
     fun `a tapped node is chosen in its group`() {
-        val engine = FakeEngine()
-        show(engine, ActivityKey, PoliciesKey, GroupKey("g-Auto"))
+        val honk = honk.apply { on("PUT", SELECTION, 200, "{}") }
+        show(FakeEngine(), ActivityKey, PoliciesKey, GroupKey("g-Auto"))
         // The row's own click, not a tap at its centre, which a scroll can leave under the floating 測試群組.
-        compose.waitUntil(READ_MS) { shows("jp-01") }
-        compose.onNodeWithText("jp-01").performSemanticsAction(SemanticsActions.OnClick)
-        compose.runOnIdle {
-            val auto = engine.groups.value.single { it.id == "g-Auto" }
-            assertEquals("n-85d011c7e5f60718", auto.selectedId)
-            assertTrue(auto.pinned)
-        }
+        compose.waitUntil(READ_MS) { shows("Hong Kong 03") }
+        compose.onNodeWithText("Hong Kong 03").performSemanticsAction(SemanticsActions.OnClick)
+        // On an automatic group the choice is a pin, for both networks while 分開選擇 is off.
+        val selections = { synchronized(honk) { honk.calls.filter { it.method == "PUT" && it.path == SELECTION }.map { it.body } } }
+        compose.waitUntil(READ_MS) { selections().isNotEmpty() }
+        assertEquals(listOf("""{"member_id":"n-0001939000000000","network":"both"}"""), selections())
     }
 
     @Test
-    fun `a group page shows its name and a way back until the engine has loaded`() {
-        // As the real engine is before it has loaded: no groups yet, so the one the page names is not known to exist.
-        val engine = FakeEngine(groups = emptyList()).apply { ready.value = false }
-        show(engine, ActivityKey, PoliciesKey, GroupKey("g-Proxy"))
-        compose.onNodeWithContentDescription("Back").assertExists()
-        compose.onNodeWithText("Test this group").assertDoesNotExist()
-
-        compose.runOnIdle {
-            engine.groups.value = FakeEngine.SAMPLE_GROUPS
-            engine.ready.value = true
+    fun `a group page shows its name and a way back until honk has answered`() {
+        // honk answers no read while the test holds it (FakeHonk.call is synchronized), so the group is not known yet.
+        val honk = honk
+        synchronized(honk) {
+            show(FakeEngine(), ActivityKey, PoliciesKey, GroupKey("g-Proxy"))
+            compose.onNodeWithContentDescription("Back").assertExists()
+            compose.onNodeWithText("Test this group").assertIsNotEnabled()
         }
-        // The page reads the engine off the main thread, which waitForIdle does not wait for.
         compose.waitUntil(READ_MS) { shows("Test this group") }
     }
 
@@ -128,7 +132,7 @@ class PolicyFlowsTest {
         roundAction(DISCONNECT).assertIsEnabled()
 
         compose.runOnIdle { engine.disconnect() }
-        assertTrue("the welcome page", welcomeShown())
+        compose.waitUntil(READ_MS) { welcomeShown() }
         roundAction(CONNECT).assertDoesNotExist()
         roundAction(DISCONNECT).assertDoesNotExist()
     }
@@ -143,6 +147,7 @@ class PolicyFlowsTest {
             }
         }
         var starts = 0
+        noNodes()
         compose.setContent { SeedTheme { DoonaApp(engine, FakeInstalledApps(), onConnect = { starts++ }) } }
         compose.runOnIdle { fake.subscriptions.value = emptyList() }
 
@@ -159,12 +164,14 @@ class PolicyFlowsTest {
         compose.runOnIdle { assertEquals(Status.Stopping, fake.status.value) }
 
         compose.runOnIdle { fake.status.value = Status.Stopped }
-        assertTrue("the welcome page", welcomeShown())
+        compose.waitUntil(READ_MS) { welcomeShown() }
     }
 
     private companion object {
         const val CONNECT = "Connect"
         const val DISCONNECT = "Disconnect"
+        const val SELECTION = "/api/v1/groups/g-Auto/selection"
+        const val NO_NODES = """{"nodes":[],"next_cursor":null}"""
     }
 }
 

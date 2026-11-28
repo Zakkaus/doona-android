@@ -1,7 +1,5 @@
 package dev.doona.android.feature.nodes
 
-import android.content.ClipboardManager
-import android.content.Context
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -12,6 +10,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -24,31 +23,20 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
-import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.doona.android.designsystem.rv.RvPullMotion
 import dev.doona.android.designsystem.rv.RvPullState
 import dev.doona.android.designsystem.rv.RvTheme
 import dev.doona.android.designsystem.rv.rememberRvPullState
 import dev.doona.android.designsystem.rv.rvSystemScheme
-import dev.doona.android.engine.Catalog
-import dev.doona.android.engine.Engine
-import dev.doona.android.engine.EngineException
-import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.Group
-import dev.doona.android.engine.GroupKind
-import dev.doona.android.engine.Member
-import dev.doona.android.engine.Network
-import dev.doona.android.engine.NodeInfo
-import dev.doona.android.engine.ShareLink
-import dev.doona.android.engine.Subscription
-import dev.doona.android.engine.SubscriptionFetch
-import dev.doona.android.engine.SubscriptionFormat
-import dev.doona.android.engine.fake.FakeEngine
-import dev.doona.android.engine.fake.FakeRuleMode
 import dev.doona.android.feature.model.CoreNodePlaces
+import dev.doona.android.vpn.NativeApi
+import dev.doona.android.vpn.NativeResponse
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -58,65 +46,115 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.coroutines.CoroutineContext
 
-/** The 節點 routes as a user drives them: the real ViewModel and pages on the fake engine, as 活動's entry hosts them. */
+/** The 節點 routes as a user drives them: the real ViewModel and pages on a fake honk, as 活動's entry hosts them. */
 @RunWith(AndroidJUnit4::class)
 @Config(qualifiers = "w412dp-h915dp")
 class NodesRouteTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private val selected = CopyOnWriteArrayList<Triple<String, String?, Network?>>()
+    private class N(val id: String, val name: String, val provider: String? = "s-1", val latency: Int? = null, val protocol: String? = "vless")
 
-    /** Picks that fail with Busy before the core switches; a latency test that fails. */
-    private val busyPicks = AtomicInteger()
-    private var testsFail = false
+    private class P(val id: String, val name: String, val nodes: Int)
 
-    @Volatile private var readsFail = false
+    /**
+     * honk as these pages read and write it: one group, [group], of every node, whose selection a pick moves; the routing's
+     * fallback names it unless [fallback] names another. Picks that fail with Busy ([busyPicks]), probes that fail
+     * ([testsFail]) and a failing read of the nodes ([readsFail]).
+     */
+    private inner class Honk(
+        val nodes: List<N> = SAMPLE,
+        val providers: List<P> = listOf(P("s-1", "Harbor", 3)),
+        @Volatile var tcp: String? = nodes.firstOrNull()?.id,
+        @Volatile var udp: String? = tcp,
+        val group: String = MAIN,
+        val name: String = "Proxy",
+        val fallback: String = name,
+    ) : NativeApi {
+        override fun call(method: String, path: String, body: String?, headers: Map<String, String>): NativeResponse = when (method) {
+            "GET" -> read(path)
+            "PUT" -> if (path == "/api/v1/groups/$group/selection") select(Json.parseToJsonElement(body!!).jsonObject) else NativeResponse(404, ERROR)
+            "POST" -> post(path, body)
+            else -> NativeResponse(404, ERROR)
+        }
 
-    private val tested = CopyOnWriteArrayList<String?>()
-    private val updated = CopyOnWriteArrayList<String>()
+        private fun read(path: String): NativeResponse = when (path) {
+            "/api/v1/nodes" -> if (readsFail) NativeResponse(500, ERROR) else ok("""{"nodes":[${nodes.joinToString(",") { node(it) }}],"next_cursor":null}""")
+            "/api/v1/providers" -> ok("""{"providers":[${providers.joinToString(",") { provider(it) }}],"next_cursor":null}""")
+            "/api/v1/groups" -> ok("""[{"id":"$group","name":"$name"}]""")
+            "/api/v1/groups/$group" -> ok(groupBody())
+            "/api/v1/rules" -> ok("""{"generation_id":"1","rules":[],"fallback":{"outbound":"$fallback","source":null}}""")
+            "/api/v1/operations/op-probe" -> ok(succeeded("{}"))
+            "/api/v1/operations/op-refresh" -> ok(succeeded(provider(providers.first())))
+            else -> NativeResponse(404, ERROR)
+        }
 
-    private fun engine(extra: List<Member> = emptyList(), udp: String? = null, format: SubscriptionFormat = SubscriptionFormat.ShareLinks): Engine {
-        val sub = Subscription("s-1", "Harbor", "https://sub.example.net/token", nodes = 3, lastFetch = SubscriptionFetch(1L, format))
-        val members = listOf(
-            Member("n-jp", "🇯🇵 Tokyo 01", subscriptionId = "s-1"),
-            Member("n-odd", "🦄 Osaka 02", subscriptionId = "s-1"),
-            Member("n-apple", "🍎", subscriptionId = "s-1"),
-        ) + extra
-        val tcp = Group.Selection("n-jp", pinned = true)
-        val main = Group(MAIN, "Proxy", GroupKind.Selector, members, tcp, udp?.let { Group.Selection(it, pinned = true) } ?: tcp)
-        val fake = FakeEngine(groups = listOf(main), subscriptions = listOf(sub))
-        return object : Engine by fake {
-            override suspend fun select(groupId: String, memberId: String?, network: Network?): Result<Unit> {
-                selected += Triple(groupId, memberId, network)
-                if (busyPicks.getAndUpdate { (it - 1).coerceAtLeast(0) } > 0) return Result.failure(EngineException(ErrorCode.Busy))
-                return fake.select(groupId, memberId, network)
+        private fun post(path: String, body: String?): NativeResponse = when {
+            path == "/api/v1/probes" -> {
+                tested += Json.parseToJsonElement(body!!).jsonObject.getValue("target").toString()
+                if (testsFail) NativeResponse(500, ERROR) else NativeResponse(202, accepted("op-probe"))
             }
 
-            override suspend fun testLatency(groupId: String?): Result<Unit> {
-                tested += groupId
-                return if (testsFail) Result.failure(EngineException(ErrorCode.Internal)) else fake.testLatency(groupId)
+            path.endsWith("/refresh") -> {
+                updated += path.removePrefix("/api/v1/providers/").removeSuffix("/refresh")
+                NativeResponse(202, accepted("op-refresh"))
             }
 
-            override suspend fun nodeShareLink(nodeId: String): Result<ShareLink> = Result.success(ShareLink("vless://$nodeId@example.net:443"))
+            else -> NativeResponse(404, ERROR)
+        }
 
-            override suspend fun updateSubscription(id: String): Result<Subscription> {
-                updated += id
-                return fake.updateSubscription(id)
-            }
+        private fun select(body: kotlinx.serialization.json.JsonObject): NativeResponse {
+            val member = body.getValue("member_id").jsonPrimitive.content
+            val network = body.getValue("network").jsonPrimitive.content
+            selected += Triple(group, member, network)
+            if (busyPicks.getAndUpdate { (it - 1).coerceAtLeast(0) } > 0) return NativeResponse(409, ERROR)
+            if (network != "udp") tcp = member
+            if (network != "tcp") udp = member
+            return ok("{}")
+        }
 
-            // A node the profile lists itself whose details the core has not sent yet.
-            override suspend fun nodes(ids: List<String>?): Result<List<NodeInfo>> =
-                if (readsFail) Result.failure(EngineException(ErrorCode.Busy)) else fake.nodes(ids).map { all -> all.filter { it.id != "n-mine" } }
+        private fun groupBody(): String {
+            val members = nodes.joinToString(",") { """{"id":"${it.id}","name":"${it.name}","kind":"node"}""" }
+            fun sel(id: String?) = id?.let { """{"member_id":"$it","resolved_leaf_node_id":"$it","source":"override"}""" } ?: "null"
+            return """{"id":"$group","name":"$name","icon":null,"policy":{"kind":"selector","native":"selector"},"members":[$members],""" +
+                """"runtime":{"selection":{"tcp":${sel(tcp)},"udp":${sel(udp)}},"health":[]},"capabilities":{"can_select":true,"can_override":false}}"""
         }
     }
 
-    private fun viewModel(engine: Engine) = NodesViewModel(engine, Dispatchers.Unconfined, CoreNodePlaces, clock = { NOW })
+    /** A dispatcher that holds what it is given until [release]: the first read waits, as before honk answers. */
+    private class Held : CoroutineDispatcher() {
+        private val held = mutableListOf<Runnable>()
+        private var open = false
+
+        override fun dispatch(context: CoroutineContext, block: Runnable) {
+            if (open) block.run() else held += block
+        }
+
+        fun release() {
+            open = true
+            held.toList().also { held.clear() }.forEach { it.run() }
+        }
+    }
+
+    private val selected = CopyOnWriteArrayList<Triple<String, String, String>>()
+
+    /** Picks that fail with Busy before honk switches; a latency test that fails. */
+    private val busyPicks = AtomicInteger()
+
+    @Volatile private var testsFail = false
+
+    @Volatile private var readsFail = false
+
+    private val tested = CopyOnWriteArrayList<String>()
+    private val updated = CopyOnWriteArrayList<String>()
+
+    private fun viewModel(api: NativeApi, io: CoroutineDispatcher = Dispatchers.Unconfined) = NodesViewModel(api, io, CoreNodePlaces, clock = { NOW })
 
     @Test
     fun `the picker draws a recognised emoji as our disc and keeps an unknown one, and a pick switches and closes`() {
-        val vm = viewModel(engine())
+        val vm = viewModel(Honk())
         var pull: RvPullState? = null
         var drawn = 0
         compose.setContent {
@@ -140,7 +178,7 @@ class NodesRouteTest {
         compose.onNodeWithText("🦄 Osaka 02").performClick()
         compose.waitUntil(5_000) { selected.isNotEmpty() && pull?.open == false }
         compose.waitForIdle()
-        assertEquals(listOf(Triple(MAIN, "n-odd", null)), selected.toList())
+        assertEquals(listOf(Triple(MAIN, "n-odd", "both")), selected.toList())
         assertEquals("n-odd", vm.ui.value.state.currentId)
         // 活動 was composed once: the picker covered it without taking its state.
         compose.onNodeWithText("activity 1").assertExists()
@@ -149,7 +187,7 @@ class NodesRouteTest {
 
     @Test
     fun `search filters by the raw name and a pick makes the node the main one and closes`() {
-        val vm = viewModel(engine())
+        val vm = viewModel(Honk())
         var closed = false
         compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeSearchRoute(vm, onClose = { closed = true }, onDetail = {}, onAdd = {}) } }
         compose.onNode(hasSetTextAction()).performTextInput("osaka")
@@ -157,13 +195,13 @@ class NodesRouteTest {
         compose.onNodeWithText("Tokyo 01").assertDoesNotExist()
         compose.onNodeWithText("🦄 Osaka 02").performClick()
         compose.waitUntil(5_000) { closed }
-        assertEquals(listOf(Triple(MAIN, "n-odd", null)), selected.toList())
+        assertEquals(listOf(Triple(MAIN, "n-odd", "both")), selected.toList())
     }
 
     @Test
     fun `a pick the core refuses keeps the picker open under its banner, and 重試 switches and closes`() {
         busyPicks.set(1)
-        val vm = viewModel(engine())
+        val vm = viewModel(Honk())
         var pull: RvPullState? = null
         compose.setContent {
             RvTheme(rvSystemScheme(false), false) {
@@ -180,7 +218,7 @@ class NodesRouteTest {
 
         compose.onNodeWithText("Try again").performClick()
         compose.waitUntil(5_000) { pull?.open == false }
-        assertEquals(listOf(Triple(MAIN, "n-odd", null), Triple(MAIN, "n-odd", null)), selected.toList())
+        assertEquals(listOf(Triple(MAIN, "n-odd", "both"), Triple(MAIN, "n-odd", "both")), selected.toList())
         assertEquals(null, vm.ui.value.failure)
     }
 
@@ -188,7 +226,7 @@ class NodesRouteTest {
     fun `the main node's page shows a failed test and a failed pick`() {
         testsFail = true
         busyPicks.set(1)
-        val vm = viewModel(engine())
+        val vm = viewModel(Honk())
         compose.setContent { RvTheme(rvSystemScheme(false), false) { MainNodeRoute(vm, onBack = {}, onSearch = {}, onAdd = {}) } }
         compose.waitForIdle()
         compose.onNodeWithContentDescription("Test latency").performClick()
@@ -201,7 +239,7 @@ class NodesRouteTest {
 
     @Test
     fun `a node of no subscription is listed under 組態內 in the picker, and the 訂閱 chip can pick it`() {
-        val vm = viewModel(engine(extra = listOf(Member("n-mine", "Home 01"))))
+        val vm = viewModel(Honk(SAMPLE + N("n-mine", "Home 01", provider = null, protocol = null)))
         compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeSearchRoute(vm, onClose = {}, onDetail = {}, onAdd = {}) } }
         compose.waitForIdle()
         compose.onNodeWithText("In configuration").assertExists()
@@ -219,11 +257,8 @@ class NodesRouteTest {
 
     @Test
     fun `節點's 訂閱 chip shows one subscription's nodes and its 排序 chip orders them`() {
-        val harbor = Subscription("s-1", "Harbor", "https://sub.example.net/a", nodes = 2, lastFetch = SubscriptionFetch(1L, SubscriptionFormat.Clash))
-        val bay = Subscription("s-2", "Bay", "https://sub.example.net/b", nodes = 1, lastFetch = SubscriptionFetch(1L, SubscriptionFormat.Clash))
-        val members = listOf(Member("n-jp", "Tokyo 01", 20, subscriptionId = "s-1"), Member("n-os", "Osaka 01", 30, subscriptionId = "s-1"), Member("n-sg", "Singapore 01", 10, subscriptionId = "s-2"))
-        val main = Group(MAIN, "Proxy", GroupKind.Selector, members, Group.Selection("n-jp", pinned = true))
-        val vm = viewModel(FakeEngine(groups = listOf(main), subscriptions = listOf(harbor, bay)))
+        val nodes = listOf(N("n-jp", "Tokyo 01", "s-1", 20), N("n-os", "Osaka 01", "s-1", 30), N("n-sg", "Singapore 01", "s-2", 10))
+        val vm = viewModel(Honk(nodes, listOf(P("s-1", "Harbor", 2), P("s-2", "Bay", 1))))
         compose.setContent { RvTheme(rvSystemScheme(false), false) { NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {}) } }
         compose.waitForIdle()
         compose.onAllNodesWithText("Singapore 01").onFirst().assertExists()
@@ -244,7 +279,7 @@ class NodesRouteTest {
     /** 依名稱 orders by the name the row draws (decision 2026-11-25 19:25): a name of a recognised emoji alone reads as its mark's name. */
     @Test
     fun `the picker's 依名稱 sorts a name of a mark alone by what the row draws`() {
-        val vm = viewModel(engine())
+        val vm = viewModel(Honk())
         compose.setContent { RvTheme(rvSystemScheme(false), false) { NodesPull(vm, RvPullMotion.Sheet, rememberRvPullState(open = true), onDetail = {}, onAdd = {}) {} } }
         compose.waitForIdle()
         compose.onNodeWithText("By latency").performClick()
@@ -255,15 +290,15 @@ class NodesRouteTest {
         assertEquals(listOf("Apple", "Tokyo 01", "🦄 Osaka 02"), rowNames(setOf("Apple", "Tokyo 01", "🦄 Osaka 02")))
     }
 
-    /** The node's page tests that node alone, with one plan (the main group, which lists it), as its row's menu does. */
+    /** The node's page probes that node alone, as its row's menu does. */
     @Test
     fun `the node's page 測試延遲 tests that node, not every group`() {
-        val vm = viewModel(engine())
+        val vm = viewModel(Honk())
         compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeRoute(vm, "n-jp", onBack = {}) } }
         compose.waitForIdle()
         compose.onNodeWithContentDescription("Test latency").performClick()
         compose.waitUntil(5_000) { tested.isNotEmpty() }
-        assertEquals(listOf<String?>(MAIN), tested.toList())
+        assertEquals(listOf(NODE_PROBE), tested.toList())
     }
 
     /** The node rows' names, top to bottom. */
@@ -275,7 +310,7 @@ class NodesRouteTest {
 
     @Test
     fun `with the networks apart the picker checks both nodes and 套用到 sends a pick to one network`() {
-        val vm = viewModel(engine(udp = "n-odd"))
+        val vm = viewModel(Honk(udp = "n-odd"))
         compose.setContent { RvTheme(rvSystemScheme(false), false) { MainNodeRoute(vm, onBack = {}, onSearch = {}, onAdd = {}) } }
         compose.waitForIdle()
         assertEquals(setOf("n-jp", "n-odd"), vm.ui.value.state.current)
@@ -283,12 +318,12 @@ class NodesRouteTest {
         compose.onNodeWithText("UDP").performClick()
         compose.onNodeWithText("Apple").performClick()
         compose.waitUntil(5_000) { selected.isNotEmpty() }
-        assertEquals(listOf(Triple(MAIN, "n-apple", Network.Udp)), selected.toList())
+        assertEquals(listOf(Triple(MAIN, "n-apple", "udp")), selected.toList())
     }
 
     @Test
     fun `a node's page keeps the raw name`() {
-        val vm = viewModel(engine())
+        val vm = viewModel(Honk())
         var back = false
         compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeRoute(vm, "n-jp", onBack = { back = true }) } }
         compose.waitForIdle()
@@ -299,10 +334,8 @@ class NodesRouteTest {
 
     @Test
     fun `with no main group the pages show no main node and the node's page cannot make one main`() {
-        val sub = Subscription("s-1", "Harbor", "https://sub.example.net/token", nodes = 1, lastFetch = SubscriptionFetch(1L, SubscriptionFormat.Clash))
-        // A hand-edited profile: one group of the user's own, no Proxy, so the catalog's main group is missing.
-        val mine = Group("g-Mine", "Mine", GroupKind.Selector, listOf(Member("n-jp", "Tokyo 01", subscriptionId = "s-1")), Group.Selection("n-jp", pinned = true))
-        val vm = viewModel(FakeEngine(groups = listOf(mine), subscriptions = listOf(sub)))
+        // A hand-edited profile: one group of the user's own, and a fallback that goes direct, so there is no main group.
+        val vm = viewModel(Honk(listOf(N("n-jp", "Tokyo 01")), listOf(P("s-1", "Harbor", 1)), group = "g-Mine", name = "Mine", fallback = "direct"))
         var node by mutableStateOf(false)
         compose.setContent {
             RvTheme(rvSystemScheme(false), false) {
@@ -320,7 +353,7 @@ class NodesRouteTest {
 
     @Test
     fun `節點 checks both the TCP and the UDP node while the main group's networks are apart`() {
-        val vm = viewModel(engine(udp = "n-odd"))
+        val vm = viewModel(Honk(udp = "n-odd"))
         compose.setContent { RvTheme(rvSystemScheme(false), false) { NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {}) } }
         compose.waitForIdle()
         val inUse = SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "In use")
@@ -330,9 +363,8 @@ class NodesRouteTest {
     }
 
     @Test
-    fun `a failed read of the nodes' details shows on 節點 and the node's page with dashes, and 重試 reads them again`() {
-        readsFail = true
-        val vm = viewModel(engine())
+    fun `a failed read shows on 節點 and the node's page, and 重試 reads again`() {
+        val vm = viewModel(Honk())
         var node by mutableStateOf(false)
         compose.setContent {
             RvTheme(rvSystemScheme(false), false) {
@@ -340,34 +372,25 @@ class NodesRouteTest {
             }
         }
         compose.waitForIdle()
+        // A pick reads again; that read fails and keeps the nodes read before it.
+        readsFail = true
+        vm.pick("n-odd")
+        compose.waitUntil(5_000) { vm.ui.value.failure != null }
         compose.onNodeWithText("Could not read the nodes").assertExists()
-        // The row's menu has no share link for a node the core has not described (no `://:0`).
-        compose.onAllNodesWithText("Tokyo 01").onFirst().performTouchInput { longClick() }
-        compose.waitForIdle()
-        compose.onNodeWithText("Test latency").assertExists()
-        compose.onNodeWithText("Copy share link").assertDoesNotExist()
         node = true
         compose.waitForIdle()
         compose.onNodeWithText("Could not read the nodes").assertExists()
-        // Protocol, server, port, transport and TLS read as dashes, never a port 0 or TLS Off the core did not send.
-        val dashes = compose.onAllNodesWithText("—", useUnmergedTree = true).fetchSemanticsNodes().size
         readsFail = false
         compose.onNodeWithText("Try again").performClick()
         compose.waitUntil(5_000) { vm.ui.value.failure == null }
         compose.waitForIdle()
         compose.onNodeWithText("Could not read the nodes").assertDoesNotExist()
-        assertTrue(vm.ui.value.state.node("n-jp")!!.described)
-        assertEquals(dashes - 5, compose.onAllNodesWithText("—", useUnmergedTree = true).fetchSemanticsNodes().size)
     }
 
     @Test
     fun `two subscriptions of one name stay apart in the 訂閱 menu, and one that gave no node is not offered`() {
-        val first = Subscription("s-1", "Harbor", "https://sub.example.net/a", nodes = 1, lastFetch = SubscriptionFetch(1L, SubscriptionFormat.Clash))
-        val second = Subscription("s-2", "Harbor", "https://sub.example.net/b", nodes = 1, lastFetch = SubscriptionFetch(1L, SubscriptionFormat.Clash))
-        val failed = Subscription("s-3", "Lantern", "https://lantern.example.net/c", nodes = 0, lastFetch = SubscriptionFetch(1L, SubscriptionFormat.Clash))
-        val members = listOf(Member("n-jp", "Tokyo 01", 20, subscriptionId = "s-1"), Member("n-os", "Osaka 01", 30, subscriptionId = "s-2"))
-        val main = Group(MAIN, "Proxy", GroupKind.Selector, members, Group.Selection("n-jp", pinned = true))
-        val vm = viewModel(FakeEngine(groups = listOf(main), subscriptions = listOf(first, second, failed)))
+        val nodes = listOf(N("n-jp", "Tokyo 01", "s-1", 20), N("n-os", "Osaka 01", "s-2", 30))
+        val vm = viewModel(Honk(nodes, listOf(P("s-1", "Harbor", 1), P("s-2", "Harbor", 1), P("s-3", "Lantern", 0))))
         compose.setContent { RvTheme(rvSystemScheme(false), false) { NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {}) } }
         compose.waitForIdle()
         compose.onNodeWithText("All subscriptions").performClick()
@@ -381,16 +404,19 @@ class NodesRouteTest {
 
     @Test
     fun `a node of no subscription names 組態內 as its source on its page`() {
-        val vm = viewModel(engine(extra = listOf(Member("n-mine", "Home 01"))))
+        val vm = viewModel(Honk(SAMPLE + N("n-mine", "Home 01", provider = null, protocol = null)))
         compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeRoute(vm, "n-mine", onBack = {}) } }
         compose.waitForIdle()
         compose.onNodeWithText("In configuration", useUnmergedTree = true).assertExists()
     }
 
-    /** The app gives the rows' menus their actions (they were the sample's alone): 設為主節點, 測試延遲, 複製分享連結, 更新. */
+    /**
+     * The app gives the rows' menus their actions (they were the sample's alone): 設為主節點, 測試延遲, 更新; honk keeps no
+     * share link, so 複製分享連結 is there but takes no press.
+     */
     @Test
     fun `the rows' menus run the app's own actions`() {
-        val vm = viewModel(engine())
+        val vm = viewModel(Honk())
         var pull by mutableStateOf(false)
         compose.setContent {
             RvTheme(rvSystemScheme(false), false) {
@@ -406,20 +432,17 @@ class NodesRouteTest {
         compose.waitForIdle()
         compose.onNodeWithText("Set as main node").performClick()
         compose.waitUntil(5_000) { selected.isNotEmpty() }
-        assertEquals(listOf(Triple(MAIN, "n-odd", null)), selected.toList())
+        assertEquals(listOf(Triple(MAIN, "n-odd", "both")), selected.toList())
         compose.waitForIdle()
         compose.onAllNodesWithText("Tokyo 01").onFirst().performTouchInput { longClick() }
         compose.waitForIdle()
         compose.onNodeWithText("Test latency").performClick()
         compose.waitUntil(5_000) { tested.isNotEmpty() }
-        assertEquals(listOf<String?>(MAIN), tested.toList())
+        assertEquals(listOf(NODE_PROBE), tested.toList())
         compose.waitForIdle()
         compose.onAllNodesWithText("Tokyo 01").onFirst().performTouchInput { longClick() }
         compose.waitForIdle()
-        compose.onNodeWithText("Copy share link").performClick()
-        compose.waitForIdle()
-        val clipboard = ApplicationProvider.getApplicationContext<Context>().getSystemService(ClipboardManager::class.java)
-        assertEquals("vless://n-jp@example.net:443", clipboard.primaryClip?.getItemAt(0)?.text?.toString())
+        compose.onNodeWithText("Copy share link").assertExists().assertHasNoClickAction()
         // The picker's 訂閱 row: 更新 updates that subscription.
         pull = true
         compose.waitForIdle()
@@ -430,27 +453,9 @@ class NodesRouteTest {
         assertEquals(listOf("s-1"), updated.toList())
     }
 
-    /** The core keeps a share link only for a share-link subscription's node (Engine.nodeShareLink): no other node offers one. */
-    @Test
-    fun `a node of a subscription that is not share links offers no share link`() {
-        val vm = viewModel(engine(format = SubscriptionFormat.Clash))
-        compose.setContent { RvTheme(rvSystemScheme(false), false) { NodesRoute(vm, onBack = {}, onOpen = {}, onAllNodes = {}, onAdd = {}) } }
-        compose.waitForIdle()
-        assertTrue(vm.ui.value.state.node("n-jp")!!.described)
-        compose.onAllNodesWithText("Tokyo 01").onFirst().performTouchInput { longClick() }
-        compose.waitForIdle()
-        compose.onNodeWithText("Test latency").assertExists()
-        compose.onNodeWithText("Copy share link").assertDoesNotExist()
-    }
-
     @Test
     fun `the picker says when a search matches nothing and lists no subscription that gave no node`() {
-        val empty = Subscription("s-2", "Lantern", "https://lantern.example.net/c", nodes = 0, lastFetch = SubscriptionFetch(1L, SubscriptionFormat.Clash))
-        val fake = engine()
-        val vm = viewModel(object : Engine by fake {
-            override val subscriptions = MutableStateFlow(fake.subscriptions.value + empty)
-            override val catalog = MutableStateFlow(fake.catalog.value?.let { it.copy(subscriptions = it.subscriptions + empty) })
-        })
+        val vm = viewModel(Honk(providers = listOf(P("s-1", "Harbor", 3), P("s-2", "Lantern", 0))))
         compose.setContent { RvTheme(rvSystemScheme(false), false) { NodeSearchRoute(vm, onClose = {}, onDetail = {}, onAdd = {}) } }
         compose.waitForIdle()
         compose.onNodeWithText("Harbor").assertExists()
@@ -463,7 +468,7 @@ class NodesRouteTest {
 
     @Test
     fun `with no node the pull-down picker offers 新增訂閱 instead of chips over nothing`() {
-        val vm = viewModel(FakeEngine(groups = listOf(Group(MAIN, "Proxy", GroupKind.Selector, emptyList(), Group.Selection(null, pinned = false)))))
+        val vm = viewModel(Honk(nodes = emptyList()))
         var added = false
         compose.setContent {
             RvTheme(rvSystemScheme(false), false) {
@@ -482,11 +487,8 @@ class NodesRouteTest {
      */
     @Test
     fun `before the first read the pickers show no empty state`() {
-        val fake = engine()
-        val catalog = MutableStateFlow<Catalog?>(null)
-        val vm = viewModel(object : Engine by fake {
-            override val catalog = catalog
-        })
+        val io = Held()
+        val vm = viewModel(Honk(), io)
         var page by mutableIntStateOf(0)
         compose.setContent {
             RvTheme(rvSystemScheme(false), false) {
@@ -502,7 +504,7 @@ class NodesRouteTest {
             compose.waitForIdle()
             compose.onNodeWithText("Add subscription").assertDoesNotExist()
         }
-        catalog.value = fake.catalog.value
+        io.release()
         compose.waitForIdle()
         compose.onAllNodesWithText("Tokyo 01", substring = true).onFirst().assertExists()
     }
@@ -510,11 +512,8 @@ class NodesRouteTest {
     /** 規則's 主節點 page carries every node picker's 訂閱 and 排序 chips (ruling q-p3c-mainchips), not the range row. */
     @Test
     fun `the main node's page filters by subscription with the pickers' chips`() {
-        val harbor = Subscription("s-1", "Harbor", "https://sub.example.net/a", nodes = 1, lastFetch = SubscriptionFetch(1L, SubscriptionFormat.Clash))
-        val bay = Subscription("s-2", "Bay", "https://sub.example.net/b", nodes = 1, lastFetch = SubscriptionFetch(1L, SubscriptionFormat.Clash))
-        val members = listOf(Member("n-jp", "Tokyo 01", 20, subscriptionId = "s-1"), Member("n-sg", "Singapore 01", 10, subscriptionId = "s-2"))
-        val main = Group(MAIN, "Proxy", GroupKind.Selector, members, Group.Selection("n-jp", pinned = true))
-        val vm = viewModel(FakeEngine(groups = listOf(main), subscriptions = listOf(harbor, bay)))
+        val nodes = listOf(N("n-jp", "Tokyo 01", "s-1", 20), N("n-sg", "Singapore 01", "s-2", 10))
+        val vm = viewModel(Honk(nodes, listOf(P("s-1", "Harbor", 1), P("s-2", "Bay", 1))))
         compose.setContent { RvTheme(rvSystemScheme(false), false) { MainNodeRoute(vm, onBack = {}, onSearch = {}, onAdd = {}) } }
         compose.waitForIdle()
         compose.onNodeWithText("Stability").assertDoesNotExist()
@@ -529,7 +528,27 @@ class NodesRouteTest {
 
     private companion object {
         const val HINT = "Your pick becomes the main node"
-        const val MAIN = FakeRuleMode.MAIN_GROUP_ID
+        const val MAIN = "g-Proxy"
         const val NOW = 1_764_000_000_000L
+        const val NODE_PROBE = """{"type":"node","node_id":"n-jp"}"""
+        const val ERROR = """{"error":{"code":"conflict","message":"The request conflicts with the current state."},"request_id":"request-1"}"""
+        val SAMPLE = listOf(N("n-jp", "🇯🇵 Tokyo 01"), N("n-odd", "🦄 Osaka 02"), N("n-apple", "🍎"))
+
+        fun ok(body: String) = NativeResponse(200, body)
+
+        fun node(n: N): String {
+            val health = n.latency?.let { """{"transport":"tcp","state":"healthy","latency_ms":$it,"observed_at":"2026-11-22T10:00:00Z","error":null}""" }.orEmpty()
+            val sub = n.provider?.let { "\"$it\"" } ?: "null"
+            val protocol = n.protocol?.let { "\"$it\"" } ?: "null"
+            return """{"id":"${n.id}","name":"${n.name}","protocol":$protocol,"stream_transport":null,"subscription_tag":$sub,"provider_id":$sub,""" +
+                """"group_ids":[],"health":[$health]}"""
+        }
+
+        fun provider(p: P) = """{"id":"${p.id}","name":"${p.name}","kind":"subscription","url_redacted":"https://sub.example.net/${p.id}",""" +
+            """"node_count":${p.nodes},"updated_at":null,"expires_at":null,"traffic":null,"status":"ok","last_error":null}"""
+
+        fun accepted(id: String) = """{"operation_id":"$id","kind":"probe","status":"queued","href":"/api/v1/operations/$id"}"""
+
+        fun succeeded(result: String) = """{"operation_id":"op","kind":"probe","status":"succeeded","result":$result,"error":null}"""
     }
 }

@@ -102,14 +102,15 @@ internal fun RvBannerSlot(banner: RvNotice?, gapBelow: Dp = RvSpace.cardGap) {
  * An empty state where a section is not set up yet (活動 with no subscription), as Revolut's product that is not opened
  * (revolut-ux3 §4): no glyph and no disc, the [title] over one [line], centred, then one card on the caller's gutter
  * whose rows are the [add] row and, with a [second] way in (訂閱's 新增節點 under 新增訂閱, owner q-p5d-empty
- * 2026-11-26), a second add row ([RvAddRow], owner 2026-11-26: every 新增 X entry is that row). The title keeps the row
+ * 2026-11-26), a second add row ([RvAddRow], owner 2026-11-26: every 新增 X entry is that row); with no [add] the page's
+ * own 新增 adds (訂閱's bottom 新增, owner 2026-11-26 21:58) and there is no card. The title keeps the row
  * title's step: Revolut's 44 sp is the hero's, not a notice's. For data that is empty inside a card, [RvEmptyCaption].
  */
 @Composable
 internal fun RvEmptyState(
     title: String,
     line: String,
-    add: String,
+    add: String?,
     onAdd: () -> Unit,
     second: RvAddEntry? = null,
 ) {
@@ -117,6 +118,7 @@ internal fun RvEmptyState(
         RvText(title, Rv.type.rowTitle, align = TextAlign.Center, maxLines = BANNER_TITLE_LINES)
         Spacer(Modifier.height(RvSpace.emptyLine))
         RvText(line, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.Center, maxLines = BANNER_REASON_LINES)
+        if (add == null) return@Column
         Spacer(Modifier.height(RvSpace.chartGap))
         RvCard {
             RvAddRow(add, onAdd)

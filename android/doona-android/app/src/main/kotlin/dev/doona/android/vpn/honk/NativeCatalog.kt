@@ -57,9 +57,10 @@ internal class NativeCatalog(private val api: NativeApi) {
 
     suspend fun removeNode(id: String) = removed("/api/v1/nodes/$id")
 
-    fun groups(): List<Group> = api.read("GET", "/api/v1/groups", ListSerializer(GroupSummary.serializer())).map {
-        api.read("GET", "/api/v1/groups/${it.id}", Group.serializer())
-    }
+    fun groups(): List<Group> = api.read("GET", "/api/v1/groups", ListSerializer(GroupSummary.serializer())).map { group(it.id) }
+
+    /** One group in full; one honk does not have fails with [ErrorCode.NotFound]. */
+    fun group(id: String): Group = api.read("GET", "/api/v1/groups/$id", Group.serializer())
 
     /** Selects [memberId] in [groupId] on [network]: a Selector's choice, or a pin on an automatic group. */
     fun select(groupId: String, memberId: String, network: SelectionNetwork) {
@@ -109,10 +110,14 @@ internal class NativeCatalog(private val api: NativeApi) {
     }
 }
 
-/** A failed fetch names its stage; one that fetched text honk could not read is [ErrorCode.ParseFailed]. */
+/**
+ * A failed fetch names its stage; one that fetched text honk could not read is [ErrorCode.ParseFailed]. An operation
+ * whose change honk could not record in its configuration store (`store_unavailable`) is [ErrorCode.WriteFailed].
+ */
 internal fun SafeError.errorCode(): ErrorCode = when {
     code == "fetch_failed" && (details?.get("stage") as? JsonPrimitive)?.content == "parse_failed" -> ErrorCode.ParseFailed
     code == "fetch_failed" || code == "route_unavailable" -> ErrorCode.FetchFailed
+    code == "store_unavailable" -> ErrorCode.WriteFailed
     else -> ErrorCode.Internal
 }
 

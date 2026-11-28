@@ -16,6 +16,8 @@ import kotlin.math.sqrt
  * [subscription] is its subscription's name, as a node's page shows it; [subscriptionId] is the subscription itself, which
  * the lists group and filter by: two subscriptions may share a name (one host, two tokens). [shareable]: the core keeps
  * the node's original share link, which it does only for a share-link subscription's node (`Engine.nodeShareLink`).
+ * [trendMs] is honk's trend, the last probe against the average of the last ten (`latency_ms` − `avg10_ms`); null where
+ * honk has no such average, and after a test of the app's own ([withTest]).
  */
 @Immutable
 internal data class RvNode(
@@ -33,6 +35,7 @@ internal data class RvNode(
     val subscriptionId: String,
     val history: List<Int?>,
     val shareable: Boolean,
+    val trendMs: Int? = null,
 ) {
     /** A node the profile lists itself, of no subscription (組態內): its [subscriptionId] is [RV_INLINE]. */
     val inline: Boolean get() = subscriptionId == RV_INLINE
@@ -46,8 +49,11 @@ internal data class RvNode(
     /** The last test's result; null for a test that timed out, and for a node with no test yet. */
     val latencyMs: Int? get() = history.lastOrNull()
 
-    /** The change from the test before, when both answered: positive is slower. */
-    val changeMs: Int? get() = history.getOrNull(history.size - 2)?.let { before -> latencyMs?.let { it - before } }
+    /**
+     * The change shown under the latency, positive being slower: [trendMs] when set, else the change from the test
+     * before, when both answered.
+     */
+    val changeMs: Int? get() = trendMs ?: history.getOrNull(history.size - 2)?.let { before -> latencyMs?.let { it - before } }
 
     /** The middle of the answered tests ([rvMedian]); null with fewer than two, where the middle is the test itself and says nothing more. */
     val medianMs: Int? get() = if (answered < 2) null else rvMedian(history.filterNotNull())
@@ -79,7 +85,7 @@ internal data class RvNode(
     fun untested(): RvNode = copy(history = List(history.size) { null })
 
     /** This node after one more test, [ms] being null when it timed out: the history keeps the newest [RV_TESTS] tests. */
-    fun withTest(ms: Int?): RvNode = copy(history = (history + ms).takeLast(RV_TESTS))
+    fun withTest(ms: Int?): RvNode = copy(history = (history + ms).takeLast(RV_TESTS), trendMs = null)
 }
 
 /** The [count] fastest nodes by their last test, ties in list order; every page's 最快 list is this one. */

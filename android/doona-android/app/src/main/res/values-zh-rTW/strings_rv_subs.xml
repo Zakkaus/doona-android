@@ -40,7 +40,6 @@
     <string name="rv_import_add">新增</string>
     <!-- 新增節點 on 訂閱 (p5d; approved s1125f-addnode-*, except the lines marked new) -->
     <string name="rv_addnode">新增節點</string>
-    <string name="rv_addnode_line">貼上節點的分享連結</string>
     <string name="rv_addnode_help">貼上節點的分享連結。節點名稱取自連結的 #⁠片段，沒有則取主機名稱。</string>
     <string name="rv_addnode_link">節點連結</string>
     <string name="rv_addnode_as">將新增為「%1$s」</string>
@@ -72,6 +71,11 @@
     <string name="rv_list_last">%1$s 與 %2$s</string>
     <string name="rv_addnode_joined">已加入%1$s群組。</string>
     <string name="rv_addnode_view_groups">查看策略群組</string>
+    <string name="rv_addnode_groups">加入策略群組</string>
+    <string name="rv_addnode_group_every">已含全部節點</string>
+    <string name="rv_addnode_group_readonly">唯讀檔案</string>
     <string name="rv_node_delete">刪除節點</string>
     <string name="rv_node_delete_body">節點會從組態內與它所在的群組移除。</string>
+    <string name="rv_subs_add_subscription">訂閱</string>
+    <string name="rv_subs_add_node">節點</string>
 </resources>

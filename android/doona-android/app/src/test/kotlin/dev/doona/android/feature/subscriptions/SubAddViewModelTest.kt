@@ -1,36 +1,41 @@
 package dev.doona.android.feature.subscriptions
 
-import dev.doona.android.engine.Engine
-import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.NodeInfo
-import dev.doona.android.engine.Subscription
-import dev.doona.android.engine.fake.FakeEngine
 import dev.doona.android.feature.localnetwork.LocalNetworkAccess
-import dev.doona.android.feature.localnetwork.LocalNetworkEngine
 import dev.doona.android.feature.localnetwork.LocalNetworkPrompt
-import kotlinx.coroutines.CompletableDeferred
+import dev.doona.android.vpn.FakeHonk
+import dev.doona.android.vpn.HonkFixtures
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
+/** 新增訂閱 adding to honk, which answers each add with the provider or with one of its refusals. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SubAddViewModelTest {
+    private val honk = FakeHonk().apply {
+        on("POST", "/api/v1/providers", 201, provider("s9", "Harbor"))
+        on("GET", "/api/v1/nodes", 200, """{"nodes":[],"next_cursor":null}""")
+    }
+
     @Before
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
@@ -50,68 +55,74 @@ class SubAddViewModelTest {
     }
 
     /** A page over [imports], collected as the page collects it. */
-    private fun TestScope.page(
-        engine: Engine,
-        imports: SubscriptionImports,
-        clip: ClipboardLinks = Clip(),
-        lanAsking: Flow<Boolean> = flowOf(false),
-    ) = SubAddViewModel(engine, imports, clip, lanAsking).also { vm ->
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
-    }
+    private fun TestScope.page(imports: SubscriptionImports = imports(), clip: ClipboardLinks = Clip()) =
+        SubAddViewModel(honk, imports, clip, lanAsking = flowOf(false), io = UnconfinedTestDispatcher(testScheduler)).also { vm ->
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        }
 
-    private fun TestScope.imports(engine: Engine) = SubscriptionImports(engine, CoroutineScope(SupervisorJob() + UnconfinedTestDispatcher(testScheduler)))
+    /**
+     * The app's import holder, asking [access] before it adds a link on the local network; on a [slow] dispatcher an
+     * add runs only once the test lets the clock run.
+     */
+    private fun TestScope.imports(slow: Boolean = false, access: LocalNetworkAccess = LocalNetworkAccess { true }) = SubscriptionImports(
+        honk,
+        access,
+        CoroutineScope(SupervisorJob() + UnconfinedTestDispatcher(testScheduler)),
+        if (slow) StandardTestDispatcher(testScheduler) else UnconfinedTestDispatcher(testScheduler),
+    )
 
     private fun SubAddViewModel.type(link: String = LINK) = edit(uiState.value.copy(link = link))
 
-    /** [FakeEngine], whose imports wait for [gate] and then answer [answers] in turn (a success when they run out). */
-    private class Slow(val fake: FakeEngine = FakeEngine(subscriptions = emptyList()), val answers: MutableList<ErrorCode> = mutableListOf()) : Engine by fake {
-        var gate = CompletableDeferred(Unit)
-        var calls = 0
+    private fun adds() = honk.calls.filter { it.method == "POST" && it.path == "/api/v1/providers" }
 
-        override suspend fun addSubscription(url: String, name: String?, userAgent: String?): Result<Subscription> {
-            calls++
-            gate.await()
-            answers.removeFirstOrNull()?.let { return Result.failure(EngineException(it)) }
-            return fake.addSubscription(url, name, userAgent)
-        }
-    }
+    /** The last add's request [field]. */
+    private fun sent(field: String) = Json.parseToJsonElement(adds().last().body!!).jsonObject[field]?.jsonPrimitive?.content
 
     @Test
     fun `an import outlives its page and the next page follows it with what was typed`() = runTest {
-        val engine = Slow().apply { gate = CompletableDeferred() }
-        val imports = imports(engine)
-        page(engine, imports).apply {
+        val imports = imports(slow = true)
+        page(imports).apply {
             type()
             edit(uiState.value.copy(name = "Harbor", userAgent = "clash.meta"))
             import()
             assertEquals(RvAddPhase.Importing(null, null), uiState.value.phase)
         }
-        // The first page is gone; a new one opens while the fetch still runs.
-        val again = page(engine, imports)
+        // The first page is gone; a new one opens while the add still runs.
+        val again = page(imports)
         assertEquals(RvAddPhase.Importing(null, null), again.uiState.value.phase)
         assertEquals(Triple(LINK, "Harbor", "clash.meta"), again.uiState.value.let { Triple(it.link, it.name, it.userAgent) })
         again.import()
-        assertEquals("a second import does not start while one runs", 1, engine.calls)
-        engine.gate.complete(Unit)
+        advanceUntilIdle()
+        assertEquals("a second import does not start while one runs", 1, adds().size)
         val done = again.uiState.value.phase as RvAddPhase.Done
         assertEquals("Harbor", done.sub.name)
-        assertEquals("clash.meta", engine.fake.subscriptions.value.single().userAgent)
+        assertEquals("clash.meta", done.sub.userAgent)
+        assertEquals(listOf("Harbor", "subscription", LINK, "clash.meta"), listOf("name", "kind", "url", "user_agent").map(::sent))
+    }
+
+    @Test
+    fun `a link added with no name is named by its host, as honk requires a name`() = runTest {
+        page().apply {
+            type()
+            import()
+        }
+        assertEquals("sub.example", sent("name"))
+        assertEquals(null, sent("user_agent"))
     }
 
     @Test
     fun `an import that ended well while no page showed it leaves the next page empty`() = runTest {
-        val engine = Slow()
-        val imports = imports(engine)
-        page(engine, imports).apply {
+        val imports = imports()
+        page(imports).apply {
             type()
             import()
         }
-        val again = page(engine, imports)
+        val again = page(imports)
         assertEquals(RvAddState(clipboardHasLink = true), again.uiState.value)
     }
 
     @Test
-    fun `each error code maps to its reason`() = runTest {
+    fun `each error code maps to its reason`() {
         val expected = mapOf(
             ErrorCode.TooLarge to RvAddFailure.TooLarge,
             ErrorCode.ParseFailed to RvAddFailure.NotSubscription,
@@ -131,34 +142,52 @@ class SubAddViewModelTest {
             ErrorCode.ActivationFailed to RvAddFailure.Unreachable,
         )
         assertEquals(ErrorCode.entries.toSet(), expected.keys)
-        expected.forEach { (code, failure) ->
-            val engine = Slow(answers = mutableListOf(code))
-            val vm = page(engine, imports(engine)).apply {
+        expected.forEach { (code, failure) -> assertEquals(code.name, failure, rvAddFailure(code)) }
+    }
+
+    @Test
+    fun `the refusals honk gives an add show their reasons and keep what was typed`() = runTest {
+        val answers = listOf(
+            Triple(409, CONFLICT, RvAddFailure.Unreachable),
+            Triple(413, HonkFixtures.body("errors/request-too-large"), RvAddFailure.TooLarge),
+            Triple(422, CONFLICT, RvAddFailure.Unreachable),
+            Triple(202, failedFetch("parse_failed"), RvAddFailure.NotSubscription),
+            Triple(202, failedFetch("connect"), RvAddFailure.Unreachable),
+        )
+        for ((status, body, failure) in answers) {
+            if (status == 202) {
+                honk.on("POST", "/api/v1/providers", 202, """{"operation_id":"op-add","kind":"provider_create","status":"queued","href":"/api/v1/operations/op-add"}""")
+                honk.on("GET", "/api/v1/operations/op-add", 200, body)
+            } else {
+                honk.on("POST", "/api/v1/providers", status, body)
+            }
+            val vm = page().apply {
                 type()
                 import()
             }
-            assertEquals(code.name, RvAddPhase.Failed(failure), vm.uiState.value.phase)
+            advanceUntilIdle()
+            assertEquals("$status", RvAddPhase.Failed(failure), vm.uiState.value.phase)
             assertEquals("the fields keep what was typed", LINK, vm.uiState.value.link)
         }
     }
 
     @Test
     fun `retry imports again and a success ends with what came in`() = runTest {
-        val engine = Slow(answers = mutableListOf(ErrorCode.FetchFailed))
-        val vm = page(engine, imports(engine)).apply {
+        honk.on("POST", "/api/v1/providers", 503, CONFLICT)
+        val vm = page().apply {
             type()
             import()
         }
         assertEquals(RvAddPhase.Failed(RvAddFailure.Unreachable), vm.uiState.value.phase)
+        honk.on("POST", "/api/v1/providers", 201, provider("s9", "Harbor"))
         vm.import()
         assertTrue(vm.uiState.value.phase is RvAddPhase.Done)
-        assertEquals(2, engine.calls)
+        assertEquals(2, adds().size)
     }
 
     @Test
     fun `nothing is imported while the link, the name or the User-Agent is not valid`() = runTest {
-        val engine = Slow()
-        val vm = page(engine, imports(engine))
+        val vm = page()
         vm.type("ftp://x.example/s")
         vm.import()
         vm.type()
@@ -166,14 +195,13 @@ class SubAddViewModelTest {
         vm.import()
         vm.edit(vm.uiState.value.copy(name = "", userAgent = "a\nb"))
         vm.import()
-        assertEquals(0, engine.calls)
+        assertEquals(0, adds().size)
     }
 
     @Test
     fun `the clipboard is read only when its row is tapped`() = runTest {
         val clip = Clip()
-        val engine = Slow()
-        val vm = page(engine, imports(engine), clip)
+        val vm = page(clip = clip)
         vm.refreshClipboard()
         assertTrue(vm.uiState.value.clipboardHasLink)
         assertEquals(0, clip.reads)
@@ -185,8 +213,7 @@ class SubAddViewModelTest {
     @Test
     fun `a clipboard without a link hides its row when tapped`() = runTest {
         val clip = Clip(content = null)
-        val engine = Slow()
-        val vm = page(engine, imports(engine), clip)
+        val vm = page(clip = clip)
         vm.paste()
         assertEquals(RvAddState(clipboardHasLink = false), vm.uiState.value)
         clip.hasLink = false
@@ -195,57 +222,53 @@ class SubAddViewModelTest {
     }
 
     @Test
-    fun `a link on the local network asks over the form as it was, and once allowed the import runs again`() = runTest {
-        val engine = Slow(answers = mutableListOf(ErrorCode.LocalNetwork))
-        val access = LocalNetworkAccess(granted = { false })
-        val lan = LocalNetworkEngine(engine, access, CoroutineScope(SupervisorJob() + UnconfinedTestDispatcher(testScheduler)))
-        val vm = page(lan, imports(lan), lanAsking = access.prompt.map { it != null }).apply {
-            type(LAN)
+    fun `a link on the local network asks for access first and is added once it is allowed`() = runTest {
+        var granted = false
+        val access = LocalNetworkAccess { granted }
+        val vm = page(imports(access = access)).apply {
+            type(LAN_LINK)
             import()
         }
         assertEquals(LocalNetworkPrompt.Ask, access.prompt.value)
-        assertEquals("the form stays as it was under the prompt", RvAddPhase.Editing, vm.uiState.value.phase)
-        assertEquals(LAN, vm.uiState.value.link)
-        engine.gate = CompletableDeferred()
-        assertTrue(access.requesting())
-        access.answered(allowed = true)
-        assertEquals("the import runs again", RvAddPhase.Importing(null, null), vm.uiState.value.phase)
-        engine.gate.complete(Unit)
+        assertEquals("honk is not asked before the user answers", 0, adds().size)
+        access.requesting()
+        granted = true
+        access.answered(true)
         assertTrue(vm.uiState.value.phase is RvAddPhase.Done)
-        assertEquals(2, engine.calls)
+        assertEquals(listOf(LAN_LINK), adds().map { sent("url") })
     }
 
     @Test
-    fun `turned down at doona's reason, the import fails as unreachable and is not tried again`() = runTest {
-        val engine = Slow(answers = mutableListOf(ErrorCode.LocalNetwork))
-        val access = LocalNetworkAccess(granted = { false })
-        val lan = LocalNetworkEngine(engine, access, CoroutineScope(SupervisorJob() + UnconfinedTestDispatcher(testScheduler)))
-        val vm = page(lan, imports(lan), lanAsking = access.prompt.map { it != null }).apply {
-            type(LAN)
+    fun `a link on the local network the user refuses fails as unreachable once the refusal is closed`() = runTest {
+        val access = LocalNetworkAccess { false }
+        val vm = page(imports(access = access)).apply {
+            type(LAN_LINK)
             import()
         }
-        access.declined()
-        assertEquals(null, access.prompt.value)
-        assertEquals(RvAddPhase.Failed(RvAddFailure.Unreachable), vm.uiState.value.phase)
-        assertEquals(1, engine.calls)
-    }
-
-    @Test
-    fun `refused in Android's dialog, the refusal shows and the import fails once it is closed`() = runTest {
-        val engine = Slow(answers = mutableListOf(ErrorCode.LocalNetwork))
-        val access = LocalNetworkAccess(granted = { false })
-        val lan = LocalNetworkEngine(engine, access, CoroutineScope(SupervisorJob() + UnconfinedTestDispatcher(testScheduler)))
-        val vm = page(lan, imports(lan), lanAsking = access.prompt.map { it != null }).apply {
-            type(LAN)
-            import()
-        }
-        assertTrue(access.requesting())
-        access.answered(allowed = false)
+        access.requesting()
+        access.answered(false)
         assertEquals(LocalNetworkPrompt.Denied, access.prompt.value)
-        assertEquals("it waits on the refusal, with the form as it was", RvAddPhase.Editing, vm.uiState.value.phase)
+        assertEquals("the import waits on the refusal", RvAddPhase.Importing(null, null), vm.uiState.value.phase)
         access.dismissed()
         assertEquals(RvAddPhase.Failed(RvAddFailure.Unreachable), vm.uiState.value.phase)
-        assertEquals(1, engine.calls)
+        assertEquals(0, adds().size)
+    }
+
+    @Test
+    fun `only an address on the local network counts as one`() {
+        val local = listOf(
+            "http://192.168.1.20/sub.yaml",
+            "http://10.0.0.2/s",
+            "https://172.16.4.1:8443/s",
+            "http://169.254.0.9/s",
+            "http://100.64.1.1/s",
+            "http://user@[fd00::2]:443/s",
+            "http://[fe80::1]/s",
+            "http://[::ffff:192.168.0.1]/s",
+        )
+        val elsewhere = listOf(LINK, "http://203.0.113.7/s", "http://127.0.0.1/s", "http://[2001:db8::1]/s", "http://172.32.0.1/s", "http://router.lan/s")
+        local.forEach { assertTrue(it, onLocalNetwork(it)) }
+        elsewhere.forEach { assertFalse(it, onLocalNetwork(it)) }
     }
 
     @Test
@@ -257,34 +280,35 @@ class SubAddViewModelTest {
     }
 
     /**
-     * The done card counts every node the catalog holds from the new subscription, those no group lists included (a
-     * user's own groups need not name them), and only once the catalog has taken the import in.
+     * The done card counts every node honk holds from the new provider, those no group lists included (a user's own
+     * groups need not name them).
      */
     @Test
-    fun `the done card counts the catalog's nodes of the subscription once the catalog holds them`() = runTest {
-        val fake = FakeEngine(subscriptions = emptyList())
-        val added = Subscription("s9", "Harbor", LINK, 3, FakeEngine.FETCHED)
-        val engine = object : Engine by fake {
-            override suspend fun addSubscription(url: String, name: String?, userAgent: String?) = Result.success(added)
-
-            override suspend fun nodes(ids: List<String>?) = Result.success(
-                listOf(node("a", "s9", "vless"), node("b", "s1", "ss"), node("c", "s9", "trojan"), node("d", null, "ss"), node("e", "s9", "vless")),
-            )
-        }
-        val vm = page(engine, imports(engine))
+    fun `the done card counts the nodes honk holds of the new provider`() = runTest {
+        val nodes = listOf(node("a", "s9", "vless"), node("b", "s1", "shadowsocks"), node("c", "s9", "trojan"), node("d", null, "shadowsocks"), node("e", "s9", "vless"))
+        honk.on("GET", "/api/v1/nodes", 200, """{"nodes":[${nodes.joinToString(",")}],"next_cursor":null}""")
+        val vm = page()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.protocols.collect {} }
         vm.type()
         vm.import()
         assertTrue(vm.uiState.value.phase is RvAddPhase.Done)
-        assertEquals("not before the catalog lists the subscription", emptyList<RvProtocolCount>(), vm.protocols.value)
-        fake.subscriptions.value = listOf(added)
         assertEquals(listOf(RvProtocolCount("VLESS", 2), RvProtocolCount("Trojan", 1)), vm.protocols.value)
     }
 
-    private fun node(id: String, subscription: String?, protocol: String) = NodeInfo(id, subscription, protocol, "$id.example", 443, "tcp", true, emptyList())
-
     private companion object {
         const val LINK = "https://sub.example/api?token=1"
-        const val LAN = "http://192.168.1.20/sub.yaml"
+        const val LAN_LINK = "http://192.168.1.20/sub.yaml"
+        val CONFLICT = HonkFixtures.body("errors/temporarily-unavailable")
+
+        fun provider(id: String, name: String) = """{"id":"$id","name":"$name","kind":"subscription","url_redacted":"$LINK",""" +
+            """"node_count":3,"updated_at":"2026-11-22T06:00:00Z","expires_at":null,"traffic":null,"status":"ok","last_error":null}"""
+
+        fun node(id: String, provider: String?, protocol: String) =
+            """{"id":"$id","name":"$id","protocol":"$protocol","subscription_tag":null,"provider_id":${provider?.let { "\"$it\"" }},"group_ids":[],"health":[]}"""
+
+        /** A `provider_create` operation that failed fetching at [stage]. */
+        fun failedFetch(stage: String) = """{"operation_id":"op-add","kind":"provider_create","status":"failed","created_at":"2026-11-22T06:00:00Z",""" +
+            """"started_at":"2026-11-22T06:00:00Z","finished_at":"2026-11-22T06:00:01Z","result":null,""" +
+            """"error":{"code":"fetch_failed","message":"The subscription could not be fetched.","details":{"stage":"$stage"}}}"""
     }
 }

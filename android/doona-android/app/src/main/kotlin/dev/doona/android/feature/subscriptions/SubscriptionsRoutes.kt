@@ -12,8 +12,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import dev.doona.android.app.nativeApi
 import dev.doona.android.designsystem.rv.LocalRvUpdating
-import dev.doona.android.engine.Engine
 import dev.doona.android.feature.nodes.ui.LocalRvRowActions
 import dev.doona.android.feature.nodes.ui.RvRowActions
 import kotlinx.coroutines.flow.Flow
@@ -21,21 +21,24 @@ import kotlinx.coroutines.flow.Flow
 /**
  * 訂閱: the subscriptions, which open their page ([onOpen], also the menu's 編輯) and lead to 新增訂閱 ([onAdd]); under
  * them the 組態內 card, whose nodes open their page ([onOpenNode]) and whose 新增節點 opens its sheet. After an add the
- * banner's 查看策略群組 runs [onViewGroups]. End dates count from [clock].
+ * banner's 查看策略群組 runs [onViewGroups]. End dates count from [clock]. The subscriptions are honk's, read through the
+ * app's [nativeApi] unless a caller (a test) gives its own [viewModel]; so are the 組態內 card's nodes, unless it gives
+ * its own [nodes].
  */
 @Composable
-fun SubscriptionsRoute(
-    engine: Engine,
+internal fun SubscriptionsRoute(
     onBack: () -> Unit,
     onOpen: (String) -> Unit,
     onAdd: () -> Unit,
     onOpenNode: (String) -> Unit = {},
     onViewGroups: () -> Unit = {},
     clock: () -> Long = System::currentTimeMillis,
+    viewModel: SubscriptionsViewModel = nativeApi().let { api -> viewModel(factory = viewModelFactory { initializer { SubscriptionsViewModel(api, clock) } }) },
+    nodes: AddNodeViewModel = nativeApi().let { api ->
+        val clipboard = LocalContext.current.applicationContext.getSystemService(ClipboardManager::class.java)
+        viewModel(factory = viewModelFactory { initializer { AddNodeViewModel(api, AndroidClipboardLinks(clipboard)) } })
+    },
 ) {
-    val clipboard = LocalContext.current.applicationContext.getSystemService(ClipboardManager::class.java)
-    val viewModel: SubscriptionsViewModel = viewModel(factory = viewModelFactory { initializer { SubscriptionsViewModel(engine, clock) } })
-    val nodes: AddNodeViewModel = viewModel(factory = viewModelFactory { initializer { AddNodeViewModel(engine, AndroidClipboardLinks(clipboard)) } })
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val inline by nodes.uiState.collectAsStateWithLifecycle()
     val actions = remember(viewModel, nodes, onBack, onOpen, onAdd) {
@@ -60,12 +63,12 @@ fun SubscriptionsRoute(
         )
     }
     val inlineActions = remember(nodes, onOpenNode, onViewGroups) {
-        RvInlineActions(nodes::open, nodes::close, nodes::edit, nodes::paste, nodes::add, onOpenNode, nodes::delete, nodes::confirmDelete, onViewGroups)
+        RvInlineActions(nodes::open, nodes::close, nodes::edit, nodes::paste, nodes::add, onOpenNode, nodes::delete, nodes::confirmDelete, onViewGroups, nodes::pick)
     }
     val banner = inline.deleteFailed?.let { rvNodeDeleteFailedBanner(it) { nodes.confirmDelete(it.id) } } ?: inline.added?.let { rvAddedBanner(it, onViewGroups) }
-    // No 複製分享連結: the core keeps a share link only for a share-link subscription's node, never a 組態內 one.
+    // No 複製分享連結: honk gives no node's share link.
     CompositionLocalProvider(LocalRvUpdating provides state.updating, LocalRvRowActions provides remember(nodes) { RvRowActions(deleteNode = nodes::delete) }) {
-        RvSubsPage(state.page, actions, loading = state.loading, extra = { RvInlineCard(inline.nodes, inlineActions) }, extraKeepsPage = inline.nodes.isNotEmpty(), banner = banner, addNode = inlineActions.add)
+        RvSubsPage(state.page, actions, loading = state.loading, extra = { RvInlineCard(inline.nodes, inlineActions) }, extraKeepsPage = inline.nodes.isNotEmpty(), banner = banner, addNode = inlineActions.add, removable = true)
         RvAddNodeSheet(inline.sheet, inlineActions)
         RvNodeDeleteSheet(inline.nodes.firstOrNull { it.id == inline.deletingId }, inlineActions)
     }
@@ -74,14 +77,19 @@ fun SubscriptionsRoute(
 /**
  * 新增訂閱 over [imports], the app's import in flight; 完成 and back run [onBack]. The clipboard is asked whether it may
  * hold a link each time the page comes to the front. [lanAsking] is whether the local network prompt is up: an import
- * waiting on it leaves the form as it is under the prompt.
+ * waiting on it leaves the form as it is under the prompt. The import adds to honk; the page counts the new
+ * subscription's nodes through the app's [nativeApi] unless a caller (a test) gives its own [viewModel].
  */
 @Composable
-fun SubAddRoute(engine: Engine, imports: SubscriptionImports, lanAsking: Flow<Boolean>, onBack: () -> Unit) {
-    val clipboard = LocalContext.current.applicationContext.getSystemService(ClipboardManager::class.java)
-    val viewModel: SubAddViewModel = viewModel(
-        factory = viewModelFactory { initializer { SubAddViewModel(engine, imports, AndroidClipboardLinks(clipboard), lanAsking) } },
-    )
+internal fun SubAddRoute(
+    imports: SubscriptionImports,
+    lanAsking: Flow<Boolean>,
+    onBack: () -> Unit,
+    viewModel: SubAddViewModel = nativeApi().let { api ->
+        val clipboard = LocalContext.current.applicationContext.getSystemService(ClipboardManager::class.java)
+        viewModel(factory = viewModelFactory { initializer { SubAddViewModel(api, imports, AndroidClipboardLinks(clipboard), lanAsking) } })
+    },
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val protocols by viewModel.protocols.collectAsStateWithLifecycle()
     LifecycleResumeEffect(viewModel) {
@@ -94,11 +102,17 @@ fun SubAddRoute(engine: Engine, imports: SubscriptionImports, lanAsking: Flow<Bo
 /**
  * Subscription [id]'s page; it leaves ([onBack]) once the subscription is gone, deleted here or elsewhere. The
  * auto-update interval in hours comes from [updateHours] (the app's settings; null while auto-update is off), and the
- * row shows no value until its first; the row runs [onAutoUpdate], which opens 更新間隔.
+ * row shows no value until its first; the row runs [onAutoUpdate], which opens 更新間隔. The subscription is honk's,
+ * read through the app's [nativeApi] unless a caller (a test) gives its own [viewModel].
  */
 @Composable
-fun SubDetailRoute(engine: Engine, updateHours: Flow<Int?>, id: String, onBack: () -> Unit, onAutoUpdate: () -> Unit) {
-    val viewModel: SubDetailViewModel = viewModel(factory = viewModelFactory { initializer { SubDetailViewModel(engine, updateHours, id) } })
+internal fun SubDetailRoute(
+    updateHours: Flow<Int?>,
+    id: String,
+    onBack: () -> Unit,
+    onAutoUpdate: () -> Unit,
+    viewModel: SubDetailViewModel = nativeApi().let { api -> viewModel(factory = viewModelFactory { initializer { SubDetailViewModel(api, updateHours, id) } }) },
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     if (state.gone) LaunchedEffect(Unit) { onBack() }
     val sub = state.sub ?: return

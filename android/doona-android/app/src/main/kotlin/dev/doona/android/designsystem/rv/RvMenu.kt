@@ -31,6 +31,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.FrameRateCategory
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.TransformOrigin
@@ -66,7 +67,8 @@ internal const val RV_MENU = "rv-menu"
  * One entry of a menu: its glyph and label, and what it does. A [destructive] entry keeps its label in ink and draws only
  * its glyph in the error hue, as Revolut's destructive row (measured §13.2); a [separated] entry starts a group of its
  * own under a hairline, as the More menu sets its last row apart (revolut-UX.md §5). An entry that needs a question
- * first asks it in [RvConfirmSheet] from its [onClick].
+ * first asks it in [RvConfirmSheet] from its [onClick]. Not [enabled] (an action the core cannot do yet), the entry
+ * stays in its place at [RvAlpha.DISABLED], takes no press and is no screen-reader action.
  */
 @Immutable
 internal class RvMenuItem(
@@ -74,6 +76,7 @@ internal class RvMenuItem(
     @DrawableRes val icon: Int,
     val destructive: Boolean = false,
     val separated: Boolean = false,
+    val enabled: Boolean = true,
     val onClick: () -> Unit,
 )
 
@@ -162,7 +165,7 @@ internal fun RvMenuPanel(items: List<RvMenuItem>, onPick: (RvMenuItem) -> Unit, 
                     .fillMaxWidth()
                     .testTag(RvRowPart.MENU_ROW)
                     .heightIn(min = RvMenuSize.row)
-                    .rvRowPress(Role.Button, { onPick(item) })
+                    .then(if (item.enabled) Modifier.rvRowPress(Role.Button, { onPick(item) }) else Modifier.alpha(RvAlpha.DISABLED))
                     .padding(horizontal = RvSpace.rowPadding),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -218,7 +221,7 @@ internal fun RvMenuAnchor(items: List<RvMenuItem>, modifier: Modifier = Modifier
 
 /** Every one of [items] as a TalkBack custom action. */
 private fun Modifier.rvMenuActions(items: List<RvMenuItem>): Modifier = semantics {
-    customActions = items.map { item ->
+    customActions = items.filter { it.enabled }.map { item ->
         CustomAccessibilityAction(item.label) {
             item.onClick()
             true

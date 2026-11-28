@@ -41,6 +41,7 @@ prototype/rv/policy/RvPolicyGroupPage.kt	RvCaption(group.caption(), group.kind.g
 prototype/rv/samples/RvGroupSamplePage.kt	RvCaption(stringResource(group.kind.label) + SEPARATOR + count, group.kind.glyph)	a sample page header's caption (RvCaption under the large title), not under a card
 feature/stats/RvStatsScoreCard.kt	RvText(stringResource(R.string.rv_stats_connections), Rv.type.rowSub, color = Rv.colors.textSecondary)	the Score card's label under its figure, inside the card
 feature/subscriptions/RvSubsPage.kt	RvText(used, Rv.type.rowSub, Modifier.weight(1f), color = Rv.colors.textSecondary)	a subscription card's usage and end date, inside the card
+feature/subscriptions/RvAddNode.kt	RvCaption(stringResource(R.string.rv_addnode_groups))	新增節點 sheet's 加入群組 header above its card (new UI, owner round s1126g), not under a card
 prototype/rv/policy/RvDnsRulesPage.kt	RvCaption(stringResource(R.string.rv_policy_rules_order))	a page header's caption (RvCaption under the large title), not under a card
 prototype/rv/diag/RvDiagParts.kt	RvCaption(it)	a diagnostic page header's caption (RvDiagPage)
 prototype/rv/diag/RvDiagParts.kt	RvText(text, Rv.type.rowSub, color = Rv.colors.textSecondary, align = TextAlign.End)	a row's second value on its subtitle's line (RvEndSub), inside the card

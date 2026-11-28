@@ -97,12 +97,12 @@ fun DoonaAppShell(current: Tab, onSelect: (Tab) -> Unit, content: @Composable ()
  * no settings and never asks.
  */
 @Composable
-fun DoonaApp(
+internal fun DoonaApp(
     engine: Engine,
     installedApps: InstalledApps,
     onConnect: () -> Unit,
     start: List<NavKey> = listOf(ActivityKey),
-    imports: SubscriptionImports = rememberSubscriptionImports(engine),
+    imports: SubscriptionImports = rememberSubscriptionImports(nativeApi()),
     version: String = "",
     crashOffer: CrashOffer? = null,
     network: Flow<NetworkState> = engine.network,
@@ -114,7 +114,7 @@ fun DoonaApp(
     val onTab: (Int) -> Unit = { backStack.selectTab(it) }
     val onReselect: () -> Boolean = { backStack.reselectTab() }
     // Held beside the root 活動 rather than in an entry: the pull-down and every 節點 page read one catalog, mapped once.
-    val nodes: NodesViewModel = viewModel(factory = NodesViewModel.factory(engine))
+    val nodes: NodesViewModel = viewModel(factory = NodesViewModel.factory(nativeApi()))
     // The 連線 list and a connection's page read one list, held by the owner 節點's is held by; built when 連線 first shows.
     val owner = checkNotNull(LocalViewModelStoreOwner.current) { "DoonaApp runs inside a ViewModelStoreOwner" }
     val connections: @Composable () -> ConnectionsViewModel = { viewModel(owner, factory = ConnectionsViewModel.factory(nativeApi())) }
@@ -124,7 +124,7 @@ fun DoonaApp(
             entry<ActivityKey> {
                 // The RV page draws its own floating nav; the gate's welcome page takes the old tab frame.
                 val routes = remember(backStack, onSystemSettings) { activityRoutes(backStack, onSystemSettings) }
-                FirstRunGate(engine, onAdd = { backStack.push(SubAddKey) }, frame = { OldTabFrame(Tab.Activity, onTab, onReselect, it) }) {
+                FirstRunGate(engine, imports, onAdd = { backStack.push(SubAddKey) }, frame = { OldTabFrame(Tab.Activity, onTab, onReselect, it) }) {
                     NodesPull(nodes, RvPullMotion.Sheet, rememberRvPullState(), onDetail = { backStack.push(NodeKey(it)) }, onAdd = { backStack.push(SubAddKey) }) { look ->
                         ActivityRoute(engine, crashOffer, network, refusals, onConnect, routes, look)
                     }
@@ -145,7 +145,7 @@ fun DoonaApp(
                     ),
                 )
             }
-            entry<GroupKey> { key -> GroupRoute(engine, key.groupId, onBack = { backStack.pop(key) }) }
+            entry<GroupKey> { key -> GroupRoute(key.groupId, onBack = { backStack.pop(key) }) }
             entry<RulesKey> { key ->
                 RulesRoute(
                     engine,
@@ -162,7 +162,6 @@ fun DoonaApp(
             configEntries(engine, backStack)
             entry<SubscriptionsKey> { key ->
                 SubscriptionsRoute(
-                    engine,
                     onBack = { backStack.pop(key) },
                     onOpen = { backStack.push(SubDetailKey(it)) },
                     onAdd = { backStack.push(SubAddKey) },
@@ -171,12 +170,12 @@ fun DoonaApp(
                 )
             }
             entry<SubAddKey> { key ->
-                SubAddRoute(engine, imports, lanAsking, onBack = { backStack.pop(key) })
+                SubAddRoute(imports, lanAsking, onBack = { backStack.pop(key) })
             }
             entry<SubDetailKey> { key ->
                 val context = LocalContext.current
                 val updateHours = remember { AppSettings.get(context).subscriptionUpdate.map(::updateHoursOf) }
-                SubDetailRoute(engine, updateHours, key.subscriptionId, onBack = { backStack.pop(key) }, onAutoUpdate = { backStack.push(IntervalKey) })
+                SubDetailRoute(updateHours, key.subscriptionId, onBack = { backStack.pop(key) }, onAutoUpdate = { backStack.push(IntervalKey) })
             }
             // 設定 and its pages draw their own floating nav.
             settingsEntries(backStack, engine, version, onTab)

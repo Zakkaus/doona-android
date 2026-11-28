@@ -1,24 +1,25 @@
 package dev.doona.android.feature.nodes
 
 import androidx.compose.runtime.Immutable
-import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.Member
-import dev.doona.android.engine.Network
 import dev.doona.android.engine.NodeInfo
-import dev.doona.android.engine.ScoreGroup
 import dev.doona.android.engine.Subscription
 import dev.doona.android.engine.SubscriptionFormat
 import dev.doona.android.feature.model.NodePlaces
 import dev.doona.android.feature.model.RV_TESTS
 import dev.doona.android.feature.model.RvNode
-import dev.doona.android.feature.model.RvSubFormat
 import dev.doona.android.feature.model.RvSubscription
 import dev.doona.android.feature.model.protocolName
-import dev.doona.android.feature.model.rvLeafMembers
-import dev.doona.android.feature.model.rvSelectedLeaf
+import dev.doona.android.feature.model.rvNode
 import dev.doona.android.feature.subscriptions.rvSubscription
-import java.net.URI
+import dev.doona.android.vpn.honk.Group
+import dev.doona.android.vpn.honk.GroupSelection
+import dev.doona.android.vpn.honk.HonkRules
+import dev.doona.android.vpn.honk.Node
+import dev.doona.android.vpn.honk.Provider
+import dev.doona.android.vpn.honk.Transport
+import java.time.OffsetDateTime
 
 /**
  * What the D30 picker, 節點, a node's page and search show, mapped once per catalog revision: every node once in the
@@ -50,7 +51,7 @@ internal data class NodesState(
 
 /**
  * What the pages read from the ViewModel: the mapped [state], a latency test running, the last failed action, Score's
- * marks (null with no Score group), the subscriptions being updated from a row's menu ([updating]), and now.
+ * marks (null: honk reports no Score evidence), the subscriptions being updated from a row's menu ([updating]), and now.
  */
 @Immutable
 internal data class NodesUi(
@@ -64,45 +65,48 @@ internal data class NodesUi(
 )
 
 /**
- * An action that failed, with the engine's reason: a node switch, a latency test, the read of the nodes' details, or a
- * row menu's copy of a share link, update or deletion of a subscription. [subject] is the updated subscription's name.
+ * An action that failed, with honk's reason: a node switch, a latency test, the read of the nodes, or a row menu's update
+ * or deletion of a subscription. [subject] is the updated subscription's name.
  */
 @Immutable
 internal data class NodesFailure(val action: NodesAction, val code: ErrorCode, val subject: String? = null)
 
-internal enum class NodesAction { Select, Test, Read, Share, Update, Remove }
+internal enum class NodesAction { Select, Test, Read, Update, Remove }
 
-/** The nodes the Score groups in [groups] chose, per network; null with no Score group. */
-internal fun rvScoreMarks(groups: List<ScoreGroup>): RvScoreMarks? = if (groups.isEmpty()) {
-    null
-} else {
-    RvScoreMarks(groups.mapNotNullTo(HashSet()) { it.tcp.selectedId }, groups.mapNotNullTo(HashSet()) { it.udp.selectedId })
+/**
+ * The pages' state from honk's [nodes] (in honk's order), its [providers] and the [main] group, with each node placed by
+ * [places]. honk keeps each node's last probe only, so [NodesState.testedAt] holds that probe's time when the history
+ * shows it. The current nodes are what the main group's TCP and UDP selections end on, through nested groups as honk
+ * resolves them; with no main group no node is the current one.
+ */
+internal fun nodesState(nodes: List<Node>, providers: List<Provider>, main: Group?, places: NodePlaces): NodesState {
+    val byId = providers.associateBy { it.id }
+    val tcp = main?.runtime?.selection?.tcp
+    val udp = main?.runtime?.selection?.udp
+    val rows = nodes.map { rvNode(it, byId, places) }
+    return NodesState(
+        nodes = rows,
+        subscriptions = providers.map { rvSubscription(it, null) },
+        currentId = tcp?.leaf().orEmpty(),
+        mainGroupId = main?.id,
+        testedAt = nodes.zip(rows).associate { (node, row) -> node.id to if (row.history.isEmpty()) emptyList() else listOfNotNull(node.probedAt()) },
+        split = main != null && tcp?.memberId != udp?.memberId,
+        udpId = udp?.leaf().orEmpty(),
+    )
 }
 
 /**
- * [catalog] as the pages show it, with each node's details from [infos] and its place from [places]. The nodes are every
- * group's nodes in the catalog's order, then the nodes of [infos] (the core's every node) that no group lists: a profile
- * edited by hand may leave a node out of every group. The core names a node only as a group's member, so such a node is
- * named by its server. [ungrouped] false (the read of [infos] failed, so they may be an older revision's) leaves those
- * nodes out. With no main group (a hand-edited profile may have none) no node is the current one.
+ * The group 主節點 names: the one the routing's fallback sends to, so a flow no rule matches goes where the pages say. A
+ * configuration whose fallback is `direct` or `block` has none.
  */
-internal fun nodesState(catalog: Catalog, infos: Map<String, NodeInfo>, places: NodePlaces, ungrouped: Boolean): NodesState {
-    val subscriptions = catalog.subscriptions.associateBy { it.id }
-    val grouped = rvLeafMembers(catalog)
-    val listed = grouped.mapTo(HashSet()) { it.id }
-    val members = if (ungrouped) grouped + infos.values.filter { it.id !in listed }.map { Member(it.id, it.server) } else grouped
-    val groups = catalog.groups.associateBy { it.id }
-    val main = groups[catalog.mainGroupId]
-    return NodesState(
-        nodes = members.map { m -> rvNode(m, infos[m.id], rvSource(m, subscriptions), places) },
-        subscriptions = catalog.subscriptions.map(::rvSubscription),
-        currentId = main?.let { rvSelectedLeaf(it, Network.Tcp, groups) }.orEmpty(),
-        mainGroupId = main?.id,
-        testedAt = members.associate { m -> m.id to infos[m.id]?.tests?.takeLast(RV_TESTS)?.map { it.atEpochMs }.orEmpty() },
-        split = main?.networksDiffer == true,
-        udpId = main?.let { rvSelectedLeaf(it, Network.Udp, groups) }.orEmpty(),
-    )
-}
+internal fun mainGroup(groups: List<Group>, rules: HonkRules): Group? = groups.firstOrNull { it.name == rules.fallback.outbound }
+
+/** The node a selection ends on: honk's resolved leaf, else the member itself. */
+private fun GroupSelection.leaf(): String = resolvedLeafNodeId ?: memberId
+
+/** When the probe [rvNode] shows was taken: the TCP one, else the first. */
+private fun Node.probedAt(): Long? =
+    (health.firstOrNull { it.transport == Transport.Tcp } ?: health.firstOrNull())?.observedAt?.let { OffsetDateTime.parse(it).toInstant().toEpochMilli() }
 
 /** The subscription a node came from: its id, its name and its format (null for a legacy one the core has not refetched). */
 internal class RvSource(val id: String, val name: String, val format: SubscriptionFormat?)
