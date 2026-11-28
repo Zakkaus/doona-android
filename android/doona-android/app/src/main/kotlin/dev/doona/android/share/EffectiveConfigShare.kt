@@ -21,8 +21,7 @@ import kotlinx.coroutines.launch
 private const val EXTRA_IS_SENSITIVE = "android.content.extra.IS_SENSITIVE"
 
 /**
- * The clip for copying the effective config [text] ([dev.doona.android.engine.EffectiveConfig.text]) under [label]:
- * plain text, marked sensitive because it describes the user's routing even though it names no credential (ARCH D21).
+ * The clip for copying redacted effective configuration [text] under [label], marked sensitive to hide its preview.
  */
 fun effectiveConfigClip(label: CharSequence, text: String): ClipData {
     val clip = ClipData.newPlainText(label, text)
@@ -31,9 +30,8 @@ fun effectiveConfigClip(label: CharSequence, text: String): ClipData {
 }
 
 /**
- * The share sheet, titled [title], for the effective config [text]: `ACTION_SEND` of `text/plain` with the text as
- * `EXTRA_TEXT` and [title] as the subject. The text is cut at 1 MiB by the core and carries no file, so no
- * FileProvider is involved; start it from an Activity context.
+ * The share sheet, titled [title], for the redacted config [text]: `ACTION_SEND` of `text/plain` with the text as
+ * `EXTRA_TEXT` and [title] as the subject. Start it from an Activity context.
  */
 fun effectiveConfigShareIntent(title: String, text: String): Intent {
     val send = Intent(Intent.ACTION_SEND)
@@ -48,7 +46,7 @@ class EffectiveConfigActions(val copy: () -> Unit, val export: () -> Unit)
 
 /**
  * The page's two actions on the config text [text] (null while it is not read: both do nothing), titled [title] on the
- * clipboard and the share sheet. The page lane passes `Engine.effectiveConfig()`'s text.
+ * clipboard and the share sheet. Both take the same redacted text, not the configuration backup.
  */
 @Composable
 fun rememberEffectiveConfigActions(title: String, text: String?): EffectiveConfigActions {

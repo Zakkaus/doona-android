@@ -65,6 +65,7 @@ class TemplateViewModelTest {
         val vm = TemplateImpactViewModel(honk, "services", io = UnconfinedTestDispatcher(testScheduler))
         advanceUntilIdle()
         assertEquals(RvRuleSource.File, vm.uiState.value.impact?.from)
+        val reads = honk.calls.count { it.path == "/api/v1/config" }
         var left = 0
         vm.apply { left++ }
         advanceUntilIdle()
@@ -72,8 +73,10 @@ class TemplateViewModelTest {
         assertEquals(0, left)
 
         honk.on("PUT", "/api/v1/config/sources/source-main", 202, HonkFixtures.body("config-replace/queued"))
+        assertEquals(reads, honk.calls.count { it.path == "/api/v1/config" })
         vm.apply { left++ }
         advanceUntilIdle()
+        assertEquals(2, honk.calls.count { it.method == "PUT" })
         assertNull(vm.uiState.value.failure)
         assertEquals(1, left)
         val put = honk.calls.last { it.method == "PUT" }

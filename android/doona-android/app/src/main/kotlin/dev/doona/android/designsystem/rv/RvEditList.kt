@@ -15,6 +15,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
 import dev.doona.android.R
 
@@ -32,18 +33,18 @@ internal class RvListEdit(val onAdd: () -> Unit, val onRemove: (String) -> Unit)
  * by its slack, so the disc's edge sits on the card's grid.
  */
 @Composable
-internal fun RvRemoveButton(description: String, onClick: () -> Unit) {
+internal fun RvRemoveButton(description: String, onClick: (() -> Unit)?) {
     Box(
         Modifier
             .rvTouchOverhang()
             .size(RvSize.touch)
             .testTag(RvEditPart.REMOVE)
-            .rvPress(CircleShape, Role.Button, onClick)
+            .then(if (onClick == null) Modifier.semantics { disabled() } else Modifier.rvPress(CircleShape, Role.Button, onClick))
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
         Box(Modifier.size(RvSize.removeDisc).testTag(RvEditPart.REMOVE_DISC).clip(CircleShape).background(Rv.colors.discOnCard), contentAlignment = Alignment.Center) {
-            RvGlyph(R.drawable.rv_sym_remove, RvSize.removeGlyph, Rv.colors.error)
+            RvGlyph(R.drawable.rv_sym_remove, RvSize.removeGlyph, if (onClick == null) Rv.colors.textSecondary else Rv.colors.error)
         }
     }
 }
@@ -67,8 +68,11 @@ internal class RvRowRemove(val onRemove: (() -> Unit)?)
  * [subtitle] says what adding takes, under the label.
  */
 @Composable
-internal fun RvAddRow(label: String, onClick: () -> Unit, subtitle: String? = null) {
-    RvRow({ RvIconDisc(R.drawable.rv_sym_add) }, label, subtitle, Modifier.testTag(RvEditPart.ADD), onClick = onClick) { RvChevron() }
+internal fun RvAddRow(label: String, onClick: (() -> Unit)?, subtitle: String? = null) {
+    val modifier = Modifier.testTag(RvEditPart.ADD)
+    RvRow({ RvIconDisc(R.drawable.rv_sym_add) }, label, subtitle, if (onClick == null) modifier.semantics { disabled() } else modifier, onClick = onClick) {
+        if (onClick != null) RvChevron()
+    }
 }
 
 /**

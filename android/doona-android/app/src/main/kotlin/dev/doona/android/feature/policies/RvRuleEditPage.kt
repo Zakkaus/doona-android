@@ -68,7 +68,7 @@ internal data class RvRuleDraft(val kind: RvMatchKind, val value: String, val ta
          */
         fun of(rule: RvPolicyRule): RvRuleDraft {
             val (kind, value) = when (val match = rule.match) {
-                is RvRuleMatch.Value -> match.kind to match.value
+                is RvRuleMatch.Value -> requireNotNull(match.kind) to match.value
                 is RvRuleMatch.Domains -> RvMatchKind.Suffix to match.first
                 is RvRuleMatch.GeoIp -> RvMatchKind.GeoIpCn to ""
                 is RvRuleMatch.GeoSite -> RvMatchKind.Suffix to match.category

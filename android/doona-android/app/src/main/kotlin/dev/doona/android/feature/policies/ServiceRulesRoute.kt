@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.R
 import dev.doona.android.app.nativeApi
 import dev.doona.android.feature.settings.changeBanner
+import dev.doona.android.feature.settings.readBanner
 
 /** 新增服務規則 on the app's [nativeApi]. */
 @Composable
@@ -20,6 +21,7 @@ internal fun ServiceRulesRoute(onBack: () -> Unit) {
 @Composable
 internal fun ServiceRulesRoute(viewModel: ServiceRulesViewModel, onBack: () -> Unit) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
+    ui.failure?.let { return RvRuleFormFailed(stringResource(R.string.rv_service_add), readBanner(it, viewModel::load), onBack) }
     LaunchedEffect(ui.done) { if (ui.done) onBack() }
     RvServiceRulesPage(
         ui.main,

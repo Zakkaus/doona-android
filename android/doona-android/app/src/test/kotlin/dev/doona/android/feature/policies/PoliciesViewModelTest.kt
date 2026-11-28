@@ -50,6 +50,7 @@ class PoliciesViewModelTest {
     /** `WhileSubscribed` only follows the engine's mode while someone collects, as the screen does. */
     private fun TestScope.collected(engine: Engine = Modes()) =
         PoliciesViewModel(engine, honk, clock = { NOW }, io = UnconfinedTestDispatcher(testScheduler)).also { vm ->
+            vm.load()
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
             advanceUntilIdle()
         }
@@ -209,10 +210,10 @@ class PoliciesViewModelTest {
     }
 
     @Test
-    fun `no subscription when honk has none`() = runTest {
+    fun `manual groups and rules are not hidden without a subscription`() = runTest {
         honk.on("GET", "/api/v1/providers", 200, """{"providers": [], "next_cursor": null}""")
 
-        assertTrue(collected().uiState.value.noSubscription)
+        assertFalse(collected().uiState.value.empty)
     }
 
     private companion object {

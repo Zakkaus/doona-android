@@ -34,24 +34,24 @@ private fun rvPolicyRule(match: RvRuleMatch, outbound: String, groups: Map<Strin
  */
 internal fun rvRuleMatch(condition: String): RvRuleMatch {
     val matcher = MATCHER.matchEntire(condition)?.takeIf { topLevel(condition, AND).size == 1 }
-        ?: return RvRuleMatch.Value(RvMatchKind.Full, condition)
+        ?: return RvRuleMatch.Value(null, condition)
     val args = topLevel(matcher.groupValues[2], ",").map(::argument)
     val single = args.singleOrNull()
     return when (matcher.groupValues[1]) {
         "domain" -> when {
             single == null -> RvRuleMatch.Domains(args.first().value, args.size)
             single.key == "geosite" -> RvRuleMatch.GeoSite(single.value)
-            else -> RvRuleMatch.Value(DOMAIN_KINDS[single.key] ?: RvMatchKind.Full, single.value)
+            else -> DOMAIN_KINDS[single.key]?.let { RvRuleMatch.Value(it, single.value) } ?: RvRuleMatch.Value(null, condition)
         }
 
         "dip" -> when {
-            single == null -> RvRuleMatch.Value(RvMatchKind.Full, condition)
+            single == null -> RvRuleMatch.Value(null, condition)
             single.key == "geoip" && single.value.equals(PRIVATE, ignoreCase = true) -> RvRuleMatch.Lan
             single.key == "geoip" -> RvRuleMatch.GeoIp(single.value.uppercase())
             else -> RvRuleMatch.Value(RvMatchKind.Cidr, single.value)
         }
 
-        else -> RvRuleMatch.Value(RvMatchKind.Full, condition)
+        else -> RvRuleMatch.Value(null, condition)
     }
 }
 

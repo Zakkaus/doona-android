@@ -49,7 +49,7 @@ internal sealed interface RvRuleMatch {
     data object Rest : RvRuleMatch
 
     /** One value of a kind a rule can be written in: a full domain, a suffix, a keyword or an IP range. */
-    class Value(val kind: RvMatchKind, val value: String) : RvRuleMatch
+    class Value(val kind: RvMatchKind?, val value: String) : RvRuleMatch
 
     /** A GeoSite category: the core has no GeoSite data yet, so such a rule is skipped and counted (D34). */
     class GeoSite(val category: String) : RvRuleMatch

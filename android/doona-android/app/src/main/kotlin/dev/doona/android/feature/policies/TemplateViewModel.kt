@@ -13,6 +13,7 @@ import dev.doona.android.feature.model.RvImpact
 import dev.doona.android.feature.model.RvRuleSource
 import dev.doona.android.feature.model.RvTemplate
 import dev.doona.android.feature.model.rvTemplate
+import dev.doona.android.honk.HonkSource
 import dev.doona.android.honk.NativeApi
 import dev.doona.android.honk.NativeConfig
 import dev.doona.android.honk.geoData
@@ -85,13 +86,11 @@ internal class TemplateViewModel(private val api: NativeApi, private val io: Cor
 }
 
 /** What the template review shows: the review, null until honk's config is read, and a failed 套用's reason. */
-internal data class TemplateImpactUiState(val impact: RvImpact? = null, val failure: ErrorCode? = null)
+internal data class TemplateImpactUiState(val impact: RvImpact? = null, val failure: ErrorCode? = null, val edit: Pair<HonkSource, String>? = null)
 
 /**
- * The review before the template [templateId] replaces the rules, and its 套用. honk tells no impact, so the review names
- * the source and the template and leaves the counts and lists out. 套用 reads honk's config again and writes the
- * template into the file that holds the routing ([HonkRouting.withTemplate]); once honk has reloaded, [onApplied] runs,
- * and a failure (routing split over files included) shows its reason until 套用 succeeds.
+ * The review before the template [templateId] replaces the rules, and its 套用. honk supplies no impact, so the review
+ * shows unknown counts and details. Applying uses the reviewed source hash; a conflict requires a fresh review.
  */
 internal class TemplateImpactViewModel(
     private val api: NativeApi,
@@ -104,10 +103,16 @@ internal class TemplateImpactViewModel(
     val uiState: StateFlow<TemplateImpactUiState> = state.asStateFlow()
 
     init {
+        load()
+    }
+
+    fun load() {
         viewModelScope.launch {
             try {
-                val config = withContext(io) { NativeConfig(api).config() }
-                state.update { it.copy(impact = rvTemplateImpact(honkRuleSource(HonkRouting.of(config)), templateId)) }
+                state.value = withContext(io) {
+                    val routing = HonkRouting.of(NativeConfig(api).config())
+                    TemplateImpactUiState(rvTemplateImpact(honkRuleSource(routing), templateId), edit = routing?.let { it.source to it.withTemplate(templateId) })
+                }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
@@ -118,14 +123,23 @@ internal class TemplateImpactViewModel(
 
     /** 套用, once the review is read; a tap while one runs does nothing. */
     fun apply(onApplied: () -> Unit) {
-        if (state.value.impact == null || applying?.isActive == true) return
+        val review = state.value
+        val (source, candidate) = review.edit ?: return
+        if (!source.writable) return
+        if (applying?.isActive == true) return
         applying = viewModelScope.launch {
             try {
-                withContext(io) {
+                val landed = withContext(io) {
                     val config = NativeConfig(api)
-                    val routing = HonkRouting.of(config.config()) ?: throw EngineException(ErrorCode.InvalidArgument)
-                    config.replace(routing.source, routing.withTemplate(templateId))
+                    if (review.failure != null) {
+                        val current = config.config().sources.firstOrNull { it.id == source.id }
+                        if (current?.content == candidate) return@withContext true
+                        if (current?.sha256 != source.sha256) return@withContext false
+                    }
+                    config.replace(source, candidate)
+                    true
                 }
+                if (!landed) return@launch load()
                 state.update { it.copy(failure = null) }
                 onApplied()
             } catch (cancelled: CancellationException) {

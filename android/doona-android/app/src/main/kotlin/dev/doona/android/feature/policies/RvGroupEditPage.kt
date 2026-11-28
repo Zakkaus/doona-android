@@ -1,15 +1,22 @@
 package dev.doona.android.feature.policies
 
+import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
+import dev.doona.android.designsystem.rv.RvAddRow
 import dev.doona.android.designsystem.rv.RvBannerSlot
 import dev.doona.android.designsystem.rv.RvCard
 import dev.doona.android.designsystem.rv.RvChevron
@@ -21,11 +28,13 @@ import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPrimaryButton
 import dev.doona.android.designsystem.rv.RvRadioRow
+import dev.doona.android.designsystem.rv.RvRemoveButton
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSectionTitle
 import dev.doona.android.designsystem.rv.RvSize
 import dev.doona.android.designsystem.rv.RvSpace
+import dev.doona.android.designsystem.rv.RvTextField
 import dev.doona.android.designsystem.rv.rvRowSelect
 import dev.doona.android.honk.HonkGroupConfig
 import dev.doona.android.honk.HonkGroupPolicy
@@ -60,32 +69,65 @@ internal fun RvGroupEditPage(
     onOpenSource: () -> Unit,
     onPick: (RvGroupOption) -> Unit,
     banner: RvNotice? = null,
+    onName: ((String) -> Unit)? = null,
+    nameError: String? = null,
+    available: List<RvGroupMember> = emptyList(),
+    onMembers: ((List<String>) -> Unit)? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
-    val title = stringResource(R.string.rv_group_edit_title)
+    val title = stringResource(if (onName == null) R.string.rv_group_edit_title else R.string.rv_group_new)
+    var adding by rememberSaveable { mutableStateOf(false) }
+    if (adding) {
+        BackHandler { adding = false }
+        val add = stringResource(R.string.rv_group_edit_add_member)
+        RvScrollPage(add, insets, onBack = { adding = false }) { block ->
+            RvLargeTitle(add, block, insets)
+            RvGutter {
+                RvCard {
+                    available.filterNot { it in members }.forEach { member ->
+                        RvRow({ MemberMark(member) }, member.name, null, onClick = {
+                            onMembers?.invoke(members.map { it.id } + member.id)
+                            adding = false
+                        })
+                    }
+                }
+            }
+        }
+        return
+    }
     RvScrollPage(
         title,
         insets,
         onBack = onBack,
-        bottomAction = { RvPrimaryButton(stringResource(R.string.rv_policy_apply), onApply, enabled = draft != read) },
+        // honk-gap:group-create — there is no source writer for a new group and its options.
+        bottomAction = { RvPrimaryButton(stringResource(if (onName == null) R.string.rv_policy_apply else R.string.rv_list_create), onApply, enabled = onName == null && draft != read) },
     ) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)
         RvBannerSlot(banner, RvSpace.none)
         RvSectionTitle(stringResource(R.string.rv_group_edit_name), Modifier.padding(horizontal = RvSpace.gutter), first = banner == null)
+        // honk-gap:group-edit
+        RvGutter { RvTextField(name, onName ?: {}, label = null, name = stringResource(R.string.rv_group_edit_name), enabled = onName != null, error = nameError) }
         RvGutter {
-            RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_edit) }, name, null, onClick = onOpenSource, titleKeepWords = false) { RvChevron() } }
+            RvCard { RvRow({ RvIconDisc(R.drawable.rv_sym_edit) }, stringResource(if (onName == null) R.string.rv_config_edit_source else R.string.rv_config_title), null, onClick = onOpenSource) { RvChevron() } }
         }
         RvSectionTitle(stringResource(R.string.rv_group_edit_policy), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter { PolicyCard(draft.policy.kind) { onChange(draft.copy(policy = policy(read, it))) } }
         RvSectionTitle(stringResource(R.string.rv_group_edit_members), Modifier.padding(horizontal = RvSpace.gutter))
-        RvGutter { RvCard { members.forEach { MemberRow(it, onOpenSource) } } }
-        RvFootnote(stringResource(R.string.rv_group_edit_in_source))
+        RvGutter {
+            RvCard {
+                members.forEach { member -> MemberRow(member, onMembers?.let { change -> { change(members.filterNot { it.id == member.id }.map { it.id }) } }) }
+                RvAddRow(stringResource(R.string.rv_group_edit_add_member), onMembers?.takeIf { members.size < available.size }?.let { { adding = true } })
+            }
+        }
+        if (onName == null) RvFootnote(stringResource(R.string.rv_group_edit_in_source))
         RvSectionTitle(stringResource(R.string.rv_group_edit_options), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {
             RvCard {
                 val default = members.firstOrNull { it.id == draft.config.defaultMemberId }?.name
                 RvRow({ RvIconDisc(R.drawable.rv_sym_check) }, stringResource(R.string.rv_group_edit_default), default ?: stringResource(R.string.rv_group_edit_unset), onClick = { onPick(RvGroupOption.Default) }) { RvChevron() }
                 RvRow({ RvIconDisc(R.drawable.rv_sym_directions) }, stringResource(R.string.rv_group_edit_final), outboundName(draft.config.finalOutbound), onClick = { onPick(RvGroupOption.Final) }) { RvChevron() }
+                // honk-gap:hops-exit
+                RvRow({ RvIconDisc(R.drawable.rv_sym_vpn_lock) }, stringResource(R.string.rv_group_edit_exit), RV_NO_VALUE)
             }
         }
     }
@@ -142,11 +184,12 @@ private fun PolicyCard(kind: String, onPolicy: (RvGroupPolicyKind) -> Unit) {
     }
 }
 
-/** One member: a node by its flag, a group by its glyph; a tap opens the file that lists it. */
 @Composable
-private fun MemberRow(member: RvGroupMember, onOpenSource: () -> Unit) {
+private fun MemberRow(member: RvGroupMember, remove: (() -> Unit)?) {
     val subtitle = stringResource(if (member.group) R.string.rv_group_edit_member_group else R.string.rv_group_member_node)
-    RvRow({ MemberMark(member) }, member.name, subtitle, onClick = onOpenSource, titleKeepWords = false) { RvChevron() }
+    RvRow({ MemberMark(member) }, member.name, subtitle, titleKeepWords = false) {
+        RvRemoveButton(stringResource(R.string.rv_list_remove, member.name), remove)
+    }
 }
 
 @Composable

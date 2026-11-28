@@ -3,6 +3,7 @@ package dev.doona.android.feature.policies
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
@@ -10,8 +11,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.R
 import dev.doona.android.app.nativeApi
+import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
+import dev.doona.android.designsystem.rv.RvSourceDiff
+import dev.doona.android.feature.config.rvLineDiff
 import dev.doona.android.feature.messageRes
 import dev.doona.android.feature.model.RvRuleSource
 
@@ -57,7 +61,14 @@ internal fun TemplateImpactRoute(viewModel: TemplateImpactViewModel, onBack: () 
     val impact = ui.impact
     val apply = { viewModel.apply(onApplied) }
     val banner = ui.failure?.let {
-        RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_template_apply_failed), stringResource(it.messageRes()), stringResource(R.string.rv_retry), apply)
+        val title = if (impact == null) R.string.rv_template_read_failed else R.string.rv_template_apply_failed
+        RvNotice(RvNoticeKind.Error, stringResource(title), stringResource(it.messageRes()), stringResource(R.string.rv_retry), if (impact == null) viewModel::load else apply)
     }
-    RvTemplateImpactPage(impact, onBack, apply, banner)
+    RvTemplateImpactPage(impact, onBack, apply.takeIf { ui.edit?.first?.writable == true }, banner) {
+        ui.edit?.let { (source, candidate) ->
+            remember(source, candidate) { rvLineDiff(source.path, source.content, candidate) }?.let { diff ->
+                RvGutter { RvSourceDiff(diff, onOpen = null) }
+            }
+        }
+    }
 }

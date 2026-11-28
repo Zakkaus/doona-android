@@ -16,15 +16,16 @@ internal data class PolicyFailure(val action: PolicyAction, val code: ErrorCode)
 
 /**
  * What 策略 shows. [loading] holds the skeleton until the engine is ready and the first profile is read, or that read
- * failed, which [failure] then says; [noSubscription]
+ * failed, which [failure] then says; [empty]
  * replaces the cards with the empty state. [state] is the page's own state: the mode and the two switches as the engine
  * has them, the order as the user left it; [profile] is everything the cards list.
  */
 @Immutable
 internal data class PoliciesUiState(
     val loading: Boolean = true,
-    val noSubscription: Boolean = false,
+    val empty: Boolean = false,
     val state: RvPolicyState = RvPolicyState(),
     val profile: RvPolicyProfile? = null,
     val failure: PolicyFailure? = null,
+    val configRev: Int? = null,
 )

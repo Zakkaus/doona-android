@@ -128,7 +128,7 @@ private fun StatsCard(connection: RvConnection, nowEpochMs: Long) {
 private fun PathCard(connection: RvConnection) {
     val rule = connection.rule
     val index = RvPolicyData.allRules.indexOf(rule) + 1
-    val ruleLine = stringResource(R.string.rv_conn_rule_index, index) + SEPARATOR + rule.match.kind()
+    val ruleLine = listOfNotNull(stringResource(R.string.rv_conn_rule_index, index), rule.match.kind()).joinToString(SEPARATOR)
     RvCard {
         RvRow({ RvAppDisc(connection.packageName) }, connection.app, connection.packageName, titleKeepWords = false, subtitleKeepWords = false)
         RvRow({ RvIconDisc(R.drawable.rv_sym_rule) }, rule.match.title(), ruleLine, titleKeepWords = false)

@@ -33,7 +33,6 @@ internal class ActivityRoutes(
     val nodes: () -> Unit,
     val node: (String) -> Unit,
     val tab: (Int) -> Unit,
-    val mode: () -> Unit,
     val rule: (String) -> Unit,
     val rules: () -> Unit,
     val subscriptions: () -> Unit,
@@ -116,6 +115,7 @@ internal fun ActivityPage(viewModel: ActivityViewModel, crash: ActivityCrashOffe
         loading = ui.loading,
         rules = ui.rules,
         cards = ui.cards,
+        cycleMode = null,
     )
 }
 
@@ -126,7 +126,7 @@ private fun pageRoutes(routes: ActivityRoutes, test: () -> Unit) = RvActivityRou
     nodes = routes.nodes,
     node = routes.node,
     tab = routes.tab,
-    mode = routes.mode,
+    mode = null,
     rule = routes.rule,
     rules = routes.rules,
     test = test,

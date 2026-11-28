@@ -222,7 +222,7 @@ private fun appended(config: HonkConfig, list: RvDnsList, text: String): Pair<Ho
 
 /** A DNS rule's page in the app; it leaves ([onBack]) once a write landed, and a statement's line opens its file. */
 @Composable
-internal fun DnsRuleEditRoute(api: NativeApi, query: Boolean, ruleId: String?, onBack: () -> Unit, onOpenSource: (String) -> Unit) {
+internal fun DnsRuleEditRoute(api: NativeApi, query: Boolean, ruleId: String?, onBack: () -> Unit, onOpenSource: (String, Int) -> Unit) {
     val list = if (query) RvDnsList.Query else RvDnsList.Response
     val viewModel: DnsRuleEditViewModel = viewModel(factory = DnsRuleEditViewModel.factory(api, list, ruleId))
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
@@ -239,7 +239,7 @@ internal fun DnsRuleEditRoute(api: NativeApi, query: Boolean, ruleId: String?, o
         onApply = viewModel::apply,
         onDelete = viewModel::delete,
         onMove = viewModel::move,
-        onOpenSource = { ui.at?.statement?.source?.let(onOpenSource) },
+        onOpenSource = { at -> ui.at?.statement?.source?.let { onOpenSource(it, at.line) } },
         banner = ui.writeFailure?.let { changeBanner(stringResource(R.string.rv_config_apply_failed), it, viewModel::apply) }
             ?: ui.readFailure?.let { readBanner(it, viewModel::retry) },
     )

@@ -9,6 +9,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import dev.doona.android.R
@@ -116,6 +117,16 @@ class AppRvPolicyShotTest {
         compose.onAllNodes(hasText(text(R.string.rv_failed_switch_mode)), useUnmergedTree = true).fetchSemanticsNodes().let { assertEquals(0, it.size) }
     }
 
+    @Test
+    fun addGroupOpensTheFormWithRealMembers() {
+        compose.rvContent(dark = false) { Page(PolicyHonkFixtures::rvSample) }
+        compose.onNode(hasText(text(R.string.rv_group_new)), useUnmergedTree = true).performScrollTo().performClick()
+        compose.onNode(hasText(text(R.string.rv_group_edit_add_member)), useUnmergedTree = true).performScrollTo().performClick()
+        compose.onNode(hasText("Proxy"), useUnmergedTree = true).performScrollTo().performClick()
+        compose.onNode(hasText("Proxy"), useUnmergedTree = true).assertExists()
+        compose.onNode(hasText(text(R.string.rv_group_edit_options)), useUnmergedTree = true).assertExists()
+    }
+
     /** The empty state's 新增訂閱 is the route's way to the subscriptions. */
     @Test
     fun theEmptyStateOpensTheSubscriptions() {
@@ -160,6 +171,10 @@ class AppRvPolicyShotTest {
 
     /** The sample with no subscription: nothing to route. */
     private fun noSubscription(): FakeHonk = PolicyHonkFixtures.rvSample().apply {
+        on("GET", "/api/v1/config", 200, """{"sources":[]}""")
+        on("GET", "/api/v1/groups", 200, "[]")
+        on("GET", "/api/v1/nodes", 200, """{"nodes":[],"next_cursor":null}""")
+        on("GET", "/api/v1/rules", 200, """{"generation_id":"g","rules":[{"rule_id":"traffic:0","index":0,"expression":"fallback: direct","outbound":"direct","must":false,"source":null,"kind":"fallback"}],"fallback":{"outbound":"direct","source":null}}""")
         on("GET", "/api/v1/providers", 200, """{"providers": [], "next_cursor": null}""")
     }
 
@@ -169,7 +184,7 @@ class AppRvPolicyShotTest {
         const val SAMPLE_NOW = 1_795_343_040_000L
 
         /** `proto-rv-policy-{light,dark}`'s window, as tall as the page whole. */
-        const val WHOLE_RULE = "+h2008dp"
+        const val WHOLE_RULE = "+h2066dp"
         const val WHOLE_RULE_EN = "en-w412dp-h2200dp-notnight-xhdpi"
     }
 }

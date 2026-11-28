@@ -156,7 +156,16 @@ class AppRvTemplateShotTest {
         assertEquals(listOf("cn-direct"), opened)
     }
 
-    /** 套用 writes the template into honk's file, then leaves for 策略. */
+    @Test
+    fun retryReadsThePreviewWithoutWriting() {
+        val honk = applying().apply { on("GET", "/api/v1/config", 503, HonkFixtures.body("errors/snapshot-unavailable")) }
+        compose.rvContent(dark = false) { Impact(honk) }
+        honk.on("GET", "/api/v1/config", 200, HonkFixtures.body("config/rv-sample-hand"))
+        compose.onNode(hasText(text(R.string.rv_retry)), useUnmergedTree = true).performClick()
+        compose.onNode(hasText(text(R.string.rv_template_new_flows)), useUnmergedTree = true).assertExists()
+        assertEquals(emptyList<String>(), puts(honk))
+    }
+
     @Test
     fun applyingSetsTheTemplateAndLeaves() {
         val honk = applying()
@@ -265,8 +274,8 @@ class AppRvTemplateShotTest {
         /** The other pages' windows as tall as each page whole; measured by assertWhole. */
         const val WHOLE_TEMPLATE_FS200 = "+h1109dp"
         const val WHOLE_TEMPLATE_EN = "en-w412dp-h915dp-notnight-xhdpi"
-        const val WHOLE_IMPACT_FS200 = "+h915dp"
-        const val WHOLE_IMPACT_EN = "en-w412dp-h915dp-notnight-xhdpi"
+        const val WHOLE_IMPACT_FS200 = "+h1338dp"
+        const val WHOLE_IMPACT_EN = "en-w412dp-h1034dp-notnight-xhdpi"
         const val WHOLE_EFFECTIVE_FS200 = "+h3326dp"
         const val WHOLE_EFFECTIVE_EN = "en-w412dp-h2600dp-notnight-xhdpi"
         const val PERCENT = 100

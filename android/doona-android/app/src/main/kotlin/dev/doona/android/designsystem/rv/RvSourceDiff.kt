@@ -60,7 +60,7 @@ internal class RvDiffFile(val source: String, val hunks: List<List<RvDiffLine>>)
  * Runs are apart by [RvSpace.subGap]; their numbers show what lies between.
  */
 @Composable
-internal fun RvSourceDiff(file: RvDiffFile, onOpen: (RvDiffAt) -> Unit, modifier: Modifier = Modifier) {
+internal fun RvSourceDiff(file: RvDiffFile, onOpen: ((RvDiffAt) -> Unit)?, modifier: Modifier = Modifier) {
     val first = file.hunks.first().first { it.kind != RvDiffKind.Same }.at
     SourceCard(file, stringResource(R.string.rv_diff_counts, file.added, file.removed), first, onOpen, modifier)
 }
@@ -76,14 +76,14 @@ internal fun RvSourceExcerpt(source: String, lines: List<RvDiffLine>, onOpen: (R
 }
 
 @Composable
-private fun SourceCard(file: RvDiffFile, tag: String?, first: RvDiffAt, onOpen: (RvDiffAt) -> Unit, modifier: Modifier) {
+private fun SourceCard(file: RvDiffFile, tag: String?, first: RvDiffAt, onOpen: ((RvDiffAt) -> Unit)?, modifier: Modifier) {
     val numbers = rvLineNumberStyle()
     val measurer = rememberTextMeasurer()
     val gutter = rvLineNumberWidth(measurer, file.hunks.maxOf { run -> run.maxOf { it.line } }, numbers)
     val signPx = remember(numbers, measurer) { measurer.measure(RvDiffKind.Removed.sign, numbers).size.width }
     val sign = with(LocalDensity.current) { signPx.toDp() }
     RvCard(modifier) {
-        RvCardHeader(file.source, onClick = { onOpen(first) }, tag = tag, titleLines = Int.MAX_VALUE, keepWords = false)
+        RvCardHeader(file.source, onClick = onOpen?.let { { it(first) } }, tag = tag, titleLines = Int.MAX_VALUE, keepWords = false)
         file.hunks.forEachIndexed { i, run ->
             if (i > 0) Spacer(Modifier.height(RvSpace.subGap))
             run.forEach { DiffLine(it, DiffColumns(gutter, sign, numbers), onOpen) }
@@ -96,7 +96,7 @@ private fun SourceCard(file: RvDiffFile, tag: String?, first: RvDiffAt, onOpen: 
 private class DiffColumns(val number: Dp, val sign: Dp, val style: TextStyle)
 
 @Composable
-private fun DiffLine(line: RvDiffLine, columns: DiffColumns, onOpen: (RvDiffAt) -> Unit) {
+private fun DiffLine(line: RvDiffLine, columns: DiffColumns, onOpen: ((RvDiffAt) -> Unit)?) {
     val colors = Rv.colors
     val hue = when (line.kind) {
         RvDiffKind.Same -> null
@@ -115,7 +115,7 @@ private fun DiffLine(line: RvDiffLine, columns: DiffColumns, onOpen: (RvDiffAt) 
         Modifier
             .fillMaxWidth()
             .then(tint)
-            .rvRowPress(Role.Button, { onOpen(line.at) })
+            .then(if (onOpen == null) Modifier else Modifier.rvRowPress(Role.Button, { onOpen(line.at) }))
             .semantics(mergeDescendants = true) { contentDescription = label }
             .padding(horizontal = RvSpace.rowPadding),
     ) { parts, constraints ->

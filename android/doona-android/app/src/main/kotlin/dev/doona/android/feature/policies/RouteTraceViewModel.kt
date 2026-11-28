@@ -130,7 +130,7 @@ internal fun rvTraceResult(
         target = target,
         node = selection?.let { nodeNames[it.resolvedLeafNodeId ?: it.memberId] },
         fallback = winner.isFallback,
-        captured = input.dstIp?.let(carries) ?: true,
+        captured = input.dstIp?.let(carries),
         skipped = skipped?.let { (sources[it.sourceId]?.path ?: it.file) to it.line },
     )
 }

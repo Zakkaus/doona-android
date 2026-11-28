@@ -57,7 +57,7 @@ internal fun RulesRoute(
         editing = editing,
         onBack = onBack,
         routes = RvRulesRoutes(
-            open = { i -> ui.ids.getOrNull(i)?.let(onOpen) },
+            open = { i -> ui.ids.getOrNull(i)?.takeUnless { i == ui.rules.lastIndex }?.let { id -> { onOpen(id) } } },
             toggle = viewModel::toggle,
             delete = viewModel::remove,
             edit = { editing = it },
@@ -68,7 +68,7 @@ internal fun RulesRoute(
             effective = routes.effective,
         ),
         banner = ui.failure?.let { rulesBanner(it, onTemplate, viewModel::retry) }
-            ?: ui.writeFailure?.let { changeBanner(stringResource(R.string.rv_config_apply_failed), it, viewModel::retry) },
+            ?: ui.writeFailure?.let { changeBanner(stringResource(R.string.rv_config_apply_failed), it, viewModel::retryWrite) },
         loading = ui.loading,
         removable = true,
     )

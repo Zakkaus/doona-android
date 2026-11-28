@@ -143,6 +143,7 @@ internal fun DoonaApp(
                     routes = RvPolicyRoutes(
                         mainNode = { backStack.push(MainNodeChoiceKey) },
                         rules = { backStack.push(RulesKey) },
+                        newRule = { backStack.push(RuleEditKey(null)) },
                         template = { backStack.push(TemplateKey) },
                         config = { backStack.push(ConfigKey) },
                         tab = onTab,
@@ -150,7 +151,14 @@ internal fun DoonaApp(
                     ),
                 )
             }
-            entry<GroupKey> { key -> GroupRoute(key.groupId, onBack = { backStack.pop(key) }, onEdit = { backStack.push(GroupEditKey(key.groupId)) }) }
+            entry<GroupKey> { key ->
+                GroupRoute(
+                    key.groupId,
+                    onBack = { backStack.pop(key) },
+                    onNodeDetail = { backStack.push(NodeKey(it)) },
+                    onEdit = { backStack.push(GroupEditKey(key.groupId)) },
+                )
+            }
             entry<GroupEditKey> { key -> GroupEditRoute(key.groupId, onBack = { backStack.pop(key) }, onOpenSource = { backStack.push(ConfigSourceKey(it)) }) }
             entry<RulesKey> { key ->
                 RulesRoute(
@@ -162,7 +170,9 @@ internal fun DoonaApp(
                     routes = RvRulesRoutes(effective = { backStack.push(EffectiveConfigKey) }),
                 )
             }
-            entry<RuleEditKey> { key -> RuleEditRoute(key.ruleId, onBack = { backStack.pop(key) }, onOpenSource = { backStack.push(ConfigSourceKey(it)) }) }
+            entry<RuleEditKey> { key ->
+                RuleEditRoute(key.ruleId, onBack = { backStack.pop(key) }, onOpenSource = { path, line -> backStack.push(ConfigSourceKey(path, line)) })
+            }
             entry<TemplateKey> { key -> TemplateRoute(onBack = { backStack.pop(key) }, onReview = { backStack.push(TemplateImpactKey(it)) }) }
             entry<ServiceRulesKey> { key -> ServiceRulesRoute(onBack = { backStack.pop(key) }) }
             entry<TemplateImpactKey> { key ->
@@ -171,7 +181,7 @@ internal fun DoonaApp(
             entry<EffectiveConfigKey> { key ->
                 EffectiveConfigRoute(engine, onBack = { backStack.pop(key) }, onRules = { backStack.push(RulesKey) }, onTrace = { backStack.push(RouteTraceKey) })
             }
-            entry<RouteTraceKey> { key -> RouteTraceRoute(carries = ::tunCarries, onBack = { backStack.pop(key) }, onOpenSource = { backStack.push(ConfigSourceKey(it)) }) }
+            entry<RouteTraceKey> { key -> RouteTraceRoute(carries = ::tunCarries, onBack = { backStack.pop(key) }, onOpenSource = { path, line -> backStack.push(ConfigSourceKey(path, line)) }) }
             configEntries(backStack)
             entry<SubscriptionsKey> { key ->
                 SubscriptionsRoute(
@@ -234,7 +244,7 @@ internal fun DoonaApp(
 enum class SystemSettings { Vpn, Network, Notifications }
 
 /**
- * Where 活動 leads: the pages with an entry here, the 策略 tab for the mode, 設定 for 更多 and 檢查更新 (q-actmore), 回報問題
+ * Where 活動 leads: the pages with an entry here, 設定 for 更多 and 檢查更新 (q-actmore), 回報問題
  * for the crash notice's 匯出報告, and the system's settings for the notices that need them.
  */
 private fun activityRoutes(backStack: MutableList<NavKey>, onSystemSettings: (SystemSettings) -> Unit) = ActivityRoutes(
@@ -244,7 +254,6 @@ private fun activityRoutes(backStack: MutableList<NavKey>, onSystemSettings: (Sy
     nodes = { backStack.push(NodesKey) },
     node = { backStack.push(NodeKey(it)) },
     tab = { backStack.selectTab(it) },
-    mode = { backStack.selectTab(Tab.Policies) },
     rule = { backStack.push(GroupKey(it)) },
     rules = { backStack.push(RulesKey) },
     subscriptions = { backStack.push(SubscriptionsKey) },

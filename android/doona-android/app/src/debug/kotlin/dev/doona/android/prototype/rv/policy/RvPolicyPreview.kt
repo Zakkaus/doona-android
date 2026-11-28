@@ -144,7 +144,7 @@ internal fun RvPolicyPreview(
         r.RULES -> {
             val routes = RvRulesRoutes(
                 // The last rule routes the rest to the main node, so it opens the main node's group.
-                open = { i -> if (i == state.rules.lastIndex) push("${r.GROUP}:${RvPolicyData.main.id}") else push("${r.EDIT}:$i") },
+                open = { i -> { if (i == state.rules.lastIndex) push("${r.GROUP}:${RvPolicyData.main.id}") else push("${r.EDIT}:$i") } },
                 toggle = state::toggle,
                 delete = state::delete,
                 edit = { state.editing = it },

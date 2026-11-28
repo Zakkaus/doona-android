@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RV_NAV_POLICY
+import dev.doona.android.designsystem.rv.RV_NO_VALUE
 import dev.doona.android.designsystem.rv.RV_ROW_TITLE_LINES
 import dev.doona.android.designsystem.rv.Rv
 import dev.doona.android.designsystem.rv.RvAddRow
@@ -107,8 +108,8 @@ internal class RvPolicyRoutes(
  * picker); the groups, each with how it picks and the node it uses (a row pushes its page); the rules in order with
  * today's bytes, as Karing lists them; and the template and the switches that shape the rules. 全域 has one decision,
  * the node everything goes through, so under the mode the page is the node picker itself; 直連 shows the mode alone.
- * With no subscription there is nothing to route: [noSubscription], when set, puts the empty state with 新增訂閱 (which
- * runs it) in place of the cards, as 活動 does; the bar and the nav stay. [configRev] is a preview flag (PV-f): set, 設定檔
+ * For an empty profile, [noSubscription] puts the empty state with 新增訂閱 in place of the cards; the bar and nav stay.
+ * [configRev] is a preview flag (PV-f): set, 設定檔
  * joins the card under 範本 with the applied revision and opens the configuration's overview ([RvPolicyRoutes.config]).
  * While [loading] (before the engine is ready) the page is a skeleton of what its mode lays out ([PolicySkeleton]), and
  * the content fades in over it in place. A [banner] (a failed action: a mode switch) heads the cards in [RvBannerSlot],
@@ -134,7 +135,7 @@ internal fun RvPolicyScreen(
     val title = stringResource(R.string.nav_policies)
     val testAll = stringResource(R.string.rv_policy_test_all)
     val update = stringResource(R.string.rv_policy_update_subscriptions)
-    // The groups can be edited where they show: under 規則, with a profile and a subscription.
+    // Groups can be edited in Rule mode once the profile is shown.
     val groupsEditable = groupsEdit?.takeIf { state.mode == RvRouteMode.Rule && noSubscription == null && profile != null && !loading }
     RvScrollPage(
         title,
@@ -373,9 +374,7 @@ private fun GroupRow(group: RvPolicyGroup, onOpen: (String) -> Unit, remove: RvR
         group.kind.glyph,
         name,
         groupLine(group),
-        // In edit mode the row is the group to keep or remove: its node and latency give way, so the disc leaves the
-        // name and its line one width and the row one height.
-        group.selected.takeIf { remove == null },
+        group.selected,
         Modifier.rvRowPress(Role.Button, { onOpen(group.id) }),
         trailing = { RvChevron() },
         remove = remove,
@@ -421,9 +420,8 @@ private fun RulesCard(profile: RvPolicyProfile, onAll: () -> Unit) {
 private fun OptionsCard(state: RvPolicyState, onChange: (RvPolicyState) -> Unit, routes: RvPolicyRoutes, configRev: Int?, source: RvRuleSource) {
     RvCard {
         ValueRow(R.drawable.rv_sym_rule, stringResource(R.string.rv_policy_template), source.text(), routes.template)
-        if (configRev != null) {
-            ValueRow(R.drawable.rv_sym_edit, stringResource(R.string.rv_config_title), stringResource(R.string.rv_config_revision, configRev), routes.config)
-        }
+        // honk-gap:policy-config-revision
+        ValueRow(R.drawable.rv_sym_edit, stringResource(R.string.rv_config_title), configRev?.let { stringResource(R.string.rv_config_revision, it) } ?: RV_NO_VALUE, routes.config)
         RvAddRow(stringResource(R.string.rv_policy_new_rule), routes.newRule)
         RvSwitchRow(R.drawable.rv_sym_ad_off, stringResource(R.string.rv_policy_block_ads), state.blockAds) { onChange(state.copy(blockAds = it)) }
         if (source is RvRuleSource.Template) {

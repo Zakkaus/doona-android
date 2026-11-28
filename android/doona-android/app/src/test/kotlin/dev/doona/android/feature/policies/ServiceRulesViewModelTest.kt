@@ -42,12 +42,17 @@ class ServiceRulesViewModelTest {
 
     @Test
     fun `ticks are the page's own, and a failed read says why`() {
-        val vm = ServiceRulesViewModel(PolicyHonkFixtures.rvSample().apply { on("GET", "/api/v1/rules", 503, HonkFixtures.body("errors/snapshot-unavailable")) }, io = Dispatchers.Unconfined)
+        val honk = PolicyHonkFixtures.rvSample().apply { on("GET", "/api/v1/rules", 503, HonkFixtures.body("errors/snapshot-unavailable")) }
+        val vm = ServiceRulesViewModel(honk, io = Dispatchers.Unconfined)
         vm.toggle("steam")
         vm.toggle("youtube")
         vm.toggle("steam")
         assertEquals(setOf("youtube"), vm.uiState.value.selected)
         assertEquals(ErrorCode.Busy, vm.uiState.value.failure)
+        honk.on("GET", "/api/v1/rules", 200, HonkFixtures.body("rules/rv-sample"))
+        vm.load()
+        assertEquals(null, vm.uiState.value.failure)
+        assertEquals(setOf("google"), vm.uiState.value.rules.keys)
     }
 
     @Test

@@ -194,11 +194,11 @@ class SettingsAppShotTest {
 
     /** A DNS statement the form cannot hold (a GeoSite match): its line in 依據, then 動作 and its servers. */
     @Test fun dnsRuleEditLight() = compose.app("settings-dns-rule-edit", dark = false, before = { shows("alidns") }) {
-        DnsRuleEditRoute(PolicyHonkFixtures.rvSample(), query = true, ruleId = "dns_request:1", onBack = {}, onOpenSource = {})
+        DnsRuleEditRoute(PolicyHonkFixtures.rvSample(), query = true, ruleId = "dns_request:1", onBack = {}, onOpenSource = { _, _ -> })
     }
 
     /** 全部規則 → github.com, on the app's honk (the sample): a suffix rule to Proxy, sixth of thirteen. */
-    @Test fun ruleEditLight() = compose.app("rule-edit", dark = false, before = { shows("github.com") }) { RuleEditRoute("traffic:5", onBack = {}, onOpenSource = {}) }
+    @Test fun ruleEditLight() = compose.app("rule-edit", dark = false, before = { shows("github.com") }) { RuleEditRoute("traffic:5", onBack = {}, onOpenSource = { _, _ -> }) }
 
     @Test fun dnsCustomLight() = compose.app("settings-dns-custom", dark = false) { DnsCustom(DnsUiState(SERVERS, true, TYPED)) }
 
@@ -273,7 +273,7 @@ class SettingsAppEnShotTest {
     val compose = createComposeRule()
 
     @Test
-    @Config(qualifiers = "+h2040dp")
+    @Config(qualifiers = "+h2122dp")
     fun settings() = compose.app("settings-en", dark = false, whole = true, content = settingsPage())
 
     @Test fun lab() = compose.app("settings-lab-en", dark = false, whole = true) { LabRoute(FakeSettingsStore(), onBack = {}, onRestart = {}) }
@@ -407,10 +407,10 @@ private object NoSystem : SettingsSystem {
     override fun requestTile(onAnswer: (TileAnswer) -> Unit) = Unit
 }
 
-private fun noNav() = SettingsNav({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
+private fun noNav() = SettingsNav({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, config = {})
 
 /** As tall as each page at each font size, as its approved golden (RvLabShotTest's approved 設定, RvReportShotTest). */
-private const val LONG_PAGE = "+h1990dp"
+private const val LONG_PAGE = "+h2072dp"
 
 /** 主題 whole: the window the page fills at 1× and 2×. */
 private const val THEME_PAGE = "+h975dp"
@@ -419,8 +419,8 @@ private const val THEME_PAGE_FS200 = "+h1062dp"
 /** The core's servers in [FakeEngine], and 自訂 as it opens on them. */
 private val SERVERS = listOf("1.1.1.1:53", "8.8.8.8:53")
 private const val TYPED = "1.1.1.1, 8.8.8.8"
-private const val LONG_PAGE_FS115 = "+h2015dp"
-private const val LONG_PAGE_FS200 = "+h2589dp"
+private const val LONG_PAGE_FS115 = "+h2097dp"
+private const val LONG_PAGE_FS200 = "+h2696dp"
 
 /** Turns 實驗室's 效能模式, the page's one switch. */
 private fun ComposeContentTestRule.turnPerformance() {

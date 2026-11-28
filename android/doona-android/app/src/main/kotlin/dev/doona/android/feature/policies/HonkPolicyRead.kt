@@ -43,7 +43,10 @@ internal class HonkPolicyRead(
     }
 
     /** Every rule in evaluation order, the fallback last, drawn through [groups] (by id, from [policyGroups]). */
-    fun policyRules(groups: Map<String, RvPolicyGroup>): List<RvPolicyRule> = rules.rules.map { rvPolicyRule(it, byName(groups)) }
+    fun policyRules(groups: Map<String, RvPolicyGroup>): List<RvPolicyRule> {
+        val byName = byName(groups)
+        return rules.rules.map { rvPolicyRule(it, byName) }
+    }
 
     /** [entries] (rules honk runs and paused ones, from [withPaused]) drawn through [groups] as [policyRules] draws them. */
     fun policyRules(groups: Map<String, RvPolicyGroup>, entries: List<HonkRuleEntry>): List<RvPolicyRule> {
@@ -63,15 +66,15 @@ internal class HonkPolicyRead(
     val subscriptions: List<Provider> = providers.filter { it.kind == ProviderKind.Subscription }
 
     /** 策略's profile at [nowEpochMs]: [routing] names the template the rules come from, if any. */
-    fun profile(places: NodePlaces, nowEpochMs: Long, routing: HonkRouting?): RvPolicyProfile {
+    fun profile(places: NodePlaces, nowEpochMs: Long, routing: HonkRouting?, paused: List<HonkPausedRule>): RvPolicyProfile {
         val nodes = nodes(places)
         val groups = policyGroups(nodes)
         val main = mainGroupId?.let(groups::get)
         return RvPolicyProfile(
             main = main,
             groups = groups.values.filter { it.id != main?.id },
-            rules = policyRules(groups).take(RV_POLICY_CARD_RULES),
-            ruleCount = rules.rules.size,
+            rules = policyRules(groups, withPaused(rules.rules, paused).take(RV_POLICY_CARD_RULES)),
+            ruleCount = rules.rules.size + paused.size,
             nodes = nodes.values.toList(),
             subscriptions = subscriptions.map { rvSubscription(it, null) },
             nowEpochMs = nowEpochMs,

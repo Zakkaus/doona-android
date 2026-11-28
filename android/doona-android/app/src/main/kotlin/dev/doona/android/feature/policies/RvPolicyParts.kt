@@ -67,12 +67,12 @@ internal fun RvRuleSource.text(): String = when (this) {
 
 /** The kind of match, under the title. */
 @Composable
-internal fun RvRuleMatch.kind(): String = when (this) {
+internal fun RvRuleMatch.kind(): String? = when (this) {
     is RvRuleMatch.Domains -> stringResource(R.string.rv_policy_kind_domain)
     is RvRuleMatch.GeoIp -> stringResource(R.string.rv_rule_geoip)
     RvRuleMatch.Lan -> stringResource(R.string.rv_policy_lan_kind)
     RvRuleMatch.Rest -> stringResource(R.string.rv_policy_rest_kind)
-    is RvRuleMatch.Value -> stringResource(kind.label)
+    is RvRuleMatch.Value -> kind?.let { stringResource(it.label) }
     is RvRuleMatch.GeoSite -> stringResource(R.string.rv_rule_geosite)
 }
 
@@ -84,11 +84,13 @@ internal fun RvRuleMatch.kind(): String = when (this) {
 @Composable
 internal fun RvRuleRow(rule: RvPolicyRule, modifier: Modifier = Modifier, end: String? = null, remove: RvRowRemove? = null) {
     val format = rememberRvFormat()
-    val subtitle = when (rule.state) {
-        RvRuleState.On -> rule.match.kind()
-        RvRuleState.Off -> rule.match.kind() + SEPARATOR + stringResource(R.string.rv_policy_rule_off)
-        RvRuleState.Skipped -> rule.match.kind() + SEPARATOR + stringResource(R.string.rv_policy_rule_skipped)
+    val state = when (rule.state) {
+        RvRuleState.On -> null
+        RvRuleState.Off -> stringResource(R.string.rv_policy_rule_off)
+        RvRuleState.Skipped -> stringResource(R.string.rv_policy_rule_skipped)
     }
+    val kind = rule.match.kind()
+    val subtitle = listOfNotNull(kind, state).joinToString(SEPARATOR)
     val bytes = rule.bytes?.takeIf { rule.state == RvRuleState.On }?.let { format.bytes(it).toString() } ?: RV_NO_VALUE
     val title = rule.match.title()
     val removeLabel = stringResource(R.string.rv_list_remove, title)
@@ -146,8 +148,9 @@ internal fun RvGroupRow(
         name,
         line,
         modifier,
-        titleEnd = node?.let { { RvRowEndName(it.name) } },
-        subtitleEnd = node?.let { { RvText(latencyText(it.latencyMs), Rv.type.rowSub, color = latencyColor(it.latencyMs), align = TextAlign.End) } },
+        titleEnd = { RvRowEndName(node?.name ?: RV_NO_VALUE) },
+        // honk-gap:group-current-node
+        subtitleEnd = { RvText(latencyText(node?.latencyMs), Rv.type.rowSub, color = latencyColor(node?.latencyMs), align = TextAlign.End) },
         trailing = rvRemoveTrailing(remove, removeLabel) ?: trailing,
         titleKeepWords = false,
     )

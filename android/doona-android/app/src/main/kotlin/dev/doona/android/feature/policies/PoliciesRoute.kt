@@ -1,9 +1,15 @@
 package dev.doona.android.feature.policies
 
+import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.doona.android.R
@@ -13,6 +19,10 @@ import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvNoticeKind
 import dev.doona.android.engine.Engine
 import dev.doona.android.feature.messageRes
+import dev.doona.android.feature.model.text
+import dev.doona.android.honk.HonkGroupConfig
+import dev.doona.android.honk.HonkGroupOptions
+import dev.doona.android.honk.HonkGroupPolicy
 
 /**
  * The 策略 entry: builds the ViewModel and draws the RV page from its state while the screen is started. [onOpenGroup]
@@ -29,7 +39,41 @@ internal fun PoliciesRoute(engine: Engine, onOpenGroup: (String) -> Unit, onOpen
 /** 策略 on a given [viewModel]: the page as [PoliciesRoute] draws it, for a caller (a test) that makes its own. */
 @Composable
 internal fun PoliciesRoute(viewModel: PoliciesViewModel, onOpenGroup: (String) -> Unit, onOpenSubscriptions: () -> Unit, routes: RvPolicyRoutes = RvPolicyRoutes()) {
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.load() }
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
+    var creating by rememberSaveable { mutableStateOf(false) }
+    val profile = ui.profile
+    if (creating && profile != null) {
+        var name by rememberSaveable { mutableStateOf("") }
+        var ids by rememberSaveable { mutableStateOf(arrayListOf<String>()) }
+        var kind by rememberSaveable { mutableStateOf(RvGroupPolicyKind.Selector.kind) }
+        var default by rememberSaveable { mutableStateOf<String?>(null) }
+        var final by rememberSaveable { mutableStateOf<String?>(null) }
+        var picking by rememberSaveable { mutableStateOf<RvGroupOption?>(null) }
+        val groups = listOfNotNull(profile.main) + profile.groups
+        val all = groups.map { RvGroupMember(it.id, it.name.text(), true) } + profile.nodes.map { RvGroupMember(it.id, it.name, false, it.place.flag) }
+        val byId = all.associateBy { it.id }
+        val members = ids.mapNotNull(byId::get)
+        val options = HonkGroupOptions(default, final)
+        val draft = HonkGroupConfig(HonkGroupPolicy(kind, kind), options)
+        val back = { if (picking != null) picking = null else creating = false }
+        BackHandler(onBack = back)
+        picking?.let { option ->
+            return RvGroupOptionPage(option, members, draft, {
+                default = it.config.defaultMemberId
+                final = it.config.finalOutbound
+            }, back)
+        }
+        return RvGroupEditPage(
+            name, members, draft, draft, { kind = it.policy.kind }, back, {}, routes.config, { picking = it },
+            onName = { name = it }, nameError = if (groups.any { it.name.text() == name.trim() }) stringResource(R.string.rv_group_name_taken) else null,
+            available = all, onMembers = { selected ->
+                ids = ArrayList(selected)
+                default = default?.takeIf { it in selected }
+                final = final?.takeIf { value -> value == "direct" || value == "block" || selected.any { byId[it]?.name == value } }
+            },
+        )
+    }
     RvPolicyScreen(
         ui.state,
         viewModel::onChange,
@@ -45,12 +89,12 @@ internal fun PoliciesRoute(viewModel: PoliciesViewModel, onOpenGroup: (String) -
             search = routes.search,
             config = routes.config,
         ),
-        noSubscription = onOpenSubscriptions.takeIf { ui.noSubscription },
+        noSubscription = onOpenSubscriptions.takeIf { ui.empty },
         loading = ui.loading,
         banner = ui.failure?.let { policyBanner(it, viewModel::retry) },
         profile = ui.profile,
-        // The groups card is always editable (owner, q-edit-wire 2026-11-26): a new group is a block in the file.
-        groupsEdit = RvListEdit(onAdd = routes.config, onRemove = viewModel::removeGroup),
+        configRev = ui.configRev,
+        groupsEdit = RvListEdit(onAdd = { creating = true }, onRemove = viewModel::removeGroup),
     )
 }
 

@@ -39,6 +39,7 @@ class GroupViewModelTest {
     private fun TestScope.collected(honk: Honk, groupId: String = SELECTOR) =
         GroupViewModel(honk, groupId, clock = { NOW }, io = UnconfinedTestDispatcher(testScheduler)).also { vm ->
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+            vm.onResume()
         }
 
     /**
@@ -46,13 +47,14 @@ class GroupViewModelTest {
      * pin chose it; [calls] records the selections, clears and probes, which fail with [status] when it is set.
      */
     private class Honk(udpId: String = "n1", groups: List<G>? = null) : NativeApi {
-        class G(val id: String, val name: String, val kind: String, val members: List<String>, var tcp: String?, var udp: String?, var pinned: Boolean)
+        class G(val id: String, val name: String, var kind: String, val members: List<String>, var tcp: String?, var udp: String?, var pinned: Boolean)
 
         val groups = (groups ?: listOf(G(SELECTOR, "Streaming", "selector", NODES, "n1", udpId, false), G(SCORE, "Score", "score", NODES, "n1", "n2", false)))
             .associateBy { it.id }
         val calls = mutableListOf<String>()
         var status: Int? = null
         var failNodes = false
+        var onNodes: (() -> Unit)? = null
 
         override fun call(method: String, path: String, body: String?, headers: Map<String, String>): NativeResponse {
             val id = path.removePrefix("/api/v1/groups/").substringBefore("/").substringBefore("?")
@@ -66,7 +68,7 @@ class GroupViewModelTest {
         }
 
         private fun read(path: String, id: String): NativeResponse = when (path) {
-            "/api/v1/nodes" -> if (failNodes) NativeResponse(500, ERROR) else ok(NODE_LIST)
+            "/api/v1/nodes" -> if (failNodes) NativeResponse(500, ERROR) else ok(NODE_LIST).also { onNodes?.invoke() }
             "/api/v1/providers" -> ok(PROVIDERS)
             "/api/v1/groups/$id" -> groups[id]?.let { ok(json(it)) } ?: NativeResponse(404, ERROR)
             "/api/v1/operations/op-1" -> ok("""{"operation_id":"op-1","kind":"probe","status":"succeeded","result":{},"error":null}""")
@@ -217,6 +219,45 @@ class GroupViewModelTest {
     }
 
     @Test
+    fun `merging while a TCP selection is queued uses the new TCP node`() = runTest {
+        val honk = Honk(udpId = "n3")
+        val vm = GroupViewModel(honk, SELECTOR, io = StandardTestDispatcher(testScheduler))
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        vm.onResume()
+        runCurrent()
+        honk.onNodes = {
+            honk.onNodes = null
+            vm.onApart(false)
+            runCurrent()
+        }
+        vm.onTap("n2")
+        runCurrent()
+        val choice = requireNotNull(vm.uiState.value.choice)
+        assertEquals("n2" to "n2", choice.tcpId to choice.udpId)
+        assertFalse(choice.apart)
+    }
+
+    @Test
+    fun `a failed switch off keeps both nodes visible until a retry confirms the same node`() = runTest {
+        val honk = Honk(udpId = "n3")
+        val vm = collected(honk)
+        honk.failNodes = true
+        vm.onApart(false)
+
+        assertEquals(GroupAction.Apart, vm.uiState.value.failure?.action)
+        val split = vm.uiState.value.choice!!
+        assertTrue(split.apart)
+        assertEquals("n1" to "n3", split.tcpId to split.udpId)
+
+        honk.failNodes = false
+        vm.retry()
+        val joint = vm.uiState.value.choice!!
+        assertFalse(joint.apart)
+        assertEquals("n1" to "n1", joint.tcpId to joint.udpId)
+        assertEquals(listOf("select $SELECTOR n1 udp"), honk.calls)
+    }
+
+    @Test
     fun `turning the switch off with one node on both networks calls nothing`() = runTest {
         val honk = Honk()
         val vm = collected(honk)
@@ -305,14 +346,25 @@ class GroupViewModelTest {
     }
 
     @Test
-    fun `the page loads until its first read ends`() = runTest {
+    fun `returning to the page reloads the policy before allowing a selection`() = runTest {
         val io = StandardTestDispatcher(testScheduler)
-        val vm = GroupViewModel(Honk(), SELECTOR, clock = { NOW }, io = io)
+        val honk = Honk()
+        val vm = GroupViewModel(honk, SELECTOR, clock = { NOW }, io = io)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect {} }
+        vm.onResume()
         assertTrue(vm.uiState.value.loading)
         runCurrent()
         assertFalse(vm.uiState.value.loading)
         assertEquals(SELECTOR, vm.uiState.value.group?.id)
+
+        honk.groups.getValue(SELECTOR).kind = "score"
+        vm.onResume()
+        assertEquals(SELECTOR, vm.uiState.value.group?.id)
+        vm.onTap("n2")
+        runCurrent()
+        vm.onTap("n2")
+        assertTrue(vm.uiState.value.isScore)
+        assertTrue(honk.calls.isEmpty())
     }
 
     private companion object {

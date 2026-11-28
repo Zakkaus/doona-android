@@ -156,7 +156,7 @@ class ThemeDnsRouteTest {
         val native = NativeSettings(honk)
         val vm = SettingsViewModel(FakeEngine(), native, FakeSettingsStore(), io = Dispatchers.Unconfined)
         val interval = GeoIntervalViewModel(native, Dispatchers.Unconfined)
-        val nav = SettingsNav({}, {}, {}, {}, {}, geoInterval = { opened++ }, {}, {}, {}, {}, {})
+        val nav = SettingsNav({}, {}, {}, {}, {}, geoInterval = { opened++ }, {}, {}, {}, {}, {}, config = {})
         var page by mutableStateOf(false)
         compose.rvContent(dark = false) {
             if (page) GeoIntervalPage(interval, onBack = {}) else SettingsPage(vm, NoSystem, nav, "0.1.0", onTab = {})
@@ -186,7 +186,7 @@ class ThemeDnsRouteTest {
             override suspend fun set(level: RvLogLevel): Result<Unit> = Result.success(Unit)
         }
         val vm = SettingsViewModel(FakeEngine(), NativeSettings(SettingsHonk.running()), FakeSettingsStore(), levels = levels, io = Dispatchers.Unconfined)
-        val nav = SettingsNav({}, {}, {}, {}, logLevel = { opened++ }, {}, {}, {}, {}, {}, {})
+        val nav = SettingsNav({}, {}, {}, {}, logLevel = { opened++ }, {}, {}, {}, {}, {}, {}, config = {})
         compose.rvContent(dark = false) { SettingsPage(vm, NoSystem, nav, "0.1.0", onTab = {}) }
         compose.onNodeWithText(DEBUG).performScrollTo().assertExists()
         compose.onNodeWithText(LOG_LEVEL).performScrollTo().performClick()
@@ -211,7 +211,7 @@ class ThemeDnsRouteTest {
             override fun requestTile(onAnswer: (TileAnswer) -> Unit) = Unit
         }
         val vm = SettingsViewModel(FakeEngine(), NativeSettings(SettingsHonk.running()), FakeSettingsStore(), releases = { Result.success("v9.0.0") }, io = Dispatchers.Unconfined)
-        compose.rvContent(dark = false) { SettingsPage(vm, system, SettingsNav({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}), "0.1.0", onTab = {}) }
+        compose.rvContent(dark = false) { SettingsPage(vm, system, SettingsNav({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, config = {}), "0.1.0", onTab = {}) }
         // 檢查更新 is both the hero's action and the row; either checks.
         compose.onAllNodesWithText(CHECK).onFirst().performScrollTo().performClick()
         compose.waitForIdle()

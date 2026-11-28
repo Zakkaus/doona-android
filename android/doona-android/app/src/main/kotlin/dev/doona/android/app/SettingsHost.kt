@@ -233,6 +233,7 @@ internal fun EntryProviderScope<NavKey>.settingsEntries(backStack: MutableList<N
                 perApp = { backStack.push(PerAppKey) },
                 dns = { backStack.push(DnsKey) },
                 effectiveConfig = { backStack.push(EffectiveConfigKey) },
+                config = { backStack.push(ConfigKey) },
                 report = { backStack.push(ReportKey) },
                 logLevel = { backStack.push(LogLevelKey) },
                 geoInterval = { backStack.push(GeoIntervalKey) },
@@ -276,7 +277,7 @@ internal fun EntryProviderScope<NavKey>.settingsEntries(backStack: MutableList<N
         )
     }
     entry<DnsRuleEditKey> { key ->
-        DnsRuleEditRoute(nativeApi(), key.list == dnsList(true), key.ruleId, onBack = { backStack.pop(key) }, onOpenSource = { backStack.push(ConfigSourceKey(it)) })
+        DnsRuleEditRoute(nativeApi(), key.list == dnsList(true), key.ruleId, onBack = { backStack.pop(key) }, onOpenSource = { path, line -> backStack.push(ConfigSourceKey(path, line)) })
     }
     entry<LanguageKey> { key -> LanguageRoute(rememberSettingsStore(), onBack = { backStack.pop(key) }) }
     // 自訂 has no page yet (plan 8: built, not hidden).

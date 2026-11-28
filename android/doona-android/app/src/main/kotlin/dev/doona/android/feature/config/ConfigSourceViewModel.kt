@@ -1,6 +1,7 @@
 package dev.doona.android.feature.config
 
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -47,6 +48,7 @@ internal class ConfigSourceViewModel(
     private val api: NativeApi,
     private val path: String,
     private val reads: CoroutineDispatcher = Dispatchers.IO,
+    private val line: Int = 0,
 ) : ViewModel() {
     private val state = MutableStateFlow(ConfigSourceUiState())
     val uiState: StateFlow<ConfigSourceUiState> = state.asStateFlow()
@@ -65,7 +67,8 @@ internal class ConfigSourceViewModel(
         val config = NativeConfig(api).config()
         val source = config.files.firstOrNull { it.path == path } ?: throw EngineException(ErrorCode.NotFound)
         base = source
-        state.value = ConfigSourceUiState(RvSourceDraft(path, source.content, config.revision), TextFieldValue(source.content))
+        val start = generateSequence(0) { offset -> source.content.indexOf('\n', offset).takeIf { it >= 0 }?.plus(1) }.elementAtOrNull(line - 1) ?: 0
+        state.value = ConfigSourceUiState(RvSourceDraft(path, source.content, config.revision), TextFieldValue(source.content, TextRange(start)))
     }
 
     /** 檢視變更: honk's check of the buffer, then the diff. */
@@ -122,7 +125,7 @@ internal class ConfigSourceViewModel(
     }
 
     companion object {
-        fun factory(api: NativeApi, path: String): ViewModelProvider.Factory = viewModelFactory { initializer { ConfigSourceViewModel(api, path) } }
+        fun factory(api: NativeApi, path: String, line: Int): ViewModelProvider.Factory = viewModelFactory { initializer { ConfigSourceViewModel(api, path, line = line) } }
     }
 }
 
