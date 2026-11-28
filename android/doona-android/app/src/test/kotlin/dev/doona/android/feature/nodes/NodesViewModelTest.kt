@@ -190,6 +190,17 @@ class NodesViewModelTest {
     }
 
     @Test
+    fun aTestAlsoProbesANodeInNoGroup() = runTest {
+        val grouped = node("n-1", "Tokyo 01").replace("\"group_ids\":[]", "\"group_ids\":[\"g-Proxy\"]")
+        val api = probing(honk(nodes = listOf(grouped, node("n-home", "Home", provider = "inline")), groups = listOf(group("g-Proxy", "Proxy", members = listOf("n-1" to "node")))))
+        val vm = collected(api)
+        vm.test()
+        advanceUntilIdle()
+        val targets = api.calls.filter { it.path == "/api/v1/probes" }.map { Json.parseToJsonElement(it.body!!).jsonObject.getValue("target").toString() }
+        assertEquals(listOf("""{"type":"group","group_id":"g-Proxy"}""", """{"type":"node","node_id":"n-home"}"""), targets)
+    }
+
+    @Test
     fun aOneNodeTestProbesThatNodeAndRetriesItself() = runTest {
         val api = HonkFixtures.rvSample().apply { on("POST", "/api/v1/probes", 503, ERROR) }
         val vm = collected(api)

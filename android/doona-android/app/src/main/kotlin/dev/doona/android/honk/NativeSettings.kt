@@ -27,14 +27,26 @@ internal class NativeSettings(val api: NativeApi, private val zone: () -> ZoneId
     fun geoData(): RvGeoData = api.geoData().let { it.toRv(if (it.lastError != null) RvGeoUpdate.Failed else RvGeoUpdate.Idle) }
 
     /**
-     * Asks honk to update the data and waits, reading every [poll], until honk reports an attempt finished after this
-     * one was asked: failed, a replaced file ([RvGeoUpdate.Updated]) or the same bytes ([RvGeoUpdate.Latest]). An
-     * update honk is already running (409) is followed the same way; any other refusal throws.
+     * Asks honk to update the data and follows the operation honk accepted to its end: failed, a replaced file
+     * ([RvGeoUpdate.Updated]) or the same bytes ([RvGeoUpdate.Latest]). An update honk is already running (409) names
+     * no operation, so it is followed by reading the data every [poll] until honk reports an attempt finished after
+     * this one was asked; any other refusal throws.
      */
     suspend fun updateGeo(poll: Duration): RvGeoData {
         val before = api.geoData()
-        val status = api.call("POST", "/api/v1/geodata/update", null).status
-        check(status == 202 || status == 409) { "geodata update refused with $status" }
+        val reply = api.call("POST", "/api/v1/geodata/update", null)
+        check(reply.status == 202 || reply.status == 409) { "geodata update refused with ${reply.status}" }
+        if (reply.status == 202) {
+            val operation = api.finished(nativeJson.decodeFromString(OperationAccepted.serializer(), reply.body).href)
+            val now = operation.result?.let { nativeJson.decodeFromJsonElement(GeoData.serializer(), it) } ?: api.geoData()
+            return now.toRv(
+                when {
+                    operation.status == OperationStatus.Failed -> RvGeoUpdate.Failed
+                    now.assets.map { it.sha256 } != before.assets.map { it.sha256 } -> RvGeoUpdate.Updated
+                    else -> RvGeoUpdate.Latest
+                },
+            )
+        }
         while (true) {
             delay(poll)
             val now = api.geoData()

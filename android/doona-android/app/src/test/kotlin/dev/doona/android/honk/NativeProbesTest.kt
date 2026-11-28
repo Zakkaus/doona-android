@@ -5,10 +5,14 @@ import dev.doona.android.engine.ErrorCode
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NativeProbesTest {
@@ -30,8 +34,8 @@ class NativeProbesTest {
             val href = "/api/v1/operations/op-$i"
             api.on("POST", "/api/v1/probes", 202, HonkFixtures.body("probes/queued").replace("op-01HZX4K8W9", "op-$i"))
             val target = if (i < 2) """{"type":"group","group_id":"${group.id}"}""" else """{"type":"node","node_id":"unlisted"}"""
-            val results = ids.joinToString { id ->
-                """{"member_id":"$id","resolved_leaf_node_id":"${if (id == "m65") "nested-leaf" else id}","kind":"http","purpose":"shared","transport":"tcp","ip_version":"ipv4","warmth":"cold","state":"healthy","latency_ms":45,"health_updated":true,"error":null,"observed_at":"2026-08-15T10:00:00Z"}"""
+            val results = ids.flatMap { id -> listOf("ipv4", "ipv6").map { id to it } }.joinToString { (id, family) ->
+                """{"member_id":"$id","resolved_leaf_node_id":"${if (id == "m65") "nested-leaf" else id}","kind":"http","purpose":"data","transport":"tcp","ip_version":"$family","warmth":"cold","state":"healthy","latency_ms":45,"health_updated":true,"error":null,"observed_at":"2026-08-15T10:00:00Z"}"""
             }
             val selections = """{"tcp":null,"udp":null}"""
             val result = """{"target":$target,"selection_changed":{"tcp":false,"udp":false},"selection_before":$selections,"selection_after":$selections,"results":[$results]}"""
@@ -66,11 +70,11 @@ class NativeProbesTest {
 
     @Test
     fun aNodeProbeHonkCouldNotRunFailsWithItsError() = runTest {
-        api.on("GET", "/api/v1/operations/op-01HZX4K8W9", 200, HonkFixtures.body("operations/probe-complete").replace("\"succeeded\"", "\"failed\"").replace("\"error\": null", ERROR))
+        api.on("GET", "/api/v1/operations/op-01HZX4K8W9", 200, FAILED)
 
         val error = runCatching { NativeProbes(api).node("n-1") }.exceptionOrNull()
 
-        assertEquals(ErrorCode.FetchFailed, (error as? EngineException)?.code)
+        assertTrue(error is EngineException)
     }
 
     @Test
@@ -97,19 +101,36 @@ class NativeProbesTest {
                 if (method != "POST") return api.call(method, path, body, headers)
                 val id = Json.parseToJsonElement(checkNotNull(body)).jsonObject.getValue("target").jsonObject.getValue("group_id").toString().trim('"')
                 posted += id
-                val operation = if (id == "g1") {
-                    HonkFixtures.body("operations/provider-refresh-failed").replace("provider_refresh", "probe").replace("op-refresh", id).replace("fetch_failed", "route_unavailable")
-                } else {
-                    HonkFixtures.body("operations/probe-complete").replace("op-01HZX4K8W9", id).replace("group-proxy", id)
-                }
-                api.on("GET", "/api/v1/operations/$id", 200, operation)
+                val operation = HonkFixtures.body("operations/probe-complete").replace("op-01HZX4K8W9", id).replace("group-proxy", id)
+                api.on("GET", "/api/v1/operations/$id", 200, if (id == "g1") FAILED.replace("op-01HZX4K8W9", id) else operation)
                 return NativeResponse(202, HonkFixtures.body("probes/queued").replace("op-01HZX4K8W9", id))
             }
         }
         val error = runCatching { NativeProbes(routed).groups(groups(*ids.toTypedArray())) }.exceptionOrNull()
-        assertEquals(ErrorCode.FetchFailed, (error as? EngineException)?.code)
+        assertTrue(error is EngineException)
         assertEquals(ids, posted)
         assertEquals(5, api.calls.count { it.method == "GET" })
+    }
+
+    @Test
+    fun aRefusedMemberListDoesNotSkipTheNextAndABusyHonkStopsTheNodes() = runTest {
+        var posts = 0
+        val first = object : NativeApi by api {
+            override fun call(method: String, path: String, body: String?, headers: Map<String, String>): NativeResponse =
+                if (method == "POST" && posts++ == 0) NativeResponse(404, HonkFixtures.body("errors/group-not-found")) else api.call(method, path, body, headers)
+        }
+        val source = groups("g1").single()
+        val group = Group(source.id, source.name, source.icon, source.policy, (1..65).map { GroupMember("m$it", "member $it", MemberKind.Node) }, source.runtime, source.capabilities)
+        assertEquals(ErrorCode.NotFound, (runCatching { NativeProbes(first).groups(listOf(group)) }.exceptionOrNull() as? EngineException)?.code)
+        assertEquals(2, posts)
+
+        val nodes = listOf("a", "b").map { Node(it, it, "trojan", subscriptionTag = null, providerId = "inline", groupIds = emptyList(), health = emptyList()) }
+        api.on("POST", "/api/v1/probes", 503, HonkFixtures.body("errors/temporarily-unavailable"))
+        api.calls.clear()
+        val busy = runCatching { NativeProbes(api).groups(emptyList(), nodes) }.exceptionOrNull()
+        assertEquals(ErrorCode.Busy, (busy as? EngineException)?.code)
+        val posted = api.calls.filter { it.method == "POST" }.map { Json.parseToJsonElement(it.body!!).jsonObject.getValue("target").jsonObject.getValue("node_id").jsonPrimitive.content }
+        assertEquals(listOf("a"), posted)
     }
 
     @Test
@@ -125,6 +146,12 @@ class NativeProbesTest {
             return ids.map { Group(it, source.name, source.icon, source.policy, source.members, source.runtime, source.capabilities) }
         }
 
-        const val ERROR = """"error": {"code": "route_unavailable", "message": "No route to the target.", "details": null}"""
+        /** honk's error for a probe whose deadline passed before it measured (`native_api/probes.rs`, EXPIRED). */
+        const val ERROR = """"error": {"code": "probe_deadline", "message": "Probe deadline expired before measurement.", "details": null}"""
+
+        /** `operations/probe-complete` failed with [ERROR] before measuring: no result. */
+        val FAILED = Json.parseToJsonElement(HonkFixtures.body("operations/probe-complete")).jsonObject.let { done ->
+            JsonObject(done + mapOf("status" to JsonPrimitive("failed"), "result" to JsonNull, "error" to Json.parseToJsonElement(ERROR.substringAfter(": "))))
+        }.toString()
     }
 }

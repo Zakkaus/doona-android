@@ -19,7 +19,7 @@ internal class GeoData(
 
 /** honk's `GeoAsset`: one loaded file of [kind] (`geosite`, `geoip`); [modifiedAt] is null when the filesystem reports no time. */
 @Serializable
-internal class GeoAsset(val kind: String, @SerialName("modified_at") val modifiedAt: String? = null)
+internal class GeoAsset(val kind: String, val sha256: String, @SerialName("modified_at") val modifiedAt: String? = null)
 
 /**
  * The geodata honk loaded. Never touches the network. honk without geodata (`resources.geodata.available` false)

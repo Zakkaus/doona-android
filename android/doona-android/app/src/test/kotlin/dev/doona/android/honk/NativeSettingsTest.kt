@@ -40,31 +40,33 @@ class NativeSettingsTest {
     }
 
     @Test
-    fun anUpdateWaitsForAnAttemptAfterItsOwnAndSeesTheReplacedFile() = runTest {
+    fun anUpdateFollowsItsOperationAndSeesTheReplacedFileWithoutAStatusStore() = runTest {
+        val replaced = Json.parseToJsonElement(SettingsHonk.geoData(modified = "2026-08-15T10:00:08Z").replace("3f5a9c1e", "0a1b2c3d")).jsonObject
+        val bare = JsonObject(replaced - listOf("last_checked_at", "last_updated_at", "next_check_at", "last_error")).toString()
         api.on("GET", "/api/v1/geodata", 200, SettingsHonk.GEODATA)
-            .on("GET", "/api/v1/geodata", 200, SettingsHonk.GEODATA)
-            .on("GET", "/api/v1/geodata", 200, SettingsHonk.geoData(checked = "2026-08-15T10:00:09Z", updated = "2026-08-15T10:00:08Z", modified = "2026-08-15T10:00:08Z"))
             .on("POST", "/api/v1/geodata/update", 202, SettingsHonk.GEODATA_QUEUED)
+            .on("GET", SettingsHonk.GEODATA_OPERATION, 200, SettingsHonk.geoUpdate(status = "running"))
+            .on("GET", SettingsHonk.GEODATA_OPERATION, 200, SettingsHonk.geoUpdate(bare))
 
         val row = utc.updateGeo(1.seconds)
 
         assertEquals(RvGeoUpdate.Updated, row.update)
         assertEquals(LocalDate.of(2026, 8, 15), row.date)
-        assertEquals(listOf("GET", "POST", "GET", "GET"), api.calls.map { it.method })
+        assertEquals(listOf("GET /api/v1/geodata", "POST /api/v1/geodata/update", "GET ${SettingsHonk.GEODATA_OPERATION}", "GET ${SettingsHonk.GEODATA_OPERATION}"), api.calls.map { "${it.method} ${it.path}" })
         assertNull(api.calls[1].body)
     }
 
     @Test
-    fun theSameBytesAreLatestAndAFailedAttemptIsAFailure() = runTest {
+    fun theSameBytesAreLatestAndAFailedOperationIsAFailure() = runTest {
         api.on("GET", "/api/v1/geodata", 200, SettingsHonk.GEODATA)
-            .on("GET", "/api/v1/geodata", 200, SettingsHonk.geoData(checked = "2026-08-15T10:00:09Z"))
             .on("POST", "/api/v1/geodata/update", 202, SettingsHonk.GEODATA_QUEUED)
+            .on("GET", SettingsHonk.GEODATA_OPERATION, 200, SettingsHonk.geoUpdate())
         assertEquals(RvGeoUpdate.Latest, utc.updateGeo(1.seconds).update)
 
         val failing = SettingsHonk()
             .on("GET", "/api/v1/geodata", 200, SettingsHonk.GEODATA)
-            .on("GET", "/api/v1/geodata", 200, SettingsHonk.geoData(checked = "2026-08-15T10:00:09Z", error = SettingsHonk.GEODATA_ERROR))
             .on("POST", "/api/v1/geodata/update", 202, SettingsHonk.GEODATA_QUEUED)
+            .on("GET", SettingsHonk.GEODATA_OPERATION, 200, SettingsHonk.geoUpdate(status = "failed"))
         assertEquals(RvGeoUpdate.Failed, NativeSettings(failing).updateGeo(1.seconds).update)
     }
 

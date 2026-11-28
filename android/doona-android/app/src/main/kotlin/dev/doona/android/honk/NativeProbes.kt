@@ -17,8 +17,8 @@ internal class NativeProbes(private val api: NativeApi) {
      * Tests the direct members of each of [groups], then each user node of [nodes] in no group, by HTTP over TCP, from
      * cold, and waits until every admitted probe ends; honk keeps the results as the members' health. Groups go four at a
      * time (honk runs at most four probe jobs); a group over honk's 64-member limit is sent in lists of 64 member ids, one
-     * after another. A target that fails does not stop the others, but a busy honk stops everything after its batch; the
-     * first failure is thrown at the end.
+     * after another. A target or a list that fails does not stop the others, but a busy honk stops everything after its
+     * batch, or after the node it refused; the first failure is thrown at the end.
      */
     suspend fun groups(groups: List<Group>, nodes: List<Node> = emptyList()) {
         var failure: EngineException? = null
@@ -26,17 +26,18 @@ internal class NativeProbes(private val api: NativeApi) {
             val errors = coroutineScope {
                 batch.map { group ->
                     async {
-                        try {
-                            val lists = if (group.members.size <= 64) listOf(null) else group.members.chunked(64)
-                            for (members in lists) {
+                        var failed: EngineException? = null
+                        for (members in if (group.members.size <= 64) listOf(null) else group.members.chunked(64)) {
+                            try {
                                 val accepted = api.read("POST", "/api/v1/probes", OperationAccepted.serializer(), body(group.id, members))
                                 val operation = api.finished(accepted.href)
                                 if (operation.status == OperationStatus.Failed) throw EngineException(operation.error?.errorCode() ?: ErrorCode.Internal)
+                            } catch (error: EngineException) {
+                                if (error.code == ErrorCode.Busy) return@async error
+                                failed = failed ?: error
                             }
-                            null
-                        } catch (error: EngineException) {
-                            error
                         }
+                        failed
                     }
                 }.awaitAll()
             }
@@ -50,6 +51,7 @@ internal class NativeProbes(private val api: NativeApi) {
                 node(target.id)
             } catch (error: EngineException) {
                 if (failure == null) failure = error
+                if (error.code == ErrorCode.Busy) break
             }
         }
         failure?.let { throw it }

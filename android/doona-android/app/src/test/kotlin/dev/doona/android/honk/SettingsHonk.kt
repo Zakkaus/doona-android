@@ -45,6 +45,7 @@ internal class SettingsHonk(private val others: NativeApi? = null) : NativeApi {
             .on("GET", "/api/v1/geodata", 200, GEODATA)
             .on("GET", "/api/v1/runtime/settings", 200, RUNTIME_SETTINGS)
             .on("POST", "/api/v1/geodata/update", 202, GEODATA_QUEUED)
+            .on("GET", GEODATA_OPERATION, 200, geoUpdate())
             .on("PATCH", "/api/v1/runtime/settings", 200, RUNTIME_SETTINGS)
 
         /** honk running with the sample's data (the APK's copy, never updated) and the sample's 每週 schedule. */
@@ -52,6 +53,7 @@ internal class SettingsHonk(private val others: NativeApi? = null) : NativeApi {
             .on("GET", "/api/v1/geodata", 200, HonkFixtures.body("geodata/rv-sample"))
             .on("GET", "/api/v1/runtime/settings", 200, HonkFixtures.body("runtime-settings/rv-sample"))
             .on("POST", "/api/v1/geodata/update", 202, GEODATA_QUEUED)
+            .on("GET", GEODATA_OPERATION, 200, geoUpdate(HonkFixtures.body("geodata/rv-sample")))
             .on("PATCH", "/api/v1/runtime/settings", 200, HonkFixtures.body("runtime-settings/rv-sample"))
 
         /** `geodata/loaded` with [checked], [updated], [modified] (the geosite file's) and [error] as its last attempt. */
@@ -74,6 +76,23 @@ internal class SettingsHonk(private val others: NativeApi? = null) : NativeApi {
             ).toString()
         }
 
+        /**
+         * `geodata/update-queued`'s operation in [status]: a succeeded one carries the new GeoData ([result]), a failed
+         * one honk's SafeError, shaped as `operations/reload-complete`.
+         */
+        fun geoUpdate(result: String = GEODATA, status: String = "succeeded"): String {
+            val ended = Json.parseToJsonElement(HonkFixtures.body("operations/reload-complete")).jsonObject
+            return JsonObject(
+                ended + mapOf(
+                    "operation_id" to JsonPrimitive("op-geodata-01"),
+                    "kind" to JsonPrimitive("geodata_update"),
+                    "status" to JsonPrimitive(status),
+                    "result" to if (status == "succeeded") Json.parseToJsonElement(result) else JsonNull,
+                    "error" to if (status == "failed") GEODATA_ERROR else JsonNull,
+                ),
+            ).toString()
+        }
+
         /** `runtime-settings/current` with [enabled] and [hours] as its automatic update. */
         fun runtimeSettings(enabled: Boolean = true, hours: Int = 24, cron: String? = null): String {
             val current = Json.parseToJsonElement(RUNTIME_SETTINGS).jsonObject
@@ -90,6 +109,7 @@ internal class SettingsHonk(private val others: NativeApi? = null) : NativeApi {
         val RUNTIME_SETTINGS = HonkFixtures.body("runtime-settings/current")
         val GEODATA_QUEUED = HonkFixtures.body("geodata/update-queued")
         val GEODATA_IN_FLIGHT = HonkFixtures.body("geodata/update-in-flight")
+        const val GEODATA_OPERATION = "/api/v1/operations/op-geodata-01"
 
         /** The `last_error` of `geodata/packaged`. */
         val GEODATA_ERROR: JsonElement = Json.parseToJsonElement(HonkFixtures.body("geodata/packaged")).jsonObject.getValue("last_error")

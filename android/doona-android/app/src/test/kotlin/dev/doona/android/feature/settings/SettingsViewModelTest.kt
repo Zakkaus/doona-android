@@ -285,10 +285,10 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `an update shows Updating at once and reads honk every poll until it reports the attempt`() = runTest {
-        val replaced = SettingsHonk.geoData(checked = "2026-08-15T10:00:09Z", updated = "2026-08-15T10:00:08Z", modified = "2026-08-15T10:00:08Z")
-        val honk = SettingsHonk.running().on("GET", "/api/v1/geodata", 200, SettingsHonk.GEODATA).on("GET", "/api/v1/geodata", 200, SettingsHonk.GEODATA)
-            .on("GET", "/api/v1/geodata", 200, replaced)
+    fun `an update shows Updating at once and follows honk's operation until it ends`() = runTest {
+        val replaced = SettingsHonk.geoData(checked = "2026-08-15T10:00:09Z", updated = "2026-08-15T10:00:08Z", modified = "2026-08-15T10:00:08Z").replace("3f5a9c1e", "0a1b2c3d")
+        val honk = SettingsHonk.running().now("GET", SettingsHonk.GEODATA_OPERATION, 200, SettingsHonk.geoUpdate(status = "running"))
+            .on("GET", SettingsHonk.GEODATA_OPERATION, 200, SettingsHonk.geoUpdate(replaced))
         val vm = vm(honk = honk, poll = 1.seconds)
         assertEquals(RvGeoUpdate.Idle, vm.uiState.value.geoData.update)
 
@@ -296,7 +296,7 @@ class SettingsViewModelTest {
         assertEquals(RvGeoUpdate.Updating, vm.uiState.value.geoData.update)
         advanceTimeBy(1.seconds)
         runCurrent()
-        assertEquals("the first read is still the attempt before", RvGeoUpdate.Updating, vm.uiState.value.geoData.update)
+        assertEquals("the first read finds the operation still running", RvGeoUpdate.Updating, vm.uiState.value.geoData.update)
         advanceTimeBy(1.seconds)
         runCurrent()
         assertEquals(RvGeoData(LocalDate.of(2026, 8, 15), RvGeoUpdate.Updated), vm.uiState.value.geoData)
@@ -313,7 +313,6 @@ class SettingsViewModelTest {
         vm.updateGeo()
         assertEquals(RvGeoUpdate.Failed, vm.uiState.value.geoData.update)
 
-        honk.on("GET", "/api/v1/geodata", 200, SettingsHonk.geoData(checked = "2026-08-15T10:00:09Z"))
         vm.updateGeo()
         advanceTimeBy(1.seconds)
         runCurrent()
@@ -322,7 +321,7 @@ class SettingsViewModelTest {
 
     @Test
     fun `an update honk never reports stops being followed and shows the failure`() = runTest {
-        val honk = SettingsHonk.running()
+        val honk = SettingsHonk.running().now("GET", SettingsHonk.GEODATA_OPERATION, 200, SettingsHonk.geoUpdate(status = "running"))
         val vm = vm(honk = honk, poll = 1.seconds, followFor = 1.minutes)
         vm.updateGeo()
         advanceTimeBy(59.seconds)

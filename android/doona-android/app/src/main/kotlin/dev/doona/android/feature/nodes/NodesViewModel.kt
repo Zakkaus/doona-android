@@ -13,6 +13,7 @@ import dev.doona.android.honk.NativeApi
 import dev.doona.android.honk.NativeCatalog
 import dev.doona.android.honk.NativeProbes
 import dev.doona.android.honk.NativeRouting
+import dev.doona.android.honk.Node
 import dev.doona.android.honk.PolicyKind
 import dev.doona.android.honk.SelectionNetwork
 import kotlinx.coroutines.CancellationException
@@ -58,8 +59,8 @@ class NodesViewModel internal constructor(
 
     private class Pick(val nodeId: String, val network: SelectionNetwork, val onPicked: () -> Unit)
 
-    /** One read: the pages' state and every group's id, for [test]. */
-    private class Read(val state: NodesState, val groups: List<Group>, val score: RvScoreMarks? = null)
+    /** One read: the pages' state and every group and node, for [test]. */
+    private class Read(val state: NodesState, val groups: List<Group>, val nodes: List<Node>, val score: RvScoreMarks? = null)
 
     internal val ui: StateFlow<NodesUi> = combine(read, running, failure, updating) { read, testing, failure, updating ->
         NodesUi(
@@ -89,7 +90,8 @@ class NodesViewModel internal constructor(
 
     private fun readAll(): Read {
         val groups = catalog.groups()
-        val state = nodesState(catalog.nodes(), catalog.providers(), mainGroup(groups, NativeRouting(api).rules()), places)
+        val nodes = catalog.nodes()
+        val state = nodesState(nodes, catalog.providers(), mainGroup(groups, NativeRouting(api).rules()), places)
         val scoring = groups.filter { it.policy.kind == PolicyKind.Score }
         val marks = scoring.takeIf { it.isNotEmpty() }?.let {
             RvScoreMarks(
@@ -97,7 +99,7 @@ class NodesViewModel internal constructor(
                 it.mapNotNullTo(mutableSetOf()) { g -> g.runtime.selection.udp?.resolvedLeafNodeId },
             )
         }
-        return Read(state, groups, marks)
+        return Read(state, groups, nodes, marks)
     }
 
     /**
@@ -119,7 +121,7 @@ class NodesViewModel internal constructor(
         }
     }
 
-    /** Probes every group's members; the rows show the test running until honk has recorded the results. */
+    /** Probes every group's members and each node in no group; the rows show the test running until honk has recorded the results. */
     fun test() = probe(null)
 
     /** Probes [nodeId] alone (a row's menu, the node's page). */
@@ -130,11 +132,12 @@ class NodesViewModel internal constructor(
         lastTest = nodeId
         running.value = nodeId?.let(::setOf).orEmpty()
         val groups = read.value?.groups.orEmpty()
+        val nodes = read.value?.nodes.orEmpty()
         viewModelScope.launch {
             try {
                 attempt(NodesAction.Test) {
                     withContext(io) {
-                        if (nodeId != null) probes.node(nodeId) else probes.groups(groups)
+                        if (nodeId != null) probes.node(nodeId) else probes.groups(groups, nodes)
                     }
                 }
                 load()
