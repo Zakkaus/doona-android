@@ -16,6 +16,7 @@ import dev.doona.android.designsystem.rv.LocalFrameInsets
 import dev.doona.android.designsystem.rv.RvLargeTitle
 import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.feature.messageRes
+import dev.doona.android.feature.settings.readBanner
 
 /**
  * The 連線 tab (`ConnectionsKey`): [model]'s list, read each time the page starts during [session],
@@ -37,6 +38,7 @@ internal fun ConnectionsRoute(model: ConnectionsViewModel, session: Long?, onOpe
         ui.nowEpochMs,
         loaded = ui.session == session && ui.loaded,
         truncatedTotal = ui.truncatedTotal,
+        banner = ui.error?.takeIf { session != null && session == ui.session }?.let { readBanner(it) { model.load(session) } },
     )
 }
 

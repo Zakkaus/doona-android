@@ -30,6 +30,7 @@ import dev.doona.android.designsystem.rv.RvSourceExcerpt
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatRow
 import dev.doona.android.designsystem.rv.RvTextField
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.feature.model.RV_BLOCK
 import dev.doona.android.feature.model.RV_DIRECT
 
@@ -147,8 +148,7 @@ private fun sendTo(result: RvTraceResult): String = when (result.target) {
     null -> RV_NO_VALUE
     RV_BLOCK -> stringResource(R.string.rv_policy_reject)
     RV_DIRECT -> stringResource(R.string.mode_direct)
-    else -> listOfNotNull(result.target, result.node).joinToString(TARGET_SEPARATOR)
+    else -> listOfNotNull(result.target, result.node).joinToString(SEPARATOR)
 }
 
-private const val TARGET_SEPARATOR = " › "
 private val PORTS = 1..65_535

@@ -35,6 +35,7 @@ import dev.doona.android.designsystem.rv.RvGlass
 import dev.doona.android.designsystem.rv.RvGutter
 import dev.doona.android.designsystem.rv.RvLongPressTiming
 import dev.doona.android.designsystem.rv.RvMenuItem
+import dev.doona.android.designsystem.rv.RvNotice
 import dev.doona.android.designsystem.rv.RvPageEnd
 import dev.doona.android.designsystem.rv.RvRow
 import dev.doona.android.designsystem.rv.RvScrollPage
@@ -72,6 +73,7 @@ internal fun RvConnectionsPage(
     nowEpochMs: Long,
     loaded: Boolean = true,
     truncatedTotal: Long? = null,
+    banner: RvNotice? = null,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val scroll = rememberScrollState()
@@ -97,6 +99,7 @@ internal fun RvConnectionsPage(
             query == null -> RvTabHeader(insets, caption = { Summary(connections, truncatedTotal) }, control = { Filters(order) { order = it } })
             else -> RvTabHeader(insets, caption = { RvCaption(pluralStringResource(R.plurals.rv_conn_matches, shown.size, shown.size)) })
         }
+        if (banner != null) RvGutter(banner = banner) {}
         if (connected && loaded && truncatedTotal != null) RvGutter { RvCaption(stringResource(R.string.rv_conn_loaded_scope, connections.size, truncatedTotal), lines = Int.MAX_VALUE) }
         when {
             !connected -> Disconnected()

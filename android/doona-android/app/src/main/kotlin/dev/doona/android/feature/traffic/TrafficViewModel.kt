@@ -24,7 +24,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 
 /**
- * 流量詳情 reads traffic every [tickMs] while shown and connected. A failed read keeps the current tunnel's chart.
+ * 流量詳情 reads traffic every [tickMs] while shown and connected. A failed read, or a return to the same tunnel,
+ * keeps what the current tunnel showed.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class TrafficViewModel internal constructor(
@@ -36,7 +37,7 @@ class TrafficViewModel internal constructor(
 ) : ViewModel() {
     private val range = MutableStateFlow(RV_TRAFFIC_LIVE)
     private var sessionStart: Long? = null
-    private var shown: RvTrafficChart? = null
+    private var shown = EMPTY
 
     private val reads: Flow<TrafficRead> = flow {
         while (true) {
@@ -49,14 +50,14 @@ class TrafficViewModel internal constructor(
         status.transformLatest { status ->
             val start = (status as? Status.Running)?.sinceEpochMs
             if (start != sessionStart) {
-                shown = null
+                shown = EMPTY
                 sessionStart = start
             }
-            emit(EMPTY.copy(chart = shown))
+            emit(shown)
             if (status is Status.Running) {
-                emitAll(combine(reads, range) { read, index -> trafficState(index, read, shown, clock()).also { shown = it.chart } })
+                emitAll(combine(reads, range) { read, index -> trafficState(index, read, shown.chart, clock()).also { shown = it } })
             }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000, replayExpirationMillis = 0), EMPTY)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EMPTY)
 
     /** The page shows the range at [index] of [RV_TRAFFIC_RANGE_SECONDS]. */
     fun onRange(index: Int) {

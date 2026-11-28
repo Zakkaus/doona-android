@@ -95,6 +95,7 @@ class ConnectionsViewModelTest {
         honk.on("DELETE", "/api/v1/connections/$id", 204, "")
         model.close(NOW, id)
         assertTrue(id in model.closeNotices && model.closeNotices[id] == null)
+        assertTrue(honk.calls.drop(honk.calls.indexOfLast { it.method == "DELETE" }).any { it.path == LIST_PATH })
     }
 
     @Test

@@ -8,6 +8,8 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
@@ -57,8 +59,8 @@ internal fun RvEffectiveConfigPage(
     policy: RvPolicyState,
     onBack: () -> Unit,
     onRules: () -> Unit = {},
-    onCopy: () -> Unit = {},
-    onExport: () -> Unit = {},
+    onCopy: (() -> Unit)? = null,
+    onExport: (() -> Unit)? = null,
     truncated: Boolean = false,
     banner: RvNotice? = null,
     config: RvEffectiveConfig?,
@@ -102,8 +104,8 @@ internal fun RvEffectiveConfigPage(
             Section(R.string.rv_effective_source) {
                 SourceCard(config)
                 RvCard {
-                    RvRow({ RvIconDisc(R.drawable.rv_sym_content_copy) }, stringResource(R.string.rv_effective_copy), null, onClick = onCopy)
-                    RvRow({ RvIconDisc(R.drawable.rv_sym_ios_share) }, stringResource(R.string.rv_effective_export), null, onClick = onExport)
+                    RvRow({ RvIconDisc(R.drawable.rv_sym_content_copy) }, stringResource(R.string.rv_effective_copy), null, if (onCopy == null) Modifier.semantics { disabled() } else Modifier, onClick = onCopy)
+                    RvRow({ RvIconDisc(R.drawable.rv_sym_ios_share) }, stringResource(R.string.rv_effective_export), null, if (onExport == null) Modifier.semantics { disabled() } else Modifier, onClick = onExport)
                 }
             }
         }

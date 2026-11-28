@@ -120,7 +120,7 @@ internal fun RvSubDetail(
         RvLargeTitle(sub.name, titleBlock, insets)
         RvGutter(banner = readFailure ?: state.failed?.let { rvSubDetailBanner(sub, it, onUpdate, onUserAgent, onDelete) }) { KeyStats(sub) }
         RvSectionTitle(stringResource(R.string.rv_sub_updates), Modifier.padding(horizontal = RvSpace.gutter))
-        RvGutter { UpdatesCard(sub.userAgent, autoUpdate, onAutoUpdate) { onChange(state.copy(sheet = RvSubSheet.UserAgent, userAgent = sub.userAgent.orEmpty())) } }
+        RvGutter { UpdatesCard(sub.userAgent ?: RV_NO_VALUE.takeIf { readFailure != null }, autoUpdate, onAutoUpdate) { onChange(state.copy(sheet = RvSubSheet.UserAgent, userAgent = sub.userAgent.orEmpty())) } }
         RvSectionTitle(stringResource(R.string.rv_sub_section), Modifier.padding(horizontal = RvSpace.gutter))
         RvGutter {
             RvCard {

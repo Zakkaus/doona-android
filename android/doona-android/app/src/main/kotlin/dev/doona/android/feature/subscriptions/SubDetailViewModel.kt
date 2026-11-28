@@ -91,12 +91,9 @@ internal class SubDetailViewModel(
                 read.update { it.copy(gone = true) }
                 return@launch
             }
-            val agent = attempt { entry(provider.name)?.second?.userAgent }.getOrElse { error ->
-                read.update { it.copy(error = error.errorCode(), retryName = name) }
-                return@launch
-            }
+            val agent = attempt { entry(provider.name)?.second?.userAgent }
             id = provider.id
-            read.value = SubRead(rvSubscription(provider, agent))
+            read.value = SubRead(rvSubscription(provider, agent.getOrElse { read.value.sub?.userAgent }), error = agent.exceptionOrNull()?.errorCode())
         }
     }
 

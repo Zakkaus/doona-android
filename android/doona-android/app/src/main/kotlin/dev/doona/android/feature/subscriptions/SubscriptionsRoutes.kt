@@ -87,7 +87,7 @@ internal fun SubscriptionsRoute(
     // honk-gap:node-share
     CompositionLocalProvider(LocalRvUpdating provides state.updating, LocalRvRowActions provides remember(nodes) { RvRowActions(deleteNode = nodes::delete, noShareLinks = true) }) {
         RvSubsPage(state.page, actions, loading = readError == null && (state.loading || inline.loading), extra = { RvInlineCard(inline.nodes, inlineActions) }, extraKeepsPage = readError != null || inline.nodes.isNotEmpty(), banner = banner, addNode = inlineActions.add, removable = true)
-        RvAddNodeSheet(inline.sheet, inlineActions)
+        RvAddNodeSheet(inline.sheet, inlineActions, inline.readError?.let { changeBanner(stringResource(R.string.rv_failed_read_nodes), it, nodes::load) })
         RvNodeDeleteSheet(inline.nodes.firstOrNull { it.id == inline.deletingId }, inlineActions)
     }
 }

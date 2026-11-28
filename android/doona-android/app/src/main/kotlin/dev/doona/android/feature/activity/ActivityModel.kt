@@ -1,20 +1,13 @@
 package dev.doona.android.feature.activity
 
-import dev.doona.android.designsystem.rv.RvPlace
-import dev.doona.android.engine.Catalog
 import dev.doona.android.engine.ErrorCode
 import dev.doona.android.engine.FailureReason
-import dev.doona.android.engine.Member
 import dev.doona.android.engine.Mode
-import dev.doona.android.engine.NodeInfo
 import dev.doona.android.engine.Status
 import dev.doona.android.feature.model.NodePlaces
-import dev.doona.android.feature.model.RV_TESTS
 import dev.doona.android.feature.model.RvNode
 import dev.doona.android.feature.model.RvRouteMode
 import dev.doona.android.feature.model.RvSubscription
-import dev.doona.android.feature.model.protocolName
-import dev.doona.android.feature.model.rvLeafMembers
 import dev.doona.android.feature.model.rvNode
 import dev.doona.android.feature.policies.rvGroupKind
 import dev.doona.android.feature.subscriptions.rvSubscription
@@ -76,16 +69,6 @@ internal class ActivityCatalog(
 internal class ActivityNodes(all: List<RvNode>, val allFailed: Boolean) {
     val byId: Map<String, RvNode> = all.associateBy { it.id }
     val nodes = all.filter { it.subscriptionId != null }
-}
-
-/**
- * [catalog]'s nodes, each with its endpoint and tests from [nodeInfo] or, before they are read, its member's last
- * result, and its place: the region the core reads from its name ([Member.region]), else [RvPlace.Other].
- */
-internal fun activityNodes(catalog: Catalog?, nodeInfo: Map<String, NodeInfo>): ActivityNodes {
-    val subscriptionNames = catalog?.subscriptions.orEmpty().associate { it.id to it.name }
-    val members = catalog?.let(::rvLeafMembers).orEmpty()
-    return ActivityNodes(members.map { rvNode(it, nodeInfo[it.id], subscriptionNames) }, allFailed = members.isNotEmpty() && members.all { it.failed })
 }
 
 /**
@@ -194,9 +177,8 @@ internal fun activityModel(
 }
 
 /**
- * The one notice 活動 shows, the first that applies: no subscription (the page's empty state); a refused VPN consent
- * while not connected (the user's latest answer); a failed start or a stopped tunnel by its reason (a start the system
- * refused because another app keeps the VPN locked down is its own notice: connecting again cannot help); no network;
+ * The one notice 活動 shows, the first that applies: refused VPN consent while not connected (the user's latest
+ * answer); a failed start or stopped tunnel by reason; no subscription (the empty state); no network;
  * a crash log to export; every node failed its test; last, a refused notification permission, which stops nothing.
  */
 internal fun activityNotice(
@@ -206,9 +188,9 @@ internal fun activityNotice(
     allFailed: Boolean,
     signals: ActivitySignals = ActivitySignals(),
 ): RvActivityNotice? = when {
-    !hasSubscriptions -> RvActivityNotice.NoSubscription
     signals.vpnRefused && (status == Status.Stopped || status is Status.Failed) -> RvActivityNotice.ConsentDenied
     status is Status.Failed -> failureNotice(status)
+    !hasSubscriptions -> RvActivityNotice.NoSubscription
     !signals.online -> RvActivityNotice.Offline
     crashOffered -> RvActivityNotice.Crash
     allFailed -> RvActivityNotice.NoNode
@@ -284,37 +266,5 @@ private fun groupRule(group: Group): RvActivityRule {
 
 /** Whether honk found [this] unavailable at its last probe over TCP (or over any network when it has no TCP one). */
 private fun Node.unavailable(): Boolean = latestProbe?.state == HealthState.Unavailable
-
-private fun rvNode(member: Member, info: NodeInfo?, subscriptions: Map<String, String>): RvNode {
-    val history = info?.tests?.map { it.ms }?.takeLast(RV_TESTS)?.takeIf { it.isNotEmpty() } ?: memberHistory(member)
-    return RvNode(
-        id = member.id,
-        name = member.name,
-        // The core gives no short name or city yet; the narrow tiles show the whole name.
-        short = member.name,
-        place = member.region?.let(::placeOfRegion) ?: RvPlace.Other,
-        city = null,
-        protocol = protocolName(info?.protocol.orEmpty()),
-        host = info?.server.orEmpty(),
-        port = info?.port ?: 0,
-        transport = info?.transport.orEmpty(),
-        tls = info?.tls ?: false,
-        subscription = member.subscriptionId?.let(subscriptions::get).orEmpty(),
-        subscriptionId = member.subscriptionId.orEmpty(),
-        history = history,
-        // honk-gap:node-share
-        shareable = false,
-    )
-}
-
-/** The place whose ISO code is [code]; null for a code the place table does not list. */
-internal fun placeOfRegion(code: String): RvPlace? = RvPlace.entries.firstOrNull { it.flag.equals(code, ignoreCase = true) }
-
-/** A member's last result as a one-test history: its latency, a timeout when it failed, nothing when never tested. */
-private fun memberHistory(member: Member): List<Int?> = when {
-    member.latencyMs != null -> listOf(member.latencyMs)
-    member.failed -> listOf(null)
-    else -> emptyList()
-}
 
 private const val DIRECT = "direct"

@@ -16,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.LocalFrameInsets
@@ -34,7 +33,6 @@ import dev.doona.android.designsystem.rv.RvScrollPage
 import dev.doona.android.designsystem.rv.RvSpace
 import dev.doona.android.designsystem.rv.RvStatsDots
 import dev.doona.android.designsystem.rv.RvStatsSpace
-import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.figure
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import java.text.NumberFormat
@@ -74,7 +72,7 @@ internal fun RvStatsScreen(
             RvLatencyCard(state)
             state.score?.let { RvScoreStatsCard(it) }
             RvSplitCard(state.split, splitScope(state))
-            RvToolsCard(tools(state, onTestAll, onUpdateAll, onExport))
+            RvToolsCard(state, onTestAll, onUpdateAll, onExport)
         }
     }
 }
@@ -151,19 +149,3 @@ private fun splitScope(state: RvStatsState): List<String> = listOfNotNull(
     stringResource(R.string.rv_stats_today).takeIf { state.daily && state.period != null },
     stringResource(R.string.rv_stats_all_subscriptions).takeIf { state.subscriptionId != null },
 )
-
-/** The tools card's rows: test every node, refresh every subscription, export what a bug report needs. */
-@Composable
-private fun tools(state: RvStatsState, onTestAll: (() -> Unit)?, onUpdateAll: (() -> Unit)?, onExport: () -> Unit): List<RvStatsTool> {
-    val format = rememberRvFormat()
-    val nodes = pluralStringResource(R.plurals.rv_stats_node_count, state.nodes.size, state.nodes.size)
-    val subscriptions = pluralStringResource(R.plurals.rv_stats_subscriptions, state.subscriptions.size, state.subscriptions.size)
-    val refreshed = state.subscriptions.mapNotNull { it.updatedAtEpochMs }.maxOrNull()?.let {
-        stringResource(R.string.rv_updated, format.time(it))
-    }
-    return listOf(
-        RvStatsTool(R.drawable.rv_sym_speed, stringResource(R.string.rv_stats_test_all), nodes, onTestAll),
-        RvStatsTool(R.drawable.rv_stats_ic_sync, stringResource(R.string.rv_stats_update_all), listOfNotNull(subscriptions, refreshed).joinToString(SEPARATOR), onUpdateAll),
-        RvStatsTool(R.drawable.rv_sym_ios_share, stringResource(R.string.rv_stats_export), stringResource(R.string.rv_stats_export_detail), onExport),
-    )
-}

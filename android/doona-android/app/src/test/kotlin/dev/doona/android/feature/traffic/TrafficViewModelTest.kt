@@ -93,15 +93,18 @@ class TrafficViewModelTest {
 
     @Test
     fun returningToTheSameTunnelKeepsItsChartWhenHistoryFails() = runTest {
+        honk.get(HonkExamples.RUNTIME_PATH, HonkExamples.RUNTIME)
         honk.get(HonkExamples.HISTORY_PATH, HonkExamples.HISTORY)
         val model = TrafficViewModel(NativeRuntime(honk), { NOW }, status, io = StandardTestDispatcher(testScheduler))
         val collector = backgroundScope.launch { model.ui.collect {} }
         runCurrent()
         val chart = checkNotNull(model.ui.value.chart)
-        honk.on("GET", HonkExamples.HISTORY_PATH, 503, HonkExamples.UNAVAILABLE)
+        val state = model.ui.value
         collector.cancel()
         advanceTimeBy(6_000)
+        honk.on("GET", HonkExamples.HISTORY_PATH, 503, HonkExamples.UNAVAILABLE)
         backgroundScope.launch { model.ui.collect {} }
+        assertEquals(state, model.ui.value)
         runCurrent()
         assertEquals(chart, model.ui.value.chart)
     }

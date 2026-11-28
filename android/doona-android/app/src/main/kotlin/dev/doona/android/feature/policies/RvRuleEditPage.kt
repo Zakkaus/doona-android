@@ -45,6 +45,7 @@ import dev.doona.android.feature.model.RvPolicyGroup
 import dev.doona.android.feature.model.RvPolicyRule
 import dev.doona.android.feature.model.RvRuleMatch
 import dev.doona.android.feature.model.RvRuleState
+import java.net.InetAddress
 
 /** A rule being edited: how it matches, the value it matches (none for GEOIP CN and private ranges), where, if on. */
 @Immutable
@@ -56,7 +57,7 @@ internal data class RvRuleDraft(val kind: RvMatchKind, val value: String, val ta
         get() = when {
             !needsValue -> null
             value.isBlank() -> if (kind == RvMatchKind.Cidr) R.string.rv_rule_edit_need_cidr else R.string.rv_rule_edit_need_domain
-            kind == RvMatchKind.Cidr && !CIDR.matches(value) && !CIDR6.matches(value) -> R.string.rv_rule_edit_bad_cidr
+            kind == RvMatchKind.Cidr && !CIDR.matches(value) && CIDR6.matchEntire(value)?.let { runCatching { InetAddress.getByName(value.substringBefore('/')) }.getOrNull() } == null -> R.string.rv_rule_edit_bad_cidr
             kind != RvMatchKind.Cidr && !DOMAIN.matches(value) -> R.string.rv_rule_edit_bad_domain
             else -> null
         }

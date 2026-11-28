@@ -55,9 +55,10 @@ class ConnectionsViewModel internal constructor(
                     RvConnectionsUi(page.rows.map(map), clock(), loaded = true, session = session, truncatedTotal = if (page.truncated) page.totalTcp + page.totalUdp else null)
                 }
             }.onSuccess { next ->
+                if (state.value.session != session) return@launch
                 if (next.truncatedTotal == null) closeNotices.keys.removeAll { closed -> next.connections.none { it.id == closed } }
                 if (id == null || next.truncatedTotal == null || next.connections.any { it.id == id } || !state.value.loaded) state.value = next
-            }.onFailure { state.value = state.value.copy(error = it.errorCode()) }
+            }.onFailure { if (state.value.session == session) state.value = state.value.copy(error = it.errorCode()) }
             if (id == null) return@launch
             delay(MS_PER_SECOND)
         }
@@ -79,7 +80,7 @@ class ConnectionsViewModel internal constructor(
             val error = withContext(io) { runCatching { connections.close(id) }.exceptionOrNull()?.errorCode() }
             if (ui.value.session == session && id in closeNotices) {
                 closeNotices[id] = when (error) {
-                    null, ErrorCode.NotFound -> null
+                    null, ErrorCode.NotFound -> null.also { load(session) }
                     ErrorCode.InvalidArgument -> R.string.rv_conn_not_closable
                     ErrorCode.Busy -> R.string.rv_conn_close_unknown
                     else -> error.messageRes()

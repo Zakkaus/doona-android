@@ -103,6 +103,10 @@ internal class GroupViewModel(
      */
     fun onApart(on: Boolean) {
         perform(GroupAction.Apart) {
+            if (on && read.value?.source?.policy?.kind?.let { it != PolicyKind.Score } == true) {
+                local.update { it.copy(apart = true) }
+                return@perform
+            }
             val group = withContext(io) { catalog.group(groupId) }
             val selection = group.runtime.selection
             val score = group.policy.kind == PolicyKind.Score

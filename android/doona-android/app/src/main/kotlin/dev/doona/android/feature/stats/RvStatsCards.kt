@@ -261,18 +261,24 @@ internal fun RvSplitCard(split: RvSplit?, scope: List<String> = emptyList()) {
 
 /** 工具, Revolut's Tools card: a row per action with its disc, title, subtitle and chevron. */
 @Composable
-internal fun RvToolsCard(tools: List<RvStatsTool>) {
+internal fun RvToolsCard(state: RvStatsState, onTestAll: (() -> Unit)?, onUpdateAll: (() -> Unit)?, onExport: () -> Unit) {
+    val format = rememberRvFormat()
+    val nodes = pluralStringResource(R.plurals.rv_stats_node_count, state.nodes.size, state.nodes.size)
+    val subscriptions = pluralStringResource(R.plurals.rv_stats_subscriptions, state.subscriptions.size, state.subscriptions.size)
+    val refreshed = state.subscriptions.mapNotNull { it.updatedAtEpochMs }.maxOrNull()?.let { stringResource(R.string.rv_updated, format.time(it)) }
     RvCard {
         RvCardHeader(stringResource(R.string.rv_stats_tools))
-        tools.forEach { tool ->
-            RvRow(
-                leading = { RvIconDisc(tool.icon) },
-                title = tool.title,
-                subtitle = tool.subtitle,
-                onClick = tool.onClick,
-                trailing = { if (tool.onClick == null) RvBusy(Modifier.width(RvSize.busy)) else RvChevron() },
-            )
+        RvRow({ RvIconDisc(R.drawable.rv_sym_speed) }, stringResource(R.string.rv_stats_test_all), nodes, onClick = onTestAll) {
+            if (onTestAll == null) RvBusy(Modifier.width(RvSize.busy)) else RvChevron()
         }
+        RvRow({ RvIconDisc(R.drawable.rv_stats_ic_sync) }, stringResource(R.string.rv_stats_update_all), listOfNotNull(subscriptions, refreshed).joinToString(SEPARATOR), onClick = onUpdateAll.takeIf { state.subscriptions.isNotEmpty() }) {
+            if (onUpdateAll == null) {
+                RvBusy(Modifier.width(RvSize.busy))
+            } else if (state.subscriptions.isNotEmpty()) {
+                RvChevron()
+            }
+        }
+        RvRow({ RvIconDisc(R.drawable.rv_sym_ios_share) }, stringResource(R.string.rv_stats_export), stringResource(R.string.rv_stats_export_detail), onClick = onExport) { RvChevron() }
     }
 }
 

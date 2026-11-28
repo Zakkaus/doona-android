@@ -29,6 +29,8 @@ class HonkRuleTextTest {
         assertEquals(RvRuleMatch.Lan, rvRuleMatch("dip(geoip:private)"))
         assertEquals("CN", (rvRuleMatch("dip(geoip: cn)") as RvRuleMatch.GeoIp).code)
         assertValue(RvMatchKind.Cidr, "198.51.100.0/24", rvRuleMatch("dip(198.51.100.0/24)"))
+        assertEquals(RvMatchKind.Cidr to "2001:db8::/64", formMatch("dip(2001:db8::/64)"))
+        assertEquals(null, formMatch("dip(::::/64)"))
     }
 
     @Test

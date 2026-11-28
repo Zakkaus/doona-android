@@ -1,6 +1,5 @@
 package dev.doona.android.feature.stats
 
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -51,6 +50,3 @@ internal fun RvStatsDelta(up: Boolean, change: String, against: RvStatsAgainst, 
         RvSpanText(text, Rv.type.tileCaption.copy(color = Rv.colors.textSecondary), Modifier.semantics { contentDescription = spoken }, maxLines = 1)
     }
 }
-
-/** A row of the tools card: its glyph, title and subtitle, and what a tap does. */
-internal class RvStatsTool(@DrawableRes val icon: Int, val title: String, val subtitle: String, val onClick: (() -> Unit)?)

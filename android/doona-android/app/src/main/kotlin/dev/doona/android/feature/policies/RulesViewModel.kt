@@ -6,10 +6,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import dev.doona.android.engine.Engine
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.RuleRow
 import dev.doona.android.feature.errorCode
 import dev.doona.android.feature.model.CoreNodePlaces
 import dev.doona.android.feature.model.NodePlaces
@@ -173,27 +171,3 @@ internal class RulesViewModel(
         }
     }
 }
-
-/**
- * Every row of the rule source at [revision], page by page; a page at another revision starts the read over,
- * [RULE_READS] times at most. 生效設定 lists them until it reads honk.
- */
-internal suspend fun Engine.allRules(revision: Long): Result<List<RuleRow>> {
-    repeat(RULE_READS) {
-        val rows = mutableListOf<RuleRow>()
-        var stale = false
-        while (!stale) {
-            val page = rules(rows.size, RULES_PAGE).getOrElse { return Result.failure(it) }
-            stale = page.rulesRevision != revision
-            if (!stale) rows += page.rows
-            if (!stale && (page.rows.isEmpty() || rows.size >= page.total)) return Result.success(rows)
-        }
-    }
-    return Result.failure(EngineException(ErrorCode.Busy))
-}
-
-/** How many rows one read asks for; the engine allows 1 to 500. */
-internal const val RULES_PAGE = 50
-
-/** How often a stale read starts over before it counts as failed. */
-private const val RULE_READS = 3

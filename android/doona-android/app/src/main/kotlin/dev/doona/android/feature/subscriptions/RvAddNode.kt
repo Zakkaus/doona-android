@@ -72,7 +72,7 @@ internal fun RvInlineCard(nodes: List<RvNode>, actions: RvInlineActions) {
  * for the new nodes; then 新增 and 取消. 新增 waits for an add already sent.
  */
 @Composable
-internal fun RvAddNodeSheet(sheet: RvAddNodeSheet?, actions: RvInlineActions) {
+internal fun RvAddNodeSheet(sheet: RvAddNodeSheet?, actions: RvInlineActions, readFailure: RvNotice? = null) {
     val title = stringResource(R.string.rv_addnode)
     val check = sheet?.check ?: RvAddNodeCheck.None
     RvConfirmSheet(
@@ -111,6 +111,7 @@ internal fun RvAddNodeSheet(sheet: RvAddNodeSheet?, actions: RvInlineActions) {
                 RvStatRow(stringResource(R.string.rv_addnode_preview_skipped), RV_NO_VALUE)
                 RvStatRow(stringResource(R.string.rv_addnode_preview_error), RV_NO_VALUE)
             }
+            readFailure?.let { RvBanner(it) }
             sheet?.groupsError?.let { code -> RvBanner(RvNotice(RvNoticeKind.Error, stringResource(R.string.rv_group_read_failed), stringResource(code.messageRes()), stringResource(R.string.rv_retry), actions.retryGroups)) }
             if (check.addable && sheet != null && sheet.groups.isNotEmpty()) GroupPicks(sheet, actions.pick)
         },

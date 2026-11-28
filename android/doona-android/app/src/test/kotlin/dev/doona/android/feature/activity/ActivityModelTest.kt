@@ -222,7 +222,7 @@ class ActivityModelTest {
     @Test
     fun `one notice at a time, in order`() {
         val failed = Status.Failed(FailureReason.CoreStopped)
-        assertEquals(RvActivityNotice.NoSubscription, activityNotice(false, failed, crashOffered = true, allFailed = true))
+        assertEquals(RvActivityNotice.Lockdown, activityNotice(false, Status.Failed(FailureReason.LockdownEnabled), crashOffered = true, allFailed = true))
         assertEquals(RvActivityNotice.CoreStopped, activityNotice(true, failed, crashOffered = true, allFailed = true))
         assertEquals(RvActivityNotice.Crash, activityNotice(true, Status.Stopped, crashOffered = true, allFailed = true))
         assertEquals(RvActivityNotice.NoNode, activityNotice(true, Status.Stopped, crashOffered = false, allFailed = true))
@@ -240,7 +240,7 @@ class ActivityModelTest {
         assertEquals(RvActivityNotice.ConsentDenied, activityNotice(true, failed, crashOffered = true, allFailed = true, all))
         assertEquals(RvActivityNotice.ConsentDenied, activityNotice(true, Status.Stopped, crashOffered = true, allFailed = true, all))
         assertEquals(RvActivityNotice.Offline, activityNotice(true, Status.Running(0), crashOffered = true, allFailed = true, all))
-        assertEquals(RvActivityNotice.NoSubscription, activityNotice(false, failed, crashOffered = true, allFailed = true, all))
+        assertEquals(RvActivityNotice.ConsentDenied, activityNotice(false, failed, crashOffered = true, allFailed = true, all))
         // No network after a failure, before a crash log; a refused notification permission comes last.
         val offline = ActivitySignals(online = false, notifyRefused = true)
         assertEquals(RvActivityNotice.CoreStopped, activityNotice(true, failed, crashOffered = true, allFailed = true, offline))

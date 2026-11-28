@@ -37,14 +37,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * What 生效設定 shows: the mode and the configuration as the cards draw it ([config], null until the first read), the
- * redacted summary 複製 and 匯出 hand on, and why the last read failed ([failure]).
+ * The active mode, configuration cards and last read failure.
  */
 @Immutable
 internal data class EffectiveConfigUiState(
     val mode: RvRouteMode = RvRouteMode.Rule,
     val config: RvEffectiveConfig? = null,
-    val text: String? = null,
     val perApp: RvPerApp? = null,
     val failure: ErrorCode? = null,
 )
@@ -71,20 +69,6 @@ internal class EffectiveConfigViewModel(
             mode = mode,
             config = config,
             perApp = apps,
-            text = config?.let {
-                // User-authored text and names may contain credentials, so only fixed labels and counts leave the app.
-                buildString {
-                    appendLine("# mode: ${mode.name}")
-                    appendLine("# routing rules: ${it.rules.size}")
-                    appendLine("# groups: ${it.groups.size + if (it.main == null) 0 else 1}")
-                    appendLine("# subscriptions: ${it.subscriptions.size}")
-                    appendLine("# DNS servers: ${it.dns.size}")
-                    if (apps != null) {
-                        appendLine("# per-app policy: ${apps.policy.name}")
-                        appendLine("# listed apps: ${apps.packages.size}")
-                    }
-                }
-            },
             failure = failure,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EffectiveConfigUiState())
