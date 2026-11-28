@@ -14,6 +14,25 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  inputs:
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.paths.outputs.build }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      # A pull request that changes only documents no build reads builds nothing; any other change builds.
+      - id: paths
+        run: |
+          build=true
+          docs=(':(exclude)README.md' ':(exclude)README.zh-TW.md' ':(exclude)CONTRIBUTING.md' ':(exclude)PRIVACY.md'
+            ':(exclude).github/*.md' ':(exclude)doc/**/*.md')
+          if [[ $GITHUB_EVENT_NAME == pull_request ]] && git diff --quiet HEAD^1 HEAD -- . "${docs[@]}"; then build=false; fi
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+
   # A release tag must carry the newest Geo data. The weekly geo-bundle workflow moves the pins.
   geo-current:
     name: Geo pins are the newest release
@@ -31,6 +50,8 @@ jobs:
         run: uv run crates/doona-core/tools/update_geo.py --current
 
   android:
+    needs: inputs
+    if: needs.inputs.outputs.build == 'true'
     name: honk-android + tunbench
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -125,6 +146,8 @@ jobs:
             <("$readelf" --dyn-syms -W "$RUNNER_TEMP/apk/lib/arm64-v8a/libhonkengine.so" | awk '$7 != "UND" && $8 ~ /^Java_dev_tunbench_/ { print $8 }' | sort)
 
   doona-core:
+    needs: inputs
+    if: needs.inputs.outputs.build == 'true'
     name: doona-android core
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -154,6 +177,8 @@ jobs:
           cargo test --locked
 
   doona-kotlin:
+    needs: inputs
+    if: needs.inputs.outputs.build == 'true'
     name: doona-android Kotlin
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -210,8 +235,8 @@ jobs:
     name: doona-android release APK
     # Stale Geo pins on a tag stop the release build. geo-current is skipped on every other ref,
     # and `needs` alone would then skip this job too.
-    needs: geo-current
-    if: ${{ !cancelled() && (needs.geo-current.result == 'success' || needs.geo-current.result == 'skipped') }}
+    needs: [inputs, geo-current]
+    if: ${{ !cancelled() && needs.inputs.outputs.build == 'true' && (needs.geo-current.result == 'success' || needs.geo-current.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

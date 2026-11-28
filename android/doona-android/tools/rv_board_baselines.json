@@ -1,49 +1,7 @@
 {
  "default": {
-  "rev": "3a2940ea",
-  "why": "P0a done, before owner-fix2: the last version the owner reviewed of every page not listed below"
+  "rev": "f9bf785a",
+  "why": "review-base-1126"
  },
- "revs": [
-  {
-   "rev": "4e6136a4",
-   "why": "owner-fix2 item 3, approved: 日誌等級 without the countdown line",
-   "screens": ["settings-log-level", "settings-log-level-debug"]
-  },
-  {
-   "rev": "bf523e35",
-   "why": "owner-fix2 item 7, approved: loading skeletons in their real parts' bounds",
-   "screens": ["activity-loading", "policy-loading", "policy-global-loading", "policy-direct-loading", "subs-loading", "perapp-loading"]
-  },
-  {
-   "rev": "4dcd0f57",
-   "why": "before owner-fix3 (items 24-29), so the board shows what it changed: 設定 in every state (its 關於 row approved in owner-fix2 item 1), 關於, 回報問題, and the variants the owner picked (統計 空 A, 服務規則 B, renamed rules-service by item 25)",
-   "screens": [
-    "settings",
-    "settings-update-checking",
-    "settings-update-latest",
-    "settings-update-new",
-    "settings-update-failed",
-    "settings-geodata-idle",
-    "settings-geodata-updating",
-    "settings-geodata-updated",
-    "settings-geodata-latest",
-    "settings-geodata-waiting",
-    "settings-geodata-failed",
-    "settings-tile",
-    "settings-tile-manual",
-    "settings-config-entry",
-    "settings-about",
-    "report",
-    "report-building",
-    "report-failed",
-    "stats-empty-a",
-    {"screen": "rules-service", "was": "rules-service-b"}
-   ]
-  }
- ],
- "notes": [
-  "Owner-approved owner-fix2 items 2 (26d3e2d4), 8 (7ca5030f) and 10 (11a0839b) moved no golden (owner-fix2-STATE), so their pages look as at the revisions above and keep them.",
-  "Items 1 (8ba4d5de, 設定's 關於 row) and 11 (2f5b6602, 回報問題) are approved, but owner-fix3 changes those pages again, so they compare with 4dcd0f57.",
-  "A page that owner-fix3 changes and that is not listed under 4dcd0f57 is to be added there when v1/p0a-fix3 is merged."
- ]
+ "revs": []
 }

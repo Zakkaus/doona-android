@@ -5,16 +5,17 @@
 
 NOW (and each approved DIR) hold what a board run of the shot tests writes (`./gradlew -Ddoona.board=<dir>
 :app:testDebugUnitTest`, see RvBoard.kt): `<screen>-<theme>-<n>.png` and `.json` per window, at 2 px per dp, every
-window of a long page. PAGES is a JSON list of {"page", "state", "screen"} (tools/rv_board_pages.json). MAP
-(tools/rv_board_baselines.json) names the revision each page compares with: the version the owner last reviewed, a
-default and the revisions of later reviews with their screens; each revision a page uses needs its captures as
-`--approved REV=DIR`. For every page, theme (light, dark) and window, OUT (default build/design-board) gets
+window of a long page. PAGES is a JSON list of {"page", "state", "screen"} (tools/rv_board_pages.json). By default
+every page compares with review-base-1126. For a historical board, --baselines MAP selects the revisions by screen
+using the map from that revision. Supply each revision's captures as `--approved REV=DIR`.
+For every page, theme (light, dark) and window, OUT (default build/design-board) gets
 `<screen>-<theme>-<n>.webp`: the screen; the same screen with redlines (the 4 dp grid, the side keylines, every outlined
 node and library part, text baselines, each gap between blocks in dp); then, where the page's approved DIR has the same
 window, the approved version and the changed pixels in red over a faded screen, or "new" in the header. An edge off its keyline by more than 0.5 dp, a gap that is not a spacing token or not the one the rulers
 expect, a row or control off its height and a header off its top are drawn in red and listed under the sheet. OUT also
 gets index.webp (every page state with its red marks in light and dark and its baseline, in columns) and manifest.json,
 which also holds the baseline map.
+The current captures for each page and theme must form consecutive PNG/JSON pairs. Historical pairs are optional.
 """
 
 from __future__ import annotations
@@ -217,7 +218,8 @@ def changes(now: Image.Image, before: Image.Image) -> tuple[Image.Image, int]:
     a, b = Image.new("RGB", size, WHITE), Image.new("RGB", size, WHITE)
     a.paste(now)
     b.paste(before)
-    mask = ImageChops.difference(a, b).convert("L").point(lambda v: 255 if v else 0)
+    r, g, blue = ImageChops.difference(a, b).split()
+    mask = ImageChops.lighter(ImageChops.lighter(r, g), blue).point(lambda v: 255 if v else 0)
     faded = Image.blend(a, Image.new("RGB", size, WHITE), 0.7)
     faded.paste(Image.new("RGB", size, RED), mask=mask)
     return faded, mask.histogram()[255]
@@ -313,9 +315,20 @@ def index_sheet(entries: list[dict], default: str | None = None) -> Image.Image:
 
 
 def windows(directory: Path, screen: str, theme: str) -> list[Window]:
-    """Every window of one page and theme, `-1` on until the first one missing."""
+    """Load the current captures, failing if a window is missing before or at the last captured index."""
+    prefix = f"{screen}-{theme}-"
+    indices = (
+        int(path.stem.removeprefix(prefix))
+        for path in directory.glob(f"{prefix}*")
+        if path.suffix in {".png", ".json"} and path.stem.removeprefix(prefix).isdecimal()
+    )
     found = []
-    while window := load(directory, f"{screen}-{theme}-{len(found) + 1}"):
+    for n in range(1, max(indices, default=0) + 1):
+        name = f"{prefix}{n}"
+        window = load(directory, name)
+        if window is None:
+            missing = [f"{name}{ext}" for ext in (".png", ".json") if not (directory / f"{name}{ext}").is_file()]
+            raise FileNotFoundError(f"{directory}: missing {', '.join(missing)}")
         found.append(window)
     return found
 
@@ -373,7 +386,7 @@ def main() -> None:
     try:
         baselines = json.loads(args.baselines.read_text())
         entries = build(json.loads(args.pages.read_text()), args.now, approved_dirs(args.approved), baselines, args.out)
-    except BaselineError as error:
+    except (BaselineError, FileNotFoundError) as error:
         parser.error(str(error))
     print(f"{len(entries)} sheets, {sum(e['red'] for e in entries)} red marks, in {args.out}")
 

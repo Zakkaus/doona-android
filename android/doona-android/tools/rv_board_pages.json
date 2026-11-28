@@ -539,6 +539,11 @@
   "state": "截斷",
   "screen": "effective-config-truncated"
  },
+ {"page": "路由測試", "state": "空白", "screen": "trace"},
+ {"page": "路由測試", "state": "符合規則", "screen": "trace-rule"},
+ {"page": "路由測試", "state": "封鎖", "screen": "trace-block"},
+ {"page": "路由測試", "state": "後備規則", "screen": "trace-fallback"},
+ {"page": "路由測試", "state": "已略過", "screen": "trace-skipped"},
  {
   "page": "設定檔",
   "state": "正常",
@@ -739,6 +744,13 @@
   "state": "正常",
   "screen": "settings-dns"
  },
+ {"page": "DNS 伺服器", "state": "正常", "screen": "dns-servers"},
+ {"page": "DNS 伺服器", "state": "編輯", "screen": "dns-servers-edit"},
+ {"page": "DNS 伺服器", "state": "確認刪除", "screen": "dns-servers-confirm"},
+ {"page": "DNS 伺服器", "state": "拒絕", "screen": "dns-servers-refused"},
+ {"page": "DNS 伺服器", "state": "新增", "screen": "dns-servers-add"},
+ {"page": "DNS 伺服器", "state": "新增資料無效", "screen": "dns-servers-add-invalid"},
+ {"page": "DNS 伺服器", "state": "空白", "screen": "dns-servers-empty"},
  {
   "page": "更新間隔",
   "state": "正常",

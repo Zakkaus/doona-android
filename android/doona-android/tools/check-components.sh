@@ -1,8 +1,8 @@
 #!/bin/sh
 # The components gate (component-rule-1125 item 4): an RV page composes the library, it does not rebuild it.
 #
-# A page file is every Kotlin file under app/src/debug/kotlin/**/prototype/rv/** (bar the token files `Rv*Tokens.kt`) and
-# every file under app/src/main/kotlin/**/feature/** that imports designsystem.rv. It fails on a line of such a file that
+# A page file is every Kotlin file under app/src/debug/kotlin/**/prototype/rv/** or app/src/main/kotlin/**/feature/**,
+# apart from the token files `Rv*Tokens.kt`. It fails on a line of such a file that
 #   dp      writes a dp or sp literal (`16.dp`, `Dp(`): spacing and size come from the library's tokens;
 #   colour  writes a raw colour (`Color(0x..)`, `0xFF..`, `Color.White`, `MaterialTheme.`): colour comes from `Rv.colors`;
 #   style   writes a text style (`TextStyle(`, `fontSize`, `FontWeight.`): type comes from `Rv.type`;
@@ -44,7 +44,7 @@ fi
 dp='[0-9]\.(dp|sp)\b|(^|[^A-Za-z_.])Dp\('
 colour='Color\(0x|\b0x[0-9A-Fa-f]{8}\b|\bColor\.[A-Z]|MaterialTheme\.'
 style='TextStyle\(|\bfontSize\b|\bFontWeight\.'
-widget='(^|[^A-Za-z_.])(Text|BasicText|Icon|Image|IconButton|Switch|Button|TextButton|OutlinedButton|Card|Surface|TextField|OutlinedTextField|RadioButton|Checkbox|HorizontalDivider|Divider)\('
+widget='(^|[^[:alnum:]_.])(androidx\.compose\.[[:alnum:]_.]+\.)?(Text|BasicText|Icon|Image|IconButton|Switch|Button|TextButton|OutlinedButton|Card|Surface|TextField|OutlinedTextField|RadioButton|Checkbox|HorizontalDivider|Divider)\('
 click='(^|[^A-Za-z_])(clickable|selectable|toggleable|combinedClickable)[[:space:]]*[({]'
 add='\bR\.drawable\.rv_sym_add\b'
 rowctl='(^|[^A-Za-z_.])(RvSwitch|RvRadio)\('
@@ -55,30 +55,36 @@ navend='$0 ~ /(^|[^A-Za-z_.])RvChevron\(\)/ && prev ~ /trailingGap/ { print NR "
 # A class, object or interface of a widget's name (`data class Icon(`): a declaration, read past by the widget rule.
 declared='^[0-9]+:.*\b(class|interface)[[:space:]]+(Text|BasicText|Icon|Image|IconButton|Switch|Button|TextButton|OutlinedButton|Card|Surface|TextField|OutlinedTextField|RadioButton|Checkbox|HorizontalDivider|Divider)\('
 
-# Prints each line blanked when it is a comment line or an import, else up to its first `//` outside a string literal
-# (a `"` opens and closes one, `\` escapes the next character); a char literal is skipped whole, so `'"'` opens no
-# string. A `"""` raw string runs over lines (no escapes inside it), so the state is kept from line to line: a line in
-# it is text, even when it starts with `//` or `*` or holds a `//`. A `/* */` block comment is read by its lines
-# alone: a line that starts with `/*` or `*` is blanked, and a `//` inside a comment is a comment anyway.
+# Prints each line with its imports, comments and string text blanked, so a line keeps its number. Code inside a
+# string's `${...}` is still read, nested strings and braces too; a `/* */` comment nests and runs over lines.
 # shellcheck disable=SC2016 # an awk program: its $0 is awk's
-uncomment='BEGIN { raw = 0 }
+uncomment='BEGIN { raw = ins = depth = 0 }
 {
-    if (!raw && ($0 ~ /^[[:space:]]*(\/\/|\/?\*)/ || $0 ~ /^import /)) { print ""; next }
-    out = ""; ins = 0; n = length($0); i = 1
+    ins = 0
+    if (!block && !raw && $0 ~ /^import /) { print ""; next }
+    out = ""; n = length($0); i = 1
     while (i <= n) {
         c = substr($0, i, 1)
-        if (raw) {
-            if (substr($0, i, 3) == "\"\"\"") { raw = 0; out = out "\"\"\""; i += 3; continue }
-            out = out c; i++; continue
+        pair = substr($0, i, 2)
+        if (!raw && !ins && pair == "/*") { block++; out = out " "; i += 2; continue }
+        if (block) {
+            if (pair == "*/") { block--; i += 2 } else i++
+            continue
         }
-        if (ins) {
-            if (c == "\\") { out = out substr($0, i, 2); i += 2; continue }
-            if (c == "\"") ins = 0
-            out = out c; i++; continue
+        if (raw || ins) {
+            if (ins && c == "\\") { i += 2; continue }
+            if (substr($0, i, 2) == "${") {
+                resume[++depth] = raw ? "raw" : "string"; raw = ins = 0; out = out " "; i += 2; continue
+            }
+            if (raw && substr($0, i, 3) == "\"\"\"") { raw = 0; i += 3; continue }
+            if (ins && c == "\"") ins = 0
+            i++; continue
         }
+        if (depth && c == "{") resume[++depth] = "code"
+        if (depth && c == "}") { raw = resume[depth] == "raw"; ins = resume[depth] == "string"; depth-- }
         if (c == "/" && substr($0, i + 1, 1) == "/") break
-        if (substr($0, i, 3) == "\"\"\"") { raw = 1; out = out "\"\"\""; i += 3; continue }
-        if (c == "\"") ins = 1
+        if (substr($0, i, 3) == "\"\"\"") { raw = 1; out = out " "; i += 3; continue }
+        if (c == "\"") { ins = 1; out = out " "; i++; continue }
         if (c == "\047") {
             j = (substr($0, i + 1, 1) == "\\") ? i + 3 : i + 2
             if (substr($0, j, 1) == "\047") { out = out substr($0, i, j - i + 1); i = j + 1; continue }
@@ -91,7 +97,7 @@ uncomment='BEGIN { raw = 0 }
 pages=$(
     {
         find "$src/debug/kotlin" -path '*/prototype/rv/*' -name '*.kt' 2>/dev/null
-        find "$src/main/kotlin" -path '*/feature/*' -name '*.kt' -exec grep -l 'designsystem\.rv' {} + 2>/dev/null
+        find "$src/main/kotlin" -path '*/feature/*' -name '*.kt' 2>/dev/null
     } | grep -vE '/Rv[A-Za-z]*Tokens\.kt$' | sort -u || true
 )
 hits=$(mktemp)

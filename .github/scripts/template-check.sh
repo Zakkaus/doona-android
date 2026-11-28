@@ -20,8 +20,9 @@ check_body() {
         def kept($text): boxes($text) | length > 0 and all(. == "x");
 
         gsub("\r\n"; "\n") |
-        gsub("<!--[\\s\\S]*?-->"; "") |
-        gsub("(?:^|\\n) {0,3}(?<fence>`{3,}|~{3,})[^\\n]*\\n[\\s\\S]*?\\n {0,3}\\k<fence>[ \\t]*(?=\\n|\\z)"; "") | . as $body |
+        gsub("(?:^|\\n) {0,3}(?<fence>(?<mark>[`~])\\k<mark>{2,})[^\\n]*\\n(?<code>(?:[^\\n]*\\n)*?) {0,3}\\k<fence>\\k<mark>*[ \\t]*(?=\\n|\\z)";
+            if (.code | trim) == "" then "\n" else "\n[fenced code]" end) |
+        gsub("<!--[\\s\\S]*?-->"; "") | . as $body |
         ($kind == "issue" and (test(heading("###"; "What happened"); "i") or
             (test(heading("###"; "(?:Problem|Proposal)"); "i") | not))) as $bug |
         (if $kind == "issue" then section("###"; "Confirm") else . end) as $checks |

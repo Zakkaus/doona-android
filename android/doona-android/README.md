@@ -29,7 +29,7 @@ This setting does not change Android's bootstrap resolvers for node hostnames.
 ./gradlew spotlessCheck :app:lintDebug :app:testDebugUnitTest verifyRoborazziDebug
 ./gradlew recordRoborazziDebug                        # rewrite the goldens in app/src/test/screenshots after a change you meant
 ./gradlew recordRoborazziDebug -Ddoona.shots=<dir>    # the same renders in <dir>, to look at without touching the goldens
-tools/check-tokens.sh                                 # no dp, sp, colour or alpha literal outside designsystem/tokens (bar a component's own Defaults object)
+tools/check-tokens.sh                                 # check literal values outside the token files and spacing values against the RV scale
 tools/check-components.sh                             # an RV page composes the library: no raw dp, colour, text style, Text/Icon or clickable (tools/check-components.allow lists the existing exceptions)
 tools/check-layers.sh                                 # material3 and tokens stay in designsystem/; feature/ and the RV pages build no interactive element
 tools/check-samples.sh                                # src/main names no sample, `*Sample` binding or RvData that only src/debug declares
