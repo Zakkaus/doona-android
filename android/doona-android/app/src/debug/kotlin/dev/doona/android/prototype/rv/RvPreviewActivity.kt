@@ -23,7 +23,6 @@ import dev.doona.android.designsystem.rv.RvNoto
 import dev.doona.android.designsystem.rv.RvPullMotion
 import dev.doona.android.designsystem.rv.rvWarmDotMap
 import dev.doona.android.feature.activity.RvActivityNotice
-import dev.doona.android.feature.settings.RvLicenses
 import dev.doona.android.prototype.rv.data.RvData
 import dev.doona.android.prototype.rv.policy.RvPolicyData
 import dev.doona.android.prototype.rv.policy.RvPolicyPreviewRoutes
@@ -175,9 +174,9 @@ internal data class RvSampleStart(
                 when (name) {
                     CONNECTION -> index in RvPolicyData.connections.indices
 
-                    LICENSE -> index in 0..RvLicenses.all.size
+                    // The count is read from assets on the page, which shows nothing for an index past the end.
+                    LICENSE -> index >= 0
 
-                    // The brand-marks notice comes last.
                     policy.EDIT -> index in 0 until RvPolicyData.allRules.lastIndex
 
                     policy.RULE -> route == name || index in RvPolicyData.connections.indices

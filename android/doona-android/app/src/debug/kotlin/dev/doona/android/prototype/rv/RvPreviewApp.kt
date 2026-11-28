@@ -299,7 +299,7 @@ private fun AboutAppsPage(route: String, settings: RvSettingsState, onSettings: 
     when (route.substringBefore(':')) {
         PERAPP -> PerAppPage(route, settings, onSettings, pages)
         LICENSES -> RvLicensesScreen(onOpen = { pages.push("$LICENSE:$it") }, onBack = pages.pop)
-        else -> RvLicenseText(rvLicenseEntries()[route.substringAfter(':').toInt()], onBack = pages.pop)
+        else -> rvLicenseEntries().getOrNull(route.substringAfter(':').toInt())?.let { RvLicenseText(it, onBack = pages.pop) }
     }
 }
 

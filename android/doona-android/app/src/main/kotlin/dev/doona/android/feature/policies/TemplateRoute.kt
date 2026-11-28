@@ -66,7 +66,7 @@ internal fun TemplateImpactRoute(viewModel: TemplateImpactViewModel, onBack: () 
     }
     RvTemplateImpactPage(impact, onBack, apply.takeIf { ui.edit?.first?.writable == true }, banner) {
         ui.edit?.let { (source, candidate) ->
-            remember(source, candidate) { rvLineDiff(source.path, source.content, candidate) }?.let { diff ->
+            remember(source, candidate) { rvLineDiff(source.path, source.content, candidate) }?.firstOrNull()?.let { diff ->
                 RvGutter { RvSourceDiff(diff, onOpen = null) }
             }
         }

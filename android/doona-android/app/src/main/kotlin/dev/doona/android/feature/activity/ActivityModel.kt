@@ -127,7 +127,7 @@ internal fun activityCatalog(data: ActivityData, profileNodes: ActivityNodes): A
         node = mainLeaf?.takeIf { mode != RvRouteMode.Direct }?.let { RvMainNode(it.id, it.name, probe, failed = it.history.isNotEmpty() && probe == null) },
         nodes = profileNodes.nodes,
         subscriptions = profile?.providers.orEmpty().mapNotNull { if (it.kind == ProviderKind.Subscription) rvSubscription(it, userAgent = null) else null },
-        rules = profile?.let { ruleRows(it, data.outbounds.orEmpty()) }.orEmpty(),
+        rules = profile?.let { data.outbounds?.let { usage -> ruleRows(it, usage) } },
         cards = cards,
         allFailed = profileNodes.allFailed,
         // Until the profile is read nothing says there is none: the page waits rather than showing the empty state.
