@@ -53,7 +53,7 @@ internal object ActivityHonkFixtures {
 
     /** No subscription and no node: the profile's groups have no members. */
     fun FakeHonk.empty() = apply {
-        on("GET", "/api/v1/providers", OK, HonkFixtures.body("providers/rv-sample").edit { it.with("providers", JsonArray(emptyList())) })
+        on("GET", "/api/v1/providers", OK, HonkFixtures.body("providers/empty"))
         on("GET", "/api/v1/nodes", OK, HonkFixtures.body("nodes/rv-sample").edit { it.with("nodes", JsonArray(emptyList())) })
         val groups = HonkFixtures.body("groups/rv-sample").edit { list -> JsonArray(list.jsonArray.map { it.jsonObject.with("member_count", JsonPrimitive(0)) }) }
         on("GET", "/api/v1/groups", OK, groups)
@@ -77,10 +77,11 @@ internal object ActivityHonkFixtures {
         on("GET", "/api/v1/groups/g-HK", OK, hk)
     }
 
-    /** A fresh install: no provider, and no node probed yet. */
+    /** Manual nodes without subscriptions or probe results. */
     fun FakeHonk.untested() = apply {
-        on("GET", "/api/v1/providers", OK, HonkFixtures.body("providers/rv-sample").edit { it.with("providers", JsonArray(emptyList())) })
-        val nodes = HonkFixtures.body("nodes/rv-sample").edit { list -> list.with("nodes", JsonArray(list.array("nodes").map { it.with("health", JsonArray(emptyList())) })) }
+        val nodes = HonkFixtures.body("nodes/rv-sample").edit { list -> list.with("nodes", JsonArray(list.array("nodes").map { it.with("provider_id", JsonPrimitive("inline")).with("health", JsonArray(emptyList())) })) }
+        val count = nativeJson.parseToJsonElement(nodes).array("nodes").size
+        on("GET", "/api/v1/providers", OK, HonkFixtures.body("providers/empty").replace("\"node_count\":0", "\"node_count\":$count"))
         on("GET", "/api/v1/nodes", OK, nodes)
     }
 

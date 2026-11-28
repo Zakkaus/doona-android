@@ -40,7 +40,8 @@ internal const val RV_POLICY_CARD_RULES = 5
 
 internal fun rvGroupKind(kind: GroupKind): RvGroupKind = when (kind) {
     GroupKind.Selector -> RvGroupKind.Select
-    GroupKind.UrlTest, GroupKind.LoadBalance -> RvGroupKind.Auto
+    GroupKind.UrlTest -> RvGroupKind.Auto
+    GroupKind.LoadBalance -> RvGroupKind.LoadBalance
     GroupKind.Fallback -> RvGroupKind.Fallback
     GroupKind.Score -> RvGroupKind.Score
 }

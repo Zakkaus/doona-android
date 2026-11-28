@@ -18,7 +18,7 @@ import dev.doona.android.honk.GroupSelection
 import dev.doona.android.honk.HonkRules
 import dev.doona.android.honk.Node
 import dev.doona.android.honk.Provider
-import dev.doona.android.honk.Transport
+import dev.doona.android.honk.ProviderKind
 import java.time.OffsetDateTime
 
 /**
@@ -88,7 +88,8 @@ internal fun nodesState(nodes: List<Node>, providers: List<Provider>, main: Grou
     val rows = nodes.map { rvNode(it, byId, places) }
     return NodesState(
         nodes = rows,
-        subscriptions = providers.map { rvSubscription(it, null) },
+        // honk always lists its inline provider; its nodes are 組態內, not a subscription.
+        subscriptions = providers.filter { it.kind != ProviderKind.Inline }.map { rvSubscription(it, null) },
         currentId = tcpId,
         mainGroupId = main?.id,
         testedAt = nodes.zip(rows).associate { (node, row) -> node.id to if (row.history.isEmpty()) emptyList() else listOfNotNull(node.probedAt()) },
@@ -106,9 +107,7 @@ internal fun mainGroup(groups: List<Group>, rules: HonkRules): Group? = groups.f
 /** The node a selection ends on: honk's resolved leaf, else the member itself. */
 private fun GroupSelection.leaf(): String = resolvedLeafNodeId ?: memberId
 
-/** When the probe [rvNode] shows was taken: the TCP one, else the first. */
-private fun Node.probedAt(): Long? =
-    (health.firstOrNull { it.transport == Transport.Tcp } ?: health.firstOrNull())?.observedAt?.let { OffsetDateTime.parse(it).toInstant().toEpochMilli() }
+private fun Node.probedAt(): Long? = latestProbe?.observedAt?.let { OffsetDateTime.parse(it).toInstant().toEpochMilli() }
 
 /** The subscription a node came from: its id, its name and its format (null for a legacy one the core has not refetched). */
 internal class RvSource(val id: String, val name: String, val format: SubscriptionFormat?)

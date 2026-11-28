@@ -202,7 +202,7 @@ class SubscriptionsViewModelTest {
 
     @Test
     fun `honk's provider maps to the page's`() {
-        val (harbor) = nativeProviders("providers/rv-sample")
+        val harbor = nativeProviders("providers/rv-sample").single { it.id == "s1" }
         val mapped = rvSubscription(harbor, userAgent = "clash.meta")
         assertEquals(listOf("s1", "Harbor Cloud", "sub.harbor-cloud.example"), listOf(mapped.id, mapped.name, mapped.host))
         assertEquals(32, mapped.nodes)
@@ -218,7 +218,7 @@ class SubscriptionsViewModelTest {
         val json = HonkFixtures.body("providers/rv-sample")
             .replace(""""updated_at": "2026-11-22T06:00:00Z",""", """"updated_at": null,""")
             .replace(Regex(""""traffic": \{[^}]*\}"""), """"traffic": null""")
-        val never = rvSubscription(nativeJson.decodeFromString(ProviderList.serializer(), json).providers[0], userAgent = null)
+        val never = rvSubscription(nativeJson.decodeFromString(ProviderList.serializer(), json).providers.single { it.id == "s1" }, userAgent = null)
         assertNull(never.updatedAtEpochMs)
         assertFalse(never.hasQuota)
     }

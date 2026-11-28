@@ -41,7 +41,7 @@ internal fun GroupEditRoute(viewModel: GroupEditViewModel, onBack: () -> Unit, o
     val option = picking
     if (option != null) {
         BackHandler { picking = null }
-        return RvGroupOptionPage(option, ui.members, draft, viewModel::change, onBack = { picking = null })
+        return RvGroupOptionPage(option, ui.members, draft, viewModel::change, onBack = { picking = null }, outbounds = ui.outbounds)
     }
     RvGroupEditPage(
         ui.name,

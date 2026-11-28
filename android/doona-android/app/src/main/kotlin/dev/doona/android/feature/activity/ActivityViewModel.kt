@@ -125,7 +125,8 @@ class ActivityViewModel internal constructor(
 
     /** Probes every group's direct members, then reads the profile again for their results. */
     private suspend fun testAll(): Result<Unit> = withContext(io) {
-        runCatching { probes.groups((profile.value?.getOrNull()?.groups ?: catalog.groups()).map { it.id }) }
+        val snapshot = profile.value?.getOrNull()
+        runCatching { probes.groups(snapshot?.groups ?: catalog.groups(), snapshot?.nodes ?: catalog.nodes()) }
     }.also { load() }
 
     /** Runs [call]; its failure is shown until the next attempt, its success clears what was shown. */

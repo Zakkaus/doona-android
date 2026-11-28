@@ -126,10 +126,11 @@ internal class GroupViewModel(
 
     /** Probes this group's members; the page shows the test running until honk has recorded the results. */
     fun onTest() {
+        val group = read.value?.source ?: return
         testing.value = true
         perform(GroupAction.Test) {
             try {
-                withContext(io) { probes.groups(listOf(groupId)) }
+                withContext(io) { probes.groups(listOf(group)) }
             } finally {
                 testing.value = false
             }

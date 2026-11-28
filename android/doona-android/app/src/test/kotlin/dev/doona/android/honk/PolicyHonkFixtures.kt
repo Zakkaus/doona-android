@@ -40,6 +40,7 @@ internal object PolicyHonkFixtures {
             on("GET", "/api/v1/groups/$id", 200, HonkFixtures.body("groups/honk-groups-$id"))
         }
         on("GET", "/api/v1/nodes", 200, HonkFixtures.body("nodes/honk-groups"))
+        on("GET", "/api/v1/providers", 200, HonkFixtures.body("providers/rv-sample").replace("\"node_count\":0", "\"node_count\":1"))
         on("GET", "/api/v1/rules", 200, HonkFixtures.body("rules/honk-groups"))
     }
 

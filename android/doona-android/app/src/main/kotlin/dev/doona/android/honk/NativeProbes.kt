@@ -14,30 +14,45 @@ import kotlinx.serialization.json.putJsonObject
 /** honk's probes through its native API. Blocking: run on `Dispatchers.IO`. */
 internal class NativeProbes(private val api: NativeApi) {
     /**
-     * Tests the direct members of each of [groupIds] by HTTP over TCP, from cold, four groups at a time (honk runs at most
-     * four probe jobs), and waits until every admitted probe ends; honk keeps the results as the members' health. A group
-     * that fails does not stop the others; the first error is thrown at the end. A busy honk stops the later batches.
+     * Tests the direct members of each of [groups], then each user node of [nodes] in no group, by HTTP over TCP, from
+     * cold, and waits until every admitted probe ends; honk keeps the results as the members' health. Groups go four at a
+     * time (honk runs at most four probe jobs); a group over honk's 64-member limit is sent in lists of 64 member ids, one
+     * after another. A target that fails does not stop the others, but a busy honk stops everything after its batch; the
+     * first failure is thrown at the end.
      */
-    suspend fun groups(groupIds: List<String>) {
-        var firstError: ErrorCode? = null
-        for (batch in groupIds.chunked(4)) {
+    suspend fun groups(groups: List<Group>, nodes: List<Node> = emptyList()) {
+        var failure: EngineException? = null
+        for (batch in groups.chunked(4)) {
             val errors = coroutineScope {
-                batch.map { id ->
+                batch.map { group ->
                     async {
                         try {
-                            val accepted = api.read("POST", "/api/v1/probes", OperationAccepted.serializer(), body(id))
-                            val operation = api.finished(accepted.href)
-                            if (operation.status == OperationStatus.Failed) operation.error?.errorCode() ?: ErrorCode.Internal else null
+                            val lists = if (group.members.size <= 64) listOf(null) else group.members.chunked(64)
+                            for (members in lists) {
+                                val accepted = api.read("POST", "/api/v1/probes", OperationAccepted.serializer(), body(group.id, members))
+                                val operation = api.finished(accepted.href)
+                                if (operation.status == OperationStatus.Failed) throw EngineException(operation.error?.errorCode() ?: ErrorCode.Internal)
+                            }
+                            null
                         } catch (error: EngineException) {
-                            error.code
+                            error
                         }
                     }
                 }.awaitAll()
             }
-            if (firstError == null) firstError = errors.firstOrNull { it != null }
-            if (ErrorCode.Busy in errors) break
+            if (failure == null) failure = errors.firstOrNull { it != null }
+            val busy = errors.firstOrNull { it?.code == ErrorCode.Busy }
+            if (busy != null) throw failure ?: busy
         }
-        firstError?.let { throw EngineException(it) }
+        for (target in nodes) {
+            if (target.providerId == null || target.groupIds.isNotEmpty()) continue
+            try {
+                node(target.id)
+            } catch (error: EngineException) {
+                if (failure == null) failure = error
+            }
+        }
+        failure?.let { throw it }
     }
 
     /** Tests node [nodeId] the same way and waits until its probe ends; a probe honk could not run fails with its error. */
@@ -56,7 +71,7 @@ internal class NativeProbes(private val api: NativeApi) {
         operation.error?.let { throw EngineException(it.errorCode()) }
     }
 
-    private fun body(groupId: String) = buildJsonObject {
+    private fun body(groupId: String, members: List<GroupMember>?) = buildJsonObject {
         putJsonObject("target") {
             put("type", "group")
             put("group_id", groupId)
@@ -64,7 +79,7 @@ internal class NativeProbes(private val api: NativeApi) {
         put("kind", "http")
         putJsonArray("transport") { add("tcp") }
         put("ip_version", "any")
-        put("members", "direct")
+        if (members == null) put("members", "direct") else putJsonArray("members") { members.forEach { add(it.id) } }
         put("warmth", "cold")
     }.toString()
 }

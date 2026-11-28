@@ -87,13 +87,15 @@ class StatsViewModelTest {
         val honk = ActivityHonkFixtures.sample()
         honk.on("POST", "/api/v1/providers/s1/refresh", ACCEPTED, HonkFixtures.body("operations/provider-refresh-accepted"))
         honk.on("GET", "/api/v1/operations/op-refresh", OK, HonkFixtures.body("operations/provider-refresh-s1"))
-        honk.on("POST", "/api/v1/providers/s2/refresh", CONFLICT, HonkExamples.UNAVAILABLE)
+        honk.on("POST", "/api/v1/providers/s2/refresh", CONFLICT, """{"error":{"code":"state_conflict","message":"A refresh for this provider is already in flight.","details":null}}""")
         val vm = shown(honk)
         vm.updateAll()
         vm.updateAll()
         advanceTimeBy(1_001)
         assertEquals(StatsFailure(StatsTool.UpdateAll, ErrorCode.Busy, "Lantern Net"), vm.failure.value)
         assertEquals(1, honk.reads("/api/v1/operations/op-refresh"))
+        assertEquals(0, honk.posts("/api/v1/providers/inline/refresh"))
+        assertEquals(listOf("s1", "s2"), vm.uiState.value.subscriptions.map { it.id })
         assertEquals(2, honk.reads("/api/v1/providers"))
     }
 

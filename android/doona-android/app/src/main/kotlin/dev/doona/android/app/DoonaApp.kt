@@ -171,6 +171,7 @@ internal fun DoonaApp(
                     onBack = { backStack.pop(key) },
                     onNodeDetail = { backStack.push(NodeKey(it)) },
                     onEdit = { backStack.push(GroupEditKey(key.groupId)) },
+                    onMissing = { if (backStack.lastOrNull() == key) backStack.selectTab(Tab.Policies) },
                 )
             }
             entry<GroupEditKey> { key -> GroupEditRoute(key.groupId, onBack = { backStack.pop(key) }, onOpenSource = { backStack.push(ConfigSourceKey(it)) }) }

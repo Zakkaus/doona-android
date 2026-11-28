@@ -20,7 +20,6 @@ import dev.doona.android.feature.policies.rvGroupKind
 import dev.doona.android.feature.subscriptions.rvSubscription
 import dev.doona.android.honk.Group
 import dev.doona.android.honk.HealthState
-import dev.doona.android.honk.MemberKind
 import dev.doona.android.honk.Node
 import dev.doona.android.honk.OutboundKind
 import dev.doona.android.honk.OutboundTraffic
@@ -28,7 +27,6 @@ import dev.doona.android.honk.Provider
 import dev.doona.android.honk.ProviderKind
 import dev.doona.android.honk.RuntimeTraffic
 import dev.doona.android.honk.TrafficHistory
-import dev.doona.android.honk.Transport
 
 /**
  * What 活動's lists are mapped from, read far less often than the second's traffic: honk's [profile] (null until read),
@@ -71,11 +69,13 @@ internal class ActivityCatalog(
 )
 
 /**
- * One catalog's nodes, mapped once per catalog revision and node read rather than on each usage read: every leaf
- * member of any group, once ([nodes], and [byId]), and whether each failed its test ([allFailed]).
+ * One catalog's nodes, mapped once per catalog revision and node read rather than on each usage read: every node by id
+ * ([byId], built-ins too, so a group that selects `direct` still names it), the user's nodes ([nodes]: no built-in),
+ * and whether each user node failed its test ([allFailed]).
  */
-internal class ActivityNodes(val nodes: List<RvNode>, val allFailed: Boolean) {
-    val byId: Map<String, RvNode> = nodes.associateBy { it.id }
+internal class ActivityNodes(all: List<RvNode>, val allFailed: Boolean) {
+    val byId: Map<String, RvNode> = all.associateBy { it.id }
+    val nodes = all.filter { it.subscriptionId != null }
 }
 
 /**
@@ -89,14 +89,14 @@ internal fun activityNodes(catalog: Catalog?, nodeInfo: Map<String, NodeInfo>): 
 }
 
 /**
- * Every node of [profile] some group has as a member, once, in the groups' order, placed by its name ([places]), and
- * whether honk found each unavailable at its last probe ([ActivityNodes.allFailed]).
+ * Every node of [profile] in honk's order, in a group or not, placed by its name ([places]), and whether honk found
+ * each user node unavailable at its last probe ([ActivityNodes.allFailed]).
  */
 internal fun honkActivityNodes(profile: HonkProfile?, places: NodePlaces): ActivityNodes {
-    val byId = profile?.nodes.orEmpty().associateBy { it.id }
-    val leaves = profile?.groups.orEmpty().asSequence().flatMap { it.members }.filter { it.kind == MemberKind.Node }.mapNotNull { byId[it.id] }.distinctBy { it.id }.toList()
+    val leaves = profile?.nodes.orEmpty()
     val providers = profile?.providers.orEmpty().associateBy { it.id }
-    return ActivityNodes(leaves.map { rvNode(it, providers, places) }, allFailed = leaves.isNotEmpty() && leaves.all { it.unavailable() })
+    val allFailed = leaves.any { it.providerId != null } && leaves.all { it.providerId == null || it.unavailable() }
+    return ActivityNodes(leaves.map { rvNode(it, providers, places) }, allFailed)
 }
 
 /**
@@ -131,7 +131,7 @@ internal fun activityCatalog(data: ActivityData, profileNodes: ActivityNodes): A
         cards = cards,
         allFailed = profileNodes.allFailed,
         // Until the profile is read nothing says there is none: the page waits rather than showing the empty state.
-        hasSubscriptions = profile?.let { it.providers.isNotEmpty() || it.nodes.isNotEmpty() } ?: true,
+        hasSubscriptions = profile?.let { p -> p.providers.any { it.kind == ProviderKind.Subscription } || profileNodes.nodes.isNotEmpty() } ?: true,
         mapped = profile != null,
     )
 }
@@ -283,7 +283,7 @@ private fun groupRule(group: Group): RvActivityRule {
 }
 
 /** Whether honk found [this] unavailable at its last probe over TCP (or over any network when it has no TCP one). */
-private fun Node.unavailable(): Boolean = (health.firstOrNull { it.transport == Transport.Tcp } ?: health.firstOrNull())?.state == HealthState.Unavailable
+private fun Node.unavailable(): Boolean = latestProbe?.state == HealthState.Unavailable
 
 private fun rvNode(member: Member, info: NodeInfo?, subscriptions: Map<String, String>): RvNode {
     val history = info?.tests?.map { it.ms }?.takeLast(RV_TESTS)?.takeIf { it.isNotEmpty() } ?: memberHistory(member)

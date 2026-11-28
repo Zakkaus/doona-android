@@ -18,6 +18,8 @@ internal class RvPolicyGroup(
     val members: List<RvNode>,
     val selectedId: String,
     val groups: List<RvMemberGroup> = emptyList(),
+    val tcpLeaf: RvNode? = null,
+    val udpLeaf: RvNode? = null,
 ) {
     val selected: RvNode? = members.firstOrNull { it.id == selectedId } ?: groups.firstOrNull { it.id == selectedId }?.node
 

@@ -217,7 +217,7 @@ private fun StatsCard(node: RvNode, lastTest: String) {
         // honk-gap:hops-exit
         RvStatRow(stringResource(R.string.rv_node_hops), RV_NO_VALUE)
         RvStatRow(TLS, if (told) stringResource(if (node.tls) R.string.ui_on else R.string.ui_off) else RV_NO_VALUE)
-        val source = if (node.inline) stringResource(R.string.rv_nodes_inline) else node.subscription
+        val source = if (node.inline) stringResource(R.string.rv_nodes_inline) else node.subscription.ifEmpty { RV_NO_VALUE }
         RvStatRow(stringResource(R.string.rv_nodes_subscription), source, valueKeepWords = false)
         RvStatRow(stringResource(R.string.rv_nodes_last_test), lastTest)
     }

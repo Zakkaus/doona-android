@@ -7,7 +7,6 @@ import dev.doona.android.feature.model.isInline
 import dev.doona.android.honk.Group
 import dev.doona.android.honk.HonkSource
 import dev.doona.android.honk.Node
-import dev.doona.android.honk.Provider
 import dev.doona.android.honk.daeGroup
 import java.net.URI
 import java.net.URLDecoder
@@ -131,10 +130,7 @@ internal fun joinedGroups(groups: List<Group>, ids: Set<String>): List<String> =
     groups.filter { group -> group.members.any { it.id in ids } }.map { it.name }
 
 /** honk's [nodes] that no subscription or file brought: the ones added by their link, the 組態內 source. */
-internal fun inlineNodes(nodes: List<Node>, providers: List<Provider>): List<Node> {
-    val byId = providers.associateBy { it.id }
-    return nodes.filter { it.isInline(byId) }
-}
+internal fun inlineNodes(nodes: List<Node>): List<Node> = nodes.filter(Node::isInline)
 
 /**
  * After an add: how many nodes it added, the groups they joined, the lines honk refused, and why the groups chosen in

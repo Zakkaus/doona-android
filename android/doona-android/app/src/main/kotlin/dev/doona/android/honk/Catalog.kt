@@ -3,6 +3,7 @@ package dev.doona.android.honk
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
+import java.time.Instant
 
 // honk's catalog resources as its native API sends them (native_api_openapi.yaml, components/schemas): providers,
 // nodes, groups and the operations that create, refresh or delete them. Names follow honk's schemas; fields the app
@@ -64,7 +65,7 @@ internal class SafeError(val code: String, val message: String, val details: Jso
 @Serializable
 internal class NodeList(val nodes: List<Node>, @SerialName("next_cursor") val nextCursor: String?)
 
-/** A static node (one added by its link) has a null [providerId]. */
+/** Built-ins have no [providerId]; configured nodes use the inline provider. */
 @Serializable
 internal class Node(
     val id: String,
@@ -75,7 +76,10 @@ internal class Node(
     @SerialName("provider_id") val providerId: String? = null,
     @SerialName("group_ids") val groupIds: List<String>,
     val health: List<HealthObservation>,
-)
+) {
+    /** The probe the pages show: the latest over TCP, else the latest over any network. */
+    val latestProbe: HealthObservation? get() = health.maxWithOrNull(compareBy({ it.transport == Transport.Tcp }, { Instant.parse(it.observedAt) }))
+}
 
 @Serializable
 internal class HealthObservation(

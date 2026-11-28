@@ -11,7 +11,8 @@ import dev.doona.android.honk.PolicyKind
 
 internal fun rvGroupKind(kind: PolicyKind): RvGroupKind = when (kind) {
     PolicyKind.Selector, PolicyKind.Fixed -> RvGroupKind.Select
-    PolicyKind.UrlTest, PolicyKind.LoadBalance, PolicyKind.Random -> RvGroupKind.Auto
+    PolicyKind.UrlTest, PolicyKind.Random -> RvGroupKind.Auto
+    PolicyKind.LoadBalance -> RvGroupKind.LoadBalance
     PolicyKind.Fallback -> RvGroupKind.Fallback
     PolicyKind.Score -> RvGroupKind.Score
 }
@@ -28,7 +29,8 @@ internal fun rvPolicyGroup(group: Group, groups: Map<String, Group>, nodes: Map<
     }
     val ids = members.map { it.id } + nested.map { it.id }
     val selected = group.runtime.selection.tcp?.memberId?.takeIf { it in ids }.orEmpty()
-    return RvPolicyGroup(group.id, RvLabel.Text(group.name), rvGroupKind(group.policy.kind), members, selected, nested)
+    val selection = group.runtime.selection
+    return RvPolicyGroup(group.id, RvLabel.Text(group.name), rvGroupKind(group.policy.kind), members, selected, nested, nodes[selection.tcp?.resolvedLeafNodeId], nodes[selection.udp?.resolvedLeafNodeId])
 }
 
 /** The node this group's TCP selection ends on, through any nested groups, as honk resolves it; null before it chose one. */

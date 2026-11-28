@@ -144,6 +144,7 @@ internal fun RvGroupOptionPage(
     draft: HonkGroupConfig,
     onChange: (HonkGroupConfig) -> Unit,
     onBack: () -> Unit,
+    outbounds: List<String>,
 ) {
     val insets = LocalFrameInsets.current ?: WindowInsets.systemBars
     val title = stringResource(if (option == RvGroupOption.Default) R.string.rv_group_edit_default else R.string.rv_group_edit_final)
@@ -151,7 +152,7 @@ internal fun RvGroupOptionPage(
     // 預設 names a member by id, 全部不可用時 an outbound by name.
     val choices: List<Pair<String?, String>> = listOf(null to stringResource(R.string.rv_group_edit_unset)) + when (option) {
         RvGroupOption.Default -> members.map { it.id to it.name }
-        RvGroupOption.Final -> listOf(DIRECT to stringResource(R.string.mode_direct), BLOCK to stringResource(R.string.rv_policy_reject)) + members.map { it.name to it.name }
+        RvGroupOption.Final -> (listOf(DIRECT to stringResource(R.string.mode_direct), BLOCK to stringResource(R.string.rv_policy_reject)) + outbounds.map { it to it }).distinctBy { it.first }
     }
     RvScrollPage(title, insets, onBack = onBack) { titleBlock ->
         RvLargeTitle(title, titleBlock, insets)

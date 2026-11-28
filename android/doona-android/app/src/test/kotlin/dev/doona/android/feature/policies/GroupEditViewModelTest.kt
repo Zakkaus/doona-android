@@ -35,20 +35,29 @@ class GroupEditViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     @Test
+    fun `a restored editor leaves when its group is no longer in the catalog`() = runTest {
+        assertTrue(GroupEditViewModel(honk, "obsolete", io = io).uiState.value.done)
+    }
+
+    @Test
     fun `the editor reads the group, its members and its file, and 套用 patches what changed`() = runTest {
+        val external = """{"id":"external","name":"backup","protocol":"trojan","subscription_tag":null,"provider_id":"inline","group_ids":[],"health":[]}"""
+        honk.on("GET", "/api/v1/nodes", 200, HonkFixtures.body("nodes/list").replaceFirst("[", "[$external,"))
         val vm = GroupEditViewModel(honk, "group-proxy", io = io)
         val ui = vm.uiState.value
         assertEquals("proxy", ui.name)
         assertEquals(listOf("node-hk-01" to false, "group-jp" to true), ui.members.map { it.id to it.group })
+        assertTrue("backup" in ui.outbounds)
         assertEquals("config.dae", ui.source)
         val draft = checkNotNull(ui.draft)
-        vm.change(draft.copy(policy = HonkGroupPolicy("selector", "selector"), config = draft.config.copy(defaultMemberId = "node-hk-01")))
+        vm.change(draft.copy(policy = HonkGroupPolicy("selector", "selector"), config = draft.config.copy(defaultMemberId = "node-hk-01", finalOutbound = "backup")))
         vm.apply()
         advanceUntilIdle()
         assertTrue(vm.uiState.value.done)
         val patch = checkNotNull(honk.calls.single { it.method == "PATCH" }.body)
         assertTrue(patch, patch.contains(""""path":"/policy","value":{"kind":"selector","native":"selector"}"""))
         assertTrue(patch, patch.contains(""""path":"/config/default_member_id","value":"node-hk-01""""))
+        assertTrue(patch, patch.contains(""""path":"/config/final_outbound","value":"backup""""))
     }
 
     @Test
