@@ -10,7 +10,7 @@
     <plurals name="rv_settings_per_app_value">
         <item quantity="other">只代理 %1$d 个应用</item>
     </plurals>
-    <string name="rv_settings_connection_footer">只有选中的应用经由代理，其他应用和局域网地址直接连接。</string>
+    <string name="rv_settings_connection_footer">局域网地址直接连接。</string>
 
     <string name="rv_settings_group_subscription">订阅</string>
     <string name="rv_settings_auto_update">自动更新</string>
@@ -36,7 +36,7 @@
     <string name="rv_settings_licenses">开源许可证</string>
     <string name="rv_license_brand_marks">品牌标志</string>
     <string name="rv_license_brand_marks_licenses">CC0-1.0、公有领域、MIT</string>
-    <string name="rv_license_brand_marks_text">添加服务规则页上各服务的品牌标志是其所有者的商标，仅用于标示规则所针对的服务。使用这些标志不表示与所有者存在任何关联或获得其认可，doona 的许可证也不涵盖这些标志。\n\n来源：\n- Simple Icons：CC0 1.0\n- Wikimedia Commons 标志（Nintendo、Disney+、Prime Video）：公有领域\n- Bootstrap Icons（Xbox、Microsoft、OpenAI）：MIT</string>
+    <string name="rv_license_brand_marks_text">添加服务规则页上各服务的品牌标志是其所有者的商标，仅用于标示规则所针对的服务。使用这些标志不表示所有者认可 doona，也不表示双方存在关联。doona 的许可证不涵盖这些标志。\n\n来源：\n- Simple Icons：CC0 1.0\n- Wikimedia Commons 标志（Nintendo、Disney+、Prime Video）：公有领域\n- Bootstrap Icons（Xbox、Microsoft、OpenAI）：MIT</string>
 
     <string name="rv_settings_accent">强调色</string>
     <string name="rv_settings_follow_wallpaper">跟随壁纸</string>
@@ -56,7 +56,7 @@
     <string name="rv_settings_dns_server">服务器</string>
     <string name="rv_settings_dns_custom">自定义</string>
     <string name="rv_settings_dns_custom_sub">输入地址</string>
-    <string name="rv_settings_dns_footer">规则和全局模式下，DNS 查询经由主节点发出。</string>
+    <string name="rv_settings_dns_footer">DNS 查询按 DNS 规则和上游设置发出。</string>
     <string name="rv_settings_dns_custom_title">自定义 DNS 服务器</string>
     <string name="rv_settings_dns_custom_hint">最多 4 个 IPv4 或 IPv6 地址，以逗号分隔，例如 1.1.1.1、2606:4700:4700::1111</string>
     <string name="rv_settings_dns_custom_invalid">请输入 1 到 4 个 IP 地址，例如 1.1.1.1 或 [2606:4700:4700::1111]:53</string>

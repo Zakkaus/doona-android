@@ -40,7 +40,7 @@
     <string name="rv_policy_new_rule">Create rule</string>
     <string name="rv_policy_block_ads">Block ads</string>
     <string name="rv_policy_block_quic">Block QUIC</string>
-    <string name="rv_policy_selected">Selected %1$s · %2$s</string>
+    <string name="rv_policy_selected">Selected %1$s / %2$s</string>
     <!-- A network and the node it uses, where a group's TCP and UDP use different nodes: "TCP Taipei 04". -->
     <string name="rv_network_node" translatable="false">%1$s %2$s</string>
     <string name="rv_policy_auto">Auto</string>
@@ -61,6 +61,7 @@
     <string name="rv_policy_match_keyword">Keyword</string>
     <string name="rv_policy_match_full_line">Only %1$s</string>
     <string name="rv_policy_match_suffix_line">%1$s and all its subdomains</string>
+    <string name="rv_rule_raw_suffix_line">Domain names ending in %1$s</string>
     <string name="rv_policy_match_keyword_line">Domains containing %1$s</string>
     <string name="rv_policy_send_to">Send to</string>
     <string name="rv_policy_no_proxy">No proxy</string>

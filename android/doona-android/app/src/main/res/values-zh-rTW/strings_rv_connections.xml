@@ -3,7 +3,7 @@
     <string name="rv_nav_connections">連線</string>
     <string name="rv_conn_search">搜尋連線</string>
     <plurals name="rv_conn_summary">
-        <item quantity="other">%1$d 條連線 · 下載 %2$s · 上傳 %3$s</item>
+        <item quantity="other">%1$d 條連線，下載 %2$s，上傳 %3$s</item>
     </plurals>
     <string name="rv_conn_all_apps">全部 App</string>
     <string name="rv_conn_newest">最新優先</string>
@@ -18,6 +18,8 @@
     <plurals name="rv_conn_matches">
         <item quantity="other">%1$d 條連線符合</item>
     </plurals>
+    <string name="rv_conn_empty_title">目前沒有連線</string>
+    <string name="rv_conn_empty_line">新的連線會顯示在這裡。</string>
     <string name="rv_conn_none_title">沒有符合的連線</string>
     <string name="rv_conn_none_line">改用其他關鍵字，或清除搜尋。</string>
     <string name="rv_conn_off_title">尚未連線</string>

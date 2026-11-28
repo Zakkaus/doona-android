@@ -137,7 +137,7 @@ internal object RvSkeletonSize {
 }
 
 /**
- * What a skeleton line stands for. At a large font size a line that mixes Han and Latin (`未連線 · 規則`) is set a little
+ * What a skeleton line stands for. At a large font size a line that mixes Han and Latin (`未連線 / 規則`) is set a little
  * taller than one in either script alone, so the line takes the height of its own kind of text.
  */
 internal enum class RvSkeletonText(val sample: String) {
@@ -148,7 +148,7 @@ internal enum class RvSkeletonText(val sample: String) {
     Figures("0"),
 
     /** Han and Latin on one line: a state and its mode, an amount and its date. */
-    Mixed("節 · 0"),
+    Mixed("節 / 0"),
 
     /** One thing becoming another, the arrow's font setting the line taller: 範本's source → its template. */
     Change("節 → 節"),

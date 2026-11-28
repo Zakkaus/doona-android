@@ -59,8 +59,9 @@ internal fun RvDnsStatsSample(byDomain: Boolean = true) {
     RvDiagPage(
         sampleText("DNS 統計", "DNS statistics"),
         caption = sampleText(
-            "已載入 ${s.LOADED} 筆 · 未命中快取 ${s.LOADED - s.CACHED} 筆 · 上游查詢 $upstream 筆",
-            "${s.LOADED} loaded · ${s.LOADED - s.CACHED} uncached · $upstream sent upstream",
+            "已載入 ${s.LOADED} 筆，未命中快取 ${s.LOADED - s.CACHED} 筆，上游查詢 $upstream 筆",
+            "已加载 ${s.LOADED} 条，未命中缓存 ${s.LOADED - s.CACHED} 条，上游查询 $upstream 条",
+            "${s.LOADED} loaded, ${s.LOADED - s.CACHED} uncached, $upstream sent upstream",
         ),
     ) {
         RvGutter {

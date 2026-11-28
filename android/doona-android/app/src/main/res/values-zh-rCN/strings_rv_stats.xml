@@ -17,14 +17,13 @@
     <string name="rv_stats_no_data">尚无数据</string>
     <string name="rv_stats_connections">连接次数</string>
     <string name="rv_stats_quota">订阅额度</string>
-    <string name="rv_stats_quota_total">共 %1$s · %2$s</string>
+    <string name="rv_stats_quota_total">共 %1$s / %2$s</string>
     <string name="rv_stats_quota_left">剩余 %1$s</string>
     <string name="rv_stats_no_quota">没有订阅提供流量额度</string>
-    <string name="rv_stats_no_expiry">无到期日</string>
     <string name="rv_stats_nodes">节点分布</string>
     <string name="rv_stats_latency">延迟分布</string>
     <string name="rv_stats_ms">毫秒</string>
-    <string name="rv_stats_median">中位数 · 已测试 %1$d 个节点</string>
+    <string name="rv_stats_median">中位数 / 已测试 %1$d 个节点</string>
     <string name="rv_stats_split">分流比例</string>
     <string name="rv_stats_via_proxy">经由代理</string>
     <string name="rv_stats_proxy">代理</string>

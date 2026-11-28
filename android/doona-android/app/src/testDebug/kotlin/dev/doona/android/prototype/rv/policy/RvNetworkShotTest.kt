@@ -231,7 +231,7 @@ class RvNetworkShotTest {
     fun pickerSaysItsNetwork() {
         rvAnimatorScale(0f)
         compose.rvContent(dark = false) { Picker() }
-        assertEquals(1, count("UDP · "))
+        assertEquals(1, count("UDP / "))
         assertEquals(0, count("TCP"))
     }
 

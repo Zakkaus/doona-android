@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import dev.doona.android.R
 import dev.doona.android.designsystem.rv.RvMotion
 import dev.doona.android.designsystem.rv.RvTheme
+import dev.doona.android.designsystem.rv.SEPARATOR
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -138,7 +139,7 @@ class RvGestureTest {
     private fun SemanticsNodeInteraction.width() = getBoundsInRoot().let { it.right - it.left }.value
 
     /** 活動's caption under the hero, which scrolls with the page. */
-    private fun heroTop(): Dp = compose.onNodeWithText("${rvText(R.string.backend_connected)} · ${rvText(R.string.rv_mode_rule)}").getUnclippedBoundsInRoot().top
+    private fun heroTop(): Dp = compose.onNodeWithText(rvText(R.string.backend_connected) + SEPARATOR + rvText(R.string.rv_mode_rule)).getUnclippedBoundsInRoot().top
 
     /** The overscroll a scrolling page under [RvTheme] gets. */
     private fun overscroll(): OverscrollFactory? {

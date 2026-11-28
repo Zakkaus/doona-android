@@ -50,7 +50,7 @@ internal fun RvDnsRuleEditPage(
     banner: RvNotice? = null,
 ) {
     val title = stringResource(if (draft.list == RvDnsList.Query) R.string.rv_dns_query_title else R.string.rv_dns_response_title)
-    val form = RvRuleForm(title, draft.match, { onChange(draft.copy(match = it)) }, at, must = false, privateLine = R.string.rv_dns_private_line)
+    val form = RvRuleForm(title, draft.match, { onChange(draft.copy(match = it)) }, at, must = false, privateLine = R.string.rv_dns_private_line, suffixLine = R.string.rv_policy_match_suffix_line)
     RvRuleFormPage(form, onBack, onApply, onDelete, onMove, onOpenSource, banner) { toggles ->
         RvSectionTitle(stringResource(R.string.rv_dns_action), Modifier.padding(horizontal = RvSpace.gutter))
         ActionField(draft) { action -> onChange(draft.copy(action = action, upstream = draft.upstream ?: upstreams.firstOrNull()?.name)) }

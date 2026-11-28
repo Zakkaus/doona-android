@@ -209,7 +209,7 @@ class RvLargeTextTest {
         large { RvActivityScreenSample(rvSampleActivity(), onAction = {}, onConnect = {}) }
         val format = RvFormat(RuntimeEnvironment.getApplication().resources.configuration.locales[0])
         val day = RvData.today
-        listOf(R.string.ui_download to day.downTotal, R.string.ui_upload to day.upTotal).forEach { (label, bytes) -> assertWhole(rvText(label) + SEPARATOR + format.bytes(bytes)) }
+        listOf(R.string.ui_download to day.downTotal, R.string.ui_upload to day.upTotal).forEach { (label, bytes) -> assertWhole(rvText(label) + " " + format.bytes(bytes).unbroken()) }
     }
 
     /**

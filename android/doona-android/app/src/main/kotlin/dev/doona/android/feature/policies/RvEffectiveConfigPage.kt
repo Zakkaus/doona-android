@@ -111,7 +111,7 @@ private fun Section(title: Int, content: @Composable () -> Unit) {
 }
 
 /**
- * The DNS servers, each by its name where it is one 設定 offers (Cloudflare · 1.1.1.1), else by its address alone. The
+ * The DNS servers, each by its name where it is one 設定 offers (Cloudflare / 1.1.1.1), else by its address alone. The
  * core writes plain DNS's port, 53, which the row leaves out.
  */
 @Composable

@@ -26,7 +26,7 @@ internal fun RvOverviewSample() {
     val format = rememberRvFormat()
     val reload = format.clock(RV_NOW - RELOADED_AGO)
     val started = format.clock(RV_NOW - UPTIME_S * MS)
-    RvDiagPage(sampleText("總覽", "Overview"), caption = sampleText("運作中 · honk 0.9.3", "Active · honk 0.9.3")) {
+    RvDiagPage(sampleText("總覽", "总览", "Overview"), caption = sampleText("運作中 / honk 0.9.3", "运行中 / honk 0.9.3", "Active / honk 0.9.3")) {
         RvGutter {
             RvCard {
                 RvCardHeader(sampleText("狀態", "Status"))

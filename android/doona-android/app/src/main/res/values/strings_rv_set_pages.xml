@@ -5,7 +5,7 @@
     <string name="rv_about_github">GitHub project</string>
     <string name="rv_about_privacy">Privacy</string>
     <string name="rv_about_honk" translatable="false">honk</string>
-    <string name="rv_about_honk_sub">Proxy engine · %1$s</string>
+    <string name="rv_about_honk_sub">Proxy engine / %1$s</string>
 
     <string name="rv_update_latest">Up to date</string>
     <string name="rv_update_new">Version %1$s is available</string>

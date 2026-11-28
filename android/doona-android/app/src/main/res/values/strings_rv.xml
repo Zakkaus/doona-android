@@ -15,6 +15,9 @@
     <string name="rv_now">Now</string>
     <string name="rv_no_traffic">No traffic right now</string>
     <string name="rv_traffic_title">Traffic</string>
+    <string name="rv_chart_summary">Start %1$s, minimum %2$s, peak %3$s</string>
+    <string name="rv_chart_previous">Previous sample</string>
+    <string name="rv_chart_next">Next sample</string>
     <string name="rv_this_connection">This connection</string>
     <string name="rv_downloaded">Downloaded</string>
     <string name="rv_uploaded">Uploaded</string>
@@ -32,7 +35,8 @@
     <string name="rv_less_than_yesterday">%1$s less than yesterday at this time</string>
     <string name="rv_more_than_yesterday">%1$s more than yesterday at this time</string>
     <string name="rv_remaining">left</string>
-    <string name="rv_subscription_usage">%1$s/%2$s · ends %3$s</string>
+    <string name="rv_subscription_usage">%1$s/%2$s, ends %3$s</string>
+    <string name="rv_comma">",\u0020"</string>
     <string name="rv_fastest_nodes">Fastest nodes</string>
     <string name="rv_preview_label" translatable="false">doona RV sample</string>
     <string name="rv_mode_rule">Rules</string>

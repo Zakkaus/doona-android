@@ -106,7 +106,7 @@ internal fun TextMeasurer.layout(text: RowText, width: Int) = rvLayout(text.word
 
 /**
  * Whether [text] reads well [width] px wide ([rvReadsWell]) on no more lines than it takes [wide] px wide: an end beside a
- * line may not make it wrap (`VLESS ·` over `臺灣`, `Hysteria` over `2`) where the whole line holds it.
+ * line may not make it wrap (`VLESS /` over `臺灣`, `Hysteria` over `2`) where the whole line holds it.
  */
 private fun TextMeasurer.keeps(text: RowText, width: Int, wide: Int): Boolean {
     val narrow = layout(text, width)

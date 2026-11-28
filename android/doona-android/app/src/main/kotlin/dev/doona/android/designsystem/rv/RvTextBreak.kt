@@ -9,8 +9,6 @@ import kotlin.math.ceil
 /** A wrapped line ends on fewer letters than this only where nothing better fits. */
 internal const val LAST_LINE_LETTERS = 3
 
-internal const val META_SEPARATOR = " · "
-
 /** The letters and digits on the last of [layout]'s lines; none counted when it ends in an ellipsis. */
 internal fun rvLastLetters(layout: TextLayoutResult): Int {
     val last = layout.lineCount - 1

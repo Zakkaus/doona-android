@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="rv_subs_nodes_updated">%1$s · %2$s 更新</string>
-    <string name="rv_subs_nodes_not_updated">%1$s · 尚未更新</string>
-    <string name="rv_subs_no_expiry">无到期日</string>
+    <string name="rv_subs_nodes_updated">%1$s / %2$s 更新</string>
+    <string name="rv_subs_nodes_not_updated">%1$s / 尚未更新</string>
+    <string name="rv_subs_no_expiry">未提供到期日</string>
     <string name="rv_sub_update_now">立即更新</string>
     <string name="rv_sub_node_count">节点数</string>
     <string name="rv_sub_used">已用流量</string>
@@ -53,7 +53,7 @@
         <item quantity="other">第 %2$s 行不是分享链接，不会添加。</item>
     </plurals>
     <plurals name="rv_addnode_skip_duplicate">
-        <item quantity="other">第 %2$s 行的节点已在配置内，不会添加。</item>
+        <item quantity="other">第 %2$s 行的节点名称重复，不会添加。</item>
     </plurals>
     <plurals name="rv_addnode_skip_other">
         <item quantity="other">第 %2$s 行无法读取，不会添加。</item>
@@ -75,7 +75,7 @@
     <string name="rv_addnode_group_every">已含全部节点</string>
     <string name="rv_addnode_group_readonly">只读文件</string>
     <string name="rv_node_delete">删除节点</string>
-    <string name="rv_node_delete_body">节点会从配置内与它所在的组移除。</string>
+    <string name="rv_node_delete_body">节点会从配置内和它所在的组移除。</string>
     <string name="rv_subs_add_subscription">订阅</string>
     <string name="rv_subs_add_node">节点</string>
 </resources>

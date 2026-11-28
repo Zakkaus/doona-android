@@ -213,7 +213,7 @@ class AppRvStatsShotTest {
         for (name in listOf("Harbor Cloud", "Lantern Net")) {
             compose.onAllNodes(hasText(name, substring = true), useUnmergedTree = true).fetchSemanticsNodes().let { assertEquals(name, 0, it.size) }
         }
-        compose.onAllNodes(hasText(text(R.string.rv_stats_no_expiry)), useUnmergedTree = true).fetchSemanticsNodes().let { assertEquals(0, it.size) }
+        compose.onAllNodes(hasText(text(R.string.rv_subs_no_expiry)), useUnmergedTree = true).fetchSemanticsNodes().let { assertEquals(0, it.size) }
         compose.onAllNodes(hasText("1970", substring = true), useUnmergedTree = true).fetchSemanticsNodes().let { assertEquals(0, it.size) }
     }
 

@@ -108,7 +108,7 @@ private fun DrawScope.hourGrid(color: Color, chart: StepChart) {
 
 private fun List<Long>.runningSum(): List<Long> = runningReduce { sum, bytes -> sum + bytes }
 
-/** The usage chart's legend: download and upload, each with its line's colour and the caller's text (`下載 · 1.2 GB`). */
+/** The usage chart's legend: download and upload, each with its line's colour and the caller's text (`下載 1.2 GB`). */
 @Composable
 fun DoonaUsageLegend(downText: String, upText: String, modifier: Modifier = Modifier) {
     val colors = DoonaTheme.colors

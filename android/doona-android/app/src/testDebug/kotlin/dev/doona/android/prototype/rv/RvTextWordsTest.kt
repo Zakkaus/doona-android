@@ -102,10 +102,26 @@ class RvTextWordsTest {
         compose.onNodeWithText(text).assertExists()
     }
 
-    private fun show(fontScale: Float) {
+    @Test
+    fun singleLineCutKeepsTheWholeSentenceForAccessibility() {
+        text = "one two three four five six seven eight nine ten"
+        show(fontScale = 2f, maxLines = 1)
+        for (room in 220..560 step 8) {
+            width = room
+            compose.waitForIdle()
+            val drawn = layout().layoutInput.text.text
+            if (!drawn.endsWith('…')) continue
+            assertTrue(text.startsWith(drawn.dropLast(1) + " "))
+            assertEquals(text, compose.onNodeWithTag(TAG).fetchSemanticsNode().config[SemanticsProperties.Text].single().text)
+            return
+        }
+        throw AssertionError("No single-line word cut")
+    }
+
+    private fun show(fontScale: Float, maxLines: Int = Int.MAX_VALUE) {
         compose.rvContent(dark = false, fontScale = fontScale) {
             val room = with(LocalDensity.current) { width.toDp() }
-            Box(Modifier.width(room)) { RvText(text, Rv.type.rowSub, Modifier.testTag(TAG), maxLines = Int.MAX_VALUE, keepWords = keepWords) }
+            Box(Modifier.width(room)) { RvText(text, Rv.type.rowSub, Modifier.testTag(TAG), maxLines = maxLines, keepWords = keepWords) }
         }
     }
 

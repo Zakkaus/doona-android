@@ -8,7 +8,7 @@
     <string name="rv_gallery_diff">差异</string>
     <string name="rv_config_unknown_group">找不到策略组 %1$s</string>
     <string name="rv_config_title">配置文件</string>
-    <string name="rv_config_applied">第 %1$d 版 · %2$s 生效</string>
+    <string name="rv_config_applied">第 %1$d 版 / %2$s 生效</string>
     <string name="rv_config_files">文件</string>
     <string name="rv_config_entry">主配置文件</string>
     <string name="rv_config_included_by">由 %1$s 引入</string>
@@ -38,7 +38,7 @@
     <string name="rv_config_line">第 %1$d 行</string>
     <string name="rv_config_source">源码</string>
     <string name="rv_config_search">搜索文件</string>
-    <string name="rv_config_draft_base">草稿 · 基于第 %1$d 版</string>
+    <string name="rv_config_draft_base">草稿 / 基于第 %1$d 版</string>
     <string name="rv_config_based_on">基于第 %1$d 版</string>
     <string name="rv_config_stale_title">配置文件已更新</string>
     <string name="rv_config_stale_reason">草稿基于第 %1$d 版，已应用第 %2$d 版。</string>
@@ -77,7 +77,7 @@
     <string name="rv_config_read_failed">无法读取配置文件</string>
     <string name="rv_config_apply_failed">无法应用</string>
     <string name="rv_config_export_title">导出配置文件？</string>
-    <string name="rv_config_export_body">文件可能含有密码与密钥。</string>
+    <string name="rv_config_export_body">文件可能含有密码和密钥。</string>
     <string name="rv_config_export_confirm">导出</string>
     <string name="rv_config_export_archive">完整归档</string>
     <string name="rv_config_export_archive_line">每个文件原样保留。</string>

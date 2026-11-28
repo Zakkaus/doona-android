@@ -87,7 +87,11 @@ internal fun RvText(
     // The width the text is given before a narrower step takes its share, in px, as its last measure saw it.
     val given = remember { IntArray(1) }
     val box = if (lineBox && autoSize == null) rvLineBox(style) else null
-    val shown = if (maxLines == 1) modifier else modifier.rvPlainNode(text).rvNarrower({ wrap.narrower }, given)
+    val shown = when {
+        maxLines != 1 -> modifier.rvPlainNode(text).rvNarrower({ wrap.narrower }, given)
+        cut != null -> modifier.rvPlainNode(text)
+        else -> modifier
+    }
     BasicText(
         scripted(cut?.text ?: wrap.text(words)),
         box?.let { shown.rvLineBoxes(it) } ?: shown,
@@ -216,8 +220,8 @@ private const val ELLIPSIS = "\u2026"
 
 /**
  * How a wrapped text is laid out again so it reads well, one step a pass, each step taken once:
- * - [bound]: a meta line, parts joined by ` · `, breaks only after a separator and keeps each part whole (`61.7/200 GB ·`
- *   over `3/15 到期`, not `61.7/200` over `GB`), unless a part is longer than its line ([unbound]);
+ * - [bound]: a meta line, parts joined by ` / `, breaks only after a separator and keeps each part whole (`32 個節點 /`
+ *   over `06:00 更新`, not `32` over `個節點`), unless a part is longer than its line ([unbound]);
  * - [soft]: a value broken inside a word (a host:port, an app's package) may break after a dot between letters and before
  *   a port's colon instead (`gemini.google.com` over `:443`, not `…com:4` over `43`);
  * - [hyphens]: a value still broken between two letters or digits may break after a hyphen between them instead
@@ -278,7 +282,7 @@ private data class RvWrap(
     /** A meta line bound, a bound one that tore a part let go, or a torn value given its soft breaks. */
     private fun breaks(text: String, torn: Boolean, inWord: Boolean): RvWrap? = when {
         bound && torn -> copy(bound = false, unbound = true)
-        !bound && !unbound && META_SEPARATOR in text -> copy(bound = true)
+        !bound && !unbound && SEPARATOR in text -> copy(bound = true)
         torn && !soft && rvSoftBreaks(text) != text -> copy(soft = true)
         inWord && !hyphens && rvHyphenBreaks(text) != text -> copy(hyphens = true)
         else -> null
@@ -344,7 +348,7 @@ private const val WRAP_STEPS = 6
 private const val NOT_LAID_OUT = -1
 
 /** [text] with no break inside a meta line's parts or before a separator: a word joiner after each space but the separators'. */
-private fun rvBind(text: String): String = text.split(META_SEPARATOR).joinToString(" $WORD_JOINER· ") { it.replace(" ", " $WORD_JOINER") }
+private fun rvBind(text: String): String = text.split(SEPARATOR).joinToString(" $WORD_JOINER/ ") { it.replace(" ", " $WORD_JOINER") }
 
 /** [text] with a word joiner before its last letter: no line break can fall between it and the letter before. */
 private fun rvJoinLast(text: String): String {

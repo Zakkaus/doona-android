@@ -11,6 +11,4 @@
     <string name="perapp_no_apps">No apps to check</string>
     <string name="perapp_no_apps_line">No app that opens from the home screen was found on this device.</string>
     <string name="perapp_no_match">No matching apps</string>
-    <string name="settings_subscriptions">Subscriptions</string>
-    <string name="settings_version">Version</string>
 </resources>

@@ -55,6 +55,7 @@ import dev.doona.android.designsystem.rv.RvStatsDots
 import dev.doona.android.designsystem.rv.RvSteadyHero
 import dev.doona.android.designsystem.rv.RvSteadyInline
 import dev.doona.android.designsystem.rv.RvText
+import dev.doona.android.designsystem.rv.SEPARATOR
 import dev.doona.android.designsystem.rv.figure
 import dev.doona.android.designsystem.rv.rememberRvFormat
 import dev.doona.android.designsystem.rv.rvActionRowFit
@@ -131,7 +132,7 @@ private fun HeroFigure(ticking: State<RvActivityState>, mode: RvRouteMode, modif
 private fun HeroLines(ticking: State<RvActivityState>, mode: RvRouteMode) {
     val state = ticking.value
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        RvFadeThrough("${stringResource(state.status.label)} · ${stringResource(mode.label)}", "caption", alignment = Alignment.TopCenter) { RvText(it, Rv.type.caption) }
+        RvFadeThrough(stringResource(state.status.label) + SEPARATOR + stringResource(mode.label), "caption", alignment = Alignment.TopCenter) { RvText(it, Rv.type.caption) }
         Spacer(Modifier.height(RvSpace.tight))
         val down = rvGlidingRate(state.liveRate(state.downRate, state.downHistory))
         val spoken = stringResource(R.string.rv_a11y_download, down.toString())
@@ -158,7 +159,7 @@ private fun MainNodeFigure(state: RvActivityState, mode: RvRouteMode, nodes: Lis
         val figure = latency?.let { stringResource(R.string.latency_ms, it) }
         val whole = latency?.toString()?.takeIf { figure.orEmpty().startsWith(it) } ?: figure ?: RV_NO_VALUE
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            RvText("${stringResource(R.string.rv_main_node)} · ${listed?.let { stringResource(it.place.label) } ?: RV_NO_VALUE}", Rv.type.caption)
+            RvText(stringResource(R.string.rv_main_node) + SEPARATOR + (listed?.let { stringResource(it.place.label) } ?: RV_NO_VALUE), Rv.type.caption)
             Spacer(Modifier.height(RvSpace.tight))
             RvHero(whole, figure?.removePrefix(whole).orEmpty())
             Spacer(Modifier.height(RvSpace.subGap))

@@ -34,7 +34,7 @@
     <string name="rv_policy_new_rule">新增規則</string>
     <string name="rv_policy_block_ads">封鎖廣告</string>
     <string name="rv_policy_block_quic">封鎖 QUIC</string>
-    <string name="rv_policy_selected">已選 %1$s · %2$s</string>
+    <string name="rv_policy_selected">已選 %1$s / %2$s</string>
     <string name="rv_policy_auto">自動</string>
     <string name="rv_policy_auto_note">自動選擇延遲最低的節點（容差 50 毫秒）</string>
     <string name="rv_policy_test_group">測試此群組</string>
@@ -52,6 +52,7 @@
     <string name="rv_policy_match_keyword">關鍵字</string>
     <string name="rv_policy_match_full_line">只比對 %1$s</string>
     <string name="rv_policy_match_suffix_line">%1$s 及其所有子網域</string>
+    <string name="rv_rule_raw_suffix_line">以 %1$s 結尾的網域名稱</string>
     <string name="rv_policy_match_keyword_line">網域含有 %1$s</string>
     <string name="rv_policy_send_to">送往</string>
     <string name="rv_policy_no_proxy">不經代理</string>
@@ -206,7 +207,7 @@
     <string name="rv_trace_run">測試</string>
     <string name="rv_trace_matched">符合的規則</string>
     <string name="rv_trace_result">結果</string>
-    <string name="rv_trace_captured">經過 VPN</string>
+    <string name="rv_trace_captured">經由 VPN</string>
     <string name="rv_trace_yes">是</string>
     <string name="rv_trace_no">否</string>
     <string name="rv_trace_skipped_title">有一條規則已略過</string>

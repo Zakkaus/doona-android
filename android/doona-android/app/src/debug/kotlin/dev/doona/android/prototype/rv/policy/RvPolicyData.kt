@@ -127,7 +127,7 @@ internal object RvPolicyData {
 /** What the quick rule matches on, and the part of the host each choice keeps. */
 internal enum class RvMatchBy(@StringRes val label: Int, @StringRes val line: Int) {
     Full(R.string.rv_policy_match_full, R.string.rv_policy_match_full_line),
-    Suffix(R.string.rv_policy_match_suffix, R.string.rv_policy_match_suffix_line),
+    Suffix(R.string.rv_policy_match_suffix, R.string.rv_rule_raw_suffix_line),
     Keyword(R.string.rv_policy_match_keyword, R.string.rv_policy_match_keyword_line),
     ;
 

@@ -65,7 +65,7 @@ internal fun RvScoreStatsCard(score: RvStatsScore) {
     }
 }
 
-/** `TCP · 已選定` (`香港 · TCP · 已選定` with the [group]'s name) under the node the group chose on that network. */
+/** `TCP / 已選定` (`香港 / TCP / 已選定` with the [group]'s name) under the node the group chose on that network. */
 @Composable
 private fun Choice(group: String?, label: String, pick: RvScorePick, members: List<RvNode>) {
     RvScoreChoiceRow(pick, members, listOfNotNull(group, label, pick.stateText()).joinToString(SEPARATOR))

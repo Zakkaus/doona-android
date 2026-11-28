@@ -35,8 +35,8 @@ internal fun RvUsageLegend(day: RvDay, modifier: Modifier = Modifier) {
     val format = rememberRvFormat()
     val colors = Rv.colors
     FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(RvUsageSize.legendItemGap)) {
-        RvLegendItem(colors.down.line, "${stringResource(R.string.ui_download)} · ${format.bytes(day.downTotal)}")
-        RvLegendItem(colors.up.line, "${stringResource(R.string.ui_upload)} · ${format.bytes(day.upTotal)}")
+        RvLegendItem(colors.down.line, "${stringResource(R.string.ui_download)} ${format.bytes(day.downTotal).unbroken()}")
+        RvLegendItem(colors.up.line, "${stringResource(R.string.ui_upload)} ${format.bytes(day.upTotal).unbroken()}")
     }
 }
 
