@@ -6,7 +6,6 @@ import dev.doona.android.engine.ConfigEngine
 import dev.doona.android.engine.DraftFrom
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.ExportKind
 import dev.doona.android.engine.SourceAt
 
 /**
@@ -24,5 +23,4 @@ internal object UnwiredConfig : ConfigEngine {
     override suspend fun configApply(draft: ConfigDraft) = unwired<Nothing>()
     override suspend fun configHistory() = unwired<Nothing>()
     override suspend fun configName(rev: Int, name: String?) = unwired<Nothing>()
-    override suspend fun configExport(rev: Int, kind: ExportKind) = unwired<Nothing>()
 }

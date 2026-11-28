@@ -42,7 +42,7 @@ import dev.doona.android.designsystem.rv.rvKeepTail
  * revision's page ([RvConfigRevisionPage], where its 名稱 row renames it); a long press offers 重新命名 at the finger as
  * a shortcut, which opens [RvRevisionRenameSheet] on [rename] ([onRename] opens, types into and closes it; [onSaveName]
  * gets the name trimmed, or null to take it away). 匯出設定檔 follows in its own card
- * (`configExport`, behind the picker and a confirmation, since the files can carry credentials); [banner] says what the
+ * (`GET /x-honk/config/export`, behind the picker and a confirmation, since the files can carry credentials); [banner] says what the
  * last export left out or refused ([rvExportBanner]).
  */
 @Composable

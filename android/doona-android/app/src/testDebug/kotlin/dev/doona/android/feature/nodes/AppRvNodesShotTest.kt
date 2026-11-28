@@ -232,7 +232,7 @@ class AppRvNodesShotTest {
 
     /** After the first read, the nodes cannot be read: a pick reads again and fails. */
     private fun failReads(api: FakeHonk, vm: NodesViewModel) {
-        api.on("PUT", "/api/v1/groups/g-Proxy/selection", 200, "{}")
+        api.on("PUT", "/api/v1/groups/g-Proxy/selection", 200, HonkFixtures.SELECTED)
         api.on("GET", "/api/v1/nodes", 503, "")
         vm.pick(HK2)
         compose.waitForIdle()
@@ -240,7 +240,7 @@ class AppRvNodesShotTest {
 
     /** A profile with no node: an empty Proxy and only honk's inline provider. */
     private fun emptyHonk(): FakeHonk = HonkFixtures.rvSample().apply {
-        on("GET", "/api/v1/nodes", 200, """{"nodes":[],"next_cursor":null}""")
+        on("GET", "/api/v1/nodes", 200, HonkFixtures.emptyNodes)
         on("GET", "/api/v1/providers", 200, HonkFixtures.body("providers/empty"))
         on("GET", "/api/v1/groups", 200, """[{"id":"g-Proxy","name":"Proxy"}]""")
         val proxy = Json.parseToJsonElement(HonkFixtures.body("groups/rv-sample-g-Proxy")).jsonObject

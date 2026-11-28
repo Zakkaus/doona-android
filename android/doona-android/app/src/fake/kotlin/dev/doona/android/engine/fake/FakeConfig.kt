@@ -6,7 +6,6 @@ import dev.doona.android.engine.ConfigDiagnostic
 import dev.doona.android.engine.ConfigDraft
 import dev.doona.android.engine.ConfigEditOp
 import dev.doona.android.engine.ConfigEngine
-import dev.doona.android.engine.ConfigExport
 import dev.doona.android.engine.ConfigFile
 import dev.doona.android.engine.ConfigFileChange
 import dev.doona.android.engine.ConfigRevision
@@ -15,7 +14,6 @@ import dev.doona.android.engine.DiagnosticCode
 import dev.doona.android.engine.DraftFrom
 import dev.doona.android.engine.EngineException
 import dev.doona.android.engine.ErrorCode
-import dev.doona.android.engine.ExportKind
 import dev.doona.android.engine.RevisionOrigin
 import dev.doona.android.engine.SourceAt
 import dev.doona.android.engine.SourceSpan
@@ -113,14 +111,6 @@ internal class FakeConfig(
         Result.success(Unit)
     }
 
-    override suspend fun configExport(rev: Int, kind: ExportKind): Result<ConfigExport> = lock.withLock {
-        val texts = revisions[rev] ?: return@withLock failure(ErrorCode.NotFound)
-        val external = texts.values.flatMap { text -> HOSTS.findAll(text).map { it.groupValues[1] } }.filter { it.startsWith("/") || it.startsWith("../") }.distinct()
-        val closed = external.isEmpty()
-        val token = "export-$rev-${kind.name.lowercase()}".takeIf { kind == ExportKind.Archive || closed }
-        Result.success(ConfigExport(token, texts.size, portable = closed, external = external))
-    }
-
     /** Where [text] stands in file [fileId] of [texts]: its line and byte span; the sample's records each occur once. */
     private fun spanOf(texts: Map<String, String>, fileId: String, text: String): SourceSpan? {
         val source = texts[fileId] ?: return null
@@ -148,9 +138,6 @@ internal class FakeConfig(
 
     private companion object {
         val TARGET = Regex("->\\s*([A-Za-z_][\\w-]*)")
-
-        /** A hosts source: `use_host: '<path>'`; one absolute or climbing out of the root is outside the tree. */
-        val HOSTS = Regex("use_host:\\s*'([^']+)'")
         const val GENERATION_OFFSET = 6
 
         const val ROUTER = "i1"

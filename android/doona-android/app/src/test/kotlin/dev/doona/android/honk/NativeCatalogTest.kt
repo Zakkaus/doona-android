@@ -59,7 +59,7 @@ class NativeCatalogTest {
 
     @Test
     fun selectingPutsTheMemberAndItsNetwork() {
-        api.on("PUT", "/api/v1/groups/g-Proxy/selection", 200, "{}")
+        api.on("PUT", "/api/v1/groups/g-Proxy/selection", 200, HonkFixtures.SELECTED)
 
         catalog.select("g-Proxy", "n-1", SelectionNetwork.Udp)
 

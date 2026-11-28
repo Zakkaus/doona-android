@@ -74,7 +74,7 @@ private fun FlowLine(flow: RvFlow) {
     RvRow(
         { RvAppDisc(flow.packageName) },
         flow.target + PORT + flow.port,
-        recomputed + flow.rule + ARROW + outText(flow.out),
+        recomputed + (flow.rule ?: "—") + (flow.out?.let { ARROW + outText(it) } ?: ""),
         onClick = {},
         titleEnd = { RvEndValue(flow.state.word.text(), flow.state.trouble) },
         subtitleEnd = { RvEndSub((if (flow.udp) RV_UDP else RV_TCP) + SEPARATOR + clock) },
@@ -120,10 +120,10 @@ internal fun RvFlowDetailSample(flow: RvFlow = RvDiagData.flows.first()) {
         )
         RvGutter {
             RvCard {
-                RvStatRow(sampleText("出站", "Outbound"), flow.out.group.text())
-                flow.out.node?.let { RvStatRow(sampleText("節點", "Node"), it, valueKeepWords = false) }
+                RvStatRow(sampleText("出站", "Outbound"), flow.out?.group?.text() ?: "—")
+                if (flow.out == null || flow.out.node != null) RvStatRow(sampleText("節點", "Node"), flow.out?.node ?: "—", valueKeepWords = false)
                 RvStatRow(sampleText("狀態", "State"), flow.state.word.text())
-                RvStatRow(sampleText("規則", "Rule"), flow.rule, valueKeepWords = false)
+                RvStatRow(sampleText("規則", "Rule"), flow.rule ?: "—", valueKeepWords = false)
                 if (flow.recomputed) RvStatRow(sampleText("規則來源", "Rule source"), sampleText("重新評估", "Re-evaluated"))
                 if (flow.missing.isNotEmpty()) RvStatRow(sampleText("不完整原因", "Why incomplete"), flow.missing.map { it.text() }.joinToString(sampleText("、", ", ")))
                 RvStatRow(sampleText("開始", "Started"), format.clock(flow.startedAtEpochMs))
@@ -136,7 +136,9 @@ internal fun RvFlowDetailSample(flow: RvFlow = RvDiagData.flows.first()) {
             RvGutter {
                 flow.steps.forEach { step ->
                     RvCard {
-                        RvCardHeader(step.stage.text(), tag = rvCount(step.elapsedUs) + MICROSECONDS)
+                        val clock = step.atEpochMs?.let(format::clock) ?: "—"
+                        val elapsed = step.elapsedUs?.let { rvCount(it) + MICROSECONDS } ?: "—"
+                        RvCardHeader(step.stage.text(), tag = clock + SEPARATOR + elapsed)
                         step.facts.forEach { RvStatRow(it.label.text(), it.value.text(), valueKeepWords = false) }
                     }
                 }

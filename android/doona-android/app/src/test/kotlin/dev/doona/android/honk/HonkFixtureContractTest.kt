@@ -37,8 +37,24 @@ class HonkFixtureContractTest {
             if (target.size != 1) return@flatMap listOf("$name: named by ${target.size} entries of FIXTURES, not 1")
             val body = Json.parseToJsonElement(File(root, "$name.json").readText())
             Validator().apply { check(schemaOf(target.single()), body, name) }.problems
+        } + listOf(
+            "GET /api/v1/nodes 200" to HonkFixtures.emptyNodes,
+            "PUT /api/v1/groups/{group_id}/selection 200" to HonkFixtures.SELECTED,
+        ).flatMap { (route, body) ->
+            Validator().apply { check(schemaOf(route), Json.parseToJsonElement(body), route) }.problems
         }
         assertEquals("", problems.joinToString("\n"))
+    }
+
+    @Test
+    fun runtimeAcceptsAtMost64Degradations() {
+        val runtime = Json.parseToJsonElement(HonkFixtures.body("runtime/runtime-example")) as JsonObject
+        val schema = schemaOf("GET /api/v1/runtime 200")
+        for (size in 64..65) {
+            val entries = List(size) { Json.parseToJsonElement("""{"component":"component-$it","since":"2026-08-15T10:00:00Z","code":"degraded","message":"Unavailable"}""") }
+            val body = JsonObject(runtime + ("degradations" to JsonArray(entries)))
+            assertEquals(size == 64, Validator().apply { check(schema, body, "runtime") }.problems.isEmpty())
+        }
     }
 
     /** The validator rejects what the schema forbids: a missing field, a wrong type, a value outside an enum. */
@@ -137,6 +153,7 @@ class HonkFixtureContractTest {
             var ok = true
             s["items"]?.let { items -> value.forEachIndexed { i, item -> ok = valid(items, item, "$at[$i]", record) && ok } }
             (s["minItems"] as Int?)?.let { if (value.size < it) ok = fail(record, "$at: fewer than $it items") && ok }
+            (s["maxItems"] as Int?)?.let { if (value.size > it) ok = fail(record, "$at: more than $it items") && ok }
             if (s["uniqueItems"] == true && value.toSet().size != value.size) ok = fail(record, "$at: repeated items") && ok
             s["contains"]?.let { c -> if (value.none { valid(c, it, at, false) }) ok = fail(record, "$at: contains none") && ok }
             return ok

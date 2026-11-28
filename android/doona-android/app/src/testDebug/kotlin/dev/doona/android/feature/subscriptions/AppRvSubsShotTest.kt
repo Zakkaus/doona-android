@@ -558,7 +558,7 @@ class AppRvSubsShotTest {
         const val APP = "app-rv"
 
         /** honk with no node, so a profile of no subscription has none: the first run's welcome page shows. */
-        val NO_NODES = FakeHonk().apply { on("GET", "/api/v1/nodes", 200, """{"nodes":[],"next_cursor":null}""") }
+        val NO_NODES = FakeHonk().apply { on("GET", "/api/v1/nodes", 200, HonkFixtures.emptyNodes) }
 
         /**
          * The approved 匯入中 frame of the busy bar: 24 frames (384 ms) into its loop, the time the prototype's page

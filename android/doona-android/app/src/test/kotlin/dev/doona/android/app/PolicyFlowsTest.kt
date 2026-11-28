@@ -61,7 +61,7 @@ class PolicyFlowsTest {
     private val honk get() = ApplicationProvider.getApplicationContext<DoonaApplication>().container.nativeApi as FakeHonk
 
     /** honk with no node: with no subscription either, the first run's welcome page shows. */
-    private fun noNodes() = honk.on("GET", "/api/v1/nodes", 200, NO_NODES)
+    private fun noNodes() = honk.on("GET", "/api/v1/nodes", 200, HonkFixtures.emptyNodes)
 
     private val url = "https://example.invalid/x"
 
@@ -94,7 +94,7 @@ class PolicyFlowsTest {
 
     @Test
     fun `a tapped node is chosen in its group`() {
-        val honk = honk.apply { on("PUT", SELECTION, 200, "{}") }
+        val honk = honk.apply { on("PUT", SELECTION, 200, HonkFixtures.SELECTED) }
         show(FakeEngine(), ActivityKey, PoliciesKey, GroupKey("g-Auto"))
         // The row's own click, not a tap at its centre, which a scroll can leave under the floating 測試群組.
         compose.waitUntil(READ_MS) { shows("Hong Kong 03") }
@@ -171,7 +171,6 @@ class PolicyFlowsTest {
         const val CONNECT = "Connect"
         const val DISCONNECT = "Disconnect"
         const val SELECTION = "/api/v1/groups/g-Auto/selection"
-        const val NO_NODES = """{"nodes":[],"next_cursor":null}"""
     }
 }
 

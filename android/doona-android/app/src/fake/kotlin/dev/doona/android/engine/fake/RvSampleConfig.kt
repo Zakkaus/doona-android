@@ -25,7 +25,7 @@ internal object RvSampleConfig {
     const val LAN = "f5"
     const val DNS = "f6"
 
-    private fun entry(aiKeyword: String) = """
+    private val global = """
         global {
           tproxy_port: 12345
           lan_interface: docker0
@@ -34,14 +34,18 @@ internal object RvSampleConfig {
           tcp_check_url: 'http://cp.cloudflare.com'
           check_interval: 30s
         }
+    """.trimIndent()
 
+    private val entryIncludes = """
         include {
           nodes.dae
           rules/cn.dae
           rules/lan.dae
           dns.dae
         }
+    """.trimIndent()
 
+    private fun groups(aiKeyword: String) = """
         group {
           proxy {
             filter: subtag(feed)
@@ -64,11 +68,13 @@ internal object RvSampleConfig {
         }
     """.trimIndent()
 
-    private val nodes = """
+    private val nodeIncludes = """
         include {
           nodes/office.dae
         }
+    """.trimIndent()
 
+    private val nodes = """
         subscription {
           feed: 'https://sub.example/a'
           backup: 'https://sub.example/b'
@@ -152,6 +158,8 @@ internal object RvSampleConfig {
         }
     """.trimIndent()
 
+    val exported = "$global\n\n\n${groups("JP")}\n\n$nodes\n$office\n${cn("proxy", false)}\n$lan\n$dns\n"
+
     /** The head's files in load order: the entry, each include under the file that names it. */
     private fun paths() = listOf(
         ENTRY to ("config.dae" to null),
@@ -162,17 +170,13 @@ internal object RvSampleConfig {
         DNS to ("dns.dae" to ENTRY),
     )
 
-    /**
-     * The texts of a revision of the tree: [aiKeyword] the `ai` group's, [cnTarget] where 影音 goes; [hosts] adds DNS
-     * a hosts source outside the tree ([HOSTS_PATH]), which an archive keeps and a portable export refuses.
-     */
-    fun texts(aiKeyword: String = "JP", cnTarget: String = "proxy", wiki: Boolean = false, hosts: Boolean = false): Map<String, String> = mapOf(
-        ENTRY to entry(aiKeyword),
-        NODES to nodes,
+    fun texts(aiKeyword: String = "JP", cnTarget: String = "proxy", wiki: Boolean = false): Map<String, String> = mapOf(
+        ENTRY to "$global\n\n$entryIncludes\n\n${groups(aiKeyword)}",
+        NODES to "$nodeIncludes\n\n$nodes",
         OFFICE to office,
         CN to cn(cnTarget, wiki),
         LAN to lan,
-        DNS to if (hosts) dns.replaceFirst("dns {\n", "dns {\n  use_host: '$HOSTS_PATH'\n") else dns,
+        DNS to dns,
     )
 
     fun files(texts: Map<String, String>): List<ConfigFile> =
@@ -212,6 +216,5 @@ internal object RvSampleConfig {
     const val IMPORT_ESCAPE = "import-escape"
     const val ESCAPE_PATH = "/etc/honk/rules.d/*.dae"
 
-    /** The hosts file of [texts]' `hosts` tree: outside the tree, so the tree is not portable. */
     const val HOSTS_PATH = "/etc/hosts"
 }

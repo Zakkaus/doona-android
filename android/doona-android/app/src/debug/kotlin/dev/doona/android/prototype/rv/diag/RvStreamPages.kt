@@ -40,7 +40,7 @@ internal fun RvLogsSample(records: List<RvLogRecord> = RvDiagData.logs) {
         RvDiagSection(sampleText("日誌時間分布", "Log activity"))
         RvGutter {
             RvCard {
-                RvLevel.entries.filter { it != RvLevel.Debug || it in counts }.forEach { level ->
+                RvLevel.entries.filter { it <= RvLevel.Info || it in counts }.forEach { level ->
                     val n = counts[level] ?: 0
                     RvStatRow(level.word.text(), sampleText("$n 筆", if (n == 1) "1 record" else "$n records"))
                 }
@@ -56,8 +56,11 @@ internal fun RvLogsSample(records: List<RvLogRecord> = RvDiagData.logs) {
                     } else {
                         RvRow(
                             { RvIconDisc(r.level.glyph) },
-                            r.message,
-                            listOf(format.clock(r.atEpochMs), r.level.word.text(), r.target).joinToString(SEPARATOR),
+                            buildString {
+                                append(r.message)
+                                r.fields?.forEach { (key, value) -> append(" $key=$value") }
+                            },
+                            listOfNotNull(format.clock(r.atEpochMs), r.level.word.text(), r.target).joinToString(SEPARATOR),
                             onClick = {},
                             titleKeepWords = false,
                             subtitleKeepWords = false,

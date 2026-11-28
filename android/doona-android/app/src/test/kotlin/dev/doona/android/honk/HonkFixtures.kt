@@ -1,6 +1,8 @@
 package dev.doona.android.honk
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -11,6 +13,9 @@ import kotlinx.serialization.json.jsonPrimitive
  * for the app's shot tests keep that shape.
  */
 internal object HonkFixtures {
+    val emptyNodes = JsonObject(Json.parseToJsonElement(body("nodes/list")).jsonObject + ("nodes" to JsonArray(emptyList()))).toString()
+    const val SELECTED = """{"group_id":"group-proxy","member_id":"node-hk-01","resolved_leaf_node_id":"node-hk-01","network":"both","source":"runtime","selection_revision":"8","connections_interrupted":false}"""
+
     fun body(name: String): String = checkNotNull(HonkFixtures::class.java.getResource("/honk/$name.json")) { "no fixture honk/$name.json" }.readText()
 
     /** The contract's examples for every read the policy pages make, as a running honk answers them. */

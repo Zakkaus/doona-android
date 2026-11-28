@@ -83,17 +83,8 @@ data class ConfigRevision(val rev: Int, val appliedAtEpochMs: Long, val origin: 
 enum class ExportKind { Archive, Portable }
 
 /**
- * A staged export: the private [token] Kotlin streams to the chosen destination, the [files] it holds, whether the tree
- * is [portable] (closed: it expands the same at a new root) and the [external] paths it names outside its root and
- * leaves out (an escaping `use_host`), as written. An archive always stages, keeps those declarations as written and
- * discloses [external]; a portable request on a tree that is not closed stages nothing ([token] null), so no export
- * can claim to load elsewhere when it does not (config-plan.md, export; row 16).
- */
-data class ConfigExport(val token: String?, val files: Int, val portable: Boolean, val external: List<String>)
-
-/**
  * The configuration commands of the core (config-plan.md "JNI contract", schema 4): the honk source tree, drafts bound to
- * a base revision, checks, apply, history and export. `rev` names immutable source bytes; a draft is inert until
+ * a base revision, checks, apply and history. `rev` names immutable source bytes; a draft is inert until
  * [Engine.configApply]. [Engine] carries them. Files are named by their source ID ([ConfigFile.id]), never by a filesystem path.
  */
 
@@ -121,7 +112,4 @@ interface ConfigEngine {
 
     /** Names revision [rev]; a null [name] takes its name away. Changes no source byte. */
     suspend fun configName(rev: Int, name: String?): Result<Unit>
-
-    /** Stages revision [rev] for export as [kind]; the caller streams the token to the destination the user picked. */
-    suspend fun configExport(rev: Int, kind: ExportKind): Result<ConfigExport>
 }

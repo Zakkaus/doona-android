@@ -43,7 +43,7 @@ import kotlin.math.roundToInt
  * `usage` from `GET /dns/cache`. The caption counts what was loaded, missed the cache and went upstream. Then the web's
  * cards in the library's parts: its fact strip as key-stats rows (中位數, P95, 快取命中率, 失敗率 of the uncached);
  * 上游查詢的延遲, the web's beeswarm as the library's latency dots ([RvLatencySpread]) on the web's log axis, each lookup
- * that reached an upstream in its outcome's colour with the timed-out failures at their five seconds, the outcomes' key,
+ * that reached an upstream in its outcome's colour, the outcomes' key,
  * a row per upstream with its count and median, and 開啟 DNS 組態; 回應結果, 統計's 分流比例 card
  * body over the four outcomes ([RvMeter]); 查詢排行 by device or by domain, a row each with its count that opens DNS 記錄 filtered to it
  * and the web's bar under it ([RvMeterTrack], against the most asked), the rest counted under the card; and 快取狀態, the entries against the
@@ -90,7 +90,7 @@ internal fun RvDnsStatsSample(byDomain: Boolean = true) {
         }
         Outcomes(s)
         Ranking(s, byDomain)
-        Cache(s)
+        Cache()
     }
 }
 
@@ -183,14 +183,14 @@ private fun Ranking(s: RvDnsStats, byDomain: Boolean) {
 
 /** 快取狀態: the entries against the capacity, as figures and as the bar, what the cache keeps, and 檢視快取. */
 @Composable
-private fun Cache(s: RvDnsStats) {
+private fun Cache() {
     RvDiagSection(sampleText("快取狀態", "Cache"))
     RvGutter {
         RvCard {
             RvStatRow(sampleText("條目", "Entries"), rvCount(RvDiagData.CACHE_ENTRIES.toLong()))
-            RvStatRow(sampleText("容量", "Capacity"), rvCount(s.CAPACITY.toLong()))
+            RvStatRow(sampleText("容量", "Capacity"), rvCount(RvDiagData.CACHE_CAPACITY.toLong()))
             Column(Modifier.padding(start = RvSpace.rowPadding, end = RvSpace.rowPadding, bottom = RvSpace.rowPadding)) {
-                RvProgress(RvDiagData.CACHE_ENTRIES.toFloat() / s.CAPACITY)
+                RvProgress(RvDiagData.CACHE_ENTRIES.toFloat() / RvDiagData.CACHE_CAPACITY)
                 RvText(
                     sampleText("快取範圍：正向回答、負向回答；僅存於記憶體，重新啟動後清空", "Caches positive answers, negative answers; held in memory only, cleared on restart"),
                     Rv.type.rowSub,
@@ -217,34 +217,26 @@ private const val MS = " ms"
 private const val LABEL_SHARE = 0.7f
 private const val P95 = 0.95
 
-/**
- * The loaded page of the DNS log the statistics read: 100 records, by outcome; each uncached lookup that reached an
- * upstream, by upstream, with its `elapsed_ms` and outcome (the four failures timed out at honk's five-second query
- * timeout); the most asked domains and devices; and the cache's capacity (`max_cache_size`). Its names are the DNS
- * samples' own (googledns, cloudflare, alidns; the phone's 172.19.0.1).
- */
+/** Statistics over the same loaded page shown in the DNS log. */
 internal object RvDnsStats {
-    const val LOADED = 100
-    const val CACHED = 36
-    const val ANSWERED = 58
-    const val NXDOMAIN = 2
-    const val FAILED = 4
-    const val CAPACITY = 4_096
-    val upstreams = listOf(
-        "googledns" to samples(listOf(31, 38, 29, 44, 36, 41, 33, 52, 35, 39, 30, 47, 37, 34, 58, 40, 32, 43, 36, 49, 38, 35, 61, 42, 33, 37, 45, 39, 128), noName = setOf(58), failed = listOf(5_002)),
-        "cloudflare" to samples(listOf(52, 47, 61, 55, 49, 58, 66, 51, 72, 54, 48, 63, 57, 50, 59, 164), failed = listOf(5_001, 5_003)),
-        "alidns" to samples(listOf(14, 11, 17, 12, 21, 13, 15, 19, 12, 16, 14, 23, 13, 18, 15), noName = setOf(21), failed = listOf(5_000)),
-    )
-    val domains = listOf<Pair<String?, Int>>(
-        "www.youtube.com." to 14,
-        "i.ytimg.com." to 9,
-        "chatgpt.com." to 7,
-        "imap.gmail.com." to 6,
-        "time.android.com." to 5,
-        "szshort.weixin.qq.com." to 4,
-        "connectivitycheck.gstatic.com." to 4,
-    )
-    val devices = listOf<Pair<String?, Int>>("172.19.0.1" to 97, null to 3)
+    private val records = RvDiagData.dnsLog
+    val LOADED = records.size
+    val CACHED = records.count { it.cached }
+    val ANSWERED = records.count { !it.cached && it.status == "NOERROR" }
+    val NXDOMAIN = records.count { !it.cached && it.status == "NXDOMAIN" }
+    val FAILED = LOADED - CACHED - ANSWERED - NXDOMAIN
+    val upstreams = records.filter { !it.cached && it.upstream != null }.groupBy({ it.upstream!! }) {
+        RvDnsSample(
+            it.elapsedMs,
+            when (it.status) {
+                "NOERROR" -> RvDnsOutcome.Answered
+                "NXDOMAIN" -> RvDnsOutcome.NoSuchName
+                else -> RvDnsOutcome.Failed
+            },
+        )
+    }.toList()
+    val domains: List<Pair<String?, Int>> = records.groupingBy { it.name }.eachCount().toList().sortedByDescending { it.second }
+    val devices: List<Pair<String?, Int>> = records.groupingBy { it.src?.substringBeforeLast(':') }.eachCount().toList().sortedByDescending { it.second }
 }
 
 /** How a lookup ended, as the web's DNS statistics split them: a cache hit, an answer, no such name, or no answer. */
@@ -252,7 +244,3 @@ internal enum class RvDnsOutcome { Cached, Answered, NoSuchName, Failed }
 
 /** A lookup that reached an upstream: how long it took and how it ended. */
 internal class RvDnsSample(val ms: Int, val outcome: RvDnsOutcome)
-
-/** An upstream's answered lookups ([noName] among them denied the name), then its timed-out failures. */
-private fun samples(answered: List<Int>, noName: Set<Int> = emptySet(), failed: List<Int> = emptyList()): List<RvDnsSample> =
-    answered.map { RvDnsSample(it, if (it in noName) RvDnsOutcome.NoSuchName else RvDnsOutcome.Answered) } + failed.map { RvDnsSample(it, RvDnsOutcome.Failed) }
